@@ -39,6 +39,7 @@ export default function MapComponent({
   selectedProviderId
 }: MapComponentProps) {
   const mapRef = useRef<L.Map | null>(null);
+  const mapContainerRef = useRef<HTMLDivElement>(null);
   const userMarkerRef = useRef<L.Marker | null>(null);
   const providerMarkersRef = useRef<L.Marker[]>([]);
   const routeLayerRef = useRef<L.Polyline | null>(null);
@@ -48,33 +49,67 @@ export default function MapComponent({
   const [geocodeError, setGeocodeError] = useState<string | null>(null);
   const [routeInstructions, setRouteInstructions] = useState<RouteInstructions | null>(null);
   const [selectedProviderName, setSelectedProviderName] = useState<string | null>(null);
+  const [mapLoaded, setMapLoaded] = useState(false);
 
-  // Geocode the user address when component loads
+  // Check if we're in a browser environment before initializing Leaflet
   useEffect(() => {
-    if (userAddress && !userCoordinates) {
-      geocodeAddress(userAddress, 'user');
-    }
-  }, [userAddress, userCoordinates]);
-
-  // Geocode provider addresses once user location is set
-  useEffect(() => {
-    if (userCoordinates && serviceProviders.length > 0 && providerCoordinates.size === 0) {
-      const geocodeProviders = async () => {
-        for (const provider of serviceProviders) {
-          await geocodeAddress(provider.address, 'provider', provider.id);
-          // Add a small delay to avoid rate limiting from the geocoding service
-          await new Promise(resolve => setTimeout(resolve, 500));
-        }
-      };
+    if (typeof window !== 'undefined' && userAddress && !userCoordinates) {
+      // Set default coordinates first to prevent error if geocoding fails
+      const defaultCoordinates: [number, number] = [14.6741, 120.5113]; // Balanga coordinates
+      setUserCoordinates(defaultCoordinates);
       
-      geocodeProviders();
+      // Delayed geocoding to ensure DOM is ready
+      const timer = setTimeout(() => {
+        geocodeAddress(userAddress, 'user');
+      }, 100);
+      
+      return () => clearTimeout(timer);
     }
-  }, [userCoordinates, serviceProviders, providerCoordinates]);
+  }, [userAddress]);
 
-  // Geocode address to coordinates
+  // Initialize map when both userCoordinates and DOM are ready
+  useEffect(() => {
+    if (typeof window !== 'undefined' && userCoordinates && mapContainerRef.current && !mapLoaded) {
+      // Check if map container exists before initializing
+      const container = document.getElementById('map-container');
+      if (container) {
+        initializeMap(userCoordinates);
+        setMapLoaded(true);
+      }
+    }
+  }, [userCoordinates, mapLoaded]);
+
+  // Geocode address to coordinates with optimized error handling
   const geocodeAddress = async (address: string, type: 'user' | 'provider', providerId?: number) => {
+    if (type === 'user' && mapLoaded) return; // Prevent re-geocoding if map is already loaded
+    
     setIsGeocoding(true);
     try {
+      // Cache coordinates in localStorage to prevent redundant API calls
+      const cacheKey = `geo_${address.replace(/\s+/g, '_').toLowerCase()}`;
+      const cachedCoords = localStorage.getItem(cacheKey);
+      
+      if (cachedCoords) {
+        const [lat, lon] = JSON.parse(cachedCoords);
+        const coordinates: [number, number] = [parseFloat(lat), parseFloat(lon)];
+        
+        if (type === 'user') {
+          setUserCoordinates(coordinates);
+          if (mapRef.current) {
+            mapRef.current.setView(coordinates, 13);
+            addUserMarker(coordinates);
+          }
+        } else if (type === 'provider' && providerId !== undefined) {
+          setProviderCoordinates(prev => {
+            const newMap = new Map(prev);
+            newMap.set(providerId, coordinates);
+            return newMap;
+          });
+        }
+        setIsGeocoding(false);
+        return;
+      }
+      
       // Using Nominatim for geocoding (OSM's geocoding service)
       const encodedAddress = encodeURIComponent(address);
       const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodedAddress}&limit=1`);
@@ -84,10 +119,15 @@ export default function MapComponent({
         const { lat, lon } = data[0];
         const coordinates: [number, number] = [parseFloat(lat), parseFloat(lon)];
         
+        // Cache the coordinates for future use
+        localStorage.setItem(cacheKey, JSON.stringify([lat, lon]));
+        
         if (type === 'user') {
           setUserCoordinates(coordinates);
-          // Initialize map with user coordinates
-          initializeMap(coordinates);
+          if (mapRef.current) {
+            mapRef.current.setView(coordinates, 13);
+            addUserMarker(coordinates);
+          }
         } else if (type === 'provider' && providerId !== undefined) {
           setProviderCoordinates(prev => {
             const newMap = new Map(prev);
@@ -102,7 +142,6 @@ export default function MapComponent({
           // Use default Balanga coordinates
           const balangaCoordinates: [number, number] = [14.6741, 120.5113];
           setUserCoordinates(balangaCoordinates);
-          initializeMap(balangaCoordinates);
         }
       }
     } catch (error) {
@@ -112,53 +151,101 @@ export default function MapComponent({
         // Use default Balanga coordinates
         const balangaCoordinates: [number, number] = [14.6741, 120.5113];
         setUserCoordinates(balangaCoordinates);
-        initializeMap(balangaCoordinates);
       }
     } finally {
       setIsGeocoding(false);
     }
   };
 
-  // Initialize map with coordinates
+  // Initialize map with coordinates - optimized version
   const initializeMap = (coordinates: [number, number]) => {
     if (typeof window === 'undefined' || mapRef.current) return;
+    
+    try {
+      // Check if container exists before initializing
+      const container = document.getElementById('map-container');
+      if (!container) {
+        console.error("Map container not found");
+        return;
+      }
+      
+      // Using lower maxZoom improves performance
+      mapRef.current = L.map('map-container', {
+        center: coordinates,
+        zoom: 13,
+        zoomControl: true,
+        attributionControl: false,
+        maxZoom: 18,
+        preferCanvas: true // Use canvas renderer for better performance
+      });
 
-    mapRef.current = L.map('map-container').setView(coordinates, 13);
+      // Add OpenStreetMap tiles with optimized settings
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+        maxZoom: 18,
+        minZoom: 10,
+        updateWhenIdle: true,
+        keepBuffer: 2
+      }).addTo(mapRef.current);
 
-    // Add OpenStreetMap tiles
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-      maxZoom: 19
-    }).addTo(mapRef.current);
-
-    // Add legend
-    const legend = new L.Control({ position: 'bottomright' });
-    legend.onAdd = function() {
-      const div = L.DomUtil.create('div', 'info legend');
-      div.innerHTML = `
-        <div style="background: white; padding: 12px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); font-family: Arial, sans-serif;">
-          <div style="margin-bottom: 12px; font-weight: bold; font-size: 14px; color: #2F7B5F;">Map Legend</div>
-          <div style="display: flex; align-items: center; margin-bottom: 8px;">
-            <div style="width: 32px; height: 32px; background-color: #4CAF50; border-radius: 50% 50% 0 50%; transform: rotate(45deg); margin-right: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
-              <div style="position: absolute; top: 8px; left: 8px; width: 16px; height: 16px; background-color: white; border-radius: 50%; transform: rotate(-45deg);"></div>
+      // Add legend
+      const legend = new L.Control({ position: 'bottomright' });
+      legend.onAdd = function() {
+        const div = L.DomUtil.create('div', 'info legend');
+        div.innerHTML = `
+          <div style="background: white; padding: 12px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); font-family: Arial, sans-serif;">
+            <div style="margin-bottom: 12px; font-weight: bold; font-size: 14px; color: #2F7B5F;">Map Legend</div>
+            <div style="display: flex; align-items: center; margin-bottom: 8px;">
+              <div style="width: 32px; height: 32px; background-color: #4CAF50; border-radius: 50% 50% 0 50%; transform: rotate(45deg); margin-right: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
+                <div style="position: absolute; top: 8px; left: 8px; width: 16px; height: 16px; background-color: white; border-radius: 50%; transform: rotate(-45deg);"></div>
+              </div>
+              <span style="font-size: 13px;">Your Location</span>
             </div>
-            <span style="font-size: 13px;">Your Location</span>
-          </div>
-          <div style="display: flex; align-items: center;">
-            <div style="width: 32px; height: 32px; border-radius: 50%; background-color: #2F7B5F; box-shadow: 0 2px 4px rgba(0,0,0,0.2); display: flex; align-items: center; justify-content: center; margin-right: 8px;">
-              <img src="/logo.png" style="width: 28px; height: 28px; border-radius: 50%;" />
+            <div style="display: flex; align-items: center;">
+              <div style="width: 32px; height: 32px; border-radius: 50%; background-color: #2F7B5F; box-shadow: 0 2px 4px rgba(0,0,0,0.2); display: flex; align-items: center; justify-content: center; margin-right: 8px;">
+                <img src="/logo.png" style="width: 28px; height: 28px; border-radius: 50%;" />
+              </div>
+              <span style="font-size: 13px;">Pet Cremation Center</span>
             </div>
-            <span style="font-size: 13px;">Pet Cremation Center</span>
           </div>
-        </div>
-      `;
-      return div;
-    };
-    legend.addTo(mapRef.current);
+        `;
+        return div;
+      };
+      legend.addTo(mapRef.current);
 
-    // Add user marker
-    addUserMarker(coordinates);
+      // Add user marker
+      addUserMarker(coordinates);
+      
+    } catch (error) {
+      console.error("Error initializing map:", error);
+      setGeocodeError("Error loading map. Please refresh the page.");
+    }
   };
+
+  // Geocode provider addresses efficiently with batching
+  useEffect(() => {
+    if (userCoordinates && serviceProviders.length > 0 && providerCoordinates.size === 0 && mapLoaded) {
+      const geocodeProviders = async () => {
+        // Process providers in batches of 3 to avoid rate limiting
+        const batchSize = 3;
+        for (let i = 0; i < serviceProviders.length; i += batchSize) {
+          const batch = serviceProviders.slice(i, i + batchSize);
+          
+          // Process batch in parallel
+          await Promise.all(
+            batch.map(provider => geocodeAddress(provider.address, 'provider', provider.id))
+          );
+          
+          // Add delay between batches to avoid rate limiting
+          if (i + batchSize < serviceProviders.length) {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
+        }
+      };
+      
+      geocodeProviders();
+    }
+  }, [userCoordinates, serviceProviders, providerCoordinates, mapLoaded]);
 
   // Update markers whenever provider coordinates change
   useEffect(() => {
@@ -406,7 +493,7 @@ export default function MapComponent({
 
   return (
     <div className="relative w-full h-full">
-      <div id="map-container" className="w-full h-full rounded-lg overflow-hidden shadow-inner">
+      <div id="map-container" ref={mapContainerRef} className="w-full h-full rounded-lg overflow-hidden shadow-inner">
         {/* Map will be rendered here */}
       </div>
       
@@ -442,6 +529,41 @@ export default function MapComponent({
           boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
         }}>
           Finding locations...
+        </div>
+      )}
+      
+      {/* Loading indicator */}
+      {!mapLoaded && (
+        <div style={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          zIndex: 1000,
+          backgroundColor: 'white',
+          padding: '15px 20px',
+          borderRadius: '8px',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '10px'
+        }}>
+          <div style={{ color: '#2F7B5F', fontWeight: 'bold' }}>Loading map...</div>
+          <div style={{ 
+            width: '40px', 
+            height: '40px', 
+            border: '4px solid #f3f3f3',
+            borderTop: '4px solid #2F7B5F',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite'
+          }}></div>
+          <style jsx>{`
+            @keyframes spin {
+              0% { transform: rotate(0deg); }
+              100% { transform: rotate(360deg); }
+            }
+          `}</style>
         </div>
       )}
       

@@ -10,15 +10,37 @@ import {
 import FurParentNavbar from '@/components/navigation/FurParentNavbar';
 import dynamic from 'next/dynamic';
 
-// Import the map component with dynamic loading (no SSR)
+// Import the map component with dynamic loading and loading indicator
 const MapComponent = dynamic(
   () => import('@/components/map/MapComponent'),
-  { ssr: false }
+  { 
+    ssr: false,
+    loading: () => (
+      <div className="w-full h-full flex items-center justify-center bg-gray-100 rounded-lg">
+        <div className="flex flex-col items-center">
+          <div className="spinner"></div>
+          <p className="mt-4 text-gray-600">Loading map...</p>
+        </div>
+      </div>
+    )
+  }
 );
 
 export default function ServicesPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const defaultAddress = 'Balanga City, Bataan';
+  const [isMapVisible, setIsMapVisible] = useState(false);
+  const [isMapLoaded, setIsMapLoaded] = useState(false);
+
+  // Load map after component mounts for better performance
+  useEffect(() => {
+    // Short delay to ensure component is fully mounted
+    const timer = setTimeout(() => {
+      setIsMapVisible(true);
+    }, 100);
+    
+    return () => clearTimeout(timer);
+  }, []);
 
   // Mock data for service providers using descriptive addresses instead of coordinates
   const serviceProviders = [
@@ -147,17 +169,26 @@ export default function ServicesPage() {
                   </span>
                 </div>
 
-                {/* Map Container */}
-                <div className="w-full h-[500px] rounded-lg overflow-hidden shadow-inner">
-                  <MapComponent
-                    userAddress={defaultAddress}
-                    serviceProviders={serviceProviders.map(provider => ({
-                      id: provider.id,
-                      name: provider.name,
-                      address: provider.address
-                    }))}
-                    selectedProviderId={selectedProviderId}
-                  />
+                {/* Map Container with conditional rendering */}
+                <div className="w-full h-[500px] rounded-lg overflow-hidden shadow-inner relative">
+                  {isMapVisible ? (
+                    <MapComponent
+                      userAddress={defaultAddress}
+                      serviceProviders={serviceProviders.map(provider => ({
+                        id: provider.id,
+                        name: provider.name,
+                        address: provider.address
+                      }))}
+                      selectedProviderId={selectedProviderId}
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-gray-100 rounded-lg">
+                      <div className="flex flex-col items-center">
+                        <div className="spinner"></div>
+                        <p className="mt-4 text-gray-600">Preparing map...</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <p className="text-xs text-gray-500 mt-2 text-center">
                   Note: Your location is set to Balanga City, Bataan. You can update your preferred location in your profile settings later.
