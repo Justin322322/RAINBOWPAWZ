@@ -1,0 +1,177 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --primary-green: #1B4D3E;
+  --primary-green-light: #2C7A62;
+  --primary-green-dark: #153C31;
+  --primary-green-hover: #1F5A49;
+  --primary-green-bg: rgba(27, 77, 62, 0.1);
+  --primary-green-border: rgba(27, 77, 62, 0.2);
+  --text-primary: #1B4D3E;
+  --text-secondary: #4A5568;
+  --text-light: #718096;
+  --background-light: #F8FAF9;
+  --background-white: #FFFFFF;
+  --card-bg: #FAFAFA;
+}
+
+@layer base {
+  body {
+    @apply bg-[var(--background-light)] text-[var(--text-primary)];
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-normal text-[var(--text-primary)];
+  }
+
+  p {
+    @apply text-[var(--text-secondary)] font-normal;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-[var(--primary-green)] text-white px-8 py-4 rounded-md font-medium 
+    hover:bg-[var(--primary-green-hover)] transition-all duration-300 uppercase tracking-wider text-sm;
+  }
+  
+  .btn-outline {
+    @apply border-2 border-white text-white px-8 py-4 rounded-md font-medium 
+    hover:bg-white/10 transition-all duration-300 uppercase tracking-wider text-sm;
+  }
+  
+  .section-title {
+    @apply text-4xl font-light text-center text-[var(--primary-green)] mb-12;
+  }
+
+  .nav-link {
+    @apply text-white hover:text-gray-200 transition-colors duration-300 font-light;
+  }
+
+  .service-card {
+    @apply bg-white p-8 rounded-lg shadow-sm hover:shadow-md transition-all duration-300
+    border border-gray-100 hover:border-[var(--primary-green-border)];
+  }
+
+  .service-icon {
+    @apply w-12 h-12 text-[var(--primary-green)] mb-6;
+  }
+
+  .service-title {
+    @apply text-2xl font-light text-[var(--primary-green)] mb-4;
+  }
+
+  .service-description {
+    @apply text-gray-600 leading-relaxed font-light mb-6;
+  }
+
+  .service-feature {
+    @apply flex items-center text-sm text-gray-500 mb-2 font-light;
+  }
+
+  .hero-title {
+    @apply text-6xl md:text-7xl font-light text-white mb-6 leading-tight tracking-wide;
+  }
+
+  .hero-description {
+    @apply text-xl text-gray-200 mb-12 max-w-2xl font-light leading-relaxed;
+  }
+
+  .hero-button {
+    @apply px-8 py-4 rounded-md text-sm font-medium uppercase tracking-wider
+    transition-all duration-300 hover:transform hover:scale-105;
+  }
+
+  .hero-button-primary {
+    @apply bg-[var(--primary-green)] text-white 
+    hover:bg-[var(--primary-green-light)];
+  }
+
+  .hero-button-outline {
+    @apply border-2 border-white text-white
+    hover:bg-white/10;
+  }
+}
+
+.timeline-dot {
+  @apply w-4 h-4 rounded-full bg-[var(--primary-green)] absolute left-1/2 -translate-x-1/2 z-10;
+}
+
+.timeline-line {
+  @apply w-0.5 h-full bg-[var(--primary-green)] absolute left-1/2 -translate-x-1/2 opacity-20;
+}
+
+.timeline-card {
+  @apply bg-[var(--background-white)] rounded-xl p-6 transition-all duration-300 
+  shadow-sm hover:shadow-md border border-gray-100 hover:border-[var(--primary-green-border)];
+}
+
+.timeline-icon {
+  @apply w-16 h-16 rounded-full bg-[var(--primary-green)] text-white flex items-center justify-center 
+  text-2xl font-light hover:bg-[var(--primary-green-hover)] transition-colors duration-300;
+}
+
+.timeline-date {
+  @apply text-[var(--primary-green)] font-medium;
+}
+
+.timeline-title {
+  @apply text-2xl font-light text-[var(--primary-green)] mb-4;
+}
+
+.timeline-description {
+  @apply text-[var(--text-secondary)] leading-relaxed font-light;
+}
+
+.timeline-icon-small {
+  @apply w-12 h-12 rounded-full bg-[var(--primary-green-bg)] flex items-center justify-center;
+}
+
+.roadmap-container {
+  @apply relative py-12 max-w-6xl mx-auto px-4;
+}
+
+.roadmap-line {
+  @apply absolute left-1/2 top-0 h-full w-[1px] bg-[var(--primary-green)] opacity-20;
+  transform: translateX(-50%);
+}
+
+.step-wrapper {
+  @apply relative flex items-start mb-20 last:mb-0;
+}
+
+.step-wrapper:nth-child(even) {
+  @apply flex-row-reverse;
+}
+
+.step-card {
+  @apply bg-[var(--card-bg)] rounded-lg p-8 relative w-[calc(50%-2rem)];
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.step-wrapper:nth-child(odd) .step-card {
+  @apply ml-auto;
+}
+
+.step-wrapper:nth-child(even) .step-card {
+  @apply mr-auto;
+}
+
+.step-number {
+  @apply w-12 h-12 rounded-full bg-[var(--primary-green)] text-white flex items-center justify-center 
+  text-xl font-normal absolute -left-6 -top-6 z-10;
+}
+
+.step-title {
+  @apply text-xl font-normal text-[var(--primary-green)] mb-2;
+}
+
+.step-description {
+  @apply text-[var(--text-secondary)] text-base leading-relaxed;
+}
+
+.step-icon {
+  @apply w-6 h-6 text-[var(--primary-green)] mb-4;
+}
