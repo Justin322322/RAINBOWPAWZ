@@ -1,36 +1,103 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
-  MagnifyingGlassIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
-  ChevronDownIcon
+  MapPinIcon,
+  HomeIcon
 } from '@heroicons/react/24/outline';
 import FurParentNavbar from '@/components/navigation/FurParentNavbar';
+import dynamic from 'next/dynamic';
+
+// Import the map component with dynamic loading (no SSR)
+const MapComponent = dynamic(
+  () => import('@/components/map/MapComponent'),
+  { ssr: false }
+);
 
 export default function ServicesPage() {
-  const [selectedRegion, setSelectedRegion] = useState('');
-  const [selectedProvince, setSelectedProvince] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const defaultAddress = 'Balanga City, Bataan';
 
-  // Mock data for service providers
+  // Mock data for service providers using descriptive addresses instead of coordinates
   const serviceProviders = [
-    { id: 1, name: 'Service Provider Name', city: 'City', image: '/image_1.png' },
-    { id: 2, name: 'Service Provider Name', city: 'City', image: '/image_2.png' },
-    { id: 3, name: 'Service Provider Name', city: 'City', image: '/image_3.png' },
-    { id: 4, name: 'Service Provider Name', city: 'City', image: '/image_1.png' },
-    { id: 5, name: 'Service Provider Name', city: 'City', image: '/image_2.png' },
-    { id: 6, name: 'Service Provider Name', city: 'City', image: '/image_3.png' },
+    {
+      id: 1,
+      name: "Rainbow Bridge Pet Cremation",
+      city: 'Capitol Drive, Balanga City, Bataan',
+      distance: '0.5 km away',
+      type: 'Pet Cremation Services',
+      packages: 5,
+      address: 'Capitol Drive, Balanga City, Bataan, Philippines',
+      phone: '(123) 456-7890',
+      email: 'info@rainbowbridge.com',
+      description: 'Compassionate pet cremation services with personalized memorials.'
+    },
+    {
+      id: 2,
+      name: 'Peaceful Paws Memorial',
+      city: 'Tuyo, Balanga City, Bataan',
+      distance: '2.2 km away',
+      type: 'Pet Cremation Services',
+      packages: 7,
+      address: 'Tuyo, Balanga City, Bataan, Philippines',
+      phone: '(234) 567-8901',
+      email: 'care@peacefulpaws.com',
+      description: 'Dignified pet cremation with eco-friendly options.'
+    },
+    {
+      id: 3,
+      name: 'Eternal Companions',
+      city: 'Tenejero, Balanga City, Bataan',
+      distance: '1.8 km away',
+      type: 'Pet Cremation Services',
+      packages: 1,
+      address: 'Tenejero, Balanga City, Bataan, Philippines',
+      phone: '(345) 678-9012',
+      email: 'service@eternalcompanions.com',
+      description: 'Honoring your pet with respectful cremation services.'
+    },
+    {
+      id: 4,
+      name: 'Pet Care Center',
+      city: 'Orion, Bataan',
+      distance: '8.5 km away',
+      type: 'Pet Cremation Services',
+      packages: 3,
+      address: 'Orion, Bataan, Philippines',
+      phone: '(456) 789-0123',
+      email: 'info@petcarecenter.com',
+      description: 'Professional pet cremation with personalized service.'
+    },
+    {
+      id: 5,
+      name: 'Rainbow Pet Memorial',
+      city: 'Mariveles, Bataan',
+      distance: '25.8 km away',
+      type: 'Pet Cremation Services',
+      packages: 4,
+      address: 'Mariveles, Bataan, Philippines',
+      phone: '(567) 890-1234',
+      email: 'contact@rainbowpetmemorial.com',
+      description: 'Providing dignified pet cremation services with care.'
+    },
+    {
+      id: 6,
+      name: 'Paws & Hearts',
+      city: 'Dinalupihan, Bataan',
+      distance: '17.3 km away',
+      type: 'Pet Cremation Services',
+      packages: 2,
+      address: 'Dinalupihan, Bataan, Philippines',
+      phone: '(678) 901-2345',
+      email: 'hello@pawsandhearts.com',
+      description: 'Caring pet cremation services with a personal touch.'
+    },
   ];
 
-  // Mock data for regions and provinces
-  const regions = ['Luzon', 'Visayas', 'Mindanao'];
-  const provinces = {
-    'Luzon': ['Metro Manila', 'Cavite', 'Laguna', 'Batangas', 'Rizal', 'Quezon'],
-    'Visayas': ['Cebu', 'Bohol', 'Negros Occidental', 'Iloilo', 'Leyte'],
-    'Mindanao': ['Davao', 'Cagayan de Oro', 'General Santos', 'Zamboanga', 'Butuan']
-  };
+  // State for selected provider for routing
+  const [selectedProviderId, setSelectedProviderId] = useState<number | null>(null);
 
   // Pagination
   const providersPerPage = 3;
@@ -39,21 +106,6 @@ export default function ServicesPage() {
     (currentPage - 1) * providersPerPage,
     currentPage * providersPerPage
   );
-
-  const handleRegionChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const region = e.target.value;
-    setSelectedRegion(region);
-    setSelectedProvince('');
-  };
-
-  const handleProvinceChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setSelectedProvince(e.target.value);
-  };
-
-  const handleSearch = () => {
-    // In a real app, this would filter providers based on region and province
-    console.log('Searching for providers in:', selectedRegion, selectedProvince);
-  };
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
@@ -71,7 +123,7 @@ export default function ServicesPage() {
           <div className="absolute inset-0 bg-[url('/bg_4.png')] bg-repeat opacity-20"></div>
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
             <h1 className="text-4xl font-serif text-white text-center mb-4">
-              Find the Right Service Provider with Ease
+              Find the Right Cremation Services with Ease
             </h1>
             <p className="text-xl text-white text-center max-w-3xl mx-auto">
               No more endless searching—quickly locate and connect with trusted professionals in your area.
@@ -79,53 +131,37 @@ export default function ServicesPage() {
           </div>
         </div>
 
-        {/* Search Section */}
+        {/* Map Section */}
         <div className="bg-white py-8">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="bg-white rounded-lg shadow-[0_4px_16px_rgba(0,0,0,0.1)] p-8 -mt-16 relative z-20">
               <h2 className="text-lg text-[var(--primary-green)] text-center mb-6 font-serif">
-                Select your location to discover trusted service providers in your community
+                Based on your location, we've found these nearby cremation centers:
               </h2>
-              <div className="flex flex-col md:flex-row gap-4 items-center justify-center">
-                <div className="w-full md:w-[40%] relative">
-                  <select
-                    value={selectedRegion}
-                    onChange={handleRegionChange}
-                    className="w-full p-3 border border-[var(--primary-green)] rounded-md focus:outline-none focus:ring-1 focus:ring-[var(--primary-green)] appearance-none bg-white pr-10 text-gray-600 font-serif shadow-sm"
-                  >
-                    <option value="">Select region</option>
-                    {regions.map(region => (
-                      <option key={region} value={region}>{region}</option>
-                    ))}
-                  </select>
-                  <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-[var(--primary-green)]">
-                    <ChevronDownIcon className="h-5 w-5" />
-                  </div>
+
+              <div className="flex flex-col gap-4 items-center justify-center">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-sm text-gray-600 flex items-center">
+                    <MapPinIcon className="h-4 w-4 mr-1 text-[var(--primary-green)]" />
+                    Current location: {defaultAddress}
+                  </span>
                 </div>
-                <div className="w-full md:w-[40%] relative">
-                  <select
-                    value={selectedProvince}
-                    onChange={handleProvinceChange}
-                    disabled={!selectedRegion}
-                    className="w-full p-3 border border-[var(--primary-green)] rounded-md focus:outline-none focus:ring-1 focus:ring-[var(--primary-green)] appearance-none bg-white disabled:bg-gray-100 disabled:text-gray-400 pr-10 text-gray-600 font-serif shadow-sm"
-                  >
-                    <option value="">Select province</option>
-                    {selectedRegion && provinces[selectedRegion as keyof typeof provinces].map(province => (
-                      <option key={province} value={province}>{province}</option>
-                    ))}
-                  </select>
-                  <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-[var(--primary-green)]">
-                    <ChevronDownIcon className="h-5 w-5" />
-                  </div>
+
+                {/* Map Container */}
+                <div className="w-full h-[500px] rounded-lg overflow-hidden shadow-inner">
+                  <MapComponent
+                    userAddress={defaultAddress}
+                    serviceProviders={serviceProviders.map(provider => ({
+                      id: provider.id,
+                      name: provider.name,
+                      address: provider.address
+                    }))}
+                    selectedProviderId={selectedProviderId}
+                  />
                 </div>
-                <div className="w-full md:w-[10%] flex justify-center">
-                  <button
-                    onClick={handleSearch}
-                    className="w-12 h-12 bg-[var(--primary-green)] text-white rounded-full hover:bg-[var(--primary-green-hover)] transition-all duration-300 flex items-center justify-center shadow-md"
-                  >
-                    <MagnifyingGlassIcon className="h-6 w-6" />
-                  </button>
-                </div>
+                <p className="text-xs text-gray-500 mt-2 text-center">
+                  Note: Your location is set to Balanga City, Bataan. You can update your preferred location in your profile settings later.
+                </p>
               </div>
             </div>
           </div>
@@ -137,16 +173,28 @@ export default function ServicesPage() {
             {currentProviders.map(provider => (
               <div
                 key={provider.id}
-                className="rounded-lg overflow-hidden border border-gray-200"
+                className="rounded-lg overflow-hidden border border-gray-200 flex flex-col"
               >
-                <div className="h-64 relative overflow-hidden flex items-center justify-center bg-white">
-                  <div className="text-[var(--primary-green)] text-4xl font-serif z-10">
-                    PICTURE
-                  </div>
-                </div>
                 <div className="bg-[var(--primary-green)] text-white p-4 text-center">
-                  <h3 className="font-medium">Service Provider Name</h3>
-                  <p className="text-sm">City</p>
+                  <h3 className="font-medium text-lg">{provider.type}</h3>
+                </div>
+                <div className="p-4 flex flex-col flex-grow">
+                  <h3 className="font-medium text-xl mb-1">{provider.name}</h3>
+                  <p className="text-sm text-gray-600 mb-3">{provider.city}</p>
+                  <p className="text-sm text-green-600 mb-4">{provider.distance}</p>
+                  <p className="text-sm text-gray-600 mb-6">{provider.packages} Packages Available</p>
+
+                  <div className="mt-auto flex justify-between">
+                    <button className="bg-[var(--primary-green)] text-white px-4 py-2 rounded-md text-sm">
+                      View Services
+                    </button>
+                    <button
+                      className="bg-gray-500 text-white px-4 py-2 rounded-md text-sm"
+                      onClick={() => setSelectedProviderId(provider.id)}
+                    >
+                      Show Route
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}

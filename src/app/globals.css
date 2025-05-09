@@ -21,7 +21,7 @@
   body {
     @apply bg-[var(--background-light)] text-[var(--text-primary)];
   }
-  
+
   h1, h2, h3, h4, h5, h6 {
     @apply font-normal text-[var(--text-primary)];
   }
@@ -33,15 +33,15 @@
 
 @layer components {
   .btn-primary {
-    @apply bg-[var(--primary-green)] text-white px-8 py-4 rounded-md font-medium 
+    @apply bg-[var(--primary-green)] text-white px-8 py-4 rounded-md font-medium
     hover:bg-[var(--primary-green-hover)] transition-all duration-300 uppercase tracking-wider text-sm;
   }
-  
+
   .btn-outline {
-    @apply border-2 border-white text-white px-8 py-4 rounded-md font-medium 
+    @apply border-2 border-white text-white px-8 py-4 rounded-md font-medium
     hover:bg-white/10 transition-all duration-300 uppercase tracking-wider text-sm;
   }
-  
+
   .section-title {
     @apply text-4xl font-light text-center text-[var(--primary-green)] mb-12;
   }
@@ -85,7 +85,7 @@
   }
 
   .hero-button-primary {
-    @apply bg-[var(--primary-green)] text-white 
+    @apply bg-[var(--primary-green)] text-white
     hover:bg-[var(--primary-green-light)];
   }
 
@@ -104,12 +104,12 @@
 }
 
 .timeline-card {
-  @apply bg-[var(--background-white)] rounded-xl p-6 transition-all duration-300 
+  @apply bg-[var(--background-white)] rounded-xl p-6 transition-all duration-300
   shadow-sm hover:shadow-md border border-gray-100 hover:border-[var(--primary-green-border)];
 }
 
 .timeline-icon {
-  @apply w-16 h-16 rounded-full bg-[var(--primary-green)] text-white flex items-center justify-center 
+  @apply w-16 h-16 rounded-full bg-[var(--primary-green)] text-white flex items-center justify-center
   text-2xl font-light hover:bg-[var(--primary-green-hover)] transition-colors duration-300;
 }
 
@@ -160,7 +160,7 @@
 }
 
 .step-number {
-  @apply w-12 h-12 rounded-full bg-[var(--primary-green)] text-white flex items-center justify-center 
+  @apply w-12 h-12 rounded-full bg-[var(--primary-green)] text-white flex items-center justify-center
   text-xl font-normal absolute -left-6 -top-6 z-10;
 }
 
@@ -174,4 +174,58 @@
 
 .step-icon {
   @apply w-6 h-6 text-[var(--primary-green)] mb-4;
+}
+
+/* Map styles */
+#map-container {
+  height: 500px;
+  width: 100%;
+  z-index: 1;
+}
+
+/* Custom map marker styles */
+.custom-div-icon {
+  background: transparent;
+  border: none;
+}
+
+/* Popup styles */
+.leaflet-popup-content-wrapper {
+  border-radius: 8px;
+  padding: 0;
+  overflow: hidden;
+}
+
+.leaflet-popup-content {
+  margin: 0;
+  padding: 12px;
+  width: 250px !important;
+}
+
+.leaflet-popup-tip-container {
+  margin-top: -1px;
+}
+
+.leaflet-popup-tip {
+  background-color: white;
+}
+
+/* Button styles in popups */
+.view-services-btn, .route-button {
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.view-services-btn:hover {
+  background-color: #1F5A49 !important;
+}
+
+.route-button:hover {
+  background-color: #444 !important;
+}
+
+/* Legend styles */
+.legend {
+  line-height: 1.5;
+  font-size: 14px;
 }

@@ -1,0 +1,482 @@
+'use client';
+
+import { useEffect, useRef, useState } from 'react';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+
+// Fix for TypeScript error with Leaflet control
+declare module 'leaflet' {
+  namespace control {
+    function create(options?: any): Control;
+  }
+}
+
+interface ServiceProvider {
+  id: number;
+  name: string;
+  address: string;
+}
+
+interface MapComponentProps {
+  userAddress: string;
+  serviceProviders: ServiceProvider[];
+  selectedProviderId?: number | null;
+}
+
+interface RouteInstructions {
+  distance: string;
+  duration: string;
+  steps: Array<{
+    instruction: string;
+    distance: string;
+    duration: string;
+  }>;
+}
+
+export default function MapComponent({
+  userAddress,
+  serviceProviders,
+  selectedProviderId
+}: MapComponentProps) {
+  const mapRef = useRef<L.Map | null>(null);
+  const userMarkerRef = useRef<L.Marker | null>(null);
+  const providerMarkersRef = useRef<L.Marker[]>([]);
+  const routeLayerRef = useRef<L.Polyline | null>(null);
+  const [userCoordinates, setUserCoordinates] = useState<[number, number] | null>(null);
+  const [providerCoordinates, setProviderCoordinates] = useState<Map<number, [number, number]>>(new Map());
+  const [isGeocoding, setIsGeocoding] = useState(false);
+  const [geocodeError, setGeocodeError] = useState<string | null>(null);
+  const [routeInstructions, setRouteInstructions] = useState<RouteInstructions | null>(null);
+  const [selectedProviderName, setSelectedProviderName] = useState<string | null>(null);
+
+  // Geocode the user address when component loads
+  useEffect(() => {
+    if (userAddress && !userCoordinates) {
+      geocodeAddress(userAddress, 'user');
+    }
+  }, [userAddress, userCoordinates]);
+
+  // Geocode provider addresses once user location is set
+  useEffect(() => {
+    if (userCoordinates && serviceProviders.length > 0 && providerCoordinates.size === 0) {
+      const geocodeProviders = async () => {
+        for (const provider of serviceProviders) {
+          await geocodeAddress(provider.address, 'provider', provider.id);
+          // Add a small delay to avoid rate limiting from the geocoding service
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+      };
+      
+      geocodeProviders();
+    }
+  }, [userCoordinates, serviceProviders, providerCoordinates]);
+
+  // Geocode address to coordinates
+  const geocodeAddress = async (address: string, type: 'user' | 'provider', providerId?: number) => {
+    setIsGeocoding(true);
+    try {
+      // Using Nominatim for geocoding (OSM's geocoding service)
+      const encodedAddress = encodeURIComponent(address);
+      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodedAddress}&limit=1`);
+      const data = await response.json();
+
+      if (data && data.length > 0) {
+        const { lat, lon } = data[0];
+        const coordinates: [number, number] = [parseFloat(lat), parseFloat(lon)];
+        
+        if (type === 'user') {
+          setUserCoordinates(coordinates);
+          // Initialize map with user coordinates
+          initializeMap(coordinates);
+        } else if (type === 'provider' && providerId !== undefined) {
+          setProviderCoordinates(prev => {
+            const newMap = new Map(prev);
+            newMap.set(providerId, coordinates);
+            return newMap;
+          });
+        }
+      } else {
+        console.error(`Geocoding error: No results found for address ${address}`);
+        if (type === 'user') {
+          setGeocodeError("Could not find your location. Using default location.");
+          // Use default Balanga coordinates
+          const balangaCoordinates: [number, number] = [14.6741, 120.5113];
+          setUserCoordinates(balangaCoordinates);
+          initializeMap(balangaCoordinates);
+        }
+      }
+    } catch (error) {
+      console.error("Geocoding API error:", error);
+      if (type === 'user') {
+        setGeocodeError("Error finding your location. Using default location.");
+        // Use default Balanga coordinates
+        const balangaCoordinates: [number, number] = [14.6741, 120.5113];
+        setUserCoordinates(balangaCoordinates);
+        initializeMap(balangaCoordinates);
+      }
+    } finally {
+      setIsGeocoding(false);
+    }
+  };
+
+  // Initialize map with coordinates
+  const initializeMap = (coordinates: [number, number]) => {
+    if (typeof window === 'undefined' || mapRef.current) return;
+
+    mapRef.current = L.map('map-container').setView(coordinates, 13);
+
+    // Add OpenStreetMap tiles
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      maxZoom: 19
+    }).addTo(mapRef.current);
+
+    // Add legend
+    const legend = new L.Control({ position: 'bottomright' });
+    legend.onAdd = function() {
+      const div = L.DomUtil.create('div', 'info legend');
+      div.innerHTML = `
+        <div style="background: white; padding: 12px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); font-family: Arial, sans-serif;">
+          <div style="margin-bottom: 12px; font-weight: bold; font-size: 14px; color: #2F7B5F;">Map Legend</div>
+          <div style="display: flex; align-items: center; margin-bottom: 8px;">
+            <div style="width: 32px; height: 32px; background-color: #4CAF50; border-radius: 50% 50% 0 50%; transform: rotate(45deg); margin-right: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
+              <div style="position: absolute; top: 8px; left: 8px; width: 16px; height: 16px; background-color: white; border-radius: 50%; transform: rotate(-45deg);"></div>
+            </div>
+            <span style="font-size: 13px;">Your Location</span>
+          </div>
+          <div style="display: flex; align-items: center;">
+            <div style="width: 32px; height: 32px; border-radius: 50%; background-color: #2F7B5F; box-shadow: 0 2px 4px rgba(0,0,0,0.2); display: flex; align-items: center; justify-content: center; margin-right: 8px;">
+              <img src="/logo.png" style="width: 28px; height: 28px; border-radius: 50%;" />
+            </div>
+            <span style="font-size: 13px;">Pet Cremation Center</span>
+          </div>
+        </div>
+      `;
+      return div;
+    };
+    legend.addTo(mapRef.current);
+
+    // Add user marker
+    addUserMarker(coordinates);
+  };
+
+  // Update markers whenever provider coordinates change
+  useEffect(() => {
+    if (mapRef.current && providerCoordinates.size > 0) {
+      addProviderMarkers();
+    }
+  }, [providerCoordinates]);
+
+  // Add user marker
+  const addUserMarker = (coordinates: [number, number]) => {
+    if (!mapRef.current) return;
+
+    // Create user icon (green location pin)
+    const userIcon = L.divIcon({
+      className: 'custom-user-icon',
+      html: `
+        <div style="position: relative;">
+          <div style="width: 36px; height: 36px; background-color: #4CAF50; border-radius: 50% 50% 0 50%; transform: rotate(45deg); box-shadow: 0 2px 5px rgba(0,0,0,0.3);">
+            <div style="position: absolute; top: 9px; left: 9px; width: 18px; height: 18px; background-color: white; border-radius: 50%; transform: rotate(-45deg);"></div>
+          </div>
+        </div>
+      `,
+      iconSize: [36, 36],
+      iconAnchor: [18, 36],
+      popupAnchor: [0, -36]
+    });
+
+    // Add new marker
+    userMarkerRef.current = L.marker([coordinates[0], coordinates[1]], { icon: userIcon })
+      .addTo(mapRef.current)
+      .bindTooltip("Your Location", { permanent: false, direction: 'top', offset: [0, -18] });
+  };
+
+  // Function to add provider markers
+  const addProviderMarkers = () => {
+    if (!mapRef.current) return;
+
+    // Clear existing provider markers
+    providerMarkersRef.current.forEach(marker => {
+      if (mapRef.current) marker.removeFrom(mapRef.current);
+    });
+    providerMarkersRef.current = [];
+
+    // Add provider markers for geocoded providers
+    serviceProviders.forEach(provider => {
+      const coordinates = providerCoordinates.get(provider.id);
+      if (!coordinates) return; // Skip if coordinates not yet available
+
+      // Create provider icon with circular backdrop (Rainbow Paws logo)
+      const providerIcon = L.divIcon({
+        className: 'custom-provider-icon',
+        html: `
+          <div style="position: relative; width: 70px; height: 70px;">
+            <div style="position: absolute; width: 70px; height: 70px; border-radius: 50%; background-color: #2F7B5F; box-shadow: 0 3px 10px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center;">
+              <img src="/logo.png" style="width: 64px; height: 64px; border-radius: 50%; object-fit: cover;" />
+            </div>
+          </div>
+        `,
+        iconSize: [70, 70],
+        iconAnchor: [35, 35],
+        popupAnchor: [0, -35]
+      });
+
+      // Create popup content with unique ID for the route button
+      const popupContent = `
+        <div style="font-family: Arial, sans-serif; line-height: 1.6; min-width: 200px;">
+          <strong style="font-size: 1.1em; margin-bottom: 8px; display: block; color: #2F7B5F;">${provider.name}</strong>
+          <span style="font-size: 0.9em; color: #555; display: block; margin-bottom: 12px;">${provider.address}</span>
+          <div style="display: flex; justify-content: space-between; gap: 8px;">
+            <button class="view-services-btn" style="background-color: #2F7B5F; color: white; padding: 8px 12px; border: none; border-radius: 4px; cursor: pointer; font-size: 0.9em; flex: 1; font-weight: bold;">View Services</button>
+            <button id="route-button-${provider.id}" class="route-button" style="background-color: #555; color: white; padding: 8px 12px; border: none; border-radius: 4px; cursor: pointer; font-size: 0.9em; flex: 1; font-weight: bold;">Get Directions</button>
+          </div>
+        </div>
+      `;
+
+      // Add marker
+      const marker = L.marker([coordinates[0], coordinates[1]], { icon: providerIcon })
+        .addTo(mapRef.current!)
+        .bindPopup(popupContent, { maxWidth: 300 });
+
+      // Add click handler for the route button when popup opens
+      marker.on('popupopen', () => {
+        setTimeout(() => {
+          const routeButton = document.getElementById(`route-button-${provider.id}`);
+          if (routeButton) {
+            // Remove previous event listeners first to avoid duplicates
+            const newRouteButton = routeButton.cloneNode(true);
+            if (routeButton.parentNode) {
+              routeButton.parentNode.replaceChild(newRouteButton, routeButton);
+            }
+            
+            newRouteButton.addEventListener('click', () => {
+              setSelectedProviderName(provider.name);
+              displayRouteToProvider(coordinates, provider.name);
+            });
+          }
+        }, 100);
+      });
+
+      // Store marker reference
+      providerMarkersRef.current.push(marker);
+    });
+  };
+
+  // Format distance in meters to a more human-readable format
+  const formatDistance = (meters: number): string => {
+    if (meters < 1000) {
+      return `${Math.round(meters)} m`;
+    } else {
+      return `${(meters / 1000).toFixed(1)} km`;
+    }
+  };
+
+  // Format duration in seconds to a more human-readable format
+  const formatDuration = (seconds: number): string => {
+    if (seconds < 60) {
+      return `${Math.round(seconds)} sec`;
+    }
+    
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) {
+      const remainingSeconds = Math.round(seconds % 60);
+      if (remainingSeconds > 0) {
+        return `${minutes} min ${remainingSeconds} sec`;
+      }
+      return `${minutes} min`;
+    } else {
+      const hours = Math.floor(minutes / 60);
+      const remainingMinutes = minutes % 60;
+      if (remainingMinutes > 0) {
+        return `${hours} hr ${remainingMinutes} min`;
+      }
+      return `${hours} hr`;
+    }
+  };
+
+  // Function to display route on map using OSRM
+  const displayRouteToProvider = (providerCoords: [number, number], providerName: string) => {
+    if (!mapRef.current || !userCoordinates) return;
+
+    // Clear existing route
+    if (routeLayerRef.current && mapRef.current) {
+      routeLayerRef.current.removeFrom(mapRef.current);
+      routeLayerRef.current = null;
+    }
+    
+    // Set loading state
+    setRouteInstructions({ distance: "Calculating...", duration: "Calculating...", steps: [] });
+    
+    const startPoint = `${userCoordinates[1]},${userCoordinates[0]}`;
+    const endPoint = `${providerCoords[1]},${providerCoords[0]}`;
+    
+    // Using OSRM demo server with instructions
+    const osrmRequestUrl = `https://router.project-osrm.org/route/v1/driving/${startPoint};${endPoint}?overview=full&geometries=geojson&steps=true&annotations=true`;
+
+    fetch(osrmRequestUrl)
+      .then(response => response.json())
+      .then(data => {
+        if (data.routes && data.routes.length > 0) {
+          const route = data.routes[0];
+          const routeGeometry = route.geometry.coordinates;
+          const latLngs = routeGeometry.map((coord: [number, number]) => [coord[1], coord[0]]); // OSRM is lng,lat; Leaflet is lat,lng
+
+          // Create route with gradient color from green to red
+          routeLayerRef.current = L.polyline(latLngs, { 
+            color: '#2F7B5F', 
+            weight: 5,
+            opacity: 0.8,
+            lineCap: 'round',
+            lineJoin: 'round'
+          }).addTo(mapRef.current!);
+          
+          mapRef.current!.fitBounds(routeLayerRef.current.getBounds().pad(0.1)); // Zoom to fit the route with padding
+          
+          // Parse and format route instructions
+          if (route.legs && route.legs.length > 0) {
+            const leg = route.legs[0];
+            const totalDistance = formatDistance(leg.distance);
+            const totalDuration = formatDuration(leg.duration);
+            
+            const steps = leg.steps.map(step => ({
+              instruction: step.maneuver.instruction || step.name || 'Continue straight',
+              distance: formatDistance(step.distance),
+              duration: formatDuration(step.duration)
+            }))
+            // Filter out steps with empty instructions or very small distances
+            .filter(step => {
+              // Check that instruction is valid
+              if (!step.instruction || 
+                  step.instruction.trim() === '' || 
+                  step.instruction.includes('undefined')) {
+                return false;
+              }
+              
+              // Parse distance value correctly
+              let distanceValue = 0;
+              if (step.distance.includes('km')) {
+                distanceValue = parseFloat(step.distance) * 1000; // Convert km to meters
+              } else {
+                distanceValue = parseFloat(step.distance.replace(' m', '')); // Remove ' m' and parse
+              }
+              
+              // Skip very small distances (less than 5 meters)
+              return distanceValue > 5;
+            });
+            
+            setRouteInstructions({
+              distance: totalDistance,
+              duration: totalDuration,
+              steps
+            });
+          }
+        } else {
+          alert(`Could not find a route to ${providerName}.`);
+          console.error("OSRM routing error: No routes found", data);
+          setRouteInstructions(null);
+        }
+      })
+      .catch(error => {
+        alert(`Error fetching route to ${providerName}. Please try again.`);
+        console.error('OSRM API error:', error);
+        setRouteInstructions(null);
+      });
+  };
+
+  // Clear route instructions when component unmounts
+  useEffect(() => {
+    return () => {
+      setRouteInstructions(null);
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
+      }
+    };
+  }, []);
+
+  return (
+    <div className="relative w-full h-full">
+      <div id="map-container" className="w-full h-full rounded-lg overflow-hidden shadow-inner">
+        {/* Map will be rendered here */}
+      </div>
+      
+      {/* Notifications and directions */}
+      {geocodeError && (
+        <div style={{
+          position: 'absolute', 
+          top: '10px', 
+          left: '50%', 
+          transform: 'translateX(-50%)',
+          zIndex: 1000,
+          backgroundColor: '#f8d7da',
+          color: '#721c24',
+          padding: '10px 15px',
+          borderRadius: '4px',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+        }}>
+          {geocodeError}
+        </div>
+      )}
+      
+      {isGeocoding && (
+        <div style={{
+          position: 'absolute', 
+          top: '10px', 
+          left: '50%', 
+          transform: 'translateX(-50%)',
+          zIndex: 1000,
+          backgroundColor: '#e2e3e5',
+          color: '#383d41',
+          padding: '10px 15px',
+          borderRadius: '4px',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+        }}>
+          Finding locations...
+        </div>
+      )}
+      
+      {/* Route instructions panel */}
+      {routeInstructions && (
+        <div className="absolute bottom-4 right-4 bg-white rounded-lg shadow-lg p-4 max-w-xs max-h-[60%] overflow-y-auto z-[1000] border-l-4 border-[#2F7B5F]">
+          <div className="flex justify-between items-center mb-3">
+            <h3 className="text-[#2F7B5F] font-bold text-sm">Directions to {selectedProviderName}</h3>
+            <button 
+              className="text-gray-600 hover:text-gray-800" 
+              onClick={() => setRouteInstructions(null)}
+              aria-label="Close directions"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-5 h-5">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          
+          <div className="flex justify-between text-xs bg-gray-100 p-2 rounded-md mb-3">
+            <div className="font-medium">Distance: <span className="font-bold text-[#2F7B5F]">{routeInstructions.distance}</span></div>
+            <div className="font-medium">Duration: <span className="font-bold text-[#2F7B5F]">{routeInstructions.duration}</span></div>
+          </div>
+          
+          <div className="space-y-3 text-sm">
+            {routeInstructions.steps.length === 0 ? (
+              <div className="text-center py-4 text-gray-600">No detailed directions available for this route.</div>
+            ) : (
+              routeInstructions.steps.map((step, index) => (
+                <div key={index} className="border-b border-gray-100 pb-2 last:border-0">
+                  <div className="font-semibold text-gray-800 flex items-start">
+                    <span className="flex items-center justify-center bg-[#2F7B5F] text-white rounded-full min-w-[20px] h-[20px] text-xs mr-2 mt-0.5">{index + 1}</span>
+                    <span>{step.instruction}</span>
+                  </div>
+                  <div className="text-xs text-gray-600 flex justify-between mt-1 ml-7">
+                    <span>{step.distance}</span>
+                    <span>{step.duration}</span>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
