@@ -21,4 +21,4 @@ const nextConfig = {
   serverExternalPackages: ['nodemailer', 'emailjs']
 };
 
-export default nextConfig;
+module.exports = nextConfig;

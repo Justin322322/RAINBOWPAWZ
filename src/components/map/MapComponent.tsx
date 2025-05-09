@@ -339,13 +339,22 @@ export default function MapComponent({
             const totalDistance = formatDistance(leg.distance);
             const totalDuration = formatDuration(leg.duration);
             
-            const steps = leg.steps.map(step => ({
+            const steps = leg.steps.map((step: { 
+              maneuver: { instruction?: string }; 
+              name?: string;
+              distance: number; 
+              duration: number;
+            }) => ({
               instruction: step.maneuver.instruction || step.name || 'Continue straight',
               distance: formatDistance(step.distance),
               duration: formatDuration(step.duration)
             }))
             // Filter out steps with empty instructions or very small distances
-            .filter(step => {
+            .filter((step: { 
+              instruction: string;
+              distance: string;
+              duration: string;
+            }) => {
               // Check that instruction is valid
               if (!step.instruction || 
                   step.instruction.trim() === '' || 
