@@ -28,8 +28,6 @@ export default function FurParentNavbar({ activePage: propActivePage }: FurParen
         setActivePage('home');
       } else if (pathname === '/user/furparent_dashboard/services') {
         setActivePage('services');
-      } else if (pathname === '/user/furparent_dashboard/location') {
-        setActivePage('location');
       }
     }
   }, [pathname, propActivePage]);
@@ -63,13 +61,6 @@ export default function FurParentNavbar({ activePage: propActivePage }: FurParen
             >
               Services
             </Link>
-            <Link
-              href="/user/furparent_dashboard/location"
-              className={`text-base font-serif text-white hover:text-white transition-all duration-300 relative after:content-[''] after:absolute after:-bottom-2 after:left-0 ${activePage === 'location' ? 'after:w-full' : 'after:w-0'} after:h-0.5 after:bg-white after:transition-all after:duration-300 hover:after:w-full cursor-pointer antialiased`}
-              onClick={() => setActivePage('location')}
-            >
-              Locations
-            </Link>
           </div>
           <div className="flex items-center space-x-4">
             <Link href="/user/furparent_dashboard/cart" className="text-white hover:text-gray-200">
@@ -95,13 +86,6 @@ export default function FurParentNavbar({ activePage: propActivePage }: FurParen
                     onClick={() => setActivePage('home')}
                   >
                     Dashboard
-                  </Link>
-                  <Link
-                    href="/user/furparent_dashboard/location"
-                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                    onClick={() => setActivePage('location')}
-                  >
-                    Locations
                   </Link>
                   <Link href="/user/furparent_dashboard/profile" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                     Profile
