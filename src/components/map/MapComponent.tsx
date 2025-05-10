@@ -67,6 +67,19 @@ export default function MapComponent({
     }
   }, [userAddress]);
 
+  // When user coordinates change, update the marker
+  useEffect(() => {
+    if (userCoordinates && mapRef.current && mapLoaded) {
+      // If there's already a user marker, update its position
+      // otherwise create a new one
+      if (userMarkerRef.current) {
+        userMarkerRef.current.setLatLng([userCoordinates[0], userCoordinates[1]]);
+      } else {
+        addUserMarker(userCoordinates);
+      }
+    }
+  }, [userCoordinates, mapLoaded]);
+
   // Initialize map when both userCoordinates and DOM are ready
   useEffect(() => {
     if (typeof window !== 'undefined' && userCoordinates && mapContainerRef.current && !mapLoaded) {
@@ -97,7 +110,13 @@ export default function MapComponent({
           setUserCoordinates(coordinates);
           if (mapRef.current) {
             mapRef.current.setView(coordinates, 13);
-            addUserMarker(coordinates);
+            // Only add user marker if it doesn't exist or coordinates have changed
+            if (!userMarkerRef.current) {
+              addUserMarker(coordinates);
+            } else {
+              // Update existing marker position if coordinates have changed
+              userMarkerRef.current.setLatLng([coordinates[0], coordinates[1]]);
+            }
           }
         } else if (type === 'provider' && providerId !== undefined) {
           setProviderCoordinates(prev => {
@@ -126,7 +145,13 @@ export default function MapComponent({
           setUserCoordinates(coordinates);
           if (mapRef.current) {
             mapRef.current.setView(coordinates, 13);
-            addUserMarker(coordinates);
+            // Only add user marker if it doesn't exist or coordinates have changed
+            if (!userMarkerRef.current) {
+              addUserMarker(coordinates);
+            } else {
+              // Update existing marker position if coordinates have changed
+              userMarkerRef.current.setLatLng([coordinates[0], coordinates[1]]);
+            }
           }
         } else if (type === 'provider' && providerId !== undefined) {
           setProviderCoordinates(prev => {
@@ -142,6 +167,9 @@ export default function MapComponent({
           // Use default Balanga coordinates
           const balangaCoordinates: [number, number] = [14.6741, 120.5113];
           setUserCoordinates(balangaCoordinates);
+          if (mapRef.current) {
+            addUserMarker(balangaCoordinates);
+          }
         }
       }
     } catch (error) {
@@ -151,6 +179,9 @@ export default function MapComponent({
         // Use default Balanga coordinates
         const balangaCoordinates: [number, number] = [14.6741, 120.5113];
         setUserCoordinates(balangaCoordinates);
+        if (mapRef.current) {
+          addUserMarker(balangaCoordinates);
+        }
       }
     } finally {
       setIsGeocoding(false);
@@ -213,8 +244,10 @@ export default function MapComponent({
       };
       legend.addTo(mapRef.current);
 
-      // Add user marker
-      addUserMarker(coordinates);
+      // Make sure we only add the user marker once
+      if (!userMarkerRef.current) {
+        addUserMarker(coordinates);
+      }
       
     } catch (error) {
       console.error("Error initializing map:", error);
@@ -254,29 +287,63 @@ export default function MapComponent({
     }
   }, [providerCoordinates]);
 
+  // Handle selectedProviderId changes - trigger directions when selected from card
+  useEffect(() => {
+    if (selectedProviderId && mapRef.current && providerCoordinates.size > 0 && mapLoaded) {
+      const coordinates = providerCoordinates.get(selectedProviderId);
+      if (coordinates) {
+        // Find the provider to get its name
+        const provider = serviceProviders.find(p => p.id === selectedProviderId);
+        if (provider) {
+          setSelectedProviderName(provider.name);
+          displayRouteToProvider(coordinates, provider.name);
+        }
+      }
+    }
+  }, [selectedProviderId, providerCoordinates, mapLoaded]);
+
   // Add user marker
   const addUserMarker = (coordinates: [number, number]) => {
     if (!mapRef.current) return;
+
+    // Remove existing user marker if present
+    if (userMarkerRef.current) {
+      userMarkerRef.current.removeFrom(mapRef.current);
+      userMarkerRef.current = null;
+    }
 
     // Create user icon (green location pin)
     const userIcon = L.divIcon({
       className: 'custom-user-icon',
       html: `
         <div style="position: relative;">
-          <div style="width: 36px; height: 36px; background-color: #4CAF50; border-radius: 50% 50% 0 50%; transform: rotate(45deg); box-shadow: 0 2px 5px rgba(0,0,0,0.3);">
-            <div style="position: absolute; top: 9px; left: 9px; width: 18px; height: 18px; background-color: white; border-radius: 50%; transform: rotate(-45deg);"></div>
+          <div class="pulse-animation" style="position: absolute; width: 48px; height: 48px; border-radius: 50%; background-color: rgba(76, 175, 80, 0.3); top: -6px; left: -6px; transform-origin: center;"></div>
+          <div style="width: 38px; height: 38px; background-color: #4CAF50; border-radius: 50% 50% 0 50%; transform: rotate(45deg); box-shadow: 0 3px 6px rgba(0,0,0,0.3);">
+            <div style="position: absolute; top: 10px; left: 10px; width: 18px; height: 18px; background-color: white; border-radius: 50%; transform: rotate(-45deg);"></div>
           </div>
+          <div style="position: absolute; top: -28px; left: 50%; transform: translateX(-50%); background-color: #4CAF50; color: white; padding: 3px 8px; border-radius: 4px; white-space: nowrap; font-weight: bold; font-size: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.2);">Your Location</div>
         </div>
+        <style>
+          @keyframes pulse {
+            0% { transform: scale(1); opacity: 0.7; }
+            50% { transform: scale(1.3); opacity: 0.3; }
+            100% { transform: scale(1); opacity: 0.7; }
+          }
+          .pulse-animation {
+            animation: pulse 2s infinite ease-in-out;
+          }
+        </style>
       `,
-      iconSize: [36, 36],
-      iconAnchor: [18, 36],
-      popupAnchor: [0, -36]
+      iconSize: [38, 38],
+      iconAnchor: [19, 38],
+      popupAnchor: [0, -38]
     });
 
-    // Add new marker
-    userMarkerRef.current = L.marker([coordinates[0], coordinates[1]], { icon: userIcon })
-      .addTo(mapRef.current)
-      .bindTooltip("Your Location", { permanent: false, direction: 'top', offset: [0, -18] });
+    // Add new marker with high zIndex to ensure it stays on top
+    userMarkerRef.current = L.marker([coordinates[0], coordinates[1]], { 
+      icon: userIcon,
+      zIndexOffset: 1000 // This ensures the user location is always on top
+    }).addTo(mapRef.current);
   };
 
   // Function to add provider markers
@@ -294,7 +361,7 @@ export default function MapComponent({
       const coordinates = providerCoordinates.get(provider.id);
       if (!coordinates) return; // Skip if coordinates not yet available
 
-      // Create provider icon with circular backdrop (Rainbow Paws logo)
+      // Create provider icon with circular backdrop (Rainbow Paws logo) and name label above
       const providerIcon = L.divIcon({
         className: 'custom-provider-icon',
         html: `
@@ -302,6 +369,7 @@ export default function MapComponent({
             <div style="position: absolute; width: 70px; height: 70px; border-radius: 50%; background-color: #2F7B5F; box-shadow: 0 3px 10px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center;">
               <img src="/logo.png" style="width: 64px; height: 64px; border-radius: 50%; object-fit: cover;" />
             </div>
+            <div style="position: absolute; top: -30px; left: 50%; transform: translateX(-50%); background-color: rgba(255,255,255,0.9); padding: 3px 8px; border-radius: 4px; white-space: nowrap; font-weight: bold; font-size: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.2); max-width: 150px; text-overflow: ellipsis; overflow: hidden;">${provider.name}</div>
           </div>
         `,
         iconSize: [70, 70],
@@ -321,8 +389,11 @@ export default function MapComponent({
         </div>
       `;
 
-      // Add marker
-      const marker = L.marker([coordinates[0], coordinates[1]], { icon: providerIcon })
+      // Add marker with lower zIndex to ensure user location stays on top
+      const marker = L.marker([coordinates[0], coordinates[1]], { 
+        icon: providerIcon,
+        zIndexOffset: 100 // Lower than user marker
+      })
         .addTo(mapRef.current!)
         .bindPopup(popupContent, { maxWidth: 300 });
 
@@ -359,15 +430,50 @@ export default function MapComponent({
     }
   };
 
-  // Format duration in seconds to a more human-readable format
-  const formatDuration = (seconds: number): string => {
-    if (seconds < 60) {
-      return `${Math.round(seconds)} sec`;
+  // Format duration in seconds to a more human-readable format with realistic travel time
+  const formatDuration = (seconds: number, roadType: string = 'normal', distance: number = 0): string => {
+    // Apply a moderate traffic factor based on road type
+    let trafficFactor = 1.8; // Default factor - more balanced
+    
+    // Adjust traffic factor based on road type
+    if (roadType.includes('motorway') || roadType.includes('trunk')) {
+      trafficFactor = 1.5; // Highways are faster but still have traffic
+    } else if (roadType.includes('residential') || roadType.includes('service')) {
+      trafficFactor = 2.2; // Residential areas have stops and slower speeds
+    } else if (roadType.includes('primary') || roadType.includes('secondary')) {
+      trafficFactor = 1.8; // Main roads with traffic lights
+    } else if (roadType.includes('tertiary') || roadType.includes('unclassified')) {
+      trafficFactor = 2.0; // Smaller roads with turns
     }
     
-    const minutes = Math.floor(seconds / 60);
+    // Apply time-of-day factor based on current time - more moderate
+    const hour = new Date().getHours();
+    let timeOfDayFactor = 1.0;
+    
+    // Adjust for rush hours - more balanced
+    if ((hour >= 7 && hour <= 9) || (hour >= 16 && hour <= 19)) {
+      timeOfDayFactor = 1.3; // Rush hour traffic
+    } else if ((hour >= 10 && hour <= 15) || (hour >= 20 && hour <= 22)) {
+      timeOfDayFactor = 1.1; // Mid-day and evening traffic
+    } else {
+      timeOfDayFactor = 1.0; // Early morning or late night
+    }
+    
+    // Add time for traffic lights and intersections - more moderate
+    const stepIntersections = Math.ceil(distance / 300); // One intersection every 300m
+    const averageWaitTimePerIntersection = 15; // seconds - more realistic
+    const intersectionTime = stepIntersections * averageWaitTimePerIntersection;
+    
+    // Calculate adjusted time based on actual driving conditions
+    const adjustedSeconds = (seconds * trafficFactor * timeOfDayFactor) + intersectionTime;
+    
+    if (adjustedSeconds < 60) {
+      return `${Math.round(adjustedSeconds)} sec`;
+    }
+    
+    const minutes = Math.floor(adjustedSeconds / 60);
     if (minutes < 60) {
-      const remainingSeconds = Math.round(seconds % 60);
+      const remainingSeconds = Math.round(adjustedSeconds % 60);
       if (remainingSeconds > 0) {
         return `${minutes} min ${remainingSeconds} sec`;
       }
@@ -424,18 +530,32 @@ export default function MapComponent({
           if (route.legs && route.legs.length > 0) {
             const leg = route.legs[0];
             const totalDistance = formatDistance(leg.distance);
-            const totalDuration = formatDuration(leg.duration);
+            
+            // Determine predominant road type for the entire route
+            let primaryRoadType = 'normal';
+            
+            // Calculate simplified and realistic travel duration
+            const totalDuration = formatDuration(leg.duration, primaryRoadType, leg.distance);
             
             const steps = leg.steps.map((step: { 
               maneuver: { instruction?: string }; 
               name?: string;
               distance: number; 
               duration: number;
-            }) => ({
-              instruction: step.maneuver.instruction || step.name || 'Continue straight',
-              distance: formatDistance(step.distance),
-              duration: formatDuration(step.duration)
-            }))
+            }) => {
+              // Determine road type for this step
+              const roadType = step.name?.includes('motorway') ? 'motorway' :
+                               step.name?.includes('trunk') ? 'trunk' :
+                               step.name?.includes('primary') ? 'primary' :
+                               step.name?.includes('secondary') ? 'secondary' :
+                               step.name?.includes('residential') ? 'residential' : 'normal';
+              
+              return {
+                instruction: step.maneuver.instruction || step.name || 'Continue straight',
+                distance: formatDistance(step.distance),
+                duration: formatDuration(step.duration, roadType, step.distance)
+              };
+            })
             // Filter out steps with empty instructions or very small distances
             .filter((step: { 
               instruction: string;

@@ -1,0 +1,41 @@
+<svg width="800" height="600" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="100%" height="100%" fill="#e0e7ff" />
+  
+  <!-- Icon -->
+  <g transform="translate(400, 240)">
+    <!-- Memorial Stone -->
+    <path d="M-60,60 L-80,-40 C-80,-60 -60,-80 0,-80 C60,-80 80,-60 80,-40 L60,60 Z" fill="#a5b4fc" opacity="0.8" stroke="#6366f1" stroke-width="4" />
+    
+    <!-- Paw Print -->
+    <g transform="translate(0, -20) scale(0.6)">
+      <path d="M-30,-20 C-40,-35 -60,-35 -70,-15 C-80,5 -70,25 -50,25 C-30,25 -20,-5 -30,-20 Z" fill="white" opacity="0.8" />
+      <path d="M30,-20 C20,-35 0,-35 -10,-15 C-20,5 -10,25 10,25 C30,25 40,-5 30,-20 Z" fill="white" opacity="0.8" />
+      <path d="M-10,30 C-20,15 -40,15 -50,35 C-60,55 -50,75 -30,75 C-10,75 0,45 -10,30 Z" fill="white" opacity="0.8" />
+      <path d="M30,30 C20,15 0,15 -10,35 C-20,55 -10,75 10,75 C30,75 40,45 30,30 Z" fill="white" opacity="0.8" />
+      <ellipse cx="0" cy="10" rx="25" ry="30" fill="white" opacity="0.8" />
+    </g>
+    
+    <!-- Decorative Flowers -->
+    <g transform="translate(-50, 30) scale(0.2)">
+      <circle cx="0" cy="0" r="30" fill="#c4b5fd" />
+      <circle cx="30" cy="0" r="30" fill="#c4b5fd" />
+      <circle cx="0" cy="30" r="30" fill="#c4b5fd" />
+      <circle cx="30" cy="30" r="30" fill="#c4b5fd" />
+      <circle cx="15" cy="15" r="15" fill="#fef08a" />
+    </g>
+    
+    <g transform="translate(50, 30) scale(0.2)">
+      <circle cx="0" cy="0" r="30" fill="#c4b5fd" />
+      <circle cx="30" cy="0" r="30" fill="#c4b5fd" />
+      <circle cx="0" cy="30" r="30" fill="#c4b5fd" />
+      <circle cx="30" cy="30" r="30" fill="#c4b5fd" />
+      <circle cx="15" cy="15" r="15" fill="#fef08a" />
+    </g>
+  </g>
+  
+  <!-- Labels -->
+  <rect x="250" y="350" width="300" height="40" rx="20" fill="#4f46e5" opacity="0.9" />
+  <text x="400" y="378" font-family="Arial, sans-serif" font-size="20" fill="white" text-anchor="middle">Memorial Service</text>
+  <text x="400" y="430" font-family="Arial, sans-serif" font-size="18" fill="#312e81" text-anchor="middle">Lasting Tribute for Your Pet</text>
+</svg> 

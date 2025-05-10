@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -31,6 +31,10 @@ export default function ServicesPage() {
   const defaultAddress = 'Balanga City, Bataan';
   const [isMapVisible, setIsMapVisible] = useState(false);
   const [isMapLoaded, setIsMapLoaded] = useState(false);
+  const [selectedProviderId, setSelectedProviderId] = useState<number | null>(null);
+  
+  // Ref to hold map section element to scroll to when showing directions
+  const mapSectionRef = useRef<HTMLDivElement>(null);
 
   // Load map after component mounts for better performance
   useEffect(() => {
@@ -41,6 +45,17 @@ export default function ServicesPage() {
     
     return () => clearTimeout(timer);
   }, []);
+  
+  // Scroll to map when showing directions
+  useEffect(() => {
+    if (selectedProviderId !== null && mapSectionRef.current) {
+      // Scroll to the map section with smooth behavior
+      mapSectionRef.current.scrollIntoView({ 
+        behavior: 'smooth',
+        block: 'start'
+      });
+    }
+  }, [selectedProviderId]);
 
   // Mock data for service providers using descriptive addresses instead of coordinates
   const serviceProviders = [
@@ -118,9 +133,6 @@ export default function ServicesPage() {
     },
   ];
 
-  // State for selected provider for routing
-  const [selectedProviderId, setSelectedProviderId] = useState<number | null>(null);
-
   // Pagination
   const providersPerPage = 3;
   const totalPages = Math.ceil(serviceProviders.length / providersPerPage);
@@ -131,6 +143,11 @@ export default function ServicesPage() {
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
+  };
+  
+  // Handle Get Directions click
+  const handleGetDirections = (providerId: number) => {
+    setSelectedProviderId(providerId);
   };
 
   return (
@@ -144,28 +161,28 @@ export default function ServicesPage() {
         <div className="relative py-16 bg-[var(--primary-green)]">
           <div className="absolute inset-0 bg-[url('/bg_4.png')] bg-repeat opacity-20"></div>
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-            <h1 className="text-4xl font-serif text-white text-center mb-4">
+            <h1 className="text-4xl md:text-5xl lg:text-6xl modern-heading text-white text-center mb-4">
               Find the Right Cremation Services with Ease
             </h1>
-            <p className="text-xl text-white text-center max-w-3xl mx-auto">
+            <p className="text-xl text-white text-center max-w-3xl mx-auto modern-text font-light">
               No more endless searching—quickly locate and connect with trusted professionals in your area.
             </p>
           </div>
         </div>
 
         {/* Map Section */}
-        <div className="bg-white py-8">
+        <div ref={mapSectionRef} className="bg-white py-8">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="bg-white rounded-lg shadow-[0_4px_16px_rgba(0,0,0,0.1)] p-8 -mt-16 relative z-20">
-              <h2 className="text-lg text-[var(--primary-green)] text-center mb-6 font-serif">
+              <h2 className="text-lg md:text-xl text-[var(--primary-green)] text-center mb-6 modern-heading">
                 Based on your location, we've found these nearby cremation centers:
               </h2>
 
               <div className="flex flex-col gap-4 items-center justify-center">
                 <div className="flex items-center gap-2 mb-2">
-                  <span className="text-sm text-gray-600 flex items-center">
-                    <MapPinIcon className="h-4 w-4 mr-1 text-[var(--primary-green)]" />
-                    Current location: {defaultAddress}
+                  <span className="modern-text text-sm text-gray-600 flex items-center">
+                    <HomeIcon className="h-4 w-4 mr-1 text-[var(--primary-green)]" />
+                    Your location: {defaultAddress}
                   </span>
                 </div>
 
@@ -185,13 +202,13 @@ export default function ServicesPage() {
                     <div className="w-full h-full flex items-center justify-center bg-gray-100 rounded-lg">
                       <div className="flex flex-col items-center">
                         <div className="spinner"></div>
-                        <p className="mt-4 text-gray-600">Preparing map...</p>
+                        <p className="mt-4 text-gray-600 modern-text">Preparing map...</p>
                       </div>
                     </div>
                   )}
                 </div>
-                <p className="text-xs text-gray-500 mt-2 text-center">
-                  Note: Your location is set to Balanga City, Bataan. You can update your preferred location in your profile settings later.
+                <p className="modern-caption mt-2 text-center">
+                  Showing cremation services near your location in Balanga City, Bataan.
                 </p>
               </div>
             </div>
@@ -204,26 +221,26 @@ export default function ServicesPage() {
             {currentProviders.map(provider => (
               <div
                 key={provider.id}
-                className="rounded-lg overflow-hidden border border-gray-200 flex flex-col"
+                className="rounded-lg overflow-hidden border border-gray-200 flex flex-col hover:shadow-lg transition-shadow duration-300"
               >
                 <div className="bg-[var(--primary-green)] text-white p-4 text-center">
                   <h3 className="font-medium text-lg">{provider.type}</h3>
                 </div>
-                <div className="p-4 flex flex-col flex-grow">
-                  <h3 className="font-medium text-xl mb-1">{provider.name}</h3>
-                  <p className="text-sm text-gray-600 mb-3">{provider.city}</p>
-                  <p className="text-sm text-green-600 mb-4">{provider.distance}</p>
-                  <p className="text-sm text-gray-600 mb-6">{provider.packages} Packages Available</p>
+                <div className="p-6 flex flex-col flex-grow">
+                  <h3 className="modern-heading text-xl mb-2">{provider.name}</h3>
+                  <p className="modern-text text-sm text-gray-600 mb-2">{provider.city}</p>
+                  <p className="modern-label text-green-600 mb-4">{provider.distance}</p>
+                  <p className="modern-text text-sm text-gray-600 mb-6">{provider.packages} Packages Available</p>
 
                   <div className="mt-auto flex justify-between">
-                    <button className="bg-[var(--primary-green)] text-white px-4 py-2 rounded-md text-sm">
+                    <button className="bg-[var(--primary-green)] text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-[var(--primary-green-hover)] transition-colors duration-300">
                       View Services
                     </button>
                     <button
-                      className="bg-gray-500 text-white px-4 py-2 rounded-md text-sm"
-                      onClick={() => setSelectedProviderId(provider.id)}
+                      className="bg-gray-500 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-600 transition-colors duration-300"
+                      onClick={() => handleGetDirections(provider.id)}
                     >
-                      Show Route
+                      Get Directions
                     </button>
                   </div>
                 </div>
@@ -246,7 +263,7 @@ export default function ServicesPage() {
                 <button
                   key={index}
                   onClick={() => handlePageChange(index + 1)}
-                  className={`w-8 h-8 flex items-center justify-center rounded-md ${
+                  className={`w-8 h-8 flex items-center justify-center rounded-md font-medium ${
                     currentPage === index + 1
                       ? 'bg-[var(--primary-green)] text-white'
                       : 'border border-[var(--primary-green)] text-[var(--primary-green)]'

@@ -82,33 +82,33 @@ export default function Home() {
           <div className="flex items-center justify-between h-20">
             <Link href="/" className="flex items-center space-x-3">
               <Image src="/logo.png" alt="Rainbow Paws Logo" width={40} height={40} className="h-10 w-auto" />
-              <span className="text-xl font-serif text-white tracking-wide antialiased subpixel-antialiased">Rainbow Paws</span>
+              <span className="text-xl modern-heading text-white tracking-wide">RainbowPaws</span>
             </Link>
             <nav className="hidden md:flex items-center space-x-10">
               <a onClick={(e) => handleSmoothScroll(e, 'services')} 
-                className="text-base font-serif text-white hover:text-white transition-all duration-300 relative after:content-[''] after:absolute after:-bottom-2 after:left-0 after:w-0 after:h-0.5 after:bg-white after:transition-all after:duration-300 hover:after:w-full cursor-pointer antialiased"
+                className="text-base modern-text text-white hover:text-white transition-all duration-300 relative after:content-[''] after:absolute after:-bottom-2 after:left-0 after:w-0 after:h-0.5 after:bg-white after:transition-all after:duration-300 hover:after:w-full cursor-pointer"
               >
                 Memorial Services
               </a>
               <a onClick={(e) => handleSmoothScroll(e, 'how-it-works')} 
-                className="text-base font-serif text-white hover:text-white transition-all duration-300 relative after:content-[''] after:absolute after:-bottom-2 after:left-0 after:w-0 after:h-0.5 after:bg-white after:transition-all after:duration-300 hover:after:w-full cursor-pointer antialiased"
+                className="text-base modern-text text-white hover:text-white transition-all duration-300 relative after:content-[''] after:absolute after:-bottom-2 after:left-0 after:w-0 after:h-0.5 after:bg-white after:transition-all after:duration-300 hover:after:w-full cursor-pointer"
               >
                 How It Works
               </a>
               <a onClick={(e) => handleSmoothScroll(e, 'promise')} 
-                className="text-base font-serif text-white hover:text-white transition-all duration-300 relative after:content-[''] after:absolute after:-bottom-2 after:left-0 after:w-0 after:h-0.5 after:bg-white after:transition-all after:duration-300 hover:after:w-full cursor-pointer antialiased"
+                className="text-base modern-text text-white hover:text-white transition-all duration-300 relative after:content-[''] after:absolute after:-bottom-2 after:left-0 after:w-0 after:h-0.5 after:bg-white after:transition-all after:duration-300 hover:after:w-full cursor-pointer"
               >
                 Our Promise
               </a>
             </nav>
             <div className="hidden md:flex items-center space-x-6">
               <button onClick={openLoginModal} 
-                className="text-white hover:text-white transition-all duration-300 font-serif tracking-wider relative after:content-[''] after:absolute after:-bottom-1 after:left-0 after:w-0 after:h-0.5 after:bg-white after:transition-all after:duration-300 hover:after:w-full antialiased"
+                className="text-white hover:text-white transition-all duration-300 modern-label tracking-wider relative after:content-[''] after:absolute after:-bottom-1 after:left-0 after:w-0 after:h-0.5 after:bg-white after:transition-all after:duration-300 hover:after:w-full"
               >
                 LOGIN
               </button>
               <button onClick={openSignupOptionModal} 
-                className="border border-white text-white px-6 py-2.5 rounded-full hover:bg-white hover:text-[var(--primary-green)] transition-all duration-300 font-serif tracking-wider antialiased"
+                className="border border-white text-white px-6 py-2.5 rounded-full hover:bg-white hover:text-[var(--primary-green)] transition-all duration-300 modern-label tracking-wider"
               >
                 JOIN US
               </button>
@@ -137,7 +137,7 @@ export default function Home() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8 }}
-              className="text-5xl md:text-7xl font-serif mb-8 tracking-wide text-white drop-shadow-2xl antialiased subpixel-antialiased [text-shadow:_0_1px_2px_rgb(0_0_0_/_20%)]"
+              className="text-5xl md:text-7xl modern-heading mb-8 tracking-wide text-white drop-shadow-2xl [text-shadow:_0_1px_2px_rgb(0_0_0_/_20%)]"
             >
               A Gentle Farewell
             </motion.h1>
@@ -145,7 +145,7 @@ export default function Home() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.2 }}
-              className="text-xl md:text-2xl font-serif mb-12 max-w-3xl mx-auto leading-relaxed text-white drop-shadow-xl antialiased subpixel-antialiased [text-shadow:_0_1px_1px_rgb(0_0_0_/_10%)]"
+              className="text-xl md:text-2xl modern-text mb-12 max-w-3xl mx-auto leading-relaxed text-white drop-shadow-xl [text-shadow:_0_1px_1px_rgb(0_0_0_/_10%)]"
             >
               Providing dignified and compassionate memorial services for your beloved companions with grace and respect
             </motion.p>
@@ -156,12 +156,12 @@ export default function Home() {
               className="flex flex-col sm:flex-row justify-center gap-6"
             >
               <button onClick={openPersonalAccountModal} 
-                className="px-8 py-4 bg-[var(--primary-green)] hover:bg-[var(--primary-green-hover)] text-white rounded-full transition-all duration-300 transform hover:-translate-y-0.5 font-serif tracking-wide text-lg shadow-xl hover:shadow-2xl antialiased"
+                className="px-8 py-4 bg-[var(--primary-green)] hover:bg-[var(--primary-green-hover)] text-white rounded-full transition-all duration-300 transform hover:-translate-y-0.5 modern-label tracking-wide text-lg shadow-xl hover:shadow-2xl"
               >
                 BEGIN YOUR JOURNEY
               </button>
               <button onClick={openBusinessAccountModal} 
-                className="px-8 py-4 bg-white/10 backdrop-blur-md hover:bg-white/20 text-white border border-white/30 rounded-full transition-all duration-300 transform hover:-translate-y-0.5 font-serif tracking-wide text-lg shadow-xl hover:shadow-2xl antialiased"
+                className="px-8 py-4 bg-white/10 backdrop-blur-md hover:bg-white/20 text-white border border-white/30 rounded-full transition-all duration-300 transform hover:-translate-y-0.5 modern-label tracking-wide text-lg shadow-xl hover:shadow-2xl"
               >
                 JOIN OUR PROVIDER NETWORK
               </button>

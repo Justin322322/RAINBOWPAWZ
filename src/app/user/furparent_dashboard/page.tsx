@@ -59,14 +59,14 @@ export default function FurParentDashboard() {
             transition={{ duration: 0.6, delay: 0.2 }}
           >
             <div>
-              <h2 className="text-[var(--primary-green)] text-lg font-medium mb-2">Who we are</h2>
-              <h1 className="text-4xl font-serif text-[var(--text-primary)] mb-6">About RainbowPaws</h1>
-              <p className="text-[var(--text-secondary)] mb-6">
+              <h2 className="text-[var(--primary-green)] modern-label text-lg mb-2">Who we are</h2>
+              <h1 className="text-4xl modern-heading text-[var(--text-primary)] mb-6">About RainbowPaws</h1>
+              <p className="text-[var(--text-secondary)] modern-text mb-6">
                 Losing a beloved pet is never easy, and we understand the deep bond between you and your furry companion.
                 That's why we created RainbowPaws, an online platform designed to support pet owners during their time of loss.
                 This connects clients with trusted service providers, ensuring a seamless and compassionate experience while honoring the memory of their beloved pets.
               </p>
-              <p className="text-[var(--text-secondary)] mb-6">
+              <p className="text-[var(--text-secondary)] modern-text mb-6">
                 Every day, we strive to improve our system to provide a dignified and transparent farewell for your cherished pets.
                 With RainbowPaws, you can confidently choose a trusted cremation service, ensuring peace of mind and respect for your pet's final journey.
               </p>
@@ -84,7 +84,7 @@ export default function FurParentDashboard() {
                     className="w-6 h-6"
                   />
                 </div>
-                <span className="text-[var(--text-secondary)]">Personalized Memorial Services</span>
+                <span className="text-[var(--text-secondary)] modern-text">Personalized Memorial Services</span>
               </div>
               <div className="flex items-center space-x-3">
                 <div className="w-6 h-6">
@@ -96,7 +96,7 @@ export default function FurParentDashboard() {
                     className="w-6 h-6"
                   />
                 </div>
-                <span className="text-[var(--text-secondary)]">Verified and Licensed Providers</span>
+                <span className="text-[var(--text-secondary)] modern-text">Verified and Licensed Providers</span>
               </div>
               <div className="flex items-center space-x-3">
                 <div className="w-6 h-6">
@@ -108,7 +108,7 @@ export default function FurParentDashboard() {
                     className="w-6 h-6"
                   />
                 </div>
-                <span className="text-[var(--text-secondary)]">Memorial Keepsakes & Tributes</span>
+                <span className="text-[var(--text-secondary)] modern-text">Memorial Keepsakes & Tributes</span>
               </div>
               <div className="flex items-center space-x-3">
                 <div className="w-6 h-6">
@@ -120,7 +120,7 @@ export default function FurParentDashboard() {
                     className="w-6 h-6"
                   />
                 </div>
-                <span className="text-[var(--text-secondary)]">User Reviews & Ratings</span>
+                <span className="text-[var(--text-secondary)] modern-text">User Reviews & Ratings</span>
               </div>
             </div>
           </motion.div>

@@ -43,27 +43,27 @@ export default function FurParentNavbar({ activePage: propActivePage }: FurParen
               onClick={() => setActivePage('home')}
             >
               <Image src="/logo.png" alt="Rainbow Paws Logo" width={40} height={40} className="h-10 w-auto" />
-              <span className="text-xl text-white tracking-wide">RainbowPaws</span>
+              <span className="text-xl modern-heading text-white tracking-wide">RainbowPaws</span>
             </Link>
           </div>
           <div className="hidden md:flex items-center justify-center space-x-10 absolute left-1/2 transform -translate-x-1/2">
             <Link
               href="/user/furparent_dashboard"
-              className={`text-base font-serif text-white hover:text-white transition-all duration-300 relative after:content-[''] after:absolute after:-bottom-2 after:left-0 ${activePage === 'home' ? 'after:w-full' : 'after:w-0'} after:h-0.5 after:bg-white after:transition-all after:duration-300 hover:after:w-full cursor-pointer antialiased`}
+              className={`text-base modern-text text-white hover:text-white transition-all duration-300 relative after:content-[''] after:absolute after:-bottom-2 after:left-0 ${activePage === 'home' ? 'after:w-full font-medium' : 'after:w-0'} after:h-0.5 after:bg-white after:transition-all after:duration-300 hover:after:w-full cursor-pointer`}
               onClick={() => setActivePage('home')}
             >
               Home
             </Link>
             <Link
               href="/user/furparent_dashboard/services"
-              className={`text-base font-serif text-white hover:text-white transition-all duration-300 relative after:content-[''] after:absolute after:-bottom-2 after:left-0 ${activePage === 'services' ? 'after:w-full' : 'after:w-0'} after:h-0.5 after:bg-white after:transition-all after:duration-300 hover:after:w-full cursor-pointer antialiased`}
+              className={`text-base modern-text text-white hover:text-white transition-all duration-300 relative after:content-[''] after:absolute after:-bottom-2 after:left-0 ${activePage === 'services' ? 'after:w-full font-medium' : 'after:w-0'} after:h-0.5 after:bg-white after:transition-all after:duration-300 hover:after:w-full cursor-pointer`}
               onClick={() => setActivePage('services')}
             >
               Services
             </Link>
           </div>
           <div className="flex items-center space-x-4">
-            <Link href="/user/furparent_dashboard/cart" className="text-white hover:text-gray-200">
+            <Link href="/user/furparent_dashboard/cart" className="text-white hover:text-gray-200 transition-colors">
               <ShoppingCartIcon className="h-6 w-6" />
             </Link>
             <div className="relative">
@@ -74,7 +74,7 @@ export default function FurParentNavbar({ activePage: propActivePage }: FurParen
                 <div className="bg-white rounded-full h-8 w-8 flex items-center justify-center mr-2">
                   <UserIcon className="h-5 w-5 text-[var(--primary-green)]" />
                 </div>
-                <span className="font-serif">User</span>
+                <span className="modern-text font-medium tracking-wide">User</span>
                 <ChevronDownIcon className="h-4 w-4 ml-2" />
               </button>
 
@@ -82,19 +82,19 @@ export default function FurParentNavbar({ activePage: propActivePage }: FurParen
                 <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10">
                   <Link
                     href="/user/furparent_dashboard"
-                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    className="block px-4 py-2 text-sm modern-text text-gray-700 hover:bg-gray-100 font-medium"
                     onClick={() => setActivePage('home')}
                   >
                     Dashboard
                   </Link>
-                  <Link href="/user/furparent_dashboard/profile" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                  <Link href="/user/furparent_dashboard/profile" className="block px-4 py-2 text-sm modern-text text-gray-700 hover:bg-gray-100">
                     Profile
                   </Link>
-                  <Link href="/user/furparent_dashboard/settings" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                  <Link href="/user/furparent_dashboard/settings" className="block px-4 py-2 text-sm modern-text text-gray-700 hover:bg-gray-100">
                     Settings
                   </Link>
                   <div className="border-t border-gray-100"></div>
-                  <Link href="/" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                  <Link href="/" className="block px-4 py-2 text-sm modern-text text-gray-700 hover:bg-gray-100 font-medium">
                     Logout
                   </Link>
                 </div>
