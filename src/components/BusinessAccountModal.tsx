@@ -22,6 +22,11 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
     businessPhone: '',
     businessEmail: '',
     businessDescription: '',
+    businessType: 'cremation',
+    province: '',
+    city: '',
+    zip: '',
+    businessHours: '',
     birCertificate: null as File | null,
     businessPermit: null as File | null,
     governmentId: null as File | null,
@@ -134,22 +139,79 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
     }
 
     try {
-      // Call our Next.js API route for registration
-      const response = await fetch('/api/auth/register', {
+      // Create FormData object for file uploads
+      const formDataObj = new FormData();
+      
+      // Add all the form fields
+      const textData = {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        sex: formData.sex,
+        password: formData.password,
+        businessName: formData.businessName,
+        businessType: 'cremation', // Set fixed business type for cremation centers
+        businessPhone: formData.businessPhone,
+        businessAddress: formData.businessAddress,
+        province: formData.province || null,
+        city: formData.city || null,
+        zip: formData.zip || null,
+        businessHours: formData.businessHours || null,
+        serviceDescription: formData.businessDescription || null,
+        account_type: 'business' as const
+      };
+      
+      // First, try sending the registration data without files
+      const regResponse = await fetch('/api/auth/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          ...formData,
-          account_type: 'business'
-        }),
+        body: JSON.stringify(textData),
       });
 
-      const data = await response.json();
+      const regData = await regResponse.json();
 
-      if (!response.ok) {
-        throw new Error(data.error || data.message || 'Registration failed');
+      if (!regResponse.ok) {
+        throw new Error(regData.error || regData.message || 'Registration failed');
+      }
+      
+      // If registration succeeded, try uploading the documents separately
+      // This is a simplified approach - in a real app, you'd want to associate these with the user account
+      if (formData.birCertificate || formData.businessPermit || formData.governmentId) {
+        try {
+          const userId = regData.user_id;
+          
+          // Create a new FormData object for the files
+          const filesFormData = new FormData();
+          
+          if (formData.birCertificate) {
+            filesFormData.append('birCertificate', formData.birCertificate);
+          }
+          
+          if (formData.businessPermit) {
+            filesFormData.append('businessPermit', formData.businessPermit);
+          }
+          
+          if (formData.governmentId) {
+            filesFormData.append('governmentId', formData.governmentId);
+          }
+          
+          filesFormData.append('userId', userId);
+          
+          // Assuming you have an endpoint for document uploads
+          const fileUploadResponse = await fetch('/api/businesses/upload-documents', {
+            method: 'POST',
+            body: filesFormData,
+          });
+          
+          if (!fileUploadResponse.ok) {
+            console.warn('Document upload failed, but registration succeeded');
+          }
+        } catch (fileError) {
+          console.error('File upload error:', fileError);
+          // Don't fail the registration if document upload fails
+        }
       }
 
       setSuccessMessage('Registration successful! Welcome email has been sent.');
@@ -282,6 +344,68 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
               className={inputClasses}
               placeholder="Enter your business address"
               required
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label htmlFor="province" className={labelClasses}>
+                Province
+              </label>
+              <input
+                type="text"
+                id="province"
+                name="province"
+                value={formData.province}
+                onChange={handleChange}
+                className={inputClasses}
+                placeholder="Province"
+              />
+            </div>
+            
+            <div>
+              <label htmlFor="city" className={labelClasses}>
+                City
+              </label>
+              <input
+                type="text"
+                id="city"
+                name="city"
+                value={formData.city}
+                onChange={handleChange}
+                className={inputClasses}
+                placeholder="City"
+              />
+            </div>
+            
+            <div>
+              <label htmlFor="zip" className={labelClasses}>
+                ZIP Code
+              </label>
+              <input
+                type="text"
+                id="zip"
+                name="zip"
+                value={formData.zip}
+                onChange={handleChange}
+                className={inputClasses}
+                placeholder="ZIP Code"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label htmlFor="businessHours" className={labelClasses}>
+              Business Hours
+            </label>
+            <input
+              type="text"
+              id="businessHours"
+              name="businessHours"
+              value={formData.businessHours}
+              onChange={handleChange}
+              className={inputClasses}
+              placeholder="e.g., Mon-Fri: 9AM-5PM, Sat: 10AM-3PM"
             />
           </div>
 

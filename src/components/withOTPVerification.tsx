@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import OTPVerificationModal from './OTPVerificationModal';
+import { fastAuthCheck } from '@/utils/auth';
 
 // Define the shape of the user data
 interface UserData {
@@ -15,21 +16,81 @@ interface UserData {
   [key: string]: any; // Allow for other properties
 }
 
+// Global state to prevent re-verification on page navigation
+let globalUserAuthState = {
+  verified: false,
+  userData: null as UserData | null,
+};
+
 // HOC to wrap components that require OTP verification
 const withOTPVerification = <P extends object>(
   Component: React.ComponentType<P>
 ) => {
   const WithOTPVerification: React.FC<P> = (props) => {
     const router = useRouter();
-    const [isLoading, setIsLoading] = useState(true);
-    const [isAuthenticated, setIsAuthenticated] = useState(false);
-    const [userData, setUserData] = useState<UserData | null>(null);
+    const [isAuthenticated, setIsAuthenticated] = useState(globalUserAuthState.verified);
+    const [userData, setUserData] = useState<UserData | null>(globalUserAuthState.userData);
     const [showOTPModal, setShowOTPModal] = useState(false);
 
     // Check if we've already shown the OTP modal in this session
     const [hasShownOTPModal, setHasShownOTPModal] = useState(false);
 
     useEffect(() => {
+      // If already verified globally, we can skip the check
+      if (globalUserAuthState.verified && globalUserAuthState.userData) {
+        // Still check if OTP modal needs to be shown
+        const otpVerifiedInSession = sessionStorage.getItem('otp_verified');
+        if (globalUserAuthState.userData.is_otp_verified === 0 && !otpVerifiedInSession && !hasShownOTPModal) {
+          setShowOTPModal(true);
+          setHasShownOTPModal(true);
+        }
+        return;
+      }
+
+      // Fast check first to prevent flashing
+      const fastCheck = fastAuthCheck();
+      if (fastCheck.authenticated && fastCheck.accountType === 'user' && fastCheck.userData) {
+        setUserData(fastCheck.userData);
+        setIsAuthenticated(true);
+        globalUserAuthState = {
+          verified: true,
+          userData: fastCheck.userData
+        };
+        
+        // Check OTP status
+        const otpVerifiedInSession = sessionStorage.getItem('otp_verified');
+        if (fastCheck.userData.is_otp_verified === 0 && !otpVerifiedInSession && !hasShownOTPModal) {
+          setShowOTPModal(true);
+          setHasShownOTPModal(true);
+        }
+        return;
+      }
+
+      // Check if we already have user data in session storage
+      const cachedUserData = sessionStorage.getItem('user_data');
+      if (cachedUserData) {
+        try {
+          const parsedData = JSON.parse(cachedUserData);
+          setUserData(parsedData);
+          setIsAuthenticated(true);
+          globalUserAuthState = {
+            verified: true,
+            userData: parsedData
+          };
+          
+          // Show OTP modal if user is not verified and we haven't shown it in this session
+          const otpVerifiedInSession = sessionStorage.getItem('otp_verified');
+          if (parsedData.is_otp_verified === 0 && !otpVerifiedInSession && !hasShownOTPModal) {
+            setShowOTPModal(true);
+            setHasShownOTPModal(true);
+          }
+          return;
+        } catch (e) {
+          // If parsing fails, continue with normal auth
+          sessionStorage.removeItem('user_data');
+        }
+      }
+
       // Check if user is authenticated and get user data
       const checkAuth = async () => {
         try {
@@ -41,8 +102,7 @@ const withOTPVerification = <P extends object>(
           const authCookie = cookies.find(cookie => cookie.trim().startsWith('auth_token='));
 
           if (!authCookie) {
-            console.log('No auth cookie found, redirecting to home');
-            router.push('/');
+            router.replace('/');
             return;
           }
 
@@ -52,8 +112,7 @@ const withOTPVerification = <P extends object>(
 
           // Validate account type
           if (accountType !== 'user') {
-            console.log('Invalid account type for fur parent dashboard:', accountType);
-            router.push('/');
+            router.replace('/');
             return;
           }
 
@@ -62,8 +121,7 @@ const withOTPVerification = <P extends object>(
             const response = await fetch(`/api/users/${userId}`);
 
             if (!response.ok) {
-              console.error('Failed to fetch user data:', await response.text());
-              router.push('/');
+              router.replace('/');
               return;
             }
 
@@ -71,14 +129,20 @@ const withOTPVerification = <P extends object>(
 
             // Additional validation if needed
             if (userData.user_type !== 'user' && userData.user_type !== 'fur_parent') {
-              console.log('User is not a fur parent:', userData.user_type);
-              router.push('/');
+              router.replace('/');
               return;
             }
 
-            // Set the user data
+            // Set the user data and store in session storage
             setUserData(userData);
             setIsAuthenticated(true);
+            sessionStorage.setItem('user_data', JSON.stringify(userData));
+            
+            // Update global state
+            globalUserAuthState = {
+              verified: true,
+              userData: userData
+            };
 
             // Show OTP modal if user is not verified and we haven't shown it in this session
             if (userData.is_otp_verified === 0 && !otpVerifiedInSession && !hasShownOTPModal) {
@@ -86,14 +150,10 @@ const withOTPVerification = <P extends object>(
               setHasShownOTPModal(true);
             }
           } catch (fetchError) {
-            console.error('Error fetching user data:', fetchError);
-            router.push('/');
+            router.replace('/');
           }
         } catch (error) {
-          console.error('Authentication error:', error);
-          router.push('/');
-        } finally {
-          setIsLoading(false);
+          router.replace('/');
         }
       };
 
@@ -103,43 +163,25 @@ const withOTPVerification = <P extends object>(
     const handleVerificationSuccess = () => {
       // Update user data to reflect verification
       if (userData) {
-        setUserData({
+        const updatedUserData = {
           ...userData,
           is_otp_verified: 1
-        });
+        };
+        setUserData(updatedUserData);
+        // Update session storage and global state with verified status
+        sessionStorage.setItem('user_data', JSON.stringify(updatedUserData));
+        sessionStorage.setItem('otp_verified', 'true');
+        globalUserAuthState = {
+          verified: true,
+          userData: updatedUserData
+        };
       }
       setShowOTPModal(false);
     };
 
-    // Show loading state
-    if (isLoading) {
-      return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50">
-          <div className="text-center">
-            <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[var(--primary-green)]"></div>
-            <h1 className="text-2xl font-medium text-[var(--primary-green)] mt-4 mb-2">Verifying Access</h1>
-            <p className="text-gray-500">Please wait while we verify your credentials.</p>
-          </div>
-        </div>
-      );
-    }
-
-    // Will be redirected by the useEffect if not authenticated
+    // Don't render anything while verifying - prevents flash
     if (!isAuthenticated || !userData) {
-      return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50">
-          <div className="text-center">
-            <h1 className="text-2xl font-medium text-red-500 mb-4">Access Denied</h1>
-            <p className="text-gray-500">You do not have permission to access this page.</p>
-            <button
-              onClick={() => router.push('/')}
-              className="mt-4 px-4 py-2 bg-[var(--primary-green)] text-white rounded-md hover:bg-opacity-90"
-            >
-              Return to Home
-            </button>
-          </div>
-        </div>
-      );
+      return null;
     }
 
     return (

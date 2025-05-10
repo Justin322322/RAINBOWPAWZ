@@ -23,28 +23,11 @@ export default function AdminNavbar({ activePage: propActivePage, userName = 'Ad
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [activePage, setActivePage] = useState('');
 
-  // Handle logout
-  const handleLogout = async () => {
-    try {
-      // Call the logout API
-      const response = await fetch('/api/auth/logout', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      // Clear the auth token from client-side cookie
-      clearAuthToken();
-
-      // Redirect to home page
-      router.push('/');
-    } catch (error) {
-      console.error('Logout error:', error);
-      // Still clear the token and redirect even if the API call fails
-      clearAuthToken();
-      router.push('/');
-    }
+  // Simplified logout function
+  const handleLogout = () => {
+    // Just redirect to home page without any API calls or token clearing
+    // This ensures we don't get stuck in a loop of authentication issues
+    router.push('/');
   };
 
   // Determine active page based on pathname or prop

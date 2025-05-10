@@ -80,36 +80,33 @@ export const isFurParent = (): boolean => {
 export const setAuthToken = (userId: string, accountType: string, expirationDays: number = 30): void => {
   if (typeof document === 'undefined') return;
 
-  const expirationMs = expirationDays * 24 * 60 * 60 * 1000;
-  const expirationDate = new Date(Date.now() + expirationMs);
+  console.log(`Setting auth token: userId=${userId}, accountType=${accountType}`);
 
-  // Set the cookie with more secure attributes
-  // Note: Secure flag is only added in production (https) environments
+  // Create the token value - format is userId_accountType
+  const tokenValue = `${userId}_${accountType}`;
+  
+  // Log for debugging
+  console.log(`Auth token value: ${tokenValue}`);
+
+  // Clear any existing auth token
+  document.cookie = 'auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+
+  // Set expiration date
+  const expirationDate = new Date();
+  expirationDate.setDate(expirationDate.getDate() + expirationDays);
+
+  // Set the cookie with sameSite and secure attributes
   const isSecure = window.location.protocol === 'https:';
   const secureFlag = isSecure ? '; Secure' : '';
-
-  // Make sure the cookie value is properly encoded
-  const cookieValue = encodeURIComponent(`${userId}_${accountType}`);
-
-  // Set the cookie with domain attribute to ensure it's available across the site
-  const domain = window.location.hostname === 'localhost' ? 'localhost' : window.location.hostname;
-
-  document.cookie = `auth_token=${cookieValue}; path=/; domain=${domain}; expires=${expirationDate.toUTCString()}; SameSite=Lax${secureFlag}`;
+  
+  document.cookie = `auth_token=${tokenValue}; path=/; expires=${expirationDate.toUTCString()}; SameSite=Lax${secureFlag}`;
+  
+  // Log cookie after setting for debugging
+  console.log(`Cookies after setting: ${document.cookie}`);
 
   // Also store in sessionStorage as a backup
-  sessionStorage.setItem('auth_user_id', userId.toString());
+  sessionStorage.setItem('auth_user_id', userId);
   sessionStorage.setItem('auth_account_type', accountType);
-
-  // If the cookie doesn't get set with domain, try without domain
-  setTimeout(() => {
-    const cookies = document.cookie.split(';');
-    const authCookie = cookies.find(cookie => cookie.trim().startsWith('auth_token='));
-
-    if (!authCookie) {
-      // Try an alternative method without domain
-      document.cookie = `auth_token=${cookieValue}; path=/; expires=${expirationDate.toUTCString()}; SameSite=Lax${secureFlag}`;
-    }
-  }, 100);
 };
 
 // Clear auth token (logout)
@@ -212,5 +209,76 @@ export const checkAuthStatus = async (): Promise<{
     };
   } catch (error) {
     return { authenticated: false };
+  }
+};
+
+// Fast auth check that doesn't redirect - use for preventing flashing during navigation
+export const fastAuthCheck = (): {
+  authenticated: boolean;
+  userId: string | null;
+  accountType: string | null;
+  userData: any | null;
+  adminData: any | null;
+} => {
+  // Default return state
+  const defaultState = {
+    authenticated: false,
+    userId: null,
+    accountType: null,
+    userData: null,
+    adminData: null
+  };
+
+  try {
+    // First try to get from session storage (fastest)
+    const userData = JSON.parse(sessionStorage.getItem('user_data') || 'null');
+    const adminData = JSON.parse(sessionStorage.getItem('admin_data') || 'null');
+    
+    // Get from auth token
+    const authToken = getAuthToken();
+    if (!authToken) return defaultState;
+    
+    const [userId, accountType] = authToken.split('_');
+    
+    if (!userId || !accountType) return defaultState;
+    
+    // Return the appropriate data based on account type
+    if (accountType === 'admin' && adminData) {
+      return {
+        authenticated: true,
+        userId,
+        accountType,
+        userData: null,
+        adminData
+      };
+    } else if (accountType === 'user' && userData) {
+      return {
+        authenticated: true,
+        userId,
+        accountType,
+        userData,
+        adminData: null
+      };
+    } else if (accountType === 'business') {
+      // For business accounts
+      return {
+        authenticated: true,
+        userId,
+        accountType,
+        userData: null,
+        adminData: null
+      };
+    }
+    
+    // If no cached data but token exists, return basic auth info
+    return {
+      authenticated: true,
+      userId,
+      accountType,
+      userData: null,
+      adminData: null
+    };
+  } catch (error) {
+    return defaultState;
   }
 };

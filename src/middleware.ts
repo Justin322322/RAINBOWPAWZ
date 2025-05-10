@@ -11,8 +11,10 @@ export function middleware(request: NextRequest) {
       return true;
     }
 
-    // Cremation center routes
-    if (path.startsWith('/cremation') && path !== '/cremation') {
+    // Cremation center routes - exclude the pending-verification page
+    if (path.startsWith('/cremation') &&
+        path !== '/cremation' &&
+        path !== '/cremation/pending-verification') {
       return true;
     }
 
@@ -33,39 +35,40 @@ export function middleware(request: NextRequest) {
 
   // Check if the current path is protected
   if (isProtectedPath(pathname)) {
+    console.log(`Middleware: Protected path detected: ${pathname}`);
+
     // Get the authentication cookie
     const authCookie = request.cookies.get('auth_token')?.value;
 
     // If no auth token exists, redirect to login page
     if (!authCookie) {
+      console.log('Middleware: No auth token found, redirecting to login page');
       return NextResponse.redirect(new URL('/', request.url));
     }
 
     try {
-      // The cookie value might be URL encoded, so decode it first
-      let decodedAuthCookie;
-      try {
-        decodedAuthCookie = decodeURIComponent(authCookie);
-      } catch (decodeError) {
-        decodedAuthCookie = authCookie; // Use as-is if decoding fails
-      }
+      console.log(`Middleware: Auth cookie found: ${authCookie}`);
 
-      // Extract account type from auth token
-      const parts = decodedAuthCookie.split('_');
+      // Extract account type from auth token - no need to decode, we're storing it without encoding
+      const parts = authCookie.split('_');
 
       if (parts.length !== 2) {
+        console.log(`Middleware: Invalid auth token format: ${authCookie}`);
         return NextResponse.redirect(new URL('/', request.url));
       }
 
       const userId = parts[0];
       const accountType = parts[1];
+      console.log(`Middleware: User ID: ${userId}, Account Type: ${accountType}`);
 
       // Validate account type based on the path
       if (pathname.startsWith('/admin') && accountType !== 'admin') {
+        console.log(`Middleware: Access denied to admin path. Account type is ${accountType}, not admin`);
         return NextResponse.redirect(new URL('/', request.url));
       }
 
       if (pathname.startsWith('/cremation') && accountType !== 'business') {
+        console.log(`Middleware: Access denied to cremation path. Account type is ${accountType}, not business`);
         return NextResponse.redirect(new URL('/', request.url));
       }
 

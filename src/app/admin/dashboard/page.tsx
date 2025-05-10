@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import AdminDashboardLayout from '@/components/navigation/AdminDashboardLayout';
 import {
   UserGroupIcon,
@@ -18,6 +18,8 @@ import Link from 'next/link';
 
 export default function AdminDashboardPage() {
   const [userName] = useState('System Administrator');
+  const [recentApplications, setRecentApplications] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   
   // Sample stats data
   const stats = [
@@ -63,45 +65,25 @@ export default function AdminDashboardPage() {
     },
   ];
 
-  // Sample recent application requests
-  const recentApplications = [
-    {
-      id: 'APP001',
-      businessName: 'Peaceful Paws Cremation',
-      owner: 'John Smith',
-      email: 'john@peacefulpaws.com',
-      submitDate: 'May 15, 2023',
-      status: 'pending',
-      documents: 5
-    },
-    {
-      id: 'APP002',
-      businessName: "Heaven's Gateway Pet Services",
-      owner: 'Maria Rodriguez',
-      email: 'maria@heavensgateway.com',
-      submitDate: 'May 14, 2023',
-      status: 'reviewing',
-      documents: 7
-    },
-    {
-      id: 'APP003',
-      businessName: 'Rainbow Bridge Memorial',
-      owner: 'David Chen',
-      email: 'david@rainbowbridge.com',
-      submitDate: 'May 10, 2023',
-      status: 'approved',
-      documents: 6
-    },
-    {
-      id: 'APP004',
-      businessName: 'Eternal Companions',
-      owner: 'Sarah Johnson',
-      email: 'sarah@eternalcompanions.com',
-      submitDate: 'May 9, 2023',
-      status: 'declined',
-      documents: 3
-    }
-  ];
+  // Fetch recent applications data
+  useEffect(() => {
+    const fetchApplications = async () => {
+      try {
+        const response = await fetch('/api/businesses/applications');
+        if (response.ok) {
+          const data = await response.json();
+          // Take only the 4 most recent applications
+          setRecentApplications(data.applications.slice(0, 4));
+        }
+      } catch (error) {
+        console.error('Error fetching recent applications:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchApplications();
+  }, []);
 
   // Get status badge based on application status
   const getStatusBadge = (status: string) => {
@@ -187,71 +169,68 @@ export default function AdminDashboardPage() {
       </div>
 
       {/* Recent Applications */}
-      <div className="bg-white rounded-xl shadow-sm overflow-hidden mb-8">
+      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-          <h2 className="text-lg font-medium text-gray-800">Recent Application Requests</h2>
-          <Link href="/admin/applications" className="text-sm text-[var(--primary-green)] hover:underline">
-            View all
-          </Link>
+          <h2 className="text-lg font-medium text-gray-800">Recent Applications</h2>
+          <Link href="/admin/applications" className="text-[var(--primary-green)] text-sm hover:underline">View all</Link>
         </div>
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Application ID
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Business
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Contact
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Submitted Date
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {recentApplications.map((application) => (
-                <tr key={application.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {application.id}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">{application.businessName}</div>
-                    <div className="text-sm text-gray-500">{application.documents} documents</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{application.owner}</div>
-                    <div className="text-sm text-gray-500">{application.email}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{application.submitDate}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    {getStatusBadge(application.status)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <Link href={`/admin/applications/${application.id}`} className="text-[var(--primary-green)] hover:text-[var(--primary-green)] hover:underline mr-4">
-                      View
-                    </Link>
-                    {application.status === 'pending' && (
-                      <Link href={`/admin/applications/${application.id}/review`} className="text-indigo-600 hover:text-indigo-900 hover:underline">
-                        Review
-                      </Link>
-                    )}
-                  </td>
+          {isLoading ? (
+            <div className="px-6 py-8 text-center">
+              <div className="inline-block animate-spin h-8 w-8 border-t-2 border-b-2 border-[var(--primary-green)] rounded-full"></div>
+              <p className="mt-2 text-gray-500">Loading applications...</p>
+            </div>
+          ) : recentApplications.length === 0 ? (
+            <div className="px-6 py-8 text-center">
+              <p className="text-gray-500">No recent applications found</p>
+            </div>
+          ) : (
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Business</th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Submitted</th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                  <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {recentApplications.map((application) => (
+                  <tr key={application.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {application.id}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-medium text-gray-900">{application.businessName}</div>
+                      <div className="text-sm text-gray-500">{application.documents.length} documents</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">{application.owner}</div>
+                      <div className="text-sm text-gray-500">{application.email}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">{application.submitDate}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {getStatusBadge(application.status)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <Link href={`/admin/applications/${application.businessId}`} className="text-[var(--primary-green)] hover:text-[var(--primary-green)] hover:underline mr-4">
+                        View
+                      </Link>
+                      {application.status === 'pending' && (
+                        <Link href={`/admin/applications/${application.businessId}/review`} className="text-indigo-600 hover:text-indigo-900 hover:underline">
+                          Review
+                        </Link>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
       

@@ -1,22 +1,34 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import CremationDashboardLayout from '@/components/navigation/CremationDashboardLayout';
-import { 
-  ArrowUpIcon, 
-  ArrowDownIcon, 
-  CurrencyDollarIcon, 
-  UsersIcon, 
-  CalendarIcon, 
+import withBusinessVerification from '@/components/withBusinessVerification';
+import {
+  ArrowUpIcon,
+  ArrowDownIcon,
+  CurrencyDollarIcon,
+  UsersIcon,
+  CalendarIcon,
   StarIcon,
-  CheckCircleIcon 
+  CheckCircleIcon
 } from '@heroicons/react/24/outline';
 
-export default function CremationDashboardPage() {
-  const [userName] = useState('Happy Paws Cremation');
-  
+function CremationDashboardPage({ userData }: { userData: any }) {
+  const [userName, setUserName] = useState('Happy Paws Cremation');
+
+  // Update userName when userData is available
+  useEffect(() => {
+    if (userData) {
+      if (userData.business_name) {
+        setUserName(userData.business_name);
+      } else if (userData.first_name) {
+        setUserName(`${userData.first_name} ${userData.last_name || ''}`);
+      }
+    }
+  }, [userData]);
+
   // Sample stats data
   const stats = [
     {
@@ -247,7 +259,7 @@ export default function CremationDashboardPage() {
               </div>
             </div>
           </div>
-          
+
           <div className="border border-gray-200 rounded-lg p-5 hover:shadow-md transition-shadow duration-300">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-medium text-gray-800">Premium Memorial</h3>
@@ -273,7 +285,7 @@ export default function CremationDashboardPage() {
               </div>
             </div>
           </div>
-          
+
           <div className="border border-gray-200 rounded-lg p-5 hover:shadow-md transition-shadow duration-300">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-medium text-gray-800">Full Service Memorial</h3>
@@ -307,4 +319,7 @@ export default function CremationDashboardPage() {
       </div>
     </CremationDashboardLayout>
   );
-} 
+}
+
+// Export the component wrapped with business verification
+export default withBusinessVerification(CremationDashboardPage);

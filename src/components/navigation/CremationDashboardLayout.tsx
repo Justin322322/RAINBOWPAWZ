@@ -65,6 +65,13 @@ export default function CremationDashboardLayout({
             return false;
           }
 
+          // Check if business is verified
+          if (userData.is_verified !== 1) {
+            console.log('Business account is not verified:', userData.id);
+            router.push('/cremation/pending-verification');
+            return false;
+          }
+
           setUserData(userData);
           return true;
         } catch (fetchError) {

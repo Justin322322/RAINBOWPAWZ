@@ -68,10 +68,9 @@ export async function POST(request: Request) {
       }, { status: 400 });
     }
 
-    // Check if email already exists
-    const emailType = data.account_type === 'personal' ? 'users' : 'businesses';
+    // Check if email already exists in users table (for all account types)
     const emailCheckResult = await query(
-      `SELECT id FROM ${emailType} WHERE email = ? LIMIT 1`,
+      `SELECT id FROM users WHERE email = ? LIMIT 1`,
       [data.email]
     ) as any[];
 
@@ -81,35 +80,53 @@ export async function POST(request: Request) {
       }, { status: 400 });
     }
 
+    // For business accounts, also check the businesses table
+    if (data.account_type === 'business') {
+      const businessEmailCheckResult = await query(
+        `SELECT id FROM businesses WHERE email = ? LIMIT 1`,
+        [data.email]
+      ) as any[];
+
+      if (businessEmailCheckResult && businessEmailCheckResult.length > 0) {
+        return NextResponse.json({
+          error: 'Email already exists'
+        }, { status: 400 });
+      }
+    }
+
     // Hash the password
     const hashedPassword = await bcrypt.hash(data.password, 10);
 
     let userId;
 
-    if (data.account_type === 'personal') {
-      // Register personal account
-      const result = await query(
-        `INSERT INTO users (first_name, last_name, email, password, phone_number, address, sex)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [
-          data.firstName,
-          data.lastName,
-          data.email,
-          hashedPassword,
-          data.phoneNumber || null,
-          data.address || null,
-          data.sex || null
-        ]
-      ) as any;
+    // Always create a user in the users table regardless of account type
+    const userType = data.account_type === 'personal' ? 'fur_parent' : 'business';
 
-      userId = result.insertId;
-    } else {
-      // Register business account
-      const result = await query(
+    // Register in users table
+    const userResult = await query(
+      `INSERT INTO users (first_name, last_name, email, password, phone_number, address, sex, user_type)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        data.firstName,
+        data.lastName,
+        data.email,
+        hashedPassword,
+        data.account_type === 'personal' ? data.phoneNumber || null : (data as BusinessRegistrationData).businessPhone,
+        data.account_type === 'personal' ? data.address || null : (data as BusinessRegistrationData).businessAddress,
+        data.account_type === 'personal' ? data.sex || null : null,
+        userType
+      ]
+    ) as any;
+
+    userId = userResult.insertId;
+
+    // If it's a business account, also create an entry in the businesses table
+    if (data.account_type === 'business' && userId) {
+      await query(
         `INSERT INTO businesses (business_name, business_type, email, password, contact_first_name,
          contact_last_name, business_phone, business_address, province, city, zip, business_hours,
-         service_description)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         service_description, user_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           (data as BusinessRegistrationData).businessName,
           (data as BusinessRegistrationData).businessType,
@@ -123,11 +140,10 @@ export async function POST(request: Request) {
           (data as BusinessRegistrationData).city || null,
           (data as BusinessRegistrationData).zip || null,
           (data as BusinessRegistrationData).businessHours || null,
-          (data as BusinessRegistrationData).serviceDescription || null
+          (data as BusinessRegistrationData).serviceDescription || null,
+          userId
         ]
-      ) as any;
-
-      userId = result.insertId;
+      );
     }
 
     if (userId) {

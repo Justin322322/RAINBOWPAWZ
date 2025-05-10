@@ -96,19 +96,20 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onShowSignup }
         throw new Error('User ID missing from login response');
       }
 
-      // Set the auth token cookie with a 30-day expiration
-      // First clear any existing auth token to avoid conflicts
-      document.cookie = 'auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+      console.log('Login successful:', { userId, accountType });
 
-      // Now set the new token
+      // Set the auth token cookie with a 30-day expiration
       setAuthToken(userId.toString(), accountType, 30);
 
-      // Use a delay to ensure the cookie is set before redirecting
-      setTimeout(() => {
-        // Redirect to the appropriate dashboard
-        const dashboardUrl = redirectToDashboard(accountType);
+      // Log the current cookies for debugging
+      console.log('Cookies after setting auth token:', document.cookie);
 
-        // Use window.location.replace for a cleaner redirect (no history entry for the login page)
+      // Redirect to the appropriate dashboard after a short delay
+      setTimeout(() => {
+        const dashboardUrl = redirectToDashboard(accountType);
+        console.log('Redirecting to:', dashboardUrl);
+
+        // Use window.location.replace for a cleaner redirect
         window.location.replace(dashboardUrl);
       }, 300);
     } catch (error) {
