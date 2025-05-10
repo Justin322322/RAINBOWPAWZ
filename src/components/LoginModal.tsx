@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import Modal from './Modal';
 import { motion } from 'framer-motion';
 import ForgotPasswordModal from './ForgotPasswordModal';
+import { setAuthToken, redirectToDashboard } from '@/utils/auth';
 
 type LoginModalProps = {
   isOpen: boolean;
@@ -37,9 +38,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onShowSignup }
     setIsLoading(true);
 
     try {
-      console.log('Attempting login with:', { email });
-
-      // Use Next.js API route instead of PHP endpoint
+      // Use Next.js API route
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
@@ -55,14 +54,13 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onShowSignup }
         throw new Error("Cannot connect to the server. Please check your network connection.");
       }
 
+      // Get response as text first to handle potential JSON parsing errors
       const responseText = await response.text();
       let data;
 
       try {
         data = JSON.parse(responseText);
-        console.log('Login response:', data);
       } catch (parseError) {
-        console.error('JSON parse error:', parseError);
         throw new Error(`Invalid response format: ${responseText.substring(0, 100)}...`);
       }
 
@@ -72,20 +70,48 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onShowSignup }
           setErrorMessage(data.message || 'Invalid email or password. Please try again.');
           return; // Don't throw an error, just show the message
         }
+
+        // For 500 Server Error, show a more user-friendly message
+        if (response.status === 500) {
+          setErrorMessage('Server error. Please try again later or contact support if the problem persists.');
+          return;
+        }
+
         throw new Error(data.error || data.message || 'Login failed');
       }
 
+      // Validate the response data
+      if (!data.success || !data.user || !data.account_type) {
+        throw new Error('Invalid response from server. Please try again.');
+      }
+
+      // Close the modal
       handleClose();
 
-      if (data.account_type === 'user') {
-        window.location.href = '/user';
-      } else if (data.account_type === 'business') {
-        window.location.href = '/cremation';
-      } else {
-        window.location.href = '/admin';
+      // Get user ID and account type from response
+      const userId = data.user.id;
+      const accountType = data.account_type;
+
+      if (!userId) {
+        throw new Error('User ID missing from login response');
       }
+
+      // Set the auth token cookie with a 30-day expiration
+      // First clear any existing auth token to avoid conflicts
+      document.cookie = 'auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+
+      // Now set the new token
+      setAuthToken(userId.toString(), accountType, 30);
+
+      // Use a delay to ensure the cookie is set before redirecting
+      setTimeout(() => {
+        // Redirect to the appropriate dashboard
+        const dashboardUrl = redirectToDashboard(accountType);
+
+        // Use window.location.replace for a cleaner redirect (no history entry for the login page)
+        window.location.replace(dashboardUrl);
+      }, 300);
     } catch (error) {
-      console.error('Login error:', error);
       setErrorMessage(error instanceof Error ? error.message : 'Connection error. Please try again later.');
     } finally {
       setIsLoading(false);

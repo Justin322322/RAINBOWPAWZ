@@ -3,12 +3,13 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
   UserIcon,
   ChevronDownIcon,
   BellIcon
 } from '@heroicons/react/24/outline';
+import { clearAuthToken } from '@/utils/auth';
 
 interface CremationNavbarProps {
   activePage?: string;
@@ -17,9 +18,34 @@ interface CremationNavbarProps {
 
 export default function CremationNavbar({ activePage: propActivePage, userName = 'Cremation Provider' }: CremationNavbarProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [activePage, setActivePage] = useState('');
+
+  // Handle logout
+  const handleLogout = async () => {
+    try {
+      // Call the logout API
+      const response = await fetch('/api/auth/logout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      // Clear the auth token from client-side cookie
+      clearAuthToken();
+
+      // Redirect to home page
+      router.push('/');
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Still clear the token and redirect even if the API call fails
+      clearAuthToken();
+      router.push('/');
+    }
+  };
 
   // Determine active page based on pathname or prop
   useEffect(() => {
@@ -50,7 +76,7 @@ export default function CremationNavbar({ activePage: propActivePage, userName =
               >
                 <BellIcon className="h-6 w-6" />
               </button>
-              
+
               {isNotificationOpen && (
                 <div className="absolute right-0 mt-2 w-80 bg-white rounded-md shadow-lg py-1 z-10">
                   <div className="px-4 py-2 border-b border-gray-100">
@@ -78,7 +104,7 @@ export default function CremationNavbar({ activePage: propActivePage, userName =
                 </div>
               )}
             </div>
-            
+
             <div className="relative">
               <button
                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
@@ -100,28 +126,30 @@ export default function CremationNavbar({ activePage: propActivePage, userName =
                   >
                     Dashboard
                   </Link>
-                  <Link 
-                    href="/cremation/profile" 
+                  <Link
+                    href="/cremation/profile"
                     className="block px-4 py-2 text-sm modern-text text-gray-700 hover:bg-gray-100"
                     onClick={() => setIsDropdownOpen(false)}
                   >
                     Profile
                   </Link>
-                  <Link 
-                    href="/cremation/settings" 
+                  <Link
+                    href="/cremation/settings"
                     className="block px-4 py-2 text-sm modern-text text-gray-700 hover:bg-gray-100"
                     onClick={() => setIsDropdownOpen(false)}
                   >
                     Settings
                   </Link>
                   <div className="border-t border-gray-100"></div>
-                  <Link 
-                    href="/" 
-                    className="block px-4 py-2 text-sm modern-text text-gray-700 hover:bg-gray-100 font-medium"
-                    onClick={() => setIsDropdownOpen(false)}
+                  <button
+                    className="block w-full text-left px-4 py-2 text-sm modern-text text-gray-700 hover:bg-gray-100 font-medium"
+                    onClick={() => {
+                      setIsDropdownOpen(false);
+                      handleLogout();
+                    }}
                   >
                     Logout
-                  </Link>
+                  </button>
                 </div>
               )}
             </div>
@@ -130,4 +158,4 @@ export default function CremationNavbar({ activePage: propActivePage, userName =
       </div>
     </header>
   );
-} 
+}

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { query } from '@/lib/db';
+import { query, testConnection } from '@/lib/db';
 import bcrypt from 'bcryptjs';
 
 // Types for our response
@@ -12,14 +12,20 @@ interface LoginResponse {
 
 export async function POST(request: Request) {
   try {
+    // Test database connection first
+    const isConnected = await testConnection();
+    if (!isConnected) {
+      return NextResponse.json({
+        error: 'Database connection error',
+        message: 'Unable to connect to the database. Please try again later.'
+      }, { status: 500 });
+    }
+
     const body = await request.json();
     const { email, password } = body;
 
-    console.log('Login attempt:', { email });
-
     // Validate required fields
     if (!email || !password) {
-      console.log('Missing email or password');
       return NextResponse.json({
         error: 'Email and password are required'
       }, { status: 400 });
@@ -31,15 +37,11 @@ export async function POST(request: Request) {
       [email]
     ) as any[];
 
-    console.log('User query result:', { found: userResult && userResult.length > 0 });
-
     if (userResult && userResult.length > 0) {
       const user = userResult[0];
-      console.log('Found user:', { id: user.id, email: user.email, hasPassword: !!user.password });
 
       try {
         const passwordMatch = await bcrypt.compare(password, user.password);
-        console.log('Password match result:', passwordMatch);
 
         if (passwordMatch) {
           // Remove password from the returned data
@@ -59,7 +61,6 @@ export async function POST(request: Request) {
           }, { status: 401 });
         }
       } catch (bcryptError) {
-        console.error('bcrypt error:', bcryptError);
         // Continue to check other tables
       }
     }
@@ -70,15 +71,11 @@ export async function POST(request: Request) {
       [email]
     ) as any[];
 
-    console.log('Business query result:', { found: businessResult && businessResult.length > 0 });
-
     if (businessResult && businessResult.length > 0) {
       const business = businessResult[0];
-      console.log('Found business:', { id: business.id, email: business.email, hasPassword: !!business.password });
 
       try {
         const passwordMatch = await bcrypt.compare(password, business.password);
-        console.log('Password match result:', passwordMatch);
 
         if (passwordMatch) {
           // Remove password from the returned data
@@ -98,7 +95,6 @@ export async function POST(request: Request) {
           }, { status: 401 });
         }
       } catch (bcryptError) {
-        console.error('bcrypt error:', bcryptError);
         // Continue to check other tables
       }
     }
@@ -109,15 +105,11 @@ export async function POST(request: Request) {
       [email, email]
     ) as any[];
 
-    console.log('Admin query result:', { found: adminResult && adminResult.length > 0 });
-
     if (adminResult && adminResult.length > 0) {
       const admin = adminResult[0];
-      console.log('Found admin:', { id: admin.id, email: admin.email, hasPassword: !!admin.password });
 
       try {
         const passwordMatch = await bcrypt.compare(password, admin.password);
-        console.log('Password match result:', passwordMatch);
 
         if (passwordMatch) {
           // Remove password from the returned data
@@ -143,19 +135,17 @@ export async function POST(request: Request) {
           }, { status: 401 });
         }
       } catch (bcryptError) {
-        console.error('bcrypt error:', bcryptError);
+        // Ignore bcrypt errors
       }
     }
 
     // If we get here, no user with this email was found in any table
-    console.log('No user found with email:', email);
     return NextResponse.json({
       error: 'User not found',
       message: 'No account exists with this email address. Please check your email or create a new account.'
     }, { status: 401 });
 
   } catch (error) {
-    console.error('Login error:', error);
     return NextResponse.json({
       error: 'Login failed',
       message: error instanceof Error ? error.message : 'Unknown error'

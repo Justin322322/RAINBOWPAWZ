@@ -3,12 +3,17 @@
 import Image from 'next/image';
 import { motion } from 'framer-motion';
 import FurParentNavbar from '@/components/navigation/FurParentNavbar';
+import withOTPVerification from '@/components/withOTPVerification';
 
-export default function FurParentDashboard() {
+interface FurParentDashboardProps {
+  userData?: any;
+}
+
+function FurParentDashboard({ userData }: FurParentDashboardProps) {
   return (
     <div className="min-h-screen bg-white">
       {/* Navigation */}
-      <FurParentNavbar activePage="home" />
+      <FurParentNavbar activePage="home" userName={`${userData?.first_name || ''} ${userData?.last_name || ''}`} />
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
@@ -129,3 +134,6 @@ export default function FurParentDashboard() {
     </div>
   );
 }
+
+// Export the component wrapped with OTP verification
+export default withOTPVerification(FurParentDashboard);

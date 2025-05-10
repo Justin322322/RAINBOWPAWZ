@@ -3,21 +3,48 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
   ShoppingCartIcon,
   UserIcon,
   ChevronDownIcon
 } from '@heroicons/react/24/outline';
+import { clearAuthToken } from '@/utils/auth';
 
 interface FurParentNavbarProps {
   activePage?: string;
+  userName?: string;
 }
 
-export default function FurParentNavbar({ activePage: propActivePage }: FurParentNavbarProps) {
+export default function FurParentNavbar({ activePage: propActivePage, userName = 'User' }: FurParentNavbarProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [activePage, setActivePage] = useState('');
+
+  // Handle logout
+  const handleLogout = async () => {
+    try {
+      // Call the logout API
+      const response = await fetch('/api/auth/logout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      // Clear the auth token from client-side cookie
+      clearAuthToken();
+
+      // Redirect to home page
+      router.push('/');
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Still clear the token and redirect even if the API call fails
+      clearAuthToken();
+      router.push('/');
+    }
+  };
 
   // Determine active page based on pathname or prop
   useEffect(() => {
@@ -74,7 +101,7 @@ export default function FurParentNavbar({ activePage: propActivePage }: FurParen
                 <div className="bg-white rounded-full h-8 w-8 flex items-center justify-center mr-2">
                   <UserIcon className="h-5 w-5 text-[var(--primary-green)]" />
                 </div>
-                <span className="modern-text font-medium tracking-wide">User</span>
+                <span className="modern-text font-medium tracking-wide">{userName}</span>
                 <ChevronDownIcon className="h-4 w-4 ml-2" />
               </button>
 
@@ -94,9 +121,15 @@ export default function FurParentNavbar({ activePage: propActivePage }: FurParen
                     Settings
                   </Link>
                   <div className="border-t border-gray-100"></div>
-                  <Link href="/" className="block px-4 py-2 text-sm modern-text text-gray-700 hover:bg-gray-100 font-medium">
+                  <button
+                    className="block w-full text-left px-4 py-2 text-sm modern-text text-gray-700 hover:bg-gray-100 font-medium"
+                    onClick={() => {
+                      setIsDropdownOpen(false);
+                      handleLogout();
+                    }}
+                  >
                     Logout
-                  </Link>
+                  </button>
                 </div>
               )}
             </div>

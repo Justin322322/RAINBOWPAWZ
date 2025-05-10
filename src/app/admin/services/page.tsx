@@ -44,7 +44,7 @@ export default function AdminServicesPage() {
         'Paw print keepsake',
         '24-hour service'
       ],
-      image: '/images/services/individual_default.svg'
+      image: ''
     },
     {
       id: 'SVC002',
@@ -65,7 +65,7 @@ export default function AdminServicesPage() {
         'Certificate with gold seal',
         'Home delivery'
       ],
-      image: '/images/services/premium_default.svg'
+      image: ''
     },
     {
       id: 'SVC003',
@@ -83,7 +83,7 @@ export default function AdminServicesPage() {
         'Scatter garden option',
         'Same-day service'
       ],
-      image: '/images/services/communal_default.svg'
+      image: ''
     },
     {
       id: 'SVC004',
@@ -102,7 +102,7 @@ export default function AdminServicesPage() {
         'Available 24/7',
         'Service within 30 miles'
       ],
-      image: '/images/services/service_default.svg'
+      image: ''
     },
     {
       id: 'SVC005',
@@ -121,20 +121,20 @@ export default function AdminServicesPage() {
         'Gift packaging',
         'Multiple design options'
       ],
-      image: '/images/services/memorial_default.svg'
+      image: ''
     }
   ];
 
   // Filter services based on search term, status filter, and category filter
   const filteredServices = services.filter(service => {
-    const matchesSearch = 
+    const matchesSearch =
       service.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       service.cremationCenter.toLowerCase().includes(searchTerm.toLowerCase()) ||
       service.id.toLowerCase().includes(searchTerm.toLowerCase());
-    
+
     const matchesStatus = statusFilter === 'all' || service.status === statusFilter;
     const matchesCategory = categoryFilter === 'all' || service.category === categoryFilter;
-    
+
     return matchesSearch && matchesStatus && matchesCategory;
   });
 
@@ -217,22 +217,23 @@ export default function AdminServicesPage() {
 
   // Helper function to render image or placeholder
   const renderServiceImage = (service: any, large: boolean = false) => {
-    if (imageError[service.id] || !service.image) {
+    // Always show placeholder since SVG paths have been removed
+    if (true) {
       return (
         <div className={`w-full h-full flex items-center justify-center bg-gray-100 ${large ? 'rounded-lg' : ''}`}>
           <div className="text-center p-4">
-            <svg 
-              className="mx-auto h-12 w-12 text-gray-400" 
-              fill="none" 
-              viewBox="0 0 24 24" 
-              stroke="currentColor" 
+            <svg
+              className="mx-auto h-12 w-12 text-gray-400"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
               aria-hidden="true"
             >
-              <path 
-                strokeLinecap="round" 
-                strokeLinejoin="round" 
-                strokeWidth="1.5" 
-                d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" 
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="1.5"
+                d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z"
               />
             </svg>
             <p className="mt-2 text-sm text-gray-500">No Image Available</p>
@@ -241,21 +242,14 @@ export default function AdminServicesPage() {
       );
     }
 
-    // Get default image based on service category if needed
+    // Placeholder for image path
     const getImagePath = () => {
-      if (!service.image.startsWith('/images/services/')) {
-        // If the image path is not already updated to the new format
-        if (service.category) {
-          return `/images/services/${service.category}_default.svg`;
-        }
-        return '/images/services/default.svg';
-      }
-      return service.image;
+      return '';
     };
 
     return (
-      <Image 
-        src={getImagePath()} 
+      <Image
+        src={getImagePath()}
         alt={service.name}
         fill
         className="object-cover"
@@ -447,8 +441,8 @@ export default function AdminServicesPage() {
           <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
             <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
               <h2 className="text-xl font-semibold text-gray-800">Service Details</h2>
-              <button 
-                onClick={() => setShowDetailsModal(false)} 
+              <button
+                onClick={() => setShowDetailsModal(false)}
                 className="text-gray-500 hover:text-gray-700"
               >
                 <XMarkIcon className="h-6 w-6" />
@@ -493,12 +487,12 @@ export default function AdminServicesPage() {
                     <h3 className="text-2xl font-semibold text-gray-900 mb-1">{selectedService.name}</h3>
                     <p className="text-[var(--primary-green)] font-medium">{selectedService.cremationCenter}</p>
                   </div>
-                  
+
                   <div className="mb-6">
                     <h4 className="text-lg font-medium text-gray-900 mb-2">Description</h4>
                     <p className="text-gray-700">{selectedService.description}</p>
                   </div>
-                  
+
                   <div className="mb-6">
                     <h4 className="text-lg font-medium text-gray-900 mb-2">Features</h4>
                     <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -514,16 +508,16 @@ export default function AdminServicesPage() {
                   </div>
                 </div>
               </div>
-              
+
               {/* Action Buttons */}
               <div className="flex justify-end space-x-3 mt-8 border-t pt-6">
-                <button 
+                <button
                   onClick={() => setShowDetailsModal(false)}
                   className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
                 >
                   Close
                 </button>
-                <Link 
+                <Link
                   href={`/admin/services/${selectedService.id}`}
                   className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm font-medium flex items-center"
                 >
@@ -550,4 +544,4 @@ export default function AdminServicesPage() {
       )}
     </AdminDashboardLayout>
   );
-} 
+}
