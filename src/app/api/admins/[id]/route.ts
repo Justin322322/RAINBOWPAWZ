@@ -1,9 +1,13 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 
+type Params = {
+  id: string;
+};
+
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Params }
 ) {
   try {
     const id = params.id;
@@ -27,34 +31,34 @@ export async function GET(
     // Check if admin exists
     if (!adminResult || adminResult.length === 0) {
       console.log('Admin API: Admin not found in database for ID:', id);
-      
+
       // Try to find admin by looking up the corresponding user record
       const userResult = await query(
         'SELECT email FROM users WHERE id = ?',
         [id]
       ) as any[];
-      
+
       if (userResult && userResult.length > 0) {
         const userEmail = userResult[0].email;
         console.log('Admin API: Found user email:', userEmail, 'trying to find admin with same email');
-        
+
         const adminByEmailResult = await query(
           'SELECT id, username, email, full_name, role FROM admins WHERE email = ?',
           [userEmail]
         ) as any[];
-        
+
         if (adminByEmailResult && adminByEmailResult.length > 0) {
           const admin = adminByEmailResult[0];
           console.log('Admin API: Found admin by email match');
-          
+
           // Add user_type field to ensure dashboard access works
           admin.user_type = 'admin';
-          
+
           // Return the admin data
           return NextResponse.json(admin);
         }
       }
-      
+
       console.log('Admin API: No admin found with matching email');
       return NextResponse.json(
         { error: 'Admin not found' },

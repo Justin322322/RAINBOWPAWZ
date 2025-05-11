@@ -12,6 +12,20 @@ const transporter = nodemailer.createTransport({
 
 export const sendEmail = async (to: string, subject: string, html: string) => {
   try {
+    // Check if SMTP credentials are set
+    if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+      console.error('SMTP credentials are not properly configured');
+      throw new Error('Email service not properly configured');
+    }
+
+    // Log the email attempt
+    console.log('Attempting to send email with transporter:', {
+      service: 'gmail',
+      user: process.env.SMTP_USER ? process.env.SMTP_USER.substring(0, 3) + '...' : 'not set',
+      to,
+      subject
+    });
+
     const info = await transporter.sendMail({
       from: `"Rainbow Paws" <${process.env.SMTP_USER}>`,
       to,
@@ -19,10 +33,20 @@ export const sendEmail = async (to: string, subject: string, html: string) => {
       html
     });
 
+    console.log('Email sent successfully:', info.messageId);
     return { success: true, messageId: info.messageId };
   } catch (error) {
     console.error('Email sending error:', error);
-    throw error;
+
+    // Log more detailed error information
+    if (error instanceof Error) {
+      console.error('Error name:', error.name);
+      console.error('Error message:', error.message);
+      console.error('Error stack:', error.stack);
+    }
+
+    // Don't throw the error, just return a failure object
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
   }
 };
 

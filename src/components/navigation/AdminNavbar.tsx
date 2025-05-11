@@ -10,6 +10,7 @@ import {
   BellIcon
 } from '@heroicons/react/24/outline';
 import { clearAuthToken } from '@/utils/auth';
+import LogoutModal from '@/components/LogoutModal';
 
 interface AdminNavbarProps {
   activePage?: string;
@@ -22,12 +23,12 @@ export default function AdminNavbar({ activePage: propActivePage, userName = 'Ad
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [activePage, setActivePage] = useState('');
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
-  // Simplified logout function
-  const handleLogout = () => {
-    // Just redirect to home page without any API calls or token clearing
-    // This ensures we don't get stuck in a loop of authentication issues
-    router.push('/');
+  // Open logout modal
+  const handleLogoutClick = () => {
+    setIsDropdownOpen(false);
+    setShowLogoutModal(true);
   };
 
   // Determine active page based on pathname or prop
@@ -131,10 +132,7 @@ export default function AdminNavbar({ activePage: propActivePage, userName = 'Ad
                   <div className="border-t border-gray-100"></div>
                   <button
                     className="block w-full text-left px-4 py-2 text-sm modern-text text-gray-700 hover:bg-gray-100 font-medium"
-                    onClick={() => {
-                      setIsDropdownOpen(false);
-                      handleLogout();
-                    }}
+                    onClick={handleLogoutClick}
                   >
                     Logout
                   </button>
@@ -144,6 +142,13 @@ export default function AdminNavbar({ activePage: propActivePage, userName = 'Ad
           </div>
         </div>
       </div>
+
+      {/* Logout Modal */}
+      <LogoutModal
+        isOpen={showLogoutModal}
+        onClose={() => setShowLogoutModal(false)}
+        userName={userName}
+      />
     </header>
   );
 }

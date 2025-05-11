@@ -20,7 +20,7 @@ export async function GET(
     try {
       const userResult = await query(
         `SELECT id, first_name, last_name, email, phone_number, address, sex,
-         created_at, updated_at, is_otp_verified, user_type, status, is_verified
+         created_at, updated_at, is_otp_verified, role, status, is_verified
          FROM users WHERE id = ? LIMIT 1`,
         [userId]
       ) as any[];
@@ -38,22 +38,23 @@ export async function GET(
         if (!user.last_name) user.last_name = userId;
 
         // For business accounts, fetch additional business details including verification status
-        if (user.user_type === 'business') {
+        if (user.role === 'business') {
           try {
             const businessResult = await query(
-              `SELECT id, business_name, business_type, is_verified
-               FROM businesses WHERE email = ? OR user_id = ? LIMIT 1`,
-              [user.email, user.id]
+              `SELECT id, business_name, business_type, verification_status
+               FROM business_profiles WHERE user_id = ? LIMIT 1`,
+              [user.id]
             ) as any[];
 
             if (businessResult && businessResult.length > 0) {
               const business = businessResult[0];
-              // Update the user's verification status based on the business record
-              user.is_verified = business.is_verified;
+              // Update the user's verification status based on the business profile record
+              user.is_verified = business.verification_status === 'verified' ? 1 : 0;
               // Add business details to the user object
               user.business_name = business.business_name;
               user.business_type = business.business_type;
               user.business_id = business.id;
+              user.verification_status = business.verification_status;
             }
           } catch (businessError) {
             console.error('Error fetching business details:', businessError);
@@ -71,9 +72,44 @@ export async function GET(
       // Continue to fallback instead of throwing
     }
 
-    // Check in admins table if user not found in users table
+    // Check for admin users in the new structure
     try {
-      // First try to find admin by ID
+      // Try to find admin by ID in the users table with admin role
+      const adminUserResult = await query(
+        `SELECT u.id, u.first_name, u.last_name, u.email, u.phone_number,
+         u.address, u.sex, u.created_at, u.updated_at, u.is_otp_verified,
+         u.role, u.status, u.is_verified
+         FROM users u
+         WHERE u.id = ? AND u.role = 'admin' LIMIT 1`,
+        [userId]
+      ) as any[];
+
+      // If found, get the admin profile details
+      if (adminUserResult && adminUserResult.length > 0) {
+        const adminUser = adminUserResult[0];
+
+        // Get admin profile details
+        const adminProfileResult = await query(
+          `SELECT username, full_name, admin_role
+           FROM admin_profiles
+           WHERE user_id = ? LIMIT 1`,
+          [userId]
+        ) as any[];
+
+        if (adminProfileResult && adminProfileResult.length > 0) {
+          const adminProfile = adminProfileResult[0];
+
+          // Merge admin profile details with user data
+          adminUser.username = adminProfile.username;
+          adminUser.full_name = adminProfile.full_name;
+          adminUser.admin_role = adminProfile.admin_role;
+          adminUser.user_type = 'admin'; // For backward compatibility
+
+          return NextResponse.json(adminUser);
+        }
+      }
+
+      // Fallback to old admin table for backward compatibility
       let adminResult = await query(
         `SELECT id, username as first_name, full_name as last_name, email, '' as phone_number,
          '' as address, '' as sex, created_at, updated_at, 1 as is_otp_verified,
@@ -81,30 +117,6 @@ export async function GET(
          FROM admins WHERE id = ? LIMIT 1`,
         [userId]
       ) as any[];
-
-      // If not found by ID, try to find by email or username
-      if (!adminResult || adminResult.length === 0) {
-        // Get email from users table first to try matching
-        const userEmailResult = await query(
-          `SELECT email FROM users WHERE id = ? LIMIT 1`,
-          [userId]
-        ) as any[];
-
-        let email = '';
-        if (userEmailResult && userEmailResult.length > 0) {
-          email = userEmailResult[0].email;
-        }
-
-        if (email) {
-          adminResult = await query(
-            `SELECT id, username as first_name, full_name as last_name, email, '' as phone_number,
-             '' as address, '' as sex, created_at, updated_at, 1 as is_otp_verified,
-             'admin' as user_type, role, 1 as status, 1 as is_verified
-             FROM admins WHERE email = ? OR username = ? LIMIT 1`,
-            [email, email]
-          ) as any[];
-        }
-      }
 
       console.log('Admin query result:', adminResult);
 

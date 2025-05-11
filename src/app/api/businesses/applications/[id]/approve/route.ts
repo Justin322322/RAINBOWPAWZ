@@ -9,19 +9,26 @@ export async function POST(request: Request, { params }: { params: { id: string 
       return NextResponse.json({ message: 'Invalid business ID' }, { status: 400 });
     }
 
-    // Update application status to approved
+    // Update business profile verification status
     const updateResult = await query(
-      'UPDATE business_applications SET status = ?, updated_at = NOW() WHERE business_id = ?',
-      ['approved', businessId]
+      `UPDATE business_profiles
+       SET verification_status = 'verified',
+           verification_date = NOW(),
+           updated_at = NOW()
+       WHERE id = ?`,
+      [businessId]
     );
 
     if (updateResult.affectedRows === 0) {
-      return NextResponse.json({ message: 'Application not found' }, { status: 404 });
+      return NextResponse.json({ message: 'Business profile not found' }, { status: 404 });
     }
 
     // Get business details for email notification
     const [business] = await query(
-      'SELECT ba.*, u.email FROM business_applications ba JOIN users u ON ba.user_id = u.id WHERE ba.business_id = ?',
+      `SELECT bp.*, u.email, u.first_name, u.last_name
+       FROM business_profiles bp
+       JOIN users u ON bp.user_id = u.id
+       WHERE bp.id = ?`,
       [businessId]
     );
 
@@ -34,9 +41,9 @@ export async function POST(request: Request, { params }: { params: { id: string 
       });
     }
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       message: 'Application approved successfully',
-      businessId 
+      businessId
     });
   } catch (error) {
     console.error('Error approving application:', error);
@@ -45,4 +52,4 @@ export async function POST(request: Request, { params }: { params: { id: string 
       { status: 500 }
     );
   }
-} 
+}

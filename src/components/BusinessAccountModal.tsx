@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Modal from './Modal';
 import { sendWelcomeEmail } from '../lib/emailService';
 import PrivacyPolicyModal from './PrivacyPolicyModal';
+import { useToast } from '@/context/ToastContext';
 
 type BusinessAccountModalProps = {
   isOpen: boolean;
@@ -12,6 +13,7 @@ type BusinessAccountModalProps = {
 };
 
 const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onClose, onBack }) => {
+  const { showToast } = useToast();
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -36,7 +38,6 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
   });
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-  const [successMessage, setSuccessMessage] = useState('');
   const [passwordStrength, setPasswordStrength] = useState(0);
   const [passwordFeedback, setPasswordFeedback] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -129,7 +130,6 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
-    setSuccessMessage('');
     setIsLoading(true);
 
     if (formData.password !== formData.confirmPassword) {
@@ -141,7 +141,7 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
     try {
       // Create FormData object for file uploads
       const formDataObj = new FormData();
-      
+
       // Add all the form fields
       const textData = {
         firstName: formData.firstName,
@@ -160,7 +160,7 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
         serviceDescription: formData.businessDescription || null,
         account_type: 'business' as const
       };
-      
+
       // First, try sending the registration data without files
       const regResponse = await fetch('/api/auth/register', {
         method: 'POST',
@@ -173,54 +173,74 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
       const regData = await regResponse.json();
 
       if (!regResponse.ok) {
-        throw new Error(regData.error || regData.message || 'Registration failed');
+        // Handle specific error cases
+        if (regData.error === 'Email already exists') {
+          setErrorMessage('This email is already registered. Please use a different email or try logging in.');
+          showToast('This email is already registered. Please use a different email or try logging in.', 'error');
+          setIsLoading(false);
+          return;
+        } else {
+          throw new Error(regData.error || regData.message || 'Registration failed');
+        }
       }
-      
+
       // If registration succeeded, try uploading the documents separately
-      // This is a simplified approach - in a real app, you'd want to associate these with the user account
       if (formData.birCertificate || formData.businessPermit || formData.governmentId) {
         try {
           const userId = regData.user_id;
-          
+
+          if (!userId) {
+            console.error('No user ID returned from registration');
+            throw new Error('Registration was successful but no user ID was returned');
+          }
+
           // Create a new FormData object for the files
           const filesFormData = new FormData();
-          
+
           if (formData.birCertificate) {
             filesFormData.append('birCertificate', formData.birCertificate);
           }
-          
+
           if (formData.businessPermit) {
             filesFormData.append('businessPermit', formData.businessPermit);
           }
-          
+
           if (formData.governmentId) {
             filesFormData.append('governmentId', formData.governmentId);
           }
-          
-          filesFormData.append('userId', userId);
-          
-          // Assuming you have an endpoint for document uploads
+
+          filesFormData.append('userId', userId.toString());
+
+          console.log('Uploading documents for user ID:', userId);
+
+          // Upload the documents
           const fileUploadResponse = await fetch('/api/businesses/upload-documents', {
             method: 'POST',
             body: filesFormData,
           });
-          
+
+          const fileUploadData = await fileUploadResponse.json();
+
           if (!fileUploadResponse.ok) {
-            console.warn('Document upload failed, but registration succeeded');
+            console.warn('Document upload failed:', fileUploadData.error || fileUploadData.message);
+            showToast('Registration successful, but document upload failed. Please contact support.', 'warning');
+          } else {
+            console.log('Documents uploaded successfully');
           }
         } catch (fileError) {
           console.error('File upload error:', fileError);
-          // Don't fail the registration if document upload fails
+          showToast('Registration successful, but document upload failed. Please contact support.', 'warning');
         }
       }
 
-      setSuccessMessage('Registration successful! Welcome email has been sent.');
-      setTimeout(() => {
-        onClose();
-      }, 2000);
+      // Show success toast notification and close modal immediately
+      showToast('Registration successful! Check your email for confirmation.', 'success');
+      onClose();
     } catch (error) {
       console.error('Registration error:', error);
-      setErrorMessage(error instanceof Error ? error.message : 'Failed to create account. Please try again.');
+      const errorMsg = error instanceof Error ? error.message : 'Failed to create account. Please try again.';
+      showToast(errorMsg, 'error');
+      setErrorMessage(errorMsg);
     } finally {
       setIsLoading(false);
     }
@@ -235,12 +255,6 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
         {errorMessage && (
           <div className="bg-red-50 p-4 rounded-lg border border-red-100">
             <p className="text-sm text-red-600">{errorMessage}</p>
-          </div>
-        )}
-
-        {successMessage && (
-          <div className="bg-green-50 p-4 rounded-lg border border-green-100">
-            <p className="text-sm text-green-600">{successMessage}</p>
           </div>
         )}
 
@@ -362,7 +376,7 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
                 placeholder="Province"
               />
             </div>
-            
+
             <div>
               <label htmlFor="city" className={labelClasses}>
                 City
@@ -377,7 +391,7 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
                 placeholder="City"
               />
             </div>
-            
+
             <div>
               <label htmlFor="zip" className={labelClasses}>
                 ZIP Code

@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Modal from './Modal';
 import { sendWelcomeEmail } from '../lib/emailService';
 import PrivacyPolicyModal from './PrivacyPolicyModal';
+import { useToast } from '@/context/ToastContext';
 
 type PersonalAccountModalProps = {
   isOpen: boolean;
@@ -12,6 +13,7 @@ type PersonalAccountModalProps = {
 };
 
 const PersonalAccountModal: React.FC<PersonalAccountModalProps> = ({ isOpen, onClose, onBack }) => {
+  const { showToast } = useToast();
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -25,7 +27,6 @@ const PersonalAccountModal: React.FC<PersonalAccountModalProps> = ({ isOpen, onC
   });
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-  const [successMessage, setSuccessMessage] = useState('');
   const [passwordStrength, setPasswordStrength] = useState(0);
   const [passwordFeedback, setPasswordFeedback] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -110,7 +111,6 @@ const PersonalAccountModal: React.FC<PersonalAccountModalProps> = ({ isOpen, onC
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
-    setSuccessMessage('');
     setIsLoading(true);
 
     if (formData.password !== formData.confirmPassword) {
@@ -120,31 +120,125 @@ const PersonalAccountModal: React.FC<PersonalAccountModalProps> = ({ isOpen, onC
     }
 
     try {
-      // Call our Next.js API route for registration
-      const response = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          ...formData,
-          account_type: 'personal'
-        }),
+      console.log('Submitting registration form for:', formData.email);
+
+      // Log the form data being sent
+      console.log('Form data being sent:', {
+        ...formData,
+        account_type: 'personal',
+        password: '[REDACTED]' // Don't log the actual password
       });
 
-      const data = await response.json();
+      // Check if we're running in development or production
+      const baseUrl = process.env.NODE_ENV === 'production'
+        ? window.location.origin
+        : 'http://localhost:3000';
 
-      if (!response.ok) {
-        throw new Error(data.error || data.message || 'Registration failed');
-      }
+      console.log('Using base URL:', baseUrl);
 
-      setSuccessMessage('Registration successful! Welcome email has been sent.');
-      setTimeout(() => {
+      // Call our Next.js API route for registration with a timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+
+      try {
+        // Create a simple test request first to check if the server is responding
+        console.log('Testing server connectivity...');
+        try {
+          const testResponse = await fetch(`${baseUrl}/api/health-check`, {
+            method: 'GET',
+            signal: AbortSignal.timeout(5000) // 5 second timeout
+          });
+          console.log('Server connectivity test result:', testResponse.status);
+        } catch (testError) {
+          console.log('Server connectivity test failed, continuing with registration anyway');
+        }
+
+        // Now send the actual registration request
+        console.log('Sending registration request to:', `${baseUrl}/api/auth/register`);
+        const response = await fetch(`${baseUrl}/api/auth/register`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            ...formData,
+            account_type: 'personal'
+          }),
+          signal: controller.signal
+        });
+
+        clearTimeout(timeoutId); // Clear the timeout if the request completes
+
+        console.log('Registration response status:', response.status);
+        console.log('Registration response headers:', {
+          contentType: response.headers.get('content-type'),
+          contentLength: response.headers.get('content-length')
+        });
+
+        // Get the raw response text first for debugging
+        const responseText = await response.text();
+        console.log('Raw response text:', responseText);
+
+        // Try to parse the response as JSON
+        let data;
+        try {
+          data = JSON.parse(responseText);
+          console.log('Registration response data:', data);
+        } catch (jsonError) {
+          console.error('Error parsing JSON response:', jsonError);
+
+          // If we can't parse the response as JSON, check if it's an HTML error page
+          if (responseText.includes('<!DOCTYPE html>')) {
+            console.error('Received HTML response instead of JSON');
+            throw new Error('Server error: Received HTML response instead of JSON. The server might be misconfigured.');
+          } else {
+            throw new Error(`Failed to parse server response: ${responseText.substring(0, 100)}${responseText.length > 100 ? '...' : ''}`);
+          }
+        }
+
+        if (!response.ok) {
+          // Handle specific error cases
+          if (data.error === 'Email already exists') {
+            setErrorMessage('This email is already registered. Please use a different email or try logging in.');
+            showToast('This email is already registered. Please use a different email or try logging in.', 'error');
+          } else {
+            // Instead of throwing an error, set the error message and show a toast
+            const errorMsg = data.error || data.message || 'Registration failed';
+            setErrorMessage(errorMsg);
+            showToast(errorMsg, 'error');
+          }
+          return;
+        }
+
+        // Show success toast notification and close modal immediately
+        showToast('Registration successful! Check your email for confirmation.', 'success');
         onClose();
-      }, 2000);
+      } catch (fetchError: any) {
+        console.error('Fetch error:', fetchError);
+
+        // Handle network errors
+        let errorMessage = 'Network error. Please check your internet connection and try again.';
+
+        if (fetchError && fetchError.name === 'AbortError') {
+          errorMessage = 'Request timed out. The server took too long to respond.';
+        }
+
+        setErrorMessage(errorMessage);
+        showToast(errorMessage, 'error');
+      }
     } catch (error) {
       console.error('Registration error:', error);
-      setErrorMessage(error instanceof Error ? error.message : 'Failed to create account. Please try again.');
+
+      // Log more detailed error information
+      if (error instanceof Error) {
+        console.error('Error name:', error.name);
+        console.error('Error message:', error.message);
+        console.error('Error stack:', error.stack);
+      }
+
+      const errorMsg = error instanceof Error ? error.message : 'Failed to create account. Please try again.';
+      showToast(errorMsg, 'error');
+      setErrorMessage(errorMsg);
     } finally {
       setIsLoading(false);
     }
@@ -159,12 +253,6 @@ const PersonalAccountModal: React.FC<PersonalAccountModalProps> = ({ isOpen, onC
         {errorMessage && (
           <div className="bg-red-50 p-4 rounded-lg border border-red-100">
             <p className="text-sm text-red-600">{errorMessage}</p>
-          </div>
-        )}
-
-        {successMessage && (
-          <div className="bg-green-50 p-4 rounded-lg border border-green-100">
-            <p className="text-sm text-green-600">{successMessage}</p>
           </div>
         )}
 
@@ -229,8 +317,9 @@ const PersonalAccountModal: React.FC<PersonalAccountModalProps> = ({ isOpen, onC
               value={formData.sex}
               onChange={handleChange}
               className={inputClasses}
+              required
             >
-              <option value="">Select</option>
+              <option value="">Select Sex</option>
               <option value="male">Male</option>
               <option value="female">Female</option>
               <option value="other">Other</option>

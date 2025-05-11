@@ -2,9 +2,10 @@
 
 import React, { useState } from 'react';
 import Modal from './Modal';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import ForgotPasswordModal from './ForgotPasswordModal';
 import { setAuthToken, redirectToDashboard } from '@/utils/auth';
+import { useToast } from '@/context/ToastContext';
 
 type LoginModalProps = {
   isOpen: boolean;
@@ -13,12 +14,15 @@ type LoginModalProps = {
 };
 
 const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onShowSignup }) => {
+  const { showToast } = useToast();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [isForgotPasswordModalOpen, setIsForgotPasswordModalOpen] = useState(false);
+  const [loginSuccess, setLoginSuccess] = useState(false);
+  const [userName, setUserName] = useState('');
 
   const handleClose = () => {
     setErrorMessage('');
@@ -85,12 +89,11 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onShowSignup }
         throw new Error('Invalid response from server. Please try again.');
       }
 
-      // Close the modal
-      handleClose();
-
       // Get user ID and account type from response
       const userId = data.user.id;
       const accountType = data.account_type;
+      const firstName = data.user.first_name || '';
+      const lastName = data.user.last_name || '';
 
       if (!userId) {
         throw new Error('User ID missing from login response');
@@ -101,17 +104,21 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onShowSignup }
       // Set the auth token cookie with a 30-day expiration
       setAuthToken(userId.toString(), accountType, 30);
 
-      // Log the current cookies for debugging
-      console.log('Cookies after setting auth token:', document.cookie);
+      // Set success state and user name for the success animation
+      setUserName(firstName ? `${firstName} ${lastName}` : email.split('@')[0]);
+      setLoginSuccess(true);
 
-      // Redirect to the appropriate dashboard after a short delay
+      // Show success toast
+      showToast('Login successful! Redirecting to your dashboard...', 'success');
+
+      // Redirect to the appropriate dashboard after a delay for the animation
       setTimeout(() => {
         const dashboardUrl = redirectToDashboard(accountType);
         console.log('Redirecting to:', dashboardUrl);
 
         // Use window.location.replace for a cleaner redirect
         window.location.replace(dashboardUrl);
-      }, 300);
+      }, 1500);
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'Connection error. Please try again later.');
     } finally {
@@ -121,55 +128,87 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onShowSignup }
 
   return (
     <>
-      <Modal isOpen={isOpen} onClose={handleClose} title="Welcome Back" size="small">
-        <div className="space-y-8">
-          {errorMessage && (
+      <Modal isOpen={isOpen} onClose={handleClose} title={loginSuccess ? "Login Successful" : "Welcome Back"} size="small">
+        <AnimatePresence mode="wait">
+          {loginSuccess ? (
             <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-red-50 p-4 rounded-lg border border-red-100"
+              key="success"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="py-8 flex flex-col items-center justify-center text-center"
             >
-              <div className="flex">
-                <div className="flex-shrink-0">
-                  <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                  </svg>
-                </div>
-                <div className="ml-3 flex-grow">
-                  <h3 className="text-sm font-medium text-red-800">Login Error</h3>
-                  <p className="text-sm text-red-700 mt-1">{errorMessage}</p>
-                  {errorMessage.includes('Incorrect password') && (
-                    <p className="text-xs text-red-600 mt-1">
-                      Tip: If you've forgotten your password, click "Forgot password?" below.
-                    </p>
-                  )}
-                  {errorMessage.includes('No account exists') && (
-                    <p className="text-xs text-red-600 mt-1">
-                      Tip: Check your spelling or <button
-                        type="button"
-                        onClick={onShowSignup}
-                        className="text-red-700 underline hover:text-red-800"
-                      >
-                        create a new account
-                      </button>.
-                    </p>
-                  )}
-                </div>
-                <button
-                  type="button"
-                  className="ml-auto flex-shrink-0 text-red-400 hover:text-red-500 focus:outline-none"
-                  onClick={() => setErrorMessage('')}
-                  aria-label="Dismiss error"
-                >
-                  <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                  </svg>
-                </button>
+              <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center mb-6">
+                <svg className="w-10 h-10 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+              </div>
+              <h2 className="text-2xl font-semibold text-gray-800 mb-2">Welcome back{userName ? `, ${userName}` : ''}!</h2>
+              <p className="text-gray-600 mb-6">You've successfully logged in. Redirecting you to your dashboard...</p>
+              <div className="w-12 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                <motion.div
+                  className="h-full bg-green-500 rounded-full"
+                  initial={{ width: 0 }}
+                  animate={{ width: "100%" }}
+                  transition={{ duration: 1.5, ease: "easeInOut" }}
+                />
               </div>
             </motion.div>
-          )}
+          ) : (
+            <motion.div
+              key="login-form"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="space-y-8"
+            >
+              {errorMessage && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-red-50 p-4 rounded-lg border border-red-100"
+                >
+                  <div className="flex">
+                    <div className="flex-shrink-0">
+                      <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <div className="ml-3 flex-grow">
+                      <h3 className="text-sm font-medium text-red-800">Login Error</h3>
+                      <p className="text-sm text-red-700 mt-1">{errorMessage}</p>
+                      {errorMessage.includes('Incorrect password') && (
+                        <p className="text-xs text-red-600 mt-1">
+                          Tip: If you've forgotten your password, click "Forgot password?" below.
+                        </p>
+                      )}
+                      {errorMessage.includes('No account exists') && (
+                        <p className="text-xs text-red-600 mt-1">
+                          Tip: Check your spelling or <button
+                            type="button"
+                            onClick={onShowSignup}
+                            className="text-red-700 underline hover:text-red-800"
+                          >
+                            create a new account
+                          </button>.
+                        </p>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      className="ml-auto flex-shrink-0 text-red-400 hover:text-red-500 focus:outline-none"
+                      onClick={() => setErrorMessage('')}
+                      aria-label="Dismiss error"
+                    >
+                      <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                      </svg>
+                    </button>
+                  </div>
+                </motion.div>
+              )}
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+              <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
               <label htmlFor="email" className="block text-sm font-light text-gray-700">
                 Email or Username
@@ -275,7 +314,9 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onShowSignup }
               </button>
             </div>
           </form>
-        </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </Modal>
 
       <ForgotPasswordModal

@@ -9,6 +9,7 @@ import {
 } from '@heroicons/react/24/outline';
 import FurParentNavbar from '@/components/navigation/FurParentNavbar';
 import dynamic from 'next/dynamic';
+import withOTPVerification from '@/components/withOTPVerification';
 
 // Import the map component with dynamic loading and loading indicator
 const MapComponent = dynamic(
@@ -26,7 +27,11 @@ const MapComponent = dynamic(
   }
 );
 
-export default function ServicesPage() {
+interface ServicesPageProps {
+  userData?: any;
+}
+
+function ServicesPage({ userData }: ServicesPageProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const defaultAddress = 'Balanga City, Bataan';
   const [isMapVisible, setIsMapVisible] = useState(false);
@@ -153,7 +158,7 @@ export default function ServicesPage() {
   return (
     <div className="min-h-screen bg-white">
       {/* Navigation */}
-      <FurParentNavbar activePage="services" />
+      <FurParentNavbar activePage="services" userName={`${userData?.first_name || ''} ${userData?.last_name || ''}`} />
 
       {/* Main Content */}
       <main>
@@ -287,3 +292,6 @@ export default function ServicesPage() {
     </div>
   );
 }
+
+// Export the component wrapped with OTP verification
+export default withOTPVerification(ServicesPage);

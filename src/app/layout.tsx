@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, Crimson_Text } from "next/font/google";
 import "./globals.css";
+import ClientToastProvider from "@/components/providers/ClientToastProvider";
 
 const inter = Inter({ subsets: ["latin"] });
 const crimsonText = Crimson_Text({
@@ -21,7 +22,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={crimsonText.className}>
-      <body>{children}</body>
+      <body>
+        <ClientToastProvider>
+          {children}
+        </ClientToastProvider>
+      </body>
     </html>
   );
 }

@@ -84,7 +84,7 @@ export const setAuthToken = (userId: string, accountType: string, expirationDays
 
   // Create the token value - format is userId_accountType
   const tokenValue = `${userId}_${accountType}`;
-  
+
   // Log for debugging
   console.log(`Auth token value: ${tokenValue}`);
 
@@ -98,9 +98,9 @@ export const setAuthToken = (userId: string, accountType: string, expirationDays
   // Set the cookie with sameSite and secure attributes
   const isSecure = window.location.protocol === 'https:';
   const secureFlag = isSecure ? '; Secure' : '';
-  
+
   document.cookie = `auth_token=${tokenValue}; path=/; expires=${expirationDate.toUTCString()}; SameSite=Lax${secureFlag}`;
-  
+
   // Log cookie after setting for debugging
   console.log(`Cookies after setting: ${document.cookie}`);
 
@@ -113,9 +113,8 @@ export const setAuthToken = (userId: string, accountType: string, expirationDays
 export const clearAuthToken = async (): Promise<void> => {
   if (typeof document === 'undefined') return;
 
-  // Clear sessionStorage backup
-  sessionStorage.removeItem('auth_user_id');
-  sessionStorage.removeItem('auth_account_type');
+  // Clear all session storage
+  sessionStorage.clear();
 
   // Set secure flag based on protocol
   const isSecure = window.location.protocol === 'https:';
@@ -133,17 +132,17 @@ export const clearAuthToken = async (): Promise<void> => {
   const domain = window.location.hostname === 'localhost' ? 'localhost' : window.location.hostname;
   document.cookie = `auth_token=; path=/; domain=${domain}; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax${secureFlag}`;
 
-  // Approach 4: Call the server-side logout API
-  try {
-    await fetch('/api/auth/logout', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-  } catch (error) {
-    // Ignore errors during logout
-  }
+  // Approach 4: Try with different path
+  document.cookie = `auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax${secureFlag}`;
+  document.cookie = `auth_token=; path=/user; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax${secureFlag}`;
+  document.cookie = `auth_token=; path=/admin; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax${secureFlag}`;
+  document.cookie = `auth_token=; path=/cremation; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax${secureFlag}`;
+
+  // Clear any other potential auth-related cookies
+  document.cookie = `user_id=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax${secureFlag}`;
+  document.cookie = `account_type=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax${secureFlag}`;
+
+  // Note: We don't call the server-side logout API here because the LogoutModal component already does that
 };
 
 // Redirect to appropriate dashboard based on account type
@@ -233,15 +232,15 @@ export const fastAuthCheck = (): {
     // First try to get from session storage (fastest)
     const userData = JSON.parse(sessionStorage.getItem('user_data') || 'null');
     const adminData = JSON.parse(sessionStorage.getItem('admin_data') || 'null');
-    
+
     // Get from auth token
     const authToken = getAuthToken();
     if (!authToken) return defaultState;
-    
+
     const [userId, accountType] = authToken.split('_');
-    
+
     if (!userId || !accountType) return defaultState;
-    
+
     // Return the appropriate data based on account type
     if (accountType === 'admin' && adminData) {
       return {
@@ -269,7 +268,7 @@ export const fastAuthCheck = (): {
         adminData: null
       };
     }
-    
+
     // If no cached data but token exists, return basic auth info
     return {
       authenticated: true,

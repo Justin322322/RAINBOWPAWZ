@@ -21,7 +21,7 @@ async function saveFile(file: File, userId: string, documentType: string): Promi
 
   // Write file to disk
   await writeFile(filePath, buffer);
-  
+
   // Return the relative path for database storage
   return `/uploads/businesses/${userId}/${fileName}`;
 }
@@ -37,17 +37,21 @@ export async function POST(request: Request) {
       }, { status: 400 });
     }
 
-    // Check if the business exists
+    // Check if the business profile exists
     const businessCheck = await query(
-      'SELECT id FROM businesses WHERE id = ?',
+      'SELECT id FROM business_profiles WHERE user_id = ?',
       [userId]
     ) as any[];
 
     if (!businessCheck || businessCheck.length === 0) {
+      console.error(`No business profile found with user_id: ${userId}`);
       return NextResponse.json({
-        error: 'Business not found'
+        error: 'Business profile not found'
       }, { status: 404 });
     }
+
+    // Get the actual business profile ID
+    const businessProfileId = businessCheck[0].id;
 
     const filePaths: Record<string, string> = {};
     let documentsUploaded = false;
@@ -100,8 +104,8 @@ export async function POST(request: Request) {
 
     if (updateFields.length > 0) {
       await query(
-        `UPDATE businesses SET ${updateFields.join(', ')} WHERE id = ?`,
-        [...updateValues, userId]
+        `UPDATE business_profiles SET ${updateFields.join(', ')} WHERE id = ?`,
+        [...updateValues, businessProfileId]
       );
     }
 
@@ -117,4 +121,4 @@ export async function POST(request: Request) {
       message: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 });
   }
-} 
+}

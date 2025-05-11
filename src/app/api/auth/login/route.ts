@@ -11,15 +11,38 @@ interface LoginResponse {
 }
 
 export async function POST(request: Request) {
+  console.log('Login API called');
+
+  // Add CORS headers
+  const headers = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  };
+
+  // Handle preflight requests
+  if (request.method === 'OPTIONS') {
+    return new NextResponse(null, {
+      status: 204,
+      headers
+    });
+  }
+
   try {
     // Test database connection first
+    console.log('Testing database connection...');
     const isConnected = await testConnection();
     if (!isConnected) {
+      console.error('Database connection failed during login');
       return NextResponse.json({
         error: 'Database connection error',
         message: 'Unable to connect to the database. Please try again later.'
-      }, { status: 500 });
+      }, {
+        status: 500,
+        headers
+      });
     }
+    console.log('Database connection successful');
 
     const body = await request.json();
     const { email, password } = body;
@@ -28,62 +51,17 @@ export async function POST(request: Request) {
     if (!email || !password) {
       return NextResponse.json({
         error: 'Email and password are required'
-      }, { status: 400 });
+      }, {
+        status: 400,
+        headers
+      });
     }
 
     console.log('Login attempt for:', email);
 
-    // First check in admins table (prioritize admin accounts)
-    let adminResult = await query(
-      'SELECT id, username, email, password, full_name, role FROM admins WHERE email = ? OR username = ? LIMIT 1',
-      [email, email]
-    ) as any[];
-
-    if (adminResult && adminResult.length > 0) {
-      const admin = adminResult[0];
-
-      try {
-        console.log('Verifying admin password for:', email);
-        const passwordMatch = await bcrypt.compare(password, admin.password);
-        console.log('Admin password match result:', passwordMatch);
-
-        if (passwordMatch) {
-          // Remove password from the returned data
-          delete admin.password;
-
-          // Add user_type field to ensure dashboard access works
-          admin.user_type = 'admin';
-
-          // Update last login timestamp
-          await query(
-            'UPDATE admins SET last_login = CURRENT_TIMESTAMP WHERE id = ?',
-            [admin.id]
-          );
-
-          console.log('Admin login successful for:', email, 'with ID:', admin.id);
-          return NextResponse.json({
-            success: true,
-            message: 'Login successful',
-            user: admin,
-            account_type: 'admin'
-          });
-        } else {
-          // Password is incorrect for this admin
-          console.log('Admin password incorrect for:', email);
-          return NextResponse.json({
-            error: 'Incorrect password',
-            message: 'The password you entered is incorrect. Please try again.'
-          }, { status: 401 });
-        }
-      } catch (bcryptError) {
-        console.error('Error comparing admin password:', bcryptError);
-        // Ignore bcrypt errors but log them
-      }
-    }
-
-    // Check in users table - this should now handle both personal and business accounts
+    // Check in users table - this now handles all account types
     let userResult = await query(
-      'SELECT id, first_name, last_name, email, password, user_type FROM users WHERE email = ? LIMIT 1',
+      'SELECT id, first_name, last_name, email, password, role, is_verified, is_otp_verified FROM users WHERE email = ? LIMIT 1',
       [email]
     ) as any[];
 
@@ -97,22 +75,62 @@ export async function POST(request: Request) {
           // Remove password from the returned data
           delete user.password;
 
-          // Determine account type from user_type field
-          const accountType = user.user_type === 'fur_parent' ? 'user' : user.user_type;
+          // Determine account type from role field
+          const accountType = user.role === 'fur_parent' ? 'user' : user.role;
 
-          // For business accounts, fetch additional business details
-          if (user.user_type === 'business') {
+          // Update last login timestamp
+          await query(
+            'UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?',
+            [user.id]
+          );
+
+          // For admin accounts, fetch additional admin profile details
+          if (user.role === 'admin') {
             try {
-              // Get business details
+              const adminResult = await query(
+                'SELECT username, full_name, admin_role FROM admin_profiles WHERE user_id = ? LIMIT 1',
+                [user.id]
+              ) as any[];
+
+              if (adminResult && adminResult.length > 0) {
+                const adminProfile = adminResult[0];
+
+                // Merge admin profile details with user data
+                const adminUser = {
+                  ...user,
+                  username: adminProfile.username,
+                  full_name: adminProfile.full_name,
+                  admin_role: adminProfile.admin_role,
+                  user_type: 'admin' // For backward compatibility
+                };
+
+                return NextResponse.json({
+                  success: true,
+                  message: 'Login successful',
+                  user: adminUser,
+                  account_type: 'admin'
+                }, {
+                  headers
+                });
+              }
+            } catch (adminError) {
+              console.error('Error fetching admin profile details:', adminError);
+              // Continue with basic user data if admin details can't be fetched
+            }
+          }
+
+          // For business accounts, fetch additional business profile details
+          if (user.role === 'business') {
+            try {
               const businessResult = await query(
-                'SELECT * FROM businesses WHERE email = ? LIMIT 1',
-                [email]
+                `SELECT id, business_name, business_type, business_phone, business_address,
+                 verification_status, province, city, zip
+                 FROM business_profiles WHERE user_id = ? LIMIT 1`,
+                [user.id]
               ) as any[];
 
               if (businessResult && businessResult.length > 0) {
                 const business = businessResult[0];
-                // Remove sensitive data
-                delete business.password;
 
                 // Merge business details with user data
                 const businessUser = {
@@ -121,8 +139,12 @@ export async function POST(request: Request) {
                   business_type: business.business_type,
                   business_phone: business.business_phone,
                   business_address: business.business_address,
-                  is_verified: business.is_verified,
-                  business_id: business.id
+                  verification_status: business.verification_status,
+                  province: business.province,
+                  city: business.city,
+                  zip: business.zip,
+                  business_id: business.id,
+                  user_type: 'business' // For backward compatibility
                 };
 
                 return NextResponse.json({
@@ -130,49 +152,68 @@ export async function POST(request: Request) {
                   message: 'Login successful',
                   user: businessUser,
                   account_type: 'business'
+                }, {
+                  headers
                 });
               }
             } catch (businessError) {
-              console.error('Error fetching business details:', businessError);
+              console.error('Error fetching business profile details:', businessError);
               // Continue with basic user data if business details can't be fetched
             }
           }
 
-          // Return user data for personal accounts or if business details couldn't be fetched
+          // Add user_type for backward compatibility
+          user.user_type = user.role === 'fur_parent' ? 'fur_parent' : user.role;
+
+          // Return user data for personal accounts or if profile details couldn't be fetched
           return NextResponse.json({
             success: true,
             message: 'Login successful',
             user,
             account_type: accountType
+          }, {
+            headers
           });
         } else {
           // Password is incorrect for this user
           return NextResponse.json({
             error: 'Incorrect password',
             message: 'The password you entered is incorrect. Please try again.'
-          }, { status: 401 });
+          }, {
+            status: 401,
+            headers
+          });
         }
       } catch (bcryptError) {
         console.error('Error comparing user password:', bcryptError);
         return NextResponse.json({
           error: 'Authentication error',
           message: 'An error occurred during authentication. Please try again.'
-        }, { status: 500 });
+        }, {
+          status: 500,
+          headers
+        });
       }
     }
 
-    // If we get here, no user with this email was found in any table
-    console.log('No account found with email/username:', email);
+    // If we get here, no user with this email was found
+    console.log('No account found with email:', email);
     return NextResponse.json({
       error: 'User not found',
       message: 'No account exists with this email address. Please check your email or create a new account.'
-    }, { status: 401 });
+    }, {
+      status: 401,
+      headers
+    });
 
   } catch (error) {
     console.error('Login error:', error);
     return NextResponse.json({
       error: 'Login failed',
       message: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 });
+    }, {
+      status: 500,
+      headers
+    });
   }
 }

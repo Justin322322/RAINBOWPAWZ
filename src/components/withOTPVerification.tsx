@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import OTPVerificationModal from './OTPVerificationModal';
 import { fastAuthCheck } from '@/utils/auth';
@@ -34,13 +34,16 @@ const withOTPVerification = <P extends object>(
 
     // Check if we've already shown the OTP modal in this session
     const [hasShownOTPModal, setHasShownOTPModal] = useState(false);
+    // Use a ref to track if we've shown the modal to prevent multiple renders from showing it again
+    const hasShownOTPModalRef = useRef(false);
 
     useEffect(() => {
       // If already verified globally, we can skip the check
       if (globalUserAuthState.verified && globalUserAuthState.userData) {
         // Still check if OTP modal needs to be shown
         const otpVerifiedInSession = sessionStorage.getItem('otp_verified');
-        if (globalUserAuthState.userData.is_otp_verified === 0 && !otpVerifiedInSession && !hasShownOTPModal) {
+        if (globalUserAuthState.userData.is_otp_verified === 0 && !otpVerifiedInSession && !hasShownOTPModalRef.current) {
+          hasShownOTPModalRef.current = true;
           setShowOTPModal(true);
           setHasShownOTPModal(true);
         }
@@ -56,10 +59,11 @@ const withOTPVerification = <P extends object>(
           verified: true,
           userData: fastCheck.userData
         };
-        
+
         // Check OTP status
         const otpVerifiedInSession = sessionStorage.getItem('otp_verified');
-        if (fastCheck.userData.is_otp_verified === 0 && !otpVerifiedInSession && !hasShownOTPModal) {
+        if (fastCheck.userData.is_otp_verified === 0 && !otpVerifiedInSession && !hasShownOTPModalRef.current) {
+          hasShownOTPModalRef.current = true;
           setShowOTPModal(true);
           setHasShownOTPModal(true);
         }
@@ -77,10 +81,11 @@ const withOTPVerification = <P extends object>(
             verified: true,
             userData: parsedData
           };
-          
+
           // Show OTP modal if user is not verified and we haven't shown it in this session
           const otpVerifiedInSession = sessionStorage.getItem('otp_verified');
-          if (parsedData.is_otp_verified === 0 && !otpVerifiedInSession && !hasShownOTPModal) {
+          if (parsedData.is_otp_verified === 0 && !otpVerifiedInSession && !hasShownOTPModalRef.current) {
+            hasShownOTPModalRef.current = true;
             setShowOTPModal(true);
             setHasShownOTPModal(true);
           }
@@ -137,7 +142,7 @@ const withOTPVerification = <P extends object>(
             setUserData(userData);
             setIsAuthenticated(true);
             sessionStorage.setItem('user_data', JSON.stringify(userData));
-            
+
             // Update global state
             globalUserAuthState = {
               verified: true,
@@ -145,7 +150,8 @@ const withOTPVerification = <P extends object>(
             };
 
             // Show OTP modal if user is not verified and we haven't shown it in this session
-            if (userData.is_otp_verified === 0 && !otpVerifiedInSession && !hasShownOTPModal) {
+            if (userData.is_otp_verified === 0 && !otpVerifiedInSession && !hasShownOTPModalRef.current) {
+              hasShownOTPModalRef.current = true;
               setShowOTPModal(true);
               setHasShownOTPModal(true);
             }

@@ -27,13 +27,13 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
   const [hasInitialized, setHasInitialized] = useState(false);
 
   const inputRefs = useRef<(HTMLInputElement | null)[]>(Array(6).fill(null));
-  
+
   // Key for tracking if initial OTP has been sent for this user (persistent across refreshes)
   const initialOtpSentKey = `initial_otp_sent_${userId}`;
-  
+
   // Helper function to get/set cooldown in sessionStorage
   const cooldownKey = `otp_cooldown_${userId}`;
-  
+
   // Check if we've already sent the initial OTP for this user
   const hasInitialOtpBeenSent = (): boolean => {
     try {
@@ -43,7 +43,7 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
       return false;
     }
   };
-  
+
   // Mark that we've sent the initial OTP
   const markInitialOtpSent = (): void => {
     try {
@@ -53,7 +53,7 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
       console.error('Error writing to sessionStorage:', error);
     }
   };
-  
+
   const getStoredCooldownEndTime = (): number | null => {
     try {
       const stored = sessionStorage.getItem(cooldownKey);
@@ -63,7 +63,7 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
       return null;
     }
   };
-  
+
   const setStoredCooldownEndTime = (durationInSeconds: number) => {
     try {
       const endTime = Date.now() + (durationInSeconds * 1000);
@@ -73,7 +73,7 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
       console.error('Error writing to sessionStorage:', error);
     }
   };
-  
+
   const clearStoredCooldownEndTime = () => {
     try {
       sessionStorage.removeItem(cooldownKey);
@@ -82,14 +82,14 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
       console.error('Error clearing sessionStorage:', error);
     }
   };
-  
+
   // Initialize countdown timer from storage
   // This effect runs once when component mounts and isOpen changes
   useEffect(() => {
     if (isOpen) {
       const updateTimerFromStorage = () => {
         const cooldownEndTime = getStoredCooldownEndTime();
-        
+
         if (cooldownEndTime && cooldownEndTime > Date.now()) {
           const remainingTime = Math.ceil((cooldownEndTime - Date.now()) / 1000);
           console.log(`Setting cooldown timer: ${remainingTime}s remaining`);
@@ -98,22 +98,34 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
           setResendCooldown(0);
         }
       };
-      
+
       // Update timer immediately
       updateTimerFromStorage();
-      
+
       // Update timer every second to ensure it stays in sync
       const intervalId = setInterval(updateTimerFromStorage, 1000);
-      
+
       return () => {
         clearInterval(intervalId);
       };
     }
   }, [isOpen]);
 
+  // Track if an OTP request is in progress
+  const isGeneratingOtpRef = useRef(false);
+
   // Memoize the OTP generation function to avoid recreating it on every render
   const generateOTP = useCallback(async () => {
+    // Prevent duplicate calls
+    if (isGeneratingOtpRef.current) {
+      console.log('OTP generation already in progress, skipping duplicate call');
+      return;
+    }
+
     try {
+      // Set flag to prevent duplicate calls
+      isGeneratingOtpRef.current = true;
+
       setIsResending(true);
       setErrorMessage('');
       console.log(`Attempting to generate OTP for user ID ${userId}`);
@@ -141,7 +153,7 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
       setResendCooldown(cooldownDuration);
       setStoredCooldownEndTime(cooldownDuration);
       console.log(`Cooldown set for ${cooldownDuration}s`);
-      
+
       // Mark that initial OTP has been sent for this user
       markInitialOtpSent();
 
@@ -164,26 +176,37 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
       setErrorMessage(error instanceof Error ? error.message : 'Failed to send OTP. Please try again.');
     } finally {
       setIsResending(false);
+      // Reset the flag to allow future OTP generation
+      isGeneratingOtpRef.current = false;
     }
   }, [userId, userEmail]);
 
   // Initialize OTP sending (only once after login)
+  // Using a ref to track initialization across renders
+  const hasInitializedRef = useRef(false);
+
   useEffect(() => {
-    if (isOpen && !hasInitialized) {
+    // Only proceed if the modal is open and we haven't initialized yet
+    if (isOpen && !hasInitializedRef.current) {
       const initialOtpAlreadySent = hasInitialOtpBeenSent();
       console.log(`Initial OTP already sent: ${initialOtpAlreadySent}`);
-      
+
       if (!initialOtpAlreadySent) {
         // No OTP has been sent yet - first login
         console.log('First time opening modal, generating initial OTP');
+        // Set the ref immediately to prevent double calls
+        hasInitializedRef.current = true;
+        // Generate OTP
         generateOTP(); // This will also mark initialOtpSent
       } else {
         console.log('Modal reopened after initial OTP was already sent');
       }
-      
+
+      // Mark as initialized in state too
       setHasInitialized(true);
+      hasInitializedRef.current = true;
     }
-  }, [isOpen, hasInitialized, generateOTP]);
+  }, [isOpen, generateOTP]);
 
   // Countdown timer effect to update stored countdown
   useEffect(() => {
@@ -191,7 +214,7 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
       const timer = setTimeout(() => {
         const newCount = resendCooldown - 1;
         setResendCooldown(newCount);
-        
+
         // If countdown is still active, update the stored end time
         // This ensures consistency between the UI and stored value
         if (newCount > 0) {
@@ -201,7 +224,7 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
           clearStoredCooldownEndTime();
         }
       }, 1000);
-      
+
       return () => clearTimeout(timer);
     }
   }, [resendCooldown]);
@@ -211,7 +234,7 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
     if (verificationStatus === 'success') {
       // Set a session storage flag to indicate OTP has been verified
       sessionStorage.setItem('otp_verified', 'true');
-      
+
       // Clear the persistence flags on successful verification
       clearStoredCooldownEndTime();
       try {
@@ -234,6 +257,12 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
   const handleInputChange = (index: number, value: string) => {
     // Only allow numbers
     if (!/^\d*$/.test(value)) return;
+
+    // Clear error message when user starts typing a new code
+    if (errorMessage) {
+      setErrorMessage('');
+      setVerificationStatus('idle');
+    }
 
     const newOtp = [...otp];
     newOtp[index] = value;
@@ -293,7 +322,16 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || data.error || 'Invalid OTP');
+        // Handle specific error cases with user-friendly messages
+        if (data.error === 'No valid verification code found. Please request a new code.') {
+          setErrorMessage('Your verification code has expired. Please request a new one.');
+        } else if (data.error === 'Invalid verification code. Please try again.') {
+          setErrorMessage('The code you entered is incorrect. Please check and try again.');
+        } else {
+          setErrorMessage(data.message || data.error || 'Invalid verification code. Please try again.');
+        }
+        setVerificationStatus('error');
+        return;
       }
 
       // Set a session storage flag to indicate OTP has been verified
@@ -303,7 +341,7 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
       // onVerificationSuccess will be called after animation completes
     } catch (error) {
       console.error('OTP verification error:', error);
-      setErrorMessage(error instanceof Error ? error.message : 'Failed to verify OTP');
+      setErrorMessage(error instanceof Error ? error.message : 'Failed to verify OTP. Please try again.');
       setVerificationStatus('error');
     } finally {
       setIsLoading(false);
@@ -379,7 +417,17 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
                       </svg>
                     </div>
                     <div className="ml-3">
-                      <p className="text-sm text-red-800">{errorMessage}</p>
+                      <p className="text-sm font-medium text-red-800">{errorMessage}</p>
+                      {errorMessage.includes('expired') && (
+                        <p className="text-xs mt-1 text-red-700">
+                          Click "Resend verification code" below to get a new code.
+                        </p>
+                      )}
+                      {errorMessage.includes('incorrect') && (
+                        <p className="text-xs mt-1 text-red-700">
+                          Double-check the code in your email and try again.
+                        </p>
+                      )}
                     </div>
                   </div>
                 </motion.div>
@@ -426,7 +474,11 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
                 <button
                   onClick={generateOTP}
                   disabled={isResending || resendCooldown > 0}
-                  className="text-[var(--primary-green)] text-sm font-medium hover:underline"
+                  className={`text-sm font-medium ${
+                    errorMessage && errorMessage.includes('expired')
+                      ? 'text-[var(--primary-green)] bg-green-50 px-4 py-2 rounded-lg border border-green-100 hover:bg-green-100 transition-colors'
+                      : 'text-[var(--primary-green)] hover:underline'
+                  }`}
                 >
                   {resendCooldown > 0
                     ? `Resend code in ${resendCooldown}s`

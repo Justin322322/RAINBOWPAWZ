@@ -14,38 +14,40 @@ const formatDate = (dateString: string) => {
 // Get all business applications with status and documents
 export async function GET() {
   try {
-    // Fetch all businesses
+    // Fetch all business profiles with user data
     const businesses = await query(`
-      SELECT 
-        b.id,
-        b.business_name,
-        b.contact_first_name,
-        b.contact_last_name,
-        b.email,
-        b.business_phone,
-        b.business_address,
-        b.province,
-        b.city,
-        b.zip,
-        b.business_type,
-        b.service_description,
-        b.is_verified,
-        b.created_at,
-        b.updated_at,
+      SELECT
+        bp.id,
+        bp.business_name,
+        bp.contact_first_name,
+        bp.contact_last_name,
+        u.email,
+        bp.business_phone,
+        bp.business_address,
+        bp.province,
+        bp.city,
+        bp.zip,
+        bp.business_type,
+        bp.service_description,
+        bp.verification_status,
+        bp.created_at,
+        bp.updated_at,
         CASE
-          WHEN b.is_verified = 1 THEN 'approved'
-          WHEN b.business_permit_path IS NULL OR b.government_id_path IS NULL THEN 'pending'
+          WHEN bp.verification_status = 'verified' THEN 'approved'
+          WHEN bp.business_permit_path IS NULL OR bp.government_id_path IS NULL THEN 'pending'
           ELSE 'reviewing'
         END AS status
       FROM
-        businesses b
+        business_profiles bp
+      JOIN
+        users u ON bp.user_id = u.id
       ORDER BY
-        b.created_at DESC
+        bp.created_at DESC
     `) as any[];
 
     if (!businesses || businesses.length === 0) {
-      return NextResponse.json({ 
-        applications: [] 
+      return NextResponse.json({
+        applications: []
       });
     }
 
@@ -53,7 +55,7 @@ export async function GET() {
     const applications = await Promise.all(businesses.map(async (business) => {
       // Convert dates to readable format
       const submitDate = formatDate(business.created_at);
-      
+
       // Check for available document paths
       const documentFields = [
         { field: 'business_permit_path', name: 'Business Permit' },
@@ -61,23 +63,20 @@ export async function GET() {
         { field: 'bir_certificate_path', name: 'Tax Certificate' }
       ];
 
-      // Fetch document paths
-      const documentResult = await query(`
-        SELECT 
-          business_permit_path,
-          government_id_path,
-          bir_certificate_path
-        FROM 
-          businesses
-        WHERE 
-          id = ?
-      `, [business.id]) as any[];
+      // Document paths are already in the business profile data
+      const documentResult = [
+        {
+          business_permit_path: business.business_permit_path,
+          government_id_path: business.government_id_path,
+          bir_certificate_path: business.bir_certificate_path
+        }
+      ];
 
       const documents = [];
-      
+
       if (documentResult && documentResult.length > 0) {
         const docPaths = documentResult[0];
-        
+
         for (const doc of documentFields) {
           const path = docPaths[doc.field];
           if (path) {
@@ -97,8 +96,8 @@ export async function GET() {
         owner: `${business.contact_first_name} ${business.contact_last_name}`,
         email: business.email,
         phone: business.business_phone || 'Not provided',
-        address: business.business_address 
-          ? `${business.business_address}, ${business.city || ''}, ${business.province || ''}, ${business.zip || ''}` 
+        address: business.business_address
+          ? `${business.business_address}, ${business.city || ''}, ${business.province || ''}, ${business.zip || ''}`
           : 'Not provided',
         submitDate,
         status: business.status,
@@ -117,4 +116,4 @@ export async function GET() {
       { status: 500 }
     );
   }
-} 
+}

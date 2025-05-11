@@ -10,6 +10,7 @@ import {
   BellIcon
 } from '@heroicons/react/24/outline';
 import { clearAuthToken } from '@/utils/auth';
+import LogoutModal from '@/components/LogoutModal';
 
 interface CremationNavbarProps {
   activePage?: string;
@@ -22,29 +23,12 @@ export default function CremationNavbar({ activePage: propActivePage, userName =
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [activePage, setActivePage] = useState('');
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
-  // Handle logout
-  const handleLogout = async () => {
-    try {
-      // Call the logout API
-      const response = await fetch('/api/auth/logout', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      // Clear the auth token from client-side cookie
-      clearAuthToken();
-
-      // Redirect to home page
-      router.push('/');
-    } catch (error) {
-      console.error('Logout error:', error);
-      // Still clear the token and redirect even if the API call fails
-      clearAuthToken();
-      router.push('/');
-    }
+  // Open logout modal
+  const handleLogoutClick = () => {
+    setIsDropdownOpen(false);
+    setShowLogoutModal(true);
   };
 
   // Determine active page based on pathname or prop
@@ -143,10 +127,7 @@ export default function CremationNavbar({ activePage: propActivePage, userName =
                   <div className="border-t border-gray-100"></div>
                   <button
                     className="block w-full text-left px-4 py-2 text-sm modern-text text-gray-700 hover:bg-gray-100 font-medium"
-                    onClick={() => {
-                      setIsDropdownOpen(false);
-                      handleLogout();
-                    }}
+                    onClick={handleLogoutClick}
                   >
                     Logout
                   </button>
@@ -156,6 +137,13 @@ export default function CremationNavbar({ activePage: propActivePage, userName =
           </div>
         </div>
       </div>
+
+      {/* Logout Modal */}
+      <LogoutModal
+        isOpen={showLogoutModal}
+        onClose={() => setShowLogoutModal(false)}
+        userName={userName}
+      />
     </header>
   );
 }
