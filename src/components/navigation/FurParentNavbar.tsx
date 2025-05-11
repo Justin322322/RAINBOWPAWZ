@@ -11,6 +11,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { clearAuthToken } from '@/utils/auth';
 import LogoutModal from '@/components/LogoutModal';
+import CartDropdown from '@/components/cart/CartDropdown';
 
 interface FurParentNavbarProps {
   activePage?: string;
@@ -21,8 +22,10 @@ export default function FurParentNavbar({ activePage: propActivePage, userName =
   const pathname = usePathname();
   const router = useRouter();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isCartOpen, setIsCartOpen] = useState(false);
   const [activePage, setActivePage] = useState('');
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [cartItemCount, setCartItemCount] = useState(2); // Mock cart item count
 
   // Open logout modal
   const handleLogoutClick = () => {
@@ -39,9 +42,31 @@ export default function FurParentNavbar({ activePage: propActivePage, userName =
         setActivePage('home');
       } else if (pathname === '/user/furparent_dashboard/services') {
         setActivePage('services');
+      } else if (pathname === '/user/furparent_dashboard/bookings') {
+        setActivePage('bookings');
       }
     }
   }, [pathname, propActivePage]);
+
+  // Close dropdowns when clicking elsewhere
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      // Close dropdowns when clicking outside
+      if (isDropdownOpen || isCartOpen) {
+        setIsDropdownOpen(false);
+        setIsCartOpen(false);
+      }
+    };
+
+    // Add event listener only when dropdowns are open
+    if (isDropdownOpen || isCartOpen) {
+      document.addEventListener('click', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+    };
+  }, [isDropdownOpen, isCartOpen]);
 
   return (
     <header className="bg-[var(--primary-green)] shadow-[0_4px_10px_rgba(0,0,0,0.3)] relative z-50">
@@ -72,11 +97,33 @@ export default function FurParentNavbar({ activePage: propActivePage, userName =
             >
               Services
             </Link>
+            <Link
+              href="/user/furparent_dashboard/bookings"
+              className={`text-base modern-text text-white hover:text-white transition-all duration-300 relative after:content-[''] after:absolute after:-bottom-2 after:left-0 ${activePage === 'bookings' ? 'after:w-full font-medium' : 'after:w-0'} after:h-0.5 after:bg-white after:transition-all after:duration-300 hover:after:w-full cursor-pointer`}
+              onClick={() => setActivePage('bookings')}
+            >
+              Bookings
+            </Link>
           </div>
           <div className="flex items-center space-x-4">
-            <Link href="/user/furparent_dashboard/cart" className="text-white hover:text-gray-200 transition-colors">
-              <ShoppingCartIcon className="h-6 w-6" />
-            </Link>
+            <div className="relative">
+              <button
+                onClick={() => setIsCartOpen(!isCartOpen)}
+                className="text-white hover:text-gray-200 transition-colors relative"
+              >
+                <ShoppingCartIcon className="h-6 w-6" />
+                {cartItemCount > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                    {cartItemCount}
+                  </span>
+                )}
+              </button>
+
+              <CartDropdown
+                isOpen={isCartOpen}
+                onClose={() => setIsCartOpen(false)}
+              />
+            </div>
             <div className="relative">
               <button
                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
@@ -97,6 +144,13 @@ export default function FurParentNavbar({ activePage: propActivePage, userName =
                     onClick={() => setActivePage('home')}
                   >
                     Dashboard
+                  </Link>
+                  <Link
+                    href="/user/furparent_dashboard/bookings"
+                    className="block px-4 py-2 text-sm modern-text text-gray-700 hover:bg-gray-100"
+                    onClick={() => setActivePage('bookings')}
+                  >
+                    My Bookings
                   </Link>
                   <Link href="/user/furparent_dashboard/profile" className="block px-4 py-2 text-sm modern-text text-gray-700 hover:bg-gray-100">
                     Profile

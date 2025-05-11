@@ -1,6 +1,40 @@
 /**
  * Authentication utility functions
  */
+import { NextRequest } from 'next/server';
+
+// Get auth token from server request (for API routes)
+export const getAuthTokenFromRequest = (request: NextRequest): string | null => {
+  const cookieHeader = request.headers.get('cookie');
+  if (!cookieHeader) return null;
+
+  const cookies = cookieHeader.split(';');
+  const authCookie = cookies.find(cookie => cookie.trim().startsWith('auth_token='));
+
+  if (!authCookie) {
+    return null;
+  }
+
+  // Extract the token value and decode it
+  const encodedToken = authCookie.split('=')[1];
+  if (!encodedToken) {
+    return null;
+  }
+
+  // Decode the URI component
+  try {
+    const token = decodeURIComponent(encodedToken);
+
+    // Validate token format (should be userId_accountType)
+    if (!token || !token.includes('_')) {
+      return null;
+    }
+
+    return token;
+  } catch (error) {
+    return null;
+  }
+};
 
 // Get the auth token from cookies
 export const getAuthToken = (): string | null => {

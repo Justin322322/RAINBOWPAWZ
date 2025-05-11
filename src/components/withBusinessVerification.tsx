@@ -12,9 +12,9 @@ let globalBusinessAuthState = {
 
 // HOC to wrap components that require business verification
 const withBusinessVerification = <P extends object>(
-  Component: React.ComponentType<P>
+  Component: React.ComponentType<P & { userData: any }>
 ) => {
-  const WithBusinessVerification: React.FC<P> = (props) => {
+  const WithBusinessVerification: React.FC<Omit<P, 'userData'>> = (props) => {
     const router = useRouter();
     const [isAuthenticated, setIsAuthenticated] = useState(globalBusinessAuthState.verified);
     const [userData, setUserData] = useState<any>(globalBusinessAuthState.userData);
@@ -34,7 +34,7 @@ const withBusinessVerification = <P extends object>(
           router.push('/cremation/pending-verification');
           return;
         }
-        
+
         setUserData(fastCheck.userData);
         setIsAuthenticated(true);
         globalBusinessAuthState = {
@@ -50,13 +50,13 @@ const withBusinessVerification = <P extends object>(
       if (cachedUserData) {
         try {
           const parsedData = JSON.parse(cachedUserData);
-          
+
           // Check if business is verified
           if (parsedData.user_type === 'business' && parsedData.is_verified !== 1) {
             router.push('/cremation/pending-verification');
             return;
           }
-          
+
           setUserData(parsedData);
           setIsAuthenticated(true);
           globalBusinessAuthState = {
@@ -97,10 +97,10 @@ const withBusinessVerification = <P extends object>(
           } catch (e) {
             authValue = cookieParts[1]; // Use raw value if decoding fails
           }
-          
+
           // Extract user ID and account type from auth token
           const [userId, accountType] = authValue.split('_');
-          
+
           // Validate account type
           if (accountType !== 'business') {
             router.replace('/');
@@ -128,13 +128,13 @@ const withBusinessVerification = <P extends object>(
             setUserData(userData);
             setIsAuthenticated(true);
             sessionStorage.setItem('user_data', JSON.stringify(userData));
-            
+
             // Update global state
             globalBusinessAuthState = {
               verified: true,
               userData: userData
             };
-            
+
           } catch (fetchError) {
             router.replace('/');
           }
@@ -163,7 +163,7 @@ const withBusinessVerification = <P extends object>(
     }
 
     // Render the wrapped component with user data
-    return <Component {...props} userData={userData} />;
+    return <Component {...(props as P)} userData={userData} />;
   };
 
   return WithBusinessVerification;

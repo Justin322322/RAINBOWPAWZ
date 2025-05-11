@@ -1,11 +1,13 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import Link from 'next/link';
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
   MapPinIcon,
-  HomeIcon
+  HomeIcon,
+  CalendarIcon
 } from '@heroicons/react/24/outline';
 import FurParentNavbar from '@/components/navigation/FurParentNavbar';
 import dynamic from 'next/dynamic';
@@ -14,7 +16,7 @@ import withOTPVerification from '@/components/withOTPVerification';
 // Import the map component with dynamic loading and loading indicator
 const MapComponent = dynamic(
   () => import('@/components/map/MapComponent'),
-  { 
+  {
     ssr: false,
     loading: () => (
       <div className="w-full h-full flex items-center justify-center bg-gray-100 rounded-lg">
@@ -37,7 +39,7 @@ function ServicesPage({ userData }: ServicesPageProps) {
   const [isMapVisible, setIsMapVisible] = useState(false);
   const [isMapLoaded, setIsMapLoaded] = useState(false);
   const [selectedProviderId, setSelectedProviderId] = useState<number | null>(null);
-  
+
   // Ref to hold map section element to scroll to when showing directions
   const mapSectionRef = useRef<HTMLDivElement>(null);
 
@@ -47,15 +49,15 @@ function ServicesPage({ userData }: ServicesPageProps) {
     const timer = setTimeout(() => {
       setIsMapVisible(true);
     }, 100);
-    
+
     return () => clearTimeout(timer);
   }, []);
-  
+
   // Scroll to map when showing directions
   useEffect(() => {
     if (selectedProviderId !== null && mapSectionRef.current) {
       // Scroll to the map section with smooth behavior
-      mapSectionRef.current.scrollIntoView({ 
+      mapSectionRef.current.scrollIntoView({
         behavior: 'smooth',
         block: 'start'
       });
@@ -149,7 +151,7 @@ function ServicesPage({ userData }: ServicesPageProps) {
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
   };
-  
+
   // Handle Get Directions click
   const handleGetDirections = (providerId: number) => {
     setSelectedProviderId(providerId);
@@ -237,16 +239,28 @@ function ServicesPage({ userData }: ServicesPageProps) {
                   <p className="modern-label text-green-600 mb-4">{provider.distance}</p>
                   <p className="modern-text text-sm text-gray-600 mb-6">{provider.packages} Packages Available</p>
 
-                  <div className="mt-auto flex justify-between">
-                    <button className="bg-[var(--primary-green)] text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-[var(--primary-green-hover)] transition-colors duration-300">
-                      View Services
-                    </button>
-                    <button
-                      className="bg-gray-500 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-600 transition-colors duration-300"
-                      onClick={() => handleGetDirections(provider.id)}
+                  <div className="mt-auto flex flex-col space-y-3">
+                    <div className="flex justify-between">
+                      <Link
+                        href={`/user/furparent_dashboard/services/${provider.id}`}
+                        className="bg-[var(--primary-green)] text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-[var(--primary-green-hover)] transition-colors duration-300 flex items-center"
+                      >
+                        View Services
+                      </Link>
+                      <button
+                        className="bg-gray-500 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-600 transition-colors duration-300"
+                        onClick={() => handleGetDirections(provider.id)}
+                      >
+                        Get Directions
+                      </button>
+                    </div>
+                    <Link
+                      href={`/user/furparent_dashboard/services/${provider.id}`}
+                      className="bg-[var(--primary-green-hover)] text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-[var(--primary-green)] transition-colors duration-300 flex items-center justify-center"
                     >
-                      Get Directions
-                    </button>
+                      <CalendarIcon className="h-4 w-4 mr-2" />
+                      Book Now
+                    </Link>
                   </div>
                 </div>
               </div>

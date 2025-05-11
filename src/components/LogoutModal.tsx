@@ -62,7 +62,7 @@ export default function LogoutModal({ isOpen, onClose, userName = 'User' }: Logo
   return (
     <Modal 
       isOpen={isOpen} 
-      onClose={!isLoggingOut ? onClose : undefined} 
+      onClose={!isLoggingOut ? onClose : () => {}} 
       title={logoutSuccess ? "Logged Out Successfully" : "Confirm Logout"}
       size="small"
     >

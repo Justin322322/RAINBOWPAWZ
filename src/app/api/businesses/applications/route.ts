@@ -11,6 +11,9 @@ const formatDate = (dateString: string) => {
   });
 };
 
+// Define a type for the keys of docPaths
+type DocPathKey = 'business_permit_path' | 'government_id_path' | 'bir_certificate_path';
+
 // Get all business applications with status and documents
 export async function GET() {
   try {
@@ -78,11 +81,12 @@ export async function GET() {
         const docPaths = documentResult[0];
 
         for (const doc of documentFields) {
-          const path = docPaths[doc.field];
+          // Assert that doc.field is one of the allowed keys
+          const path = docPaths[doc.field as DocPathKey];
           if (path) {
             documents.push({
               name: doc.name,
-              verified: business.status === 'approved',
+              verified: business.verification_status === 'verified',
               path: path
             });
           }

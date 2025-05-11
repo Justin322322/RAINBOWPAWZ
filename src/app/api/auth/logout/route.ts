@@ -4,9 +4,10 @@ import { cookies } from 'next/headers';
 export async function POST() {
   try {
     // Clear the auth token cookie - try multiple approaches to ensure it's cleared
+    const cookiesStore = await cookies();
 
     // Approach 1: Set with expires in the past
-    cookies().set({
+    cookiesStore.set({
       name: 'auth_token',
       value: '',
       expires: new Date(0),
@@ -16,7 +17,7 @@ export async function POST() {
     });
 
     // Approach 2: Set with max-age=0
-    cookies().set({
+    cookiesStore.set({
       name: 'auth_token',
       value: '',
       maxAge: 0,
@@ -26,7 +27,7 @@ export async function POST() {
     });
 
     // Approach 3: Delete the cookie
-    cookies().delete('auth_token');
+    cookiesStore.delete('auth_token');
 
     return NextResponse.json({
       success: true,

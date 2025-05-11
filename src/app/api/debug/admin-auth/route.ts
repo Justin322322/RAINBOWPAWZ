@@ -5,12 +5,12 @@ import { query } from '@/lib/db';
 export async function GET(request: Request) {
   try {
     // Get the auth token cookie
-    const cookieStore = cookies();
-    const authCookie = cookieStore.get('auth_token');
+    const cookieStoreResolved = await cookies();
+    const authCookie = cookieStoreResolved.get('auth_token');
     
     const debugInfo: any = {
       cookies: {
-        all: Array.from(cookieStore.getAll()).map(c => ({ name: c.name, value: c.value })),
+        all: Array.from(cookieStoreResolved.getAll()).map(c => ({ name: c.name, value: c.value })),
         authCookie: authCookie ? { 
           name: authCookie.name, 
           value: authCookie.value,

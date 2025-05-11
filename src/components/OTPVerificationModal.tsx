@@ -437,11 +437,11 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Enter verification code
                 </label>
-                <div className="flex justify-between gap-2">
+                <div className="flex justify-center space-x-2 md:space-x-3">
                   {otp.map((digit, index) => (
                     <input
                       key={index}
-                      ref={el => inputRefs.current[index] = el}
+                      ref={el => { inputRefs.current[index] = el; }}
                       type="text"
                       maxLength={1}
                       value={digit}

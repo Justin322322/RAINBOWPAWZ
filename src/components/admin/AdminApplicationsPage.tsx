@@ -14,9 +14,10 @@ import {
 } from '@heroicons/react/24/outline';
 import Link from 'next/link';
 import Image from 'next/image';
+import type { AdminData } from '@/components/withAdminAuth';
 
 interface AdminApplicationsPageProps {
-  adminData: any;
+  adminData: AdminData;
 }
 
 export default function AdminApplicationsPage({ adminData }: AdminApplicationsPageProps) {
@@ -112,7 +113,11 @@ export default function AdminApplicationsPage({ adminData }: AdminApplicationsPa
       alert('Application approved successfully! The business owner has been notified.');
     } catch (error) {
       console.error('Error approving application:', error);
-      alert(error.message || 'An error occurred while approving the application. Please try again.');
+      if (error instanceof Error) {
+        alert(error.message || 'An error occurred while approving the application. Please try again.');
+      } else {
+        alert('An unknown error occurred while approving the application. Please try again.');
+      }
     } finally {
       setIsProcessing(false);
     }
@@ -163,7 +168,11 @@ export default function AdminApplicationsPage({ adminData }: AdminApplicationsPa
       alert('Application declined successfully. The applicant has been notified via email.');
     } catch (error) {
       console.error('Error declining application:', error);
-      alert(error.message || 'An error occurred while declining the application. Please try again.');
+      if (error instanceof Error) {
+        alert(error.message || 'An error occurred while declining the application. Please try again.');
+      } else {
+        alert('An unknown error occurred while declining the application. Please try again.');
+      }
     } finally {
       setIsProcessing(false);
     }

@@ -171,7 +171,7 @@ export async function POST(request: Request) {
         console.log('Inserting user into database...');
         try {
           // Insert user with simplified query
-          const sql = `INSERT INTO users (email, password, first_name, last_name, phone_number, address, sex, role) 
+          const sql = `INSERT INTO users (email, password, first_name, last_name, phone_number, address, sex, role)
                       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
 
           const values = [
@@ -181,7 +181,7 @@ export async function POST(request: Request) {
             data.lastName,
             data.account_type === 'personal' ? data.phoneNumber || null : (data as BusinessRegistrationData).businessPhone,
             data.account_type === 'personal' ? data.address || null : (data as BusinessRegistrationData).businessAddress,
-            data.sex || null,
+            data.account_type === 'personal' ? (data as PersonalRegistrationData).sex || null : null,
             role
           ];
 
@@ -204,10 +204,10 @@ export async function POST(request: Request) {
           try {
             // Insert business profile with simplified query
             const businessData = data as BusinessRegistrationData;
-            const sql = `INSERT INTO business_profiles 
-                        (user_id, business_name, business_type, contact_first_name, contact_last_name, 
-                         business_phone, business_address, province, city, zip, 
-                         business_hours, service_description, verification_status) 
+            const sql = `INSERT INTO business_profiles
+                        (user_id, business_name, business_type, contact_first_name, contact_last_name,
+                         business_phone, business_address, province, city, zip,
+                         business_hours, service_description, verification_status)
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
             const values = [
@@ -287,13 +287,13 @@ export async function POST(request: Request) {
       try {
         console.log('Generating OTP for newly registered user:', userId);
         const ipAddress = request.headers.get('x-forwarded-for') || 'unknown';
-        
+
         const otpResult = await generateOtp({
           userId: userId.toString(),
           email: data.email,
           ipAddress
         });
-        
+
         if (otpResult.success) {
           console.log('OTP generated successfully for new user');
         } else {

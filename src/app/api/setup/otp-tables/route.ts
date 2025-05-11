@@ -1,6 +1,15 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 
+interface SetupResults {
+  otpCodesTableExists: boolean;
+  otpAttemptsTableExists: boolean;
+  isOtpVerifiedColumnExists: boolean;
+  otpCodesTableCreated?: boolean;
+  otpAttemptsTableCreated?: boolean;
+  isOtpVerifiedColumnAdded?: boolean;
+}
+
 export async function GET() {
   try {
     // Check if the otp_codes table exists
@@ -21,7 +30,7 @@ export async function GET() {
        WHERE table_schema = DATABASE() AND table_name = 'users' AND column_name = 'is_otp_verified'`
     ) as any[];
 
-    const results = {
+    const results: SetupResults = {
       otpCodesTableExists: otpCodesTableExists[0].count > 0,
       otpAttemptsTableExists: otpAttemptsTableExists[0].count > 0,
       isOtpVerifiedColumnExists: isOtpVerifiedColumnExists[0].count > 0

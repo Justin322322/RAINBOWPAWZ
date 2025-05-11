@@ -1,16 +1,12 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 
-type Params = {
-  id: string;
-};
-
-export async function GET(
-  request: Request,
-  { params }: { params: Params }
-) {
+export async function GET(request: NextRequest) {
+  // Extract ID from URL
+  const url = new URL(request.url);
+  const pathParts = url.pathname.split('/');
+  const id = pathParts[pathParts.length - 1];
   try {
-    const id = params.id;
     console.log('Admin API: Fetching admin data for ID:', id);
 
     // Validate ID

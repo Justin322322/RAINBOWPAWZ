@@ -24,9 +24,9 @@ let globalUserAuthState = {
 
 // HOC to wrap components that require OTP verification
 const withOTPVerification = <P extends object>(
-  Component: React.ComponentType<P>
+  Component: React.ComponentType<P & { userData: UserData }>
 ) => {
-  const WithOTPVerification: React.FC<P> = (props) => {
+  const WithOTPVerification: React.FC<Omit<P, 'userData'>> = (props) => {
     const router = useRouter();
     const [isAuthenticated, setIsAuthenticated] = useState(globalUserAuthState.verified);
     const [userData, setUserData] = useState<UserData | null>(globalUserAuthState.userData);
@@ -205,7 +205,7 @@ const withOTPVerification = <P extends object>(
 
         {/* Render the wrapped component with a blur effect if OTP verification is required */}
         <div className={userData.is_otp_verified === 0 ? 'filter blur-sm pointer-events-none' : ''}>
-          <Component {...props} userData={userData} />
+          <Component {...(props as P)} userData={userData} />
         </div>
       </>
     );
