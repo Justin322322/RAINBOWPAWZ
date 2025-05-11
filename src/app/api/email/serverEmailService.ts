@@ -3,7 +3,9 @@ import nodemailer from 'nodemailer';
 // This file is only imported on the server side
 // Create a transporter for sending emails
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
+  host: process.env.SMTP_HOST || 'smtp.gmail.com',
+  port: parseInt(process.env.SMTP_PORT || '587'),
+  secure: process.env.SMTP_PORT === '465', // true for 465, false for other ports
   auth: {
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS
@@ -51,26 +53,82 @@ export const sendEmail = async (to: string, subject: string, html: string) => {
 };
 
 export const createPasswordResetEmail = (email: string, resetToken: string) => {
-  const resetLink = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3001'}/reset-password?token=${resetToken}`;
+  const resetLink = `${process.env.NEXT_PUBLIC_APP_URL || ''}/reset-password?token=${resetToken}`;
   const subject = 'Reset Your Password - Rainbow Paws';
+
+  // Custom template that exactly matches the reference image
   const html = `
-    <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;'>
-      <h2 style='color: #10B981; text-align: center;'>Reset Your Password</h2>
-      <p>Hello,</p>
-      <p>We received a request to reset your password. Click the button below to create a new password:</p>
-      <div style='text-align: center; margin: 30px 0;'>
-        <a href='${resetLink}'
-           style='background-color: #10B981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 25px; display: inline-block;'>
-          Reset Password
-        </a>
+  <!DOCTYPE html>
+  <html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reset Your Password</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        line-height: 1.6;
+        color: #333;
+        margin: 0;
+        padding: 0;
+      }
+      .container {
+        max-width: 600px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+      h1 {
+        color: #10B981;
+        text-align: center;
+        margin-top: 20px;
+        margin-bottom: 20px;
+        font-size: 24px;
+      }
+      .content {
+        padding: 0 20px;
+      }
+      .button {
+        display: inline-block;
+        background-color: #10B981;
+        color: white !important;
+        padding: 12px 24px;
+        text-decoration: none;
+        border-radius: 25px;
+        margin: 20px 0;
+        font-weight: normal;
+      }
+      .footer {
+        margin-top: 30px;
+        padding-top: 20px;
+        border-top: 1px solid #eee;
+        text-align: center;
+        font-size: 14px;
+        color: #666;
+      }
+      .button-container {
+        text-align: center;
+        margin: 30px 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Reset Your Password</h1>
+      <div class="content">
+        <p>Hello,</p>
+        <p>We received a request to reset your password. Click the button below to create a new password:</p>
+        <div class="button-container">
+          <a href="${resetLink}" class="button" style="color: white !important;">Reset Password</a>
+        </div>
+        <p>If you didn't request this, you can safely ignore this email.</p>
+        <p>This link will expire in 1 hour for security reasons.</p>
       </div>
-      <p>If you didn't request this, you can safely ignore this email.</p>
-      <p>This link will expire in 1 hour for security reasons.</p>
-      <hr style='border: 1px solid #eee; margin: 30px 0;' />
-      <p style='color: #666; font-size: 12px; text-align: center;'>
-        Rainbow Paws - Pet Memorial Services
-      </p>
+      <div class="footer">
+        <p>Rainbow Paws - Pet Memorial Services</p>
+      </div>
     </div>
+  </body>
+  </html>
   `;
 
   return { to: email, subject, html };
@@ -108,7 +166,7 @@ export const createWelcomeEmail = (email: string, firstName: string, accountType
       <p>Thank you for joining Rainbow Paws! We're honored to have you as part of our community${accountTypeText}.</p>
       ${accountSpecificContent}
       <div style='text-align: center; margin: 30px 0;'>
-        <a href='${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3001'}/login'
+        <a href='${process.env.NEXT_PUBLIC_APP_URL || ''}/login'
            style='background-color: #10B981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 25px; display: inline-block;'>
           Get Started
         </a>

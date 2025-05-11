@@ -6,6 +6,11 @@ export async function createConnection() {
     user: process.env.DB_USER || 'root',
     password: process.env.DB_PASSWORD || '',
     database: process.env.DB_NAME || 'rainbow_paws',
+    port: parseInt(process.env.DB_PORT || '3306'),
+    // Allow connections from any host/port
+    socketPath: undefined,
+    // Use hostname rather than socket for all connections
+    insecureAuth: true,
   });
 }
 
@@ -17,4 +22,4 @@ export async function executeQuery(query: string, params: any[] = []) {
   } finally {
     await connection.end();
   }
-} 
+}

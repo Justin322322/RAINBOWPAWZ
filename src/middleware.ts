@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-export function middleware(request: NextRequest) {
+// Middleware runs in the Edge Runtime which doesn't support direct database connections
+// We'll handle database initialization in the API routes instead
+
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Function to check if a path is protected

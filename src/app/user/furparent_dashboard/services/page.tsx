@@ -231,7 +231,7 @@ function ServicesPage({ userData }: ServicesPageProps) {
                 className="rounded-lg overflow-hidden border border-gray-200 flex flex-col hover:shadow-lg transition-shadow duration-300"
               >
                 <div className="bg-[var(--primary-green)] text-white p-4 text-center">
-                  <h3 className="font-medium text-lg">{provider.type}</h3>
+                  <h3 className="font-medium text-lg text-white">{provider.type}</h3>
                 </div>
                 <div className="p-6 flex flex-col flex-grow">
                   <h3 className="modern-heading text-xl mb-2">{provider.name}</h3>

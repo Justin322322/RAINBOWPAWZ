@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthTokenFromRequest } from '@/utils/auth';
 import { query } from '@/lib/db';
 
+// Import the simple email service
+const { sendBookingConfirmationEmail } = require('@/lib/simpleEmailService');
+
 // Define service types with consistent naming and descriptions
 const serviceTypes: Record<number, { name: string; description: string; price: number }> = {
   1: {
@@ -413,6 +416,80 @@ export async function POST(request: NextRequest) {
 
     // In a real app, we would save the booking to the database here
     // For now, we'll just return the created booking
+
+    // Send booking confirmation email
+    try {
+      console.log('Preparing to send booking confirmation email...');
+
+      // Get user email from database
+      let userEmail = '';
+      try {
+        const userResult = await query('SELECT email FROM users WHERE id = ?', [userId]) as any[];
+        if (userResult && userResult.length > 0) {
+          userEmail = userResult[0].email;
+        }
+      } catch (dbError) {
+        console.error('Error fetching user email:', dbError);
+        // For demo purposes, use a placeholder email if we can't get the real one
+        userEmail = bookingData.email || 'user@example.com';
+      }
+
+      // If we couldn't get the email, log a warning but continue
+      if (!userEmail) {
+        console.warn('Could not find user email for booking confirmation. Using fallback.');
+        userEmail = bookingData.email || 'user@example.com';
+      }
+
+      // Format date and time for email
+      const bookingDateObj = new Date(bookingData.date);
+      const formattedDate = bookingDateObj.toLocaleDateString('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+
+      // Get user name
+      let userName = '';
+      try {
+        const userResult = await query('SELECT first_name, last_name FROM users WHERE id = ?', [userId]) as any[];
+        if (userResult && userResult.length > 0) {
+          userName = `${userResult[0].first_name} ${userResult[0].last_name}`;
+        }
+      } catch (dbError) {
+        console.error('Error fetching user name:', dbError);
+        userName = 'Valued Customer';
+      }
+
+      // If we couldn't get the name, use a default
+      if (!userName) {
+        userName = 'Valued Customer';
+      }
+
+      // Prepare booking details for email
+      const emailBookingDetails = {
+        customerName: userName,
+        serviceName: newBooking.service_name,
+        providerName: newBooking.provider_name,
+        bookingDate: formattedDate,
+        bookingTime: bookingData.time,
+        petName: newBooking.pet_name,
+        bookingId: newBooking.id
+      };
+
+      // Send email using simple email service
+      const emailResult = await sendBookingConfirmationEmail(userEmail, emailBookingDetails);
+
+      if (emailResult.success) {
+        console.log(`Booking confirmation email sent successfully to ${userEmail}. Message ID: ${emailResult.messageId}`);
+      } else {
+        console.error('Failed to send booking confirmation email:', emailResult.error);
+        // Continue with the booking process even if the email fails
+      }
+    } catch (emailError) {
+      console.error('Error sending booking confirmation email:', emailError);
+      // Continue with the booking process even if the email fails
+    }
 
     return NextResponse.json({
       success: true,

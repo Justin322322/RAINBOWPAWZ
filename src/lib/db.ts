@@ -6,9 +6,14 @@ const dbConfig = {
   user: process.env.DB_USER || 'root',
   password: process.env.DB_PASSWORD || '',
   database: process.env.DB_NAME || 'rainbow_paws',
+  port: parseInt(process.env.DB_PORT || '3306'),
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
+  // Allow connections from any host/port
+  socketPath: undefined,
+  // Use hostname rather than socket for all connections
+  insecureAuth: true,
 };
 
 // Create a connection pool

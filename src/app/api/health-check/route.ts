@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { testConnection } from '@/lib/db';
+import { ensureDatabaseInitialized } from '@/lib/ensureDb';
 
 export async function GET() {
   console.log('Health check API called');
@@ -23,10 +24,19 @@ export async function GET() {
     // Test database connection
     const isConnected = await testConnection();
     
+    // Ensure database is properly initialized
+    let dbInitialized = false;
+    if (isConnected) {
+      dbInitialized = await ensureDatabaseInitialized();
+    }
+    
     return NextResponse.json({
       status: 'ok',
       timestamp: new Date().toISOString(),
-      database: isConnected ? 'connected' : 'disconnected'
+      database: {
+        connected: isConnected,
+        initialized: dbInitialized
+      }
     }, { 
       status: 200,
       headers

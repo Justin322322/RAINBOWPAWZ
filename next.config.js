@@ -21,7 +21,9 @@ const nextConfig = {
     return config;
   },
   // These packages will be bundled properly for server components
-  serverExternalPackages: ['nodemailer', 'emailjs']
+  serverExternalPackages: ['nodemailer', 'emailjs'],
+  // Next.js 13+ uses a different approach for server configuration
+  // The server settings should be in next.config.mjs or package.json scripts
 };
 
 module.exports = nextConfig;

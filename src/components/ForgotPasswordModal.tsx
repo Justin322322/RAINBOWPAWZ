@@ -31,20 +31,36 @@ const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({ isOpen, onClo
     setIsLoading(true);
 
     try {
-      // Generate a random token (in a real app, store this in your database)
-      const resetToken = Math.random().toString(36).substring(2, 15);
+      // Call the forgot-password API endpoint
+      const response = await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      });
 
-      await sendPasswordResetEmail(email, resetToken);
-      setSuccessMessage('Password reset instructions have been sent to your email.');
+      const data = await response.json();
+
+      // Handle the "No account exists" error as a user-friendly message
+      if (!response.ok) {
+        if (response.status === 404 && data.error === 'No account exists with this email address.') {
+          setErrorMessage('No account exists with this email address. Please check your email or create a new account.');
+          return;
+        }
+        throw new Error(data.error || 'Failed to send reset instructions');
+      }
+
+      setSuccessMessage(data.message || 'Password reset instructions have been sent to your email.');
 
       // Automatically return to login after success
       setTimeout(() => {
         handleClose();
         onShowLogin();
-      }, 2000);
+      }, 3000);
     } catch (error) {
       console.error('Password reset error:', error);
-      setErrorMessage('Failed to send reset instructions. Please try again.');
+      setErrorMessage(error instanceof Error ? error.message : 'Failed to send reset instructions. Please try again.');
     } finally {
       setIsLoading(false);
     }

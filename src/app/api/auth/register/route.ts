@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
 import { query, testConnection } from '@/lib/db';
 import bcrypt from 'bcryptjs';
-import { createWelcomeEmail, sendEmail } from '../../email/serverEmailService';
 import { generateOtp } from '@/lib/otpService';
+
+// Import the simple email service
+const { sendWelcomeEmail } = require('@/lib/simpleEmailService');
 
 // Types for our request
 interface PersonalRegistrationData {
@@ -260,17 +262,12 @@ export async function POST(request: Request) {
       // Send welcome email
       try {
         const accountType = data.account_type === 'personal' ? 'personal' : 'business';
-        const { to, subject, html } = createWelcomeEmail(data.email, data.firstName, accountType);
 
         // Log email details for debugging
-        console.log('Attempting to send welcome email with details:', {
-          to,
-          subject,
-          smtpUser: process.env.SMTP_USER ? 'Set' : 'Not set',
-          smtpPass: process.env.SMTP_PASS ? 'Set' : 'Not set'
-        });
+        console.log('Attempting to send welcome email to:', data.email);
 
-        const emailResult = await sendEmail(to, subject, html);
+        // Send using simple email service
+        const emailResult = await sendWelcomeEmail(data.email, data.firstName, accountType);
 
         if (emailResult.success) {
           console.log('Welcome email sent successfully to:', data.email);

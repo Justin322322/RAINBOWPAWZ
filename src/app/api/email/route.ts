@@ -1,41 +1,162 @@
 import { NextResponse } from 'next/server';
-import { sendEmail, createPasswordResetEmail, createWelcomeEmail } from './serverEmailService';
+import { sendEmail, queueEmail } from '@/lib/unifiedEmailService';
+import {
+  createWelcomeEmail,
+  createPasswordResetEmail,
+  createOTPEmail,
+  createBookingConfirmationEmail,
+  createBookingStatusUpdateEmail,
+  createBusinessVerificationEmail
+} from '@/lib/emailTemplates';
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { type, email, firstName, resetToken, accountType } = body;
-
-    console.log('Email request received:', {
+    const {
       type,
       email,
       firstName,
       resetToken,
-      accountType
+      accountType,
+      otp,
+      bookingDetails,
+      businessDetails,
+      useQueue = false // Whether to queue the email or send immediately
+    } = body;
+
+    console.log('Email request received:', {
+      type,
+      email,
+      useQueue
     });
 
+    let emailData;
     let emailResult;
 
-    // Send the appropriate email based on type
-    if (type === 'reset' && email && resetToken) {
-      const { to, subject, html } = createPasswordResetEmail(email, resetToken);
-      emailResult = await sendEmail(to, subject, html);
-    }
-    else if (type === 'welcome' && email && firstName) {
-      const { to, subject, html } = createWelcomeEmail(email, firstName, accountType || 'personal');
-      emailResult = await sendEmail(to, subject, html);
-    }
-    else {
-      return NextResponse.json({
-        error: 'Invalid email type or missing required parameters'
-      }, { status: 400 });
+    // Prepare the appropriate email based on type
+    switch (type) {
+      case 'reset':
+        if (!email || !resetToken) {
+          return NextResponse.json({
+            error: 'Missing required parameters for password reset email'
+          }, { status: 400 });
+        }
+        emailData = {
+          to: email,
+          ...createPasswordResetEmail(resetToken)
+        };
+        break;
+
+      case 'welcome':
+        if (!email || !firstName) {
+          return NextResponse.json({
+            error: 'Missing required parameters for welcome email'
+          }, { status: 400 });
+        }
+        emailData = {
+          to: email,
+          ...createWelcomeEmail(firstName, accountType || 'personal')
+        };
+        break;
+
+      case 'otp':
+        if (!email || !otp) {
+          return NextResponse.json({
+            error: 'Missing required parameters for OTP email'
+          }, { status: 400 });
+        }
+        emailData = {
+          to: email,
+          ...createOTPEmail(otp)
+        };
+        break;
+
+      case 'booking_confirmation':
+        if (!email || !bookingDetails) {
+          return NextResponse.json({
+            error: 'Missing required parameters for booking confirmation email'
+          }, { status: 400 });
+        }
+        emailData = {
+          to: email,
+          ...createBookingConfirmationEmail(bookingDetails)
+        };
+        break;
+
+      case 'booking_status_update':
+        if (!email || !bookingDetails) {
+          return NextResponse.json({
+            error: 'Missing required parameters for booking status update email'
+          }, { status: 400 });
+        }
+        emailData = {
+          to: email,
+          ...createBookingStatusUpdateEmail(bookingDetails)
+        };
+        break;
+
+      case 'business_verification':
+        if (!email || !businessDetails) {
+          return NextResponse.json({
+            error: 'Missing required parameters for business verification email'
+          }, { status: 400 });
+        }
+        emailData = {
+          to: email,
+          ...createBusinessVerificationEmail(businessDetails)
+        };
+        break;
+
+      default:
+        return NextResponse.json({
+          error: 'Invalid email type'
+        }, { status: 400 });
     }
 
-    return NextResponse.json({
-      success: true,
-      message: `Email sent to ${email} (${type})`,
-      messageId: emailResult.messageId
+    // Log the email data being sent
+    console.log('Preparing to send email:', {
+      to: emailData.to,
+      subject: emailData.subject,
+      type,
+      useQueue
     });
+
+    // Send or queue the email
+    if (useQueue) {
+      console.log('Queueing email...');
+      emailResult = await queueEmail(emailData);
+    } else {
+      console.log('Sending email directly...');
+      emailResult = await sendEmail(emailData);
+    }
+
+    console.log('Email result:', emailResult);
+
+    if (!emailResult.success) {
+      console.error('Email sending failed:', emailResult.error);
+      throw new Error(emailResult.error || 'Failed to send email');
+    }
+
+    // Prepare response based on whether email was queued or sent directly
+    const response = {
+      success: true,
+      message: `Email ${useQueue ? 'queued' : 'sent'} to ${email} (${type})`
+    };
+
+    // Add the appropriate ID based on the operation type
+    if (useQueue && 'queueId' in emailResult) {
+      return NextResponse.json({
+        ...response,
+        queueId: emailResult.queueId
+      });
+    } else if (!useQueue && 'messageId' in emailResult) {
+      return NextResponse.json({
+        ...response,
+        messageId: emailResult.messageId
+      });
+    } else {
+      return NextResponse.json(response);
+    }
   } catch (error) {
     console.error('Email processing error:', error);
     return NextResponse.json({

@@ -123,9 +123,12 @@ export default function AdminApplicationsPage({ adminData }: AdminApplicationsPa
     }
   };
 
+  const [requestDocuments, setRequestDocuments] = useState(false);
+
   const openDeclineModal = (application: any) => {
     setSelectedApplication(application);
     setDeclineNote('');
+    setRequestDocuments(false);
     setShowDeclineModal(true);
   };
 
@@ -148,7 +151,10 @@ export default function AdminApplicationsPage({ adminData }: AdminApplicationsPa
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ note: declineNote.trim() })
+        body: JSON.stringify({
+          note: declineNote.trim(),
+          requestDocuments: requestDocuments
+        })
       });
 
       const data = await response.json();
@@ -165,13 +171,17 @@ export default function AdminApplicationsPage({ adminData }: AdminApplicationsPa
       await fetchApplicationsData();
 
       // Show success message
-      alert('Application declined successfully. The applicant has been notified via email.');
-    } catch (error) {
-      console.error('Error declining application:', error);
-      if (error instanceof Error) {
-        alert(error.message || 'An error occurred while declining the application. Please try again.');
+      if (requestDocuments) {
+        alert('Additional documents have been requested. The business owner has been notified.');
       } else {
-        alert('An unknown error occurred while declining the application. Please try again.');
+        alert('Application declined successfully. The applicant has been notified via email.');
+      }
+    } catch (error) {
+      console.error('Error processing application:', error);
+      if (error instanceof Error) {
+        alert(error.message || 'An error occurred while processing the application. Please try again.');
+      } else {
+        alert('An unknown error occurred while processing the application. Please try again.');
       }
     } finally {
       setIsProcessing(false);
@@ -279,9 +289,100 @@ export default function AdminApplicationsPage({ adminData }: AdminApplicationsPa
           </div>
           {/* More stats components... */}
         </div>
-        
+
         {/* More UI components... */}
       </div>
+
+      {/* Decline/Request Documents Modal */}
+      {showDeclineModal && selectedApplication && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-lg w-full">
+            <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+              <h2 className="text-xl font-semibold text-gray-800">
+                {requestDocuments ? 'Request Additional Documents' : 'Decline Application'}
+              </h2>
+              <button
+                onClick={() => setShowDeclineModal(false)}
+                className="text-gray-500 hover:text-gray-700"
+                disabled={isProcessing}
+              >
+                <XMarkIcon className="h-6 w-6" />
+              </button>
+            </div>
+            <div className="p-6">
+              <div className="mb-4">
+                <div className="flex items-center mb-4">
+                  <input
+                    id="request-documents"
+                    type="checkbox"
+                    checked={requestDocuments}
+                    onChange={(e) => setRequestDocuments(e.target.checked)}
+                    className="h-4 w-4 text-[var(--primary-green)] focus:ring-[var(--primary-green)] border-gray-300 rounded"
+                  />
+                  <label htmlFor="request-documents" className="ml-2 block text-sm text-gray-900">
+                    Request additional documents instead of declining
+                  </label>
+                </div>
+
+                <label htmlFor="decline-note" className="block text-sm font-medium text-gray-700 mb-1">
+                  {requestDocuments
+                    ? 'Specify what documents are needed (will be sent to the applicant)'
+                    : 'Reason for declining (will be sent to the applicant)'}
+                </label>
+                <textarea
+                  id="decline-note"
+                  rows={4}
+                  value={declineNote}
+                  onChange={(e) => setDeclineNote(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
+                  placeholder={requestDocuments
+                    ? "Please provide the following additional documents..."
+                    : "We are unable to approve your application because..."}
+                  disabled={isProcessing}
+                ></textarea>
+                <p className="mt-1 text-sm text-gray-500">
+                  Minimum 10 characters required.
+                </p>
+              </div>
+
+              <div className="flex justify-end space-x-3 mt-6">
+                <button
+                  type="button"
+                  onClick={() => setShowDeclineModal(false)}
+                  className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--primary-green)]"
+                  disabled={isProcessing}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDeclineApplication}
+                  className={`px-4 py-2 rounded-md shadow-sm text-sm font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                    requestDocuments
+                      ? 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500'
+                      : 'bg-red-600 hover:bg-red-700 focus:ring-red-500'
+                  }`}
+                  disabled={isProcessing}
+                >
+                  {isProcessing ? (
+                    <span className="flex items-center">
+                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Processing...
+                    </span>
+                  ) : requestDocuments ? (
+                    'Request Documents'
+                  ) : (
+                    'Decline Application'
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </AdminDashboardLayout>
   );
 }

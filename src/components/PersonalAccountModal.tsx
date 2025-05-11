@@ -129,10 +129,8 @@ const PersonalAccountModal: React.FC<PersonalAccountModalProps> = ({ isOpen, onC
         password: '[REDACTED]' // Don't log the actual password
       });
 
-      // Check if we're running in development or production
-      const baseUrl = process.env.NODE_ENV === 'production'
-        ? window.location.origin
-        : 'http://localhost:3000';
+      // Use window.location.origin to get the current URL including port
+      const baseUrl = window.location.origin;
 
       console.log('Using base URL:', baseUrl);
 
@@ -144,7 +142,7 @@ const PersonalAccountModal: React.FC<PersonalAccountModalProps> = ({ isOpen, onC
         // Create a simple test request first to check if the server is responding
         console.log('Testing server connectivity...');
         try {
-          const testResponse = await fetch(`${baseUrl}/api/health-check`, {
+          const testResponse = await fetch(`/api/health-check`, {
             method: 'GET',
             signal: AbortSignal.timeout(5000) // 5 second timeout
           });
@@ -154,8 +152,8 @@ const PersonalAccountModal: React.FC<PersonalAccountModalProps> = ({ isOpen, onC
         }
 
         // Now send the actual registration request
-        console.log('Sending registration request to:', `${baseUrl}/api/auth/register`);
-        const response = await fetch(`${baseUrl}/api/auth/register`, {
+        console.log('Sending registration request to:', `/api/auth/register`);
+        const response = await fetch(`/api/auth/register`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

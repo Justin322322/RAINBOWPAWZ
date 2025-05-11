@@ -18,14 +18,49 @@ export default function Home() {
   const [isBusinessAccountModalOpen, setIsBusinessAccountModalOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
 
-  // Scroll effect for navbar
+  // Scroll effect for navbar and check URL parameters
   useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 50);
     };
     window.addEventListener('scroll', handleScroll);
+
+    // Check for showLogin parameter in URL
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('showLogin') === 'true') {
+      // Close all modals first
+      setIsLoginModalOpen(false);
+      setIsSignupOptionModalOpen(false);
+      setIsPersonalAccountModalOpen(false);
+      setIsBusinessAccountModalOpen(false);
+
+      // Open login modal
+      setIsLoginModalOpen(true);
+
+      // Remove the parameter from URL without refreshing the page
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, document.title, newUrl);
+    }
+
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  const closeAllModals = () => {
+    setIsLoginModalOpen(false);
+    setIsSignupOptionModalOpen(false);
+    setIsPersonalAccountModalOpen(false);
+    setIsBusinessAccountModalOpen(false);
+  };
+
+  const openLoginModal = () => {
+    closeAllModals();
+    setIsLoginModalOpen(true);
+  };
+
+  const openSignupOptionModal = () => {
+    closeAllModals();
+    setIsSignupOptionModalOpen(true);
+  };
 
   // Enhanced smooth scroll functionality with offset adjustment and smoother animation
   const handleSmoothScroll = (e: React.MouseEvent<HTMLAnchorElement>, targetId: string) => {
@@ -41,16 +76,6 @@ export default function Home() {
     });
   };
 
-  const openLoginModal = () => {
-    closeAllModals();
-    setIsLoginModalOpen(true);
-  };
-
-  const openSignupOptionModal = () => {
-    closeAllModals();
-    setIsSignupOptionModalOpen(true);
-  };
-
   const openPersonalAccountModal = () => {
     closeAllModals();
     setIsPersonalAccountModalOpen(true);
@@ -61,13 +86,8 @@ export default function Home() {
     setIsBusinessAccountModalOpen(true);
   };
 
-  const closeAllModals = () => {
-    setIsLoginModalOpen(false);
-    setIsSignupOptionModalOpen(false);
-    setIsPersonalAccountModalOpen(false);
-    setIsBusinessAccountModalOpen(false);
-  };
-  
+
+
   // Style for navigation links and buttons
   const navLinkStyle = "text-base font-medium text-gray-100 hover:text-white transition-all duration-300 relative after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-[var(--primary-green)] after:transition-all after:duration-300 hover:after:w-full cursor-pointer";
   const buttonBaseStyle = "px-6 py-2.5 rounded-full text-sm font-medium transition-all duration-300 ease-in-out focus:outline-none border shadow-md hover:shadow-lg transform hover:-translate-y-0.5";
@@ -85,29 +105,29 @@ export default function Home() {
               <span className="text-xl modern-heading text-white tracking-wide">RainbowPaws</span>
             </Link>
             <nav className="hidden md:flex items-center space-x-10">
-              <a onClick={(e) => handleSmoothScroll(e, 'services')} 
+              <a onClick={(e) => handleSmoothScroll(e, 'services')}
                 className="text-base modern-text text-white hover:text-white transition-all duration-300 relative after:content-[''] after:absolute after:-bottom-2 after:left-0 after:w-0 after:h-0.5 after:bg-white after:transition-all after:duration-300 hover:after:w-full cursor-pointer"
               >
                 Memorial Services
               </a>
-              <a onClick={(e) => handleSmoothScroll(e, 'how-it-works')} 
+              <a onClick={(e) => handleSmoothScroll(e, 'how-it-works')}
                 className="text-base modern-text text-white hover:text-white transition-all duration-300 relative after:content-[''] after:absolute after:-bottom-2 after:left-0 after:w-0 after:h-0.5 after:bg-white after:transition-all after:duration-300 hover:after:w-full cursor-pointer"
               >
                 How It Works
               </a>
-              <a onClick={(e) => handleSmoothScroll(e, 'promise')} 
+              <a onClick={(e) => handleSmoothScroll(e, 'promise')}
                 className="text-base modern-text text-white hover:text-white transition-all duration-300 relative after:content-[''] after:absolute after:-bottom-2 after:left-0 after:w-0 after:h-0.5 after:bg-white after:transition-all after:duration-300 hover:after:w-full cursor-pointer"
               >
                 Our Promise
               </a>
             </nav>
             <div className="hidden md:flex items-center space-x-6">
-              <button onClick={openLoginModal} 
+              <button onClick={openLoginModal}
                 className="text-white hover:text-white transition-all duration-300 modern-label tracking-wider relative after:content-[''] after:absolute after:-bottom-1 after:left-0 after:w-0 after:h-0.5 after:bg-white after:transition-all after:duration-300 hover:after:w-full"
               >
                 LOGIN
               </button>
-              <button onClick={openSignupOptionModal} 
+              <button onClick={openSignupOptionModal}
                 className="border border-white text-white px-6 py-2.5 rounded-full hover:bg-white hover:text-[var(--primary-green)] transition-all duration-300 modern-label tracking-wider"
               >
                 JOIN US
@@ -133,7 +153,7 @@ export default function Home() {
         </div>
         <div className="relative z-20 min-h-screen flex items-center justify-center px-4 pt-20">
           <div className="text-center max-w-4xl mx-auto text-white">
-            <motion.h1 
+            <motion.h1
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8 }}
@@ -141,7 +161,7 @@ export default function Home() {
             >
               A Gentle Farewell
             </motion.h1>
-            <motion.p 
+            <motion.p
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.2 }}
@@ -149,18 +169,18 @@ export default function Home() {
             >
               Providing dignified and compassionate memorial services for your beloved companions with grace and respect
             </motion.p>
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.4 }}
               className="flex flex-col sm:flex-row justify-center gap-6"
             >
-              <button onClick={openPersonalAccountModal} 
+              <button onClick={openPersonalAccountModal}
                 className="px-8 py-4 bg-[var(--primary-green)] hover:bg-[var(--primary-green-hover)] text-white rounded-full transition-all duration-300 transform hover:-translate-y-0.5 modern-label tracking-wide text-lg shadow-xl hover:shadow-2xl"
               >
                 BEGIN YOUR JOURNEY
               </button>
-              <button onClick={openBusinessAccountModal} 
+              <button onClick={openBusinessAccountModal}
                 className="px-8 py-4 bg-white/10 backdrop-blur-md hover:bg-white/20 text-white border border-white/30 rounded-full transition-all duration-300 transform hover:-translate-y-0.5 modern-label tracking-wide text-lg shadow-xl hover:shadow-2xl"
               >
                 JOIN OUR PROVIDER NETWORK
@@ -176,7 +196,7 @@ export default function Home() {
           <div className="text-center mb-16">
             <h2 className="section-title">Memorial Services</h2>
           </div>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
               {
@@ -263,7 +283,7 @@ export default function Home() {
           ))}
         </div>
       </section>
-      
+
       {/* Our Promise Section - Add scroll margin to account for fixed header */}
       <section id="promise" className="scroll-mt-20 py-24 md:py-32 bg-white relative overflow-hidden">
         <div className="absolute inset-0 bg-[url('/pattern.png')] opacity-5"></div>
@@ -278,7 +298,7 @@ export default function Home() {
             <h2 className="text-4xl md:text-5xl font-light text-gray-800 mb-6">Our Promise to You</h2>
             <div className="w-24 h-1 bg-gradient-to-r from-[var(--primary-green)] to-[var(--primary-green-light)] mx-auto mb-16"></div>
           </motion.div>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
               {
@@ -324,7 +344,7 @@ export default function Home() {
             <h2 className="text-4xl md:text-5xl font-light text-gray-800 mb-6">Why Choose Rainbow Paws</h2>
             <div className="w-24 h-1 bg-gradient-to-r from-[var(--primary-green)] to-[var(--primary-green-light)] mx-auto mb-16"></div>
           </motion.div>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
               {
@@ -364,20 +384,20 @@ export default function Home() {
 
       {/* Modals */}
       {isLoginModalOpen && <LoginModal isOpen={isLoginModalOpen} onClose={closeAllModals} onShowSignup={openSignupOptionModal} />}
-      {isSignupOptionModalOpen && <SignupOptionModal 
-        isOpen={isSignupOptionModalOpen} 
-        onClose={closeAllModals} 
-        onSelectPersonalAccount={() => { closeAllModals(); openPersonalAccountModal(); }} 
+      {isSignupOptionModalOpen && <SignupOptionModal
+        isOpen={isSignupOptionModalOpen}
+        onClose={closeAllModals}
+        onSelectPersonalAccount={() => { closeAllModals(); openPersonalAccountModal(); }}
         onSelectBusinessAccount={() => { closeAllModals(); openBusinessAccountModal(); }}
         onShowLogin={openLoginModal}
       />}
-      {isPersonalAccountModalOpen && <PersonalAccountModal 
-        isOpen={isPersonalAccountModalOpen} 
-        onClose={closeAllModals} 
+      {isPersonalAccountModalOpen && <PersonalAccountModal
+        isOpen={isPersonalAccountModalOpen}
+        onClose={closeAllModals}
       />}
-      {isBusinessAccountModalOpen && <BusinessAccountModal 
-        isOpen={isBusinessAccountModalOpen} 
-        onClose={closeAllModals} 
+      {isBusinessAccountModalOpen && <BusinessAccountModal
+        isOpen={isBusinessAccountModalOpen}
+        onClose={closeAllModals}
       />}
     </div>
   );

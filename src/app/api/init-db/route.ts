@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
+import { ensureDatabaseInitialized } from '@/lib/ensureDb';
 
 export async function GET() {
   console.log('Database initialization API called');
@@ -12,7 +13,22 @@ export async function GET() {
   };
   
   try {
+    // Use our database initialization function
+    const initialized = await ensureDatabaseInitialized();
+    
+    if (initialized) {
+      return NextResponse.json({
+        success: true,
+        message: 'Database initialization completed successfully'
+      }, { 
+        status: 200,
+        headers
+      });
+    }
+    
+    // If the ensureDatabaseInitialized function didn't work, fall back to manual checks
     // Check if users table exists
+    console.log('Falling back to manual initialization...');
     console.log('Checking if users table exists...');
     const tablesResult = await query("SHOW TABLES LIKE 'users'") as any[];
     
@@ -83,7 +99,7 @@ export async function GET() {
     
     return NextResponse.json({
       success: true,
-      message: 'Database initialization completed successfully'
+      message: 'Database initialization completed successfully (manual method)'
     }, { 
       status: 200,
       headers
