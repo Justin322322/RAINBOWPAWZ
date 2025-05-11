@@ -19,13 +19,18 @@ interface ToastContainerProps {
 
 export default function ToastContainer({ toasts, onClose }: ToastContainerProps) {
   const [isMounted, setIsMounted] = useState(false);
+  const [portalElement, setPortalElement] = useState<HTMLElement | null>(null);
 
   useEffect(() => {
     setIsMounted(true);
+    setPortalElement(document.body);
     return () => setIsMounted(false);
   }, []);
 
-  if (!isMounted) return null;
+  // Don't render anything on the server or before mounting
+  if (!isMounted || !portalElement) {
+    return null;
+  }
 
   // Use createPortal to render toasts at the document body level
   return createPortal(
@@ -41,6 +46,6 @@ export default function ToastContainer({ toasts, onClose }: ToastContainerProps)
         </div>
       ))}
     </div>,
-    document.body
+    portalElement
   );
 }

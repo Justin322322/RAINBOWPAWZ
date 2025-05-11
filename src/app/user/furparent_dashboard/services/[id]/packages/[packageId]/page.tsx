@@ -13,6 +13,7 @@ import {
 } from '@heroicons/react/24/outline';
 import FurParentNavbar from '@/components/navigation/FurParentNavbar';
 import withOTPVerification from '@/components/withOTPVerification';
+import FurParentPageSkeleton from '@/components/ui/FurParentPageSkeleton';
 
 interface PackageDetailPageProps {
   userData?: any;
@@ -90,24 +91,33 @@ function PackageDetailPage({ userData }: PackageDetailPageProps) {
   useEffect(() => {
     // Simulate fetching provider and package data
     setLoading(true);
-    try {
-      const foundProvider = serviceProviders.find(p => p.id.toString() === providerId);
-      if (foundProvider) {
-        setProvider(foundProvider);
-        const foundPackage = foundProvider.packages.find(p => p.id.toString() === packageId);
-        if (foundPackage) {
-          setPackageData(foundPackage);
+
+    // Add a small delay to ensure the skeleton is visible
+    const fetchData = async () => {
+      try {
+        // Simulate network delay
+        await new Promise(resolve => setTimeout(resolve, 1500));
+
+        const foundProvider = serviceProviders.find(p => p.id.toString() === providerId);
+        if (foundProvider) {
+          setProvider(foundProvider);
+          const foundPackage = foundProvider.packages.find(p => p.id.toString() === packageId);
+          if (foundPackage) {
+            setPackageData(foundPackage);
+          } else {
+            setError('Package not found');
+          }
         } else {
-          setError('Package not found');
+          setError('Provider not found');
         }
-      } else {
-        setError('Provider not found');
+      } catch (err) {
+        setError('Failed to load package details');
+      } finally {
+        setLoading(false);
       }
-    } catch (err) {
-      setError('Failed to load package details');
-    } finally {
-      setLoading(false);
-    }
+    };
+
+    fetchData();
   }, [providerId, packageId]);
 
   const handleNextImage = () => {
@@ -133,9 +143,8 @@ function PackageDetailPage({ userData }: PackageDetailPageProps) {
       <FurParentNavbar activePage="services" userName={`${userData?.first_name || ''} ${userData?.last_name || ''}`} />
 
       {loading ? (
-        <div className="flex justify-center items-center py-12">
-          <div className="spinner"></div>
-          <p className="ml-4 text-gray-600">Loading package details...</p>
+        <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
+          <FurParentPageSkeleton type="package" />
         </div>
       ) : error ? (
         <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">

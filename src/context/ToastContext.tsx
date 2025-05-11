@@ -30,9 +30,11 @@ export function ToastProvider({ children }: ToastProviderProps) {
     setToasts((prev) => [...prev, { id, message, type }]);
 
     // Auto-remove toast after 4 seconds
-    setTimeout(() => {
-      hideToast(id);
-    }, 4000);
+    if (typeof window !== 'undefined') {
+      setTimeout(() => {
+        hideToast(id);
+      }, 4000);
+    }
 
     return id;
   };

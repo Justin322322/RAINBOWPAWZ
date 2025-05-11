@@ -23,9 +23,11 @@ export default function CremationDashboardLayout({
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [userData, setUserData] = useState<any>(null);
+  const [contentLoading, setContentLoading] = useState(true);
+  const [showAccessDenied, setShowAccessDenied] = useState(false);
 
+  // Authentication check effect
   useEffect(() => {
-    // Check if user is authenticated
     const checkAuth = async () => {
       try {
         const cookies = document.cookie.split(';');
@@ -34,7 +36,7 @@ export default function CremationDashboardLayout({
         if (!authCookie) {
           console.log('No auth cookie found, redirecting to home');
           router.push('/');
-          return false;
+          return;
         }
 
         // Extract user ID and account type from auth token
@@ -45,7 +47,7 @@ export default function CremationDashboardLayout({
         if (accountType !== 'business') {
           console.log('Invalid account type for cremation dashboard:', accountType);
           router.push('/');
-          return false;
+          return;
         }
 
         // Fetch user data to verify it exists in the database
@@ -54,8 +56,9 @@ export default function CremationDashboardLayout({
 
           if (!response.ok) {
             console.error('Failed to fetch user data:', await response.text());
-            router.push('/');
-            return false;
+            setShowAccessDenied(true);
+            setIsLoading(false);
+            return;
           }
 
           const userData = await response.json();
@@ -64,45 +67,52 @@ export default function CremationDashboardLayout({
           // Additional validation if needed
           if (userData.user_type !== 'business') {
             console.log('User is not a business account:', userData.user_type);
-            router.push('/');
-            return false;
+            setShowAccessDenied(true);
+            setIsLoading(false);
+            return;
           }
 
           // Check if business is verified
           if (userData.is_verified !== 1) {
             console.log('Business account is not verified:', userData.id);
             router.push('/cremation/pending-verification');
-            return false;
+            return;
           }
 
           setUserData(userData);
-          return true;
+          setIsAuthenticated(true);
+          setIsLoading(false);
         } catch (fetchError) {
           console.error('Error fetching user data:', fetchError);
-          router.push('/');
-          return false;
+          setShowAccessDenied(true);
+          setIsLoading(false);
         }
       } catch (error) {
         console.error('Authentication error:', error);
-        router.push('/');
-        return false;
-      } finally {
+        setShowAccessDenied(true);
         setIsLoading(false);
       }
     };
 
-    checkAuth().then(isAuth => {
-      setIsAuthenticated(isAuth);
-    });
+    checkAuth();
   }, [router]);
 
-  // Show loading state
+  // Content loading effect
+  useEffect(() => {
+    if (isAuthenticated && !isLoading) {
+      const timer = setTimeout(() => {
+        setContentLoading(false);
+      }, 800);
+      return () => clearTimeout(timer);
+    }
+  }, [isAuthenticated, isLoading]);
+
+  // Render based on state
   if (isLoading) {
     return <DashboardLoader message="Verifying your credentials" userName={userName} />;
   }
 
-  // Will be redirected by the useEffect if not authenticated
-  if (!isAuthenticated || !userData) {
+  if (showAccessDenied || !isAuthenticated || !userData) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
@@ -118,19 +128,6 @@ export default function CremationDashboardLayout({
       </div>
     );
   }
-
-  // State to track content loading
-  const [contentLoading, setContentLoading] = useState(true);
-
-  // Simulate content loading
-  useEffect(() => {
-    if (isAuthenticated && !isLoading) {
-      const timer = setTimeout(() => {
-        setContentLoading(false);
-      }, 800);
-      return () => clearTimeout(timer);
-    }
-  }, [isAuthenticated, isLoading]);
 
   // Render the dashboard if authenticated
   return (

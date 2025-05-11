@@ -19,6 +19,7 @@ import {
 } from '@heroicons/react/24/outline';
 import FurParentNavbar from '@/components/navigation/FurParentNavbar';
 import withOTPVerification from '@/components/withOTPVerification';
+import FurParentPageSkeleton from '@/components/ui/FurParentPageSkeleton';
 
 interface BookingData {
   id: number;
@@ -66,6 +67,9 @@ function BookingsPage({ userData }: BookingsPageProps) {
       try {
         setIsLoading(true);
         console.log('Fetching bookings...');
+
+        // Add a small delay to ensure the skeleton is visible
+        await new Promise(resolve => setTimeout(resolve, 1000));
 
         // Always fetch all bookings
         const response = await fetch('/api/bookings');
@@ -130,7 +134,10 @@ function BookingsPage({ userData }: BookingsPageProps) {
         setBookings([]);
         setAllBookings([]);
       } finally {
-        setIsLoading(false);
+        // Ensure loading state is shown for at least 1 second
+        setTimeout(() => {
+          setIsLoading(false);
+        }, 500);
       }
     }
 
@@ -387,10 +394,7 @@ function BookingsPage({ userData }: BookingsPageProps) {
         {/* Bookings List */}
         <div className="space-y-6">
           {isLoading ? (
-            <div className="flex justify-center items-center py-12">
-              <div className="spinner"></div>
-              <p className="ml-4 text-gray-600">Loading your bookings...</p>
-            </div>
+            <FurParentPageSkeleton type="bookings" />
           ) : error ? (
             <div className="bg-red-50 border border-red-200 p-4 rounded-md flex items-start">
               <XCircleIcon className="h-5 w-5 text-red-500 mr-3 mt-0.5 flex-shrink-0" />

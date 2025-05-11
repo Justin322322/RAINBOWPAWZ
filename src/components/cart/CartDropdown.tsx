@@ -29,7 +29,7 @@ const CartDropdown = ({ isOpen, onClose }: CartDropdownProps) => {
   const router = useRouter();
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
-  
+
   // Mock cart items for demonstration
   useEffect(() => {
     // In a real app, this would come from localStorage, context, or an API
@@ -53,10 +53,10 @@ const CartDropdown = ({ isOpen, onClose }: CartDropdownProps) => {
         price: 3800
       }
     ];
-    
+
     setCartItems(mockCartItems);
   }, []);
-  
+
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -64,20 +64,27 @@ const CartDropdown = ({ isOpen, onClose }: CartDropdownProps) => {
         onClose();
       }
     };
-    
+
     if (isOpen) {
       document.addEventListener('mousedown', handleClickOutside);
     }
-    
+
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [isOpen, onClose]);
-  
-  const removeItem = (itemId: number) => {
+
+  // Prevent clicks inside the dropdown from closing it
+  const handleDropdownClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+  };
+
+  const removeItem = (itemId: number, event: React.MouseEvent) => {
+    // Stop event propagation to prevent modal from closing
+    event.stopPropagation();
     setCartItems(cartItems.filter(item => item.id !== itemId));
   };
-  
+
   const proceedToCheckout = () => {
     // In a real app, you would navigate to checkout with the first item or a summary page
     if (cartItems.length > 0) {
@@ -86,21 +93,22 @@ const CartDropdown = ({ isOpen, onClose }: CartDropdownProps) => {
       onClose();
     }
   };
-  
+
   const viewCart = () => {
     router.push('/user/furparent_dashboard/bookings/cart');
     onClose();
   };
-  
+
   const calculateTotal = () => {
     return cartItems.reduce((total, item) => total + item.price, 0);
   };
-  
+
   if (!isOpen) return null;
-  
+
   return (
-    <div 
+    <div
       ref={dropdownRef}
+      onClick={handleDropdownClick}
       className="absolute right-0 top-full mt-2 w-80 bg-white rounded-lg shadow-lg z-50 overflow-hidden"
     >
       <div className="p-4 bg-[var(--primary-green)] text-white flex justify-between items-center">
@@ -108,14 +116,14 @@ const CartDropdown = ({ isOpen, onClose }: CartDropdownProps) => {
           <ShoppingCartIcon className="h-5 w-5 mr-2" />
           Your Cart ({cartItems.length})
         </h3>
-        <button 
+        <button
           onClick={onClose}
           className="text-white hover:text-gray-200"
         >
           <XMarkIcon className="h-5 w-5" />
         </button>
       </div>
-      
+
       <div className="max-h-96 overflow-y-auto">
         {cartItems.length === 0 ? (
           <div className="p-6 text-center text-gray-500">
@@ -138,8 +146,8 @@ const CartDropdown = ({ isOpen, onClose }: CartDropdownProps) => {
                   </div>
                   <div className="text-right">
                     <p className="font-medium text-[var(--primary-green)]">₱{item.price.toLocaleString()}</p>
-                    <button 
-                      onClick={() => removeItem(item.id)}
+                    <button
+                      onClick={(e) => removeItem(item.id, e)}
                       className="text-red-500 hover:text-red-700 text-xs flex items-center mt-1 ml-auto"
                     >
                       <TrashIcon className="h-3 w-3 mr-1" />
@@ -152,14 +160,14 @@ const CartDropdown = ({ isOpen, onClose }: CartDropdownProps) => {
           </ul>
         )}
       </div>
-      
+
       {cartItems.length > 0 && (
         <div className="p-4 border-t border-gray-200">
           <div className="flex justify-between mb-4">
             <span className="font-medium">Total:</span>
             <span className="font-bold text-[var(--primary-green)]">₱{calculateTotal().toLocaleString()}</span>
           </div>
-          
+
           <div className="space-y-2">
             <button
               onClick={proceedToCheckout}
@@ -167,7 +175,7 @@ const CartDropdown = ({ isOpen, onClose }: CartDropdownProps) => {
             >
               Checkout <ArrowRightIcon className="h-4 w-4 ml-2" />
             </button>
-            
+
             <button
               onClick={viewCart}
               className="w-full py-2 px-4 border border-[var(--primary-green)] text-[var(--primary-green)] rounded-md hover:bg-green-50 transition-colors"

@@ -50,23 +50,27 @@ export default function FurParentNavbar({ activePage: propActivePage, userName =
 
   // Close dropdowns when clicking elsewhere
   useEffect(() => {
+    // We're not using this global click handler anymore
+    // The CartDropdown component handles its own click outside events
+    // This was causing the cart to close when clicking inside it
+
+    // We'll keep the user dropdown functionality
     const handleClickOutside = (event: MouseEvent) => {
-      // Close dropdowns when clicking outside
-      if (isDropdownOpen || isCartOpen) {
+      // Only close the user dropdown when it's open
+      if (isDropdownOpen) {
         setIsDropdownOpen(false);
-        setIsCartOpen(false);
       }
     };
 
-    // Add event listener only when dropdowns are open
-    if (isDropdownOpen || isCartOpen) {
+    // Add event listener only when user dropdown is open
+    if (isDropdownOpen) {
       document.addEventListener('click', handleClickOutside);
     }
 
     return () => {
       document.removeEventListener('click', handleClickOutside);
     };
-  }, [isDropdownOpen, isCartOpen]);
+  }, [isDropdownOpen]);
 
   return (
     <header className="bg-[var(--primary-green)] shadow-[0_4px_10px_rgba(0,0,0,0.3)] relative z-50">
@@ -108,7 +112,10 @@ export default function FurParentNavbar({ activePage: propActivePage, userName =
           <div className="flex items-center space-x-4">
             <div className="relative">
               <button
-                onClick={() => setIsCartOpen(!isCartOpen)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsCartOpen(!isCartOpen);
+                }}
                 className="text-white hover:text-gray-200 transition-colors relative"
               >
                 <ShoppingCartIcon className="h-6 w-6" />

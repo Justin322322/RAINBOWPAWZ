@@ -24,6 +24,26 @@ const nextConfig = {
   serverExternalPackages: ['nodemailer', 'emailjs'],
   // Next.js 13+ uses a different approach for server configuration
   // The server settings should be in next.config.mjs or package.json scripts
+
+  // Disable Next.js from handling favicons in the app directory
+  images: {
+    disableStaticImages: true,
+  },
+
+  // Cache headers for logo
+  async headers() {
+    return [
+      {
+        source: '/logo.png',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          }
+        ],
+      },
+    ]
+  },
 };
 
 module.exports = nextConfig;

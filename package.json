@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "node scripts/run-start.js",
     "start:custom": "node start-app.js",
-    "lint": "next lint"
+    "lint": "next lint",
+    "cleanup": "node cleanup-production.js"
   },
   "dependencies": {
     "@headlessui/react": "^2.2.2",

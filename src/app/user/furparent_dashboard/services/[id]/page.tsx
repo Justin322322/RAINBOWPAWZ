@@ -19,6 +19,7 @@ import {
 } from '@heroicons/react/24/outline';
 import FurParentNavbar from '@/components/navigation/FurParentNavbar';
 import withOTPVerification from '@/components/withOTPVerification';
+import FurParentPageSkeleton from '@/components/ui/FurParentPageSkeleton';
 
 interface ServiceDetailPageProps {
   userData?: any;
@@ -181,19 +182,28 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
   useEffect(() => {
     // Simulate fetching provider data
     setLoading(true);
-    try {
-      const foundProvider = serviceProviders.find(p => p.id.toString() === providerId);
-      if (foundProvider) {
-        setProvider(foundProvider);
-        setPets(mockPets); // In a real app, this would be fetched from the API
-      } else {
-        setError('Provider not found');
+
+    // Add a small delay to ensure the skeleton is visible
+    const fetchData = async () => {
+      try {
+        // Simulate network delay
+        await new Promise(resolve => setTimeout(resolve, 1500));
+
+        const foundProvider = serviceProviders.find(p => p.id.toString() === providerId);
+        if (foundProvider) {
+          setProvider(foundProvider);
+          setPets(mockPets); // In a real app, this would be fetched from the API
+        } else {
+          setError('Provider not found');
+        }
+      } catch (err) {
+        setError('Failed to load provider details');
+      } finally {
+        setLoading(false);
       }
-    } catch (err) {
-      setError('Failed to load provider details');
-    } finally {
-      setLoading(false);
-    }
+    };
+
+    fetchData();
   }, [providerId]);
 
   const handleNextPackage = () => {
@@ -289,9 +299,8 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
       <FurParentNavbar activePage="services" userName={`${userData?.first_name || ''} ${userData?.last_name || ''}`} />
 
       {loading ? (
-        <div className="flex justify-center items-center py-12">
-          <div className="spinner"></div>
-          <p className="ml-4 text-gray-600">Loading provider details...</p>
+        <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
+          <FurParentPageSkeleton type="package" />
         </div>
       ) : error ? (
         <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">

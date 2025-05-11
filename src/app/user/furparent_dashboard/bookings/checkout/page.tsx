@@ -18,6 +18,7 @@ import {
 } from '@heroicons/react/24/outline';
 import FurParentNavbar from '@/components/navigation/FurParentNavbar';
 import withOTPVerification from '@/components/withOTPVerification';
+import FurParentPageSkeleton from '@/components/ui/FurParentPageSkeleton';
 
 interface CheckoutPageProps {
   userData?: any;
@@ -26,7 +27,7 @@ interface CheckoutPageProps {
 function CheckoutPage({ userData }: CheckoutPageProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [bookingData, setBookingData] = useState<any>(null);
@@ -38,7 +39,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
   const [bookingDate, setBookingDate] = useState('');
   const [bookingTime, setBookingTime] = useState('');
   const [specialRequests, setSpecialRequests] = useState('');
-  
+
   // Mock data for service providers and packages
   const serviceProviders = [
     {
@@ -47,10 +48,10 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
       city: 'Capitol Drive, Balanga City, Bataan',
       type: 'Pet Cremation Services',
       packages: [
-        { 
-          id: 1, 
-          name: 'Basic Cremation', 
-          description: 'Simple cremation service with standard urn', 
+        {
+          id: 1,
+          name: 'Basic Cremation',
+          description: 'Simple cremation service with standard urn',
           category: 'Communal',
           cremationType: 'Standard',
           processingTime: '2-3 days',
@@ -59,10 +60,10 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
           addOns: ['Personalized nameplate (+₱500)', 'Photo frame (+₱800)'],
           conditions: 'For pets up to 50 lbs. Additional fees may apply for larger pets.'
         },
-        { 
-          id: 2, 
-          name: 'Premium Cremation', 
-          description: 'Private cremation with premium urn and memorial certificate', 
+        {
+          id: 2,
+          name: 'Premium Cremation',
+          description: 'Private cremation with premium urn and memorial certificate',
           category: 'Private',
           cremationType: 'Premium',
           processingTime: '1-2 days',
@@ -74,96 +75,100 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
       ]
     }
   ];
-  
+
   // Mock data for user's pets
   const mockPets = [
     { id: 1, name: 'Max', species: 'Dog', breed: 'Golden Retriever', age: 8 },
     { id: 2, name: 'Luna', species: 'Cat', breed: 'Siamese', age: 5 }
   ];
-  
+
   useEffect(() => {
     // Get provider and package IDs from URL params
     const providerId = searchParams.get('provider');
     const packageId = searchParams.get('package');
-    
+
     if (!providerId || !packageId) {
       setError('Missing booking information. Please try again.');
       setLoading(false);
       return;
     }
-    
+
     // Simulate fetching booking data
-    try {
-      const provider = serviceProviders.find(p => p.id.toString() === providerId);
-      if (!provider) {
-        setError('Provider not found');
+    const fetchData = async () => {
+      try {
+        // Simulate network delay
+        await new Promise(resolve => setTimeout(resolve, 1500));
+
+        const provider = serviceProviders.find(p => p.id.toString() === providerId);
+        if (!provider) {
+          setError('Provider not found');
+          return;
+        }
+
+        const packageData = provider.packages.find(p => p.id.toString() === packageId);
+        if (!packageData) {
+          setError('Package not found');
+          return;
+        }
+
+        setBookingData({
+          provider,
+          package: packageData
+        });
+
+        setPets(mockPets);
+
+        // Set default date to tomorrow
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        setBookingDate(tomorrow.toISOString().split('T')[0]);
+
+        // Set default time
+        setBookingTime('10:00');
+      } catch (err) {
+        setError('Failed to load booking information');
+      } finally {
         setLoading(false);
-        return;
       }
-      
-      const packageData = provider.packages.find(p => p.id.toString() === packageId);
-      if (!packageData) {
-        setError('Package not found');
-        setLoading(false);
-        return;
-      }
-      
-      setBookingData({
-        provider,
-        package: packageData
-      });
-      
-      setPets(mockPets);
-      
-      // Set default date to tomorrow
-      const tomorrow = new Date();
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      setBookingDate(tomorrow.toISOString().split('T')[0]);
-      
-      // Set default time
-      setBookingTime('10:00');
-      
-    } catch (err) {
-      setError('Failed to load booking information');
-    } finally {
-      setLoading(false);
-    }
+    };
+
+    fetchData();
   }, [searchParams]);
-  
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!selectedPet || !bookingDate || !bookingTime) {
       setError('Please fill in all required fields');
       return;
     }
-    
+
     setIsProcessing(true);
     setError(null);
-    
+
     try {
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 2000));
-      
+
       setCheckoutComplete(true);
-      
+
       // Redirect to confirmation page after a delay
       setTimeout(() => {
         router.push('/user/furparent_dashboard/bookings');
       }, 3000);
-      
+
     } catch (err) {
       setError('Failed to process your booking. Please try again.');
     } finally {
       setIsProcessing(false);
     }
   };
-  
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Navigation */}
       <FurParentNavbar activePage="bookings" userName={`${userData?.first_name || ''} ${userData?.last_name || ''}`} />
-      
+
       <main className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
         {/* Back button */}
         <div className="mb-8">
@@ -175,14 +180,11 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
             <span>Back to Package</span>
           </button>
         </div>
-        
+
         <h1 className="text-3xl font-bold text-[var(--primary-green)] mb-8">Checkout</h1>
-        
+
         {loading ? (
-          <div className="flex justify-center items-center py-12">
-            <div className="spinner"></div>
-            <p className="ml-4 text-gray-600">Loading booking information...</p>
-          </div>
+          <FurParentPageSkeleton type="checkout" />
         ) : error ? (
           <div className="bg-red-50 border border-red-200 p-6 rounded-lg">
             <h2 className="text-xl font-semibold text-red-800 mb-2">Error</h2>
@@ -207,7 +209,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                 <div className="bg-[var(--primary-green)] p-6">
                   <h2 className="text-xl font-bold text-white">Booking Details</h2>
                 </div>
-                
+
                 <form onSubmit={handleSubmit} className="p-6">
                   <div className="space-y-6">
                     <div>
@@ -228,7 +230,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                         ))}
                       </select>
                     </div>
-                    
+
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -248,7 +250,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                           />
                         </div>
                       </div>
-                      
+
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                           Booking Time <span className="text-red-500">*</span>
@@ -267,7 +269,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                         </div>
                       </div>
                     </div>
-                    
+
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Special Requests (Optional)
@@ -280,7 +282,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                         placeholder="Any special requests or instructions..."
                       ></textarea>
                     </div>
-                    
+
                     <div>
                       <h3 className="text-lg font-medium text-gray-900 mb-3">Payment Method</h3>
                       <div className="space-y-3">
@@ -296,7 +298,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                           <CreditCardIcon className="h-6 w-6 ml-3 text-gray-600" />
                           <span className="ml-2 text-gray-700">Credit Card</span>
                         </label>
-                        
+
                         <label className="flex items-center p-4 border rounded-md cursor-pointer hover:bg-gray-50 transition-colors">
                           <input
                             type="radio"
@@ -309,7 +311,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                           <BuildingLibraryIcon className="h-6 w-6 ml-3 text-gray-600" />
                           <span className="ml-2 text-gray-700">Bank Transfer</span>
                         </label>
-                        
+
                         <label className="flex items-center p-4 border rounded-md cursor-pointer hover:bg-gray-50 transition-colors">
                           <input
                             type="radio"
@@ -325,14 +327,14 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                       </div>
                     </div>
                   </div>
-                  
+
                   {error && (
                     <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-md flex items-start">
                       <ExclamationCircleIcon className="h-5 w-5 text-red-500 mt-0.5 flex-shrink-0" />
                       <p className="ml-3 text-red-700">{error}</p>
                     </div>
                   )}
-                  
+
                   <div className="mt-8">
                     <button
                       type="submit"
@@ -355,7 +357,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                 </form>
               </motion.div>
             </div>
-            
+
             {/* Order Summary */}
             <div className="lg:col-span-1">
               <motion.div
@@ -367,13 +369,13 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                 <div className="bg-[var(--primary-green)] p-6">
                   <h2 className="text-xl font-bold text-white">Order Summary</h2>
                 </div>
-                
+
                 <div className="p-6">
                   <div className="mb-6">
                     <h3 className="font-medium text-gray-900">{bookingData.provider.name}</h3>
                     <p className="text-gray-600 text-sm">{bookingData.provider.city}</p>
                   </div>
-                  
+
                   <div className="border-t border-b border-gray-200 py-4 mb-4">
                     <div className="flex justify-between mb-2">
                       <h3 className="font-medium">{bookingData.package.name}</h3>
@@ -384,21 +386,21 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                       {bookingData.package.category} • {bookingData.package.processingTime}
                     </div>
                   </div>
-                  
+
                   <div className="space-y-3 mb-6">
                     <div className="flex justify-between">
                       <span className="text-gray-600">Package Price</span>
                       <span className="font-medium">₱{bookingData.package.price.toLocaleString()}</span>
                     </div>
-                    
+
                     {/* Add any additional fees or discounts here */}
-                    
+
                     <div className="flex justify-between pt-3 border-t border-gray-200">
                       <span className="font-medium">Total</span>
                       <span className="font-bold text-[var(--primary-green)]">₱{bookingData.package.price.toLocaleString()}</span>
                     </div>
                   </div>
-                  
+
                   <div className="bg-gray-50 p-4 rounded-md">
                     <h4 className="font-medium text-gray-900 mb-2">Booking Information</h4>
                     <p className="text-sm text-gray-600">
@@ -410,7 +412,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
             </div>
           </div>
         ) : null}
-        
+
         {/* Checkout Success Message */}
         {checkoutComplete && (
           <motion.div

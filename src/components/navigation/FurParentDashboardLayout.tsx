@@ -20,19 +20,39 @@ function FurParentDashboardLayout({
   userData
 }: FurParentDashboardLayoutProps) {
   // Use user name from userData if available
-  const displayName = userData?.first_name 
-    ? `${userData.first_name} ${userData.last_name || ''}` 
+  const displayName = userData?.first_name
+    ? `${userData.first_name} ${userData.last_name || ''}`
     : userName;
-  
+
   // State to track content loading
   const [contentLoading, setContentLoading] = useState(true);
-  
-  // Simulate content loading for a smoother experience
+  const [initialLoad, setInitialLoad] = useState(true);
+
+  // Simulate content loading for a smoother experience on initial load
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setContentLoading(false);
-    }, 800);
-    return () => clearTimeout(timer);
+    if (initialLoad) {
+      const timer = setTimeout(() => {
+        setContentLoading(false);
+        setInitialLoad(false);
+      }, 800);
+      return () => clearTimeout(timer);
+    }
+  }, [initialLoad]);
+
+  // Reset loading state when route changes
+  useEffect(() => {
+    const handleRouteChange = () => {
+      setContentLoading(true);
+      const timer = setTimeout(() => {
+        setContentLoading(false);
+      }, 800);
+      return () => clearTimeout(timer);
+    };
+
+    window.addEventListener('popstate', handleRouteChange);
+    return () => {
+      window.removeEventListener('popstate', handleRouteChange);
+    };
   }, []);
 
   // Render the fur parent dashboard
@@ -40,7 +60,7 @@ function FurParentDashboardLayout({
     <div className="min-h-screen bg-white">
       {/* Navigation */}
       <FurParentNavbar activePage={activePage} userName={displayName} />
-      
+
       {/* Main Content */}
       <main>
         <AnimatePresence mode="wait">

@@ -12,6 +12,7 @@ import {
 import FurParentNavbar from '@/components/navigation/FurParentNavbar';
 import dynamic from 'next/dynamic';
 import withOTPVerification from '@/components/withOTPVerification';
+import FurParentPageSkeleton from '@/components/ui/FurParentPageSkeleton';
 
 // Import the map component with dynamic loading and loading indicator
 const MapComponent = dynamic(
@@ -207,10 +208,7 @@ function ServicesPage({ userData }: ServicesPageProps) {
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center bg-gray-100 rounded-lg">
-                      <div className="flex flex-col items-center">
-                        <div className="spinner"></div>
-                        <p className="mt-4 text-gray-600 modern-text">Preparing map...</p>
-                      </div>
+                      <FurParentPageSkeleton type="services" />
                     </div>
                   )}
                 </div>

@@ -109,7 +109,7 @@ const createTransporter = () => {
 /**
  * Send an email directly
  */
-export async function sendEmail(emailData: EmailData): Promise<{ success: boolean; messageId?: string; error?: string }> {
+export async function sendEmail(emailData: EmailData): Promise<{ success: boolean; messageId?: string; error?: string; code?: string | number }> {
   try {
     // Extract important information for logging
     const extractImportantInfo = () => {

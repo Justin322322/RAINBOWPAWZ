@@ -31,10 +31,16 @@ export async function GET(request: NextRequest) {
         const user = userResult[0];
 
         // Set defaults for missing fields
-        if (!user.user_type) user.user_type = 'fur_parent';
         if (user.is_otp_verified === undefined || user.is_otp_verified === null) user.is_otp_verified = 1;
         if (!user.first_name) user.first_name = 'User';
         if (!user.last_name) user.last_name = userId;
+
+        // Set user_type based on role for backward compatibility
+        if (user.role === 'fur_parent') {
+          user.user_type = 'user';
+        } else {
+          user.user_type = user.role; // 'admin' or 'business'
+        }
 
         // For business accounts, fetch additional business details including verification status
         if (user.role === 'business') {
@@ -54,6 +60,8 @@ export async function GET(request: NextRequest) {
               user.business_type = business.business_type;
               user.business_id = business.id;
               user.verification_status = business.verification_status;
+              // Ensure user_type is set to 'business' for backward compatibility
+              user.user_type = 'business';
             }
           } catch (businessError) {
             console.error('Error fetching business details:', businessError);
@@ -146,7 +154,8 @@ export async function GET(request: NextRequest) {
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
       is_otp_verified: 1,
-      user_type: 'fur_parent',
+      role: 'fur_parent',
+      user_type: 'user', // Set to 'user' for backward compatibility
       status: 1,
       is_verified: 1
     };
