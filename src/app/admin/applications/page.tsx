@@ -1,10 +1,13 @@
-'use client'; // Mark the whole page as a client component
+import AdminApplicationsClient from './client';
 
-import AdminApplicationsPageClient from '@/components/admin/AdminApplicationsPage';
-import withAdminAuth from '@/components/withAdminAuth';
+export default function AdminApplicationsPage() {
+  return <AdminApplicationsClient />;
+}
 
-// AdminApplicationsPageClient already expects `adminData` prop.
-// withAdminAuth provides `adminData` to the component it wraps.
-const ProtectedAdminApplicationsPage = withAdminAuth(AdminApplicationsPageClient);
+export const generateMetadata = async () => {
+  return {
+    title: 'Application Management',
+  };
+};
 
-export default ProtectedAdminApplicationsPage;
+export const dynamic = 'force-dynamic';

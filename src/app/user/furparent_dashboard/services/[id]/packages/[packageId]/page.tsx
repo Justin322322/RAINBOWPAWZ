@@ -39,7 +39,7 @@ function PackageDetailPage({ userData }: PackageDetailPageProps) {
       city: 'Capitol Drive, Balanga City, Bataan',
       distance: '0.5 km away',
       type: 'Pet Cremation Services',
-      address: 'Capitol Drive, Balanga City, Bataan, Philippines',
+      address: 'Capitol Drive, Balanga City, 2100 Bataan, Philippines',
       phone: '(123) 456-7890',
       email: 'info@rainbowbridge.com',
       description: 'Compassionate pet cremation services with personalized memorials. We provide dignified and respectful end-of-life care for your beloved companions. Our team understands the deep bond between pets and their families, and we strive to honor that connection through our thoughtful services.',

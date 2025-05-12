@@ -12,6 +12,7 @@ import {
 import { clearAuthToken } from '@/utils/auth';
 import LogoutModal from '@/components/LogoutModal';
 import CartDropdown from '@/components/cart/CartDropdown';
+import NotificationBell from '@/components/ui/NotificationBell';
 
 interface FurParentNavbarProps {
   activePage?: string;
@@ -110,6 +111,7 @@ export default function FurParentNavbar({ activePage: propActivePage, userName =
             </Link>
           </div>
           <div className="flex items-center space-x-4">
+            <NotificationBell />
             <div className="relative">
               <button
                 onClick={(e) => {

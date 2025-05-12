@@ -23,7 +23,7 @@ function ProfilePage({ userData }: ProfilePageProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  
+
   // Form state
   const [formData, setFormData] = useState({
     firstName: '',
@@ -33,10 +33,10 @@ function ProfilePage({ userData }: ProfilePageProps) {
     address: '',
     sex: ''
   });
-  
+
   // Pets state
   const [pets, setPets] = useState<any[]>([]);
-  
+
   useEffect(() => {
     if (userData) {
       setFormData({
@@ -47,7 +47,7 @@ function ProfilePage({ userData }: ProfilePageProps) {
         address: userData.address || '',
         sex: userData.sex || ''
       });
-      
+
       // In a real app, we would fetch pets from an API
       // For now, we'll use mock data
       setPets([
@@ -56,7 +56,7 @@ function ProfilePage({ userData }: ProfilePageProps) {
       ]);
     }
   }, [userData]);
-  
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({
@@ -64,32 +64,61 @@ function ProfilePage({ userData }: ProfilePageProps) {
       [name]: value
     }));
   };
-  
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError(null);
     setSuccess(null);
-    
+
     try {
-      // In a real app, we would send the updated profile data to an API
-      // For now, we'll just simulate a successful update
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
+      // Send the updated profile data to the API
+      const response = await fetch(`/api/users/${userData.id}/update`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          phoneNumber: formData.phoneNumber,
+          address: formData.address,
+          sex: formData.sex
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update profile');
+      }
+
+      const data = await response.json();
+
+      // Update session storage with the updated user data
+      if (data.user) {
+        sessionStorage.setItem('user_data', JSON.stringify(data.user));
+      }
+
       setSuccess('Profile updated successfully');
       setIsEditing(false);
+
+      // Reload the page to reflect the updated profile data
+      // This is a simple way to ensure all components using userData are updated
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
     } catch (err) {
-      setError('Failed to update profile. Please try again.');
+      setError(err instanceof Error ? err.message : 'Failed to update profile. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
-  
+
   return (
     <div className="min-h-screen bg-white">
       {/* Navigation */}
       <FurParentNavbar activePage="profile" userName={`${userData?.first_name || ''} ${userData?.last_name || ''}`} />
-      
+
       {/* Main Content */}
       <main className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
         <motion.div
@@ -112,13 +141,13 @@ function ProfilePage({ userData }: ProfilePageProps) {
               </button>
             )}
           </div>
-          
+
           {/* Profile Information */}
           <div className="bg-white rounded-lg shadow-md overflow-hidden mb-8">
             <div className="bg-[var(--primary-green)] p-6">
               <h2 className="text-xl font-semibold text-white">Personal Information</h2>
             </div>
-            
+
             <div className="p-6">
               {success && (
                 <div className="mb-6 bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded flex items-center">
@@ -126,14 +155,14 @@ function ProfilePage({ userData }: ProfilePageProps) {
                   {success}
                 </div>
               )}
-              
+
               {error && (
                 <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded flex items-center">
                   <XMarkIcon className="h-5 w-5 mr-2 text-red-500" />
                   {error}
                 </div>
               )}
-              
+
               {isEditing ? (
                 <form onSubmit={handleSubmit}>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -151,7 +180,7 @@ function ProfilePage({ userData }: ProfilePageProps) {
                         required
                       />
                     </div>
-                    
+
                     <div>
                       <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-1">
                         Last Name
@@ -166,7 +195,7 @@ function ProfilePage({ userData }: ProfilePageProps) {
                         required
                       />
                     </div>
-                    
+
                     <div>
                       <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
                         Email Address
@@ -182,7 +211,7 @@ function ProfilePage({ userData }: ProfilePageProps) {
                       />
                       <p className="mt-1 text-xs text-gray-500">Email cannot be changed</p>
                     </div>
-                    
+
                     <div>
                       <label htmlFor="phoneNumber" className="block text-sm font-medium text-gray-700 mb-1">
                         Phone Number
@@ -196,7 +225,7 @@ function ProfilePage({ userData }: ProfilePageProps) {
                         className="w-full p-2 border border-gray-300 rounded-md focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
                       />
                     </div>
-                    
+
                     <div className="md:col-span-2">
                       <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-1">
                         Address
@@ -210,7 +239,7 @@ function ProfilePage({ userData }: ProfilePageProps) {
                         className="w-full p-2 border border-gray-300 rounded-md focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
                       />
                     </div>
-                    
+
                     <div>
                       <label htmlFor="sex" className="block text-sm font-medium text-gray-700 mb-1">
                         Gender
@@ -230,7 +259,7 @@ function ProfilePage({ userData }: ProfilePageProps) {
                       </select>
                     </div>
                   </div>
-                  
+
                   <div className="mt-6 flex justify-end space-x-3">
                     <button
                       type="button"
@@ -267,7 +296,7 @@ function ProfilePage({ userData }: ProfilePageProps) {
                       <p className="text-base text-gray-900">{formData.firstName} {formData.lastName}</p>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-start">
                     <EnvelopeIcon className="h-5 w-5 text-[var(--primary-green)] mt-0.5 flex-shrink-0" />
                     <div className="ml-3">
@@ -275,7 +304,7 @@ function ProfilePage({ userData }: ProfilePageProps) {
                       <p className="text-base text-gray-900">{formData.email}</p>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-start">
                     <PhoneIcon className="h-5 w-5 text-[var(--primary-green)] mt-0.5 flex-shrink-0" />
                     <div className="ml-3">
@@ -283,7 +312,7 @@ function ProfilePage({ userData }: ProfilePageProps) {
                       <p className="text-base text-gray-900">{formData.phoneNumber || 'Not provided'}</p>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-start">
                     <UserIcon className="h-5 w-5 text-[var(--primary-green)] mt-0.5 flex-shrink-0" />
                     <div className="ml-3">
@@ -291,7 +320,7 @@ function ProfilePage({ userData }: ProfilePageProps) {
                       <p className="text-base text-gray-900 capitalize">{formData.sex || 'Not provided'}</p>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-start md:col-span-2">
                     <MapPinIcon className="h-5 w-5 text-[var(--primary-green)] mt-0.5 flex-shrink-0" />
                     <div className="ml-3">
@@ -303,13 +332,13 @@ function ProfilePage({ userData }: ProfilePageProps) {
               )}
             </div>
           </div>
-          
+
           {/* Pets Section */}
           <div className="bg-white rounded-lg shadow-md overflow-hidden">
             <div className="bg-[var(--primary-green)] p-6">
               <h2 className="text-xl font-semibold text-white">My Pets</h2>
             </div>
-            
+
             <div className="p-6">
               {pets.length === 0 ? (
                 <div className="text-center py-8">
@@ -334,7 +363,7 @@ function ProfilePage({ userData }: ProfilePageProps) {
                       </div>
                     </div>
                   ))}
-                  
+
                   <div className="border border-dashed border-gray-300 rounded-lg p-4 flex items-center justify-center hover:border-[var(--primary-green)] transition-colors cursor-pointer">
                     <div className="text-center">
                       <UserIcon className="h-8 w-8 mx-auto text-gray-400" />

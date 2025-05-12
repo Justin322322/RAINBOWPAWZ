@@ -7,12 +7,14 @@ import {
   ChevronRightIcon,
   MapPinIcon,
   HomeIcon,
-  CalendarIcon
+  CalendarIcon,
+  ArrowPathIcon
 } from '@heroicons/react/24/outline';
 import FurParentNavbar from '@/components/navigation/FurParentNavbar';
 import dynamic from 'next/dynamic';
 import withOTPVerification from '@/components/withOTPVerification';
 import FurParentPageSkeleton from '@/components/ui/FurParentPageSkeleton';
+import { getUserLocation, LocationData } from '@/utils/geolocation';
 
 // Import the map component with dynamic loading and loading indicator
 const MapComponent = dynamic(
@@ -36,7 +38,12 @@ interface ServicesPageProps {
 
 function ServicesPage({ userData }: ServicesPageProps) {
   const [currentPage, setCurrentPage] = useState(1);
-  const defaultAddress = 'Balanga City, Bataan';
+  const defaultAddress = 'Balanga City, 2100 Bataan, Philippines';
+  const [userLocation, setUserLocation] = useState<LocationData>({
+    address: defaultAddress,
+    source: 'default'
+  });
+  const [isLoadingLocation, setIsLoadingLocation] = useState(true);
   const [isMapVisible, setIsMapVisible] = useState(false);
   const [isMapLoaded, setIsMapLoaded] = useState(false);
   const [selectedProviderId, setSelectedProviderId] = useState<number | null>(null);
@@ -44,15 +51,55 @@ function ServicesPage({ userData }: ServicesPageProps) {
   // Ref to hold map section element to scroll to when showing directions
   const mapSectionRef = useRef<HTMLDivElement>(null);
 
-  // Load map after component mounts for better performance
+  // Get user location from profile when component mounts
   useEffect(() => {
-    // Short delay to ensure component is fully mounted
-    const timer = setTimeout(() => {
-      setIsMapVisible(true);
-    }, 100);
+    const getLocation = async () => {
+      setIsLoadingLocation(true);
+      try {
+        // Only use profile address or default
+        let location;
 
-    return () => clearTimeout(timer);
-  }, []);
+        if (userData?.address && userData.address.trim() !== '') {
+          location = {
+            address: userData.address,
+            source: 'profile'
+          };
+          console.log('Using address from user profile:', userData.address);
+        } else {
+          location = {
+            address: defaultAddress,
+            source: 'default'
+          };
+          console.log('No address in user profile, using default:', defaultAddress);
+        }
+
+        setUserLocation(location);
+      } catch (error) {
+        console.error('Error setting user location:', error);
+        // Fall back to default address
+        setUserLocation({
+          address: defaultAddress,
+          source: 'default'
+        });
+      } finally {
+        setIsLoadingLocation(false);
+      }
+    };
+
+    getLocation();
+  }, [userData, defaultAddress]);
+
+  // Load map after component mounts and location is determined
+  useEffect(() => {
+    if (!isLoadingLocation) {
+      // Short delay to ensure component is fully mounted
+      const timer = setTimeout(() => {
+        setIsMapVisible(true);
+      }, 100);
+
+      return () => clearTimeout(timer);
+    }
+  }, [isLoadingLocation]);
 
   // Scroll to map when showing directions
   useEffect(() => {
@@ -65,81 +112,50 @@ function ServicesPage({ userData }: ServicesPageProps) {
     }
   }, [selectedProviderId]);
 
-  // Mock data for service providers using descriptive addresses instead of coordinates
-  const serviceProviders = [
-    {
-      id: 1,
-      name: "Rainbow Bridge Pet Cremation",
-      city: 'Capitol Drive, Balanga City, Bataan',
-      distance: '0.5 km away',
-      type: 'Pet Cremation Services',
-      packages: 5,
-      address: 'Capitol Drive, Balanga City, Bataan, Philippines',
-      phone: '(123) 456-7890',
-      email: 'info@rainbowbridge.com',
-      description: 'Compassionate pet cremation services with personalized memorials.'
-    },
-    {
-      id: 2,
-      name: 'Peaceful Paws Memorial',
-      city: 'Tuyo, Balanga City, Bataan',
-      distance: '2.2 km away',
-      type: 'Pet Cremation Services',
-      packages: 7,
-      address: 'Tuyo, Balanga City, Bataan, Philippines',
-      phone: '(234) 567-8901',
-      email: 'care@peacefulpaws.com',
-      description: 'Dignified pet cremation with eco-friendly options.'
-    },
-    {
-      id: 3,
-      name: 'Eternal Companions',
-      city: 'Tenejero, Balanga City, Bataan',
-      distance: '1.8 km away',
-      type: 'Pet Cremation Services',
-      packages: 1,
-      address: 'Tenejero, Balanga City, Bataan, Philippines',
-      phone: '(345) 678-9012',
-      email: 'service@eternalcompanions.com',
-      description: 'Honoring your pet with respectful cremation services.'
-    },
-    {
-      id: 4,
-      name: 'Pet Care Center',
-      city: 'Orion, Bataan',
-      distance: '8.5 km away',
-      type: 'Pet Cremation Services',
-      packages: 3,
-      address: 'Orion, Bataan, Philippines',
-      phone: '(456) 789-0123',
-      email: 'info@petcarecenter.com',
-      description: 'Professional pet cremation with personalized service.'
-    },
-    {
-      id: 5,
-      name: 'Rainbow Pet Memorial',
-      city: 'Mariveles, Bataan',
-      distance: '25.8 km away',
-      type: 'Pet Cremation Services',
-      packages: 4,
-      address: 'Mariveles, Bataan, Philippines',
-      phone: '(567) 890-1234',
-      email: 'contact@rainbowpetmemorial.com',
-      description: 'Providing dignified pet cremation services with care.'
-    },
-    {
-      id: 6,
-      name: 'Paws & Hearts',
-      city: 'Dinalupihan, Bataan',
-      distance: '17.3 km away',
-      type: 'Pet Cremation Services',
-      packages: 2,
-      address: 'Dinalupihan, Bataan, Philippines',
-      phone: '(678) 901-2345',
-      email: 'hello@pawsandhearts.com',
-      description: 'Caring pet cremation services with a personal touch.'
-    },
-  ];
+  // State for service providers
+  const [serviceProviders, setServiceProviders] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Function to extract distance value from string (e.g., "2.2 km away" -> 2.2)
+  const extractDistanceValue = (distanceStr: string): number => {
+    const match = distanceStr.match(/^(\d+(\.\d+)?)/);
+    return match ? parseFloat(match[1]) : Infinity;
+  };
+
+  // Fetch service providers from API
+  useEffect(() => {
+    const fetchServiceProviders = async () => {
+      try {
+        setIsLoading(true);
+        const response = await fetch('/api/service-providers');
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch service providers');
+        }
+
+        const data = await response.json();
+
+        // Sort providers by distance (nearest to farthest)
+        const sortedProviders = [...data.providers].sort((a, b) => {
+          const distanceA = extractDistanceValue(a.distance);
+          const distanceB = extractDistanceValue(b.distance);
+          return distanceA - distanceB;
+        });
+
+        setServiceProviders(sortedProviders);
+        // Reset to first page when providers change
+        setCurrentPage(1);
+      } catch (error) {
+        console.error('Error fetching service providers:', error);
+        // Fallback to empty array if fetch fails
+        setServiceProviders([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchServiceProviders();
+  }, []);
 
   // Pagination
   const providersPerPage = 3;
@@ -157,6 +173,8 @@ function ServicesPage({ userData }: ServicesPageProps) {
   const handleGetDirections = (providerId: number) => {
     setSelectedProviderId(providerId);
   };
+
+  // No longer needed since we're only using profile data
 
   return (
     <div className="min-h-screen bg-white">
@@ -187,18 +205,24 @@ function ServicesPage({ userData }: ServicesPageProps) {
               </h2>
 
               <div className="flex flex-col gap-4 items-center justify-center">
-                <div className="flex items-center gap-2 mb-2">
+                <div className="flex items-center justify-center w-full mb-2">
                   <span className="modern-text text-sm text-gray-600 flex items-center">
                     <HomeIcon className="h-4 w-4 mr-1 text-[var(--primary-green)]" />
-                    Your location: {defaultAddress}
+                    Your location: {userLocation.address}
+                    {userLocation.source === 'default' && (
+                      <span className="ml-2 text-xs px-2 py-0.5 bg-yellow-100 text-yellow-800 rounded-full">
+                        Default location (update your profile to change)
+                      </span>
+                    )}
                   </span>
                 </div>
 
                 {/* Map Container with conditional rendering */}
                 <div className="w-full h-[500px] rounded-lg overflow-hidden shadow-inner relative">
-                  {isMapVisible ? (
+                  {isMapVisible && !isLoading && serviceProviders.length > 0 ? (
                     <MapComponent
-                      userAddress={defaultAddress}
+                      userAddress={userLocation.address}
+                      userCoordinates={userLocation.coordinates}
                       serviceProviders={serviceProviders.map(provider => ({
                         id: provider.id,
                         name: provider.name,
@@ -208,12 +232,29 @@ function ServicesPage({ userData }: ServicesPageProps) {
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center bg-gray-100 rounded-lg">
-                      <FurParentPageSkeleton type="services" />
+                      {isLoading ? (
+                        <div className="flex flex-col items-center">
+                          <ArrowPathIcon className="h-10 w-10 text-[var(--primary-green)] animate-spin" />
+                          <p className="mt-4 text-gray-600">Loading map...</p>
+                        </div>
+                      ) : serviceProviders.length === 0 ? (
+                        <div className="text-center p-8">
+                          <MapPinIcon className="h-12 w-12 mx-auto text-gray-300 mb-4" />
+                          <p className="text-gray-600">No service providers found to display on map</p>
+                        </div>
+                      ) : (
+                        <FurParentPageSkeleton type="services" />
+                      )}
                     </div>
                   )}
                 </div>
                 <p className="modern-caption mt-2 text-center">
-                  Showing cremation services near your location in Balanga City, Bataan.
+                  Showing cremation services near your location in {userLocation.address}.
+                  {userLocation.source === 'default' && (
+                    <span className="block text-xs text-gray-500 mt-1">
+                      To use your actual location, please update your address in your profile.
+                    </span>
+                  )}
                 </p>
               </div>
             </div>
@@ -222,83 +263,105 @@ function ServicesPage({ userData }: ServicesPageProps) {
 
         {/* Service Providers Grid */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {currentProviders.map(provider => (
-              <div
-                key={provider.id}
-                className="rounded-lg overflow-hidden border border-gray-200 flex flex-col hover:shadow-lg transition-shadow duration-300"
-              >
-                <div className="bg-[var(--primary-green)] text-white p-4 text-center">
-                  <h3 className="font-medium text-lg text-white">{provider.type}</h3>
-                </div>
-                <div className="p-6 flex flex-col flex-grow">
-                  <h3 className="modern-heading text-xl mb-2">{provider.name}</h3>
-                  <p className="modern-text text-sm text-gray-600 mb-2">{provider.city}</p>
-                  <p className="modern-label text-green-600 mb-4">{provider.distance}</p>
-                  <p className="modern-text text-sm text-gray-600 mb-6">{provider.packages} Packages Available</p>
-
-                  <div className="mt-auto flex flex-col space-y-3">
-                    <div className="flex justify-between">
-                      <Link
-                        href={`/user/furparent_dashboard/services/${provider.id}`}
-                        className="bg-[var(--primary-green)] text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-[var(--primary-green-hover)] transition-colors duration-300 flex items-center"
-                      >
-                        View Services
-                      </Link>
-                      <button
-                        className="bg-gray-500 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-600 transition-colors duration-300"
-                        onClick={() => handleGetDirections(provider.id)}
-                      >
-                        Get Directions
-                      </button>
-                    </div>
-                    <Link
-                      href={`/user/furparent_dashboard/services/${provider.id}`}
-                      className="bg-[var(--primary-green-hover)] text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-[var(--primary-green)] transition-colors duration-300 flex items-center justify-center"
-                    >
-                      <CalendarIcon className="h-4 w-4 mr-2" />
-                      Book Now
-                    </Link>
-                  </div>
-                </div>
+          {isLoading ? (
+            <div className="flex justify-center items-center py-12">
+              <div className="flex flex-col items-center">
+                <ArrowPathIcon className="h-10 w-10 text-[var(--primary-green)] animate-spin" />
+                <p className="mt-4 text-gray-600">Loading service providers...</p>
               </div>
-            ))}
-          </div>
+            </div>
+          ) : serviceProviders.length === 0 ? (
+            <div className="bg-white rounded-lg shadow-md p-8 text-center">
+              <MapPinIcon className="h-16 w-16 mx-auto text-gray-300 mb-4" />
+              <h2 className="text-2xl font-semibold text-gray-700 mb-2">No service providers found</h2>
+              <p className="text-gray-500 mb-6">We couldn't find any pet cremation services in your area.</p>
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {currentProviders.map(provider => (
+                  <div
+                    key={provider.id}
+                    className="rounded-lg overflow-hidden border border-gray-200 flex flex-col hover:shadow-lg transition-shadow duration-300"
+                  >
+                    <div className="bg-[var(--primary-green)] text-white p-4 text-center">
+                      <h3 className="font-medium text-lg text-white">{provider.type}</h3>
+                    </div>
+                    <div className="p-6 flex flex-col flex-grow">
+                      <h3 className="modern-heading text-xl mb-2">{provider.name}</h3>
+                      <p className="modern-text text-sm text-gray-600 mb-2 flex items-start">
+                        <MapPinIcon className="h-4 w-4 text-[var(--primary-green)] mr-1 flex-shrink-0 mt-0.5" />
+                        <span>{provider.address?.replace(', Philippines', '')}</span>
+                      </p>
+                      <p className="modern-label text-green-600 mb-4">{provider.distance}</p>
+                      <p className="modern-text text-sm text-gray-600 mb-6">{provider.packages} Packages Available</p>
 
-          {/* Pagination */}
-          <div className="flex justify-center mt-8">
-            <nav className="flex items-center space-x-2">
-              <button
-                onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
-                disabled={currentPage === 1}
-                className="p-2 rounded-md bg-[var(--primary-green)] text-white disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <ChevronLeftIcon className="h-5 w-5" />
-              </button>
+                      <div className="mt-auto flex flex-col space-y-3">
+                        <div className="flex justify-between">
+                          <Link
+                            href={`/user/furparent_dashboard/services/${provider.id}`}
+                            className="bg-[var(--primary-green)] text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-[var(--primary-green-hover)] transition-colors duration-300 flex items-center"
+                          >
+                            View Services
+                          </Link>
+                          <button
+                            className="bg-gray-500 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-600 transition-colors duration-300"
+                            onClick={() => handleGetDirections(provider.id)}
+                          >
+                            Get Directions
+                          </button>
+                        </div>
+                        <Link
+                          href={`/user/furparent_dashboard/services/${provider.id}`}
+                          className="bg-[var(--primary-green-hover)] text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-[var(--primary-green)] transition-colors duration-300 flex items-center justify-center"
+                        >
+                          <CalendarIcon className="h-4 w-4 mr-2" />
+                          Book Now
+                        </Link>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
 
-              {Array.from({ length: totalPages }).map((_, index) => (
-                <button
-                  key={index}
-                  onClick={() => handlePageChange(index + 1)}
-                  className={`w-8 h-8 flex items-center justify-center rounded-md font-medium ${
-                    currentPage === index + 1
-                      ? 'bg-[var(--primary-green)] text-white'
-                      : 'border border-[var(--primary-green)] text-[var(--primary-green)]'
-                  }`}
-                >
-                  {index + 1}
-                </button>
-              ))}
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="flex justify-center mt-8">
+                  <nav className="flex items-center space-x-2">
+                    <button
+                      onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
+                      disabled={currentPage === 1}
+                      className="p-2 rounded-md bg-[var(--primary-green)] text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <ChevronLeftIcon className="h-5 w-5" />
+                    </button>
 
-              <button
-                onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
-                disabled={currentPage === totalPages}
-                className="p-2 rounded-md bg-[var(--primary-green)] text-white disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <ChevronRightIcon className="h-5 w-5" />
-              </button>
-            </nav>
-          </div>
+                    {Array.from({ length: totalPages }).map((_, index) => (
+                      <button
+                        key={index}
+                        onClick={() => handlePageChange(index + 1)}
+                        className={`w-8 h-8 flex items-center justify-center rounded-md font-medium ${
+                          currentPage === index + 1
+                            ? 'bg-[var(--primary-green)] text-white'
+                            : 'border border-[var(--primary-green)] text-[var(--primary-green)]'
+                        }`}
+                      >
+                        {index + 1}
+                      </button>
+                    ))}
+
+                    <button
+                      onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
+                      disabled={currentPage === totalPages}
+                      className="p-2 rounded-md bg-[var(--primary-green)] text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <ChevronRightIcon className="h-5 w-5" />
+                    </button>
+                  </nav>
+                </div>
+              )}
+            </>
+          )}
         </div>
       </main>
     </div>

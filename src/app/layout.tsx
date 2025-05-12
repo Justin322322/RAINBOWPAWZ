@@ -3,6 +3,7 @@ import { Inter, Crimson_Text } from "next/font/google";
 import "./globals.css";
 import ClientToastProvider from "@/components/providers/ClientToastProvider";
 import ToastWrapper from "@/components/providers/ToastWrapper";
+import NotificationProvider from "@/components/providers/NotificationProvider";
 
 const inter = Inter({ subsets: ["latin"] });
 const crimsonText = Crimson_Text({
@@ -37,7 +38,9 @@ export default function RootLayout({
       </head>
       <body>
         <ClientToastProvider>
-          {children}
+          <NotificationProvider>
+            {children}
+          </NotificationProvider>
         </ClientToastProvider>
         <ToastWrapper />
       </body>

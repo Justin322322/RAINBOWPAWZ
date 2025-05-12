@@ -73,5 +73,8 @@ function AdminDashboardLayout({
   );
 }
 
-// Export the component wrapped with admin authentication
+// Export the unwrapped component for use in components that are already wrapped with withAdminAuth
+export { AdminDashboardLayout };
+
+// Export the component wrapped with admin authentication as the default export
 export default withAdminAuth(AdminDashboardLayout);

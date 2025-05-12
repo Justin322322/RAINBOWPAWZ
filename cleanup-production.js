@@ -27,17 +27,30 @@ const filesToRemove = [
   'fix-email-service.js',
   'fix-db-port.js',
   'setup-env.js',
+  // Test API routes
+  'src/app/api/test/add-test-users/route.ts',
+  'src/app/api/test/admin-login/route.ts',
+  'src/app/api/test/check-api/route.ts',
+  'src/app/api/test/check-implementation/route.ts',
+  'src/app/api/test/generate-notifications/route.ts',
+  'src/app/api/test/reset-test-passwords/route.ts',
+  'src/app/api/test/user-management/route.ts',
+  // Test pages
+  'src/app/test-page/page.tsx',
+  'src/app/test-video/page.tsx',
+  // Test components
+  'src/components/ui/TestNotificationsButton.tsx',
   // Build artifacts
   'tsconfig.tsbuildinfo'
 ];
 
 // Documentation files to be removed
 const documentationFiles = [
-  'EMAIL-SETUP.md', 
-  'LEAFLET_INSTALLATION.md', 
-  'PORT_CONFIGURATION.md', 
-  'REGISTRATION_FIX_SUMMARY.md', 
-  'REGISTRATION_SETUP.md', 
+  'EMAIL-SETUP.md',
+  'LEAFLET_INSTALLATION.md',
+  'PORT_CONFIGURATION.md',
+  'REGISTRATION_FIX_SUMMARY.md',
+  'REGISTRATION_SETUP.md',
   'SIMPLE-EMAIL-SERVICE.md'
 ];
 
@@ -96,7 +109,7 @@ for (const dir of dirsToRemove) {
 try {
   console.log('\n📦 Cleaning node_modules and reinstalling production dependencies...');
   console.log('   This may take a few minutes...');
-  
+
   // Remove node_modules
   if (fs.existsSync('node_modules')) {
     console.log('   - Removing node_modules...');
@@ -133,4 +146,4 @@ function removeDirRecursive(dirPath) {
     });
     fs.rmdirSync(dirPath);
   }
-} 
+}

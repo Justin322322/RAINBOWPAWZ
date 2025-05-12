@@ -6,11 +6,11 @@ import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   UserIcon,
-  ChevronDownIcon,
-  BellIcon
+  ChevronDownIcon
 } from '@heroicons/react/24/outline';
 import { clearAuthToken } from '@/utils/auth';
 import LogoutModal from '@/components/LogoutModal';
+import NotificationBell from '@/components/ui/NotificationBell';
 
 interface CremationNavbarProps {
   activePage?: string;
@@ -21,7 +21,7 @@ export default function CremationNavbar({ activePage: propActivePage, userName =
   const pathname = usePathname();
   const router = useRouter();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  // Removed isNotificationOpen state as we're using the NotificationBell component
   const [activePage, setActivePage] = useState('');
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 
@@ -53,41 +53,7 @@ export default function CremationNavbar({ activePage: propActivePage, userName =
       <div className="w-full px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-end h-16">
           <div className="flex items-center space-x-4">
-            <div className="relative">
-              <button
-                onClick={() => setIsNotificationOpen(!isNotificationOpen)}
-                className="text-white hover:bg-white/20 transition-colors p-2 rounded-full"
-              >
-                <BellIcon className="h-6 w-6" />
-              </button>
-
-              {isNotificationOpen && (
-                <div className="absolute right-0 mt-2 w-80 bg-white rounded-md shadow-lg py-1 z-10">
-                  <div className="px-4 py-2 border-b border-gray-100">
-                    <p className="text-sm font-medium text-gray-700">Notifications</p>
-                  </div>
-                  <div className="max-h-60 overflow-y-auto">
-                    <div className="px-4 py-2 hover:bg-gray-50">
-                      <p className="text-sm font-medium text-gray-700">New booking request</p>
-                      <p className="text-xs text-gray-500">From: John Smith - 2 hours ago</p>
-                    </div>
-                    <div className="px-4 py-2 hover:bg-gray-50">
-                      <p className="text-sm font-medium text-gray-700">Booking confirmed</p>
-                      <p className="text-xs text-gray-500">Luna (Siamese Cat) - 5 hours ago</p>
-                    </div>
-                    <div className="px-4 py-2 hover:bg-gray-50">
-                      <p className="text-sm font-medium text-gray-700">New review received</p>
-                      <p className="text-xs text-gray-500">5-star rating - Yesterday</p>
-                    </div>
-                  </div>
-                  <div className="px-4 py-2 border-t border-gray-100">
-                    <Link href="/cremation/notifications" className="text-xs text-[var(--primary-green)] hover:underline">
-                      View all notifications
-                    </Link>
-                  </div>
-                </div>
-              )}
-            </div>
+            <NotificationBell />
 
             <div className="relative">
               <button

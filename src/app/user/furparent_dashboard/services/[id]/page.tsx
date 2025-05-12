@@ -52,7 +52,7 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
       city: 'Capitol Drive, Balanga City, Bataan',
       distance: '0.5 km away',
       type: 'Pet Cremation Services',
-      address: 'Capitol Drive, Balanga City, Bataan, Philippines',
+      address: 'Capitol Drive, Balanga City, 2100 Bataan, Philippines',
       phone: '(123) 456-7890',
       email: 'info@rainbowbridge.com',
       description: 'Compassionate pet cremation services with personalized memorials. We provide dignified and respectful end-of-life care for your beloved companions. Our team understands the deep bond between pets and their families, and we strive to honor that connection through our thoughtful services.',
@@ -104,7 +104,7 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
       city: 'Tuyo, Balanga City, Bataan',
       distance: '2.2 km away',
       type: 'Pet Cremation Services',
-      address: 'Tuyo, Balanga City, Bataan, Philippines',
+      address: 'Tuyo, Balanga City, 2100 Bataan, Philippines',
       phone: '(234) 567-8901',
       email: 'care@peacefulpaws.com',
       description: 'Dignified pet cremation with eco-friendly options. We focus on providing environmentally conscious memorial services while honoring your pet with the respect they deserve. Our facility is designed to provide a peaceful setting for families during this difficult time.',
@@ -322,7 +322,10 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 grid grid-cols-1 md:grid-cols-2 gap-8">
               <div>
                 <h1 className="text-3xl font-bold uppercase text-white">{provider.name}</h1>
-                <p className="mt-2 text-white/80">{provider.city}</p>
+                <p className="mt-2 text-white/80 flex items-center">
+                  <MapPinIcon className="h-4 w-4 mr-1 flex-shrink-0" />
+                  <span>{provider.address?.replace(', Philippines', '')}</span>
+                </p>
                 <div className="mt-6">
                   <h2 className="text-xl font-semibold mb-2 text-white">Business Description:</h2>
                   <p className="text-white/90 leading-relaxed">{provider.description}</p>

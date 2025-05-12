@@ -47,10 +47,12 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
   // Mark that we've sent the initial OTP
   const markInitialOtpSent = (): void => {
     try {
+      // Store in both session storage (for current session) and local storage (for persistence)
       sessionStorage.setItem(initialOtpSentKey, 'true');
-      console.log('Initial OTP marked as sent in sessionStorage');
+      window.localStorage.setItem(globalOtpSentKey, 'true');
+      console.log('Initial OTP marked as sent in both sessionStorage and localStorage');
     } catch (error) {
-      console.error('Error writing to sessionStorage:', error);
+      console.error('Error writing to storage:', error);
     }
   };
 
@@ -185,26 +187,58 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
   // Using a ref to track initialization across renders
   const hasInitializedRef = useRef(false);
 
+  // Global variable to track if OTP has been sent for this user across all instances
+  // This helps prevent duplicate OTPs when multiple components are mounted/unmounted
+  const globalOtpSentKey = `global_otp_sent_${userId}`;
+
+  // Check if OTP has been sent globally
+  const hasOtpBeenSentGlobally = (): boolean => {
+    try {
+      return window.localStorage.getItem(globalOtpSentKey) === 'true';
+    } catch (error) {
+      console.error('Error reading from localStorage:', error);
+      return false;
+    }
+  };
+
+  // Mark OTP as sent globally
+  const markOtpSentGlobally = (): void => {
+    try {
+      window.localStorage.setItem(globalOtpSentKey, 'true');
+      // Also set the session storage for backward compatibility
+      sessionStorage.setItem(initialOtpSentKey, 'true');
+    } catch (error) {
+      console.error('Error writing to localStorage:', error);
+    }
+  };
+
   useEffect(() => {
     // Only proceed if the modal is open and we haven't initialized yet
     if (isOpen && !hasInitializedRef.current) {
-      const initialOtpAlreadySent = hasInitialOtpBeenSent();
+      // Set the ref immediately to prevent double calls during this render cycle
+      hasInitializedRef.current = true;
+
+      // Check both global and session storage
+      const initialOtpAlreadySent = hasOtpBeenSentGlobally() || hasInitialOtpBeenSent();
       console.log(`Initial OTP already sent: ${initialOtpAlreadySent}`);
 
-      if (!initialOtpAlreadySent) {
+      if (!initialOtpAlreadySent && !isGeneratingOtpRef.current) {
         // No OTP has been sent yet - first login
         console.log('First time opening modal, generating initial OTP');
-        // Set the ref immediately to prevent double calls
-        hasInitializedRef.current = true;
-        // Generate OTP
-        generateOTP(); // This will also mark initialOtpSent
+
+        // Mark as sent before generating to prevent race conditions
+        markOtpSentGlobally();
+
+        // Generate OTP with a slight delay to ensure storage is updated first
+        setTimeout(() => {
+          generateOTP();
+        }, 100);
       } else {
         console.log('Modal reopened after initial OTP was already sent');
       }
 
       // Mark as initialized in state too
       setHasInitialized(true);
-      hasInitializedRef.current = true;
     }
   }, [isOpen, generateOTP]);
 
@@ -238,9 +272,12 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
       // Clear the persistence flags on successful verification
       clearStoredCooldownEndTime();
       try {
+        // Clear both session and local storage flags
         sessionStorage.removeItem(initialOtpSentKey);
+        window.localStorage.removeItem(globalOtpSentKey);
+        console.log('Cleared OTP flags from both sessionStorage and localStorage');
       } catch (e) {
-        console.error('Error clearing initialOtpSentKey:', e);
+        console.error('Error clearing OTP storage flags:', e);
       }
 
       const timer = setTimeout(() => {

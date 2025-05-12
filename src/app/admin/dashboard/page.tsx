@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import AdminDashboardLayout from '@/components/navigation/AdminDashboardLayout';
+import { AdminDashboardLayout } from '@/components/navigation/AdminDashboardLayout';
 import {
   UserGroupIcon,
   DocumentCheckIcon,
@@ -15,12 +15,13 @@ import {
   BanknotesIcon,
 } from '@heroicons/react/24/outline';
 import Link from 'next/link';
+import withAdminAuth from '@/components/withAdminAuth';
 
-export default function AdminDashboardPage() {
-  const [userName] = useState('System Administrator');
+function AdminDashboardPage({ adminData }: { adminData: any }) {
+  const userName = adminData?.full_name || 'System Administrator';
   const [recentApplications, setRecentApplications] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  
+
   // Sample stats data
   const stats = [
     {
@@ -122,7 +123,7 @@ export default function AdminDashboardPage() {
   };
 
   return (
-    <AdminDashboardLayout activePage="dashboard" userName={userName}>
+    <AdminDashboardLayout activePage="dashboard" adminData={adminData}>
       {/* Welcome section */}
       <div className="mb-8 bg-white rounded-xl shadow-sm p-6">
         <div className="flex items-center justify-between">
@@ -233,7 +234,7 @@ export default function AdminDashboardPage() {
           )}
         </div>
       </div>
-      
+
       {/* User distribution stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div className="bg-white rounded-xl shadow-sm p-6">
@@ -251,7 +252,7 @@ export default function AdminDashboardPage() {
             <div className="w-full bg-gray-200 rounded-full h-2.5 mb-4">
               <div className="bg-green-600 h-2.5 rounded-full" style={{ width: '35%' }}></div>
             </div>
-            
+
             <div className="flex justify-between mb-2">
               <span className="text-sm text-gray-600">Fur Parents</span>
               <span className="text-sm font-semibold text-gray-800">189</span>
@@ -261,7 +262,7 @@ export default function AdminDashboardPage() {
             </div>
           </div>
         </div>
-        
+
         <div className="bg-white rounded-xl shadow-sm p-6">
           <div className="flex items-center mb-4">
             <div className="p-2 rounded-full bg-yellow-100 text-yellow-700 mr-3">
@@ -277,7 +278,7 @@ export default function AdminDashboardPage() {
             <div className="w-full bg-gray-200 rounded-full h-2.5 mb-4">
               <div className="bg-yellow-600 h-2.5 rounded-full" style={{ width: '70%' }}></div>
             </div>
-            
+
             <div className="flex justify-between mb-2">
               <span className="text-sm text-gray-600">Last Month</span>
               <span className="text-sm font-semibold text-gray-800">12</span>
@@ -287,7 +288,7 @@ export default function AdminDashboardPage() {
             </div>
           </div>
         </div>
-        
+
         <div className="bg-white rounded-xl shadow-sm p-6">
           <div className="flex items-center mb-4">
             <div className="p-2 rounded-full bg-red-100 text-red-700 mr-3">
@@ -303,7 +304,7 @@ export default function AdminDashboardPage() {
             <div className="w-full bg-gray-200 rounded-full h-2.5 mb-4">
               <div className="bg-red-600 h-2.5 rounded-full" style={{ width: '15%' }}></div>
             </div>
-            
+
             <div className="flex justify-between mb-2">
               <span className="text-sm text-gray-600">Fur Parents</span>
               <span className="text-sm font-semibold text-gray-800">5</span>
@@ -316,4 +317,6 @@ export default function AdminDashboardPage() {
       </div>
     </AdminDashboardLayout>
   );
-} 
+}
+
+export default withAdminAuth(AdminDashboardPage);
