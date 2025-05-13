@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useToast } from '@/context/ToastContext';
 import AdminDashboardLayout from '@/components/navigation/AdminDashboardLayout';
 import {
   MagnifyingGlassIcon,
@@ -23,80 +24,151 @@ export default function AdminRestrictedUsersPage() {
   const [typeFilter, setTypeFilter] = useState('all');
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<any>(null);
+  const [restrictedUsers, setRestrictedUsers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const { showToast } = useToast();
 
-  // Sample restricted users data
-  const restrictedUsers = [
-    {
-      id: 'CC006',
-      name: 'Divine Pets Memorial',
-      type: 'cremation',
-      owner: 'Angela Garcia',
-      email: 'angela@divinepets.com',
-      phone: '(555) 678-9012',
-      address: 'Dinalupihan, Bataan, Philippines',
-      registrationDate: 'July 18, 2023',
-      restrictionDate: 'October 5, 2023',
-      reason: 'Multiple customer complaints about service quality and pricing discrepancies',
-      reportCount: 4,
-      duration: 'Indefinite',
-      verified: false
-    },
-    {
-      id: 'FP006',
-      name: 'James Thompson',
-      type: 'furparent',
-      email: 'james@example.com',
-      phone: '(555) 678-9012',
-      address: 'Limay, Bataan, Philippines',
-      registrationDate: 'June 8, 2023',
-      restrictionDate: 'September 15, 2023',
-      reason: 'Attempted fraud - submitted false documents and payment information',
-      reportCount: 2,
-      duration: '6 months',
-      verified: false
-    },
-    {
-      id: 'CC008',
-      name: 'Forever Pets Memorial Services',
-      type: 'cremation',
-      owner: 'Robert Chen',
-      email: 'robert@foreverpets.com',
-      phone: '(555) 234-5678',
-      address: 'Hermosa, Bataan, Philippines',
-      registrationDate: 'August 10, 2023',
-      restrictionDate: 'November 22, 2023',
-      reason: 'Unethical business practices and violation of service terms',
-      reportCount: 3,
-      duration: '3 months',
-      verified: true
-    },
-    {
-      id: 'FP012',
-      name: 'Sophia Williams',
-      type: 'furparent',
-      email: 'sophia@example.com',
-      phone: '(555) 987-6543',
-      address: 'Pilar, Bataan, Philippines',
-      registrationDate: 'April 3, 2023',
-      restrictionDate: 'December 8, 2023',
-      reason: 'Abusive behavior towards service providers',
-      reportCount: 5,
-      duration: '1 month',
-      verified: true
+  // Fetch restricted users from the API
+  useEffect(() => {
+    const fetchRestrictedUsers = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const response = await fetch('/api/admin/restricted-users');
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch restricted users: ${response.status} ${response.statusText}`);
+        }
+
+        const data = await response.json();
+
+        if (!data.success) {
+          throw new Error(data.error || 'Failed to fetch restricted users');
+        }
+
+        // Map the API response to our component's data structure
+        const formattedUsers = data.restrictedUsers.map((user: any) => ({
+          id: user.id,
+          name: user.name,
+          type: user.userType === 'cremation_center' ? 'cremation' : 'furparent',
+          owner: user.owner || null,
+          email: user.email,
+          phone: user.phone,
+          address: user.address || 'No address provided',
+          restrictionDate: user.restrictionDate || 'Unknown',
+          reason: user.restrictionReason || 'Policy violation',
+          reportCount: user.reportCount || 0,
+          duration: user.restrictionDuration || 'Indefinite',
+          businessId: user.businessId || null
+        }));
+
+        setRestrictedUsers(formattedUsers);
+      } catch (err) {
+        console.error('Error fetching restricted users:', err);
+        setError(err instanceof Error ? err.message : 'An unknown error occurred');
+        showToast('Failed to load restricted users. Using sample data instead.', 'error');
+
+        // Use sample data as fallback
+        setRestrictedUsers([
+          {
+            id: 'CC006',
+            name: 'Divine Pets Memorial',
+            type: 'cremation',
+            owner: 'Angela Garcia',
+            email: 'angela@divinepets.com',
+            phone: '(555) 678-9012',
+            address: 'Dinalupihan, Bataan, Philippines',
+            restrictionDate: 'October 5, 2023',
+            reason: 'Multiple customer complaints about service quality and pricing discrepancies',
+            reportCount: 4,
+            duration: 'Indefinite',
+            businessId: 'CC006'
+          },
+          {
+            id: 'FP006',
+            name: 'James Thompson',
+            type: 'furparent',
+            email: 'james@example.com',
+            phone: '(555) 678-9012',
+            address: 'Limay, Bataan, Philippines',
+            restrictionDate: 'September 15, 2023',
+            reason: 'Attempted fraud - submitted false documents and payment information',
+            reportCount: 2,
+            duration: '6 months',
+            businessId: null
+          }
+        ]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchRestrictedUsers();
+  }, [showToast]);
+
+  // Handle removing restrictions from a user
+  const handleRemoveRestriction = async (user: any) => {
+    if (isProcessing) return;
+
+    if (!confirm(`Are you sure you want to remove restrictions from "${user.name}"?`)) {
+      return;
     }
-  ];
+
+    try {
+      setIsProcessing(true);
+
+      const response = await fetch('/api/admin/restricted-users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: user.id,
+          userType: user.type === 'cremation' ? 'cremation_center' : 'pet_parent',
+          businessId: user.businessId,
+          action: 'remove_restriction'
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Failed to remove restrictions');
+      }
+
+      // Remove the user from the list
+      setRestrictedUsers(prevUsers =>
+        prevUsers.filter(u => u.id !== user.id)
+      );
+
+      // Close the modal if it's open
+      if (selectedUser && selectedUser.id === user.id) {
+        setShowDetailsModal(false);
+      }
+
+      showToast(`Restrictions removed from ${user.name} successfully`, 'success');
+    } catch (err) {
+      console.error('Error removing restrictions:', err);
+      showToast(err instanceof Error ? err.message : 'Failed to remove restrictions', 'error');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
   // Filter restricted users based on search term and type filter
   const filteredUsers = restrictedUsers.filter(user => {
-    const matchesSearch = 
+    const matchesSearch =
       user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (user.owner && user.owner.toLowerCase().includes(searchTerm.toLowerCase())) ||
       user.address.toLowerCase().includes(searchTerm.toLowerCase());
-    
+
     const matchesType = typeFilter === 'all' || user.type === typeFilter;
-    
+
     return matchesSearch && matchesType;
   });
 
@@ -184,92 +256,114 @@ export default function AdminRestrictedUsersPage() {
             </button>
           </div>
         </div>
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  User
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Type
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Contact Info
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Restriction Date
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Duration
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Reports
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredUsers.length > 0 ? (
-                filteredUsers.map((user) => (
-                  <tr key={user.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="flex-shrink-0 h-10 w-10 bg-red-100 rounded-full flex items-center justify-center">
-                          <ShieldExclamationIcon className="h-6 w-6 text-red-500" />
+        {loading ? (
+          <div className="px-6 py-12 text-center">
+            <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[var(--primary-green)] mb-4"></div>
+            <p className="text-gray-600">Loading restricted users...</p>
+          </div>
+        ) : error ? (
+          <div className="px-6 py-8 text-center">
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-red-100 text-red-600 mb-4">
+              <XMarkIcon className="h-6 w-6" />
+            </div>
+            <p className="text-red-600 font-medium mb-2">Error loading restricted users</p>
+            <p className="text-gray-500 text-sm">{error}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="mt-4 px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg text-sm font-medium text-gray-700 transition-colors"
+            >
+              Retry
+            </button>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    User
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Type
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Contact Info
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Restriction Date
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Duration
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Reports
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {filteredUsers.length > 0 ? (
+                  filteredUsers.map((user) => (
+                    <tr key={user.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <div className="flex-shrink-0 h-10 w-10 bg-red-100 rounded-full flex items-center justify-center">
+                            <ShieldExclamationIcon className="h-6 w-6 text-red-500" />
+                          </div>
+                          <div className="ml-4">
+                            <div className="text-sm font-medium text-gray-900">{user.name}</div>
+                            <div className="text-sm text-gray-500">ID: {user.id}</div>
+                          </div>
                         </div>
-                        <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">{user.name}</div>
-                          <div className="text-sm text-gray-500">ID: {user.id}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {getUserTypeBadge(user.type)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900 flex items-center">
+                          <EnvelopeIcon className="h-4 w-4 mr-1 text-gray-500" />
+                          {user.email}
                         </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {getUserTypeBadge(user.type)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900 flex items-center">
-                        <EnvelopeIcon className="h-4 w-4 mr-1 text-gray-500" />
-                        {user.email}
-                      </div>
-                      <div className="text-sm text-gray-500 flex items-center mt-1">
-                        <PhoneIcon className="h-4 w-4 mr-1 text-gray-500" />
-                        {user.phone}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {user.restrictionDate}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {user.duration}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
-                        {user.reportCount} reports
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <button
-                        onClick={() => handleViewDetails(user)}
-                        className="text-[var(--primary-green)] hover:text-[var(--primary-green)]/80 mr-3"
-                      >
-                        <EyeIcon className="h-5 w-5" />
-                      </button>
+                        <div className="text-sm text-gray-500 flex items-center mt-1">
+                          <PhoneIcon className="h-4 w-4 mr-1 text-gray-500" />
+                          {user.phone}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {user.restrictionDate}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {user.duration}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+                          {user.reportCount} reports
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <button
+                          onClick={() => handleViewDetails(user)}
+                          className="text-[var(--primary-green)] hover:text-[var(--primary-green)]/80 mr-3"
+                          disabled={isProcessing}
+                        >
+                          <EyeIcon className="h-5 w-5" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={7} className="px-6 py-4 text-center text-sm text-gray-500">
+                      No restricted users found matching your search criteria.
                     </td>
                   </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={7} className="px-6 py-4 text-center text-sm text-gray-500">
-                    No restricted users found matching your search criteria.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* User Details Modal */}
@@ -286,7 +380,7 @@ export default function AdminRestrictedUsersPage() {
                   <XMarkIcon className="h-6 w-6" />
                 </button>
               </div>
-              
+
               <div className="flex flex-col sm:flex-row items-start sm:items-center mb-6 pb-6 border-b border-gray-200">
                 <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4 sm:mb-0">
                   <ShieldExclamationIcon className="h-10 w-10 text-red-500" />
@@ -301,7 +395,7 @@ export default function AdminRestrictedUsersPage() {
                   </div>
                 </div>
               </div>
-              
+
               <div className="mb-6 pb-6 border-b border-gray-200">
                 <h5 className="text-sm font-medium text-gray-500 mb-3">Restriction Information</h5>
                 <div className="bg-red-50 p-4 rounded-lg border border-red-200 mb-4">
@@ -313,7 +407,7 @@ export default function AdminRestrictedUsersPage() {
                     </div>
                   </div>
                 </div>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="text-sm">
                     <div className="flex items-center mb-2">
@@ -322,7 +416,7 @@ export default function AdminRestrictedUsersPage() {
                     </div>
                     <p className="ml-6 text-gray-900">{selectedUser.restrictionDate}</p>
                   </div>
-                  
+
                   <div className="text-sm">
                     <div className="flex items-center mb-2">
                       <ClockIcon className="h-4 w-4 text-gray-500 mr-2" />
@@ -332,7 +426,7 @@ export default function AdminRestrictedUsersPage() {
                   </div>
                 </div>
               </div>
-              
+
               <div className="mb-6">
                 <h5 className="text-sm font-medium text-gray-500 mb-3">Contact Information</h5>
                 <div className="grid grid-cols-1 gap-2">
@@ -356,15 +450,25 @@ export default function AdminRestrictedUsersPage() {
                   )}
                 </div>
               </div>
-              
+
               <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
-                <button className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition-colors duration-300">
-                  Remove Restrictions
+                <button
+                  onClick={() => handleRemoveRestriction(selectedUser)}
+                  disabled={isProcessing}
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isProcessing ? 'Processing...' : 'Remove Restrictions'}
                 </button>
-                <button className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors duration-300">
+                <button
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={isProcessing}
+                >
                   Extend Restriction
                 </button>
-                <button className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg text-sm font-medium hover:bg-gray-300 transition-colors duration-300">
+                <button
+                  className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg text-sm font-medium hover:bg-gray-300 transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={isProcessing}
+                >
                   View Reports
                 </button>
               </div>
@@ -374,4 +478,4 @@ export default function AdminRestrictedUsersPage() {
       )}
     </AdminDashboardLayout>
   );
-} 
+}

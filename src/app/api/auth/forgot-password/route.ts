@@ -116,7 +116,7 @@ export async function POST(request: Request) {
         console.log('Sending password reset email to:', email);
 
         // In development mode, always log the reset token for testing
-        if (process.env.NODE_ENV === 'development') {
+        if (process.env.DEV_EMAIL_MODE === 'true' || process.env.NODE_ENV === 'development') {
           console.log('DEV MODE: Reset token:', resetToken);
           console.log(`DEV MODE: Reset link: ${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/reset-password?token=${resetToken}`);
         }
@@ -127,14 +127,14 @@ export async function POST(request: Request) {
         if (!emailResult.success) {
           console.error('Email service reported failure:', emailResult.error);
 
-          // In development mode with simulation enabled, still return success
-          if (process.env.NODE_ENV === 'development' && process.env.SIMULATE_EMAIL_SUCCESS === 'true') {
+          // In development mode, still return success
+          if (process.env.DEV_EMAIL_MODE === 'true' || process.env.NODE_ENV === 'development') {
             console.log('DEV MODE: Simulating success despite email error');
             return NextResponse.json({
               success: true,
               message: 'Password reset instructions have been sent to your email.',
               // Include token in development mode for easier testing
-              ...(process.env.NODE_ENV === 'development' ? { resetToken } : {})
+              resetToken
             });
           }
 
@@ -147,13 +147,13 @@ export async function POST(request: Request) {
           success: true,
           message: 'Password reset instructions have been sent to your email.',
           // Include token in development mode for easier testing
-          ...(process.env.NODE_ENV === 'development' ? { resetToken } : {})
+          ...(process.env.DEV_EMAIL_MODE === 'true' || process.env.NODE_ENV === 'development' ? { resetToken } : {})
         });
       } catch (emailError) {
         console.error('Error sending password reset email:', emailError);
 
         // For development environments, still return success
-        if (process.env.NODE_ENV === 'development') {
+        if (process.env.DEV_EMAIL_MODE === 'true' || process.env.NODE_ENV === 'development') {
           console.log('DEV MODE: Simulating success despite email error');
           return NextResponse.json({
             success: true,

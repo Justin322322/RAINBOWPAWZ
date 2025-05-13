@@ -36,15 +36,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: 'Business profile not found' }, { status: 404 });
     }
 
-    // Update the user's verification status as well
-    await query(
-      `UPDATE users u
-       JOIN business_profiles bp ON u.id = bp.user_id
-       SET u.is_verified = 1
-       WHERE bp.id = ?`,
-      [businessId]
-    );
-
     // Get business details for email notification
     const businessResult = await query(
       `SELECT bp.*, u.email, u.first_name, u.last_name
@@ -55,32 +46,45 @@ export async function POST(request: NextRequest) {
     ) as any[];
 
     const business = businessResult[0];
-    if (business) {
-      // Send approval email using the simple email service
-      try {
-        console.log(`Preparing to send approval email to ${business.email} for business ${business.business_name}`);
 
-        // Send email using simple email service
-        const emailResult = await sendBusinessVerificationEmail(
-          business.email,
-          {
-            businessName: business.business_name,
-            contactName: `${business.first_name} ${business.last_name}`,
-            status: 'approved',
-            notes: notes || undefined
-          }
-        );
+    // Update the user's verification status as well
+    await query(
+      `UPDATE users u
+       JOIN business_profiles bp ON u.id = bp.user_id
+       SET u.is_verified = 1
+       WHERE bp.id = ?`,
+      [businessId]
+    );
 
-        if (emailResult.success) {
-          console.log(`Approval email sent successfully to ${business.email}. Message ID: ${emailResult.messageId}`);
-        } else {
-          console.error('Failed to send approval email:', emailResult.error);
-          // Continue with the approval process even if the email fails
-        }
-      } catch (emailError) {
-        console.error('Failed to send approval email:', emailError);
-        // Continue with the approval process even if the email fails
+    // Create a notification for the business owner
+    try {
+      // First check if the notifications table exists
+      const tableCheck = await query(`
+        SELECT COUNT(*) as count
+        FROM information_schema.tables
+        WHERE table_schema = ? AND table_name = 'notifications'
+      `, [process.env.DB_NAME || 'rainbow_paws']);
+
+      const tableExists = tableCheck && Array.isArray(tableCheck) &&
+                          tableCheck[0] && tableCheck[0].count > 0;
+
+      if (tableExists) {
+        // Create notification for the business owner
+        await query(`
+          INSERT INTO notifications (user_id, title, message, type, link, is_read)
+          VALUES (?, ?, ?, ?, ?, ?)
+        `, [
+          business.user_id,
+          'Application Approved',
+          `Your business application for ${business.business_name} has been approved. You can now start offering services.`,
+          'success',
+          '/business/dashboard',
+          0
+        ]);
       }
+    } catch (notificationError) {
+      // Non-critical error, just log it
+      console.error('Failed to create notification:', notificationError);
     }
 
     // Log the approval action
@@ -99,10 +103,54 @@ export async function POST(request: NextRequest) {
       ]
     ).catch(err => console.error('Failed to log admin action:', err));
 
+    // Send email notification to the business owner
+    let emailSent = false;
+    if (business && business.email) {
+      try {
+        console.log(`Sending approval email to ${business.email} for business ${business.business_name}`);
+
+        // Send email using simple email service
+        const emailResult = await sendBusinessVerificationEmail(
+          business.email,
+          {
+            businessName: business.business_name,
+            contactName: `${business.first_name} ${business.last_name}`,
+            status: 'approved',
+            notes: notes || 'Your application has been approved. You can now start using our services.'
+          }
+        );
+
+        if (emailResult.success) {
+          console.log(`Approval email sent successfully to ${business.email}. Message ID: ${emailResult.messageId}`);
+          emailSent = true;
+        } else {
+          console.error('Failed to send approval email:', emailResult.error);
+        }
+
+        // Create a notification for the user
+        await query(
+          `INSERT INTO notifications (user_id, title, message, type, link)
+           VALUES (?, ?, ?, ?, ?)`,
+          [
+            business.user_id,
+            'Application Approved',
+            `Your business application for ${business.business_name} has been approved.`,
+            'success',
+            '/cremation/dashboard'
+          ]
+        ).catch(err => console.error('Failed to create notification:', err));
+
+      } catch (emailError) {
+        console.error('Error sending approval email:', emailError);
+        // Continue with the process even if email fails
+      }
+    }
+
     return NextResponse.json({
       message: 'Application approved successfully',
       businessId,
-      businessName: business?.business_name
+      businessName: business?.business_name,
+      emailSent: emailSent
     });
   } catch (error) {
     console.error('Error approving application:', error);

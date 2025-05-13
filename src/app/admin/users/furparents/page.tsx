@@ -13,10 +13,14 @@ import {
   UserCircleIcon,
   ArrowPathIcon,
   ChevronLeftIcon,
-  ChevronRightIcon
+  ChevronRightIcon,
+  CheckCircleIcon,
+  ExclamationTriangleIcon
 } from '@heroicons/react/24/outline';
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
+import { motion, AnimatePresence } from 'framer-motion';
+import ConfirmationModal from '@/components/ConfirmationModal';
 
 interface User {
   id: number;
@@ -61,6 +65,15 @@ export default function AdminFurParentsPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Animation and modal states
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [isRestrictSuccess, setIsRestrictSuccess] = useState(false);
+  const [isUnrestrictSuccess, setIsUnrestrictSuccess] = useState(false);
+  const [successUserName, setSuccessUserName] = useState('');
+  const [showRestrictModal, setShowRestrictModal] = useState(false);
+  const [showUnrestrictModal, setShowUnrestrictModal] = useState(false);
+  const [restrictReason, setRestrictReason] = useState('');
   const [pagination, setPagination] = useState<PaginationData>({
     total: 0,
     page: 1,
@@ -221,6 +234,8 @@ export default function AdminFurParentsPage() {
   // Function to handle user restriction
   const handleRestriction = async (userId: number, restrict: boolean, reason?: string) => {
     try {
+      setIsProcessing(true);
+
       const response = await fetch(`/api/users/${userId}/restrict`, {
         method: 'PUT',
         headers: {
@@ -237,15 +252,81 @@ export default function AdminFurParentsPage() {
         throw new Error('Failed to update user restriction');
       }
 
-      // Refresh the user list
-      fetchUsers();
+      // Find the user to get their name
+      const user = users.find(u => u.id === userId);
+      if (user) {
+        const userName = `${user.first_name} ${user.last_name}`;
+        setSuccessUserName(userName);
 
-      // Close the modal
-      setShowDetailsModal(false);
+        // Update user status locally
+        setUsers(prevUsers =>
+          prevUsers.map(u =>
+            u.id === userId ? { ...u, status: restrict ? 'restricted' : 'active' } : u
+          )
+        );
+
+        // If the user is currently selected in the modal, update them
+        if (selectedUser && selectedUser.id === userId) {
+          setSelectedUser({ ...selectedUser, status: restrict ? 'restricted' : 'active' });
+        }
+
+        // Show success animation
+        if (restrict) {
+          setIsRestrictSuccess(true);
+
+          // Reset after animation completes
+          setTimeout(() => {
+            setIsRestrictSuccess(false);
+            setSuccessUserName('');
+            // Close the details modal if it's open
+            setShowDetailsModal(false);
+          }, 3000);
+        } else {
+          setIsUnrestrictSuccess(true);
+
+          // Reset after animation completes
+          setTimeout(() => {
+            setIsUnrestrictSuccess(false);
+            setSuccessUserName('');
+            // Close the details modal if it's open
+            setShowDetailsModal(false);
+          }, 3000);
+        }
+      }
+
+      // Close the confirmation modals
+      setShowRestrictModal(false);
+      setShowUnrestrictModal(false);
+
+      // Fetch updated data after animation completes
+      setTimeout(() => {
+        fetchUsers();
+      }, 3000);
     } catch (err) {
       console.error('Error updating user restriction:', err);
       alert('Failed to update user restriction. Please try again.');
+    } finally {
+      setIsProcessing(false);
     }
+  };
+
+  // Function to open the restrict modal
+  const openRestrictModal = (user: User) => {
+    setSelectedUser(user);
+    setRestrictReason('');
+    setShowRestrictModal(true);
+  };
+
+  // Function to confirm restriction with reason
+  const confirmRestriction = async () => {
+    if (!selectedUser) return;
+
+    if (!restrictReason || restrictReason.trim().length < 5) {
+      alert('Please provide a valid reason for restriction (minimum 5 characters)');
+      return;
+    }
+
+    await handleRestriction(selectedUser.id, true, restrictReason);
   };
 
   return (
@@ -430,22 +511,19 @@ export default function AdminFurParentsPage() {
                       </button>
                       {user.status !== 'restricted' ? (
                         <button
-                          onClick={() => {
-                            const reason = prompt('Please enter a reason for restricting this user:');
-                            if (reason) {
-                              handleRestriction(user.id, true, reason);
-                            }
-                          }}
-                          className="text-red-600 hover:text-red-900 hover:underline"
+                          onClick={() => openRestrictModal(user)}
+                          disabled={isProcessing}
+                          className="text-red-600 hover:text-red-900 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          Restrict
+                          {isProcessing ? 'Processing...' : 'Restrict'}
                         </button>
                       ) : (
                         <button
-                          onClick={() => handleRestriction(user.id, false)}
-                          className="text-green-600 hover:text-green-900 hover:underline"
+                          onClick={() => setShowUnrestrictModal(true) || setSelectedUser(user)}
+                          disabled={isProcessing}
+                          className="text-green-600 hover:text-green-900 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          Unrestrict
+                          {isProcessing ? 'Processing...' : 'Unrestrict'}
                         </button>
                       )}
                     </td>
@@ -510,6 +588,155 @@ export default function AdminFurParentsPage() {
           </div>
         )}
       </div>
+
+      {/* Success Animation Overlays */}
+      <AnimatePresence>
+        {isRestrictSuccess && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+          >
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.8, opacity: 0 }}
+              className="bg-white rounded-xl p-8 max-w-md w-full text-center"
+            >
+              <motion.div
+                className="w-20 h-20 mx-auto rounded-full bg-red-100 flex items-center justify-center mb-6"
+                initial={{ scale: 0.8 }}
+                animate={{ scale: [0.8, 1.2, 1] }}
+                transition={{ duration: 0.5 }}
+              >
+                <ExclamationTriangleIcon className="h-12 w-12 text-red-500" />
+              </motion.div>
+              <h3 className="text-xl font-medium text-gray-900 mb-2">User Restricted</h3>
+              <p className="text-gray-600 mb-6">
+                {successUserName} has been restricted successfully. They will no longer be able to make bookings.
+              </p>
+              <div className="w-full bg-gray-200 rounded-full h-2 mb-6">
+                <motion.div
+                  className="bg-red-500 h-2 rounded-full"
+                  initial={{ width: 0 }}
+                  animate={{ width: "100%" }}
+                  transition={{ duration: 2.5 }}
+                />
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+
+        {isUnrestrictSuccess && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+          >
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.8, opacity: 0 }}
+              className="bg-white rounded-xl p-8 max-w-md w-full text-center"
+            >
+              <motion.div
+                className="w-20 h-20 mx-auto rounded-full bg-green-100 flex items-center justify-center mb-6"
+                initial={{ scale: 0.8 }}
+                animate={{ scale: [0.8, 1.2, 1] }}
+                transition={{ duration: 0.5 }}
+              >
+                <CheckCircleIcon className="h-12 w-12 text-green-500" />
+              </motion.div>
+              <h3 className="text-xl font-medium text-gray-900 mb-2">Restrictions Removed</h3>
+              <p className="text-gray-600 mb-6">
+                {successUserName} has been unrestricted successfully. They can now make bookings again.
+              </p>
+              <div className="w-full bg-gray-200 rounded-full h-2 mb-6">
+                <motion.div
+                  className="bg-green-500 h-2 rounded-full"
+                  initial={{ width: 0 }}
+                  animate={{ width: "100%" }}
+                  transition={{ duration: 2.5 }}
+                />
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Restrict Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showUnrestrictModal}
+        onClose={() => setShowUnrestrictModal(false)}
+        onConfirm={() => handleRestriction(selectedUser?.id || 0, false)}
+        title="Remove Restrictions"
+        message={`Are you sure you want to remove restrictions from "${selectedUser?.first_name} ${selectedUser?.last_name}"? This will allow them to make bookings again.`}
+        confirmText="Remove Restrictions"
+        confirmButtonClass="bg-green-600 hover:bg-green-700 focus:ring-green-500"
+        icon={<CheckCircleIcon className="h-6 w-6 text-green-600" />}
+      />
+
+      {/* Restrict Modal with Reason Input */}
+      {showRestrictModal && selectedUser && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full">
+            <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+              <h2 className="text-xl font-semibold text-gray-800">Restrict User</h2>
+              <button
+                onClick={() => setShowRestrictModal(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <XMarkIcon className="h-6 w-6" />
+              </button>
+            </div>
+            <div className="p-6">
+              <p className="mb-4 text-gray-600">
+                You are about to restrict <span className="font-semibold">{selectedUser.first_name} {selectedUser.last_name}</span>.
+                This will prevent them from making new bookings.
+              </p>
+              <div className="mb-4">
+                <label htmlFor="restrict-reason" className="block text-sm font-medium text-gray-700 mb-2">
+                  Please provide a reason for restricting this user:
+                </label>
+                <textarea
+                  id="restrict-reason"
+                  rows={4}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)] sm:text-sm"
+                  value={restrictReason}
+                  onChange={(e) => setRestrictReason(e.target.value)}
+                  placeholder="Enter your reason here..."
+                  disabled={isProcessing}
+                />
+              </div>
+              <div className="flex justify-end space-x-3">
+                <button
+                  onClick={() => setShowRestrictModal(false)}
+                  className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                  disabled={isProcessing}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmRestriction}
+                  disabled={isProcessing || !restrictReason.trim() || restrictReason.trim().length < 5}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                >
+                  {isProcessing ? (
+                    <>
+                      <ArrowPathIcon className="animate-spin -ml-1 mr-2 h-4 w-4" />
+                      Processing...
+                    </>
+                  ) : (
+                    'Restrict User'
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* User Details Modal */}
       {showDetailsModal && selectedUser && (
@@ -675,22 +902,19 @@ export default function AdminFurParentsPage() {
                   </button>
                   {selectedUser.status === 'restricted' ? (
                     <button
-                      onClick={() => handleRestriction(selectedUser.id, false)}
-                      className="px-4 py-2 bg-[var(--primary-green)] text-white rounded-lg hover:bg-opacity-90 text-sm font-medium"
+                      onClick={() => setShowUnrestrictModal(true)}
+                      disabled={isProcessing}
+                      className="px-4 py-2 bg-[var(--primary-green)] text-white rounded-lg hover:bg-opacity-90 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      Remove Restrictions
+                      {isProcessing ? 'Processing...' : 'Remove Restrictions'}
                     </button>
                   ) : (
                     <button
-                      onClick={() => {
-                        const reason = prompt('Please enter a reason for restricting this user:');
-                        if (reason) {
-                          handleRestriction(selectedUser.id, true, reason);
-                        }
-                      }}
-                      className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm font-medium"
+                      onClick={() => openRestrictModal(selectedUser)}
+                      disabled={isProcessing}
+                      className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      Restrict User
+                      {isProcessing ? 'Processing...' : 'Restrict User'}
                     </button>
                   )}
                 </div>

@@ -56,6 +56,7 @@ export async function POST(request: NextRequest) {
     ) as any[];
 
     const business = businessResult[0];
+    let emailSent = false;
     if (business) {
       // Send email notification using the simple email service
       try {
@@ -74,6 +75,7 @@ export async function POST(request: NextRequest) {
 
         if (emailResult.success) {
           console.log(`Notification email sent successfully to ${business.email}. Message ID: ${emailResult.messageId}`);
+          emailSent = true;
         } else {
           console.error('Failed to send notification email:', emailResult.error);
           // Continue with the process even if the email fails
@@ -81,6 +83,39 @@ export async function POST(request: NextRequest) {
       } catch (emailError) {
         console.error('Failed to send notification email:', emailError);
         // Continue with the process even if the email fails
+      }
+
+      // Create a notification for the business owner
+      try {
+        // First check if the notifications table exists
+        const tableCheck = await query(`
+          SELECT COUNT(*) as count
+          FROM information_schema.tables
+          WHERE table_schema = ? AND table_name = 'notifications'
+        `, [process.env.DB_NAME || 'rainbow_paws']);
+
+        const tableExists = tableCheck && Array.isArray(tableCheck) &&
+                            tableCheck[0] && tableCheck[0].count > 0;
+
+        if (tableExists) {
+          // Create notification for the business owner
+          await query(`
+            INSERT INTO notifications (user_id, title, message, type, link, is_read)
+            VALUES (?, ?, ?, ?, ?, ?)
+          `, [
+            business.user_id,
+            requestDocuments ? 'Additional Documents Required' : 'Application Declined',
+            requestDocuments
+              ? `Your business application for ${business.business_name} requires additional documents. Please check your email for details.`
+              : `Your business application for ${business.business_name} has been declined. Reason: ${note.trim().substring(0, 100)}${note.trim().length > 100 ? '...' : ''}`,
+            requestDocuments ? 'warning' : 'error',
+            '/business/profile',
+            0
+          ]);
+        }
+      } catch (notificationError) {
+        // Non-critical error, just log it
+        console.error('Failed to create notification:', notificationError);
       }
     }
 
@@ -105,7 +140,8 @@ export async function POST(request: NextRequest) {
       message: requestDocuments ? 'Documents requested successfully' : 'Application declined successfully',
       businessId,
       businessName: business?.business_name,
-      status: verificationStatus
+      status: verificationStatus,
+      emailSent: emailSent
     });
   } catch (error) {
     console.error('Error processing application:', error);

@@ -60,15 +60,51 @@ export async function POST(request: Request) {
     console.log('Login attempt for:', email);
 
     // Check in users table - this now handles all account types
-    let userResult = await query(
-      'SELECT id, first_name, last_name, email, password, role, is_verified, is_otp_verified FROM users WHERE email = ? LIMIT 1',
-      [email]
-    ) as any[];
+    console.log('Querying database for user with email:', email);
+    let userResult;
+    try {
+      userResult = await query(
+        'SELECT id, first_name, last_name, email, password, role, is_verified, is_otp_verified FROM users WHERE email = ? LIMIT 1',
+        [email]
+      ) as any[];
+      console.log('Query result:', userResult ? `Found ${userResult.length} users` : 'No result');
+    } catch (queryError) {
+      console.error('Error querying user:', queryError);
+      throw queryError;
+    }
 
     if (userResult && userResult.length > 0) {
       const user = userResult[0];
 
       try {
+        console.log('Comparing password for user:', user.id);
+        console.log('Stored password hash length:', user.password ? user.password.length : 0);
+        console.log('Password from request (first 3 chars):', password.substring(0, 3) + '...');
+        console.log('Stored hash (first 20 chars):', user.password ? user.password.substring(0, 20) + '...' : 'null');
+        console.log('User role:', user.role);
+        console.log('User verification status:', user.is_verified ? 'Verified' : 'Not verified');
+
+        // Check if password hash is valid
+        if (!user.password || user.password.length < 20) {
+          console.error('Invalid password hash in database');
+          return NextResponse.json({
+            error: 'Authentication error',
+            message: 'Your account has an invalid password format. Please reset your password.'
+          }, {
+            status: 401,
+            headers
+          });
+        }
+
+        try {
+          const passwordMatch = await bcrypt.compare(password, user.password);
+          console.log('Password match result:', passwordMatch);
+        } catch (bcryptCompareError) {
+          console.error('bcrypt.compare error:', bcryptCompareError);
+          throw bcryptCompareError;
+        }
+
+        // Try again with a direct comparison for debugging
         const passwordMatch = await bcrypt.compare(password, user.password);
 
         if (passwordMatch) {

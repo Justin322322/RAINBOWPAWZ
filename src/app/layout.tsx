@@ -1,15 +1,24 @@
 import type { Metadata } from "next";
-import { Inter, Crimson_Text } from "next/font/google";
+import { Inter, Playfair_Display } from "next/font/google";
 import "./globals.css";
 import ClientToastProvider from "@/components/providers/ClientToastProvider";
 import ToastWrapper from "@/components/providers/ToastWrapper";
 import NotificationProvider from "@/components/providers/NotificationProvider";
 
-const inter = Inter({ subsets: ["latin"] });
-const crimsonText = Crimson_Text({
-  subsets: ['latin'],
-  weight: ['400', '600'],
+// Load Inter font for sans-serif text
+const inter = Inter({
+  subsets: ["latin"],
+  weight: ['300', '400', '500', '600', '700'],
   display: 'swap',
+  variable: '--font-inter',
+});
+
+// Load Playfair Display for serif headings
+const playfair = Playfair_Display({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  display: 'swap',
+  variable: '--font-playfair',
 });
 
 export const metadata: Metadata = {
@@ -30,13 +39,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={crimsonText.className}>
+    <html lang="en" className={`${inter.variable} ${playfair.variable}`}>
       <head>
         <link rel="icon" href="/logo.png" type="image/png" />
         <link rel="apple-touch-icon" href="/logo.png" />
         <link rel="shortcut icon" href="/logo.png" />
       </head>
-      <body>
+      <body className={inter.className}>
         <ClientToastProvider>
           <NotificationProvider>
             {children}

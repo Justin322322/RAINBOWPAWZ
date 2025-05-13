@@ -41,8 +41,14 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onShowSignup }
     setErrorMessage('');
     setIsLoading(true);
 
+    console.log('Login attempt for:', email);
+    console.log('Current hostname:', window.location.hostname);
+    console.log('Current port:', window.location.port);
+    console.log('Current URL:', window.location.href);
+
     try {
       // Use Next.js API route
+      console.log('Sending login request to /api/auth/login');
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {

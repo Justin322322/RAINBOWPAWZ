@@ -1,4 +1,4 @@
-import ApplicationDetailClient from './client';
+import ApplicationDetailClient from './client.jsx';
 
 export default function ApplicationDetailPage({ params }: { params: { id: string } }) {
   return <ApplicationDetailClient id={params.id} />;

@@ -59,26 +59,72 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       setLoading(true);
       setError(null);
 
-      const response = await fetch(`/api/notifications?unread_only=${unreadOnly}`);
+      console.log('Fetching notifications, authenticated user:', getUserId());
+      // Determine if this is an admin user
+      const isAdmin = getUserId()?.includes('admin');
+
+      // Use the appropriate API endpoint based on user type
+      const apiUrl = isAdmin
+        ? `/api/admin/notifications?unread_only=${unreadOnly}`
+        : `/api/notifications?unread_only=${unreadOnly}`;
+
+      console.log('Using API URL:', apiUrl, 'isAdmin:', isAdmin);
+      const response = await fetch(apiUrl);
 
       if (!response.ok) {
         // If unauthorized or any other error, just set empty data without throwing an error
         // This makes the application more resilient to authentication issues
-        console.log(`Error fetching notifications: ${response.status} ${response.statusText}`);
+        console.error(`Error fetching notifications: ${response.status} ${response.statusText}`);
         setNotifications([]);
         setUnreadCount(0);
         return { notifications: [], unreadCount: 0 };
       }
 
-      const data = await response.json();
-      setNotifications(data.notifications);
-      setUnreadCount(data.unreadCount);
+      // Check the content type to ensure it's JSON
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        console.error('Received non-JSON response:', contentType);
+        const text = await response.text();
+        console.error('Response text:', text.substring(0, 200) + (text.length > 200 ? '...' : ''));
+        setNotifications([]);
+        setUnreadCount(0);
+        return { notifications: [], unreadCount: 0 };
+      }
 
-      return data;
+      try {
+        const data = await response.json();
+        console.log('Notifications data received:', data);
+
+        // Ensure data has the expected structure
+        if (!data || typeof data !== 'object') {
+          console.error('Invalid data structure received:', data);
+          setNotifications([]);
+          setUnreadCount(0);
+          return { notifications: [], unreadCount: 0 };
+        }
+
+        // Set notifications with fallback to empty array if missing
+        setNotifications(Array.isArray(data.notifications) ? data.notifications : []);
+
+        // Set unread count with fallback to 0 if missing
+        setUnreadCount(typeof data.unreadCount === 'number' ? data.unreadCount : 0);
+
+        return data;
+      } catch (jsonError) {
+        console.error('Error parsing JSON response:', jsonError);
+        setNotifications([]);
+        setUnreadCount(0);
+        return { notifications: [], unreadCount: 0 };
+      }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
       setError(errorMessage);
       console.error('Error fetching notifications:', err);
+
+      // Set empty data on error
+      setNotifications([]);
+      setUnreadCount(0);
+      return { notifications: [], unreadCount: 0 };
     } finally {
       setLoading(false);
     }
@@ -92,7 +138,15 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
     }
 
     try {
-      const response = await fetch('/api/notifications/mark-read', {
+      // Determine if this is an admin user
+      const isAdmin = getUserId()?.includes('admin');
+
+      // Use the appropriate API endpoint based on user type
+      const apiUrl = isAdmin
+        ? '/api/admin/notifications'
+        : '/api/notifications/mark-read';
+
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -135,7 +189,15 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
     }
 
     try {
-      const response = await fetch('/api/notifications/mark-read', {
+      // Determine if this is an admin user
+      const isAdmin = getUserId()?.includes('admin');
+
+      // Use the appropriate API endpoint based on user type
+      const apiUrl = isAdmin
+        ? '/api/admin/notifications'
+        : '/api/notifications/mark-read';
+
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -170,13 +232,25 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
   useEffect(() => {
     // Check if user is authenticated before fetching notifications
     if (typeof window !== 'undefined' && isAuthenticated()) {
-      fetchNotifications();
+      // Initial fetch with error handling
+      fetchNotifications().catch(err => {
+        console.error('Initial notification fetch failed:', err);
+        // Don't show error toast for initial load to avoid annoying users
+      });
 
       // Set up polling to check for new notifications every minute
       const intervalId = setInterval(() => {
         // Check authentication again before each fetch
         if (isAuthenticated()) {
-          fetchNotifications();
+          // Wrap in try/catch to prevent unhandled promise rejections
+          try {
+            fetchNotifications().catch(err => {
+              console.error('Periodic notification fetch failed:', err);
+              // Silent fail for background updates
+            });
+          } catch (error) {
+            console.error('Error in notification interval:', error);
+          }
         }
       }, 60000); // 60 seconds
 

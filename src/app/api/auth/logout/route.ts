@@ -29,6 +29,34 @@ export async function POST() {
     // Approach 3: Delete the cookie
     cookiesStore.delete('auth_token');
 
+    // Approach 4: Try with different paths
+    cookiesStore.set({
+      name: 'auth_token',
+      value: '',
+      expires: new Date(0),
+      path: '/user',
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+    });
+
+    cookiesStore.set({
+      name: 'auth_token',
+      value: '',
+      expires: new Date(0),
+      path: '/admin',
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+    });
+
+    cookiesStore.set({
+      name: 'auth_token',
+      value: '',
+      expires: new Date(0),
+      path: '/cremation',
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+    });
+
     return NextResponse.json({
       success: true,
       message: 'Logged out successfully'

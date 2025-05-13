@@ -11,7 +11,8 @@ import {
   UserGroupIcon,
   UserIcon,
   UsersIcon,
-  ShieldExclamationIcon
+  ShieldExclamationIcon,
+  EnvelopeIcon
 } from '@heroicons/react/24/outline';
 
 interface AdminSidebarProps {
@@ -71,14 +72,14 @@ export default function AdminSidebar({ activePage: propActivePage }: AdminSideba
   useEffect(() => {
     if (propActivePage) {
       setActivePage(propActivePage);
-      
+
       // If the active page is a user management item, ensure the dropdown stays open
       if (userManagementItems.some(item => item.id === propActivePage)) {
         setUserManagementOpen(true);
       }
     } else {
       const currentPath = pathname.split('/').pop() || '';
-      
+
       if (currentPath === 'dashboard' || pathname === '/admin') {
         setActivePage('dashboard');
       } else if (currentPath === 'applications') {
@@ -88,7 +89,7 @@ export default function AdminSidebar({ activePage: propActivePage }: AdminSideba
       } else if (pathname.includes('/admin/users')) {
         // Always set user management open when on any user management page
         setUserManagementOpen(true);
-        
+
         if (currentPath === 'cremation') {
           setActivePage('cremation');
         } else if (currentPath === 'furparents') {
@@ -103,7 +104,7 @@ export default function AdminSidebar({ activePage: propActivePage }: AdminSideba
   // Function to handle navigation item clicks
   const handleNavItemClick = (id: string) => {
     setActivePage(id);
-    
+
     // Don't close the dropdown if clicking on a user management item
     if (!userManagementItems.some(item => item.id === id)) {
       setUserManagementOpen(false);
@@ -225,4 +226,4 @@ export default function AdminSidebar({ activePage: propActivePage }: AdminSideba
       </div>
     </div>
   );
-} 
+}

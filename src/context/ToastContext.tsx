@@ -4,7 +4,7 @@ import React, { createContext, useContext, useState, ReactNode } from 'react';
 import ToastContainer, { ToastMessage, ToastType } from '../components/ui/ToastContainer';
 
 interface ToastContextType {
-  showToast: (message: string, type: ToastType) => void;
+  showToast: (message: string, type: ToastType, duration?: number) => void;
   hideToast: (id: string) => void;
 }
 
@@ -25,15 +25,15 @@ interface ToastProviderProps {
 export function ToastProvider({ children }: ToastProviderProps) {
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
-  const showToast = (message: string, type: ToastType = 'info') => {
+  const showToast = (message: string, type: ToastType = 'info', duration: number = 4000) => {
     const id = Math.random().toString(36).substring(2, 9);
     setToasts((prev) => [...prev, { id, message, type }]);
 
-    // Auto-remove toast after 4 seconds
+    // Auto-remove toast after specified duration (default 4 seconds)
     if (typeof window !== 'undefined') {
       setTimeout(() => {
         hideToast(id);
-      }, 4000);
+      }, duration);
     }
 
     return id;

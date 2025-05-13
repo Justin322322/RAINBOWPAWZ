@@ -1,5 +1,6 @@
 // Simple, reliable email service
 const nodemailer = require('nodemailer');
+const { query } = require('./db');
 
 // Base email template with clean, modern design
 const baseEmailTemplate = (title, content) => {
@@ -94,51 +95,70 @@ const baseEmailTemplate = (title, content) => {
 
 // Create a transporter with environment variables
 const createTransporter = () => {
-  // Check if SMTP credentials are set
-  if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
-    console.error('❌ ERROR: SMTP credentials are not properly configured');
-    throw new Error('Email service not properly configured');
-  }
-
-  // Check if we're in simulation mode (only for development/testing)
-  if (process.env.NODE_ENV === 'development' && process.env.SIMULATE_EMAIL_SUCCESS === 'true') {
-    console.log('🔔 SIMULATION MODE: Creating simulated email transporter');
+  // Check if we're in development mode with DEV_EMAIL_MODE enabled
+  if (process.env.DEV_EMAIL_MODE === 'true') {
+    console.log('🔔 DEV EMAIL MODE: Creating simulated email transporter');
     return {
       sendMail: async (mailOptions) => {
-        console.log('📧 SIMULATION: Would send email to:', mailOptions.to);
-        console.log('📑 SIMULATION: Subject:', mailOptions.subject);
+        console.log('📧 DEV MODE: Email would be sent to:', mailOptions.to);
+        console.log('📑 DEV MODE: Subject:', mailOptions.subject);
 
         // For OTP emails, extract and log the code
         if (mailOptions.subject.includes('Verification Code')) {
           const otpMatch = mailOptions.html.match(/(\d{6})/);
           if (otpMatch) {
-            console.log('🔑 SIMULATION: OTP code is', otpMatch[1]);
+            console.log('🔑 DEV MODE: OTP code is', otpMatch[1]);
           }
         }
 
         // For password reset emails, extract and log the token
         if (mailOptions.subject.includes('Reset Your Password')) {
-          const tokenMatch = mailOptions.html.match(/token=([a-zA-Z0-9_-]{64})/);
+          const tokenMatch = mailOptions.html.match(/token=([a-zA-Z0-9_-]+)/);
           if (tokenMatch) {
-            console.log('🔑 SIMULATION: Reset token is', tokenMatch[1]);
-            console.log(`🔗 SIMULATION: Reset link: ${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/reset-password?token=${tokenMatch[1]}`);
+            console.log('🔑 DEV MODE: Reset token is', tokenMatch[1]);
+            console.log(`🔗 DEV MODE: Reset link: ${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/reset-password?token=${tokenMatch[1]}`);
           } else {
             // Try a more general pattern if the specific one fails
             const generalMatch = mailOptions.html.match(/token=([^"&'\s]+)/);
             if (generalMatch) {
-              console.log('🔑 SIMULATION: Reset token is', generalMatch[1]);
-              console.log(`🔗 SIMULATION: Reset link: ${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/reset-password?token=${generalMatch[1]}`);
+              console.log('🔑 DEV MODE: Reset token is', generalMatch[1]);
+              console.log(`🔗 DEV MODE: Reset link: ${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/reset-password?token=${generalMatch[1]}`);
             }
           }
         }
 
         return {
-          messageId: `simulated-${Date.now()}`,
+          messageId: `dev-mode-${Date.now()}`,
           accepted: [mailOptions.to],
           rejected: []
         };
       }
     };
+  }
+
+  // For production, check if SMTP credentials are set
+  if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+    console.error('❌ ERROR: SMTP credentials are not properly configured');
+
+    // In development, still return a mock transporter even if SMTP is not properly configured
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔔 FALLBACK: Using console-only email transporter');
+      return {
+        sendMail: async (mailOptions) => {
+          console.log('📧 FALLBACK: Email would be sent to:', mailOptions.to);
+          console.log('📑 FALLBACK: Subject:', mailOptions.subject);
+          console.log('📄 FALLBACK: Content preview:', mailOptions.html.substring(0, 200) + '...');
+
+          return {
+            messageId: `fallback-${Date.now()}`,
+            accepted: [mailOptions.to],
+            rejected: []
+          };
+        }
+      };
+    }
+
+    throw new Error('Email service not properly configured');
   }
 
   // Create real transporter for actual email sending
@@ -181,7 +201,7 @@ const sendEmail = async (options) => {
 
     // Prepare mail options
     const mailOptions = {
-      from: options.from || `"Rainbow Paws" <${process.env.SMTP_USER}>`,
+      from: options.from || `"Rainbow Paws" <${process.env.SMTP_FROM || process.env.SMTP_USER || 'no-reply@rainbowpaws.com'}>`,
       to: options.to,
       subject: options.subject,
       html: options.html,
@@ -200,12 +220,13 @@ const sendEmail = async (options) => {
   } catch (error) {
     console.error('Error sending email:', error);
 
-    // Only in development mode with simulation explicitly enabled, return success anyway
-    if (process.env.NODE_ENV === 'development' && process.env.SIMULATE_EMAIL_SUCCESS === 'true') {
+    // In development mode with DEV_EMAIL_MODE enabled, return success anyway
+    if (process.env.DEV_EMAIL_MODE === 'true') {
       console.log('DEV MODE: Simulating email success despite error');
+
       return {
         success: true,
-        messageId: `simulated-error-${Date.now()}`
+        messageId: `dev-mode-error-${Date.now()}`
       };
     }
 
@@ -398,23 +419,28 @@ const sendBookingConfirmationEmail = async (email, bookingDetails) => {
 const sendBusinessVerificationEmail = async (email, businessDetails) => {
   let statusText = '';
   let title = 'Business Verification Update';
+  let emailType = 'business_verification';
 
   switch (businessDetails.status) {
     case 'approved':
       title = 'Business Verification Approved';
       statusText = 'has been verified and approved';
+      emailType = 'business_approval';
       break;
     case 'rejected':
       title = 'Business Verification Update';
       statusText = 'verification has been declined';
+      emailType = 'business_rejection';
       break;
     case 'documents_required':
       title = 'Additional Documents Required';
       statusText = 'requires additional documentation';
+      emailType = 'business_documents_required';
       break;
     default:
       title = 'Business Verification Update';
       statusText = 'status has been updated';
+      emailType = 'business_verification';
   }
 
   const subject = title;
@@ -433,7 +459,19 @@ const sendBusinessVerificationEmail = async (email, businessDetails) => {
 
   const html = baseEmailTemplate(title, content);
 
-  return sendEmail({ to: email, subject, html });
+  // Add metadata to help with logging
+  const metadata = {
+    businessName: businessDetails.businessName,
+    status: businessDetails.status,
+    emailType: emailType
+  };
+
+  return sendEmail({
+    to: email,
+    subject,
+    html,
+    metadata
+  });
 };
 
 module.exports = {
@@ -444,3 +482,4 @@ module.exports = {
   sendBookingConfirmationEmail,
   sendBusinessVerificationEmail
 };
+
