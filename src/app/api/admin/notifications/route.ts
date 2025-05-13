@@ -41,14 +41,14 @@ export async function GET(request: NextRequest) {
     // Get notifications from the database
     // First check if the admin_notifications table exists
     const tableCheck = await query(`
-      SELECT COUNT(*) as count 
-      FROM information_schema.tables 
+      SELECT COUNT(*) as count
+      FROM information_schema.tables
       WHERE table_schema = ? AND table_name = 'admin_notifications'
     `, [process.env.DB_NAME || 'rainbow_paws']);
-    
-    const tableExists = tableCheck && Array.isArray(tableCheck) && 
+
+    const tableExists = tableCheck && Array.isArray(tableCheck) &&
                         tableCheck[0] && tableCheck[0].count > 0;
-    
+
     if (!tableExists) {
       // If the table doesn't exist, create it
       await query(`
@@ -59,11 +59,12 @@ export async function GET(request: NextRequest) {
           message TEXT NOT NULL,
           entity_type VARCHAR(50),
           entity_id INT,
+          link VARCHAR(255),
           is_read BOOLEAN DEFAULT FALSE,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
       `);
-      
+
       console.log('Created admin_notifications table');
     }
 
@@ -95,13 +96,14 @@ export async function GET(request: NextRequest) {
       if (!applicationNotification || applicationNotification.length === 0) {
         // Create a notification for pending applications
         await query(`
-          INSERT INTO admin_notifications (type, title, message, entity_type)
-          VALUES (?, ?, ?, ?)
+          INSERT INTO admin_notifications (type, title, message, entity_type, link)
+          VALUES (?, ?, ?, ?, ?)
         `, [
           'pending_application',
           'Pending Applications',
           `You have ${pendingCount} pending business application${pendingCount > 1 ? 's' : ''} to review.`,
-          'business_profile'
+          'business_profile',
+          '/admin/applications'
         ]);
 
         // Fetch the newly created notification

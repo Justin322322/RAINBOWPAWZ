@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import AdminDashboardLayout from '@/components/navigation/AdminDashboardLayout';
 import {
   MagnifyingGlassIcon,
@@ -15,12 +15,15 @@ import {
   UserCircleIcon,
   CheckCircleIcon,
   XCircleIcon,
-  ExclamationTriangleIcon
+  ExclamationTriangleIcon,
+  CheckBadgeIcon,
+  EllipsisVerticalIcon
 } from '@heroicons/react/24/outline';
 import Link from 'next/link';
 import { useToast } from '@/context/ToastContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import ConfirmationModal from '@/components/ConfirmationModal';
+import VerificationModal from '@/components/VerificationModal';
 
 // Define the type for cremation center data
 interface CremationCenter {
@@ -38,6 +41,7 @@ interface CremationCenter {
   rating?: number;
   description: string;
   verified: boolean;
+  verification_status?: string; // Add this to match the backend
   city?: string;
   province?: string;
 }
@@ -57,8 +61,25 @@ export default function AdminCremationCentersPage() {
   const [successCenterName, setSuccessCenterName] = useState('');
   const [showRestrictModal, setShowRestrictModal] = useState(false);
   const [showRestoreModal, setShowRestoreModal] = useState(false);
+  const [showVerifyModal, setShowVerifyModal] = useState(false);
   const [centerToAction, setCenterToAction] = useState<CremationCenter | null>(null);
+  const [openDropdownId, setOpenDropdownId] = useState<string | number | null>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
   const { showToast } = useToast();
+
+  // Handle clicks outside the dropdown to close it
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setOpenDropdownId(null);
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   // Fetch cremation centers from the API
   useEffect(() => {
@@ -171,13 +192,38 @@ export default function AdminCremationCentersPage() {
   // Function to open the restrict modal
   const openRestrictModal = (center: CremationCenter) => {
     setCenterToAction(center);
+    // Close details modal if it's open to avoid modal conflicts
+    if (showDetailsModal) {
+      setShowDetailsModal(false);
+    }
     setShowRestrictModal(true);
   };
 
-  // Function to open the restore modal
-  const openRestoreModal = (center: CremationCenter) => {
+  // Function to open the unrestrict modal
+  const openUnrestrictModal = (center: CremationCenter) => {
     setCenterToAction(center);
+    // Close details modal if it's open to avoid modal conflicts
+    if (showDetailsModal) {
+      setShowDetailsModal(false);
+    }
     setShowRestoreModal(true);
+  };
+
+  // Function to open the verify modal
+  const openVerifyModal = (center: CremationCenter) => {
+    setCenterToAction(center);
+    // Close details modal if it's open to avoid modal conflicts
+    if (showDetailsModal) {
+      setShowDetailsModal(false);
+    }
+    setShowVerifyModal(true);
+    // Close dropdown if open
+    setOpenDropdownId(null);
+  };
+
+  // Function to toggle dropdown
+  const toggleDropdown = (id: string | number) => {
+    setOpenDropdownId(openDropdownId === id ? null : id);
   };
 
   // Handle restricting a cremation center
@@ -205,16 +251,33 @@ export default function AdminCremationCentersPage() {
       }
 
       // Update the center's status in the local state to ensure it shows as restricted
+      // Set both status and verification_status to 'restricted'
       setCremationCenters(prevCenters =>
         prevCenters.map(c =>
-          c.id === center.id ? { ...c, status: 'restricted' } : c
+          c.id === center.id ? {
+            ...c,
+            status: 'restricted',
+            verified: false, // Set verified to false to ensure it's not shown as verified
+            verification_status: 'restricted' // Add this to match the backend
+          } : c
         )
       );
 
       // If the center is currently selected in the modal, update it
       if (selectedCenter && selectedCenter.id === center.id) {
-        setSelectedCenter({ ...selectedCenter, status: 'restricted' });
+        setSelectedCenter({
+          ...selectedCenter,
+          status: 'restricted',
+          verified: false,
+          verification_status: 'restricted'
+        });
       }
+
+      // Force a refresh of the UI to ensure the status is updated
+      setTimeout(() => {
+        // This will trigger a re-render
+        setCremationCenters(prevCenters => [...prevCenters]);
+      }, 100);
 
       // Set success state to trigger animation
       setSuccessCenterName(center.name);
@@ -239,8 +302,137 @@ export default function AdminCremationCentersPage() {
     }
   };
 
-  // Handle restoring a cremation center
-  const handleRestoreCenter = async (center: CremationCenter) => {
+  // Handle verifying a cremation center
+  const handleVerifyCenter = async (notes: string) => {
+    if (isProcessing || !centerToAction) return;
+
+    try {
+      setIsProcessing(true);
+
+      console.log('Verifying cremation center:', centerToAction);
+
+      // Ensure we're sending the correct data format
+      // The API expects numeric IDs, so convert if necessary
+      // Handle potential NaN values by using the original ID if parsing fails
+      let businessId;
+      try {
+        businessId = typeof centerToAction.id === 'string' ? parseInt(centerToAction.id) : centerToAction.id;
+        // If parsing resulted in NaN, use the original ID
+        if (isNaN(businessId) && typeof centerToAction.id === 'string') {
+          businessId = centerToAction.id;
+        }
+      } catch (error) {
+        // If any error occurs during parsing, use the original ID
+        businessId = centerToAction.id;
+      }
+
+      console.log('Using business ID for verification:', businessId, 'Original ID:', centerToAction.id);
+
+      // Check if the center is already restricted
+      const isRestricted = centerToAction.verification_status === 'restricted';
+
+      const payload = {
+        userId: businessId,
+        userType: 'cremation_center',
+        action: 'verify',
+        notes: notes || (isRestricted ? 'Verified by admin but still restricted' : 'Verified by admin'),
+        businessId: businessId
+      };
+
+      console.log('Sending payload:', payload);
+
+      const response = await fetch('/api/admin/users/verify', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      let data;
+      try {
+        data = await response.json();
+        console.log('Response data:', data);
+      } catch (jsonError) {
+        console.error('Error parsing JSON response:', jsonError);
+        throw new Error('Invalid response from server');
+      }
+
+      if (!response.ok || !data.success) {
+        // Create an error with the cause containing additional details
+        const error = new Error(data.error || 'Failed to verify cremation center');
+        if (data.details) {
+          Object.defineProperty(error, 'cause', {
+            value: { details: data.details },
+            enumerable: true
+          });
+        }
+        throw error;
+      }
+
+      // Check if the center was restricted
+      const centerIsRestricted = centerToAction.verification_status === 'restricted';
+      const newStatus = centerIsRestricted ? 'restricted' : 'verified';
+
+      // Update the center's verification status in the local state
+      setCremationCenters(prevCenters =>
+        prevCenters.map(c =>
+          c.id === centerToAction.id ? {
+            ...c,
+            verified: true,
+            verification_status: newStatus,
+            status: centerIsRestricted ? 'restricted' : 'active'
+          } : c
+        )
+      );
+
+      // If the center is currently selected in the modal, update it
+      if (selectedCenter && selectedCenter.id === centerToAction.id) {
+        setSelectedCenter({
+          ...selectedCenter,
+          verified: true,
+          verification_status: newStatus,
+          status: centerIsRestricted ? 'restricted' : 'active'
+        });
+      }
+
+      showToast(`${centerToAction.name} has been verified successfully`, 'success');
+
+      // Close the modal
+      setShowVerifyModal(false);
+
+      // Force a refresh of the UI to ensure the status is updated
+      setTimeout(() => {
+        // This will trigger a re-render
+        setCremationCenters(prevCenters => [...prevCenters]);
+      }, 100);
+
+    } catch (err) {
+      console.error('Error verifying cremation center:', err);
+
+      // Extract detailed error message if available
+      let errorMessage = 'Failed to verify cremation center';
+
+      if (err instanceof Error) {
+        errorMessage = err.message;
+      }
+
+      // Check if we have a response with more details
+      if (err instanceof Error && 'cause' in err && err.cause && typeof err.cause === 'object') {
+        const cause = err.cause as any;
+        if (cause.details) {
+          errorMessage = `${errorMessage}: ${cause.details}`;
+        }
+      }
+
+      showToast(errorMessage, 'error');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // Handle unrestricting a cremation center
+  const handleUnrestrictCenter = async (center: CremationCenter) => {
     if (isProcessing) return;
 
     try {
@@ -266,14 +458,30 @@ export default function AdminCremationCentersPage() {
       // Update the center's status in the local state to ensure it shows as active
       setCremationCenters(prevCenters =>
         prevCenters.map(c =>
-          c.id === center.id ? { ...c, status: 'active', verified: true } : c
+          c.id === center.id ? {
+            ...c,
+            status: 'active',
+            verified: true,
+            verification_status: 'verified' // Add this to match the backend
+          } : c
         )
       );
 
       // If the center is currently selected in the modal, update it
       if (selectedCenter && selectedCenter.id === center.id) {
-        setSelectedCenter({ ...selectedCenter, status: 'active', verified: true });
+        setSelectedCenter({
+          ...selectedCenter,
+          status: 'active',
+          verified: true,
+          verification_status: 'verified'
+        });
       }
+
+      // Force a refresh of the UI to ensure the status is updated
+      setTimeout(() => {
+        // This will trigger a re-render
+        setCremationCenters(prevCenters => [...prevCenters]);
+      }, 100);
 
       // Set success state to trigger animation
       setSuccessCenterName(center.name);
@@ -299,9 +507,20 @@ export default function AdminCremationCentersPage() {
   };
 
   // Get status badge based on center status
-  const getStatusBadge = (status: string, verified: boolean) => {
-    // If status is explicitly 'restricted', show that first
-    if (status === 'restricted') {
+  const getStatusBadge = (status: string, verified: boolean, centerObj?: any) => {
+    // Debug log to see what values we're working with
+    console.log('Status badge check:', {
+      status,
+      verified,
+      verification_status: centerObj?.verification_status,
+      centerObj
+    });
+
+    // IMPORTANT: Always prioritize the actual status value from the database
+    // This ensures we show the correct status regardless of other properties
+
+    // First priority: Check for restricted status in either column
+    if (status === 'restricted' || (centerObj && centerObj.verification_status === 'restricted')) {
       return (
         <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800 min-w-[90px] justify-center">
           Restricted
@@ -309,8 +528,9 @@ export default function AdminCremationCentersPage() {
       );
     }
 
-    // Then check verification status (only if not restricted)
-    if (!verified) {
+    // Third priority: Check verification status for pending applications
+    if (!verified ||
+        (centerObj && (centerObj.verification_status === 'pending' || centerObj.verification_status === null))) {
       return (
         <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800 min-w-[90px] justify-center">
           Pending
@@ -318,7 +538,7 @@ export default function AdminCremationCentersPage() {
       );
     }
 
-    // Handle other statuses
+    // Third priority: Handle other statuses
     switch(status) {
       case 'active':
         return (
@@ -401,7 +621,7 @@ export default function AdminCremationCentersPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[200]"
           >
             <motion.div
               initial={{ scale: 0.8, opacity: 0 }}
@@ -438,7 +658,7 @@ export default function AdminCremationCentersPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[200]"
           >
             <motion.div
               initial={{ scale: 0.8, opacity: 0 }}
@@ -454,9 +674,9 @@ export default function AdminCremationCentersPage() {
               >
                 <CheckCircleIcon className="h-12 w-12 text-green-500" />
               </motion.div>
-              <h3 className="text-xl font-medium text-gray-900 mb-2">Access Restored</h3>
+              <h3 className="text-xl font-medium text-gray-900 mb-2">Access Unrestricted</h3>
               <p className="text-gray-600 mb-6">
-                {successCenterName} has been restored successfully. They can now accept new bookings.
+                {successCenterName} has been unrestricted successfully. They can now accept new bookings.
               </p>
               <div className="w-full bg-gray-200 rounded-full h-2 mb-6">
                 <motion.div
@@ -476,9 +696,6 @@ export default function AdminCremationCentersPage() {
         <div className="px-6 py-4 border-b border-gray-200">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-medium text-gray-800">Cremation Center Accounts</h2>
-            <button className="px-4 py-2 bg-[var(--primary-green)] text-white rounded-lg text-sm font-medium hover:bg-opacity-90 transition-colors duration-300">
-              Add New Center
-            </button>
           </div>
         </div>
 
@@ -581,32 +798,67 @@ export default function AdminCremationCentersPage() {
                       <div className="text-sm text-gray-500">{center.totalBookings} bookings</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      {getStatusBadge(center.status, center.verified)}
+                      {getStatusBadge(center.status, center.verified, center)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <button
-                        onClick={() => handleViewDetails(center)}
-                        className="text-[var(--primary-green)] hover:text-[var(--primary-green)] hover:underline mr-4"
-                      >
-                        View
-                      </button>
-                      {center.status !== 'restricted' ? (
+                      <div className="flex items-center justify-end space-x-4">
                         <button
-                          onClick={() => openRestrictModal(center)}
-                          disabled={isProcessing}
-                          className="text-red-600 hover:text-red-900 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+                          onClick={() => handleViewDetails(center)}
+                          className="text-[var(--primary-green)] hover:text-[var(--primary-green)] hover:underline"
                         >
-                          {isProcessing ? 'Processing...' : 'Restrict'}
+                          View
                         </button>
-                      ) : (
-                        <button
-                          onClick={() => openRestoreModal(center)}
-                          disabled={isProcessing}
-                          className="text-green-600 hover:text-green-900 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          {isProcessing ? 'Processing...' : 'Restore'}
-                        </button>
-                      )}
+
+                        {/* Verification Badge */}
+                        {center.verified ? (
+                          <span className="flex items-center text-green-600">
+                            <CheckBadgeIcon className="h-5 w-5 mr-1" />
+                            <span>Verified</span>
+                          </span>
+                        ) : (
+                          <div className="relative" ref={dropdownRef}>
+                            <button
+                              onClick={() => toggleDropdown(center.id)}
+                              className="text-gray-500 hover:text-gray-700 p-1 rounded-full focus:outline-none"
+                              disabled={isProcessing}
+                            >
+                              <EllipsisVerticalIcon className="h-5 w-5" />
+                            </button>
+
+                            {openDropdownId === center.id && (
+                              <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 py-1">
+                                <button
+                                  onClick={() => openVerifyModal(center)}
+                                  className="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                  disabled={isProcessing}
+                                >
+                                  <CheckBadgeIcon className="h-4 w-4 mr-2 text-green-600" />
+                                  Verify
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Restrict/Unrestrict Button */}
+                        {center.status !== 'restricted' ? (
+                          <button
+                            onClick={() => openRestrictModal(center)}
+                            disabled={isProcessing}
+                            className="text-red-600 hover:text-red-900 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {isProcessing ? 'Processing...' : 'Restrict'}
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => openUnrestrictModal(center)}
+                            disabled={isProcessing}
+                            className="text-green-600 hover:text-green-900 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {isProcessing ? 'Processing...' : 'Unrestrict'}
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -633,21 +885,33 @@ export default function AdminCremationCentersPage() {
         icon={<ExclamationTriangleIcon className="h-6 w-6 text-red-600" />}
       />
 
-      {/* Restore Confirmation Modal */}
+      {/* Unrestrict Confirmation Modal */}
       <ConfirmationModal
         isOpen={showRestoreModal}
         onClose={() => setShowRestoreModal(false)}
-        onConfirm={() => centerToAction && handleRestoreCenter(centerToAction)}
-        title="Restore Cremation Center"
-        message={`Are you sure you want to restore access for "${centerToAction?.name}"? This will allow them to accept new bookings again.`}
-        confirmText="Restore Access"
+        onConfirm={() => centerToAction && handleUnrestrictCenter(centerToAction)}
+        title="Unrestrict Cremation Center"
+        message={`Are you sure you want to unrestrict "${centerToAction?.name}"? This will allow them to accept new bookings again.`}
+        confirmText="Unrestrict Access"
         confirmButtonClass="bg-green-600 hover:bg-green-700 focus:ring-green-500"
         icon={<CheckCircleIcon className="h-6 w-6 text-green-600" />}
       />
 
+      {/* Verification Modal */}
+      <VerificationModal
+        isOpen={showVerifyModal}
+        onClose={() => setShowVerifyModal(false)}
+        onConfirm={handleVerifyCenter}
+        title="Verify Cremation Center"
+        message={centerToAction ? `Are you sure you want to verify "${centerToAction.name}"? This will make them visible to fur parents in the services section.` : ''}
+        confirmText="Verify"
+        confirmButtonClass="bg-blue-600 hover:bg-blue-700 focus:ring-blue-500"
+        isProcessing={isProcessing}
+      />
+
       {/* Center Details Modal */}
       {showDetailsModal && selectedCenter && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[90] p-4">
           <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
             <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
               <h2 className="text-xl font-semibold text-gray-800">Cremation Center Details</h2>
@@ -670,36 +934,43 @@ export default function AdminCremationCentersPage() {
                       <h3 className="text-2xl font-semibold text-gray-900">{selectedCenter.name}</h3>
                       <div className="flex items-center space-x-2 mt-1">
                         <span className="text-gray-600">ID: {selectedCenter.id}</span>
-                        {selectedCenter.rating && (
-                          <>
-                            <span>•</span>
-                            <span className="flex items-center">
-                              <span className="text-amber-500 mr-1">{selectedCenter.rating}</span>
-                              <svg className="h-4 w-4 text-amber-500" fill="currentColor" viewBox="0 0 20 20">
-                                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                              </svg>
-                            </span>
-                          </>
-                        )}
                         <span>•</span>
                         <span className="flex items-center">
-                          {selectedCenter.verified ? (
+                          <span className="text-gray-600 mr-1">No ratings yet</span>
+                        </span>
+                        <span>•</span>
+                        <span className="flex items-center">
+                          {selectedCenter.verification_status === 'verified' ? (
                             <span className="flex items-center text-green-600 text-sm">
                               <ShieldCheckIcon className="h-4 w-4 mr-1" />
                               Verified
                             </span>
-                          ) : (
-                            <span className="flex items-center text-red-600 text-sm">
+                          ) : selectedCenter.verification_status === 'restricted' ? (
+                            <span className="flex items-center text-orange-600 text-sm">
                               <ShieldExclamationIcon className="h-4 w-4 mr-1" />
-                              Unverified
+                              Restricted
                             </span>
+                          ) : (
+                            <div className="relative">
+                              <button
+                                onClick={() => openVerifyModal(selectedCenter)}
+                                className="flex items-center text-red-600 text-sm hover:text-red-800"
+                                disabled={isProcessing}
+                              >
+                                <ShieldExclamationIcon className="h-4 w-4 mr-1" />
+                                Unverified
+                                <svg className="h-4 w-4 ml-1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                  <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                                </svg>
+                              </button>
+                            </div>
                           )}
                         </span>
                       </div>
                     </div>
                   </div>
                   <div>
-                    {getStatusBadge(selectedCenter.status, selectedCenter.verified)}
+                    {getStatusBadge(selectedCenter.status, selectedCenter.verified, selectedCenter)}
                   </div>
                 </div>
 
@@ -794,7 +1065,7 @@ export default function AdminCremationCentersPage() {
                   </button>
                   {selectedCenter.status === 'restricted' ? (
                     <button
-                      onClick={() => openRestoreModal(selectedCenter)}
+                      onClick={() => openUnrestrictModal(selectedCenter)}
                       disabled={isProcessing}
                       className="px-4 py-2 bg-[var(--primary-green)] text-white rounded-lg hover:bg-opacity-90 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                     >

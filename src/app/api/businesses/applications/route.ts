@@ -40,10 +40,8 @@ export async function GET() {
         bp.updated_at,
         CASE
           WHEN bp.verification_status = 'verified' THEN 'approved'
-          WHEN bp.verification_status = 'rejected' THEN 'declined'
-          WHEN bp.verification_status = 'documents_required' THEN 'documents_required'
-          WHEN bp.verification_status IS NULL OR bp.verification_status = 'pending' THEN 'pending'
-          ELSE 'reviewing'
+          WHEN bp.verification_status = 'restricted' THEN 'restricted'
+          ELSE 'pending'
         END AS status
       FROM
         business_profiles bp
@@ -52,7 +50,7 @@ export async function GET() {
       ORDER BY
         CASE
           WHEN bp.verification_status IS NULL OR bp.verification_status = 'pending' THEN 1
-          WHEN bp.verification_status = 'documents_required' THEN 2
+          WHEN bp.verification_status = 'restricted' THEN 2
           ELSE 3
         END,
         bp.created_at DESC

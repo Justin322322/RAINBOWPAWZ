@@ -11,7 +11,6 @@ import {
   UserGroupIcon,
   UserIcon,
   UsersIcon,
-  ShieldExclamationIcon,
   EnvelopeIcon
 } from '@heroicons/react/24/outline';
 
@@ -59,12 +58,6 @@ export default function AdminSidebar({ activePage: propActivePage }: AdminSideba
       href: '/admin/users/furparents',
       icon: UsersIcon,
       id: 'furparents'
-    },
-    {
-      name: 'Restricted Users',
-      href: '/admin/users/restricted',
-      icon: ShieldExclamationIcon,
-      id: 'restricted'
     }
   ];
 
@@ -94,8 +87,6 @@ export default function AdminSidebar({ activePage: propActivePage }: AdminSideba
           setActivePage('cremation');
         } else if (currentPath === 'furparents') {
           setActivePage('furparents');
-        } else if (currentPath === 'restricted') {
-          setActivePage('restricted');
         }
       }
     }

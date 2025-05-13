@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { query, testConnection } from '@/lib/db';
 import bcrypt from 'bcryptjs';
 import { generateOtp } from '@/lib/otpService';
+import { createAdminNotification } from '@/utils/adminNotificationService';
 
 // Import the simple email service
 const { sendWelcomeEmail } = require('@/lib/simpleEmailService');
@@ -233,6 +234,27 @@ export async function POST(request: Request) {
 
             const result = await query(sql, values) as any;
             console.log('Business profile created successfully, result:', result);
+
+            // Create admin notification for cremation center registration
+            if (businessData.businessType === 'cremation') {
+              try {
+                console.log('Creating admin notification for new cremation center registration');
+                const businessProfileId = result.insertId;
+
+                await createAdminNotification({
+                  type: 'new_cremation_center',
+                  title: 'New Cremation Center Registration',
+                  message: `${businessData.businessName} has registered as a cremation center and is pending verification.`,
+                  entityType: 'business_profile',
+                  entityId: businessProfileId
+                });
+
+                console.log('Admin notification created successfully for cremation center');
+              } catch (notificationError) {
+                console.error('Error creating admin notification:', notificationError);
+                // Continue with registration even if notification creation fails
+              }
+            }
           } catch (businessProfileError) {
             console.error('Error creating business profile:', businessProfileError);
             // Continue with registration even if business profile creation fails

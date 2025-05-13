@@ -55,14 +55,100 @@ export async function POST(request: NextRequest) {
     }
 
     // Determine the new status based on the action
-    const newStatus = action === 'restrict' ? 'restricted' : 'verified';
+    // For restriction, set both verification_status and status to 'restricted'
+    // For unrestriction, set verification_status to 'verified' and status to 'active'
+    const newVerificationStatus = action === 'restrict' ? 'restricted' : 'verified';
+    const newStatus = action === 'restrict' ? 'restricted' : 'active';
 
-    // Update the business status in the database
-    const result = await query(`
-      UPDATE business_profiles
-      SET verification_status = ?
-      WHERE id = ? AND business_type = 'cremation'
-    `, [newStatus, businessId]);
+    console.log('Setting status for business ID:', businessId, 'Action:', action);
+    console.log('New status values:', { newVerificationStatus, newStatus });
+
+    console.log('Attempting to update business profile with ID:', businessId);
+    console.log('New verification status:', newVerificationStatus);
+    console.log('New status:', newStatus);
+
+    let result;
+    try {
+      // First, check if the business profile exists
+      const checkResult = await query(`
+        SELECT id, business_type, verification_status
+        FROM business_profiles
+        WHERE id = ?
+      `, [businessId]) as any[];
+
+      console.log('Check result:', checkResult);
+
+      if (!checkResult || checkResult.length === 0) {
+        console.error('Business profile not found with ID:', businessId);
+        return NextResponse.json({
+          error: 'Business profile not found',
+          details: `No business profile found with ID ${businessId}`,
+          success: false
+        }, { status: 404 });
+      }
+
+      // Check if the business_type column exists
+      const columnsResult = await query(`
+        SHOW COLUMNS FROM business_profiles LIKE 'business_type'
+      `) as any[];
+
+      console.log('Columns check result:', columnsResult);
+
+      // Check if the status column exists
+      const statusColumnResult = await query(`
+        SHOW COLUMNS FROM business_profiles LIKE 'status'
+      `) as any[];
+
+      console.log('Status column check result:', statusColumnResult);
+
+      // If status column doesn't exist, add it
+      let hasStatusColumn = statusColumnResult && statusColumnResult.length > 0;
+
+      if (!hasStatusColumn) {
+        console.log('Status column does not exist, adding it...');
+        try {
+          await query(`
+            ALTER TABLE business_profiles
+            ADD COLUMN status VARCHAR(50) DEFAULT 'active' AFTER verification_status
+          `);
+          console.log('Status column added successfully');
+
+          // Check again if the column was added successfully
+          const recheckResult = await query(`
+            SHOW COLUMNS FROM business_profiles LIKE 'status'
+          `) as any[];
+
+          hasStatusColumn = recheckResult && recheckResult.length > 0;
+          console.log('Status column recheck result:', recheckResult);
+        } catch (alterError) {
+          console.error('Error adding status column:', alterError);
+          // Continue even if we can't add the column
+        }
+      }
+
+      // Determine which columns to update based on what exists in the database
+      let updateQuery;
+      let updateParams;
+
+      // Always update both verification_status and status columns
+      if (columnsResult && columnsResult.length > 0) {
+        // business_type column exists
+        updateQuery = `UPDATE business_profiles SET verification_status = ?, status = ? WHERE id = ? AND business_type = 'cremation'`;
+      } else {
+        // business_type column doesn't exist
+        updateQuery = `UPDATE business_profiles SET verification_status = ?, status = ? WHERE id = ?`;
+      }
+      updateParams = [newVerificationStatus, newStatus, businessId];
+
+      console.log('Using update query:', updateQuery);
+      console.log('Update parameters:', updateParams);
+
+      result = await query(updateQuery, updateParams);
+      console.log('Update result:', result);
+    } catch (updateError) {
+      console.error('Error during database update:', updateError);
+      throw updateError;
+    }
 
     // Check if the update was successful
     if (!result || (result as any).affectedRows === 0) {
@@ -93,7 +179,7 @@ export async function POST(request: NextRequest) {
           action === 'restrict' ? 'restrict_business' : 'restore_business',
           businessId,
           'admin', // In a real system, this would be the admin's ID
-          JSON.stringify({ action, businessId, newStatus })
+          JSON.stringify({ action, businessId, newStatus, newVerificationStatus })
         ]);
       } else {
         console.log('admin_logs table does not exist, skipping audit logging');
@@ -106,7 +192,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       message: `Business ${action === 'restrict' ? 'restricted' : 'restored'} successfully`,
-      newStatus
+      newStatus,
+      newVerificationStatus
     });
   } catch (error) {
     console.error('Error updating business status:', error);

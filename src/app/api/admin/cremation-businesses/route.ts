@@ -214,26 +214,40 @@ export async function GET(request: NextRequest) {
     let businesses;
     try {
       // Use a more defensive query that handles potential missing columns
+      // First check the table structure to determine available columns
+      const bpColumns = await query(`SHOW COLUMNS FROM business_profiles`);
+      const columnNames = bpColumns.map((col: any) => col.Field);
+
+      // Build a dynamic query based on available columns
+      let selectFields = [
+        'bp.id',
+        'bp.business_name',
+        'u.email'
+      ];
+
+      // Add optional fields if they exist
+      if (columnNames.includes('contact_first_name')) selectFields.push('bp.contact_first_name');
+      if (columnNames.includes('contact_last_name')) selectFields.push('bp.contact_last_name');
+      if (columnNames.includes('business_phone')) selectFields.push('bp.business_phone');
+      if (columnNames.includes('business_address')) selectFields.push('bp.business_address');
+      if (columnNames.includes('province')) selectFields.push('bp.province');
+      if (columnNames.includes('city')) selectFields.push('bp.city');
+      if (columnNames.includes('business_hours')) selectFields.push('bp.business_hours');
+      if (columnNames.includes('service_description')) selectFields.push('bp.service_description');
+      if (columnNames.includes('verification_status')) {
+        selectFields.push('bp.verification_status');
+        selectFields.push(`CASE WHEN bp.verification_status = 'verified' THEN 1 ELSE 0 END as is_verified`);
+      } else {
+        selectFields.push(`'pending' as verification_status`);
+        selectFields.push(`0 as is_verified`);
+      }
+      if (columnNames.includes('business_permit_path')) selectFields.push('bp.business_permit_path as document_path');
+      if (columnNames.includes('created_at')) selectFields.push('bp.created_at');
+      if (columnNames.includes('updated_at')) selectFields.push('bp.updated_at');
+
       businesses = await query(`
         SELECT
-          bp.id,
-          bp.business_name,
-          u.email,
-          bp.contact_first_name,
-          bp.contact_last_name,
-          bp.business_phone,
-          bp.business_address,
-          bp.province,
-          bp.city,
-          bp.business_hours,
-          bp.service_description,
-          bp.verification_status,
-          CASE WHEN bp.verification_status = 'verified' THEN 1 ELSE 0 END as is_verified,
-          bp.business_permit_path as document_path,
-          bp.business_permit_number as bp_permit_number,
-          bp.tax_id_number,
-          bp.created_at,
-          bp.updated_at
+          ${selectFields.join(',\n          ')}
         FROM business_profiles bp
         JOIN users u ON bp.user_id = u.id
         WHERE bp.business_type = 'cremation'
@@ -336,6 +350,7 @@ export async function GET(request: NextRequest) {
           province: province,
           registrationDate: formattedDate,
           status: business.verification_status === 'restricted' ? 'restricted' : (isVerified ? 'active' : 'pending'),
+          verification_status: business.verification_status || 'pending', // Include the raw verification_status
           activeServices: 0, // We'll update these with a separate query if needed
           totalBookings: 0,
           revenue: '₱0.00',
@@ -356,7 +371,8 @@ export async function GET(request: NextRequest) {
           email: business.email || '',
           address: 'Error formatting address',
           registrationDate: 'Unknown',
-          status: 'pending',
+          status: business.verification_status === 'restricted' ? 'restricted' : 'pending',
+          verification_status: business.verification_status || 'pending',
           activeServices: 0,
           totalBookings: 0,
           revenue: '₱0.00',
@@ -408,12 +424,31 @@ export async function GET(request: NextRequest) {
         }
 
         try {
-          // Get service count with a more robust query
-          const serviceResult = await query(`
-            SELECT COUNT(*) as count
-            FROM business_services
-            WHERE business_profile_id = ? AND is_active = 1
-          `, [business.id]);
+          // Get service count with a more robust query that checks column names first
+          // First check the table structure
+          const serviceColumns = await query(`SHOW COLUMNS FROM business_services`);
+          const businessIdColumn = serviceColumns.find((col: any) =>
+            col.Field === 'business_profile_id' || col.Field === 'business_id'
+          );
+
+          const isActiveColumn = serviceColumns.find((col: any) => col.Field === 'is_active');
+
+          // Build the query based on actual column names
+          let serviceQuery = `SELECT COUNT(*) as count FROM business_services WHERE `;
+          let queryParams = [business.id];
+
+          if (businessIdColumn) {
+            serviceQuery += `${businessIdColumn.Field} = ?`;
+          } else {
+            // If we can't find a business ID column, skip this query
+            throw new Error('Could not find business ID column in business_services table');
+          }
+
+          if (isActiveColumn) {
+            serviceQuery += ` AND is_active = 1`;
+          }
+
+          const serviceResult = await query(serviceQuery, queryParams);
 
           if (serviceResult && serviceResult[0]) {
             business.activeServices = parseInt(serviceResult[0].count || '0');
@@ -424,14 +459,39 @@ export async function GET(request: NextRequest) {
         }
 
         try {
-          // Get booking count and revenue with a more robust query
+          // Get booking count and revenue with a more robust query that checks column names first
+          // First check the business_services table structure
+          const bsColumns = await query(`SHOW COLUMNS FROM business_services`);
+          const bsBusinessIdColumn = bsColumns.find((col: any) =>
+            col.Field === 'business_profile_id' || col.Field === 'business_id'
+          );
+
+          if (!bsBusinessIdColumn) {
+            throw new Error('Could not find business ID column in business_services table');
+          }
+
+          // Check the bookings table structure
+          const bookingsColumns = await query(`SHOW COLUMNS FROM bookings`);
+          const bsIdColumn = bookingsColumns.find((col: any) =>
+            col.Field === 'business_service_id'
+          );
+
+          if (!bsIdColumn) {
+            throw new Error('Could not find business_service_id column in bookings table');
+          }
+
+          const totalAmountColumn = bookingsColumns.find((col: any) =>
+            col.Field === 'total_amount'
+          );
+
+          // Build the query based on actual column names
           const bookingResult = await query(`
             SELECT
               COUNT(b.id) as count,
-              COALESCE(SUM(b.total_amount), 0) as revenue
+              COALESCE(SUM(b.${totalAmountColumn ? 'total_amount' : '0'}), 0) as revenue
             FROM bookings b
-            JOIN business_services bs ON b.business_service_id = bs.id
-            WHERE bs.business_profile_id = ?
+            JOIN business_services bs ON b.${bsIdColumn.Field} = bs.id
+            WHERE bs.${bsBusinessIdColumn.Field} = ?
           `, [business.id]);
 
           if (bookingResult && bookingResult[0]) {
@@ -594,19 +654,52 @@ export async function POST(request: NextRequest) {
     // Try to get additional data if it doesn't cause errors
     try {
       console.log('Fetching business services');
+
+      // First check the table structure
+      const bsColumns = await query(`SHOW COLUMNS FROM business_services`);
+      const businessIdColumn = bsColumns.find((col: any) =>
+        col.Field === 'business_profile_id' || col.Field === 'business_id'
+      );
+
+      if (!businessIdColumn) {
+        throw new Error('Could not find business ID column in business_services table');
+      }
+
+      // Check for other columns
+      const hasPrice = bsColumns.some((col: any) => col.Field === 'price');
+      const hasDuration = bsColumns.some((col: any) => col.Field === 'duration');
+      const hasMaxAttendees = bsColumns.some((col: any) => col.Field === 'max_attendees');
+      const hasIsAvailable = bsColumns.some((col: any) => col.Field === 'is_available');
+      const hasServiceTypeId = bsColumns.some((col: any) => col.Field === 'service_type_id');
+
+      // Only proceed if we have the service_type_id column
+      if (!hasServiceTypeId) {
+        throw new Error('Missing service_type_id column in business_services table');
+      }
+
+      // Build a dynamic query based on available columns
+      let selectFields = ['bs.id'];
+      if (hasPrice) selectFields.push('bs.price');
+      if (hasDuration) selectFields.push('bs.duration');
+      if (hasMaxAttendees) selectFields.push('bs.max_attendees');
+      if (hasIsAvailable) selectFields.push('bs.is_available');
+
+      // Check service_types table
+      const stColumns = await query(`SHOW COLUMNS FROM service_types`);
+      const hasName = stColumns.some((col: any) => col.Field === 'name');
+      const hasDescription = stColumns.some((col: any) => col.Field === 'description');
+      const hasCategory = stColumns.some((col: any) => col.Field === 'category');
+
+      if (hasName) selectFields.push('st.name as service_name');
+      if (hasDescription) selectFields.push('st.description as service_description');
+      if (hasCategory) selectFields.push('st.category');
+
       const services = await query(`
         SELECT
-          bs.id,
-          bs.price,
-          bs.duration,
-          bs.max_attendees,
-          bs.is_available,
-          st.name as service_name,
-          st.description as service_description,
-          st.category
+          ${selectFields.join(', ')}
         FROM business_services bs
         JOIN service_types st ON bs.service_type_id = st.id
-        WHERE bs.business_id = ?
+        WHERE bs.${businessIdColumn.Field} = ?
       `, [businessId]);
 
       if (services) {
@@ -619,16 +712,55 @@ export async function POST(request: NextRequest) {
 
     try {
       console.log('Fetching booking statistics');
+
+      // First check the business_services table structure
+      const bsColumns = await query(`SHOW COLUMNS FROM business_services`);
+      const businessIdColumn = bsColumns.find((col: any) =>
+        col.Field === 'business_profile_id' || col.Field === 'business_id'
+      );
+
+      if (!businessIdColumn) {
+        throw new Error('Could not find business ID column in business_services table');
+      }
+
+      // Check the bookings table structure
+      const bookingsColumns = await query(`SHOW COLUMNS FROM bookings`);
+      const bsIdColumn = bookingsColumns.find((col: any) =>
+        col.Field === 'business_service_id'
+      );
+
+      if (!bsIdColumn) {
+        throw new Error('Could not find business_service_id column in bookings table');
+      }
+
+      const hasStatus = bookingsColumns.some((col: any) => col.Field === 'status');
+      const hasTotalAmount = bookingsColumns.some((col: any) => col.Field === 'total_amount');
+
+      // Build a dynamic query based on available columns
+      let selectFields = ['COUNT(b.id) as total_bookings'];
+
+      if (hasStatus) {
+        selectFields.push(`SUM(CASE WHEN b.status = 'completed' THEN 1 ELSE 0 END) as completed_bookings`);
+        selectFields.push(`SUM(CASE WHEN b.status = 'pending' THEN 1 ELSE 0 END) as pending_bookings`);
+        selectFields.push(`SUM(CASE WHEN b.status = 'cancelled' THEN 1 ELSE 0 END) as cancelled_bookings`);
+      } else {
+        selectFields.push('0 as completed_bookings');
+        selectFields.push('0 as pending_bookings');
+        selectFields.push('0 as cancelled_bookings');
+      }
+
+      if (hasTotalAmount) {
+        selectFields.push('SUM(b.total_amount) as total_revenue');
+      } else {
+        selectFields.push('0 as total_revenue');
+      }
+
       const bookingStats = await query(`
         SELECT
-          COUNT(b.id) as total_bookings,
-          SUM(CASE WHEN b.status = 'completed' THEN 1 ELSE 0 END) as completed_bookings,
-          SUM(CASE WHEN b.status = 'pending' THEN 1 ELSE 0 END) as pending_bookings,
-          SUM(CASE WHEN b.status = 'cancelled' THEN 1 ELSE 0 END) as cancelled_bookings,
-          SUM(b.total_amount) as total_revenue
+          ${selectFields.join(',\n          ')}
         FROM bookings b
-        JOIN business_services bs ON b.business_service_id = bs.id
-        WHERE bs.business_id = ?
+        JOIN business_services bs ON b.${bsIdColumn.Field} = bs.id
+        WHERE bs.${businessIdColumn.Field} = ?
       `, [businessId]);
 
       if (bookingStats && bookingStats[0]) {

@@ -55,6 +55,19 @@ export default function NotificationBell() {
 
   // Get notification icon based on type
   const getNotificationIcon = (type: string) => {
+    // Check for special notification types first
+    if (type === 'new_cremation_center' || type === 'pending_application') {
+      return (
+        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center">
+          <svg className="w-4 h-4 text-purple-500" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 0v12h8V4H6z" clipRule="evenodd" />
+            <path d="M8 7a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1zm0 4a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" />
+          </svg>
+        </div>
+      );
+    }
+
+    // Handle standard notification types
     switch (type) {
       case 'success':
         return (
