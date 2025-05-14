@@ -6,53 +6,72 @@ import { query } from '@/lib/db';
 
 // Function to save file to disk
 async function saveFile(file: File, userId: string, documentType: string): Promise<string> {
-  // Create directories if they don't exist
-  const uploadsDir = path.join(process.cwd(), 'public', 'uploads', 'businesses', userId);
-  await mkdir(uploadsDir, { recursive: true });
+  try {
+    // Create directories if they don't exist
+    const uploadsDir = path.join(process.cwd(), 'public', 'uploads', 'businesses', userId);
+    await mkdir(uploadsDir, { recursive: true });
 
-  // Get file data
-  const bytes = await file.arrayBuffer();
-  const buffer = Buffer.from(bytes);
+    // Get file data
+    const bytes = await file.arrayBuffer();
+    const buffer = Buffer.from(bytes);
 
-  // Create file name
-  const fileExtension = file.name.split('.').pop() || 'pdf';
-  const fileName = `${documentType}_${Date.now()}.${fileExtension}`;
-  const filePath = path.join(uploadsDir, fileName);
+    // Create file name
+    const fileExtension = file.name.split('.').pop() || 'pdf';
+    const fileName = `${documentType}_${Date.now()}.${fileExtension}`;
+    const filePath = path.join(uploadsDir, fileName);
 
-  // Write file to disk
-  await writeFile(filePath, buffer);
+    // Write file to disk
+    await writeFile(filePath, buffer);
+    console.log(`File saved to ${filePath}`);
 
-  // Return the relative path for database storage
-  return `/uploads/businesses/${userId}/${fileName}`;
+    // Return the relative path for database storage
+    return `/uploads/businesses/${userId}/${fileName}`;
+  } catch (error) {
+    console.error(`Error saving file ${documentType}:`, error);
+    throw error;
+  }
 }
 
 export async function POST(request: Request) {
+  console.log('Document upload API called');
+  
   try {
     const formData = await request.formData();
     const userId = formData.get('userId') as string;
 
     if (!userId) {
+      console.error('User ID is missing in the request');
       return NextResponse.json({
         error: 'User ID is required'
       }, { status: 400 });
     }
 
-    // Check which table exists: business_profiles or service_providers
-    const tableCheckResult = await query(`
-      SELECT table_name
-      FROM information_schema.tables
-      WHERE table_schema = DATABASE()
-      AND table_name IN ('business_profiles', 'service_providers')
-    `) as any[];
+    console.log(`Processing document upload for user ID: ${userId}`);
 
-    const tableNames = tableCheckResult.map((row: any) => row.table_name);
+    // Check which table exists
+    const tableCheckResult = await query(`SHOW TABLES`) as any[];
+    const tableNames = tableCheckResult.map((row: any) => {
+      return String(Object.values(row)[0]);
+    });
+    
+    console.log('Available tables for document upload:', tableNames);
+    
     const useServiceProvidersTable = tableNames.includes('service_providers');
+    const useBusinessProfilesTable = tableNames.includes('business_profiles');
+
+    if (!useServiceProvidersTable && !useBusinessProfilesTable) {
+      console.error('No business or service provider tables found in the database');
+      return NextResponse.json({
+        error: 'Required database tables not found'
+      }, { status: 500 });
+    }
 
     console.log(`Using ${useServiceProvidersTable ? 'service_providers' : 'business_profiles'} table for document upload`);
 
     // Check if the service provider or business profile exists
     const tableName = useServiceProvidersTable ? 'service_providers' : 'business_profiles';
 
+    // Get all business profiles or service providers for this user
     const businessCheck = await query(
       `SELECT id FROM ${tableName} WHERE user_id = ?`,
       [userId]
@@ -60,13 +79,62 @@ export async function POST(request: Request) {
 
     if (!businessCheck || businessCheck.length === 0) {
       console.error(`No ${tableName} found with user_id: ${userId}`);
-      return NextResponse.json({
-        error: `${useServiceProvidersTable ? 'Service provider' : 'Business profile'} not found`
-      }, { status: 404 });
+      
+      // If we didn't find an existing record, check if we need to create one
+      if (useServiceProvidersTable) {
+        // Check if user exists first
+        const userCheck = await query(
+          `SELECT id, full_name, email FROM users WHERE id = ?`,
+          [userId]
+        ) as any[];
+        
+        if (!userCheck || userCheck.length === 0) {
+          return NextResponse.json({
+            error: 'User not found'
+          }, { status: 404 });
+        }
+        
+        // User exists, create service provider record
+        const user = userCheck[0];
+        console.log(`Creating new service provider record for user ${userId} (${user.full_name})`);
+        
+        try {
+          // Insert a new service provider record
+          const insertResult = await query(
+            `INSERT INTO service_providers (user_id, name, provider_type, application_status, created_at, updated_at) 
+             VALUES (?, ?, 'cremation', 'pending', NOW(), NOW())`,
+            [userId, user.full_name || 'New Cremation Service']
+          );
+          
+          // Get the newly created record
+          const newBusinessCheck = await query(
+            `SELECT id FROM ${tableName} WHERE user_id = ?`,
+            [userId]
+          ) as any[];
+          
+          if (!newBusinessCheck || newBusinessCheck.length === 0) {
+            return NextResponse.json({
+              error: 'Failed to create service provider record'
+            }, { status: 500 });
+          }
+          
+          businessCheck.push(newBusinessCheck[0]);
+        } catch (err) {
+          console.error('Error creating service provider record:', err);
+          return NextResponse.json({
+            error: 'Failed to create service provider record'
+          }, { status: 500 });
+        }
+      } else {
+        return NextResponse.json({
+          error: `${useServiceProvidersTable ? 'Service provider' : 'Business profile'} not found`
+        }, { status: 404 });
+      }
     }
 
     // Get the actual service provider or business profile ID
     const businessProfileId = businessCheck[0].id;
+    console.log(`Found ${tableName} record with ID: ${businessProfileId}`);
 
     const filePaths: Record<string, string> = {};
     let documentsUploaded = false;
@@ -74,6 +142,7 @@ export async function POST(request: Request) {
     // Process BIR Certificate
     const birCertificate = formData.get('birCertificate') as File;
     if (birCertificate && birCertificate instanceof File) {
+      console.log(`Processing BIR Certificate: ${birCertificate.name}, size: ${birCertificate.size}`);
       filePaths.birCertificatePath = await saveFile(birCertificate, userId, 'bir_certificate');
       documentsUploaded = true;
     }
@@ -81,6 +150,7 @@ export async function POST(request: Request) {
     // Process Business Permit
     const businessPermit = formData.get('businessPermit') as File;
     if (businessPermit && businessPermit instanceof File) {
+      console.log(`Processing Business Permit: ${businessPermit.name}, size: ${businessPermit.size}`);
       filePaths.businessPermitPath = await saveFile(businessPermit, userId, 'business_permit');
       documentsUploaded = true;
     }
@@ -88,41 +158,72 @@ export async function POST(request: Request) {
     // Process Government ID
     const governmentId = formData.get('governmentId') as File;
     if (governmentId && governmentId instanceof File) {
+      console.log(`Processing Government ID: ${governmentId.name}, size: ${governmentId.size}`);
       filePaths.governmentIdPath = await saveFile(governmentId, userId, 'government_id');
       documentsUploaded = true;
     }
 
     if (!documentsUploaded) {
+      console.error('No documents were uploaded');
       return NextResponse.json({
         error: 'No documents were uploaded'
       }, { status: 400 });
     }
 
+    // Check columns in the target table
+    const columnsResult = await query(`SHOW COLUMNS FROM ${tableName}`) as any[];
+    const columns = columnsResult.map((col: any) => col.Field);
+    
     // Update business record with document paths
     const updateFields = [];
     const updateValues = [];
 
-    if (filePaths.birCertificatePath) {
+    // Only update fields that exist in the table
+    if (filePaths.birCertificatePath && columns.includes('bir_certificate_path')) {
       updateFields.push('bir_certificate_path = ?');
       updateValues.push(filePaths.birCertificatePath);
     }
 
-    if (filePaths.businessPermitPath) {
+    if (filePaths.businessPermitPath && columns.includes('business_permit_path')) {
       updateFields.push('business_permit_path = ?');
       updateValues.push(filePaths.businessPermitPath);
     }
 
-    if (filePaths.governmentIdPath) {
+    if (filePaths.governmentIdPath && columns.includes('government_id_path')) {
       updateFields.push('government_id_path = ?');
       updateValues.push(filePaths.governmentIdPath);
     }
 
+    // Add status update if the column exists
+    if (columns.includes('application_status')) {
+      updateFields.push('application_status = ?');
+      updateValues.push('pending');
+    } else if (columns.includes('verification_status')) {
+      updateFields.push('verification_status = ?');
+      updateValues.push('pending');
+    } else if (columns.includes('status')) {
+      updateFields.push('status = ?');
+      updateValues.push('pending');
+    }
+
+    // Also update updated_at timestamp if it exists
+    if (columns.includes('updated_at')) {
+      updateFields.push('updated_at = NOW()');
+    }
+
     if (updateFields.length > 0) {
-      const tableName = useServiceProvidersTable ? 'service_providers' : 'business_profiles';
+      console.log(`Updating ${tableName} record with document paths`);
+      const updateQuery = `UPDATE ${tableName} SET ${updateFields.join(', ')} WHERE id = ?`;
+      console.log('Update query:', updateQuery);
+      
       await query(
-        `UPDATE ${tableName} SET ${updateFields.join(', ')} WHERE id = ?`,
+        updateQuery,
         [...updateValues, businessProfileId]
       );
+      
+      console.log(`Updated ${tableName} record ${businessProfileId} with document paths`);
+    } else {
+      console.warn(`No fields to update in ${tableName} record ${businessProfileId}`);
     }
 
     return NextResponse.json({

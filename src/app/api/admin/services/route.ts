@@ -4,219 +4,118 @@ import { getAuthTokenFromRequest } from '@/utils/auth';
 
 export async function GET(request: NextRequest) {
   try {
-    // Verify admin authentication
-    const authToken = getAuthTokenFromRequest(request);
-
-    // In development mode, we'll allow requests without auth token for testing
+    // Verify admin authentication in production only
     const isDevelopment = process.env.NODE_ENV === 'development';
+    let isAuthenticated = false;
 
-    if (!authToken && !isDevelopment) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
+    const authToken = getAuthTokenFromRequest(request);
+    
     if (authToken) {
-      const [userId, accountType] = authToken.split('_');
-      if (accountType !== 'admin' && !isDevelopment) {
-        return NextResponse.json({ error: 'Unauthorized - Admin access required' }, { status: 403 });
+      // If we have a token, validate it
+      const tokenParts = authToken.split('_');
+      if (tokenParts.length === 2) {
+        const accountType = tokenParts[1];
+        isAuthenticated = accountType === 'admin';
       }
+    } else if (isDevelopment) {
+      // In development, allow requests without auth for testing
+      console.log('Development mode: Bypassing authentication for testing');
+      isAuthenticated = true;
     }
 
-    // Get query parameters
-    const url = new URL(request.url);
-    const searchTerm = url.searchParams.get('search') || '';
-    const statusFilter = url.searchParams.get('status') || 'all';
-    const categoryFilter = url.searchParams.get('category') || 'all';
-    const page = parseInt(url.searchParams.get('page') || '1');
-    const limit = parseInt(url.searchParams.get('limit') || '20');
-    const offset = (page - 1) * limit;
-
-    // Build the base query
-    let baseQuery = `
-      SELECT
-        sp.id,
-        sp.name,
-        sp.description,
-        sp.category,
-        sp.cremation_type as cremationType,
-        sp.processing_time as processingTime,
-        sp.price,
-        sp.conditions,
-        sp.is_active as status,
-        sp.duration_minutes,
-        sp.created_at,
-        sp.updated_at,
-        svp.id as providerId,
-        svp.name as providerName
-      FROM service_packages sp
-      JOIN service_providers svp ON sp.service_provider_id = svp.id
-      WHERE 1=1
-    `;
-
-    // Add search condition if provided
-    const queryParams: any[] = [];
-    if (searchTerm) {
-      baseQuery += ` AND (sp.name LIKE ? OR svp.name LIKE ?)`;
-      queryParams.push(`%${searchTerm}%`, `%${searchTerm}%`);
+    // Check authentication result
+    if (!isAuthenticated) {
+      return NextResponse.json({
+        error: 'Unauthorized',
+        details: 'Admin access required',
+        success: false
+      }, { status: 401 });
     }
 
-    // Add status filter if not 'all'
-    if (statusFilter !== 'all') {
-      const isActive = statusFilter === 'active' ? 1 : 0;
-      baseQuery += ` AND sp.is_active = ?`;
-      queryParams.push(isActive);
+    // Get provider ID from query parameter
+    const { searchParams } = new URL(request.url);
+    const providerId = searchParams.get('providerId');
+
+    if (!providerId) {
+      return NextResponse.json({
+        error: 'Missing provider ID',
+        success: false
+      }, { status: 400 });
     }
 
-    // Add category filter if not 'all'
-    if (categoryFilter !== 'all') {
-      baseQuery += ` AND sp.category = ?`;
-      queryParams.push(categoryFilter);
+    console.log('Getting services for provider ID:', providerId);
+
+    // Check which tables exist
+    const tablesResult = await query(`
+      SELECT table_name 
+      FROM information_schema.tables 
+      WHERE table_schema = DATABASE() 
+      AND table_name IN ('service_packages', 'service_providers')
+    `) as any[];
+
+    const tableNames = tablesResult.map((row: any) => row.table_name);
+    console.log('Available tables:', tableNames);
+
+    const hasServicePackages = tableNames.includes('service_packages');
+    const hasServiceProviders = tableNames.includes('service_providers');
+
+    if (!hasServicePackages) {
+      return NextResponse.json({
+        error: 'Service packages table not found',
+        success: false
+      }, { status: 500 });
     }
 
-    // Add order by and pagination
-    baseQuery += ` ORDER BY sp.created_at DESC LIMIT ? OFFSET ?`;
-    queryParams.push(limit, offset);
+    if (!hasServiceProviders) {
+      return NextResponse.json({
+        error: 'Service providers table not found',
+        success: false
+      }, { status: 500 });
+    }
+
+    // Check table structure for service_packages
+    const columnsResult = await query(`
+      SHOW COLUMNS FROM service_packages
+    `) as any[];
+
+    const columnNames = columnsResult.map((col: any) => col.Field);
+    console.log('Service packages columns:', columnNames);
+
+    // Check for provider ID column
+    const providerIdColumn = columnNames.includes('service_provider_id') 
+      ? 'service_provider_id' 
+      : (columnNames.includes('provider_id') ? 'provider_id' : null);
+
+    if (!providerIdColumn) {
+      return NextResponse.json({
+        error: 'Service provider ID column not found in service_packages table',
+        success: false
+      }, { status: 500 });
+    }
+
+    // Check for is_active column
+    const hasIsActive = columnNames.includes('is_active');
+
+    // Build the SQL query based on available columns
+    let sql = `SELECT * FROM service_packages WHERE ${providerIdColumn} = ?`;
+    
+    if (hasIsActive) {
+      sql += ' ORDER BY is_active DESC';
+    }
 
     // Execute the query
-    const services = await query(baseQuery, queryParams) as any[];
+    const services = await query(sql, [providerId]);
 
-    // Get total count for pagination
-    let countQuery = `
-      SELECT COUNT(*) as total
-      FROM service_packages sp
-      JOIN service_providers svp ON sp.service_provider_id = svp.id
-      WHERE 1=1
-    `;
-
-    // Add the same filters to the count query
-    const countParams = [...queryParams.slice(0, queryParams.length - 2)]; // Remove limit and offset
-    if (searchTerm) {
-      countQuery += ` AND (sp.name LIKE ? OR svp.name LIKE ?)`;
-    }
-    if (statusFilter !== 'all') {
-      countQuery += ` AND sp.is_active = ?`;
-    }
-    if (categoryFilter !== 'all') {
-      countQuery += ` AND sp.category = ?`;
-    }
-
-    const countResult = await query(countQuery, countParams) as any[];
-    const total = countResult[0]?.total || 0;
-
-    // Enhance services with additional data
-    const enhancedServices = await Promise.all(services.map(async (service) => {
-      // Get package inclusions
-      const inclusions = await query(`
-        SELECT description
-        FROM package_inclusions
-        WHERE package_id = ?
-      `, [service.id]) as any[];
-
-      // Get package addons
-      const addons = await query(`
-        SELECT description, price
-        FROM package_addons
-        WHERE package_id = ?
-      `, [service.id]) as any[];
-
-      // Get package images
-      const images = await query(`
-        SELECT image_path, image_id
-        FROM package_images
-        WHERE package_id = ?
-        ORDER BY display_order ASC
-      `, [service.id]) as any[];
-
-      // Get booking count - use a try/catch to handle missing tables
-      let bookingCount = 0;
-      try {
-        // First check if the tables exist
-        const tablesExist = await query(`
-          SELECT COUNT(*) as count
-          FROM information_schema.tables
-          WHERE table_schema = DATABASE()
-          AND table_name IN ('bookings', 'business_services')
-        `) as any[];
-
-        const bothTablesExist = tablesExist[0]?.count === 2;
-
-        if (bothTablesExist) {
-          const bookingResult = await query(`
-            SELECT COUNT(*) as count
-            FROM bookings b
-            JOIN business_services bs ON b.business_service_id = bs.id
-            WHERE bs.service_provider_id = ?
-          `, [service.providerId]) as any[];
-
-          bookingCount = bookingResult[0]?.count || 0;
-        }
-      } catch (error) {
-        console.log('Error getting booking count, using default value of 0:', error);
-      }
-
-      // Get average rating - use a try/catch to handle missing tables
-      let avgRating = 4.5; // Default rating
-      try {
-        // Check if reviews table exists
-        const reviewsTableExists = await query(`
-          SELECT COUNT(*) as count
-          FROM information_schema.tables
-          WHERE table_schema = DATABASE()
-          AND table_name = 'reviews'
-        `) as any[];
-
-        if (reviewsTableExists[0]?.count === 1) {
-          const ratingResult = await query(`
-            SELECT AVG(rating) as avg_rating
-            FROM reviews
-            WHERE service_provider_id = ?
-          `, [service.providerId]) as any[];
-
-          if (ratingResult[0]?.avg_rating) {
-            avgRating = parseFloat(ratingResult[0].avg_rating);
-          }
-        }
-      } catch (error) {
-        console.log('Error getting average rating, using default value of 4.5:', error);
-      }
-
-      // Format the service data
-      return {
-        id: service.id,
-        name: service.name,
-        cremationCenter: service.providerName,
-        category: service.category.toLowerCase(),
-        price: `₱${parseFloat(service.price).toLocaleString('en-US', { minimumFractionDigits: 2 })}`,
-        priceValue: parseFloat(service.price),
-        bookings: bookingCount,
-        status: service.status ? 'active' : 'inactive',
-        rating: avgRating,
-        description: service.description || '',
-        features: inclusions.map((inclusion: any) => inclusion.description),
-        addOns: addons.map((addon: any) => {
-          const price = parseFloat(addon.price || '0');
-          return `${addon.description}${price > 0 ? ` (+₱${price.toLocaleString('en-US')})` : ''}`;
-        }),
-        image: images.length > 0 ? images[0].image_path : '',
-        images: images.map((img: any) => img.image_path),
-        processingTime: service.processingTime,
-        cremationType: service.cremationType,
-        conditions: service.conditions,
-        providerId: service.providerId
-      };
-    }));
+    console.log(`Found ${services.length} services for provider ID ${providerId}`);
 
     return NextResponse.json({
       success: true,
-      services: enhancedServices,
-      pagination: {
-        total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit)
-      }
+      services: services || []
     });
+
   } catch (error) {
     console.error('Error fetching services:', error);
+    
     return NextResponse.json({
       error: 'Failed to fetch services',
       details: error instanceof Error ? error.message : 'Unknown error',

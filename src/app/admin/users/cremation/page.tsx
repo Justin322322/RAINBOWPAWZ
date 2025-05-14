@@ -122,73 +122,53 @@ export default function AdminCremationCentersPage() {
           throw new Error(data.error || 'Failed to fetch cremation centers');
         }
 
-        // Add default rating if not provided
-        const centersWithRating = data.businesses.map((center: any) => ({
-          ...center,
-          rating: center.rating || Math.floor(Math.random() * 3) + 3, // Random rating between 3-5 if not provided
-        }));
+        // Log the data we received for debugging
+        console.log('Received businesses:', data.businesses);
+
+        // Add default rating and update active services count
+        const centersWithRating = data.businesses.map((center: any) => {
+          // Fetch active services count from service_packages table
+          const fetchServicesCount = async (centerId: string | number) => {
+            try {
+              const serviceResponse = await fetch(`/api/admin/services?providerId=${centerId}`);
+              if (serviceResponse.ok) {
+                const serviceData = await serviceResponse.json();
+                if (serviceData.success && serviceData.services) {
+                  return serviceData.services.filter((s: any) => s.is_active).length;
+                }
+              }
+              return center.activeServices || 0;
+            } catch (error) {
+              console.error(`Error fetching services for center ${centerId}:`, error);
+              return center.activeServices || 0;
+            }
+          };
+
+          // Execute the fetch and update centers
+          fetchServicesCount(center.id).then(count => {
+            setCremationCenters(prevCenters =>
+              prevCenters.map(c =>
+                c.id === center.id ? {...c, activeServices: count} : c
+              )
+            );
+          });
+
+          return {
+            ...center,
+            rating: center.rating || Math.floor(Math.random() * 3) + 3, // Random rating between 3-5 if not provided
+          };
+        });
 
         setCremationCenters(centersWithRating);
       } catch (err) {
         console.error('Error fetching cremation centers:', err);
         setError(err instanceof Error ? err.message : 'An unknown error occurred');
 
-        // Don't show toast for development mode to reduce notification spam
-        if (process.env.NODE_ENV !== 'development') {
-          showToast('Failed to load cremation centers. Using sample data instead.', 'error');
-        }
+        // Show toast with error message
+        showToast('Failed to load cremation centers: ' + (err instanceof Error ? err.message : 'Unknown error'), 'error');
 
-        // Use sample data as fallback
-        setCremationCenters([
-          {
-            id: 'CC001',
-            name: 'Peaceful Paws Cremation',
-            owner: 'John Smith',
-            email: 'john@peacefulpaws.com',
-            phone: '(555) 123-4567',
-            address: 'Balanga City, Bataan, Philippines',
-            registrationDate: 'May 10, 2023',
-            status: 'active',
-            activeServices: 5,
-            totalBookings: 48,
-            revenue: '₱5,680',
-            rating: 4.8,
-            description: 'We provide compassionate pet cremation services with personalized memorials.',
-            verified: true
-          },
-          {
-            id: 'CC002',
-            name: 'Rainbow Bridge Memorial',
-            owner: 'David Chen',
-            email: 'david@rainbowbridge.com',
-            phone: '(555) 345-6789',
-            address: 'Tenejero, Balanga City, Bataan, Philippines',
-            registrationDate: 'May 20, 2023',
-            status: 'active',
-            activeServices: 7,
-            totalBookings: 61,
-            revenue: '₱7,240',
-            rating: 4.9,
-            description: 'Providing pet cremation services with various memorial options and keepsakes.',
-            verified: true
-          },
-          {
-            id: 'CC003',
-            name: "Heaven's Gateway Pet Services",
-            owner: 'Maria Rodriguez',
-            email: 'maria@heavensgateway.com',
-            phone: '(555) 234-5678',
-            address: 'Tuyo, Balanga City, Bataan, Philippines',
-            registrationDate: 'June 5, 2023',
-            status: 'active',
-            activeServices: 4,
-            totalBookings: 35,
-            revenue: '₱4,120',
-            rating: 4.7,
-            description: 'Dignified pet cremation services with eco-friendly options and memorial keepsakes.',
-            verified: true
-          }
-        ]);
+        // Set empty array instead of mock data to ensure we're showing real data
+        setCremationCenters([]);
       } finally {
         setLoading(false);
       }
@@ -200,12 +180,33 @@ export default function AdminCremationCentersPage() {
   // Filter cremation centers based on search term and status filter
   const filteredCenters = cremationCenters.filter(center => {
     const matchesSearch =
-      center.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      center.owner.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      String(center.id).toLowerCase().includes(searchTerm.toLowerCase()) ||
-      center.address.toLowerCase().includes(searchTerm.toLowerCase());
+      center.name?.toLowerCase?.()?.includes(searchTerm.toLowerCase()) ||
+      center.owner?.toLowerCase?.()?.includes(searchTerm.toLowerCase()) ||
+      String(center.id)?.toLowerCase?.()?.includes(searchTerm.toLowerCase()) ||
+      center.address?.toLowerCase?.()?.includes(searchTerm.toLowerCase());
 
-    const matchesStatus = statusFilter === 'all' || center.status === statusFilter;
+    // Check all possible status fields
+    const isRestricted = 
+      center.application_status === 'restricted' || 
+      center.verification_status === 'restricted' || 
+      center.status === 'restricted';
+      
+    const isVerified = 
+      center.verified === true ||
+      center.application_status === 'approved' || 
+      center.application_status === 'verified' ||
+      center.verification_status === 'verified';
+    
+    // Determine actual status for filtering
+    const actualStatus = isRestricted ? 'restricted' : 
+                        (isVerified ? 'active' : 
+                         center.application_status || center.status || 'pending');
+      
+    const matchesStatus = statusFilter === 'all' 
+      ? true 
+      : (actualStatus === statusFilter ||
+         center.application_status === statusFilter || 
+         center.verification_status === statusFilter);
 
     return matchesSearch && matchesStatus;
   });
@@ -463,67 +464,88 @@ export default function AdminCremationCentersPage() {
 
     try {
       setIsProcessing(true);
+      console.log('Starting unrestrict operation for center:', center.id);
 
-      const response = await fetch('/api/admin/cremation-businesses/restrict', {
+      // Try the cremation-businesses/restrict endpoint first with 'restore' action
+      try {
+        console.log('Trying primary endpoint: /api/admin/cremation-businesses/restrict');
+        const response = await fetch('/api/admin/cremation-businesses/restrict', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            businessId: center.id,
+            action: 'restore'
+          }),
+        });
+
+        console.log('Primary endpoint response status:', response.status, response.statusText);
+        
+        // Try to parse the response as JSON
+        let data;
+        try {
+          data = await response.json();
+          console.log('Primary endpoint response data:', data);
+          
+          // Check if the response was successful
+          if (response.ok && data.success) {
+            // Successfully unrestricted using the primary endpoint
+            console.log('Successfully unrestricted using primary endpoint');
+            handleSuccessfulUnrestrict(center);
+            return;
+          }
+        } catch (jsonError) {
+          console.error('Error parsing JSON from primary endpoint:', jsonError);
+          // Continue to fallback if JSON parsing fails
+        }
+        
+        // If we get here, the primary endpoint failed, so we'll try the fallback
+        console.log('Primary endpoint failed, trying fallback...');
+      } catch (primaryError) {
+        console.error('Error with primary unrestrict endpoint:', primaryError);
+        // Continue to fallback endpoint
+      }
+      
+      // Try the dedicated unrestrict endpoint as fallback
+      console.log('Trying fallback endpoint: /api/admin/users/unrestrict');
+      const fallbackResponse = await fetch('/api/admin/users/unrestrict', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          businessId: center.id,
-          action: 'restore'
+          userId: center.id,
+          userType: 'cremation_center',
+          businessId: center.id
         }),
       });
-
-      const data = await response.json();
-
-      if (!response.ok || !data.success) {
-        throw new Error(data.error || 'Failed to restore cremation center');
+      
+      console.log('Fallback endpoint response status:', fallbackResponse.status, fallbackResponse.statusText);
+      
+      // Try to parse the fallback response
+      let fallbackData;
+      try {
+        fallbackData = await fallbackResponse.json();
+        console.log('Fallback endpoint response data:', fallbackData);
+      } catch (jsonError) {
+        console.error('Error parsing JSON from fallback endpoint:', jsonError);
+        throw new Error('Both unrestrict endpoints failed - unable to parse response data');
       }
-
-      // Update the center's status in the local state to ensure it shows as active
-      setCremationCenters(prevCenters =>
-        prevCenters.map(c =>
-          c.id === center.id ? {
-            ...c,
-            status: 'active',
-            verified: true,
-            verification_status: 'verified' // Add this to match the backend
-          } : c
-        )
-      );
-
-      // If the center is currently selected in the modal, update it
-      if (selectedCenter && selectedCenter.id === center.id) {
-        setSelectedCenter({
-          ...selectedCenter,
-          status: 'active',
-          verified: true,
-          verification_status: 'verified'
-        });
+      
+      // Check if the fallback was successful
+      if (!fallbackResponse.ok) {
+        throw new Error(`Server error on fallback endpoint: ${fallbackResponse.status} ${fallbackResponse.statusText}`);
       }
-
-      // Force a refresh of the UI to ensure the status is updated
-      setTimeout(() => {
-        // This will trigger a re-render
-        setCremationCenters(prevCenters => [...prevCenters]);
-      }, 100);
-
-      // Set success state to trigger animation
-      setSuccessCenterName(center.name);
-      setIsRestoreSuccess(true);
-
-      // Show success toast
-      showToast(`${center.name} has been restored successfully`, 'success', 5000);
-
-      // Reset success state after animation completes
-      setTimeout(() => {
-        setIsRestoreSuccess(false);
-        setSuccessCenterName('');
-      }, 3000);
-
-      // Close the modal
-      setShowRestoreModal(false);
+      
+      if (!fallbackData.success) {
+        throw new Error(fallbackData.error || fallbackData.details || 'Failed to restore cremation center with fallback endpoint');
+      }
+      
+      // Successfully unrestricted using fallback endpoint
+      console.log('Successfully unrestricted using fallback endpoint');
+      handleSuccessfulUnrestrict(center);
+      
     } catch (err) {
       console.error('Error restoring cremation center:', err);
       showToast(err instanceof Error ? err.message : 'Failed to restore cremation center', 'error');
@@ -531,65 +553,129 @@ export default function AdminCremationCentersPage() {
       setIsProcessing(false);
     }
   };
+  
+  // Helper function to handle successful unrestrict/restore
+  const handleSuccessfulUnrestrict = (center: CremationCenter) => {
+    // Update the center's status in the local state to ensure it shows as active
+    setCremationCenters(prevCenters =>
+      prevCenters.map(c =>
+        c.id === center.id ? {
+          ...c,
+          status: 'active',
+          verified: true,
+          verification_status: 'verified',
+          application_status: 'approved' // Also update application_status for consistency
+        } : c
+      )
+    );
 
-  // Get status badge based on center status
-  const getStatusBadge = (status: string, verified: boolean, centerObj?: any) => {
-    // Debug log to see what values we're working with
-    console.log('Status badge check:', {
-      status,
-      verified,
-      verification_status: centerObj?.verification_status,
-      centerObj
-    });
-
-    // IMPORTANT: Always prioritize the actual status value from the database
-    // This ensures we show the correct status regardless of other properties
-
-    // First priority: Check for restricted status in either column
-    if (status === 'restricted' || (centerObj && centerObj.verification_status === 'restricted')) {
-      return (
-        <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800 min-w-[90px] justify-center">
-          Restricted
-        </span>
-      );
+    // If the center is currently selected in the modal, update it
+    if (selectedCenter && selectedCenter.id === center.id) {
+      setSelectedCenter({
+        ...selectedCenter,
+        status: 'active',
+        verified: true,
+        verification_status: 'verified',
+        application_status: 'approved'
+      });
     }
 
-    // Third priority: Check verification status for pending applications
-    if (!verified ||
-        (centerObj && (centerObj.verification_status === 'pending' || centerObj.verification_status === null))) {
-      return (
-        <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800 min-w-[90px] justify-center">
-          Pending
-        </span>
-      );
-    }
+    // Force a refresh of the UI to ensure the status is updated
+    setTimeout(() => {
+      // This will trigger a re-render
+      setCremationCenters(prevCenters => [...prevCenters]);
+    }, 100);
 
-    // Third priority: Handle other statuses
-    switch(status) {
+    // Set success state to trigger animation
+    setSuccessCenterName(center.name);
+    setIsRestoreSuccess(true);
+
+    // Show success toast
+    showToast(`${center.name} has been restored successfully`, 'success', 5000);
+
+    // Reset success state after animation completes
+    setTimeout(() => {
+      setIsRestoreSuccess(false);
+      setSuccessCenterName('');
+    }, 3000);
+
+    // Close the modal
+    setShowRestoreModal(false);
+  };
+
+  // Helper function to get status badge based on status
+  const getStatusBadge = (status: string, verified: boolean, centerObj?: CremationCenter) => {
+    // Use application_status as the primary source of truth
+    const appStatus = centerObj?.application_status || centerObj?.verification_status || status;
+
+    // Use same styling as in applications page
+    switch(appStatus) {
+      case 'pending':
+        return (
+          <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+            Pending
+          </span>
+        );
+      case 'reviewing':
+        return (
+          <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+            Reviewing
+          </span>
+        );
+      case 'documents_required':
+        return (
+          <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-orange-100 text-orange-800">
+            Documents Required
+          </span>
+        );
+      case 'approved':
+      case 'verified':
       case 'active':
         return (
-          <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 min-w-[90px] justify-center">
+          <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
             Active
+          </span>
+        );
+      case 'declined':
+      case 'rejected':
+        return (
+          <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+            Declined
+          </span>
+        );
+      case 'restricted':
+        return (
+          <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800">
+            Restricted
           </span>
         );
       case 'inactive':
         return (
-          <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800 min-w-[90px] justify-center">
+          <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
             Inactive
           </span>
         );
-      case 'probation':
-        return (
-          <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800 min-w-[90px] justify-center">
-            Probation
-          </span>
-        );
       default:
-        return (
-          <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800 min-w-[90px] justify-center">
-            {status}
-          </span>
-        );
+        // Fallback to verification_status if application_status is not recognized
+        if (centerObj?.verification_status === 'verified' || verified) {
+          return (
+            <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+              Active
+            </span>
+          );
+        } else if (centerObj?.verification_status === 'restricted') {
+          return (
+            <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800">
+              Restricted
+            </span>
+          );
+        } else {
+          return (
+            <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+              Pending
+            </span>
+          );
+        }
     }
   };
 
@@ -626,9 +712,14 @@ export default function AdminCremationCentersPage() {
               >
                 <option value="all">All Statuses</option>
                 <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-                <option value="probation">Probation</option>
+                <option value="verified">Verified</option>
+                <option value="approved">Approved</option>
+                <option value="pending">Pending</option>
+                <option value="reviewing">Reviewing</option>
+                <option value="documents_required">Documents Required</option>
+                <option value="declined">Declined</option>
                 <option value="restricted">Restricted</option>
+                <option value="inactive">Inactive</option>
               </select>
               <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
                 <svg className="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
@@ -866,7 +957,7 @@ export default function AdminCremationCentersPage() {
                         </button>
 
                         {/* Verification Badge */}
-                        {center.verified ? (
+                        {center.verified || center.application_status === 'approved' || center.application_status === 'verified' ? (
                           <span className="flex items-center text-green-600">
                             <CheckBadgeIcon className="h-5 w-5 mr-1" />
                             <span>Verified</span>
@@ -897,7 +988,9 @@ export default function AdminCremationCentersPage() {
                         )}
 
                         {/* Restrict/Unrestrict Button */}
-                        {center.status !== 'restricted' ? (
+                        {center.application_status !== 'restricted' && 
+                          center.verification_status !== 'restricted' && 
+                          center.status !== 'restricted' ? (
                           <button
                             onClick={() => openRestrictModal(center)}
                             disabled={isProcessing}

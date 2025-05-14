@@ -10,6 +10,7 @@ import {
   CalendarIcon,
   ClockIcon,
   UserIcon,
+  DocumentTextIcon,
 } from '@heroicons/react/24/outline';
 
 interface CremationSidebarProps {
@@ -35,6 +36,12 @@ export default function CremationSidebar({ activePage: propActivePage }: Cremati
       href: '/cremation/dashboard',
       icon: HomeIcon,
       id: 'dashboard'
+    },
+    {
+      name: 'Documents',
+      href: '/cremation/documents',
+      icon: DocumentTextIcon,
+      id: 'documents'
     },
     {
       name: 'My Packages',

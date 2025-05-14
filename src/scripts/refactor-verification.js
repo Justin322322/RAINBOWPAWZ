@@ -1,11 +1,10 @@
-// Script to refactor the verification system in the database
-const fs = require('fs');
-const path = require('path');
-const mysql = require('mysql2/promise');
-const dotenv = require('dotenv');
+/**
+ * Database Refactoring Script for Service Providers
+ * This script fixes the issues with the service_providers table having two status fields
+ */
 
-// Load environment variables
-dotenv.config({ path: '.env.local' });
+const mysql = require('mysql2/promise');
+require('dotenv').config({ path: '.env.local' });
 
 // Database connection configuration
 const dbConfig = {
@@ -13,116 +12,179 @@ const dbConfig = {
   user: process.env.DB_USER || 'root',
   password: process.env.DB_PASSWORD || '',
   database: process.env.DB_NAME || 'rainbow_paws',
-  port: parseInt(process.env.DB_PORT || '3306'),
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0
+  port: parseInt(process.env.DB_PORT || '3306', 10),
 };
 
-console.log('Database configuration:', {
-  host: dbConfig.host,
-  user: dbConfig.user,
-  database: dbConfig.database,
-  port: dbConfig.port
-});
-
-async function runRefactorScript() {
+async function main() {
+  console.log('Starting service_providers table refactoring...');
   let connection;
-  
+
   try {
+    // Connect to the database
     console.log('Connecting to database...');
     connection = await mysql.createConnection(dbConfig);
-    console.log('Connected to database successfully');
-    
-    // Read the SQL script
-    const scriptPath = path.join(process.cwd(), 'database', 'refactor_verification.sql');
-    console.log('Reading SQL script from:', scriptPath);
-    
-    if (!fs.existsSync(scriptPath)) {
-      throw new Error(`SQL script not found at ${scriptPath}`);
+    console.log('Connected to database');
+
+    // Check if service_providers table exists
+    const [tables] = await connection.query(`
+      SELECT COUNT(*) as count 
+      FROM information_schema.tables 
+      WHERE table_schema = ? AND table_name = 'service_providers'
+    `, [dbConfig.database]);
+
+    if (tables[0].count === 0) {
+      console.log('The service_providers table does not exist');
+      return;
     }
-    
-    const sqlScript = fs.readFileSync(scriptPath, 'utf8');
-    console.log('SQL script loaded successfully');
-    
-    // Split the script into individual statements
-    const statements = sqlScript
-      .split(';')
-      .map(statement => statement.trim())
-      .filter(statement => statement.length > 0);
-    
-    console.log(`Found ${statements.length} SQL statements to execute`);
-    
-    // Execute each statement
-    for (let i = 0; i < statements.length; i++) {
-      const statement = statements[i];
-      console.log(`Executing statement ${i + 1}/${statements.length}...`);
-      
-      try {
-        await connection.query(statement);
-        console.log(`Statement ${i + 1} executed successfully`);
-      } catch (error) {
-        console.error(`Error executing statement ${i + 1}:`, error.message);
-        console.error('Statement:', statement);
-        // Continue with the next statement
-      }
+
+    // Get the current schema
+    console.log('Checking current service_providers schema...');
+    const [columns] = await connection.query(`
+      SHOW COLUMNS FROM service_providers
+    `);
+
+    // Check if both status and verification_status exist
+    const hasStatus = columns.some(col => col.Field === 'status');
+    const hasVerificationStatus = columns.some(col => col.Field === 'verification_status');
+
+    if (!hasStatus || !hasVerificationStatus) {
+      console.log('The service_providers table does not have both status and verification_status columns');
+      return;
     }
-    
-    console.log('Database refactoring completed successfully');
-    
-    // Verify the changes
-    console.log('Verifying changes...');
-    
-    // Check business_profiles table structure
-    const [bpColumns] = await connection.query(`
-      SHOW COLUMNS FROM business_profiles
+
+    console.log('Both status and verification_status columns found. Proceeding with refactoring...');
+
+    // 1. First, update any mismatched statuses to ensure consistency
+    console.log('Updating mismatched statuses...');
+    await connection.query(`
+      UPDATE service_providers
+      SET status = verification_status
+      WHERE status != verification_status
+    `);
+
+    // 2. Create a backup of the original table
+    console.log('Creating backup of service_providers table...');
+    await connection.query(`
+      CREATE TABLE IF NOT EXISTS service_providers_backup LIKE service_providers
     `);
     
-    console.log('business_profiles table columns:');
-    bpColumns.forEach(column => {
-      console.log(`- ${column.Field}: ${column.Type} ${column.Null === 'YES' ? 'NULL' : 'NOT NULL'} ${column.Default ? `DEFAULT ${column.Default}` : ''}`);
-    });
-    
-    // Check users table structure
-    const [userColumns] = await connection.query(`
-      SHOW COLUMNS FROM users
+    await connection.query(`
+      INSERT INTO service_providers_backup
+      SELECT * FROM service_providers
     `);
-    
-    console.log('users table columns:');
-    userColumns.forEach(column => {
-      console.log(`- ${column.Field}: ${column.Type} ${column.Null === 'YES' ? 'NULL' : 'NOT NULL'} ${column.Default ? `DEFAULT ${column.Default}` : ''}`);
-    });
-    
-    // Check if the view was created
+    console.log('Backup created successfully');
+
+    // 3. Update the verification_status enum to include all possible states
+    console.log('Modifying verification_status column to consolidate statuses...');
+    await connection.query(`
+      ALTER TABLE service_providers
+      MODIFY COLUMN verification_status ENUM(
+        'pending', 
+        'verified', 
+        'rejected', 
+        'restricted', 
+        'declined', 
+        'documents_required', 
+        'reviewing', 
+        'approved', 
+        'active'
+      ) NOT NULL DEFAULT 'pending'
+    `);
+
+    // 4. Add a new column for application_status that's separate from account status
+    console.log('Adding application_status column...');
     try {
-      const [viewCheck] = await connection.query(`
-        SHOW TABLES LIKE 'verified_businesses'
+      // Check if application_status column already exists
+      const [appStatusCheck] = await connection.query(`
+        SHOW COLUMNS FROM service_providers LIKE 'application_status'
       `);
       
-      if (viewCheck.length > 0) {
-        console.log('verified_businesses view created successfully');
+      if (appStatusCheck.length === 0) {
+        await connection.query(`
+          ALTER TABLE service_providers
+          ADD COLUMN application_status ENUM(
+            'pending', 
+            'reviewing', 
+            'documents_required', 
+            'approved', 
+            'declined'
+          ) NOT NULL DEFAULT 'pending' AFTER verification_status
+        `);
+        
+        // Initialize application_status based on verification_status
+        await connection.query(`
+          UPDATE service_providers
+          SET application_status = 
+            CASE 
+              WHEN verification_status = 'verified' OR verification_status = 'approved' THEN 'approved'
+              WHEN verification_status = 'declined' OR verification_status = 'rejected' THEN 'declined'
+              WHEN verification_status = 'documents_required' THEN 'documents_required'
+              WHEN verification_status = 'reviewing' THEN 'reviewing'
+              ELSE 'pending'
+            END
+        `);
       } else {
-        console.warn('verified_businesses view was not created');
+        console.log('application_status column already exists');
       }
     } catch (error) {
-      console.error('Error checking for verified_businesses view:', error.message);
+      console.error('Error adding application_status column:', error.message);
     }
+
+    // 5. Update the status column to represent account status only
+    console.log('Updating status column purpose...');
+    await connection.query(`
+      ALTER TABLE service_providers
+      MODIFY COLUMN status ENUM(
+        'active', 
+        'inactive', 
+        'suspended', 
+        'restricted'
+      ) NOT NULL DEFAULT 'active'
+    `);
+
+    // Set all status values to 'active' initially
+    await connection.query(`
+      UPDATE service_providers
+      SET status = 'active'
+      WHERE verification_status = 'verified' OR verification_status = 'approved'
+    `);
+
+    // Set restricted statuses
+    await connection.query(`
+      UPDATE service_providers
+      SET status = 'restricted'
+      WHERE verification_status = 'restricted'
+    `);
+
+    console.log('Schema refactoring completed successfully!');
     
+    // Print a summary of the changes made
+    const [countResults] = await connection.query(`
+      SELECT 
+        application_status,
+        verification_status,
+        status,
+        COUNT(*) as count
+      FROM service_providers
+      GROUP BY application_status, verification_status, status
+    `);
+    
+    console.log('\nCurrent status distribution:');
+    console.table(countResults);
+    
+    console.log('\nTable refactoring completed successfully. The service_providers table now has:');
+    console.log('1. verification_status - Historical record of the verification decision');
+    console.log('2. application_status - Current application processing status');
+    console.log('3. status - Account status (active, inactive, suspended, restricted)');
+
   } catch (error) {
-    console.error('Error during database refactoring:', error);
+    console.error('Error during refactoring:', error);
   } finally {
     if (connection) {
-      console.log('Closing database connection...');
       await connection.end();
       console.log('Database connection closed');
     }
   }
 }
 
-// Run the script
-runRefactorScript().then(() => {
-  console.log('Script execution completed');
-}).catch(error => {
-  console.error('Unhandled error during script execution:', error);
-  process.exit(1);
-});
+main();

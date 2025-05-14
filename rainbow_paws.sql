@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: May 14, 2025 at 08:10 AM
+-- Generation Time: May 14, 2025 at 11:11 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -20,6 +20,32 @@ SET time_zone = "+00:00";
 --
 -- Database: `rainbow_paws`
 --
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `admin_notifications`
+--
+
+CREATE TABLE `admin_notifications` (
+  `id` int(11) NOT NULL,
+  `type` varchar(50) NOT NULL,
+  `title` varchar(255) NOT NULL,
+  `message` text NOT NULL,
+  `entity_type` varchar(50) DEFAULT NULL,
+  `entity_id` int(11) DEFAULT NULL,
+  `link` varchar(255) DEFAULT NULL,
+  `is_read` tinyint(1) DEFAULT 0,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `admin_notifications`
+--
+
+INSERT INTO `admin_notifications` (`id`, `type`, `title`, `message`, `entity_type`, `entity_id`, `link`, `is_read`, `created_at`) VALUES
+(1, 'new_cremation_center', 'New Cremation Center Registration', 'business has registered as a cremation center and is pending verification.', 'service_provider', 9, '/admin/applications/9', 0, '2025-05-14 06:26:08'),
+(2, 'new_cremation_center', 'New Cremation Center Registration', 'business has registered as a cremation center and is pending verification.', 'service_provider', 10, '/admin/applications/10', 0, '2025-05-14 06:38:08');
 
 -- --------------------------------------------------------
 
@@ -63,6 +89,22 @@ CREATE TABLE `bookings` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Stand-in structure for view `business_application_stats`
+-- (See below for the actual view)
+--
+CREATE TABLE `business_application_stats` (
+`total` bigint(21)
+,`approved` decimal(22,0)
+,`pending` decimal(22,0)
+,`reviewing` decimal(22,0)
+,`declined` decimal(22,0)
+,`documents_required` decimal(22,0)
+,`restricted` decimal(22,0)
+);
 
 -- --------------------------------------------------------
 
@@ -112,7 +154,21 @@ CREATE TABLE `notifications` (
 
 INSERT INTO `notifications` (`id`, `user_id`, `title`, `message`, `type`, `is_read`, `link`, `created_at`, `updated_at`) VALUES
 (55, 33, 'Application Approved', 'Your business application for Eternal Companions has been approved. You can now start offering services.', 'success', 0, '/business/dashboard', '2025-05-14 05:59:18', '2025-05-14 05:59:18'),
-(56, 33, 'Application Approved', 'Your business application for Eternal Companions has been approved.', 'success', 0, '/cremation/dashboard', '2025-05-14 05:59:22', '2025-05-14 05:59:22');
+(56, 33, 'Application Approved', 'Your business application for Eternal Companions has been approved.', 'success', 0, '/cremation/dashboard', '2025-05-14 05:59:22', '2025-05-14 05:59:22'),
+(57, 33, 'Application Approved', 'Your business application for Eternal Companions has been approved. You can now start offering services.', 'success', 0, '/business/dashboard', '2025-05-14 06:16:38', '2025-05-14 06:16:38'),
+(58, 33, 'Application Approved', 'Your business application for Eternal Companions has been approved.', 'success', 0, '/cremation/dashboard', '2025-05-14 06:16:41', '2025-05-14 06:16:41'),
+(62, 31, 'Additional Documents Required', 'Your business application for Rainbow Bridge Pet Cremation requires additional documents. Please check your email for details.', 'warning', 0, '/business/profile', '2025-05-14 06:30:26', '2025-05-14 06:30:26'),
+(63, 31, 'Additional Documents Required', 'Your business application for Rainbow Bridge Pet Cremation requires additional documents. Please check your email for details.', 'warning', 0, '/business/profile', '2025-05-14 06:33:48', '2025-05-14 06:33:48'),
+(64, 31, 'Application Declined', 'Your business application for Rainbow Bridge Pet Cremation has been declined. Reason: asdasdadadssd asdasd sd', 'error', 0, '/business/profile', '2025-05-14 06:40:02', '2025-05-14 06:40:02'),
+(65, 31, 'Application Declined', 'Your business application for Rainbow Bridge Pet Cremation has been declined. Reason: asdasda asdasd asdasd', 'error', 0, '/business/profile', '2025-05-14 06:46:48', '2025-05-14 06:46:48'),
+(66, 31, 'Application Declined', 'Your business application for Rainbow Bridge Pet Cremation has been declined. Reason: asdasdds asdasd sdasd asdas', 'error', 0, '/business/profile', '2025-05-14 06:47:16', '2025-05-14 06:47:16'),
+(69, 31, 'Application Declined', 'Your business application for Rainbow Bridge Pet Cremation has been declined. Reason: asdasdasd ajlksdhasjhdj a asjkdhasjhdkhs', 'error', 0, '/business/profile', '2025-05-14 06:56:14', '2025-05-14 06:56:14'),
+(70, 31, 'Application Declined', 'Your business application for Rainbow Bridge Pet Cremation has been declined. Reason: asdas d kjasdkjas aksdjaksdj', 'error', 0, '/business/profile', '2025-05-14 06:59:22', '2025-05-14 06:59:22'),
+(71, 31, 'Application Declined', 'Your business application for Rainbow Bridge Pet Cremation has been declined. Reason: asdasdasdasdasdsd', 'error', 0, '/business/profile', '2025-05-14 07:05:12', '2025-05-14 07:05:12'),
+(72, 31, 'Application Declined', 'Your business application for Rainbow Bridge Pet Cremation has been declined. Reason: asdasd asdasd asdasd aasdasd', 'error', 0, '/business/profile', '2025-05-14 07:11:00', '2025-05-14 07:11:00'),
+(73, 31, 'Application Declined', 'Your business application for Rainbow Bridge Pet Cremation has been declined. Reason: asdasd asdasd asdasd', 'error', 0, '/business/profile', '2025-05-14 07:11:37', '2025-05-14 07:11:37'),
+(74, 31, 'Application Declined', 'Your business application for Rainbow Bridge Pet Cremation has been declined. Reason: asdas adsasd dasda asdasd', 'error', 0, '/business/profile', '2025-05-14 07:15:43', '2025-05-14 07:15:43'),
+(75, 31, 'Application Declined', 'Your business application for Rainbow Bridge Pet Cremation has been declined. Reason: asdasd asdasd asdasd asdasd', 'error', 0, '/business/profile', '2025-05-14 07:19:03', '2025-05-14 07:19:03');
 
 -- --------------------------------------------------------
 
@@ -133,8 +189,7 @@ CREATE TABLE `otp_attempts` (
 --
 
 INSERT INTO `otp_attempts` (`id`, `user_id`, `attempt_type`, `attempt_time`, `ip_address`) VALUES
-(56, 30, 'generate', '2025-05-13 22:41:10', '::ffff:192.168.56.1'),
-(57, 30, 'verify', '2025-05-13 22:41:24', '::ffff:192.168.56.1');
+(65, 39, 'generate', '2025-05-14 09:02:18', '::ffff:192.168.56.1');
 
 -- --------------------------------------------------------
 
@@ -156,7 +211,7 @@ CREATE TABLE `otp_codes` (
 --
 
 INSERT INTO `otp_codes` (`id`, `user_id`, `otp_code`, `expires_at`, `is_used`, `created_at`) VALUES
-(42, 30, '106969', '2025-05-14 06:51:10', 1, '2025-05-13 22:41:10');
+(49, 39, '265259', '2025-05-14 17:12:18', 0, '2025-05-14 09:02:18');
 
 -- --------------------------------------------------------
 
@@ -335,15 +390,6 @@ CREATE TABLE `pets` (
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
---
--- Dumping data for table `pets`
---
-
-INSERT INTO `pets` (`id`, `user_id`, `name`, `species`, `breed`, `age`, `gender`, `weight`, `photo_path`, `special_notes`, `created_at`, `updated_at`) VALUES
-(4, 30, 'Max', 'Dog', 'Golden Retriever', NULL, 'Male', 30.00, NULL, 'Friendly and loves to play fetch.', '2025-05-13 23:12:34', '2025-05-13 23:12:34'),
-(5, 30, 'Luna', 'Cat', 'Siamese', NULL, 'Female', 4.50, NULL, 'Quiet and loves to sleep in sunny spots.', '2025-05-13 23:12:34', '2025-05-13 23:12:34'),
-(6, 30, 'Buddy', 'Dog', 'Labrador', 5, 'Male', 32.00, NULL, NULL, '2025-05-13 23:12:34', '2025-05-13 23:23:09');
-
 -- --------------------------------------------------------
 
 --
@@ -418,26 +464,25 @@ CREATE TABLE `service_providers` (
   `zip` varchar(20) NOT NULL,
   `hours` text DEFAULT NULL,
   `service_description` text DEFAULT NULL,
-  `verification_status` enum('pending','verified','rejected','restricted') NOT NULL DEFAULT 'pending',
-  `status` varchar(50) DEFAULT 'active',
+  `application_status` enum('pending','reviewing','documents_required','approved','declined','verified','rejected','restricted') NOT NULL DEFAULT 'pending',
   `verification_date` timestamp NULL DEFAULT NULL,
   `verification_notes` text DEFAULT NULL,
   `bir_certificate_path` varchar(255) DEFAULT NULL,
   `business_permit_path` varchar(255) DEFAULT NULL,
   `government_id_path` varchar(255) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `active_service_count` int(11) DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Note: verification_status is deprecated, use application_status instead';
 
 --
 -- Dumping data for table `service_providers`
 --
 
-INSERT INTO `service_providers` (`id`, `user_id`, `name`, `provider_type`, `contact_first_name`, `contact_last_name`, `phone`, `address`, `province`, `city`, `zip`, `hours`, `service_description`, `verification_status`, `status`, `verification_date`, `verification_notes`, `bir_certificate_path`, `business_permit_path`, `government_id_path`, `created_at`, `updated_at`) VALUES
-(5, 30, 'business', 'cremation', 'Justin', 'Sibonga', '1111111', 'Capitol Compound, Tenejero', 'Bataan', 'Balanga City', '2100', 'business', 'asdasdasd', 'verified', 'active', '2025-05-13 07:24:30', 'Application approved', '/uploads/businesses/30/bir_certificate_1747116844093.png', '/uploads/businesses/30/business_permit_1747116844102.png', '/uploads/businesses/30/government_id_1747116844107.png', '2025-05-13 06:13:57', '2025-05-13 07:28:10'),
-(6, 31, 'Rainbow Bridge Pet Cremation', 'cremation', 'Admin', 'Rainbow', '09123456789', 'Capitol Drive, Balanga City, Bataan, Philippines', 'Bataan', 'Balanga City', '2100', 'Monday-Friday: 8:00 AM - 5:00 PM, Saturday: 8:00 AM - 12:00 PM, Sunday: Closed', 'Compassionate pet cremation services with personalized memorials. We provide dignified and respectful end-of-life care for your beloved companions. Our team understands the deep bond between pets and their families, and we strive to honor that connection through our thoughtful services.', 'verified', 'active', NULL, NULL, NULL, NULL, NULL, '2025-05-13 22:58:24', '2025-05-13 22:58:24'),
-(7, 32, 'Peaceful Paws Memorial', 'cremation', 'Admin', 'Peaceful', '09234567890', 'Tuyo, Balanga City, Bataan, Philippines', 'Bataan', 'Balanga City', '2100', 'Monday-Saturday: 9:00 AM - 6:00 PM, Sunday: By appointment only', 'Dignified pet cremation with eco-friendly options. We focus on providing environmentally conscious memorial services while honoring your pet with the respect they deserve. Our facility is designed to provide a peaceful setting for families during this difficult time.', 'verified', 'active', NULL, NULL, NULL, NULL, NULL, '2025-05-13 22:58:24', '2025-05-13 22:58:24'),
-(8, 33, 'Eternal Companions', 'cremation', 'Admin', 'Eternal', '09345678901', 'Tenejero, Balanga City, Bataan, Philippines', 'Bataan', 'Balanga City', '2100', 'Monday-Sunday: 24/7 Service Available', 'Honoring your pet with respectful cremation services. We offer 24/7 service to ensure your beloved companion receives timely and compassionate care. Our dedicated team is committed to providing support during this difficult time.', 'restricted', 'restricted', '2025-05-14 05:59:18', 'Application approved', NULL, NULL, NULL, '2025-05-13 22:58:24', '2025-05-14 06:09:25');
+INSERT INTO `service_providers` (`id`, `user_id`, `name`, `provider_type`, `contact_first_name`, `contact_last_name`, `phone`, `address`, `province`, `city`, `zip`, `hours`, `service_description`, `application_status`, `verification_date`, `verification_notes`, `bir_certificate_path`, `business_permit_path`, `government_id_path`, `created_at`, `updated_at`, `active_service_count`) VALUES
+(6, 31, 'Rainbow Bridge Pet Cremation', 'cremation', 'Admin', 'Rainbow', '09123456789', 'Capitol Drive, Balanga City, Bataan, Philippines', 'Bataan', 'Balanga City', '2100', 'Monday-Friday: 8:00 AM - 5:00 PM, Saturday: 8:00 AM - 12:00 PM, Sunday: Closed', 'Compassionate pet cremation services with personalized memorials. We provide dignified and respectful end-of-life care for your beloved companions. Our team understands the deep bond between pets and their families, and we strive to honor that connection through our thoughtful services.', 'declined', '2025-05-14 07:19:00', 'asdasd asdasd asdasd asdasd', NULL, NULL, NULL, '2025-05-13 22:58:24', '2025-05-14 08:31:52', 3),
+(7, 32, 'Peaceful Paws Memorial', 'cremation', 'Admin', 'Peaceful', '09234567890', 'Tuyo, Balanga City, Bataan, Philippines', 'Bataan', 'Balanga City', '2100', 'Monday-Saturday: 9:00 AM - 6:00 PM, Sunday: By appointment only', 'Dignified pet cremation with eco-friendly options. We focus on providing environmentally conscious memorial services while honoring your pet with the respect they deserve. Our facility is designed to provide a peaceful setting for families during this difficult time.', 'restricted', NULL, NULL, NULL, NULL, NULL, '2025-05-13 22:58:24', '2025-05-14 08:31:52', 3),
+(8, 33, 'Eternal Companions', 'cremation', 'Admin', 'Eternal', '09345678901', 'Tenejero, Balanga City, Bataan, Philippines', 'Bataan', 'Balanga City', '2100', 'Monday-Sunday: 24/7 Service Available', 'Honoring your pet with respectful cremation services. We offer 24/7 service to ensure your beloved companion receives timely and compassionate care. Our dedicated team is committed to providing support during this difficult time.', 'approved', '2025-05-14 06:16:37', 'Application approved', NULL, NULL, NULL, '2025-05-13 22:58:24', '2025-05-14 08:31:52', 3);
 
 -- --------------------------------------------------------
 
@@ -458,32 +503,6 @@ CREATE TABLE `successful_bookings` (
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
---
--- Dumping data for table `successful_bookings`
---
-
-INSERT INTO `successful_bookings` (`id`, `booking_id`, `service_package_id`, `user_id`, `provider_id`, `transaction_amount`, `payment_date`, `payment_status`, `created_at`, `updated_at`) VALUES
-(21, 'BK-2023-001', 1, 2, 1, 3500.00, '2023-10-15 14:30:00', 'completed', '2025-05-14 05:45:41', '2025-05-14 05:45:41'),
-(22, 'BK-2023-002', 2, 3, 1, 4200.00, '2023-10-18 09:45:00', 'completed', '2025-05-14 05:45:41', '2025-05-14 05:45:41'),
-(23, 'BK-2023-003', 1, 4, 1, 3500.00, '2023-10-20 16:15:00', 'completed', '2025-05-14 05:45:41', '2025-05-14 05:45:41'),
-(24, 'BK-2023-004', 3, 2, 2, 2800.00, '2023-10-25 11:30:00', 'completed', '2025-05-14 05:45:41', '2025-05-14 05:45:41'),
-(25, 'BK-2023-005', 2, 5, 1, 4200.00, '2023-11-02 13:20:00', 'completed', '2025-05-14 05:45:41', '2025-05-14 05:45:41'),
-(26, 'BK-2023-006', 4, 3, 2, 5100.00, '2023-11-05 10:00:00', 'completed', '2025-05-14 05:45:41', '2025-05-14 05:45:41'),
-(27, 'BK-2023-007', 1, 6, 1, 3500.00, '2023-11-10 15:45:00', 'completed', '2025-05-14 05:45:41', '2025-05-14 05:45:41'),
-(28, 'BK-2023-008', 3, 4, 2, 2800.00, '2023-11-15 09:30:00', 'completed', '2025-05-14 05:45:41', '2025-05-14 05:45:41'),
-(29, 'BK-2023-009', 2, 2, 1, 4200.00, '2023-11-20 14:15:00', 'completed', '2025-05-14 05:45:41', '2025-05-14 05:45:41'),
-(30, 'BK-2023-010', 4, 5, 2, 5100.00, '2023-11-25 11:00:00', 'completed', '2025-05-14 05:45:41', '2025-05-14 05:45:41'),
-(31, 'BK-2023-011', 1, 3, 1, 3500.00, '2023-12-01 16:30:00', 'completed', '2025-05-14 05:45:41', '2025-05-14 05:45:41'),
-(32, 'BK-2023-012', 3, 6, 2, 2800.00, '2023-12-05 10:45:00', 'completed', '2025-05-14 05:45:41', '2025-05-14 05:45:41'),
-(33, 'BK-2023-013', 2, 4, 1, 4200.00, '2023-12-10 13:15:00', 'completed', '2025-05-14 05:45:41', '2025-05-14 05:45:41'),
-(34, 'BK-2023-014', 4, 2, 2, 5100.00, '2023-12-15 09:00:00', 'completed', '2025-05-14 05:45:41', '2025-05-14 05:45:41'),
-(35, 'BK-2023-015', 1, 5, 1, 3500.00, '2023-12-20 15:30:00', 'completed', '2025-05-14 05:45:41', '2025-05-14 05:45:41'),
-(36, 'BK-2024-001', 3, 3, 2, 2800.00, '2024-01-05 11:45:00', 'completed', '2025-05-14 05:45:41', '2025-05-14 05:45:41'),
-(37, 'BK-2024-002', 2, 6, 1, 4200.00, '2024-01-10 14:00:00', 'completed', '2025-05-14 05:45:41', '2025-05-14 05:45:41'),
-(38, 'BK-2024-003', 4, 4, 2, 5100.00, '2024-01-15 10:30:00', 'completed', '2025-05-14 05:45:41', '2025-05-14 05:45:41'),
-(39, 'BK-2024-004', 1, 2, 1, 3500.00, '2024-01-20 16:15:00', 'completed', '2025-05-14 05:45:41', '2025-05-14 05:45:41'),
-(40, 'BK-2024-005', 3, 5, 2, 2800.00, '2024-01-25 09:45:00', 'completed', '2025-05-14 05:45:41', '2025-05-14 05:45:41');
-
 -- --------------------------------------------------------
 
 --
@@ -500,7 +519,7 @@ CREATE TABLE `users` (
   `address` text DEFAULT NULL,
   `sex` varchar(20) DEFAULT NULL,
   `role` enum('fur_parent','business','admin') NOT NULL DEFAULT 'fur_parent',
-  `status` varchar(20) DEFAULT 'active',
+  `status` enum('active','inactive','suspended','restricted') NOT NULL DEFAULT 'active',
   `is_verified` tinyint(1) NOT NULL DEFAULT 0,
   `is_otp_verified` tinyint(1) NOT NULL DEFAULT 0,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
@@ -513,33 +532,30 @@ CREATE TABLE `users` (
 --
 
 INSERT INTO `users` (`id`, `email`, `password`, `first_name`, `last_name`, `phone_number`, `address`, `sex`, `role`, `status`, `is_verified`, `is_otp_verified`, `created_at`, `updated_at`, `last_login`) VALUES
-(19, 'testadmin@rainbowpaws.com', '$2b$10$rn9WwPcbn2pnhyufVIh0cuY1E0fpO.E0tnSSNMFTDax2To.2PjXaO', 'Test', 'Admin', NULL, NULL, NULL, 'admin', 'active', 1, 1, '2025-05-11 14:42:55', '2025-05-14 06:08:23', '2025-05-14 06:08:23'),
-(30, 'justinmarlosibonga@gmail.com', '$2b$10$Rgwuy9VuTiFKtoxr5wMByeG9LEQ5x4puWKFC9YCHzmiOX6hk9tRTy', 'Justin', 'Sibonga', '1232asdasd', 'Capitol Compound, Tenejero Balanga', NULL, 'fur_parent', 'active', 1, 1, '2025-05-13 06:13:57', '2025-05-14 05:16:54', '2025-05-14 05:16:54'),
+(19, 'testadmin@rainbowpaws.com', '$2b$10$rn9WwPcbn2pnhyufVIh0cuY1E0fpO.E0tnSSNMFTDax2To.2PjXaO', 'Test', 'Admin', NULL, NULL, NULL, 'admin', 'active', 1, 1, '2025-05-11 14:42:55', '2025-05-14 09:02:27', '2025-05-14 09:02:27'),
 (31, 'rainbow_bridge@example.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Admin', 'Rainbow', '09123456789', NULL, NULL, 'business', 'active', 1, 1, '2025-05-13 22:58:24', '2025-05-13 22:58:24', NULL),
 (32, 'peaceful_paws@example.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Admin', 'Peaceful', '09234567890', NULL, NULL, 'business', 'active', 1, 1, '2025-05-13 22:58:24', '2025-05-13 22:58:24', NULL),
-(33, 'eternal_companions@example.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Admin', 'Eternal', '09345678901', NULL, NULL, 'business', 'active', 1, 1, '2025-05-13 22:58:24', '2025-05-13 22:58:24', NULL);
+(33, 'eternal_companions@example.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Admin', 'Eternal', '09345678901', NULL, NULL, 'business', 'active', 1, 1, '2025-05-13 22:58:24', '2025-05-13 22:58:24', NULL),
+(39, 'justinmarlosibonga@gmail.com', '$2b$10$ns3ZEPPWi9oPTjQ85DdZ/OmFqHqyRNWunnN2k6r7Gdv4xrTFHMzTK', 'Justin', 'Sibonga', '1111111', 'Capitol Compound, Tenejero', NULL, 'business', 'active', 0, 0, '2025-05-14 09:02:15', '2025-05-14 09:02:15', NULL);
 
 -- --------------------------------------------------------
 
 --
--- Table structure for table `user_restrictions`
+-- Structure for view `business_application_stats`
 --
+DROP TABLE IF EXISTS `business_application_stats`;
 
-CREATE TABLE `user_restrictions` (
-  `id` int(11) NOT NULL,
-  `user_id` int(11) NOT NULL,
-  `reason` text DEFAULT NULL,
-  `restriction_date` timestamp NOT NULL DEFAULT current_timestamp(),
-  `duration` varchar(50) DEFAULT 'indefinite',
-  `report_count` int(11) DEFAULT 0,
-  `is_active` tinyint(1) DEFAULT 1,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `business_application_stats`  AS SELECT count(0) AS `total`, sum(case when `service_providers`.`application_status` = 'approved' or `service_providers`.`application_status` = 'verified' then 1 else 0 end) AS `approved`, sum(case when `service_providers`.`application_status` = 'pending' then 1 else 0 end) AS `pending`, sum(case when `service_providers`.`application_status` = 'reviewing' then 1 else 0 end) AS `reviewing`, sum(case when `service_providers`.`application_status` = 'declined' or `service_providers`.`application_status` = 'rejected' then 1 else 0 end) AS `declined`, sum(case when `service_providers`.`application_status` = 'documents_required' then 1 else 0 end) AS `documents_required`, sum(case when `service_providers`.`application_status` = 'restricted' then 1 else 0 end) AS `restricted` FROM `service_providers` ;
 
 --
 -- Indexes for dumped tables
 --
+
+--
+-- Indexes for table `admin_notifications`
+--
+ALTER TABLE `admin_notifications`
+  ADD PRIMARY KEY (`id`);
 
 --
 -- Indexes for table `admin_profiles`
@@ -641,7 +657,8 @@ ALTER TABLE `reviews`
 --
 ALTER TABLE `service_packages`
   ADD PRIMARY KEY (`id`),
-  ADD KEY `service_provider_id` (`service_provider_id`);
+  ADD KEY `service_provider_id` (`service_provider_id`),
+  ADD KEY `idx_service_provider` (`service_provider_id`);
 
 --
 -- Indexes for table `service_providers`
@@ -667,15 +684,14 @@ ALTER TABLE `users`
   ADD UNIQUE KEY `email` (`email`);
 
 --
--- Indexes for table `user_restrictions`
---
-ALTER TABLE `user_restrictions`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `user_id` (`user_id`);
-
---
 -- AUTO_INCREMENT for dumped tables
 --
+
+--
+-- AUTO_INCREMENT for table `admin_notifications`
+--
+ALTER TABLE `admin_notifications`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT for table `admin_profiles`
@@ -699,19 +715,19 @@ ALTER TABLE `email_queue`
 -- AUTO_INCREMENT for table `notifications`
 --
 ALTER TABLE `notifications`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=57;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=76;
 
 --
 -- AUTO_INCREMENT for table `otp_attempts`
 --
 ALTER TABLE `otp_attempts`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=58;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=66;
 
 --
 -- AUTO_INCREMENT for table `otp_codes`
 --
 ALTER TABLE `otp_codes`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=43;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=50;
 
 --
 -- AUTO_INCREMENT for table `package_addons`
@@ -759,7 +775,7 @@ ALTER TABLE `service_packages`
 -- AUTO_INCREMENT for table `service_providers`
 --
 ALTER TABLE `service_providers`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
 
 --
 -- AUTO_INCREMENT for table `successful_bookings`
@@ -771,13 +787,7 @@ ALTER TABLE `successful_bookings`
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=34;
-
---
--- AUTO_INCREMENT for table `user_restrictions`
---
-ALTER TABLE `user_restrictions`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=40;
 
 --
 -- Constraints for dumped tables
@@ -872,12 +882,6 @@ ALTER TABLE `successful_bookings`
   ADD CONSTRAINT `successful_bookings_ibfk_1` FOREIGN KEY (`service_package_id`) REFERENCES `service_packages` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `successful_bookings_ibfk_2` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `successful_bookings_ibfk_3` FOREIGN KEY (`provider_id`) REFERENCES `service_providers` (`id`) ON DELETE CASCADE;
-
---
--- Constraints for table `user_restrictions`
---
-ALTER TABLE `user_restrictions`
-  ADD CONSTRAINT `user_restrictions_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

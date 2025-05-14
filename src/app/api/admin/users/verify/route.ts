@@ -120,7 +120,7 @@ export async function POST(request: NextRequest) {
           console.log(`Using table: ${tableName}`);
 
           // Check if the business exists
-          const businessExists = await query(`SELECT id, verification_status, user_id FROM ${tableName} WHERE id = ?`, [businessId]) as any[];
+          const businessExists = await query(`SELECT id, verification_status, application_status, user_id FROM ${tableName} WHERE id = ?`, [businessId]) as any[];
           if (!businessExists || businessExists.length === 0) {
             return NextResponse.json({
               error: `Business profile with ID ${businessId} not found in ${tableName} table`,
@@ -129,31 +129,58 @@ export async function POST(request: NextRequest) {
           }
 
           // Get current status and user ID
-          const currentStatus = businessExists[0]?.verification_status;
+          const currentStatus = businessExists[0]?.application_status || businessExists[0]?.verification_status;
           const businessUserId = businessExists[0]?.user_id;
 
           console.log('Current status:', currentStatus, 'User ID:', businessUserId);
 
           // Only update verification_status if it's not restricted
-          let verificationStatus = 'verified';
+          let updatedStatus = 'approved';
           if (currentStatus === 'restricted') {
-            console.log('Business is restricted, keeping restricted status but marking as verified for visibility');
-            verificationStatus = 'restricted';
+            console.log('Business is restricted, keeping restricted status');
+            updatedStatus = 'restricted';
           }
 
+          // Check if the table has application_status column
+          const columnsResult = await query(`
+            SHOW COLUMNS FROM ${tableName} LIKE 'application_status'
+          `) as any[];
+          
+          const hasApplicationStatus = columnsResult.length > 0;
+          console.log(`Table ${tableName} has application_status column: ${hasApplicationStatus}`);
+
           // Update the business profile
-          await query(`
-            UPDATE ${tableName}
-            SET verification_status = ?,
-                verification_date = NOW(),
-                verification_notes = ?,
-                updated_at = NOW()
-            WHERE id = ?
-          `, [
-            verificationStatus,
-            notes || (currentStatus === 'restricted' ? 'Verified by admin but still restricted' : 'Verified by admin'),
-            businessId
-          ]);
+          if (hasApplicationStatus) {
+            // Use application_status as the primary status field
+            await query(`
+              UPDATE ${tableName}
+              SET application_status = ?,
+                  verification_status = ?, -- Keep for backward compatibility
+                  verification_date = NOW(),
+                  verification_notes = ?,
+                  updated_at = NOW()
+              WHERE id = ?
+            `, [
+              updatedStatus,
+              updatedStatus === 'approved' ? 'verified' : updatedStatus, // Convert 'approved' to 'verified' for backward compatibility
+              notes || (currentStatus === 'restricted' ? 'Verified by admin but still restricted' : 'Verified by admin'),
+              businessId
+            ]);
+          } else {
+            // Fallback to using only verification_status
+            await query(`
+              UPDATE ${tableName}
+              SET verification_status = ?,
+                  verification_date = NOW(),
+                  verification_notes = ?,
+                  updated_at = NOW()
+              WHERE id = ?
+            `, [
+              updatedStatus === 'approved' ? 'verified' : updatedStatus, // Convert 'approved' to 'verified' for older schema
+              notes || (currentStatus === 'restricted' ? 'Verified by admin but still restricted' : 'Verified by admin'),
+              businessId
+            ]);
+          }
 
           console.log('Business profile updated successfully');
 

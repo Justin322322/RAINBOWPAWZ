@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import CremationNavbar from './CremationNavbar';
 import CremationSidebar from './CremationSidebar';
 import DashboardSkeleton from '../ui/DashboardSkeleton';
+import { HomeIcon, DocumentTextIcon, ArchiveBoxIcon, CalendarIcon, ClockIcon, UserCircleIcon } from '@heroicons/react/24/outline';
 
 interface CremationDashboardLayoutProps {
   children: React.ReactNode;
@@ -167,3 +168,12 @@ export default function CremationDashboardLayout({
     </div>
   );
 }
+
+const navigationItems = [
+  { name: 'Dashboard', href: '/cremation/dashboard', icon: HomeIcon },
+  { name: 'Documents', href: '/cremation/documents', icon: DocumentTextIcon },
+  { name: 'Services', href: '/cremation/packages', icon: ArchiveBoxIcon },
+  { name: 'Bookings', href: '/cremation/bookings', icon: CalendarIcon },
+  { name: 'History', href: '/cremation/history', icon: ClockIcon },
+  { name: 'Profile', href: '/cremation/profile', icon: UserCircleIcon }
+];

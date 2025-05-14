@@ -36,30 +36,38 @@ function AdminApplicationsContent() {
         const data = await appResponse.json();
 
         if (data.error) {
-          throw new Error(data.error);
+          console.error('API returned an error:', data.error);
+          setError(data.error);
+          setApplications([]);
+          return;
         }
 
         console.log('Applications data:', data);
 
+        // If no applications found, don't throw an error, just show empty state
+        if (!data.applications || data.applications.length === 0) {
+          setApplications([]);
+          return;
+        }
+
         // Process the applications to ensure statuses are correct
-        const processedApplications = data.applications?.map(app => {
-          // Make sure declined applications show as declined
-          if (app.verificationStatus === 'declined' && app.status !== 'declined') {
-            console.log(`Fixing status for ${app.id}: Setting to declined`);
-            return { ...app, status: 'declined' };
-          }
-          // Make sure restricted applications show as restricted
-          if (app.verificationStatus === 'restricted' && app.status !== 'restricted') {
-            console.log(`Fixing status for ${app.id}: Setting to restricted`);
-            return { ...app, status: 'restricted' };
+        const processedApplications = data.applications.map(app => {
+          // Set a default status if none provided
+          if (!app.applicationStatus) {
+            return { ...app, applicationStatus: 'pending' };
           }
           return app;
-        }) || [];
+        });
 
         setApplications(processedApplications);
       } catch (error) {
         console.error('Error fetching applications data:', error);
-        setError(error.message || 'Failed to load application data');
+        // Provide a more user-friendly error message
+        let errorMessage = 'Failed to load application data';
+        if (error instanceof Error) {
+          errorMessage = error.message;
+        }
+        setError(errorMessage);
       } finally {
         setIsLoading(false);
       }
@@ -69,16 +77,15 @@ function AdminApplicationsContent() {
   }, []);
 
   // Filter applications based on search term and status
-  const filteredApplications = applications.filter(app => {
-    // First filter by status if not 'all'
-    if (statusFilter !== 'all' && app.status !== statusFilter) {
-      return false;
-    }
+  const filteredApplications = applications.filter((application) => {
+    const searchMatch = !searchTerm ||
+      application.businessName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      application.owner.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      application.email.toLowerCase().includes(searchTerm.toLowerCase());
 
-    // Then filter by search term
-    return app.businessName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      app.owner?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      app.id?.toLowerCase().includes(searchTerm.toLowerCase());
+    const statusMatch = statusFilter === 'all' || application.applicationStatus === statusFilter;
+
+    return searchMatch && statusMatch;
   });
 
   return (
@@ -117,13 +124,15 @@ function AdminApplicationsContent() {
 
           <div className="md:w-48">
             <select
+              id="status"
+              name="status"
+              className="block w-full h-10 pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="block w-full py-2 px-3 border border-gray-300 rounded-lg leading-5 bg-white focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)] sm:text-sm"
             >
-              <option value="all">All Status</option>
+              <option value="all">All Statuses</option>
               <option value="pending">Pending</option>
-              <option value="reviewing">Reviewing</option>
+              <option value="reviewing">Under Review</option>
               <option value="documents_required">Documents Required</option>
               <option value="approved">Approved</option>
               <option value="declined">Declined</option>
@@ -196,32 +205,32 @@ function AdminApplicationsContent() {
                       <div className="text-sm text-gray-500">{application.email}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      {application.status === 'pending' && (
+                      {application.applicationStatus === 'pending' && (
                         <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
                           Pending
                         </span>
                       )}
-                      {application.status === 'reviewing' && (
+                      {application.applicationStatus === 'reviewing' && (
                         <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
                           Reviewing
                         </span>
                       )}
-                      {application.status === 'documents_required' && (
+                      {application.applicationStatus === 'documents_required' && (
                         <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-orange-100 text-orange-800">
                           Documents Required
                         </span>
                       )}
-                      {application.status === 'approved' && (
+                      {(application.applicationStatus === 'approved' || application.applicationStatus === 'verified') && (
                         <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
                           Approved
                         </span>
                       )}
-                      {application.status === 'declined' && (
+                      {(application.applicationStatus === 'declined' || application.applicationStatus === 'rejected') && (
                         <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
                           Declined
                         </span>
                       )}
-                      {application.status === 'restricted' && (
+                      {application.applicationStatus === 'restricted' && (
                         <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800">
                           Restricted
                         </span>

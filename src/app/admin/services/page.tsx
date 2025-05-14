@@ -62,7 +62,7 @@ export default function AdminServicesPage() {
         params.append('page', pagination.page.toString());
         params.append('limit', pagination.limit.toString());
 
-        const response = await fetch(`/api/admin/services?${params.toString()}`);
+        const response = await fetch(`/api/admin/services/listing?${params.toString()}`);
 
         if (!response.ok) {
           throw new Error(`Failed to fetch services: ${response.status} ${response.statusText}`);
@@ -386,7 +386,7 @@ export default function AdminServicesPage() {
               <BanknotesIcon className="h-6 w-6" />
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-600">Est. Monthly Revenue</p>
+              <p className="text-sm font-medium text-gray-600">Monthly Revenue</p>
               <p className="text-2xl font-semibold text-gray-900">₱{Math.round(stats.monthlyRevenue).toLocaleString()}</p>
             </div>
           </div>
@@ -396,7 +396,9 @@ export default function AdminServicesPage() {
       {/* Services Grid */}
       {loading ? (
         <div className="bg-white rounded-xl shadow-sm p-12 text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--primary-green)] mx-auto"></div>
+          <div className="p-3 rounded-full bg-gray-200 animate-pulse inline-flex">
+            <div className="h-12 w-12"></div>
+          </div>
           <p className="text-gray-500 text-lg mt-4">Loading services...</p>
         </div>
       ) : (

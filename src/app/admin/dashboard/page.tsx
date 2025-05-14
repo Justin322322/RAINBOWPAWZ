@@ -152,31 +152,17 @@ function AdminDashboardPage({ adminData }: { adminData: any }) {
   };
 
   return (
-    <AdminDashboardLayout activePage="dashboard" adminData={adminData}>
-      {/* Welcome section */}
-      <div className="mb-10 bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow duration-300 p-6 border border-gray-100">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold text-gray-800">Welcome back, {userName}</h1>
-            <p className="text-gray-600 mt-1">Here's what's happening with RainbowPaws today.</p>
-          </div>
-          <div>
-            <Link href="/admin/applications" className="px-4 py-2 bg-[var(--primary-green)] text-white rounded-lg hover:bg-opacity-90 transition-all duration-300 flex items-center">
-              <span className="mr-2">Review Applications</span>
-              <ClipboardDocumentCheckIcon className="h-5 w-5" />
-            </Link>
-          </div>
-        </div>
-      </div>
-
-      {/* Stats Grid */}
+    <AdminDashboardLayout title="Dashboard" user={{ name: userName }}>
+      {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {isLoading ? (
-          // Loading skeleton for stats
+          // Loading skeleton for stats - consistent style
           Array(4).fill(0).map((_, index) => (
             <div key={index} className="bg-white rounded-xl shadow-sm p-6">
               <div className="flex items-center">
-                <div className="bg-gray-200 p-3 rounded-full mr-4 animate-pulse h-12 w-12"></div>
+                <div className="p-3 rounded-full bg-gray-200 mr-4 animate-pulse">
+                  <div className="h-6 w-6"></div>
+                </div>
                 <div className="w-full">
                   <div className="h-4 bg-gray-200 rounded w-3/4 mb-2 animate-pulse"></div>
                   <div className="h-6 bg-gray-200 rounded w-1/2 animate-pulse"></div>
@@ -211,96 +197,142 @@ function AdminDashboardPage({ adminData }: { adminData: any }) {
       </div>
 
       {/* Recent Applications */}
-      <div className="bg-white rounded-xl shadow-sm overflow-hidden mb-8">
-        <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-          <h2 className="text-lg font-medium text-gray-800">Recent Applications</h2>
-          <Link href="/admin/applications" className="text-[var(--primary-green)] text-sm hover:underline">View all</Link>
-        </div>
-        <div className="overflow-x-auto">
-          {isLoading ? (
-            <div className="px-6 py-8 text-center">
-              <div className="inline-block animate-spin h-8 w-8 border-t-2 border-b-2 border-[var(--primary-green)] rounded-full"></div>
-              <p className="mt-2 text-gray-500">Loading applications...</p>
-            </div>
-          ) : recentApplications.length === 0 ? (
-            <div className="px-6 py-8 text-center">
-              <p className="text-gray-500">No recent applications found</p>
-            </div>
-          ) : (
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Business</th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Submitted</th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                  <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {recentApplications.map((application) => (
-                  <tr key={application.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {application.id}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">{application.businessName}</div>
-                      <div className="text-sm text-gray-500">{application.documents.length} documents</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{application.owner}</div>
-                      <div className="text-sm text-gray-500">{application.email}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{application.submitDate}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {getStatusBadge(application.status)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <Link href={`/admin/applications/${application.businessId}`} className="text-[var(--primary-green)] hover:text-[var(--primary-green)] hover:underline mr-4">
-                        View
-                      </Link>
-                      {application.status === 'pending' && (
-                        <Link href={`/admin/applications/${application.businessId}/review`} className="text-indigo-600 hover:text-indigo-900 hover:underline">
-                          Review
-                        </Link>
-                      )}
-                    </td>
-                  </tr>
+      <div className="mb-8">
+        <h2 className="text-lg font-medium text-gray-800 mb-5">Recent Applications</h2>
+        {isLoading ? (
+          // Loading skeleton for applications table - consistent style
+          <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+            <div className="animate-pulse p-4 bg-white">
+              <div className="h-8 bg-gray-200 rounded mb-4 w-1/4"></div>
+              <div className="space-y-3">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="flex items-center space-x-4">
+                    <div className="h-12 bg-gray-200 rounded-full w-12"></div>
+                    <div className="flex-1">
+                      <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                      <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                    </div>
+                    <div className="h-8 bg-gray-200 rounded w-20"></div>
+                  </div>
                 ))}
-              </tbody>
-            </table>
-          )}
-        </div>
+              </div>
+            </div>
+          </div>
+        ) : error ? (
+          <div className="bg-white rounded-xl shadow-sm p-4">
+            <p className="text-red-600">Failed to load recent applications.</p>
+          </div>
+        ) : recentApplications.length > 0 ? (
+          <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th
+                      scope="col"
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                    >
+                      Business
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                    >
+                      Owner
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                    >
+                      Date
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                    >
+                      Status
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
+                    >
+                      Action
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {recentApplications.map((application) => (
+                    <tr key={application.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900">{application.businessName}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">{application.owner}</div>
+                        <div className="text-sm text-gray-500">{application.email}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">{application.submitDate}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {getStatusBadge(application.status || 'pending')}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <Link
+                          href={`/admin/applications/${application.id}`}
+                          className="text-[var(--primary-green)] hover:text-[var(--secondary-green)] hover:underline"
+                        >
+                          View
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ) : (
+          <div className="bg-white rounded-xl shadow-sm p-4 text-center">
+            <p className="text-gray-500">No recent applications found.</p>
+          </div>
+        )}
       </div>
 
-      {/* User distribution stats */}
+      {/* User Distribution */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <h2 className="text-lg font-medium text-gray-800 col-span-full mb-0">User Distribution</h2>
+        
         {isLoading ? (
-          // Loading skeleton for user distribution
+          // Loading skeleton for user distribution - consistent style
           Array(3).fill(0).map((_, index) => (
-            <div key={index} className="bg-white rounded-xl shadow-sm p-6">
+            <div key={index} className="bg-white rounded-xl shadow-sm p-6 animate-pulse">
               <div className="flex items-center mb-4">
-                <div className="bg-gray-200 p-2 rounded-full mr-3 h-9 w-9 animate-pulse"></div>
-                <div className="h-5 bg-gray-200 rounded w-1/2 animate-pulse"></div>
+                <div className="p-2 rounded-full bg-gray-200 mr-3">
+                  <div className="h-5 w-5"></div>
+                </div>
+                <div className="h-5 bg-gray-200 rounded w-1/2"></div>
               </div>
-              <div className="flex flex-col">
-                <div className="flex justify-between mb-2">
-                  <div className="h-4 bg-gray-200 rounded w-1/3 animate-pulse"></div>
-                  <div className="h-4 bg-gray-200 rounded w-8 animate-pulse"></div>
+              <div className="space-y-4">
+                <div>
+                  <div className="flex justify-between mb-2">
+                    <div className="h-4 bg-gray-200 rounded w-1/3"></div>
+                    <div className="h-4 bg-gray-200 rounded w-8"></div>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2.5 mb-4"></div>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-2.5 mb-4 animate-pulse"></div>
-
-                <div className="flex justify-between mb-2">
-                  <div className="h-4 bg-gray-200 rounded w-1/3 animate-pulse"></div>
-                  <div className="h-4 bg-gray-200 rounded w-8 animate-pulse"></div>
+                <div>
+                  <div className="flex justify-between mb-2">
+                    <div className="h-4 bg-gray-200 rounded w-1/3"></div>
+                    <div className="h-4 bg-gray-200 rounded w-8"></div>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2.5 mb-4"></div>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-2.5 mb-4 animate-pulse"></div>
               </div>
             </div>
           ))
+        ) : error ? (
+          <div className="col-span-3 bg-white rounded-xl shadow-sm p-4">
+            <p className="text-red-600">Failed to load user distribution data.</p>
+          </div>
         ) : (
           <>
             {/* Active Users */}

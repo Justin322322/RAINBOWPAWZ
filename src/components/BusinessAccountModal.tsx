@@ -129,14 +129,8 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setErrorMessage('');
     setIsLoading(true);
-
-    if (formData.password !== formData.confirmPassword) {
-      setErrorMessage('Passwords do not match');
-      setIsLoading(false);
-      return;
-    }
+    setErrorMessage('');
 
     try {
       // Create FormData object for file uploads
@@ -184,58 +178,16 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
         }
       }
 
-      // If registration succeeded, try uploading the documents separately
-      if (formData.birCertificate || formData.businessPermit || formData.governmentId) {
-        try {
-          const userId = regData.user_id;
-
-          if (!userId) {
-            console.error('No user ID returned from registration');
-            throw new Error('Registration was successful but no user ID was returned');
-          }
-
-          // Create a new FormData object for the files
-          const filesFormData = new FormData();
-
-          if (formData.birCertificate) {
-            filesFormData.append('birCertificate', formData.birCertificate);
-          }
-
-          if (formData.businessPermit) {
-            filesFormData.append('businessPermit', formData.businessPermit);
-          }
-
-          if (formData.governmentId) {
-            filesFormData.append('governmentId', formData.governmentId);
-          }
-
-          filesFormData.append('userId', userId.toString());
-
-          console.log('Uploading documents for user ID:', userId);
-
-          // Upload the documents
-          const fileUploadResponse = await fetch('/api/businesses/upload-documents', {
-            method: 'POST',
-            body: filesFormData,
-          });
-
-          const fileUploadData = await fileUploadResponse.json();
-
-          if (!fileUploadResponse.ok) {
-            console.warn('Document upload failed:', fileUploadData.error || fileUploadData.message);
-            showToast('Registration successful, but document upload failed. Please contact support.', 'warning');
-          } else {
-            console.log('Documents uploaded successfully');
-          }
-        } catch (fileError) {
-          console.error('File upload error:', fileError);
-          showToast('Registration successful, but document upload failed. Please contact support.', 'warning');
-        }
-      }
-
-      // Show success toast notification and close modal immediately
-      showToast('Registration successful! Check your email for confirmation.', 'success');
+      // Show success toast notification
+      showToast('Registration successful! Please upload your documents to continue.', 'success');
+      
+      // Close the modal
       onClose();
+      
+      // Redirect to document upload page after a brief delay
+      setTimeout(() => {
+        window.location.href = '/cremation/documents';
+      }, 1500);
     } catch (error) {
       console.error('Registration error:', error);
       const errorMsg = error instanceof Error ? error.message : 'Failed to create account. Please try again.';

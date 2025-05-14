@@ -3,154 +3,274 @@ import { query } from '@/lib/db';
 
 // Helper to format date
 const formatDate = (dateString: string) => {
-  const date = new Date(dateString);
-  return date.toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  });
+  try {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  } catch (e) {
+    return 'Unknown date';
+  }
 };
-
-// Define a type for the keys of docPaths
-type DocPathKey = 'business_permit_path' | 'government_id_path' | 'bir_certificate_path';
 
 // Get all business applications with status and documents
 export async function GET() {
   try {
-    // In the updated database, we only use service_providers table
-    // No need to check for business_profiles anymore
-    const tableName = 'service_providers';
-    const tableAlias = 'bp'; // Keep the same alias for compatibility
+    console.log('Fetching applications...');
 
-    console.log(`Using table: ${tableName}`);
+    // First check if service_providers table exists
+    let hasServiceProviders = false;
+    let hasUsers = false;
 
-    // Fetch all business profiles with user data
-    // Query for service_providers table
-    const businesses = await query(`
-      SELECT
-        bp.id,
-        bp.name as business_name,
-        bp.contact_first_name,
-        bp.contact_last_name,
-        u.email,
-        bp.phone as business_phone,
-        bp.address as business_address,
-        bp.province,
-        bp.city,
-        bp.zip,
-        bp.provider_type as business_type,
-        bp.service_description,
-        bp.verification_status,
-        bp.business_permit_path,
-        bp.government_id_path,
-        bp.bir_certificate_path,
-        bp.created_at,
-        bp.updated_at,
-        CASE
-          WHEN bp.verification_status = 'verified' THEN 'approved'
-          WHEN bp.verification_status = 'declined' THEN 'declined'
-          WHEN bp.verification_status = 'documents_required' THEN 'documents_required'
-          WHEN bp.verification_status = 'restricted' THEN 'restricted'
-          ELSE 'pending'
-        END AS status
-      FROM
-        service_providers bp
-      JOIN
-        users u ON bp.user_id = u.id
-      ORDER BY
-        CASE
-          WHEN bp.verification_status IS NULL OR bp.verification_status = 'pending' THEN 1
-          WHEN bp.verification_status = 'documents_required' THEN 2
-          WHEN bp.verification_status = 'restricted' THEN 3
-          WHEN bp.verification_status = 'declined' THEN 4
-          WHEN bp.verification_status = 'verified' THEN 5
-          ELSE 6
-        END,
-        bp.created_at DESC
-    `) as any[];
+    try {
+      const tablesResult = await query(`SHOW TABLES`) as any[];
+      const tableNames = tablesResult.map(row => Object.values(row)[0]);
+      console.log('Available tables:', tableNames);
 
-    if (!businesses || businesses.length === 0) {
+      hasServiceProviders = tableNames.includes('service_providers');
+      hasUsers = tableNames.includes('users');
+    } catch (err) {
+      console.error('Error checking tables:', err);
+    }
+
+    if (!hasUsers || !hasServiceProviders) {
+      console.error('Required tables missing:', { hasUsers, hasServiceProviders });
       return NextResponse.json({
-        applications: []
+        success: true,
+        applications: [],
+        message: 'Required database tables not available'
       });
     }
 
-    // Prepare results with document information
-    const applications = await Promise.all(businesses.map(async (business) => {
-      // Convert dates to readable format
-      const submitDate = formatDate(business.created_at);
+    // Check the structure of both tables to ensure we build a compatible query
+    let hasFullName = false;
+    let userColumns = [];
+    let serviceProviderColumns = [];
 
-      // Check for available document paths
-      const documentFields = [
-        { field: 'business_permit_path', name: 'Business Permit' },
-        { field: 'government_id_path', name: 'Owner ID' },
-        { field: 'bir_certificate_path', name: 'Tax Certificate' }
-      ];
+    try {
+      // Check users table structure
+      const userColumnsResult = await query(`SHOW COLUMNS FROM users`) as any[];
+      userColumns = userColumnsResult.map(col => col.Field);
+      hasFullName = userColumns.includes('full_name');
 
-      // Document paths are already in the business profile data
-      const documentResult = [
-        {
-          business_permit_path: business.business_permit_path,
-          government_id_path: business.government_id_path,
-          bir_certificate_path: business.bir_certificate_path
+      console.log('Users table columns:', userColumns);
+      console.log('Users table has full_name column:', hasFullName);
+
+      // Check service_providers table structure
+      const spColumnsResult = await query(`SHOW COLUMNS FROM service_providers`) as any[];
+      serviceProviderColumns = spColumnsResult.map(col => col.Field);
+
+      console.log('Service providers table columns:', serviceProviderColumns);
+    } catch (err) {
+      console.error('Error checking table structure:', err);
+    }
+
+    // Use a simplified, stable query with dynamic column selection based on schema
+    const ownerNameField = hasFullName
+      ? 'u.full_name AS owner'
+      : "CONCAT(u.first_name, ' ', u.last_name) AS owner";
+
+    // Build a dynamic query based on available columns
+    let selectFields = [
+      'sp.id',
+      'sp.name AS business_name',
+      'sp.user_id',
+      ownerNameField,
+      'u.email'
+    ];
+
+    // Add fields only if they exist in the service_providers table
+    if (serviceProviderColumns.includes('address')) selectFields.push('sp.address AS business_address');
+    if (serviceProviderColumns.includes('phone')) selectFields.push('sp.phone AS business_phone');
+    if (serviceProviderColumns.includes('province')) selectFields.push('sp.province');
+    if (serviceProviderColumns.includes('city')) selectFields.push('sp.city');
+    if (serviceProviderColumns.includes('zip')) selectFields.push('sp.zip');
+    if (serviceProviderColumns.includes('service_description')) selectFields.push('sp.service_description');
+
+    // Handle status fields
+    const hasApplicationStatus = serviceProviderColumns.includes('application_status');
+    const hasVerificationStatus = serviceProviderColumns.includes('verification_status');
+
+    if (hasApplicationStatus && hasVerificationStatus) {
+      selectFields.push('COALESCE(sp.application_status, COALESCE(sp.verification_status, \'pending\')) AS application_status');
+    } else if (hasApplicationStatus) {
+      selectFields.push('sp.application_status');
+    } else if (hasVerificationStatus) {
+      selectFields.push('sp.verification_status AS application_status');
+    } else {
+      selectFields.push('\'pending\' AS application_status');
+    }
+
+    // Add document fields if they exist
+    if (serviceProviderColumns.includes('business_permit_path')) selectFields.push('sp.business_permit_path');
+    if (serviceProviderColumns.includes('government_id_path')) selectFields.push('sp.government_id_path');
+    if (serviceProviderColumns.includes('bir_certificate_path')) selectFields.push('sp.bir_certificate_path');
+    if (serviceProviderColumns.includes('created_at')) selectFields.push('sp.created_at');
+    if (serviceProviderColumns.includes('updated_at')) selectFields.push('sp.updated_at');
+
+    // Build the WHERE clause based on available columns
+    let whereClause = '';
+    if (serviceProviderColumns.includes('provider_type')) {
+      whereClause += "sp.provider_type = 'cremation'";
+    } else {
+      whereClause += '1=1'; // No provider_type column, so select all
+    }
+
+    const applicationQuery = `
+      SELECT
+        ${selectFields.join(',\n        ')}
+      FROM
+        service_providers sp
+      JOIN
+        users u ON sp.user_id = u.id
+      WHERE
+        ${whereClause}
+      ORDER BY
+        ${serviceProviderColumns.includes('created_at') ? 'sp.created_at DESC' : 'sp.id DESC'}
+    `;
+
+    console.log('Executing query:', applicationQuery);
+
+    // Run the query with error handling
+    let applications = [];
+
+    try {
+      applications = await query(applicationQuery) as any[];
+      console.log(`Retrieved ${applications.length} applications`);
+    } catch (err) {
+      console.error('Error executing application query:', err);
+
+      // Try a simplified backup query with dynamic fields
+      try {
+        // Build a minimal set of fields that should work in most cases
+        let minimalSelectFields = [
+          'sp.id',
+          'sp.name AS business_name',
+          'sp.user_id',
+          ownerNameField,
+          'u.email'
+        ];
+
+        // Add created_at if it exists
+        if (serviceProviderColumns.includes('created_at')) {
+          minimalSelectFields.push('sp.created_at');
         }
-      ];
 
-      const documents = [];
+        // Add at least one status field if available
+        if (hasApplicationStatus) {
+          minimalSelectFields.push('sp.application_status');
+        } else if (hasVerificationStatus) {
+          minimalSelectFields.push('sp.verification_status AS application_status');
+        } else {
+          minimalSelectFields.push("'pending' AS application_status");
+        }
 
-      if (documentResult && documentResult.length > 0) {
-        const docPaths = documentResult[0];
+        console.log('Attempting fallback query with fewer fields');
 
-        for (const doc of documentFields) {
-          // Assert that doc.field is one of the allowed keys
-          const path = docPaths[doc.field as DocPathKey];
-          if (path) {
-            documents.push({
-              name: doc.name,
-              verified: business.verification_status === 'verified',
-              path: path
-            });
-          }
+        const backupQuery = `
+          SELECT
+            ${minimalSelectFields.join(',\n            ')}
+          FROM
+            service_providers sp
+          JOIN
+            users u ON sp.user_id = u.id
+          WHERE
+            ${whereClause}
+          ORDER BY
+            ${serviceProviderColumns.includes('created_at') ? 'sp.created_at DESC' : 'sp.id DESC'}
+          LIMIT 50
+        `;
+        
+        console.log('Fallback query:', backupQuery);
+        
+        applications = await query(backupQuery) as any[];
+        console.log(`Retrieved ${applications.length} applications using backup query`);
+      } catch (backupErr) {
+        console.error('Backup query also failed:', backupErr);
+        return NextResponse.json({
+          success: false,
+          applications: [],
+          error: 'Database query error: Unable to retrieve applications data'
+        });
+      }
+    }
+
+    // Format the applications for the response
+    const formattedApplications = applications.map(app => {
+      // Set a default submitDate
+      let submitDate = 'Unknown date';
+      if (app.created_at) {
+        try {
+          submitDate = formatDate(app.created_at);
+        } catch (e) {
+          console.warn('Error formatting date for app', app.id);
         }
       }
 
-      // Format application data
+      // Build documents array with null checks
+      const documents = [];
+      if (app.business_permit_path) {
+        documents.push({
+          name: 'Business Permit',
+          verified: app.application_status === 'verified',
+          path: app.business_permit_path
+        });
+      }
+
+      if (app.government_id_path) {
+        documents.push({
+          name: 'Owner ID',
+          verified: app.application_status === 'verified',
+          path: app.government_id_path
+        });
+      }
+
+      if (app.bir_certificate_path) {
+        documents.push({
+          name: 'Tax Certificate',
+          verified: app.application_status === 'verified',
+          path: app.bir_certificate_path
+        });
+      }
+
+      // Format the address
+      const addressParts = [
+        app.business_address,
+        app.city,
+        app.province,
+        app.zip
+      ].filter(Boolean);
+
+      const address = addressParts.length > 0 ? addressParts.join(', ') : 'No address provided';
+
+      // Return formatted application
       return {
-        id: `APP${business.id.toString().padStart(3, '0')}`,
-        businessName: business.business_name,
-        owner: `${business.contact_first_name} ${business.contact_last_name}`,
-        email: business.email,
-        phone: business.business_phone || 'Not provided',
-        address: business.business_address
-          ? `${business.business_address}, ${business.city || ''}, ${business.province || ''}, ${business.zip || ''}`
-          : 'Not provided',
+        id: app.id || '0',
+        businessId: app.id || '0',
+        businessName: app.business_name || 'Unnamed Business',
+        owner: app.owner || 'Unknown Owner',
+        email: app.email || '',
+        address,
         submitDate,
-        status: business.status,
-        verificationStatus: business.verification_status, // Include verification_status
+        status: app.application_status || 'pending',
+        applicationStatus: app.application_status || 'pending',
         documents,
-        description: business.service_description || 'No description provided',
-        notes: '',
-        businessId: business.id // Original ID for database operations
+        userId: app.user_id || '0'
       };
-    }));
+    });
 
-    return NextResponse.json({ applications });
+    return NextResponse.json({
+      success: true,
+      applications: formattedApplications
+    });
   } catch (error) {
-    console.error('Error fetching business applications:', error);
-
-    // Get more detailed error information
-    let errorMessage = 'Failed to fetch business applications';
-    if (error instanceof Error) {
-      errorMessage = `${errorMessage}: ${error.message}`;
-      console.error('Error stack:', error.stack);
-    }
-
-    return NextResponse.json(
-      {
-        error: errorMessage,
-        details: error instanceof Error ? error.message : 'Unknown error'
-      },
-      { status: 500 }
-    );
+    console.error('Error fetching applications:', error);
+    return NextResponse.json({
+      success: false,
+      error: 'Failed to fetch applications: ' + (error instanceof Error ? error.message : 'Unknown error'),
+      applications: []
+    });
   }
 }

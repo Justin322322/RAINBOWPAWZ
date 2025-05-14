@@ -11,7 +11,11 @@
     "start:custom": "node start-custom.js",
     "clean-build": "node cleanup-repo.js --test-only && next build",
     "setup": "node setup-env.js",
-    "refactor-db": "node src/scripts/refactor-verification.js"
+    "refactor-db": "node src/scripts/refactor-verification.js",
+    "consolidate-status": "node src/scripts/consolidate-status-fields.js",
+    "cleanup": "node cleanup-files.js",
+    "build:clean": "node cleanup-files.js && next build",
+    "prepare:prod": "node prepare-production.js"
   },
   "dependencies": {
     "@headlessui/react": "^2.2.2",

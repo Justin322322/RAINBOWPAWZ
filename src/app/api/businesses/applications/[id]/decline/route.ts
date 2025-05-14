@@ -28,9 +28,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Determine the verification status based on whether additional documents are requested
-    const verificationStatus = requestDocuments ? 'documents_required' : 'declined';
-
+    // Determine the status based on whether additional documents are requested
+    const applicationStatus = requestDocuments ? 'documents_required' : 'declined';
+    
     // Check which table exists: business_profiles or service_providers
     const tableCheckResult = await query(`
       SELECT table_name
@@ -57,19 +57,47 @@ export async function POST(request: NextRequest) {
     const tableName = useServiceProvidersTable ? 'service_providers' : 'business_profiles';
     console.log(`Using table: ${tableName}`);
 
-    // Update business profile verification status, status, and save the note
-    const updateResult = await query(
-      `UPDATE ${tableName}
-       SET verification_status = ?,
-           status = ?,
-           verification_notes = ?,
-           verification_date = NOW(),
-           updated_at = NOW()
-       WHERE id = ?`,
-      [verificationStatus, verificationStatus, note.trim(), businessId]
-    ) as mysql.ResultSetHeader;
+    // Check if the table has the application_status column
+    const columnsResult = await query(`
+      SHOW COLUMNS FROM ${tableName} LIKE 'application_status'
+    `) as any[];
+    
+    const hasApplicationStatus = columnsResult.length > 0;
+    console.log(`Table ${tableName} has application_status column: ${hasApplicationStatus}`);
 
-    console.log(`Updated ${tableName} with ID ${businessId} to status: ${verificationStatus}`);
+    // Update business profile - prioritize application_status field
+    let updateResult;
+    if (hasApplicationStatus) {
+      // Use new consolidated schema - update application_status only
+      // For backward compatibility, also update verification_status but mark as deprecated
+      updateResult = await query(
+        `UPDATE ${tableName}
+         SET application_status = ?,
+             verification_status = ?, -- DEPRECATED: Use application_status instead
+             verification_notes = ?,
+             verification_date = NOW(),
+             updated_at = NOW()
+         WHERE id = ?`,
+        [applicationStatus, applicationStatus, note.trim(), businessId]
+      ) as mysql.ResultSetHeader;
+      
+      console.log(`Updated ${tableName} with ID ${businessId} to application_status: ${applicationStatus}`);
+    } else {
+      // Use old schema
+      updateResult = await query(
+        `UPDATE ${tableName}
+         SET verification_status = ?,
+             status = ?,
+             verification_notes = ?,
+             verification_date = NOW(),
+             updated_at = NOW()
+         WHERE id = ?`,
+        [applicationStatus, applicationStatus, note.trim(), businessId]
+      ) as mysql.ResultSetHeader;
+      
+      console.log(`Updated ${tableName} with ID ${businessId} to status: ${applicationStatus}`);
+    }
+
     console.log(`Update result:`, updateResult);
 
     if (updateResult.affectedRows === 0) {
@@ -81,60 +109,49 @@ export async function POST(request: NextRequest) {
     console.log(`Committed transaction for status update`);
 
     // Verify the status was updated correctly
-    const verifyResult = await query(
-      `SELECT verification_status, status FROM ${tableName} WHERE id = ?`,
-      [businessId]
-    ) as any[];
-
-    if (verifyResult && verifyResult.length > 0) {
-      console.log(`Verified status for ${tableName} with ID ${businessId}: verification_status=${verifyResult[0].verification_status}, status=${verifyResult[0].status}`);
-      if (verifyResult[0].verification_status !== verificationStatus || verifyResult[0].status !== verificationStatus) {
-        console.error(`Status mismatch! Expected both status and verification_status to be ${verificationStatus}, but got verification_status=${verifyResult[0].verification_status}, status=${verifyResult[0].status}`);
-        // Try to update again with a direct query and force a commit
-        await query(
-          `UPDATE ${tableName}
-           SET verification_status = ?,
-               status = ?,
-               updated_at = NOW()
-           WHERE id = ?`,
-          [verificationStatus, verificationStatus, businessId]
-        );
-        await query('COMMIT');
-        console.log(`Attempted to fix status with a second update query and forced commit`);
-
-        // Verify again after the second attempt
-        const secondVerifyResult = await query(
-          `SELECT verification_status, status FROM ${tableName} WHERE id = ?`,
-          [businessId]
-        ) as any[];
-
-        if (secondVerifyResult && secondVerifyResult.length > 0) {
-          console.log(`Second verification for ${tableName} with ID ${businessId}: verification_status=${secondVerifyResult[0].verification_status}, status=${secondVerifyResult[0].status}`);
-          if (secondVerifyResult[0].verification_status !== verificationStatus || secondVerifyResult[0].status !== verificationStatus) {
-            console.error(`Status still mismatched after second attempt! Expected both to be ${verificationStatus}, but got verification_status=${secondVerifyResult[0].verification_status}, status=${secondVerifyResult[0].status}`);
-
-            // Last resort - try one more direct update with a different query structure
-            try {
-              await query(
-                `UPDATE ${tableName}
-                 SET status = '${verificationStatus}',
-                     verification_status = '${verificationStatus}'
-                 WHERE id = ${businessId}`
-              );
-              await query('COMMIT');
-              console.log(`Attempted emergency fix with hardcoded query`);
-            } catch (lastError) {
-              console.error('Failed even with emergency fix attempt:', lastError);
-            }
-          } else {
-            console.log(`Status successfully updated after second attempt`);
-          }
+    let verifyResult;
+    if (hasApplicationStatus) {
+      verifyResult = await query(
+        `SELECT application_status, status FROM ${tableName} WHERE id = ?`,
+        [businessId]
+      ) as any[];
+      
+      if (verifyResult && verifyResult.length > 0) {
+        const result = verifyResult[0];
+        console.log(`Verified status for ${tableName} with ID ${businessId}: application_status=${result.application_status}, status=${result.status}`);
+        
+        if (result.application_status !== applicationStatus) {
+          console.error(`Status mismatch! Expected application_status=${applicationStatus}, but got application_status=${result.application_status}`);
+          
+          // Try to update again with a direct query
+          await query(
+            `UPDATE ${tableName} SET application_status = ? WHERE id = ?`,
+            [applicationStatus, businessId]
+          );
+          await query('COMMIT');
         }
-      } else {
-        console.log(`Status verified successfully on first attempt`);
       }
     } else {
-      console.error(`Could not verify status update - no results returned from verification query`);
+      verifyResult = await query(
+        `SELECT verification_status, status FROM ${tableName} WHERE id = ?`,
+        [businessId]
+      ) as any[];
+      
+      if (verifyResult && verifyResult.length > 0) {
+        const result = verifyResult[0];
+        console.log(`Verified status for ${tableName} with ID ${businessId}: verification_status=${result.verification_status}, status=${result.status}`);
+        
+        if (result.verification_status !== applicationStatus || result.status !== applicationStatus) {
+          console.error(`Status mismatch! Expected both verification_status and status to be ${applicationStatus}`);
+          
+          // Try to update again with a direct query
+          await query(
+            `UPDATE ${tableName} SET verification_status = ?, status = ? WHERE id = ?`,
+            [applicationStatus, applicationStatus, businessId]
+          );
+          await query('COMMIT');
+        }
+      }
     }
 
     // Get business details for email notification
@@ -244,11 +261,12 @@ export async function POST(request: NextRequest) {
       ]
     ).catch(err => console.error('Failed to log admin action:', err));
 
+    // Response uses application_status if available, otherwise falls back to verification_status
     return NextResponse.json({
       message: requestDocuments ? 'Documents requested successfully' : 'Application declined successfully',
       businessId,
       businessName: business?.business_name || business?.name,
-      status: verificationStatus,
+      status: applicationStatus,
       emailSent: emailSent
     });
   } catch (error) {

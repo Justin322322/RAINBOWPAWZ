@@ -47,15 +47,15 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    if (action !== 'restrict') {
+    if (action !== 'restrict' && action !== 'restore') {
       return NextResponse.json({
-        error: 'Invalid action',
+        error: 'Invalid action. Must be either "restrict" or "restore"',
         success: false
       }, { status: 400 });
     }
 
     // Validate required fields for restriction
-    if (!reason) {
+    if (action === 'restrict' && !reason) {
       return NextResponse.json({
         error: 'Reason is required for restriction',
         success: false
@@ -64,29 +64,31 @@ export async function POST(request: NextRequest) {
 
     try {
       // Check if user_restrictions table exists, create if not
-      const tablesResult = await query(
-        "SHOW TABLES LIKE 'user_restrictions'"
-      ) as any[];
+      if (action === 'restrict') {
+        const tablesResult = await query(
+          "SHOW TABLES LIKE 'user_restrictions'"
+        ) as any[];
 
-      if (!tablesResult || tablesResult.length === 0) {
-        await query(`
-          CREATE TABLE user_restrictions (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            user_id INT NOT NULL,
-            reason TEXT,
-            restriction_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            duration VARCHAR(50) DEFAULT 'indefinite',
-            is_active BOOLEAN DEFAULT 1,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-          )
-        `);
+        if (!tablesResult || tablesResult.length === 0) {
+          await query(`
+            CREATE TABLE user_restrictions (
+              id INT AUTO_INCREMENT PRIMARY KEY,
+              user_id INT NOT NULL,
+              reason TEXT,
+              restriction_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+              duration VARCHAR(50) DEFAULT 'indefinite',
+              is_active BOOLEAN DEFAULT 1,
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+              updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+              FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+          `);
+        }
       }
 
-      // Restrict user based on user type
+      // Handle user based on user type
       if (userType === 'pet_parent') {
-        console.log('Restricting pet parent with ID:', userId);
+        console.log(`${action === 'restrict' ? 'Restricting' : 'Restoring'} pet parent with ID:`, userId);
 
         // First check if the user exists
         const userExists = await query('SELECT id FROM users WHERE id = ?', [userId]) as any[];
@@ -97,19 +99,27 @@ export async function POST(request: NextRequest) {
           }, { status: 404 });
         }
 
-        // Update user restriction status (only use status field for now)
+        // Update user status accordingly
         await query(`
           UPDATE users
-          SET status = 'restricted',
-              updated_at = NOW()
+          SET status = ?, updated_at = NOW()
           WHERE id = ?
-        `, [userId]);
+        `, [action === 'restrict' ? 'restricted' : 'active', userId]);
 
-        // Add entry to user_restrictions table
-        await query(`
-          INSERT INTO user_restrictions (user_id, reason, duration)
-          VALUES (?, ?, ?)
-        `, [userId, reason, duration]);
+        if (action === 'restrict') {
+          // Add entry to user_restrictions table
+          await query(`
+            INSERT INTO user_restrictions (user_id, reason, duration)
+            VALUES (?, ?, ?)
+          `, [userId, reason, duration]);
+        } else {
+          // Update existing restrictions to inactive
+          await query(`
+            UPDATE user_restrictions 
+            SET is_active = 0, updated_at = NOW()
+            WHERE user_id = ? AND is_active = 1
+          `, [userId]);
+        }
 
       } else if (userType === 'cremation_center') {
         // For cremation centers, we need the businessId
@@ -120,7 +130,7 @@ export async function POST(request: NextRequest) {
           }, { status: 400 });
         }
 
-        console.log('Restricting cremation center with business ID:', businessId);
+        console.log(`${action === 'restrict' ? 'Restricting' : 'Restoring'} cremation center with business ID:`, businessId);
 
         // Check which table exists: business_profiles or service_providers
         const tableCheckResult = await query(`
@@ -134,7 +144,7 @@ export async function POST(request: NextRequest) {
         const useServiceProvidersTable = tableNames.includes('service_providers');
         const tableName = useServiceProvidersTable ? 'service_providers' : 'business_profiles';
 
-        console.log(`Using ${tableName} table for restricting cremation center`);
+        console.log(`Using ${tableName} table for handling cremation center`);
 
         // First check if the business profile exists
         const businessExists = await query(`SELECT id, user_id FROM ${tableName} WHERE id = ?`, [businessId]) as any[];
@@ -147,34 +157,102 @@ export async function POST(request: NextRequest) {
 
         const businessUserId = businessExists[0].user_id;
 
-        // Update business verification status
+        // Check what columns exist in the table
+        const columnsResult = await query(`SHOW COLUMNS FROM ${tableName}`) as any[];
+        const columnNames = columnsResult.map((col: any) => col.Field);
+        
+        // Check for required columns
+        const hasVerificationStatus = columnNames.includes('verification_status');
+        const hasApplicationStatus = columnNames.includes('application_status');
+        
+        // Determine new status values based on action
+        const newVerificationStatus = action === 'restrict' ? 'restricted' : 'verified';
+        const newApplicationStatus = action === 'restrict' ? 'restricted' : 'approved';
+
+        // Build the SQL query based on available columns
+        let updateParts = [];
+        let updateParams = [];
+
+        // Update verification_status if it exists
+        if (hasVerificationStatus) {
+          updateParts.push('verification_status = ?');
+          updateParams.push(newVerificationStatus);
+        }
+        
+        // Update application_status if it exists (preferred)
+        if (hasApplicationStatus) {
+          updateParts.push('application_status = ?');
+          updateParams.push(newApplicationStatus);
+        }
+
+        // Add restriction-specific fields
+        if (action === 'restrict') {
+          if (columnNames.includes('restriction_reason')) {
+            updateParts.push('restriction_reason = ?');
+            updateParams.push(reason);
+          }
+          
+          if (columnNames.includes('restriction_date')) {
+            updateParts.push('restriction_date = NOW()');
+          }
+          
+          if (columnNames.includes('restriction_duration')) {
+            updateParts.push('restriction_duration = ?');
+            updateParams.push(duration);
+          }
+        } else {
+          // For restoration, if there are restriction fields, clear them
+          if (columnNames.includes('restriction_reason') && columnNames.includes('restriction_date')) {
+            updateParts.push('restriction_reason = NULL, restriction_date = NULL');
+          }
+        }
+
+        // Always add updated timestamp
+        if (columnNames.includes('updated_at')) {
+          updateParts.push('updated_at = NOW()');
+        }
+        
+        // Add business ID to parameters list
+        updateParams.push(businessId);
+
+        // Build and execute update query
         await query(`
           UPDATE ${tableName}
-          SET verification_status = 'restricted',
-              restriction_reason = ?,
-              restriction_date = NOW(),
-              restriction_duration = ?,
-              updated_at = NOW()
+          SET ${updateParts.join(', ')}
           WHERE id = ?
-        `, [reason, duration, businessId]);
+        `, updateParams);
 
-        console.log(`Updated ${tableName} with ID ${businessId} to status: restricted`);
+        console.log(`Updated ${tableName} with ID ${businessId} to status: ${action === 'restrict' ? 'restricted' : 'approved/verified'}`);
 
         // Verify the status was updated correctly
         const verifyResult = await query(
-          `SELECT verification_status FROM ${tableName} WHERE id = ?`,
+          `SELECT ${hasVerificationStatus ? 'verification_status' : ''}, ${hasApplicationStatus ? 'application_status' : ''} FROM ${tableName} WHERE id = ?`,
           [businessId]
         ) as any[];
 
         if (verifyResult && verifyResult.length > 0) {
-          console.log(`Verified status for ${tableName} with ID ${businessId}: ${verifyResult[0].verification_status}`);
-          if (verifyResult[0].verification_status !== 'restricted') {
-            console.error(`Status mismatch! Expected: restricted, Actual: ${verifyResult[0].verification_status}`);
-            // Try to update again with a different query
+          console.log(`Verified status for ${tableName} with ID ${businessId}:`, verifyResult[0]);
+          
+          // Check for mismatch in statuses and retry if needed
+          let statusMismatch = false;
+          
+          if (hasVerificationStatus && verifyResult[0].verification_status !== newVerificationStatus) {
+            console.error(`Verification status mismatch! Expected: ${newVerificationStatus}, Actual: ${verifyResult[0].verification_status}`);
+            statusMismatch = true;
+          }
+          
+          if (hasApplicationStatus && verifyResult[0].application_status !== newApplicationStatus) {
+            console.error(`Application status mismatch! Expected: ${newApplicationStatus}, Actual: ${verifyResult[0].application_status}`);
+            statusMismatch = true;
+          }
+          
+          if (statusMismatch) {
+            // Try to update again with a simplified query
             await query(
               `UPDATE ${tableName}
-               SET verification_status = 'restricted',
-                   updated_at = NOW()
+               SET ${hasVerificationStatus ? `verification_status = '${newVerificationStatus}'` : ''}
+                  ${hasVerificationStatus && hasApplicationStatus ? ',' : ''}
+                  ${hasApplicationStatus ? `application_status = '${newApplicationStatus}'` : ''}
                WHERE id = ?`,
               [businessId]
             );
@@ -185,15 +263,24 @@ export async function POST(request: NextRequest) {
         // Also update the user's status
         await query(`
           UPDATE users
-          SET status = 'restricted', updated_at = NOW()
+          SET status = ?, updated_at = NOW()
           WHERE id = ?
-        `, [businessUserId]);
+        `, [action === 'restrict' ? 'restricted' : 'active', businessUserId]);
 
-        // Add entry to user_restrictions table
-        await query(`
-          INSERT INTO user_restrictions (user_id, reason, duration)
-          VALUES (?, ?, ?)
-        `, [businessUserId, reason, duration]);
+        if (action === 'restrict') {
+          // Add entry to user_restrictions table
+          await query(`
+            INSERT INTO user_restrictions (user_id, reason, duration)
+            VALUES (?, ?, ?)
+          `, [businessUserId, reason, duration]);
+        } else {
+          // Update existing restrictions to inactive
+          await query(`
+            UPDATE user_restrictions 
+            SET is_active = 0, updated_at = NOW()
+            WHERE user_id = ? AND is_active = 1
+          `, [businessUserId]);
+        }
       } else {
         return NextResponse.json({
           error: 'Invalid user type',
@@ -201,9 +288,9 @@ export async function POST(request: NextRequest) {
         }, { status: 400 });
       }
     } catch (dbError) {
-      console.error('Database error when restricting user:', dbError);
+      console.error(`Database error when ${action === 'restrict' ? 'restricting' : 'restoring'} user:`, dbError);
       return NextResponse.json({
-        error: 'Database error when restricting user',
+        error: `Database error when ${action === 'restrict' ? 'restricting' : 'restoring'} user`,
         details: dbError instanceof Error ? dbError.message : 'Unknown database error',
         success: false
       }, { status: 500 });
@@ -211,13 +298,13 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: 'User restricted successfully'
+      message: `User ${action === 'restrict' ? 'restricted' : 'restored'} successfully`
     });
   } catch (error) {
-    console.error('Error restricting user:', error);
+    console.error(`Error ${request.body?.action === 'restrict' ? 'restricting' : 'restoring'} user:`, error);
 
     // Provide more detailed error information
-    let errorMessage = 'Failed to restrict user';
+    let errorMessage = `Failed to ${request.body?.action === 'restrict' ? 'restrict' : 'restore'} user`;
     let errorDetails = error instanceof Error ? error.message : 'Unknown error';
     let statusCode = 500;
 
