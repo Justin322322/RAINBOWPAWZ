@@ -2,32 +2,39 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { motion, AnimatePresence } from 'framer-motion';
 import CremationNavbar from './CremationNavbar';
 import CremationSidebar from './CremationSidebar';
-import DashboardLoader from '../ui/DashboardLoader';
 import DashboardSkeleton from '../ui/DashboardSkeleton';
 
 interface CremationDashboardLayoutProps {
   children: React.ReactNode;
   activePage?: string;
   userName?: string;
+  userData?: any;
 }
 
 export default function CremationDashboardLayout({
   children,
   activePage,
-  userName = 'Cremation Provider'
+  userName = 'Cremation Provider',
+  userData: propUserData
 }: CremationDashboardLayoutProps) {
   const router = useRouter();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [userData, setUserData] = useState<any>(null);
-  const [contentLoading, setContentLoading] = useState(true);
   const [showAccessDenied, setShowAccessDenied] = useState(false);
 
   // Authentication check effect
   useEffect(() => {
+    // If userData is provided via props, use it directly
+    if (propUserData) {
+      setUserData(propUserData);
+      setIsAuthenticated(true);
+      setIsLoading(false);
+      return;
+    }
+
     const checkAuth = async () => {
       try {
         const cookies = document.cookie.split(';');
@@ -95,21 +102,35 @@ export default function CremationDashboardLayout({
     };
 
     checkAuth();
-  }, [router]);
+  }, [router, propUserData]);
 
-  // Content loading effect
+  // Content loading state for skeleton animation only
+  const [contentLoading, setContentLoading] = useState(true);
+
+  // Effect to simulate content loading with a short delay
   useEffect(() => {
-    if (isAuthenticated && !isLoading) {
+    if (isAuthenticated && userData) {
       const timer = setTimeout(() => {
         setContentLoading(false);
-      }, 800);
+      }, 300);
+
       return () => clearTimeout(timer);
     }
-  }, [isAuthenticated, isLoading]);
+  }, [isAuthenticated, userData]);
 
-  // Render based on state
+  // Show skeleton during initial loading
   if (isLoading) {
-    return <DashboardLoader message="Verifying your credentials" userName={userName} />;
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <CremationSidebar activePage={activePage} />
+        <div className="pl-64">
+          <CremationNavbar activePage={activePage} userName={userName} />
+          <main className="p-6">
+            <DashboardSkeleton type="cremation" />
+          </main>
+        </div>
+      </div>
+    );
   }
 
   if (showAccessDenied || !isAuthenticated || !userData) {
@@ -136,28 +157,11 @@ export default function CremationDashboardLayout({
       <div className="pl-64"> {/* This padding should match the width of the sidebar */}
         <CremationNavbar activePage={activePage} userName={userData?.first_name ? `${userData.first_name} ${userData.last_name || ''}` : userName} />
         <main className="p-6">
-          <AnimatePresence mode="wait">
-            {contentLoading ? (
-              <motion.div
-                key="skeleton"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.3 }}
-              >
-                <DashboardSkeleton type="cremation" />
-              </motion.div>
-            ) : (
-              <motion.div
-                key="content"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
-              >
-                {children}
-              </motion.div>
-            )}
-          </AnimatePresence>
+          {contentLoading ? (
+            <DashboardSkeleton type="cremation" />
+          ) : (
+            children
+          )}
         </main>
       </div>
     </div>

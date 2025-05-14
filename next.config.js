@@ -8,12 +8,14 @@ const port = process.env.PORT || 3001;
 // Always use 3306 for MySQL
 const dbPort = 3306;
 
-// Log environment variables for debugging
-console.log('Next.js Environment Variables:');
-console.log('NODE_ENV:', process.env.NODE_ENV);
-console.log('PORT (Server):', port);
-console.log('DB_PORT (MySQL):', dbPort);
-console.log('DB_HOST:', process.env.DB_HOST);
+// Only log environment variables in development mode
+if (process.env.NODE_ENV === 'development') {
+  console.log('Next.js Environment Variables:');
+  console.log('NODE_ENV:', process.env.NODE_ENV);
+  console.log('PORT (Server):', port);
+  console.log('DB_PORT (MySQL):', dbPort);
+  console.log('DB_HOST:', process.env.DB_HOST);
+}
 
 const nextConfig = {
   // Pass environment variables to the client
@@ -28,6 +30,34 @@ const nextConfig = {
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL || `http://localhost:${port}`,
     // Don't include NODE_ENV here as it's not allowed
   },
+  // Configure image handling
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'http',
+        hostname: 'localhost',
+        port: port.toString(),
+        pathname: '/**',
+      },
+      {
+        protocol: 'http',
+        hostname: '192.168.56.1',
+        port: port.toString(),
+        pathname: '/**',
+      },
+      {
+        protocol: 'http',
+        hostname: '**',
+        port: '',
+        pathname: '/**',
+      },
+    ],
+    domains: ['localhost', '192.168.56.1'],
+    dangerouslyAllowSVG: true,
+    contentDispositionType: 'attachment',
+    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
+    unoptimized: true, // Disable image optimization for local development
+  },
   // Allow connections from any origin in development
   async headers() {
     return [
@@ -37,6 +67,16 @@ const nextConfig = {
           {
             key: 'Cache-Control',
             value: 'public, max-age=31536000, immutable',
+          }
+        ],
+      },
+      // Disable caching for dynamic content like images in the uploads folder
+      {
+        source: '/uploads/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'no-cache, no-store, max-age=0, must-revalidate',
           }
         ],
       },
@@ -52,13 +92,17 @@ const nextConfig = {
       }
     ]
   },
-  // Ensure CSS is properly processed in production
+  // Disable type checking and linting during build to reduce logs
   eslint: {
     ignoreDuringBuilds: true,
   },
   typescript: {
     ignoreBuildErrors: true,
   },
+  // Disable output during builds
+  output: 'standalone',
+  // Disable telemetry
+  distDir: process.env.NODE_ENV === 'production' ? '.next-prod' : '.next',
   webpack: (config, { isServer }) => {
     if (!isServer) {
       // Don't resolve server-only modules on the client

@@ -109,23 +109,6 @@ function CremationDashboardPage({ userData }: { userData: any }) {
 
   return (
     <CremationDashboardLayout activePage="dashboard" userName={userName}>
-      {/* Welcome section */}
-      <div className="mb-8 bg-white rounded-xl shadow-sm p-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold text-gray-800">Welcome back, {userName}</h1>
-            <p className="text-gray-600 mt-1">Here's what's happening with your cremation services today.</p>
-          </div>
-          <div>
-            <button className="px-4 py-2 bg-[var(--primary-green)] text-white rounded-lg hover:bg-opacity-90 transition-all duration-300 flex items-center">
-              <span className="mr-2">Add New Package</span>
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
-              </svg>
-            </button>
-          </div>
-        </div>
-      </div>
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">

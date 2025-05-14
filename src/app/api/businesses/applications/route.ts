@@ -17,20 +17,28 @@ type DocPathKey = 'business_permit_path' | 'government_id_path' | 'bir_certifica
 // Get all business applications with status and documents
 export async function GET() {
   try {
+    // In the updated database, we only use service_providers table
+    // No need to check for business_profiles anymore
+    const tableName = 'service_providers';
+    const tableAlias = 'bp'; // Keep the same alias for compatibility
+
+    console.log(`Using table: ${tableName}`);
+
     // Fetch all business profiles with user data
+    // Query for service_providers table
     const businesses = await query(`
       SELECT
         bp.id,
-        bp.business_name,
+        bp.name as business_name,
         bp.contact_first_name,
         bp.contact_last_name,
         u.email,
-        bp.business_phone,
-        bp.business_address,
+        bp.phone as business_phone,
+        bp.address as business_address,
         bp.province,
         bp.city,
         bp.zip,
-        bp.business_type,
+        bp.provider_type as business_type,
         bp.service_description,
         bp.verification_status,
         bp.business_permit_path,
@@ -40,18 +48,23 @@ export async function GET() {
         bp.updated_at,
         CASE
           WHEN bp.verification_status = 'verified' THEN 'approved'
+          WHEN bp.verification_status = 'declined' THEN 'declined'
+          WHEN bp.verification_status = 'documents_required' THEN 'documents_required'
           WHEN bp.verification_status = 'restricted' THEN 'restricted'
           ELSE 'pending'
         END AS status
       FROM
-        business_profiles bp
+        service_providers bp
       JOIN
         users u ON bp.user_id = u.id
       ORDER BY
         CASE
           WHEN bp.verification_status IS NULL OR bp.verification_status = 'pending' THEN 1
-          WHEN bp.verification_status = 'restricted' THEN 2
-          ELSE 3
+          WHEN bp.verification_status = 'documents_required' THEN 2
+          WHEN bp.verification_status = 'restricted' THEN 3
+          WHEN bp.verification_status = 'declined' THEN 4
+          WHEN bp.verification_status = 'verified' THEN 5
+          ELSE 6
         END,
         bp.created_at DESC
     `) as any[];
@@ -113,6 +126,7 @@ export async function GET() {
           : 'Not provided',
         submitDate,
         status: business.status,
+        verificationStatus: business.verification_status, // Include verification_status
         documents,
         description: business.service_description || 'No description provided',
         notes: '',
@@ -123,8 +137,19 @@ export async function GET() {
     return NextResponse.json({ applications });
   } catch (error) {
     console.error('Error fetching business applications:', error);
+
+    // Get more detailed error information
+    let errorMessage = 'Failed to fetch business applications';
+    if (error instanceof Error) {
+      errorMessage = `${errorMessage}: ${error.message}`;
+      console.error('Error stack:', error.stack);
+    }
+
     return NextResponse.json(
-      { error: 'Failed to fetch business applications' },
+      {
+        error: errorMessage,
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     );
   }

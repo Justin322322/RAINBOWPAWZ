@@ -68,13 +68,19 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
         ? `/api/admin/notifications?unread_only=${unreadOnly}`
         : `/api/notifications?unread_only=${unreadOnly}`;
 
-      console.log('Using API URL:', apiUrl, 'isAdmin:', isAdmin);
+      // Only log in development mode
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Using API URL:', apiUrl, 'isAdmin:', isAdmin);
+      }
       const response = await fetch(apiUrl);
 
       if (!response.ok) {
         // If unauthorized or any other error, just set empty data without throwing an error
         // This makes the application more resilient to authentication issues
-        console.error(`Error fetching notifications: ${response.status} ${response.statusText}`);
+        // Use console.log instead of console.error to avoid showing in the console
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`Notification fetch returned status: ${response.status} ${response.statusText}`);
+        }
         setNotifications([]);
         setUnreadCount(0);
         return { notifications: [], unreadCount: 0 };
@@ -93,7 +99,9 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
 
       try {
         const data = await response.json();
-        console.log('Notifications data received:', data);
+        if (process.env.NODE_ENV === 'development') {
+          console.log('Notifications data received:', data);
+        }
 
         // Ensure data has the expected structure
         if (!data || typeof data !== 'object') {
@@ -158,7 +166,9 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
 
       if (!response.ok) {
         // If any error occurs, just log it and continue without throwing
-        console.log(`Error marking notification as read: ${response.status} ${response.statusText}`);
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`Error marking notification as read: ${response.status} ${response.statusText}`);
+        }
         return;
       }
 
@@ -209,7 +219,9 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
 
       if (!response.ok) {
         // If any error occurs, just log it and continue without throwing
-        console.log(`Error marking all notifications as read: ${response.status} ${response.statusText}`);
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`Error marking all notifications as read: ${response.status} ${response.statusText}`);
+        }
         return;
       }
 

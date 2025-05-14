@@ -76,14 +76,39 @@ export async function GET(request: NextRequest) {
       LIMIT 50
     `);
 
-    // Get pending applications count
-    const pendingApplications = await query(`
-      SELECT COUNT(*) as count
-      FROM business_profiles
-      WHERE verification_status IS NULL OR verification_status = 'pending'
-    `);
+    // Check which table exists: business_profiles or service_providers
+    const tableCheckResult = await query(`
+      SELECT table_name
+      FROM information_schema.tables
+      WHERE table_schema = DATABASE()
+      AND table_name IN ('business_profiles', 'service_providers')
+    `) as any[];
 
-    const pendingCount = pendingApplications && pendingApplications[0] ? pendingApplications[0].count : 0;
+    const tableNames = tableCheckResult.map((row: any) => row.table_name);
+    const useServiceProvidersTable = tableNames.includes('service_providers');
+
+    console.log(`Using ${useServiceProvidersTable ? 'service_providers' : 'business_profiles'} table for pending applications`);
+
+    // Get pending applications count
+    let pendingCount = 0;
+
+    if (useServiceProvidersTable) {
+      const pendingApplications = await query(`
+        SELECT COUNT(*) as count
+        FROM service_providers
+        WHERE verification_status = 'pending'
+      `);
+
+      pendingCount = pendingApplications && pendingApplications[0] ? pendingApplications[0].count : 0;
+    } else {
+      const pendingApplications = await query(`
+        SELECT COUNT(*) as count
+        FROM business_profiles
+        WHERE verification_status IS NULL OR verification_status = 'pending'
+      `);
+
+      pendingCount = pendingApplications && pendingApplications[0] ? pendingApplications[0].count : 0;
+    }
 
     // If there are pending applications but no notification for them, create one
     if (pendingCount > 0) {
@@ -102,7 +127,7 @@ export async function GET(request: NextRequest) {
           'pending_application',
           'Pending Applications',
           `You have ${pendingCount} pending business application${pendingCount > 1 ? 's' : ''} to review.`,
-          'business_profile',
+          useServiceProvidersTable ? 'service_provider' : 'business_profile',
           '/admin/applications'
         ]);
 

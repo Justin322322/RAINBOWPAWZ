@@ -41,17 +41,28 @@ async function checkDatabaseSetup() {
     // Check for required tables with more flexible matching
     // Only require the businesses table for basic functionality
     // Other tables are optional and will be handled gracefully if missing
-    const criticalTables = ['business_profiles'];
+    // Allow either business_profiles or service_providers as the critical table
+    const criticalTables = [['business_profiles', 'service_providers']]; // Either one of these is required
     const warningTables = ['business_services', 'bookings'];
 
     const missingCriticalTables = [];
     const missingWarningTables = [];
 
     // Check critical tables (required for basic functionality)
-    for (const table of criticalTables) {
-      if (!tableNames.includes(table)) {
-        console.error(`Critical table '${table}' is missing`);
-        missingCriticalTables.push(table);
+    for (const tableOption of criticalTables) {
+      if (Array.isArray(tableOption)) {
+        // This is an array of alternatives - we need at least one of them
+        const hasAnyAlternative = tableOption.some(table => tableNames.includes(table));
+        if (!hasAnyAlternative) {
+          console.error(`None of the alternative tables ${tableOption.join(' or ')} are present`);
+          missingCriticalTables.push(tableOption.join('|'));
+        }
+      } else {
+        // This is a single required table
+        if (!tableNames.includes(tableOption)) {
+          console.error(`Critical table '${tableOption}' is missing`);
+          missingCriticalTables.push(tableOption);
+        }
       }
     }
 
@@ -91,6 +102,14 @@ export async function GET(request: NextRequest) {
   console.log('Starting cremation businesses API request');
 
   try {
+    // Add more detailed logging
+    console.log('API Request Details:', {
+      method: 'GET',
+      url: '/api/admin/cremation-businesses',
+      headers: Object.fromEntries(request.headers.entries()),
+      timestamp: new Date().toISOString()
+    });
+
     // First verify the database connection is working
     console.log('Testing database connection...');
     const dbConnected = await testConnection();
@@ -167,13 +186,24 @@ export async function GET(request: NextRequest) {
       }, { status: 401 });
     }
 
+    // Since you've migrated from business_profiles to service_providers,
+    // we'll use only the service_providers table
+    const tableName = 'service_providers';
+    console.log(`Using table: ${tableName}`);
+
+    // Define these variables at a higher scope so they're available throughout the function
+    // Since we're using service_providers table, we know the column names
+    let hasProviderTypeColumn = true;
+    let hasBusinessTypeColumn = false;
+    let businessTypeColumn = 'provider_type';
+
     // First check if the businesses table exists and has the right structure
     try {
-      console.log('Testing basic query to business_profiles table');
-      const tableCheck = await query(`SELECT COUNT(*) as count FROM business_profiles`);
-      console.log('Business profiles table check result:', tableCheck);
+      console.log(`Testing basic query to ${tableName} table`);
+      const tableCheck = await query(`SELECT COUNT(*) as count FROM ${tableName}`);
+      console.log('Service providers table check result:', tableCheck);
     } catch (tableError) {
-      console.error('Error checking businesses table:', tableError);
+      console.error(`Error checking ${tableName} table:`, tableError);
       return NextResponse.json({
         error: 'Database schema issue',
         details: tableError instanceof Error ? tableError.message : 'Unknown error',
@@ -181,29 +211,31 @@ export async function GET(request: NextRequest) {
       }, { status: 500 });
     }
 
-    // First check if the business_profiles table exists and has the right structure
-    console.log('Checking business_profiles table structure...');
+    // Check if the table has the provider_type column
+    console.log(`Checking ${tableName} table structure...`);
     try {
-      // Check if the business_profiles table has the business_type column
+      // Check if the table has the provider_type column
       const tableStructure = await query(`
-        SHOW COLUMNS FROM business_profiles WHERE Field = 'business_type'
+        SHOW COLUMNS FROM ${tableName} WHERE Field = 'provider_type'
       `);
 
       if (!Array.isArray(tableStructure) || tableStructure.length === 0) {
-        console.error('business_profiles table is missing the business_type column');
+        console.error(`${tableName} table is missing the provider_type column`);
         return NextResponse.json({
           error: 'Database schema issue',
-          details: 'The business_profiles table is missing the business_type column. Database schema may need to be updated.',
+          details: `The ${tableName} table is missing the provider_type column. Database schema may need to be updated.`,
           success: false
         }, { status: 500 });
       }
 
-      console.log('business_profiles table structure check passed');
+      console.log(`Using provider_type column for business type`);
+      console.log(`Using ${businessTypeColumn} column for business type`);
+      console.log(`${tableName} table structure check passed`);
     } catch (structureError) {
-      console.error('Error checking business_profiles table structure:', structureError);
+      console.error(`Error checking ${tableName} table structure:`, structureError);
       return NextResponse.json({
         error: 'Database schema issue',
-        details: 'Could not verify the business_profiles table structure. ' +
+        details: `Could not verify the ${tableName} table structure. ` +
                 (structureError instanceof Error ? structureError.message : 'Unknown error'),
         success: false
       }, { status: 500 });
@@ -215,65 +247,80 @@ export async function GET(request: NextRequest) {
     try {
       // Use a more defensive query that handles potential missing columns
       // First check the table structure to determine available columns
-      const bpColumns = await query(`SHOW COLUMNS FROM business_profiles`);
+      const bpColumns = await query(`SHOW COLUMNS FROM ${tableName}`);
       const columnNames = bpColumns.map((col: any) => col.Field);
 
       // Build a dynamic query based on available columns
       let selectFields = [
         'bp.id',
-        'bp.business_name',
+        'bp.name as business_name',
         'u.email'
       ];
 
-      // Add optional fields if they exist
-      if (columnNames.includes('contact_first_name')) selectFields.push('bp.contact_first_name');
-      if (columnNames.includes('contact_last_name')) selectFields.push('bp.contact_last_name');
-      if (columnNames.includes('business_phone')) selectFields.push('bp.business_phone');
-      if (columnNames.includes('business_address')) selectFields.push('bp.business_address');
-      if (columnNames.includes('province')) selectFields.push('bp.province');
-      if (columnNames.includes('city')) selectFields.push('bp.city');
-      if (columnNames.includes('business_hours')) selectFields.push('bp.business_hours');
-      if (columnNames.includes('service_description')) selectFields.push('bp.service_description');
-      if (columnNames.includes('verification_status')) {
-        selectFields.push('bp.verification_status');
-        selectFields.push(`CASE WHEN bp.verification_status = 'verified' THEN 1 ELSE 0 END as is_verified`);
-      } else {
-        selectFields.push(`'pending' as verification_status`);
-        selectFields.push(`0 as is_verified`);
-      }
-      if (columnNames.includes('business_permit_path')) selectFields.push('bp.business_permit_path as document_path');
-      if (columnNames.includes('created_at')) selectFields.push('bp.created_at');
-      if (columnNames.includes('updated_at')) selectFields.push('bp.updated_at');
+      // Add fields for service_providers table
+      selectFields.push('bp.contact_first_name');
+      selectFields.push('bp.contact_last_name');
+      selectFields.push('bp.phone as business_phone');
+      selectFields.push('bp.address as business_address');
+      selectFields.push('bp.province');
+      selectFields.push('bp.city');
+      selectFields.push('bp.hours as business_hours');
+      selectFields.push('bp.service_description');
+      selectFields.push('bp.verification_status');
+      selectFields.push(`CASE WHEN bp.verification_status = 'verified' THEN 1 ELSE 0 END as is_verified`);
+      selectFields.push('bp.business_permit_path as document_path');
+      selectFields.push('bp.created_at');
+      selectFields.push('bp.updated_at');
 
-      businesses = await query(`
+      // Use the appropriate column name for business type
+      const typeCondition = hasBusinessTypeColumn
+        ? "bp.business_type = 'cremation'"
+        : "bp.provider_type = 'cremation'";
+
+      // Log the query for debugging
+      const queryString = `
         SELECT
           ${selectFields.join(',\n          ')}
-        FROM business_profiles bp
+        FROM ${tableName} bp
         JOIN users u ON bp.user_id = u.id
-        WHERE bp.business_type = 'cremation'
-      `);
+        WHERE ${typeCondition}
+      `;
+      console.log('Executing query:', queryString);
+
+      businesses = await query(queryString);
     } catch (queryError) {
-      console.error('Error querying business_profiles table:', queryError);
+      console.error('Error querying service_providers table:', queryError);
 
       // Try a more basic query if the first one fails
       try {
         console.log('Attempting fallback query with fewer columns...');
-        businesses = await query(`
+        // Use the appropriate column name for business type
+        const typeCondition = hasBusinessTypeColumn
+          ? "bp.business_type = 'cremation'"
+          : "bp.provider_type = 'cremation'";
+
+        // Use the service_providers column names
+        const fallbackQueryString = `
           SELECT
             bp.id,
-            bp.business_name,
+            bp.name as business_name,
             u.email,
             bp.contact_first_name,
             bp.contact_last_name,
-            bp.business_phone,
-            bp.business_address,
+            bp.phone as business_phone,
+            bp.address as business_address,
             bp.verification_status,
             CASE WHEN bp.verification_status = 'verified' THEN 1 ELSE 0 END as is_verified,
+            bp.service_description,
+            bp.hours as business_hours,
             bp.created_at
-          FROM business_profiles bp
+          FROM ${tableName} bp
           JOIN users u ON bp.user_id = u.id
-          WHERE bp.business_type = 'cremation'
-        `);
+          WHERE ${typeCondition}
+        `;
+        console.log('Executing fallback query:', fallbackQueryString);
+
+        businesses = await query(fallbackQueryString);
 
         console.log('Fallback query succeeded');
       } catch (fallbackError) {
@@ -403,14 +450,25 @@ export async function GET(request: NextRequest) {
         });
       } catch (tableCheckError) {
         console.error('Error checking statistics tables:', tableCheckError);
-        // Skip statistics if we can't verify the tables
-        return;
+        // Skip statistics if we can't verify the tables, but continue with the response
+        console.log('Continuing with basic business data without statistics');
+        // Return the response with the basic business data
+        console.log('Successfully processed cremation businesses data');
+        return NextResponse.json({
+          success: true,
+          businesses: formattedBusinesses
+        });
       }
 
       // Only proceed if the tables exist
       if (!businessServicesExists || !bookingsExists) {
         console.log('Skipping statistics due to missing tables');
-        return;
+        // Return the response with the basic business data
+        console.log('Successfully processed cremation businesses data without statistics');
+        return NextResponse.json({
+          success: true,
+          businesses: formattedBusinesses
+        });
       }
 
       console.log('Fetching service statistics');
@@ -526,6 +584,17 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error('Error fetching cremation businesses:', error);
+
+    // Add more detailed error logging
+    if (error instanceof Error) {
+      console.error('Error details:', {
+        name: error.name,
+        message: error.message,
+        stack: error.stack,
+        cause: error.cause
+      });
+    }
+
     return NextResponse.json({
       error: 'Failed to fetch cremation businesses',
       details: error instanceof Error ? error.message : 'Unknown error',
@@ -563,21 +632,48 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Business ID is required', success: false }, { status: 400 });
     }
 
+    // Since you've migrated from business_profiles to service_providers,
+    // we'll use only the service_providers table
+    const tableName = 'service_providers';
+    console.log(`Using table: ${tableName}`);
+
+    // Check the table structure to determine available columns
+    console.log('Checking table structure for column names');
+    const tableStructure = await query(`
+      SHOW COLUMNS FROM ${tableName}
+    `) as any[];
+
+    const columnNames = tableStructure.map(col => col.Field);
+
+    // Since we're using service_providers table, we know the column names
+    let hasBusinessTypeColumn = false;
+    let hasProviderTypeColumn = true;
+
+    // Use the appropriate column names for service_providers table
+    const typeColumn = 'provider_type';
+    const nameColumn = 'name';
+    const phoneColumn = 'phone';
+    const addressColumn = 'address';
+    const hoursColumn = 'hours';
+
+    // Use the provider_type column for cremation type
+    const typeCondition = "bp.provider_type = 'cremation'";
+
     // Get the business details with a simple query
     console.log('Fetching basic business details');
     const businessResults = await query(`
       SELECT
         bp.id,
-        bp.business_name,
+        bp.name as business_name,
         u.email,
         bp.contact_first_name,
         bp.contact_last_name,
-        bp.business_phone,
-        bp.business_address,
+        bp.phone as business_phone,
+        bp.address as business_address,
         bp.province,
         bp.city,
         bp.zip,
-        bp.business_hours,
+        bp.hours as business_hours,
         bp.service_description,
         CASE WHEN bp.verification_status = 'verified' THEN 1 ELSE 0 END as is_verified,
         bp.business_permit_path as document_path,
@@ -585,9 +681,9 @@ export async function POST(request: NextRequest) {
         '' as tax_id_number,
         bp.created_at,
         bp.updated_at
-      FROM business_profiles bp
+      FROM ${tableName} bp
       JOIN users u ON bp.user_id = u.id
-      WHERE bp.id = ? AND bp.business_type = 'cremation'
+      WHERE bp.id = ? AND ${typeCondition}
     `, [businessId]);
 
     if (!businessResults || businessResults.length === 0) {

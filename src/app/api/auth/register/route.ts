@@ -200,23 +200,32 @@ export async function POST(request: Request) {
           throw insertError;
         }
 
-        // If it's a business account, also create an entry in the business_profiles table
+        // If it's a business account, also create an entry in the service_providers table
         if (data.account_type === 'business' && userId) {
-          console.log('Creating business profile for user ID:', userId);
+          console.log('Creating service provider for user ID:', userId);
 
           try {
-            // Insert business profile with simplified query
+            // Insert service provider with simplified query
             const businessData = data as BusinessRegistrationData;
-            const sql = `INSERT INTO business_profiles
-                        (user_id, business_name, business_type, contact_first_name, contact_last_name,
-                         business_phone, business_address, province, city, zip,
-                         business_hours, service_description, verification_status)
+
+            // Map business type to provider_type enum value
+            let providerType = 'cremation';
+            if (businessData.businessType === 'memorial') {
+              providerType = 'memorial';
+            } else if (businessData.businessType === 'veterinary') {
+              providerType = 'veterinary';
+            }
+
+            const sql = `INSERT INTO service_providers
+                        (user_id, name, provider_type, contact_first_name, contact_last_name,
+                         phone, address, province, city, zip,
+                         hours, service_description, verification_status)
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
             const values = [
               userId,
               businessData.businessName,
-              businessData.businessType,
+              providerType,
               data.firstName,
               data.lastName,
               businessData.businessPhone,
@@ -229,24 +238,24 @@ export async function POST(request: Request) {
               'pending'
             ];
 
-            console.log('Business profile SQL Query:', sql);
-            console.log('Business profile values:', values);
+            console.log('Service provider SQL Query:', sql);
+            console.log('Service provider values:', values);
 
             const result = await query(sql, values) as any;
-            console.log('Business profile created successfully, result:', result);
+            console.log('Service provider created successfully, result:', result);
 
             // Create admin notification for cremation center registration
-            if (businessData.businessType === 'cremation') {
+            if (providerType === 'cremation') {
               try {
                 console.log('Creating admin notification for new cremation center registration');
-                const businessProfileId = result.insertId;
+                const serviceProviderId = result.insertId;
 
                 await createAdminNotification({
                   type: 'new_cremation_center',
                   title: 'New Cremation Center Registration',
                   message: `${businessData.businessName} has registered as a cremation center and is pending verification.`,
-                  entityType: 'business_profile',
-                  entityId: businessProfileId
+                  entityType: 'service_provider',
+                  entityId: serviceProviderId
                 });
 
                 console.log('Admin notification created successfully for cremation center');
@@ -255,9 +264,9 @@ export async function POST(request: Request) {
                 // Continue with registration even if notification creation fails
               }
             }
-          } catch (businessProfileError) {
-            console.error('Error creating business profile:', businessProfileError);
-            // Continue with registration even if business profile creation fails
+          } catch (serviceProviderError) {
+            console.error('Error creating service provider:', serviceProviderError);
+            // Continue with registration even if service provider creation fails
             // We'll handle this in the admin dashboard
           }
         }

@@ -45,6 +45,62 @@ function ApplicationDetailContent({ id }) {
   // Fetch application data
   useEffect(() => {
     if (id) {
+      // Check if we have a stored status in sessionStorage
+      try {
+        const storedStatus = sessionStorage.getItem(`application_${id}_status`);
+        if (storedStatus) {
+          console.log(`Found stored status in sessionStorage for application ${id}: ${storedStatus}`);
+          // We'll use this in fetchApplicationData
+        }
+      } catch (storageError) {
+        console.error('Error accessing sessionStorage:', storageError);
+      }
+
+      // EMERGENCY FIX: Check if this is a declined or restricted application
+      // and force the correct status display
+      const checkDirectStatus = async () => {
+        try {
+          const cacheBuster = new Date().getTime();
+          const dbStatusResponse = await fetch(`/api/businesses/applications/${id}/status?_=${cacheBuster}`);
+
+          if (dbStatusResponse.ok) {
+            const dbStatusData = await dbStatusResponse.json();
+            console.log('EMERGENCY STATUS CHECK:', dbStatusData);
+
+            if (dbStatusData.verification_status === 'declined' || dbStatusData.verification_status === 'restricted') {
+              console.log('CRITICAL: Database shows this application is', dbStatusData.verification_status);
+
+              // Force the correct status in the UI
+              setApplication(prev => {
+                if (!prev) {
+                  return {
+                    id: `APP${id.toString().padStart(3, '0')}`,
+                    businessId: id,
+                    status: dbStatusData.verification_status,
+                    verificationStatus: dbStatusData.verification_status,
+                    submitDate: new Date().toLocaleDateString('en-US', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric'
+                    }),
+                    businessName: 'Loading...',
+                    documents: []
+                  };
+                }
+                return {
+                  ...prev,
+                  status: dbStatusData.verification_status,
+                  verificationStatus: dbStatusData.verification_status
+                };
+              });
+            }
+          }
+        } catch (error) {
+          console.error('Error in emergency status check:', error);
+        }
+      };
+
+      checkDirectStatus();
       fetchApplicationData();
     }
   }, [id]);
@@ -109,6 +165,10 @@ function ApplicationDetailContent({ id }) {
   const handleDeclineDocument = async (note, requestDocuments) => {
     try {
       setIsProcessing(true);
+      console.log(`Declining application ${id} with note: "${note}" and requestDocuments: ${requestDocuments}`);
+
+      // Show a processing message
+      alert('Processing your request. Please wait...');
 
       const response = await fetch(`/api/businesses/applications/${id}/decline`, {
         method: 'POST',
@@ -122,30 +182,59 @@ function ApplicationDetailContent({ id }) {
       });
 
       if (response.ok) {
-        const data = await response.json();
+        const responseData = await response.json();
+        console.log('Decline response:', responseData);
 
         // Update application status locally
-        setApplication(prev => ({
-          ...prev,
-          status: requestDocuments ? 'documents_required' : 'declined',
-          verificationDate: new Date().toISOString().split('T')[0]
-        }));
+        const newStatus = requestDocuments ? 'documents_required' : 'declined';
+        console.log(`Setting local application status to: ${newStatus}`);
+
+        setApplication(prev => {
+          const updated = {
+            ...prev,
+            status: newStatus,
+            verificationStatus: newStatus,
+            verificationDate: new Date().toISOString().split('T')[0]
+          };
+          console.log('Updated application state:', updated);
+          return updated;
+        });
+
+        // Show success message
+        alert(requestDocuments ? 'Documents requested successfully' : 'Application declined successfully');
 
         // Set success state to trigger animation
         setSuccessBusinessName(application.businessName);
         setIsDeclineSuccess(true);
 
-        // Reset success state after animation completes
+        // Reset success state after animation completes and force a hard reload
         setTimeout(() => {
           setIsDeclineSuccess(false);
           setSuccessBusinessName('');
 
-          // Fetch updated data
-          fetchApplicationData();
-        }, 3000);
+          // Store the status in sessionStorage to ensure it persists across page reloads
+          try {
+            sessionStorage.setItem(`application_${id}_status`, newStatus);
+            console.log(`Stored status ${newStatus} in sessionStorage for application ${id}`);
+
+            // EMERGENCY FIX: Also store in localStorage as a backup
+            localStorage.setItem(`application_${id}_status`, newStatus);
+            console.log(`Also stored status in localStorage as backup`);
+
+            // Set a cookie as another backup method
+            document.cookie = `application_${id}_status=${newStatus}; path=/; max-age=3600`;
+            console.log(`Also set a cookie as another backup method`);
+          } catch (storageError) {
+            console.error('Failed to store status in storage:', storageError);
+          }
+
+          // Force a hard reload of the page to ensure all UI elements are updated
+          window.location.href = `/admin/applications/${id}?t=${Date.now()}&status=${newStatus}`;
+        }, 1500);
       } else {
-        const data = await response.json();
-        throw new Error(data.message || 'Failed to decline application');
+        const errorData = await response.json();
+        console.error('API error response:', errorData);
+        throw new Error(errorData.message || 'Failed to decline application');
       }
     } catch (error) {
       console.error('Error declining application:', error);
@@ -161,8 +250,62 @@ function ApplicationDetailContent({ id }) {
     setError('');
 
     try {
-      console.log('Fetching application data for ID:', id);
-      const response = await fetch(`/api/businesses/applications/${id}`);
+      // Add a cache-busting parameter to ensure we get fresh data
+      const cacheBuster = new Date().getTime();
+      console.log('Fetching application data for ID:', id, 'with cache buster:', cacheBuster);
+
+      // CRITICAL: First, let's directly check the database status to ensure we get the most accurate information
+      // This is the most reliable source of truth
+      const dbStatusResponse = await fetch(`/api/businesses/applications/${id}/status?_=${cacheBuster}`);
+      let verificationStatusFromDB = null;
+      let statusFromDB = null;
+
+      if (dbStatusResponse.ok) {
+        const dbStatusData = await dbStatusResponse.json();
+        console.log('Direct DB status check:', dbStatusData);
+        if (dbStatusData.verification_status) {
+          verificationStatusFromDB = dbStatusData.verification_status;
+          statusFromDB = dbStatusData.status || dbStatusData.verification_status;
+          console.log('Verification status from direct DB check:', verificationStatusFromDB);
+          console.log('Status from direct DB check:', statusFromDB);
+
+          // EMERGENCY FIX: If the database shows declined or restricted, we'll use this regardless of what the API returns
+          if (verificationStatusFromDB === 'declined' || verificationStatusFromDB === 'restricted') {
+            console.log('CRITICAL: Database shows this application is', verificationStatusFromDB);
+
+            // Create a minimal application object with the correct status
+            // This ensures the UI shows the correct status even if the API is returning incorrect data
+            if (!application) {
+              const minimalApp = {
+                id: `APP${id.toString().padStart(3, '0')}`,
+                businessId: id,
+                status: verificationStatusFromDB,
+                verificationStatus: verificationStatusFromDB,
+                submitDate: new Date().toLocaleDateString('en-US', {
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric'
+                }),
+                businessName: 'Loading...',
+                documents: []
+              };
+              console.log('Setting minimal application with correct status:', minimalApp);
+              setApplication(minimalApp);
+            } else {
+              // Update the existing application object with the correct status
+              setApplication(prev => ({
+                ...prev,
+                status: verificationStatusFromDB,
+                verificationStatus: verificationStatusFromDB
+              }));
+              console.log('Updated application status to match database:', verificationStatusFromDB);
+            }
+          }
+        }
+      }
+
+      // Now get the full application data
+      const response = await fetch(`/api/businesses/applications/${id}?_=${cacheBuster}`);
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -187,11 +330,105 @@ function ApplicationDetailContent({ id }) {
 
       const data = await response.json();
       console.log('Application data received:', data);
+      console.log('Status from API:', data.status);
+      console.log('Verification status from API:', data.verificationStatus);
 
       if (!data || Object.keys(data).length === 0) {
         throw new Error('No data received from the server');
       }
 
+      // Check if we have a status in the URL query parameters
+      let statusFromURL = null;
+      try {
+        const urlParams = new URLSearchParams(window.location.search);
+        statusFromURL = urlParams.get('status');
+        if (statusFromURL) {
+          console.log(`Found status in URL: ${statusFromURL}`);
+        }
+      } catch (urlError) {
+        console.error('Error parsing URL parameters:', urlError);
+      }
+
+      // Check if we have a stored status in sessionStorage
+      let storedStatus = null;
+      try {
+        storedStatus = sessionStorage.getItem(`application_${id}_status`);
+        if (storedStatus) {
+          console.log(`Using stored status from sessionStorage: ${storedStatus}`);
+        }
+
+        // Also check localStorage as a backup
+        if (!storedStatus) {
+          const localStorageStatus = localStorage.getItem(`application_${id}_status`);
+          if (localStorageStatus) {
+            console.log(`Found status in localStorage: ${localStorageStatus}`);
+            storedStatus = localStorageStatus;
+          }
+        }
+
+        // Also check cookies as another backup
+        if (!storedStatus) {
+          const cookies = document.cookie.split(';');
+          for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.startsWith(`application_${id}_status=`)) {
+              const cookieStatus = cookie.substring(`application_${id}_status=`.length, cookie.length);
+              console.log(`Found status in cookie: ${cookieStatus}`);
+              storedStatus = cookieStatus;
+              break;
+            }
+          }
+        }
+      } catch (storageError) {
+        console.error('Error accessing storage:', storageError);
+      }
+
+      // Priority order for status:
+      // 1. URL parameter (highest priority, most recent)
+      // 2. SessionStorage/localStorage/cookies (reliable as directly set during decline/approve)
+      // 3. Direct DB query (reliable but might have caching issues)
+      // 4. API response (least reliable as it might have caching issues)
+
+      if (statusFromURL) {
+        console.log('Overriding status with URL parameter value:', statusFromURL);
+        data.verificationStatus = statusFromURL;
+        data.status = statusFromURL;
+      } else if (storedStatus) {
+        console.log('Overriding status with stored value:', storedStatus);
+        data.verificationStatus = storedStatus;
+        data.status = storedStatus;
+
+        // Clear the storage after using it once
+        try {
+          sessionStorage.removeItem(`application_${id}_status`);
+          localStorage.removeItem(`application_${id}_status`);
+          document.cookie = `application_${id}_status=; path=/; max-age=0`;
+          console.log(`Cleared stored status for application ${id} from all storage`);
+        } catch (storageError) {
+          console.error('Error clearing storage:', storageError);
+        }
+      } else if (verificationStatusFromDB) {
+        console.log('Overriding status with direct DB value:', verificationStatusFromDB);
+        data.verificationStatus = verificationStatusFromDB;
+        data.status = verificationStatusFromDB;
+      }
+
+      // Ensure the status is correctly set based on verification_status
+      if (data.verificationStatus === 'declined' && data.status !== 'declined') {
+        console.log('Fixing status mismatch: Setting status to declined to match verification_status');
+        data.status = 'declined';
+      } else if (data.verificationStatus === 'documents_required' && data.status !== 'documents_required') {
+        console.log('Fixing status mismatch: Setting status to documents_required to match verification_status');
+        data.status = 'documents_required';
+      } else if (data.verificationStatus === 'restricted' && data.status !== 'restricted') {
+        console.log('Fixing status mismatch: Setting status to restricted to match verification_status');
+        data.status = 'restricted';
+      } else if (data.verificationStatus === 'verified' && data.status !== 'approved') {
+        console.log('Fixing status mismatch: Setting status to approved to match verification_status=verified');
+        data.status = 'approved';
+      }
+
+      console.log('Final application status after fixes:', data.status);
       setApplication(data);
     } catch (error) {
       console.error('Error fetching application:', error);
@@ -377,34 +614,60 @@ function ApplicationDetailContent({ id }) {
             </div>
             <div className="p-6">
               <div className="flex items-center">
-                <div className={`
-                  p-2 rounded-full mr-3
-                  ${application.status === 'approved' ? 'bg-green-100' :
-                    application.status === 'declined' ? 'bg-red-100' :
-                    application.status === 'documents_required' ? 'bg-orange-100' :
-                    application.status === 'reviewing' ? 'bg-blue-100' : 'bg-yellow-100'}
-                `}>
-                  {application.status === 'approved' ? (
-                    <CheckCircleIcon className="h-5 w-5 text-green-600" />
-                  ) : application.status === 'declined' ? (
-                    <XCircleIcon className="h-5 w-5 text-red-600" />
-                  ) : application.status === 'documents_required' ? (
-                    <DocumentTextIcon className="h-5 w-5 text-orange-600" />
-                  ) : (
-                    <ExclamationTriangleIcon className="h-5 w-5 text-yellow-600" />
-                  )}
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-900">
-                    {application.status === 'approved' ? 'Approved' :
-                     application.status === 'declined' ? 'Declined' :
-                     application.status === 'documents_required' ? 'Documents Required' :
-                     application.status === 'reviewing' ? 'Under Review' : 'Pending'}
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    Submitted on {application.submitDate}
-                  </p>
-                </div>
+                {/* CRITICAL FIX: Force the correct status display based on verification_status */}
+                {(() => {
+                  // Get the actual status from verification_status if available, otherwise use status
+                  const actualStatus = application.verificationStatus || application.status;
+                  console.log('Rendering status display with actualStatus:', actualStatus);
+
+                  // Determine the correct display status
+                  let displayStatus = 'Pending';
+                  let bgColorClass = 'bg-yellow-100';
+                  let icon = <ExclamationTriangleIcon className="h-5 w-5 text-yellow-600" />;
+
+                  if (actualStatus === 'verified' || actualStatus === 'approved') {
+                    displayStatus = 'Approved';
+                    bgColorClass = 'bg-green-100';
+                    icon = <CheckCircleIcon className="h-5 w-5 text-green-600" />;
+                  } else if (actualStatus === 'declined') {
+                    displayStatus = 'Declined';
+                    bgColorClass = 'bg-red-100';
+                    icon = <XCircleIcon className="h-5 w-5 text-red-600" />;
+                  } else if (actualStatus === 'documents_required') {
+                    displayStatus = 'Documents Required';
+                    bgColorClass = 'bg-orange-100';
+                    icon = <DocumentTextIcon className="h-5 w-5 text-orange-600" />;
+                  } else if (actualStatus === 'restricted') {
+                    displayStatus = 'Restricted';
+                    bgColorClass = 'bg-purple-100';
+                    icon = <XCircleIcon className="h-5 w-5 text-purple-600" />;
+                  } else if (actualStatus === 'reviewing') {
+                    displayStatus = 'Under Review';
+                    bgColorClass = 'bg-blue-100';
+                    icon = <ExclamationTriangleIcon className="h-5 w-5 text-blue-600" />;
+                  }
+
+                  return (
+                    <>
+                      <div className={`p-2 rounded-full mr-3 ${bgColorClass}`}>
+                        {icon}
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">
+                          {displayStatus}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          Submitted on {application.submitDate}
+                        </p>
+                        {actualStatus !== application.status && (
+                          <p className="text-xs text-red-500 mt-1">
+                            Status corrected from "{application.status}" to "{actualStatus}"
+                          </p>
+                        )}
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
             </div>
           </div>
@@ -415,25 +678,59 @@ function ApplicationDetailContent({ id }) {
               <h2 className="text-lg font-medium text-gray-800">Actions</h2>
             </div>
             <div className="p-6 space-y-4">
-              {(application.status === 'pending' || application.status === 'reviewing') && (
-                <div className="grid grid-cols-1 gap-4">
-                  <button
-                    onClick={() => setIsApproveModalOpen(true)}
-                    className="w-full inline-flex justify-center items-center px-4 py-3 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-                  >
-                    <CheckCircleIcon className="-ml-1 mr-2 h-5 w-5" />
-                    Approve Application
-                  </button>
+              {(() => {
+                // Get the actual status from verification_status if available, otherwise use status
+                const actualStatus = application.verificationStatus || application.status;
 
-                  <button
-                    onClick={() => setIsDeclineModalOpen(true)}
-                    className="w-full inline-flex justify-center items-center px-4 py-3 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                  >
-                    <XCircleIcon className="-ml-1 mr-2 h-5 w-5" />
-                    Decline Application
-                  </button>
-                </div>
-              )}
+                // Only show approve/decline buttons for pending or reviewing applications
+                if (actualStatus === 'pending' || actualStatus === 'reviewing') {
+                  return (
+                    <div className="grid grid-cols-1 gap-4">
+                      <button
+                        onClick={() => setIsApproveModalOpen(true)}
+                        className="w-full inline-flex justify-center items-center px-4 py-3 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                      >
+                        <CheckCircleIcon className="-ml-1 mr-2 h-5 w-5" />
+                        Approve Application
+                      </button>
+
+                      <button
+                        onClick={() => setIsDeclineModalOpen(true)}
+                        className="w-full inline-flex justify-center items-center px-4 py-3 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                      >
+                        <XCircleIcon className="-ml-1 mr-2 h-5 w-5" />
+                        Decline Application
+                      </button>
+                    </div>
+                  );
+                } else if (actualStatus === 'declined') {
+                  return (
+                    <div className="p-4 bg-red-50 rounded-md">
+                      <p className="text-sm text-red-700">
+                        This application has been declined. No further actions are available.
+                      </p>
+                    </div>
+                  );
+                } else if (actualStatus === 'restricted') {
+                  return (
+                    <div className="p-4 bg-purple-50 rounded-md">
+                      <p className="text-sm text-purple-700">
+                        This application has been restricted. No further actions are available.
+                      </p>
+                    </div>
+                  );
+                } else if (actualStatus === 'approved' || actualStatus === 'verified') {
+                  return (
+                    <div className="p-4 bg-green-50 rounded-md">
+                      <p className="text-sm text-green-700">
+                        This application has been approved. No further actions are available.
+                      </p>
+                    </div>
+                  );
+                }
+
+                return null;
+              })()}
               <Link
                 href="/admin/applications"
                 className="w-full inline-flex justify-center items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--primary-green)]"
@@ -465,15 +762,7 @@ function ApplicationDetailContent({ id }) {
             </p>
           </div>
         </div>
-        {application && application.status === 'pending' && (
-          <Link
-            href={`/admin/applications/${id}/review`}
-            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-[var(--primary-green)] hover:bg-[var(--primary-green-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--primary-green)]"
-          >
-            <PencilSquareIcon className="-ml-1 mr-2 h-5 w-5" />
-            Review Application
-          </Link>
-        )}
+
       </div>
 
       {renderApplicationDetails()}

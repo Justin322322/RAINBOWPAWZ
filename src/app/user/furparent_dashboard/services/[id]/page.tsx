@@ -44,114 +44,7 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
   const [bookingSuccess, setBookingSuccess] = useState(false);
   const [bookingError, setBookingError] = useState<string | null>(null);
 
-  // Mock data for service providers
-  const serviceProviders = [
-    {
-      id: 1,
-      name: "Rainbow Bridge Pet Cremation",
-      city: 'Capitol Drive, Balanga City, Bataan',
-      distance: '0.5 km away',
-      type: 'Pet Cremation Services',
-      address: 'Capitol Drive, Balanga City, 2100 Bataan, Philippines',
-      phone: '(123) 456-7890',
-      email: 'info@rainbowbridge.com',
-      description: 'Compassionate pet cremation services with personalized memorials. We provide dignified and respectful end-of-life care for your beloved companions. Our team understands the deep bond between pets and their families, and we strive to honor that connection through our thoughtful services.',
-      packages: [
-        {
-          id: 1,
-          name: 'Basic Cremation',
-          description: 'Simple cremation service with standard urn',
-          category: 'Communal',
-          cremationType: 'Standard',
-          processingTime: '2-3 days',
-          price: 3500,
-          inclusions: ['Standard clay urn', 'Memorial certificate', 'Paw print impression'],
-          addOns: ['Personalized nameplate (+₱500)', 'Photo frame (+₱800)'],
-          conditions: 'For pets up to 50 lbs. Additional fees may apply for larger pets.',
-          images: ['/bg_2.png', '/bg_3.png', '/bg_4.png']
-        },
-        {
-          id: 2,
-          name: 'Premium Cremation',
-          description: 'Private cremation with premium urn and memorial certificate',
-          category: 'Private',
-          cremationType: 'Premium',
-          processingTime: '1-2 days',
-          price: 5500,
-          inclusions: ['Wooden urn with nameplate', 'Memorial certificate', 'Paw print impression', 'Fur clipping'],
-          addOns: ['Memorial video (+₱1,200)', 'Additional urns (+₱1,500)'],
-          conditions: 'Available for all pet sizes. Viewing options available upon request.',
-          images: ['/bg_2.png', '/bg_3.png', '/bg_4.png']
-        },
-        {
-          id: 3,
-          name: 'Deluxe Package',
-          description: 'Private cremation with wooden urn and memorial service',
-          category: 'Private',
-          cremationType: 'Deluxe',
-          processingTime: 'Same day',
-          price: 6000,
-          inclusions: ['Custom wooden urn', 'Memorial service', 'Photo memorial', 'Paw print keepsake', 'Fur clipping'],
-          addOns: ['Memorial jewelry (+₱2,000)', 'Canvas portrait (+₱2,500)'],
-          conditions: 'Includes private viewing room for family. 24-hour service available.',
-          images: ['/bg_2.png', '/bg_3.png', '/bg_4.png']
-        }
-      ]
-    },
-    {
-      id: 2,
-      name: 'Peaceful Paws Memorial',
-      city: 'Tuyo, Balanga City, Bataan',
-      distance: '2.2 km away',
-      type: 'Pet Cremation Services',
-      address: 'Tuyo, Balanga City, 2100 Bataan, Philippines',
-      phone: '(234) 567-8901',
-      email: 'care@peacefulpaws.com',
-      description: 'Dignified pet cremation with eco-friendly options. We focus on providing environmentally conscious memorial services while honoring your pet with the respect they deserve. Our facility is designed to provide a peaceful setting for families during this difficult time.',
-      packages: [
-        {
-          id: 1,
-          name: 'Eco-Friendly Basic',
-          description: 'Environmentally conscious cremation with biodegradable urn',
-          category: 'Communal',
-          cremationType: 'Standard',
-          processingTime: '2-3 days',
-          price: 3800,
-          inclusions: ['Biodegradable urn', 'Plantable memorial card', 'Digital memorial'],
-          addOns: ['Tree planting ceremony (+₱1,200)', 'Memorial garden stone (+₱900)'],
-          conditions: 'For pets up to 40 lbs. Additional fees may apply for larger pets.',
-          images: ['/bg_2.png', '/bg_3.png', '/bg_4.png']
-        },
-        {
-          id: 2,
-          name: 'Private Eco-Cremation',
-          description: 'Private cremation with sustainable memorial options',
-          category: 'Private',
-          cremationType: 'Premium',
-          processingTime: '1-2 days',
-          price: 5800,
-          inclusions: ['Bamboo urn', 'Seed paper memorial card', 'Paw print in clay', 'Digital memorial album'],
-          addOns: ['Memorial tree planting (+₱2,000)', 'Biodegradable water burial urn (+₱1,500)'],
-          conditions: 'Available for all pet sizes. Carbon offset included in price.',
-          images: ['/bg_2.png', '/bg_3.png', '/bg_4.png']
-        },
-        {
-          id: 3,
-          name: 'Legacy Memorial',
-          description: 'Comprehensive memorial service with sustainable options',
-          category: 'Private',
-          cremationType: 'Deluxe',
-          processingTime: 'Same day',
-          price: 7500,
-          inclusions: ['Choice of sustainable urn', 'Memorial service', 'Photo tribute', 'Paw print keepsake', 'Memorial planting'],
-          addOns: ['Video tribute (+₱1,800)', 'Custom memorial garden (+₱3,500)'],
-          conditions: 'Includes private viewing room and memorial planning assistance.',
-          images: ['/bg_2.png', '/bg_3.png', '/bg_4.png']
-        }
-      ]
-    },
-    // More providers would be here
-  ];
+  // Will fetch real data from API
 
   // Mock data for user's pets
   const mockPets = [
@@ -180,30 +73,62 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
   };
 
   useEffect(() => {
-    // Simulate fetching provider data
+    // Fetch real provider data
     setLoading(true);
 
-    // Add a small delay to ensure the skeleton is visible
     const fetchData = async () => {
       try {
-        // Simulate network delay
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        // Fetch provider details
+        const providerResponse = await fetch(`/api/service-providers/${providerId}`);
 
-        const foundProvider = serviceProviders.find(p => p.id.toString() === providerId);
-        if (foundProvider) {
-          setProvider(foundProvider);
-          setPets(mockPets); // In a real app, this would be fetched from the API
-        } else {
-          setError('Provider not found');
+        if (!providerResponse.ok) {
+          throw new Error('Failed to fetch provider details');
+        }
+
+        const providerData = await providerResponse.json();
+
+        // Fetch packages for this provider
+        const packagesResponse = await fetch(`/api/packages?providerId=${providerId}`);
+
+        if (!packagesResponse.ok) {
+          throw new Error('Failed to fetch packages');
+        }
+
+        const packagesData = await packagesResponse.json();
+
+        // Combine provider data with packages
+        const providerWithPackages = {
+          ...providerData.provider,
+          packages: packagesData.packages || []
+        };
+
+        setProvider(providerWithPackages);
+
+        // Fetch user's pets
+        try {
+          const petsResponse = await fetch('/api/pets');
+          if (petsResponse.ok) {
+            const petsData = await petsResponse.json();
+            setPets(petsData.pets || []);
+          } else {
+            // Fallback to mock pets if API fails
+            setPets(mockPets);
+          }
+        } catch (petError) {
+          console.error('Error fetching pets:', petError);
+          setPets(mockPets);
         }
       } catch (err) {
+        console.error('Error fetching provider data:', err);
         setError('Failed to load provider details');
       } finally {
         setLoading(false);
       }
     };
 
-    fetchData();
+    if (providerId) {
+      fetchData();
+    }
   }, [providerId]);
 
   const handleNextPackage = () => {
@@ -304,15 +229,25 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
         </div>
       ) : error ? (
         <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
-          <div className="bg-red-50 border border-red-200 p-6 rounded-lg">
-            <h2 className="text-xl font-semibold text-red-800 mb-2">Error</h2>
-            <p className="text-red-700">{error}</p>
-            <button
-              onClick={() => router.back()}
-              className="mt-4 px-4 py-2 bg-[var(--primary-green)] text-white rounded-md hover:bg-[var(--primary-green-hover)]"
-            >
-              Go Back
-            </button>
+          <div className="bg-red-50 border border-red-200 p-8 rounded-lg text-center">
+            <XCircleIcon className="h-16 w-16 text-red-500 mx-auto mb-4" />
+            <h2 className="text-2xl font-semibold text-red-800 mb-3">Provider Not Found</h2>
+            <p className="text-red-700 mb-6 max-w-lg mx-auto">{error || "We couldn't find the service provider you're looking for. It may have been removed or is temporarily unavailable."}</p>
+            <div className="flex flex-col sm:flex-row justify-center gap-4">
+              <button
+                onClick={() => router.back()}
+                className="px-6 py-3 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition-colors flex items-center justify-center"
+              >
+                <ArrowLeftIcon className="h-5 w-5 mr-2" />
+                Go Back
+              </button>
+              <Link
+                href="/user/furparent_dashboard/services"
+                className="px-6 py-3 bg-[var(--primary-green)] text-white rounded-md hover:bg-[var(--primary-green-hover)] transition-colors flex items-center justify-center"
+              >
+                Browse All Providers
+              </Link>
+            </div>
           </div>
         </div>
       ) : provider ? (

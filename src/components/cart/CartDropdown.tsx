@@ -1,13 +1,15 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import {
   ShoppingCartIcon,
   XMarkIcon,
   TrashIcon,
   ArrowRightIcon
 } from '@heroicons/react/24/outline';
+import { useCart } from '@/contexts/CartContext';
 
 interface CartItem {
   id: number;
@@ -28,34 +30,9 @@ interface CartDropdownProps {
 const CartDropdown = ({ isOpen, onClose }: CartDropdownProps) => {
   const router = useRouter();
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const [cartItems, setCartItems] = useState<CartItem[]>([]);
 
-  // Mock cart items for demonstration
-  useEffect(() => {
-    // In a real app, this would come from localStorage, context, or an API
-    const mockCartItems: CartItem[] = [
-      {
-        id: 1,
-        providerId: 1,
-        providerName: 'Rainbow Bridge Pet Cremation',
-        packageId: 2,
-        packageName: 'Premium Cremation',
-        price: 5500,
-        date: '2023-06-15',
-        time: '10:00'
-      },
-      {
-        id: 2,
-        providerId: 2,
-        providerName: 'Peaceful Paws Memorial',
-        packageId: 1,
-        packageName: 'Eco-Friendly Basic',
-        price: 3800
-      }
-    ];
-
-    setCartItems(mockCartItems);
-  }, []);
+  // Get cart items from context
+  const { items: cartItems, removeItem, totalPrice } = useCart();
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -79,28 +56,21 @@ const CartDropdown = ({ isOpen, onClose }: CartDropdownProps) => {
     e.stopPropagation();
   };
 
-  const removeItem = (itemId: number, event: React.MouseEvent) => {
+  const handleRemoveItem = (itemId: string, event: React.MouseEvent) => {
     // Stop event propagation to prevent modal from closing
     event.stopPropagation();
-    setCartItems(cartItems.filter(item => item.id !== itemId));
+    removeItem(itemId);
   };
 
   const proceedToCheckout = () => {
-    // In a real app, you would navigate to checkout with the first item or a summary page
-    if (cartItems.length > 0) {
-      const item = cartItems[0];
-      router.push(`/user/furparent_dashboard/bookings/checkout?provider=${item.providerId}&package=${item.packageId}`);
-      onClose();
-    }
-  };
-
-  const viewCart = () => {
-    router.push('/user/furparent_dashboard/bookings/cart');
+    // Navigate to cart page
+    router.push('/user/furparent_dashboard/cart');
     onClose();
   };
 
-  const calculateTotal = () => {
-    return cartItems.reduce((total, item) => total + item.price, 0);
+  const viewCart = () => {
+    router.push('/user/furparent_dashboard/cart');
+    onClose();
   };
 
   if (!isOpen) return null;
@@ -114,7 +84,7 @@ const CartDropdown = ({ isOpen, onClose }: CartDropdownProps) => {
       <div className="p-4 bg-[var(--primary-green)] text-white flex justify-between items-center">
         <h3 className="font-medium flex items-center">
           <ShoppingCartIcon className="h-5 w-5 mr-2" />
-          Your Cart ({cartItems.length})
+          Your Cart ({cartItems.reduce((total, item) => total + item.quantity, 0)})
         </h3>
         <button
           onClick={onClose}
@@ -134,25 +104,41 @@ const CartDropdown = ({ isOpen, onClose }: CartDropdownProps) => {
           <ul className="divide-y divide-gray-200">
             {cartItems.map(item => (
               <li key={item.id} className="p-4 hover:bg-gray-50">
-                <div className="flex justify-between">
-                  <div>
-                    <h4 className="font-medium text-gray-900">{item.packageName}</h4>
-                    <p className="text-sm text-gray-500">{item.providerName}</p>
-                    {item.date && item.time && (
-                      <p className="text-xs text-gray-500 mt-1">
-                        {new Date(item.date).toLocaleDateString()} at {item.time}
-                      </p>
+                <div className="flex">
+                  {/* Item Image */}
+                  <div className="w-12 h-12 bg-gray-100 rounded-md overflow-hidden flex-shrink-0 relative mr-3">
+                    {item.image ? (
+                      <Image
+                        src={item.image}
+                        alt={item.packageName}
+                        fill
+                        className="object-cover"
+                      />
+                    ) : (
+                      <div className="flex items-center justify-center h-full">
+                        <span className="text-gray-400 text-xs">No image</span>
+                      </div>
                     )}
                   </div>
-                  <div className="text-right">
-                    <p className="font-medium text-[var(--primary-green)]">₱{item.price.toLocaleString()}</p>
-                    <button
-                      onClick={(e) => removeItem(item.id, e)}
-                      className="text-red-500 hover:text-red-700 text-xs flex items-center mt-1 ml-auto"
-                    >
-                      <TrashIcon className="h-3 w-3 mr-1" />
-                      Remove
-                    </button>
+
+                  <div className="flex-1">
+                    <div className="flex justify-between">
+                      <div>
+                        <h4 className="font-medium text-gray-900">{item.packageName}</h4>
+                        <p className="text-sm text-gray-500">{item.providerName}</p>
+                        <p className="text-xs text-gray-500">Qty: {item.quantity}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-medium text-[var(--primary-green)]">₱{item.price.toLocaleString()}</p>
+                        <button
+                          onClick={(e) => handleRemoveItem(item.id, e)}
+                          className="text-red-500 hover:text-red-700 text-xs flex items-center mt-1 ml-auto"
+                        >
+                          <TrashIcon className="h-3 w-3 mr-1" />
+                          Remove
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </li>
@@ -165,7 +151,7 @@ const CartDropdown = ({ isOpen, onClose }: CartDropdownProps) => {
         <div className="p-4 border-t border-gray-200">
           <div className="flex justify-between mb-4">
             <span className="font-medium">Total:</span>
-            <span className="font-bold text-[var(--primary-green)]">₱{calculateTotal().toLocaleString()}</span>
+            <span className="font-bold text-[var(--primary-green)]">₱{totalPrice.toLocaleString()}</span>
           </div>
 
           <div className="space-y-2">

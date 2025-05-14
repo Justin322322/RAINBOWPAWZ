@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import AdminDashboardLayout from '@/components/navigation/AdminDashboardLayout';
 import {
   MagnifyingGlassIcon,
@@ -11,7 +11,8 @@ import {
   BanknotesIcon,
   XMarkIcon,
   EyeIcon,
-  ArrowTopRightOnSquareIcon
+  ArrowTopRightOnSquareIcon,
+  ExclamationCircleIcon
 } from '@heroicons/react/24/outline';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -25,105 +26,89 @@ export default function AdminServicesPage() {
   const [selectedService, setSelectedService] = useState<any>(null);
   const [imageError, setImageError] = useState<Record<string, boolean>>({});
 
-  // Sample active services data
-  const services = [
-    {
-      id: 'SVC001',
-      name: 'Basic Pet Cremation',
-      cremationCenter: 'Peaceful Paws Cremation',
-      category: 'individual',
-      price: '$120',
-      bookings: 12,
-      status: 'active',
-      rating: 4.8,
-      description: 'Individual pet cremation service with basic urn included.',
-      features: [
-        'Individual cremation',
-        'Standard urn',
-        'Certificate of cremation',
-        'Paw print keepsake',
-        '24-hour service'
-      ],
-      image: ''
-    },
-    {
-      id: 'SVC002',
-      name: 'Premium Memorial Package',
-      cremationCenter: 'Rainbow Bridge Memorial',
-      category: 'premium',
-      price: '$250',
-      bookings: 8,
-      status: 'active',
-      rating: 4.9,
-      description: 'Premium individual cremation with custom wooden urn and memorial service.',
-      features: [
-        'Private viewing room',
-        'Custom wooden urn',
-        'Memorial ceremony',
-        'Photo keepsake',
-        'Fur clipping',
-        'Certificate with gold seal',
-        'Home delivery'
-      ],
-      image: ''
-    },
-    {
-      id: 'SVC003',
-      name: 'Communal Cremation',
-      cremationCenter: "Heaven's Gateway Pet Services",
-      category: 'communal',
-      price: '$75',
-      bookings: 28,
-      status: 'active',
-      rating: 4.5,
-      description: 'Affordable communal cremation service for pets under 50 pounds.',
-      features: [
-        'Communal cremation',
-        'Memorial certificate',
-        'Scatter garden option',
-        'Same-day service'
-      ],
-      image: ''
-    },
-    {
-      id: 'SVC004',
-      name: 'Home Collection Service',
-      cremationCenter: 'Peaceful Paws Cremation',
-      category: 'service',
-      price: '$90',
-      bookings: 15,
-      status: 'active',
-      rating: 4.7,
-      description: 'Compassionate home collection service for deceased pets.',
-      features: [
-        'Home pickup',
-        'Comfortable transportation',
-        'Blanket wrapping',
-        'Available 24/7',
-        'Service within 30 miles'
-      ],
-      image: ''
-    },
-    {
-      id: 'SVC005',
-      name: 'Pet Memorial Jewelry',
-      cremationCenter: 'Rainbow Bridge Memorial',
-      category: 'memorial',
-      price: '$180',
-      bookings: 7,
-      status: 'inactive',
-      rating: 4.6,
-      description: 'Custom pet memorial jewelry with ash compartment.',
-      features: [
-        'Sterling silver pendant',
-        'Engraving option',
-        'Ash compartment',
-        'Gift packaging',
-        'Multiple design options'
-      ],
-      image: ''
-    }
-  ];
+  // Add state for real data
+  const [services, setServices] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [notification, setNotification] = useState<{message: string, type: 'success' | 'error' | null}>({
+    message: '',
+    type: null
+  });
+  const [stats, setStats] = useState({
+    activeServices: 0,
+    totalBookings: 0,
+    verifiedCenters: 0,
+    monthlyRevenue: 0
+  });
+  const [pagination, setPagination] = useState({
+    total: 0,
+    page: 1,
+    limit: 20,
+    totalPages: 0
+  });
+
+  // Fetch services from API
+  useEffect(() => {
+    const fetchServices = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        // Build query parameters
+        const params = new URLSearchParams();
+        if (searchTerm) params.append('search', searchTerm);
+        if (statusFilter !== 'all') params.append('status', statusFilter);
+        if (categoryFilter !== 'all') params.append('category', categoryFilter);
+        params.append('page', pagination.page.toString());
+        params.append('limit', pagination.limit.toString());
+
+        const response = await fetch(`/api/admin/services?${params.toString()}`);
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch services: ${response.status} ${response.statusText}`);
+        }
+
+        const data = await response.json();
+
+        if (data.success) {
+          setServices(data.services || []);
+          setPagination(data.pagination || pagination);
+
+          // Calculate stats
+          const activeCount = data.services.filter((s: any) => s.status === 'active').length;
+          const totalBookings = data.services.reduce((sum: number, s: any) => sum + (s.bookings || 0), 0);
+          const uniqueProviders = new Set(data.services.map((s: any) => s.providerId)).size;
+          const totalRevenue = data.services.reduce((sum: number, s: any) => sum + (s.priceValue || 0) * (s.bookings || 0), 0);
+
+          setStats({
+            activeServices: activeCount,
+            totalBookings,
+            verifiedCenters: uniqueProviders,
+            monthlyRevenue: totalRevenue / 12 // Rough estimate for monthly revenue
+          });
+        } else {
+          const errorMsg = data.error || 'Failed to fetch services';
+          setError(errorMsg);
+          setNotification({
+            message: errorMsg,
+            type: 'error'
+          });
+        }
+      } catch (err) {
+        console.error('Error fetching services:', err);
+        const errorMsg = err instanceof Error ? err.message : 'An unknown error occurred';
+        setError(errorMsg);
+        setNotification({
+          message: 'Failed to load services. Please try again.',
+          type: 'error'
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchServices();
+  }, [searchTerm, statusFilter, categoryFilter, pagination.page, pagination.limit]);
 
   // Filter services based on search term, status filter, and category filter
   const filteredServices = services.filter(service => {
@@ -217,8 +202,8 @@ export default function AdminServicesPage() {
 
   // Helper function to render image or placeholder
   const renderServiceImage = (service: any, large: boolean = false) => {
-    // Always show placeholder since SVG paths have been removed
-    if (true) {
+    // Check if service has an image
+    if (!service.image || imageError[service.id]) {
       return (
         <div className={`w-full h-full flex items-center justify-center bg-gray-100 ${large ? 'rounded-lg' : ''}`}>
           <div className="text-center p-4">
@@ -242,26 +227,62 @@ export default function AdminServicesPage() {
       );
     }
 
-    // Placeholder for image path
-    const getImagePath = () => {
-      return '';
-    };
+    // Get the image path
+    const imagePath = service.image.startsWith('http')
+      ? service.image
+      : `/uploads/${service.image}`;
 
     return (
-      <Image
-        src={getImagePath()}
-        alt={service.name}
-        fill
-        className="object-cover"
-        onError={() => {
-          setImageError(prev => ({ ...prev, [service.id]: true }));
-        }}
-      />
+      <div className="relative w-full h-full">
+        <Image
+          src={imagePath}
+          alt={service.name}
+          fill
+          className="object-cover"
+          onError={() => {
+            setImageError(prev => ({ ...prev, [service.id]: true }));
+          }}
+        />
+      </div>
     );
   };
 
+  // Clear notification after 5 seconds
+  useEffect(() => {
+    if (notification.type) {
+      const timer = setTimeout(() => {
+        setNotification({ message: '', type: null });
+      }, 5000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [notification]);
+
   return (
     <AdminDashboardLayout activePage="services" userName={userName}>
+      {/* Notification */}
+      {notification.type && (
+        <div className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg flex items-center ${
+          notification.type === 'error' ? 'bg-red-50 text-red-800 border border-red-200' :
+          'bg-green-50 text-green-800 border border-green-200'
+        }`}>
+          {notification.type === 'error' ? (
+            <ExclamationCircleIcon className="h-5 w-5 mr-2 text-red-500" />
+          ) : (
+            <svg className="h-5 w-5 mr-2 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+          )}
+          <span>{notification.message}</span>
+          <button
+            onClick={() => setNotification({ message: '', type: null })}
+            className="ml-4 text-gray-500 hover:text-gray-700"
+          >
+            <XMarkIcon className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
       {/* Header section */}
       <div className="mb-8 bg-white rounded-xl shadow-sm p-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
@@ -333,7 +354,7 @@ export default function AdminServicesPage() {
             </div>
             <div>
               <p className="text-sm font-medium text-gray-600">Active Services</p>
-              <p className="text-2xl font-semibold text-gray-900">35</p>
+              <p className="text-2xl font-semibold text-gray-900">{stats.activeServices}</p>
             </div>
           </div>
         </div>
@@ -344,7 +365,7 @@ export default function AdminServicesPage() {
             </div>
             <div>
               <p className="text-sm font-medium text-gray-600">Total Bookings</p>
-              <p className="text-2xl font-semibold text-gray-900">158</p>
+              <p className="text-2xl font-semibold text-gray-900">{stats.totalBookings}</p>
             </div>
           </div>
         </div>
@@ -354,8 +375,8 @@ export default function AdminServicesPage() {
               <ShieldCheckIcon className="h-6 w-6" />
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-600">Verified Centers</p>
-              <p className="text-2xl font-semibold text-gray-900">12</p>
+              <p className="text-sm font-medium text-gray-600">Service Providers</p>
+              <p className="text-2xl font-semibold text-gray-900">{stats.verifiedCenters}</p>
             </div>
           </div>
         </div>
@@ -365,74 +386,148 @@ export default function AdminServicesPage() {
               <BanknotesIcon className="h-6 w-6" />
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-600">Monthly Revenue</p>
-              <p className="text-2xl font-semibold text-gray-900">$6,450</p>
+              <p className="text-sm font-medium text-gray-600">Est. Monthly Revenue</p>
+              <p className="text-2xl font-semibold text-gray-900">₱{Math.round(stats.monthlyRevenue).toLocaleString()}</p>
             </div>
           </div>
         </div>
       </div>
 
       {/* Services Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-        {filteredServices.map((service) => (
-          <div key={service.id} className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
-            <div className="w-full h-48 relative">
-              <div className="absolute top-2 right-2 z-10">
-                {getStatusBadge(service.status)}
-              </div>
-              <div className="absolute top-2 left-2 z-10">
-                {getCategoryBadge(service.category)}
-              </div>
-              {renderServiceImage(service)}
-            </div>
-            <div className="p-4">
-              <div className="flex justify-between items-start mb-2">
-                <h3 className="font-semibold text-gray-900 text-lg">{service.name}</h3>
-                <p className="font-bold text-[var(--primary-green)]">{service.price}</p>
-              </div>
-              <p className="text-sm text-gray-600 mb-3">{service.cremationCenter}</p>
-              <p className="text-sm text-gray-700 line-clamp-2 mb-3">{service.description}</p>
-              <div className="flex justify-between items-center">
-                <div className="flex items-center">
-                  <div className="flex text-amber-400">
-                    {[...Array(5)].map((_, i) => (
-                      <svg key={i} className={`h-4 w-4 ${i < Math.floor(service.rating) ? 'text-amber-400' : 'text-gray-300'}`} fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                      </svg>
-                    ))}
-                  </div>
-                  <span className="text-xs text-gray-600 ml-1">{service.rating}</span>
-                </div>
-                <span className="text-xs text-gray-600">{service.bookings} bookings</span>
-              </div>
-              <div className="mt-4 flex justify-end space-x-2">
-                <button
-                  onClick={() => handleViewDetails(service)}
-                  className="px-3 py-1.5 bg-[var(--primary-green)] text-white text-sm rounded-lg flex items-center"
-                >
-                  <EyeIcon className="h-4 w-4 mr-1" />
-                  View Details
-                </button>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {filteredServices.length === 0 && (
+      {loading ? (
         <div className="bg-white rounded-xl shadow-sm p-12 text-center">
-          <p className="text-gray-500 text-lg">No services match your search criteria.</p>
-          <button
-            onClick={() => {
-              setSearchTerm('');
-              setStatusFilter('all');
-              setCategoryFilter('all');
-            }}
-            className="mt-4 px-4 py-2 bg-[var(--primary-green)] text-white rounded-lg hover:bg-opacity-90 text-sm font-medium"
-          >
-            Clear Filters
-          </button>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--primary-green)] mx-auto"></div>
+          <p className="text-gray-500 text-lg mt-4">Loading services...</p>
         </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+            {filteredServices.map((service) => (
+              <div key={service.id} className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
+                <div className="w-full h-48 relative">
+                  <div className="absolute top-2 right-2 z-10">
+                    {getStatusBadge(service.status)}
+                  </div>
+                  <div className="absolute top-2 left-2 z-10">
+                    {getCategoryBadge(service.category)}
+                  </div>
+                  {renderServiceImage(service)}
+                </div>
+                <div className="p-4">
+                  <div className="flex justify-between items-start mb-2">
+                    <h3 className="font-semibold text-gray-900 text-lg">{service.name}</h3>
+                    <p className="font-bold text-[var(--primary-green)]">{service.price}</p>
+                  </div>
+                  <p className="text-sm text-gray-600 mb-3">{service.cremationCenter}</p>
+                  <p className="text-sm text-gray-700 line-clamp-2 mb-3">{service.description}</p>
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center">
+                      <div className="flex text-amber-400">
+                        {[...Array(5)].map((_, i) => (
+                          <svg key={i} className={`h-4 w-4 ${i < Math.floor(service.rating) ? 'text-amber-400' : 'text-gray-300'}`} fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                          </svg>
+                        ))}
+                      </div>
+                      <span className="text-xs text-gray-600 ml-1">{service.rating}</span>
+                    </div>
+                    <span className="text-xs text-gray-600">{service.bookings} bookings</span>
+                  </div>
+                  <div className="mt-4 flex justify-end space-x-2">
+                    <button
+                      onClick={() => handleViewDetails(service)}
+                      className="px-3 py-1.5 bg-[var(--primary-green)] text-white text-sm rounded-lg flex items-center"
+                    >
+                      <EyeIcon className="h-4 w-4 mr-1" />
+                      View Details
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {filteredServices.length === 0 && !loading && (
+            <div className="bg-white rounded-xl shadow-sm p-12 text-center">
+              <p className="text-gray-500 text-lg">No services match your search criteria.</p>
+              <button
+                onClick={() => {
+                  setSearchTerm('');
+                  setStatusFilter('all');
+                  setCategoryFilter('all');
+                }}
+                className="mt-4 px-4 py-2 bg-[var(--primary-green)] text-white rounded-lg hover:bg-opacity-90 text-sm font-medium"
+              >
+                Clear Filters
+              </button>
+            </div>
+          )}
+
+          {/* Pagination */}
+          {pagination.totalPages > 1 && (
+            <div className="flex justify-center mt-8 mb-8">
+              <nav className="flex items-center space-x-2">
+                <button
+                  onClick={() => setPagination(prev => ({ ...prev, page: Math.max(1, prev.page - 1) }))}
+                  disabled={pagination.page === 1}
+                  className={`px-3 py-1 rounded-md ${
+                    pagination.page === 1
+                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                      : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300'
+                  }`}
+                >
+                  Previous
+                </button>
+
+                {[...Array(pagination.totalPages)].map((_, i) => {
+                  const pageNum = i + 1;
+                  // Only show a few page numbers around the current page
+                  if (
+                    pageNum === 1 ||
+                    pageNum === pagination.totalPages ||
+                    (pageNum >= pagination.page - 1 && pageNum <= pagination.page + 1)
+                  ) {
+                    return (
+                      <button
+                        key={pageNum}
+                        onClick={() => setPagination(prev => ({ ...prev, page: pageNum }))}
+                        className={`px-3 py-1 rounded-md ${
+                          pagination.page === pageNum
+                            ? 'bg-[var(--primary-green)] text-white'
+                            : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300'
+                        }`}
+                      >
+                        {pageNum}
+                      </button>
+                    );
+                  }
+
+                  // Show ellipsis for skipped pages
+                  if (
+                    (pageNum === 2 && pagination.page > 3) ||
+                    (pageNum === pagination.totalPages - 1 && pagination.page < pagination.totalPages - 2)
+                  ) {
+                    return <span key={pageNum} className="px-2">...</span>;
+                  }
+
+                  return null;
+                })}
+
+                <button
+                  onClick={() => setPagination(prev => ({ ...prev, page: Math.min(prev.totalPages, prev.page + 1) }))}
+                  disabled={pagination.page === pagination.totalPages}
+                  className={`px-3 py-1 rounded-md ${
+                    pagination.page === pagination.totalPages
+                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                      : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300'
+                  }`}
+                >
+                  Next
+                </button>
+              </nav>
+            </div>
+          )}
+        </>
       )}
 
       {/* Service Details Modal */}
@@ -493,10 +588,24 @@ export default function AdminServicesPage() {
                     <p className="text-gray-700">{selectedService.description}</p>
                   </div>
 
+                  {selectedService.cremationType && (
+                    <div className="mb-6">
+                      <h4 className="text-lg font-medium text-gray-900 mb-2">Cremation Type</h4>
+                      <p className="text-gray-700">{selectedService.cremationType}</p>
+                    </div>
+                  )}
+
+                  {selectedService.processingTime && (
+                    <div className="mb-6">
+                      <h4 className="text-lg font-medium text-gray-900 mb-2">Processing Time</h4>
+                      <p className="text-gray-700">{selectedService.processingTime}</p>
+                    </div>
+                  )}
+
                   <div className="mb-6">
                     <h4 className="text-lg font-medium text-gray-900 mb-2">Features</h4>
                     <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {selectedService.features.map((feature: string, index: number) => (
+                      {selectedService.features && selectedService.features.map((feature: string, index: number) => (
                         <li key={index} className="flex items-center">
                           <svg className="h-5 w-5 text-green-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -506,6 +615,29 @@ export default function AdminServicesPage() {
                       ))}
                     </ul>
                   </div>
+
+                  {selectedService.addOns && selectedService.addOns.length > 0 && (
+                    <div className="mb-6">
+                      <h4 className="text-lg font-medium text-gray-900 mb-2">Add-ons</h4>
+                      <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {selectedService.addOns.map((addon: string, index: number) => (
+                          <li key={index} className="flex items-center">
+                            <svg className="h-5 w-5 text-blue-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                            </svg>
+                            <span className="text-gray-700">{addon}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {selectedService.conditions && (
+                    <div className="mb-6">
+                      <h4 className="text-lg font-medium text-gray-900 mb-2">Conditions</h4>
+                      <p className="text-gray-700">{selectedService.conditions}</p>
+                    </div>
+                  )}
                 </div>
               </div>
 

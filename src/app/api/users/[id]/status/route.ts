@@ -35,16 +35,19 @@ export async function PUT(request: NextRequest) {
     const body = await request.json();
     const { status } = body;
 
-    // Validate status - only allow active or restricted
-    if (!status || !['active', 'restricted'].includes(status)) {
+    // Validate status - allow active, pending, or restricted
+    if (!status || !['active', 'pending', 'restricted'].includes(status)) {
       return NextResponse.json({
-        error: 'Invalid status. Status must be one of: "active", "restricted"'
+        error: 'Invalid status. Status must be one of: "active", "pending", "restricted"'
       }, { status: 400 });
     }
 
-    // Update user status in database
+    // Update user status in database (simplified for now)
     const updateResult = await query(
-      'UPDATE users SET status = ?, updated_at = NOW() WHERE id = ?',
+      `UPDATE users
+       SET status = ?,
+           updated_at = NOW()
+       WHERE id = ?`,
       [status, userId]
     ) as any;
 

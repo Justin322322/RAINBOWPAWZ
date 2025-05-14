@@ -37,20 +37,35 @@ export async function POST(request: Request) {
       }, { status: 400 });
     }
 
-    // Check if the business profile exists
+    // Check which table exists: business_profiles or service_providers
+    const tableCheckResult = await query(`
+      SELECT table_name
+      FROM information_schema.tables
+      WHERE table_schema = DATABASE()
+      AND table_name IN ('business_profiles', 'service_providers')
+    `) as any[];
+
+    const tableNames = tableCheckResult.map((row: any) => row.table_name);
+    const useServiceProvidersTable = tableNames.includes('service_providers');
+
+    console.log(`Using ${useServiceProvidersTable ? 'service_providers' : 'business_profiles'} table for document upload`);
+
+    // Check if the service provider or business profile exists
+    const tableName = useServiceProvidersTable ? 'service_providers' : 'business_profiles';
+
     const businessCheck = await query(
-      'SELECT id FROM business_profiles WHERE user_id = ?',
+      `SELECT id FROM ${tableName} WHERE user_id = ?`,
       [userId]
     ) as any[];
 
     if (!businessCheck || businessCheck.length === 0) {
-      console.error(`No business profile found with user_id: ${userId}`);
+      console.error(`No ${tableName} found with user_id: ${userId}`);
       return NextResponse.json({
-        error: 'Business profile not found'
+        error: `${useServiceProvidersTable ? 'Service provider' : 'Business profile'} not found`
       }, { status: 404 });
     }
 
-    // Get the actual business profile ID
+    // Get the actual service provider or business profile ID
     const businessProfileId = businessCheck[0].id;
 
     const filePaths: Record<string, string> = {};
@@ -103,8 +118,9 @@ export async function POST(request: Request) {
     }
 
     if (updateFields.length > 0) {
+      const tableName = useServiceProvidersTable ? 'service_providers' : 'business_profiles';
       await query(
-        `UPDATE business_profiles SET ${updateFields.join(', ')} WHERE id = ?`,
+        `UPDATE ${tableName} SET ${updateFields.join(', ')} WHERE id = ?`,
         [...updateValues, businessProfileId]
       );
     }

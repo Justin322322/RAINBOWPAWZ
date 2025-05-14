@@ -64,7 +64,7 @@ export async function POST(request: Request) {
     let userResult;
     try {
       userResult = await query(
-        'SELECT id, first_name, last_name, email, password, role, is_verified, is_otp_verified FROM users WHERE email = ? LIMIT 1',
+        'SELECT id, first_name, last_name, email, password, role, is_verified, is_otp_verified, status FROM users WHERE email = ? LIMIT 1',
         [email]
       ) as any[];
       console.log('Query result:', userResult ? `Found ${userResult.length} users` : 'No result');
@@ -76,6 +76,18 @@ export async function POST(request: Request) {
     if (userResult && userResult.length > 0) {
       const user = userResult[0];
 
+      // Check if user is restricted
+      if (user.status === 'restricted') {
+        console.log('User is restricted, login denied:', user.id);
+        return NextResponse.json({
+          error: 'Account restricted',
+          message: 'Your account has been restricted. Please contact support for assistance.'
+        }, {
+          status: 403,
+          headers
+        });
+      }
+
       try {
         console.log('Comparing password for user:', user.id);
         console.log('Stored password hash length:', user.password ? user.password.length : 0);
@@ -83,6 +95,7 @@ export async function POST(request: Request) {
         console.log('Stored hash (first 20 chars):', user.password ? user.password.substring(0, 20) + '...' : 'null');
         console.log('User role:', user.role);
         console.log('User verification status:', user.is_verified ? 'Verified' : 'Not verified');
+        console.log('User status:', user.status);
 
         // Check if password hash is valid
         if (!user.password || user.password.length < 20) {
@@ -158,15 +171,38 @@ export async function POST(request: Request) {
           // For business accounts, fetch additional business profile details
           if (user.role === 'business') {
             try {
-              const businessResult = await query(
-                `SELECT id, business_name, business_type, business_phone, business_address,
-                 verification_status, province, city, zip
-                 FROM business_profiles WHERE user_id = ? LIMIT 1`,
+              // Check service_providers table first (new structure)
+              let businessResult = await query(
+                `SELECT id, name as business_name, provider_type as business_type, phone as business_phone,
+                 address as business_address, verification_status, province, city, zip
+                 FROM service_providers WHERE user_id = ? LIMIT 1`,
                 [user.id]
               ) as any[];
 
+              // If no result, try the legacy business_profiles table
+              if (!businessResult || businessResult.length === 0) {
+                businessResult = await query(
+                  `SELECT id, business_name, business_type, business_phone, business_address,
+                   verification_status, province, city, zip
+                   FROM business_profiles WHERE user_id = ? LIMIT 1`,
+                  [user.id]
+                ) as any[];
+              }
+
               if (businessResult && businessResult.length > 0) {
                 const business = businessResult[0];
+
+                // Check if business is restricted
+                if (business.verification_status === 'restricted') {
+                  console.log('Business is restricted, login denied:', business.id);
+                  return NextResponse.json({
+                    error: 'Account restricted',
+                    message: 'Your business account has been restricted. Please contact support for assistance.'
+                  }, {
+                    status: 403,
+                    headers
+                  });
+                }
 
                 // Merge business details with user data
                 const businessUser = {

@@ -14,6 +14,11 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       return NextResponse.json({ message: 'Invalid business ID' }, { status: 400 });
     }
 
+    // Since you've migrated from business_profiles to service_providers,
+    // we'll use only the service_providers table
+    const tableName = 'service_providers';
+    console.log(`Using table: ${tableName}`);
+
     // Fetch business profile data with all fields
     const businessResult = await query(`
       SELECT
@@ -21,20 +26,31 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
         u.email,
         u.first_name,
         u.last_name,
+        bp.name as business_name,
+        bp.phone as business_phone,
+        bp.address as business_address,
+        bp.provider_type as business_type,
+        bp.hours as business_hours,
+        bp.verification_status,
         CASE
           WHEN bp.verification_status = 'verified' THEN 'approved'
+          WHEN bp.verification_status = 'declined' THEN 'declined'
           WHEN bp.verification_status = 'rejected' THEN 'declined'
+          WHEN bp.verification_status = 'restricted' THEN 'restricted'
           WHEN bp.verification_status = 'documents_required' THEN 'documents_required'
           WHEN bp.business_permit_path IS NULL OR bp.government_id_path IS NULL THEN 'pending'
-          ELSE 'reviewing'
+          ELSE bp.verification_status
         END AS status
       FROM
-        business_profiles bp
+        service_providers bp
       JOIN
         users u ON bp.user_id = u.id
       WHERE
         bp.id = ?
     `, [businessId]) as any[];
+
+    // Log the raw query result for debugging
+    console.log('Raw business result:', JSON.stringify(businessResult[0], null, 2));
 
     console.log('Query result:', businessResult ? `Found ${businessResult.length} results` : 'No results');
 
@@ -43,7 +59,9 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       return NextResponse.json({ message: 'Business profile not found' }, { status: 404 });
     }
 
-    console.log('Found business profile:', businessResult[0].business_name);
+    // Get the business name (could be in business_name or name field)
+    const businessName = businessResult[0].business_name || businessResult[0].name || 'Unknown';
+    console.log('Found business profile:', businessName);
 
     const business = businessResult[0];
 
@@ -82,6 +100,20 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       });
     }
 
+    // Ensure the status is correctly set based on verification_status
+    // This is a double-check to make sure the CASE statement in SQL worked correctly
+    let status = business.status;
+    if (business.verification_status === 'declined' && business.status !== 'declined') {
+      console.log('Fixing status mismatch: Setting status to declined to match verification_status');
+      status = 'declined';
+    } else if (business.verification_status === 'documents_required' && business.status !== 'documents_required') {
+      console.log('Fixing status mismatch: Setting status to documents_required to match verification_status');
+      status = 'documents_required';
+    } else if (business.verification_status === 'restricted' && business.status !== 'restricted') {
+      console.log('Fixing status mismatch: Setting status to restricted to match verification_status');
+      status = 'restricted';
+    }
+
     // Format application data with all fields
     const applicationData = {
       id: `APP${business.id.toString().padStart(3, '0')}`,
@@ -96,9 +128,14 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       businessType: business.business_type,
       description: business.service_description || 'No description provided',
       submitDate,
-      status: business.status,
+      status: status, // Use the corrected status
       documents,
       verificationStatus: business.verification_status,
+
+      // Log the status and verification status for debugging
+      _debug_status: business.status,
+      _debug_verification_status: business.verification_status,
+      _debug_corrected_status: status,
 
       // Additional fields
       contactFirstName: business.contact_first_name,

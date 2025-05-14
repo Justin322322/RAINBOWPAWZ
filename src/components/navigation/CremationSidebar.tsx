@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
   HomeIcon,
   SquaresPlusIcon,
@@ -18,7 +18,15 @@ interface CremationSidebarProps {
 
 export default function CremationSidebar({ activePage: propActivePage }: CremationSidebarProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const [activePage, setActivePage] = useState('');
+  const [isNavigating, setIsNavigating] = useState(false);
+
+  // Handle navigation item click
+  const handleNavItemClick = (id: string) => {
+    setIsNavigating(true);
+    // Don't set active page here, let the useEffect handle it after navigation
+  };
 
   // Navigation items
   const navigationItems = [
@@ -58,14 +66,16 @@ export default function CremationSidebar({ activePage: propActivePage }: Cremati
   useEffect(() => {
     if (propActivePage) {
       setActivePage(propActivePage);
+      setIsNavigating(false);
     } else {
       const currentPath = pathname.split('/').pop() || '';
-      
+
       if (currentPath === 'dashboard' || pathname === '/cremation') {
         setActivePage('dashboard');
       } else if (navigationItems.some(item => item.id === currentPath)) {
         setActivePage(currentPath);
       }
+      setIsNavigating(false);
     }
   }, [pathname, propActivePage]);
 
@@ -89,15 +99,15 @@ export default function CremationSidebar({ activePage: propActivePage }: Cremati
                 key={item.name}
                 href={item.href}
                 className={`flex items-center px-4 py-3 text-sm rounded-lg group transition-all duration-300 ${
-                  isActive
+                  isActive && !isNavigating
                     ? 'bg-white text-[var(--primary-green)]'
                     : 'text-white hover:bg-white/20'
                 }`}
-                onClick={() => setActivePage(item.id)}
+                onClick={() => handleNavItemClick(item.id)}
               >
                 <item.icon
                   className={`mr-3 h-5 w-5 ${
-                    isActive ? 'text-[var(--primary-green)]' : 'text-white group-hover:text-white'
+                    isActive && !isNavigating ? 'text-[var(--primary-green)]' : 'text-white group-hover:text-white'
                   }`}
                 />
                 <span className="font-medium">{item.name}</span>
@@ -116,4 +126,4 @@ export default function CremationSidebar({ activePage: propActivePage }: Cremati
       </div>
     </div>
   );
-} 
+}

@@ -91,11 +91,39 @@ export async function POST(request: NextRequest) {
         console.log('Checking if business profile exists with ID:', businessId);
 
         try {
+          // Check which table exists: business_profiles or service_providers
+          console.log('Checking available tables...');
+          const tableCheckResult = await query(`
+            SELECT table_name
+            FROM information_schema.tables
+            WHERE table_schema = DATABASE()
+            AND table_name IN ('business_profiles', 'service_providers')
+          `) as any[];
+
+          // Determine which table to use
+          const tableNames = tableCheckResult.map(row => row.table_name);
+          console.log('Available tables:', tableNames);
+
+          const useServiceProvidersTable = tableNames.includes('service_providers');
+          const useBusinessProfilesTable = tableNames.includes('business_profiles');
+
+          if (!useServiceProvidersTable && !useBusinessProfilesTable) {
+            console.error('Neither business_profiles nor service_providers table exists in the database');
+            return NextResponse.json({
+              error: 'Database schema error: Required tables do not exist',
+              success: false
+            }, { status: 500 });
+          }
+
+          // Use the appropriate table name
+          const tableName = useServiceProvidersTable ? 'service_providers' : 'business_profiles';
+          console.log(`Using table: ${tableName}`);
+
           // Check if the business exists
-          const businessExists = await query('SELECT id, verification_status, user_id FROM business_profiles WHERE id = ?', [businessId]) as any[];
+          const businessExists = await query(`SELECT id, verification_status, user_id FROM ${tableName} WHERE id = ?`, [businessId]) as any[];
           if (!businessExists || businessExists.length === 0) {
             return NextResponse.json({
-              error: `Business profile with ID ${businessId} not found`,
+              error: `Business profile with ID ${businessId} not found in ${tableName} table`,
               success: false
             }, { status: 404 });
           }
@@ -115,7 +143,7 @@ export async function POST(request: NextRequest) {
 
           // Update the business profile
           await query(`
-            UPDATE business_profiles
+            UPDATE ${tableName}
             SET verification_status = ?,
                 verification_date = NOW(),
                 verification_notes = ?,

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
   HomeIcon,
   ClipboardDocumentCheckIcon,
@@ -20,8 +20,10 @@ interface AdminSidebarProps {
 
 export default function AdminSidebar({ activePage: propActivePage }: AdminSidebarProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const [activePage, setActivePage] = useState('');
   const [userManagementOpen, setUserManagementOpen] = useState(false);
+  const [isNavigating, setIsNavigating] = useState(false);
 
   // Navigation items
   const navigationItems = [
@@ -70,6 +72,8 @@ export default function AdminSidebar({ activePage: propActivePage }: AdminSideba
       if (userManagementItems.some(item => item.id === propActivePage)) {
         setUserManagementOpen(true);
       }
+
+      setIsNavigating(false);
     } else {
       const currentPath = pathname.split('/').pop() || '';
 
@@ -89,12 +93,14 @@ export default function AdminSidebar({ activePage: propActivePage }: AdminSideba
           setActivePage('furparents');
         }
       }
+
+      setIsNavigating(false);
     }
   }, [pathname, propActivePage, userManagementItems]);
 
   // Function to handle navigation item clicks
   const handleNavItemClick = (id: string) => {
-    setActivePage(id);
+    setIsNavigating(true);
 
     // Don't close the dropdown if clicking on a user management item
     if (!userManagementItems.some(item => item.id === id)) {
@@ -127,7 +133,7 @@ export default function AdminSidebar({ activePage: propActivePage }: AdminSideba
                 key={item.name}
                 href={item.href}
                 className={`flex items-center px-4 py-3 text-sm rounded-lg group transition-all duration-300 ${
-                  isActive
+                  isActive && !isNavigating
                     ? 'bg-white text-[var(--primary-green)]'
                     : 'text-white hover:bg-white/20'
                 }`}
@@ -135,7 +141,7 @@ export default function AdminSidebar({ activePage: propActivePage }: AdminSideba
               >
                 <item.icon
                   className={`mr-3 h-5 w-5 ${
-                    isActive ? 'text-[var(--primary-green)]' : 'text-white group-hover:text-white'
+                    isActive && !isNavigating ? 'text-[var(--primary-green)]' : 'text-white group-hover:text-white'
                   }`}
                 />
                 <span className="font-medium">{item.name}</span>
@@ -148,14 +154,14 @@ export default function AdminSidebar({ activePage: propActivePage }: AdminSideba
             <button
               onClick={toggleUserManagement}
               className={`w-full flex items-center px-4 py-3 text-sm rounded-lg group transition-all duration-300 ${
-                userManagementItems.some(item => activePage === item.id)
+                userManagementItems.some(item => activePage === item.id) && !isNavigating
                   ? 'bg-white text-[var(--primary-green)]'
                   : 'text-white hover:bg-white/20'
               }`}
             >
               <UserGroupIcon
                 className={`mr-3 h-5 w-5 ${
-                  userManagementItems.some(item => activePage === item.id)
+                  userManagementItems.some(item => activePage === item.id) && !isNavigating
                     ? 'text-[var(--primary-green)]'
                     : 'text-white group-hover:text-white'
                 }`}
@@ -165,7 +171,7 @@ export default function AdminSidebar({ activePage: propActivePage }: AdminSideba
                 className={`ml-auto h-5 w-5 transform transition-transform duration-200 ${
                   userManagementOpen ? 'rotate-90' : ''
                 } ${
-                  userManagementItems.some(item => activePage === item.id)
+                  userManagementItems.some(item => activePage === item.id) && !isNavigating
                     ? 'text-[var(--primary-green)]'
                     : 'text-white'
                 }`}
@@ -187,15 +193,15 @@ export default function AdminSidebar({ activePage: propActivePage }: AdminSideba
                       key={item.name}
                       href={item.href}
                       className={`flex items-center px-4 py-2 text-sm rounded-lg group transition-all duration-300 ${
-                        isActive
+                        isActive && !isNavigating
                           ? 'bg-white/90 text-[var(--primary-green)]'
                           : 'text-white hover:bg-white/10'
                       }`}
-                      onClick={() => setActivePage(item.id)}
+                      onClick={() => handleNavItemClick(item.id)}
                     >
                       <item.icon
                         className={`mr-3 h-4 w-4 ${
-                          isActive ? 'text-[var(--primary-green)]' : 'text-white group-hover:text-white'
+                          isActive && !isNavigating ? 'text-[var(--primary-green)]' : 'text-white group-hover:text-white'
                         }`}
                       />
                       <span className="font-medium">{item.name}</span>

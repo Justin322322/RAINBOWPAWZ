@@ -21,9 +21,35 @@ export async function POST(request: NextRequest) {
     const body = await request.json().catch(() => ({}));
     const { notes } = body;
 
+    // Check which table exists: business_profiles or service_providers
+    const tableCheckResult = await query(`
+      SELECT table_name
+      FROM information_schema.tables
+      WHERE table_schema = DATABASE()
+      AND table_name IN ('business_profiles', 'service_providers')
+    `) as any[];
+
+    // Determine which table to use
+    const tableNames = tableCheckResult.map(row => row.table_name);
+    console.log('Available tables:', tableNames);
+
+    const useServiceProvidersTable = tableNames.includes('service_providers');
+    const useBusinessProfilesTable = tableNames.includes('business_profiles');
+
+    if (!useServiceProvidersTable && !useBusinessProfilesTable) {
+      console.error('Neither business_profiles nor service_providers table exists in the database');
+      return NextResponse.json({
+        message: 'Database schema error: Required tables do not exist'
+      }, { status: 500 });
+    }
+
+    // Use the appropriate table name
+    const tableName = useServiceProvidersTable ? 'service_providers' : 'business_profiles';
+    console.log(`Using table: ${tableName}`);
+
     // Update business profile verification status
     const updateResult = await query(
-      `UPDATE business_profiles
+      `UPDATE ${tableName}
        SET verification_status = 'verified',
            verification_date = NOW(),
            verification_notes = ?,
@@ -37,20 +63,37 @@ export async function POST(request: NextRequest) {
     }
 
     // Get business details for email notification
-    const businessResult = await query(
-      `SELECT bp.*, u.email, u.first_name, u.last_name
-       FROM business_profiles bp
-       JOIN users u ON bp.user_id = u.id
-       WHERE bp.id = ?`,
-      [businessId]
-    ) as any[];
+    let businessResult;
+
+    if (useServiceProvidersTable) {
+      businessResult = await query(
+        `SELECT
+          bp.*,
+          u.email,
+          u.first_name,
+          u.last_name,
+          bp.name as business_name
+         FROM service_providers bp
+         JOIN users u ON bp.user_id = u.id
+         WHERE bp.id = ?`,
+        [businessId]
+      ) as any[];
+    } else {
+      businessResult = await query(
+        `SELECT bp.*, u.email, u.first_name, u.last_name
+         FROM business_profiles bp
+         JOIN users u ON bp.user_id = u.id
+         WHERE bp.id = ?`,
+        [businessId]
+      ) as any[];
+    }
 
     const business = businessResult[0];
 
     // Update the user's verification status as well
     await query(
       `UPDATE users u
-       JOIN business_profiles bp ON u.id = bp.user_id
+       JOIN ${tableName} bp ON u.id = bp.user_id
        SET u.is_verified = 1
        WHERE bp.id = ?`,
       [businessId]
@@ -76,7 +119,7 @@ export async function POST(request: NextRequest) {
         `, [
           business.user_id,
           'Application Approved',
-          `Your business application for ${business.business_name} has been approved. You can now start offering services.`,
+          `Your business application for ${business.business_name || business.name} has been approved. You can now start offering services.`,
           'success',
           '/business/dashboard',
           0
@@ -93,10 +136,10 @@ export async function POST(request: NextRequest) {
        VALUES (?, ?, ?, ?, ?)`,
       [
         'approve_business',
-        'business_profile',
+        tableName, // Use the actual table name
         businessId,
         JSON.stringify({
-          businessName: business?.business_name,
+          businessName: business?.business_name || business?.name,
           notes: notes || 'Application approved'
         }),
         1 // TODO: Replace with actual admin ID from auth
@@ -107,13 +150,13 @@ export async function POST(request: NextRequest) {
     let emailSent = false;
     if (business && business.email) {
       try {
-        console.log(`Sending approval email to ${business.email} for business ${business.business_name}`);
+        console.log(`Sending approval email to ${business.email} for business ${business.business_name || business.name}`);
 
         // Send email using simple email service
         const emailResult = await sendBusinessVerificationEmail(
           business.email,
           {
-            businessName: business.business_name,
+            businessName: business.business_name || business.name,
             contactName: `${business.first_name} ${business.last_name}`,
             status: 'approved',
             notes: notes || 'Your application has been approved. You can now start using our services.'
@@ -134,7 +177,7 @@ export async function POST(request: NextRequest) {
           [
             business.user_id,
             'Application Approved',
-            `Your business application for ${business.business_name} has been approved.`,
+            `Your business application for ${business.business_name || business.name} has been approved.`,
             'success',
             '/cremation/dashboard'
           ]
@@ -149,7 +192,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       message: 'Application approved successfully',
       businessId,
-      businessName: business?.business_name,
+      businessName: business?.business_name || business?.name,
       emailSent: emailSent
     });
   } catch (error) {

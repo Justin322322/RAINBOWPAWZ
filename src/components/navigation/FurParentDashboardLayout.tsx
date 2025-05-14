@@ -24,36 +24,7 @@ function FurParentDashboardLayout({
     ? `${userData.first_name} ${userData.last_name || ''}`
     : userName;
 
-  // State to track content loading
-  const [contentLoading, setContentLoading] = useState(true);
-  const [initialLoad, setInitialLoad] = useState(true);
-
-  // Simulate content loading for a smoother experience on initial load
-  useEffect(() => {
-    if (initialLoad) {
-      const timer = setTimeout(() => {
-        setContentLoading(false);
-        setInitialLoad(false);
-      }, 800);
-      return () => clearTimeout(timer);
-    }
-  }, [initialLoad]);
-
-  // Reset loading state when route changes
-  useEffect(() => {
-    const handleRouteChange = () => {
-      setContentLoading(true);
-      const timer = setTimeout(() => {
-        setContentLoading(false);
-      }, 800);
-      return () => clearTimeout(timer);
-    };
-
-    window.addEventListener('popstate', handleRouteChange);
-    return () => {
-      window.removeEventListener('popstate', handleRouteChange);
-    };
-  }, []);
+  // No content loading state needed
 
   // Render the fur parent dashboard
   return (
@@ -63,29 +34,7 @@ function FurParentDashboardLayout({
 
       {/* Main Content */}
       <main>
-        <AnimatePresence mode="wait">
-          {contentLoading ? (
-            <motion.div
-              key="skeleton"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.3 }}
-              className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8"
-            >
-              <DashboardSkeleton type="furparent" />
-            </motion.div>
-          ) : (
-            <motion.div
-              key="content"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-            >
-              {children}
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {children}
       </main>
     </div>
   );

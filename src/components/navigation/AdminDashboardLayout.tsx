@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import AdminNavbar from './AdminNavbar';
 import AdminSidebar from './AdminSidebar';
 import withAdminAuth from '@/components/withAdminAuth';
@@ -27,16 +26,27 @@ function AdminDashboardLayout({
   // Use admin name from adminData if available
   const displayName = adminData?.full_name || adminData?.username || userName;
 
-  // State to track content loading
+  // Content loading state for skeleton animation only
   const [contentLoading, setContentLoading] = useState(true);
 
-  // Simulate content loading for a smoother experience
+  // Effect to simulate content loading with a short delay
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setContentLoading(false);
-    }, 800);
-    return () => clearTimeout(timer);
-  }, []);
+    if (adminData) {
+      const timer = setTimeout(() => {
+        setContentLoading(false);
+      }, 300);
+
+      return () => clearTimeout(timer);
+    }
+  }, [adminData]);
+
+  // State for mobile sidebar visibility
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+
+  // Toggle mobile sidebar
+  const toggleMobileSidebar = () => {
+    setIsMobileSidebarOpen(!isMobileSidebarOpen);
+  };
 
   // Render the admin dashboard
   return (
@@ -45,28 +55,11 @@ function AdminDashboardLayout({
       <div className="pl-64"> {/* This padding should match the width of the sidebar */}
         <AdminNavbar activePage={activePage} userName={displayName} />
         <main className="p-6">
-          <AnimatePresence mode="wait">
-            {contentLoading ? (
-              <motion.div
-                key="skeleton"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.3 }}
-              >
-                <DashboardSkeleton type="admin" />
-              </motion.div>
-            ) : (
-              <motion.div
-                key="content"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
-              >
-                {children}
-              </motion.div>
-            )}
-          </AnimatePresence>
+          {contentLoading ? (
+            <DashboardSkeleton type="admin" />
+          ) : (
+            children
+          )}
         </main>
       </div>
     </div>

@@ -13,6 +13,7 @@ import { clearAuthToken } from '@/utils/auth';
 import LogoutModal from '@/components/LogoutModal';
 import CartDropdown from '@/components/cart/CartDropdown';
 import NotificationBell from '@/components/ui/NotificationBell';
+import { useCart } from '@/contexts/CartContext';
 
 interface FurParentNavbarProps {
   activePage?: string;
@@ -26,7 +27,9 @@ export default function FurParentNavbar({ activePage: propActivePage, userName =
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [activePage, setActivePage] = useState('');
   const [showLogoutModal, setShowLogoutModal] = useState(false);
-  const [cartItemCount, setCartItemCount] = useState(2); // Mock cart item count
+
+  // Get real cart item count from context
+  const { itemCount } = useCart();
 
   // Open logout modal
   const handleLogoutClick = () => {
@@ -121,9 +124,9 @@ export default function FurParentNavbar({ activePage: propActivePage, userName =
                 className="text-white hover:text-gray-200 transition-colors relative"
               >
                 <ShoppingCartIcon className="h-6 w-6" />
-                {cartItemCount > 0 && (
+                {itemCount > 0 && (
                   <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                    {cartItemCount}
+                    {itemCount}
                   </span>
                 )}
               </button>

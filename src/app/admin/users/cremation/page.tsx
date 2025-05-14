@@ -88,13 +88,35 @@ export default function AdminCremationCentersPage() {
         setLoading(true);
         setError(null);
 
-        const response = await fetch('/api/admin/cremation-businesses');
+        console.log('Fetching cremation centers from API...');
+        const response = await fetch('/api/admin/cremation-businesses', {
+          // Add cache: 'no-store' to prevent caching
+          cache: 'no-store',
+          // Add headers for debugging
+          headers: {
+            'X-Requested-With': 'fetch',
+            'X-Client-Time': new Date().toISOString()
+          }
+        });
+
+        console.log('API response status:', response.status, response.statusText);
 
         if (!response.ok) {
-          throw new Error(`Failed to fetch cremation centers: ${response.status} ${response.statusText}`);
+          // Try to get the error message from the response
+          let errorDetails = '';
+          try {
+            const errorData = await response.json();
+            errorDetails = errorData.details || errorData.error || '';
+            console.error('API error details:', errorData);
+          } catch (parseError) {
+            console.error('Could not parse error response:', parseError);
+          }
+
+          throw new Error(`Failed to fetch cremation centers: ${response.status} ${response.statusText}${errorDetails ? ` - ${errorDetails}` : ''}`);
         }
 
         const data = await response.json();
+        console.log('API response data:', data);
 
         if (!data.success) {
           throw new Error(data.error || 'Failed to fetch cremation centers');
@@ -110,7 +132,11 @@ export default function AdminCremationCentersPage() {
       } catch (err) {
         console.error('Error fetching cremation centers:', err);
         setError(err instanceof Error ? err.message : 'An unknown error occurred');
-        showToast('Failed to load cremation centers. Using sample data instead.', 'error');
+
+        // Don't show toast for development mode to reduce notification spam
+        if (process.env.NODE_ENV !== 'development') {
+          showToast('Failed to load cremation centers. Using sample data instead.', 'error');
+        }
 
         // Use sample data as fallback
         setCremationCenters([
@@ -718,14 +744,40 @@ export default function AdminCremationCentersPage() {
                 // Trigger a re-fetch without page reload
                 const fetchCremationCenters = async () => {
                   try {
-                    const response = await fetch('/api/admin/cremation-businesses');
+                    console.log('Retrying fetch of cremation centers...');
+                    const response = await fetch('/api/admin/cremation-businesses', {
+                      // Add cache: 'no-store' to prevent caching
+                      cache: 'no-store',
+                      // Add headers for debugging
+                      headers: {
+                        'X-Requested-With': 'fetch-retry',
+                        'X-Client-Time': new Date().toISOString()
+                      }
+                    });
+
+                    console.log('Retry API response status:', response.status, response.statusText);
+
                     if (!response.ok) {
-                      throw new Error(`Failed to fetch cremation centers: ${response.status} ${response.statusText}`);
+                      // Try to get the error message from the response
+                      let errorDetails = '';
+                      try {
+                        const errorData = await response.json();
+                        errorDetails = errorData.details || errorData.error || '';
+                        console.error('API error details on retry:', errorData);
+                      } catch (parseError) {
+                        console.error('Could not parse error response on retry:', parseError);
+                      }
+
+                      throw new Error(`Failed to fetch cremation centers: ${response.status} ${response.statusText}${errorDetails ? ` - ${errorDetails}` : ''}`);
                     }
+
                     const data = await response.json();
+                    console.log('Retry API response data:', data);
+
                     if (!data.success) {
                       throw new Error(data.error || 'Failed to fetch cremation centers');
                     }
+
                     const centersWithRating = data.businesses.map((center: any) => ({
                       ...center,
                       rating: center.rating || Math.floor(Math.random() * 3) + 3,
@@ -734,7 +786,11 @@ export default function AdminCremationCentersPage() {
                   } catch (err) {
                     console.error('Error fetching cremation centers:', err);
                     setError(err instanceof Error ? err.message : 'An unknown error occurred');
-                    showToast('Failed to load cremation centers', 'error');
+
+                    // Don't show toast for development mode to reduce notification spam
+                    if (process.env.NODE_ENV !== 'development') {
+                      showToast('Failed to load cremation centers', 'error');
+                    }
                   } finally {
                     setLoading(false);
                   }

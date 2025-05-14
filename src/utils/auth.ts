@@ -297,6 +297,10 @@ export const fastAuthCheck = (): {
   };
 
   try {
+    if (typeof window === 'undefined' || typeof sessionStorage === 'undefined') {
+      return defaultState;
+    }
+
     // First try to get from session storage (fastest)
     const userData = JSON.parse(sessionStorage.getItem('user_data') || 'null');
     const adminData = JSON.parse(sessionStorage.getItem('admin_data') || 'null');
@@ -310,14 +314,27 @@ export const fastAuthCheck = (): {
     if (!userId || !accountType) return defaultState;
 
     // Return the appropriate data based on account type
-    if (accountType === 'admin' && adminData) {
-      return {
-        authenticated: true,
-        userId,
-        accountType,
-        userData: null,
-        adminData
-      };
+    if (accountType === 'admin') {
+      if (adminData) {
+        // If we have cached admin data, use it
+        return {
+          authenticated: true,
+          userId,
+          accountType,
+          userData: null,
+          adminData
+        };
+      } else {
+        // For admin accounts without cached data, still return authenticated
+        // The withAdminAuth component will fetch the admin data
+        return {
+          authenticated: true,
+          userId,
+          accountType,
+          userData: null,
+          adminData: null
+        };
+      }
     } else if (accountType === 'user' && userData) {
       return {
         authenticated: true,
@@ -346,6 +363,7 @@ export const fastAuthCheck = (): {
       adminData: null
     };
   } catch (error) {
+    console.error('Error in fastAuthCheck:', error);
     return defaultState;
   }
 };

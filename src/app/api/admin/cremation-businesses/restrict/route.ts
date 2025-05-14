@@ -68,11 +68,16 @@ export async function POST(request: NextRequest) {
     console.log('New status:', newStatus);
 
     let result;
+    const tableName = 'service_providers'; // Use only the service_providers table
     try {
+      console.log(`Using table: ${tableName}`);
+
       // First, check if the business profile exists
+      const typeColumn = 'provider_type';
+
       const checkResult = await query(`
-        SELECT id, business_type, verification_status
-        FROM business_profiles
+        SELECT id, verification_status
+        FROM ${tableName}
         WHERE id = ?
       `, [businessId]) as any[];
 
@@ -82,21 +87,21 @@ export async function POST(request: NextRequest) {
         console.error('Business profile not found with ID:', businessId);
         return NextResponse.json({
           error: 'Business profile not found',
-          details: `No business profile found with ID ${businessId}`,
+          details: `No business profile found with ID ${businessId} in ${tableName} table`,
           success: false
         }, { status: 404 });
       }
 
-      // Check if the business_type column exists
+      // Check if the type column exists (business_type or provider_type)
       const columnsResult = await query(`
-        SHOW COLUMNS FROM business_profiles LIKE 'business_type'
+        SHOW COLUMNS FROM ${tableName} LIKE '${typeColumn}'
       `) as any[];
 
-      console.log('Columns check result:', columnsResult);
+      console.log('Type column check result:', columnsResult);
 
       // Check if the status column exists
       const statusColumnResult = await query(`
-        SHOW COLUMNS FROM business_profiles LIKE 'status'
+        SHOW COLUMNS FROM ${tableName} LIKE 'status'
       `) as any[];
 
       console.log('Status column check result:', statusColumnResult);
@@ -108,14 +113,14 @@ export async function POST(request: NextRequest) {
         console.log('Status column does not exist, adding it...');
         try {
           await query(`
-            ALTER TABLE business_profiles
+            ALTER TABLE ${tableName}
             ADD COLUMN status VARCHAR(50) DEFAULT 'active' AFTER verification_status
           `);
           console.log('Status column added successfully');
 
           // Check again if the column was added successfully
           const recheckResult = await query(`
-            SHOW COLUMNS FROM business_profiles LIKE 'status'
+            SHOW COLUMNS FROM ${tableName} LIKE 'status'
           `) as any[];
 
           hasStatusColumn = recheckResult && recheckResult.length > 0;
@@ -132,11 +137,11 @@ export async function POST(request: NextRequest) {
 
       // Always update both verification_status and status columns
       if (columnsResult && columnsResult.length > 0) {
-        // business_type column exists
-        updateQuery = `UPDATE business_profiles SET verification_status = ?, status = ? WHERE id = ? AND business_type = 'cremation'`;
+        // type column exists
+        updateQuery = `UPDATE ${tableName} SET verification_status = ?, status = ? WHERE id = ? AND ${typeColumn} = 'cremation'`;
       } else {
-        // business_type column doesn't exist
-        updateQuery = `UPDATE business_profiles SET verification_status = ?, status = ? WHERE id = ?`;
+        // type column doesn't exist
+        updateQuery = `UPDATE ${tableName} SET verification_status = ?, status = ? WHERE id = ?`;
       }
       updateParams = [newVerificationStatus, newStatus, businessId];
 
@@ -174,9 +179,10 @@ export async function POST(request: NextRequest) {
       if (tableExists) {
         await query(`
           INSERT INTO admin_logs (action, target_table, target_id, admin_id, details)
-          VALUES (?, 'business_profiles', ?, ?, ?)
+          VALUES (?, ?, ?, ?, ?)
         `, [
           action === 'restrict' ? 'restrict_business' : 'restore_business',
+          tableName, // Use the correct table name
           businessId,
           'admin', // In a real system, this would be the admin's ID
           JSON.stringify({ action, businessId, newStatus, newVerificationStatus })

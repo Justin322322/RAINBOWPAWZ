@@ -14,6 +14,8 @@ import {
 import FurParentNavbar from '@/components/navigation/FurParentNavbar';
 import withOTPVerification from '@/components/withOTPVerification';
 import FurParentPageSkeleton from '@/components/ui/FurParentPageSkeleton';
+import { useCart } from '@/contexts/CartContext';
+import CartSidebar from '@/components/cart/CartSidebar';
 
 interface PackageDetailPageProps {
   userData?: any;
@@ -30,94 +32,50 @@ function PackageDetailPage({ userData }: PackageDetailPageProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [isCartOpen, setIsCartOpen] = useState(false);
+  const [showToast, setShowToast] = useState(false);
 
-  // Mock data for service providers
-  const serviceProviders = [
-    {
-      id: 1,
-      name: "Rainbow Bridge Pet Cremation",
-      city: 'Capitol Drive, Balanga City, Bataan',
-      distance: '0.5 km away',
-      type: 'Pet Cremation Services',
-      address: 'Capitol Drive, Balanga City, 2100 Bataan, Philippines',
-      phone: '(123) 456-7890',
-      email: 'info@rainbowbridge.com',
-      description: 'Compassionate pet cremation services with personalized memorials. We provide dignified and respectful end-of-life care for your beloved companions. Our team understands the deep bond between pets and their families, and we strive to honor that connection through our thoughtful services.',
-      packages: [
-        {
-          id: 1,
-          name: 'Basic Cremation',
-          description: 'Simple cremation service with standard urn',
-          category: 'Communal',
-          cremationType: 'Standard',
-          processingTime: '2-3 days',
-          price: 3500,
-          inclusions: ['Standard clay urn', 'Memorial certificate', 'Paw print impression'],
-          addOns: ['Personalized nameplate (+₱500)', 'Photo frame (+₱800)'],
-          conditions: 'For pets up to 50 lbs. Additional fees may apply for larger pets.',
-          images: ['/bg_2.png', '/bg_3.png', '/bg_4.png']
-        },
-        {
-          id: 2,
-          name: 'Premium Cremation',
-          description: 'Private cremation with premium urn and memorial certificate',
-          category: 'Private',
-          cremationType: 'Premium',
-          processingTime: '1-2 days',
-          price: 5500,
-          inclusions: ['Wooden urn with nameplate', 'Memorial certificate', 'Paw print impression', 'Fur clipping'],
-          addOns: ['Memorial video (+₱1,200)', 'Additional urns (+₱1,500)'],
-          conditions: 'Available for all pet sizes. Viewing options available upon request.',
-          images: ['/bg_2.png', '/bg_3.png', '/bg_4.png']
-        },
-        {
-          id: 3,
-          name: 'Deluxe Package',
-          description: 'Private cremation with wooden urn and memorial service',
-          category: 'Private',
-          cremationType: 'Deluxe',
-          processingTime: 'Same day',
-          price: 6000,
-          inclusions: ['Custom wooden urn', 'Memorial service', 'Photo memorial', 'Paw print keepsake', 'Fur clipping'],
-          addOns: ['Memorial jewelry (+₱2,000)', 'Canvas portrait (+₱2,500)'],
-          conditions: 'Includes private viewing room for family. 24-hour service available.',
-          images: ['/bg_2.png', '/bg_3.png', '/bg_4.png']
-        }
-      ]
-    },
-    // More providers would be here
-  ];
+  // Get cart functions from context
+  const { addItem: addToCart } = useCart();
+
+  // Will fetch real data from API
 
   useEffect(() => {
-    // Simulate fetching provider and package data
+    // Fetch real provider and package data
     setLoading(true);
 
-    // Add a small delay to ensure the skeleton is visible
     const fetchData = async () => {
       try {
-        // Simulate network delay
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        // Fetch provider details
+        const providerResponse = await fetch(`/api/service-providers/${providerId}`);
 
-        const foundProvider = serviceProviders.find(p => p.id.toString() === providerId);
-        if (foundProvider) {
-          setProvider(foundProvider);
-          const foundPackage = foundProvider.packages.find(p => p.id.toString() === packageId);
-          if (foundPackage) {
-            setPackageData(foundPackage);
-          } else {
-            setError('Package not found');
-          }
-        } else {
-          setError('Provider not found');
+        if (!providerResponse.ok) {
+          throw new Error('Failed to fetch provider details');
         }
+
+        const providerData = await providerResponse.json();
+        setProvider(providerData.provider);
+
+        // Fetch specific package details
+        const packageResponse = await fetch(`/api/packages/${packageId}`);
+
+        if (!packageResponse.ok) {
+          throw new Error('Failed to fetch package details');
+        }
+
+        const packageData = await packageResponse.json();
+        setPackageData(packageData.package);
       } catch (err) {
+        console.error('Error fetching data:', err);
         setError('Failed to load package details');
       } finally {
         setLoading(false);
       }
     };
 
-    fetchData();
+    if (providerId && packageId) {
+      fetchData();
+    }
   }, [providerId, packageId]);
 
   const handleNextImage = () => {
@@ -141,6 +99,23 @@ function PackageDetailPage({ userData }: PackageDetailPageProps) {
     <div className="min-h-screen bg-white">
       {/* Navigation */}
       <FurParentNavbar activePage="services" userName={`${userData?.first_name || ''} ${userData?.last_name || ''}`} />
+
+      {/* Cart Sidebar */}
+      <CartSidebar isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
+
+      {/* Toast Notification */}
+      {showToast && (
+        <div className="fixed bottom-4 right-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded shadow-md flex items-center z-50">
+          <CheckIcon className="h-5 w-5 mr-2" />
+          <span>Item added to cart!</span>
+          <button
+            onClick={() => setIsCartOpen(true)}
+            className="ml-4 underline text-green-800 hover:text-green-900"
+          >
+            View Cart
+          </button>
+        </div>
+      )}
 
       {loading ? (
         <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
@@ -272,9 +247,30 @@ function PackageDetailPage({ userData }: PackageDetailPageProps) {
 
                       <button
                         onClick={() => {
-                          // In a real app, this would add the item to cart
-                          alert('Item added to cart!');
-                          // Then navigate to cart page or stay on the same page
+                          if (packageData) {
+                            // Add item to cart
+                            const cartItem = {
+                              id: `${packageData.id}-${Date.now()}`,
+                              packageId: packageData.id,
+                              providerId: packageData.providerId,
+                              providerName: packageData.providerName,
+                              packageName: packageData.name,
+                              price: packageData.price,
+                              quantity: 1,
+                              category: packageData.category,
+                              cremationType: packageData.cremationType,
+                              processingTime: packageData.processingTime,
+                              addOns: packageData.addOns || [],
+                              selectedAddOns: [],
+                              image: packageData.images && packageData.images.length > 0 ? packageData.images[0] : undefined
+                            };
+
+                            addToCart(cartItem);
+
+                            // Show toast notification
+                            setShowToast(true);
+                            setTimeout(() => setShowToast(false), 3000);
+                          }
                         }}
                         className="w-full py-3 px-4 border border-[var(--primary-green)] text-[var(--primary-green)] font-medium rounded-md hover:bg-green-50 transition-colors flex items-center justify-center"
                       >

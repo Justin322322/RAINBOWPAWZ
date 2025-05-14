@@ -1,13 +1,29 @@
 import mysql from 'mysql2/promise';
 
-// Log environment variables for debugging
-console.log('Environment variables in db.ts:');
-console.log('NODE_ENV:', process.env.NODE_ENV);
-console.log('DB_HOST:', process.env.DB_HOST);
-console.log('DB_USER:', process.env.DB_USER);
-console.log('DB_PASSWORD:', process.env.DB_PASSWORD ? '[SET]' : '[NOT SET]');
-console.log('DB_NAME:', process.env.DB_NAME);
-console.log('DB_PORT:', process.env.DB_PORT);
+// Only log in development mode
+const isDev = process.env.NODE_ENV === 'development';
+
+// Conditional logging function
+const logDebug = (message: string, data?: any) => {
+  if (isDev) {
+    if (data) {
+      console.log(message, data);
+    } else {
+      console.log(message);
+    }
+  }
+};
+
+// Log environment variables for debugging (only in development)
+if (isDev) {
+  console.log('Environment variables in db.ts:');
+  console.log('NODE_ENV:', process.env.NODE_ENV);
+  console.log('DB_HOST:', process.env.DB_HOST);
+  console.log('DB_USER:', process.env.DB_USER);
+  console.log('DB_PASSWORD:', process.env.DB_PASSWORD ? '[SET]' : '[NOT SET]');
+  console.log('DB_NAME:', process.env.DB_NAME);
+  console.log('DB_PORT:', process.env.DB_PORT);
+}
 
 // IMPORTANT: Always use 3306 for MySQL, regardless of the web server port
 const MYSQL_PORT = 3306;
@@ -27,8 +43,8 @@ const dbConfig = {
   insecureAuth: true,
 };
 
-// Log the database configuration
-console.log('Database configuration in db.ts:', {
+// Log the database configuration (only in development)
+logDebug('Database configuration in db.ts:', {
   host: dbConfig.host,
   user: dbConfig.user,
   port: dbConfig.port,
@@ -57,7 +73,7 @@ const finalConfig = process.env.NODE_ENV === 'production'
   ? productionConfig
   : dbConfig;
 
-console.log('Final database configuration:', {
+logDebug('Final database configuration:', {
   host: finalConfig.host,
   user: finalConfig.user,
   port: finalConfig.port,
@@ -66,7 +82,7 @@ console.log('Final database configuration:', {
 });
 
 try {
-  console.log('Attempting to create MySQL connection pool with config:', {
+  logDebug('Attempting to create MySQL connection pool with config:', {
     host: finalConfig.host,
     user: finalConfig.user,
     database: finalConfig.database,
@@ -74,15 +90,15 @@ try {
   });
 
   pool = mysql.createPool(finalConfig);
-  console.log('MySQL connection pool created successfully');
+  logDebug('MySQL connection pool created successfully');
 
   // Test the connection immediately
   (async () => {
     try {
       const connection = await pool.getConnection();
-      console.log('Successfully got a test connection from the pool');
+      logDebug('Successfully got a test connection from the pool');
       connection.release();
-      console.log('Test connection released back to pool');
+      logDebug('Test connection released back to pool');
     } catch (testError) {
       console.error('Failed to get a test connection from the pool:', testError);
     }
@@ -101,10 +117,10 @@ try {
   }
 
   // Create a fallback pool with default values
-  console.log('Creating fallback MySQL connection pool with default values');
+  logDebug('Creating fallback MySQL connection pool with default values');
   try {
     pool = mysql.createPool(productionConfig);
-    console.log('Fallback pool created successfully');
+    logDebug('Fallback pool created successfully');
   } catch (fallbackError) {
     console.error('Failed to create fallback pool:', fallbackError);
     // Create a minimal pool as last resort
@@ -121,25 +137,46 @@ try {
 // Helper function to execute SQL queries
 export async function query(sql: string, params: any[] = []) {
   try {
-    // Log the query for debugging (but don't log sensitive data)
-    console.log(`Executing query: ${sql.substring(0, 50)}${sql.length > 50 ? '...' : ''}`);
+    // Always log the query in development mode
+    if (isDev) {
+      console.log(`Executing query: ${sql}`);
+      if (params && params.length > 0) {
+        console.log('Query parameters:', params);
+      }
+    }
 
     // Get a connection from the pool
     const connection = await pool.getConnection();
-    console.log('Got connection from pool');
+    logDebug('Got connection from pool');
 
     try {
       // Execute the query
       const [results] = await connection.query(sql, params);
-      console.log('Query executed successfully');
+
+      // Log the results in development mode
+      if (isDev) {
+        if (Array.isArray(results)) {
+          console.log(`Query returned ${results.length} rows`);
+          if (results.length > 0 && results.length <= 5) {
+            console.log('Sample results:', results);
+          } else if (results.length > 5) {
+            console.log('First 5 results:', results.slice(0, 5));
+          }
+        } else {
+          console.log('Query result:', results);
+        }
+      }
+
       return results;
     } finally {
       // Release the connection back to the pool
       connection.release();
-      console.log('Connection released back to pool');
+      logDebug('Connection released back to pool');
     }
   } catch (error) {
     console.error('Database query error:', error);
+    console.error('Failed query:', sql);
+    console.error('Query parameters:', params);
 
     // Check if it's a connection error
     if (error.code === 'ECONNREFUSED') {
@@ -172,15 +209,15 @@ export async function query(sql: string, params: any[] = []) {
 // Test the database connection
 export async function testConnection() {
   try {
-    console.log('Testing database connection...');
+    logDebug('Testing database connection...');
     const result = await query('SELECT 1 as test');
-    console.log('Database connection test successful');
+    logDebug('Database connection test successful');
 
     // Check if users table exists
     try {
-      console.log('Checking users table...');
+      logDebug('Checking users table...');
       const users = await query('SELECT COUNT(*) as count FROM users');
-      console.log(`Users table has ${users[0].count} records`);
+      logDebug(`Users table has ${users[0].count} records`);
     } catch (tableError) {
       console.error('Error checking users table:', tableError.message);
     }
@@ -191,7 +228,7 @@ export async function testConnection() {
 
     // Try to connect directly without using the pool
     try {
-      console.log('Trying direct connection without pool...');
+      logDebug('Trying direct connection without pool...');
       const connection = await mysql.createConnection({
         host: finalConfig.host,
         user: finalConfig.user,
@@ -200,13 +237,13 @@ export async function testConnection() {
         database: finalConfig.database
       });
 
-      console.log('Direct connection successful');
+      logDebug('Direct connection successful');
       await connection.end();
-      console.log('Direct connection closed');
+      logDebug('Direct connection closed');
 
       // If direct connection works but pool doesn't, recreate the pool
       pool = mysql.createPool(finalConfig);
-      console.log('Connection pool recreated');
+      logDebug('Connection pool recreated');
 
       return true;
     } catch (directError) {

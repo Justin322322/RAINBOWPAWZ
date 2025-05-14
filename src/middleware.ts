@@ -16,9 +16,16 @@ export async function middleware(request: NextRequest) {
 
   // Define protected paths
   const isAdminPath = pathname.startsWith('/admin') && pathname !== '/admin';
+  
+  // Exclude diagnostic pages from protection
+  const isDiagnosePath = pathname.includes('/cremation/packages/diagnose/');
+  
+  // Protect cremation paths except for diagnostic pages
   const isCremationPath = pathname.startsWith('/cremation') &&
                           pathname !== '/cremation' &&
-                          pathname !== '/cremation/pending-verification';
+                          pathname !== '/cremation/pending-verification' &&
+                          !isDiagnosePath; // Skip protection for diagnose pages
+                          
   const isUserPath = pathname.startsWith('/user') && pathname !== '/user';
 
   // Check if the current path is protected

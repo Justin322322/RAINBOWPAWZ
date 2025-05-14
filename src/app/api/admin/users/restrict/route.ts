@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
       // Restrict user based on user type
       if (userType === 'pet_parent') {
         console.log('Restricting pet parent with ID:', userId);
-        
+
         // First check if the user exists
         const userExists = await query('SELECT id FROM users WHERE id = ?', [userId]) as any[];
         if (!userExists || userExists.length === 0) {
@@ -96,38 +96,21 @@ export async function POST(request: NextRequest) {
             success: false
           }, { status: 404 });
         }
-        
-        // Check if is_restricted column exists
-        const hasRestrictedColumn = await query("SHOW COLUMNS FROM users LIKE 'is_restricted'") as any[];
-        
-        if (hasRestrictedColumn && hasRestrictedColumn.length > 0) {
-          // Update user restriction status
-          await query(`
-            UPDATE users
-            SET is_restricted = 1, 
-                restriction_reason = ?, 
-                restriction_date = NOW(), 
-                restriction_duration = ?,
-                status = 'restricted',
-                updated_at = NOW()
-            WHERE id = ?
-          `, [reason, duration, userId]);
-        } else {
-          // If is_restricted column doesn't exist, update status only
-          await query(`
-            UPDATE users
-            SET status = 'restricted',
-                updated_at = NOW()
-            WHERE id = ?
-          `, [userId]);
-        }
-        
+
+        // Update user restriction status (only use status field for now)
+        await query(`
+          UPDATE users
+          SET status = 'restricted',
+              updated_at = NOW()
+          WHERE id = ?
+        `, [userId]);
+
         // Add entry to user_restrictions table
         await query(`
           INSERT INTO user_restrictions (user_id, reason, duration)
           VALUES (?, ?, ?)
         `, [userId, reason, duration]);
-        
+
       } else if (userType === 'cremation_center') {
         // For cremation centers, we need the businessId
         if (!businessId) {
@@ -136,39 +119,76 @@ export async function POST(request: NextRequest) {
             success: false
           }, { status: 400 });
         }
-        
+
         console.log('Restricting cremation center with business ID:', businessId);
-        
+
+        // Check which table exists: business_profiles or service_providers
+        const tableCheckResult = await query(`
+          SELECT table_name
+          FROM information_schema.tables
+          WHERE table_schema = DATABASE()
+          AND table_name IN ('business_profiles', 'service_providers')
+        `) as any[];
+
+        const tableNames = tableCheckResult.map((row: any) => row.table_name);
+        const useServiceProvidersTable = tableNames.includes('service_providers');
+        const tableName = useServiceProvidersTable ? 'service_providers' : 'business_profiles';
+
+        console.log(`Using ${tableName} table for restricting cremation center`);
+
         // First check if the business profile exists
-        const businessExists = await query('SELECT id, user_id FROM business_profiles WHERE id = ?', [businessId]) as any[];
+        const businessExists = await query(`SELECT id, user_id FROM ${tableName} WHERE id = ?`, [businessId]) as any[];
         if (!businessExists || businessExists.length === 0) {
           return NextResponse.json({
-            error: `Business profile with ID ${businessId} not found`,
+            error: `Service provider with ID ${businessId} not found`,
             success: false
           }, { status: 404 });
         }
-        
+
         const businessUserId = businessExists[0].user_id;
-        
+
         // Update business verification status
         await query(`
-          UPDATE business_profiles
-          SET verification_status = 'restricted', 
-              status = 'restricted',
+          UPDATE ${tableName}
+          SET verification_status = 'restricted',
               restriction_reason = ?,
               restriction_date = NOW(),
               restriction_duration = ?,
               updated_at = NOW()
           WHERE id = ?
         `, [reason, duration, businessId]);
-        
+
+        console.log(`Updated ${tableName} with ID ${businessId} to status: restricted`);
+
+        // Verify the status was updated correctly
+        const verifyResult = await query(
+          `SELECT verification_status FROM ${tableName} WHERE id = ?`,
+          [businessId]
+        ) as any[];
+
+        if (verifyResult && verifyResult.length > 0) {
+          console.log(`Verified status for ${tableName} with ID ${businessId}: ${verifyResult[0].verification_status}`);
+          if (verifyResult[0].verification_status !== 'restricted') {
+            console.error(`Status mismatch! Expected: restricted, Actual: ${verifyResult[0].verification_status}`);
+            // Try to update again with a different query
+            await query(
+              `UPDATE ${tableName}
+               SET verification_status = 'restricted',
+                   updated_at = NOW()
+               WHERE id = ?`,
+              [businessId]
+            );
+            console.log(`Attempted to fix status with a second update query`);
+          }
+        }
+
         // Also update the user's status
         await query(`
           UPDATE users
           SET status = 'restricted', updated_at = NOW()
           WHERE id = ?
         `, [businessUserId]);
-        
+
         // Add entry to user_restrictions table
         await query(`
           INSERT INTO user_restrictions (user_id, reason, duration)
@@ -195,12 +215,12 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error('Error restricting user:', error);
-    
+
     // Provide more detailed error information
     let errorMessage = 'Failed to restrict user';
     let errorDetails = error instanceof Error ? error.message : 'Unknown error';
     let statusCode = 500;
-    
+
     // Check for specific error types
     if (error instanceof Error) {
       if (error.message.includes('ER_NO_SUCH_TABLE')) {
@@ -214,7 +234,7 @@ export async function POST(request: NextRequest) {
         errorDetails = 'Could not access the database due to permission issues.';
       }
     }
-    
+
     return NextResponse.json({
       error: errorMessage,
       details: errorDetails,

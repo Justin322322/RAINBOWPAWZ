@@ -15,15 +15,17 @@ import NotificationBell from '@/components/ui/NotificationBell';
 interface AdminNavbarProps {
   activePage?: string;
   userName?: string;
+  onMenuToggle?: () => void;
 }
 
-export default function AdminNavbar({ activePage: propActivePage, userName = 'Admin' }: AdminNavbarProps) {
+export default function AdminNavbar({ activePage: propActivePage, userName = 'Admin', onMenuToggle }: AdminNavbarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   // Removed isNotificationOpen state as we're using the NotificationBell component
   const [activePage, setActivePage] = useState('');
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [isNavigating, setIsNavigating] = useState(false);
 
   // Open logout modal
   const handleLogoutClick = () => {
@@ -31,10 +33,18 @@ export default function AdminNavbar({ activePage: propActivePage, userName = 'Ad
     setShowLogoutModal(true);
   };
 
+  // Handle navigation item click
+  const handleNavItemClick = (id: string) => {
+    setIsNavigating(true);
+    setIsDropdownOpen(false);
+    // Don't set active page here, let the useEffect handle it after navigation
+  };
+
   // Determine active page based on pathname or prop
   useEffect(() => {
     if (propActivePage) {
       setActivePage(propActivePage);
+      setIsNavigating(false);
     } else {
       if (pathname === '/admin/dashboard') {
         setActivePage('dashboard');
@@ -45,6 +55,7 @@ export default function AdminNavbar({ activePage: propActivePage, userName = 'Ad
       } else if (pathname.includes('/admin/users')) {
         setActivePage('users');
       }
+      setIsNavigating(false);
     }
   }, [pathname, propActivePage]);
 
@@ -53,7 +64,7 @@ export default function AdminNavbar({ activePage: propActivePage, userName = 'Ad
       <div className="w-full px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center">
-            <h1 className="text-white text-xl font-semibold ml-2 hidden md:block">Administrator Dashboard</h1>
+            <h1 className="text-white text-xl font-semibold ml-2">Administrator Dashboard</h1>
           </div>
 
           <div className="flex items-center space-x-4">
@@ -76,21 +87,21 @@ export default function AdminNavbar({ activePage: propActivePage, userName = 'Ad
                   <Link
                     href="/admin/dashboard"
                     className="block px-4 py-2 text-sm modern-text text-gray-700 hover:bg-gray-100 font-medium"
-                    onClick={() => setIsDropdownOpen(false)}
+                    onClick={() => handleNavItemClick('dashboard')}
                   >
                     Dashboard
                   </Link>
                   <Link
                     href="/admin/profile"
                     className="block px-4 py-2 text-sm modern-text text-gray-700 hover:bg-gray-100"
-                    onClick={() => setIsDropdownOpen(false)}
+                    onClick={() => handleNavItemClick('profile')}
                   >
                     Profile
                   </Link>
                   <Link
                     href="/admin/settings"
                     className="block px-4 py-2 text-sm modern-text text-gray-700 hover:bg-gray-100"
-                    onClick={() => setIsDropdownOpen(false)}
+                    onClick={() => handleNavItemClick('settings')}
                   >
                     <span>Settings</span>
                   </Link>

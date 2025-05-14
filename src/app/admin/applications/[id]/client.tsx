@@ -9,7 +9,6 @@ import {
   ArrowPathIcon,
   ExclamationTriangleIcon,
   ArrowLeftIcon,
-  PencilSquareIcon,
 } from '@heroicons/react/24/outline';
 import Link from 'next/link';
 import AdminDashboardLayout from '@/components/navigation/AdminDashboardLayout';
@@ -63,6 +62,12 @@ function ApplicationDetailContent({ id }) {
         const data = await response.json();
         console.log('Application data received:', data);
 
+        // Debug logging for status
+        console.log('Application status:', data.status);
+        console.log('Application verification status:', data.verificationStatus);
+        console.log('Debug status:', data._debug_status);
+        console.log('Debug verification status:', data._debug_verification_status);
+
         if (!data || Object.keys(data).length === 0) {
           throw new Error('No data received from the server');
         }
@@ -114,6 +119,15 @@ function ApplicationDetailContent({ id }) {
   // Function to handle document decline
   const handleDeclineDocument = async (note, requestDocuments) => {
     try {
+      setIsLoading(true);
+
+      console.log('Declining application with ID:', id);
+      console.log('Request documents:', requestDocuments);
+      console.log('Decline note:', note);
+
+      // Show a processing message
+      alert('Processing your request. Please wait...');
+
       const response = await fetch(`/api/businesses/applications/${id}/decline`, {
         method: 'POST',
         headers: {
@@ -126,8 +140,14 @@ function ApplicationDetailContent({ id }) {
       });
 
       if (response.ok) {
-        // Refresh the application data
-        window.location.reload();
+        const data = await response.json();
+        console.log('Application decline response:', data);
+
+        // Show success message
+        alert(requestDocuments ? 'Documents requested successfully' : 'Application declined successfully');
+
+        // Force a hard reload of the page to ensure all UI elements are updated
+        window.location.href = `/admin/applications/${id}?t=${Date.now()}`;
       } else {
         const data = await response.json();
         throw new Error(data.message || 'Failed to decline application');
@@ -135,6 +155,8 @@ function ApplicationDetailContent({ id }) {
     } catch (error) {
       console.error('Error declining application:', error);
       alert('Failed to decline application: ' + (error.message || 'Unknown error'));
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -156,15 +178,7 @@ function ApplicationDetailContent({ id }) {
             </p>
           </div>
         </div>
-        {application && application.status === 'pending' && (
-          <Link
-            href={`/admin/applications/${id}/review`}
-            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-[var(--primary-green)] hover:bg-[var(--primary-green-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--primary-green)]"
-          >
-            <PencilSquareIcon className="-ml-1 mr-2 h-5 w-5" />
-            Review Application
-          </Link>
-        )}
+
       </div>
 
       {isLoading ? (
@@ -268,14 +282,20 @@ function ApplicationDetailContent({ id }) {
                     p-2 rounded-full mr-3
                     ${application.status === 'approved' ? 'bg-green-100' :
                       application.status === 'declined' ? 'bg-red-100' :
+                      application.status === 'restricted' ? 'bg-purple-100' :
                       application.status === 'documents_required' ? 'bg-orange-100' :
-                      application.status === 'reviewing' ? 'bg-blue-100' : 'bg-yellow-100'}
+                      application.status === 'reviewing' ? 'bg-blue-100' :
+                      application.verificationStatus === 'declined' ? 'bg-red-100' :
+                      application.verificationStatus === 'restricted' ? 'bg-purple-100' :
+                      'bg-yellow-100'}
                   `}>
-                    {application.status === 'approved' ? (
+                    {application.status === 'approved' || application.verificationStatus === 'verified' ? (
                       <CheckCircleIcon className="h-5 w-5 text-green-600" />
-                    ) : application.status === 'declined' ? (
+                    ) : application.status === 'declined' || application.verificationStatus === 'declined' ? (
                       <XCircleIcon className="h-5 w-5 text-red-600" />
-                    ) : application.status === 'documents_required' ? (
+                    ) : application.status === 'restricted' || application.verificationStatus === 'restricted' ? (
+                      <XCircleIcon className="h-5 w-5 text-purple-600" />
+                    ) : application.status === 'documents_required' || application.verificationStatus === 'documents_required' ? (
                       <DocumentTextIcon className="h-5 w-5 text-orange-600" />
                     ) : (
                       <ExclamationTriangleIcon className="h-5 w-5 text-yellow-600" />
@@ -285,8 +305,12 @@ function ApplicationDetailContent({ id }) {
                     <p className="text-sm font-medium text-gray-900">
                       {application.status === 'approved' ? 'Approved' :
                        application.status === 'declined' ? 'Declined' :
+                       application.status === 'restricted' ? 'Restricted' :
                        application.status === 'documents_required' ? 'Documents Required' :
-                       application.status === 'reviewing' ? 'Under Review' : 'Pending'}
+                       application.status === 'reviewing' ? 'Under Review' :
+                       application.verificationStatus === 'declined' ? 'Declined' :
+                       application.verificationStatus === 'restricted' ? 'Restricted' :
+                       'Pending'}
                     </p>
                     <p className="text-xs text-gray-500">
                       Submitted on {application.submitDate}
@@ -301,40 +325,36 @@ function ApplicationDetailContent({ id }) {
                 <h2 className="text-lg font-medium text-gray-800">Actions</h2>
               </div>
               <div className="p-6 space-y-4">
-                {application.status === 'pending' || application.status === 'reviewing' ? (
-                  <>
-                    <div className="grid grid-cols-1 gap-4">
-                      <button
-                        onClick={() => {
-                          if (confirm('Are you sure you want to approve this application? This action cannot be undone.')) {
-                            handleApproveDocument('');
-                          }
-                        }}
-                        className="w-full inline-flex justify-center items-center px-4 py-3 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-                      >
-                        <CheckCircleIcon className="-ml-1 mr-2 h-5 w-5" />
-                        Approve Application
-                      </button>
+                <div className="grid grid-cols-1 gap-4">
+                  <button
+                    onClick={() => {
+                      if (confirm('Are you sure you want to approve this application? This action cannot be undone.')) {
+                        handleApproveDocument('');
+                      }
+                    }}
+                    className="w-full inline-flex justify-center items-center px-4 py-3 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                  >
+                    <CheckCircleIcon className="-ml-1 mr-2 h-5 w-5" />
+                    Approve Application
+                  </button>
 
-                      <button
-                        onClick={() => {
-                          const reason = prompt('Please provide a reason for declining (minimum 10 characters):');
-                          if (reason && reason.trim().length >= 10) {
-                            if (confirm('Are you sure you want to decline this application? This action cannot be undone.')) {
-                              handleDeclineDocument(reason, false);
-                            }
-                          } else if (reason !== null) {
-                            alert('Please provide a more detailed reason (minimum 10 characters)');
-                          }
-                        }}
-                        className="w-full inline-flex justify-center items-center px-4 py-3 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                      >
-                        <XCircleIcon className="-ml-1 mr-2 h-5 w-5" />
-                        Decline Application
-                      </button>
-                    </div>
-                  </>
-                )}
+                  <button
+                    onClick={() => {
+                      const reason = prompt('Please provide a reason for declining (minimum 10 characters):');
+                      if (reason && reason.trim().length >= 10) {
+                        if (confirm('Are you sure you want to decline this application? This action cannot be undone.')) {
+                          handleDeclineDocument(reason, false);
+                        }
+                      } else if (reason !== null) {
+                        alert('Please provide a more detailed reason (minimum 10 characters)');
+                      }
+                    }}
+                    className="w-full inline-flex justify-center items-center px-4 py-3 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                  >
+                    <XCircleIcon className="-ml-1 mr-2 h-5 w-5" />
+                    Decline Application
+                  </button>
+                </div>
                 <Link
                   href="/admin/applications"
                   className="w-full inline-flex justify-center items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--primary-green)]"

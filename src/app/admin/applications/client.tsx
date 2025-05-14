@@ -23,8 +23,11 @@ function AdminApplicationsContent() {
       setIsLoading(true);
       setError(null);
       try {
+        // Add a cache-busting parameter to ensure we get fresh data
+        const cacheBuster = new Date().getTime();
+
         // Fetch applications
-        const appResponse = await fetch('/api/businesses/applications');
+        const appResponse = await fetch(`/api/businesses/applications?_=${cacheBuster}`);
 
         if (!appResponse.ok) {
           throw new Error(`Failed to fetch applications: ${appResponse.status} ${appResponse.statusText}`);
@@ -37,7 +40,23 @@ function AdminApplicationsContent() {
         }
 
         console.log('Applications data:', data);
-        setApplications(data.applications || []);
+
+        // Process the applications to ensure statuses are correct
+        const processedApplications = data.applications?.map(app => {
+          // Make sure declined applications show as declined
+          if (app.verificationStatus === 'declined' && app.status !== 'declined') {
+            console.log(`Fixing status for ${app.id}: Setting to declined`);
+            return { ...app, status: 'declined' };
+          }
+          // Make sure restricted applications show as restricted
+          if (app.verificationStatus === 'restricted' && app.status !== 'restricted') {
+            console.log(`Fixing status for ${app.id}: Setting to restricted`);
+            return { ...app, status: 'restricted' };
+          }
+          return app;
+        }) || [];
+
+        setApplications(processedApplications);
       } catch (error) {
         console.error('Error fetching applications data:', error);
         setError(error.message || 'Failed to load application data');
@@ -108,6 +127,7 @@ function AdminApplicationsContent() {
               <option value="documents_required">Documents Required</option>
               <option value="approved">Approved</option>
               <option value="declined">Declined</option>
+              <option value="restricted">Restricted</option>
             </select>
           </div>
         </div>
@@ -199,6 +219,11 @@ function AdminApplicationsContent() {
                       {application.status === 'declined' && (
                         <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
                           Declined
+                        </span>
+                      )}
+                      {application.status === 'restricted' && (
+                        <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800">
+                          Restricted
                         </span>
                       )}
                     </td>

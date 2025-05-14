@@ -69,37 +69,88 @@ const withAdminAuth = <P_Original extends object>(
 
       const checkAuth = async () => {
         try {
+          console.log('withAdminAuth: Checking admin authentication');
           const cookies = document.cookie.split(';');
           const authCookie = cookies.find(cookie => cookie.trim().startsWith('auth_token='));
           if (!authCookie) {
+            console.log('withAdminAuth: No auth_token cookie found');
             router.replace('/'); return;
           }
+
           const cookieParts = authCookie.split('=');
           if (cookieParts.length !== 2) {
+            console.log('withAdminAuth: Invalid auth_token cookie format');
             router.replace('/'); return;
           }
+
           let authValue;
-          try { authValue = decodeURIComponent(cookieParts[1]); }
-          catch (e) { authValue = cookieParts[1]; }
-          const [userId, accountType] = authValue.split('_');
-          if (accountType !== 'admin') {
+          try {
+            authValue = decodeURIComponent(cookieParts[1]);
+          } catch (e) {
+            authValue = cookieParts[1];
+          }
+
+          console.log('withAdminAuth: Auth token value:', authValue);
+          const tokenParts = authValue.split('_');
+
+          if (tokenParts.length !== 2) {
+            console.log('withAdminAuth: Invalid token format, missing underscore separator');
             router.replace('/'); return;
           }
+
+          const [userId, accountType] = tokenParts;
+
+          if (!userId || !accountType) {
+            console.log('withAdminAuth: Missing userId or accountType in token');
+            router.replace('/'); return;
+          }
+
+          if (accountType !== 'admin') {
+            console.log('withAdminAuth: Not an admin account, accountType:', accountType);
+            router.replace('/'); return;
+          }
+
           try {
+            console.log('withAdminAuth: Fetching admin data for userId:', userId);
             const response = await fetch(`/api/admins/${userId}`);
+
             if (!response.ok) {
-              router.replace('/'); return;
+              console.log('withAdminAuth: Failed to fetch admin data, status:', response.status);
+
+              // Try to get the error message
+              try {
+                const errorData = await response.json();
+                console.log('withAdminAuth: Error response:', errorData);
+              } catch (parseError) {
+                console.log('withAdminAuth: Could not parse error response');
+              }
+
+              router.replace('/');
+              return;
             }
-            const fetchedAdminData = await response.json(); // Renamed to avoid clash
+
+            const fetchedAdminData = await response.json();
+            console.log('withAdminAuth: Received admin data:', fetchedAdminData);
+
             if (!fetchedAdminData.user_type || fetchedAdminData.user_type !== 'admin') {
-              router.replace('/'); return;
+              console.log('withAdminAuth: Invalid admin data, missing or incorrect user_type');
+              router.replace('/');
+              return;
             }
+
             setRetrievedAdminData(fetchedAdminData);
             setIsAuthenticated(true);
             sessionStorage.setItem('admin_data', JSON.stringify(fetchedAdminData));
             globalAdminAuthState = { verified: true, adminData: fetchedAdminData };
-          } catch (fetchError) { router.replace('/'); }
-        } catch (error) { router.replace('/'); }
+            console.log('withAdminAuth: Admin authentication successful');
+          } catch (fetchError) {
+            console.error('withAdminAuth: Error fetching admin data:', fetchError);
+            router.replace('/');
+          }
+        } catch (error) {
+          console.error('withAdminAuth: Authentication error:', error);
+          router.replace('/');
+        }
       };
       checkAuth();
     }, [router, retrievedAdminData, isAuthenticated]); // Added dependencies

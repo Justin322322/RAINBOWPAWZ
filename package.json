@@ -5,7 +5,9 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:quiet": "node build.js",
     "start": "node production-start.js",
+    "start:quiet": "node start-quiet.js",
     "start:custom": "node start-custom.js",
     "clean-build": "node cleanup-repo.js --test-only && next build",
     "setup": "node setup-env.js",
@@ -28,6 +30,7 @@
     "nodemailer": "^7.0.3",
     "react": "^19",
     "react-dom": "^19",
+    "react-hot-toast": "^2.5.2",
     "react-leaflet": "^5.0.0",
     "readline": "^1.3.0"
   },

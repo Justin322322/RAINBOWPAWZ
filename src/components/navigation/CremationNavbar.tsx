@@ -24,6 +24,7 @@ export default function CremationNavbar({ activePage: propActivePage, userName =
   // Removed isNotificationOpen state as we're using the NotificationBell component
   const [activePage, setActivePage] = useState('');
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [isNavigating, setIsNavigating] = useState(false);
 
   // Open logout modal
   const handleLogoutClick = () => {
@@ -31,10 +32,18 @@ export default function CremationNavbar({ activePage: propActivePage, userName =
     setShowLogoutModal(true);
   };
 
+  // Handle navigation item click
+  const handleNavItemClick = (id: string) => {
+    setIsNavigating(true);
+    setIsDropdownOpen(false);
+    // Don't set active page here, let the useEffect handle it after navigation
+  };
+
   // Determine active page based on pathname or prop
   useEffect(() => {
     if (propActivePage) {
       setActivePage(propActivePage);
+      setIsNavigating(false);
     } else {
       if (pathname === '/cremation/dashboard') {
         setActivePage('dashboard');
@@ -45,13 +54,18 @@ export default function CremationNavbar({ activePage: propActivePage, userName =
       } else if (pathname === '/cremation/history') {
         setActivePage('history');
       }
+      setIsNavigating(false);
     }
   }, [pathname, propActivePage]);
 
   return (
     <header className="bg-[var(--primary-green)] shadow-[0_4px_10px_rgba(0,0,0,0.3)] relative z-50 w-full">
       <div className="w-full px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-end h-16">
+        <div className="flex items-center justify-between h-16">
+          <div className="flex items-center">
+            <h1 className="text-white text-xl font-semibold ml-2 hidden md:block">Cremation Center Dashboard</h1>
+          </div>
+
           <div className="flex items-center space-x-4">
             <NotificationBell />
 
@@ -72,21 +86,21 @@ export default function CremationNavbar({ activePage: propActivePage, userName =
                   <Link
                     href="/cremation/dashboard"
                     className="block px-4 py-2 text-sm modern-text text-gray-700 hover:bg-gray-100 font-medium"
-                    onClick={() => setIsDropdownOpen(false)}
+                    onClick={() => handleNavItemClick('dashboard')}
                   >
                     Dashboard
                   </Link>
                   <Link
                     href="/cremation/profile"
                     className="block px-4 py-2 text-sm modern-text text-gray-700 hover:bg-gray-100"
-                    onClick={() => setIsDropdownOpen(false)}
+                    onClick={() => handleNavItemClick('profile')}
                   >
                     Profile
                   </Link>
                   <Link
                     href="/cremation/settings"
                     className="block px-4 py-2 text-sm modern-text text-gray-700 hover:bg-gray-100"
-                    onClick={() => setIsDropdownOpen(false)}
+                    onClick={() => handleNavItemClick('settings')}
                   >
                     Settings
                   </Link>

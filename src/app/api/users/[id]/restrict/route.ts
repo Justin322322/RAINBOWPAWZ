@@ -113,10 +113,13 @@ export async function PUT(request: NextRequest) {
           );
         }
 
-        // Update user status to restricted
+        // Update user status to restricted (only use status field for now)
         await query(
-          'UPDATE users SET status = ?, updated_at = NOW() WHERE id = ?',
-          ['restricted', userId]
+          `UPDATE users
+           SET status = 'restricted',
+               updated_at = NOW()
+           WHERE id = ?`,
+          [userId]
         );
       } else {
         // Remove restriction
@@ -125,10 +128,13 @@ export async function PUT(request: NextRequest) {
           [userId]
         );
 
-        // Update user status to active
+        // Update user status to active (only use status field for now)
         await query(
-          'UPDATE users SET status = ?, updated_at = NOW() WHERE id = ?',
-          ['active', userId]
+          `UPDATE users
+           SET status = 'active',
+               updated_at = NOW()
+           WHERE id = ?`,
+          [userId]
         );
       }
 
