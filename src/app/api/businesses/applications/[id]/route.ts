@@ -30,7 +30,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     // Fetch business profile data with all fields
     let businessResult;
     if (hasApplicationStatus) {
-      // Query prioritizing application_status field
+      // Query using only application_status field (verification_status no longer exists)
       businessResult = await query(`
         SELECT
           bp.*,
@@ -43,8 +43,8 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
           bp.provider_type as business_type,
           bp.hours as business_hours,
           bp.application_status,
-          bp.verification_status,
-          bp.status as account_status
+          bp.application_status as verification_status, /* For backward compatibility */
+          u.status as account_status
         FROM
           service_providers bp
         JOIN
@@ -53,7 +53,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
           bp.id = ?
       `, [businessId]) as any[];
     } else {
-      // Fallback query for old schema
+      // Fallback query for schemas without application_status
       businessResult = await query(`
         SELECT
           bp.*,
@@ -65,16 +65,9 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
           bp.address as business_address,
           bp.provider_type as business_type,
           bp.hours as business_hours,
-          bp.verification_status,
-          CASE
-            WHEN bp.verification_status = 'verified' THEN 'approved'
-            WHEN bp.verification_status = 'rejected' THEN 'declined'
-            WHEN bp.verification_status = 'declined' THEN 'declined'
-            WHEN bp.verification_status = 'restricted' THEN 'restricted'
-            WHEN bp.verification_status = 'documents_required' THEN 'documents_required'
-            WHEN bp.business_permit_path IS NULL OR bp.government_id_path IS NULL THEN 'pending'
-            ELSE bp.verification_status
-          END AS status
+          'pending' as application_status, /* Default fallback status */
+          'pending' as verification_status, /* For backward compatibility */
+          u.status as account_status
         FROM
           service_providers bp
         JOIN
@@ -136,8 +129,8 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     }
 
     // Status handling
-    const applicationStatus = business.application_status || business.verification_status || business.status || 'pending';
-    const accountStatus = business.account_status || business.status || 'active';
+    const applicationStatus = business.application_status || 'pending';
+    const accountStatus = business.account_status || 'active';
 
     // Format application data with all fields
     const applicationData = {
@@ -154,8 +147,9 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       description: business.service_description || 'No description provided',
       submitDate,
       status: applicationStatus, // For backward compatibility
-      applicationStatus: applicationStatus, // Consolidated status field
-      verificationStatus: business.verification_status, // For backward compatibility
+      applicationStatus: applicationStatus, // New primary status field
+      verification_status: applicationStatus, // Make sure this matches the field name expected
+      verificationStatus: applicationStatus, // For backward compatibility
       accountStatus: accountStatus, // Account status (active, inactive, etc.)
       documents,
 

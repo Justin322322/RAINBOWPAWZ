@@ -113,21 +113,13 @@ function AdminDashboardPage({ adminData }: { adminData: any }) {
     const percent = Math.round((value / total) * 100);
     // Ensure percentage is between minPercent and maxPercent
     return Math.min(Math.max(percent, minPercent), maxPercent);
-  };
-
-  // Get status badge based on application status
+  };  // Get status badge based on application status
   const getStatusBadge = (status: string) => {
     switch(status) {
       case 'pending':
         return (
           <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800 min-w-[90px] justify-center">
             Pending
-          </span>
-        );
-      case 'reviewing':
-        return (
-          <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800 min-w-[90px] justify-center">
-            Reviewing
           </span>
         );
       case 'approved':
@@ -142,6 +134,12 @@ function AdminDashboardPage({ adminData }: { adminData: any }) {
             Declined
           </span>
         );
+      case 'restricted':
+        return (
+          <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800 min-w-[90px] justify-center">
+            Restricted
+          </span>
+        );
       default:
         return (
           <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800 min-w-[90px] justify-center">
@@ -150,9 +148,8 @@ function AdminDashboardPage({ adminData }: { adminData: any }) {
         );
     }
   };
-
   return (
-    <AdminDashboardLayout title="Dashboard" user={{ name: userName }}>
+    <AdminDashboardLayout>
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {isLoading ? (

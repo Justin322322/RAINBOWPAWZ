@@ -14,19 +14,18 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       return NextResponse.json({ message: 'Invalid business ID' }, { status: 400 });
     }
 
-    // Since you've migrated from business_profiles to service_providers,
-    // we'll use only the service_providers table
+    // We're using only the service_providers table
     const tableName = 'service_providers';
     console.log(`Using table: ${tableName}`);
 
     // Fetch just the status fields directly from the database
     const statusResult = await query(`
       SELECT
-        verification_status,
-        status,
+        application_status,
         created_at,
         updated_at,
-        verification_date
+        verification_date,
+        verification_notes
       FROM
         ${tableName}
       WHERE
@@ -40,36 +39,14 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       return NextResponse.json({ message: 'Business profile not found' }, { status: 404 });
     }
 
-    // Check if the verification_status and status are mismatched for declined or restricted
     const result = statusResult[0];
-    if ((result.verification_status === 'declined' || result.verification_status === 'restricted') &&
-        result.status !== result.verification_status) {
-      console.log(`Status mismatch detected! verification_status=${result.verification_status}, status=${result.status}`);
-      console.log('Fixing status mismatch by updating status to match verification_status');
+    
+    // Map the application_status to verification_status for backward compatibility
+    result.verification_status = result.application_status;
+    
+    console.log(`Application status: ${result.application_status}`);
 
-      // Update the status to match verification_status
-      try {
-        const updateResult = await query(
-          `UPDATE ${tableName}
-           SET status = ?
-           WHERE id = ?`,
-          [result.verification_status, businessId]
-        );
-        console.log('Status update result:', updateResult);
-
-        // Force a commit to ensure the transaction is completed
-        await query('COMMIT');
-        console.log(`Committed transaction for status update`);
-
-        // Update the result object
-        result.status = result.verification_status;
-        console.log('Updated result:', result);
-      } catch (updateError) {
-        console.error('Error updating status:', updateError);
-      }
-    }
-
-    // Return the raw status values from the database
+    // Return the status values from the database
     return NextResponse.json(result);
   } catch (error) {
     console.error('Error fetching business application status:', error);

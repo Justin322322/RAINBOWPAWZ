@@ -26,10 +26,9 @@ export async function POST(request: NextRequest) {
         { message: 'Please provide a detailed reason for declining (minimum 10 characters)' },
         { status: 400 }
       );
-    }
-
-    // Determine the status based on whether additional documents are requested
-    const applicationStatus = requestDocuments ? 'documents_required' : 'declined';
+    }    // With the updated schema, we only have 'declined' as the status for declined applications
+    // No separate 'documents_required' status in the enum
+    const applicationStatus = 'declined';
     
     // Check which table exists: business_profiles or service_providers
     const tableCheckResult = await query(`
@@ -63,40 +62,19 @@ export async function POST(request: NextRequest) {
     `) as any[];
     
     const hasApplicationStatus = columnsResult.length > 0;
-    console.log(`Table ${tableName} has application_status column: ${hasApplicationStatus}`);
-
-    // Update business profile - prioritize application_status field
+    console.log(`Table ${tableName} has application_status column: ${hasApplicationStatus}`);    // Update business application status
     let updateResult;
-    if (hasApplicationStatus) {
-      // Use new consolidated schema - update application_status only
-      // For backward compatibility, also update verification_status but mark as deprecated
-      updateResult = await query(
-        `UPDATE ${tableName}
-         SET application_status = ?,
-             verification_status = ?, -- DEPRECATED: Use application_status instead
-             verification_notes = ?,
-             verification_date = NOW(),
-             updated_at = NOW()
-         WHERE id = ?`,
-        [applicationStatus, applicationStatus, note.trim(), businessId]
-      ) as mysql.ResultSetHeader;
-      
-      console.log(`Updated ${tableName} with ID ${businessId} to application_status: ${applicationStatus}`);
-    } else {
-      // Use old schema
-      updateResult = await query(
-        `UPDATE ${tableName}
-         SET verification_status = ?,
-             status = ?,
-             verification_notes = ?,
-             verification_date = NOW(),
-             updated_at = NOW()
-         WHERE id = ?`,
-        [applicationStatus, applicationStatus, note.trim(), businessId]
-      ) as mysql.ResultSetHeader;
-      
-      console.log(`Updated ${tableName} with ID ${businessId} to status: ${applicationStatus}`);
-    }
+    updateResult = await query(
+      `UPDATE ${tableName}
+       SET application_status = ?,
+           verification_notes = ?,
+           verification_date = NOW(),
+           updated_at = NOW()
+       WHERE id = ?`,
+      [applicationStatus, note.trim(), businessId]
+    ) as mysql.ResultSetHeader;
+    
+    console.log(`Updated ${tableName} with ID ${businessId} to application_status: ${applicationStatus}`);
 
     console.log(`Update result:`, updateResult);
 
@@ -110,15 +88,13 @@ export async function POST(request: NextRequest) {
 
     // Verify the status was updated correctly
     let verifyResult;
-    if (hasApplicationStatus) {
-      verifyResult = await query(
-        `SELECT application_status, status FROM ${tableName} WHERE id = ?`,
+    if (hasApplicationStatus) {      verifyResult = await query(
+        `SELECT application_status FROM ${tableName} WHERE id = ?`,
         [businessId]
       ) as any[];
       
-      if (verifyResult && verifyResult.length > 0) {
-        const result = verifyResult[0];
-        console.log(`Verified status for ${tableName} with ID ${businessId}: application_status=${result.application_status}, status=${result.status}`);
+      if (verifyResult && verifyResult.length > 0) {        const result = verifyResult[0];
+        console.log(`Verified status for ${tableName} with ID ${businessId}: application_status=${result.application_status}`);
         
         if (result.application_status !== applicationStatus) {
           console.error(`Status mismatch! Expected application_status=${applicationStatus}, but got application_status=${result.application_status}`);
@@ -130,27 +106,20 @@ export async function POST(request: NextRequest) {
           );
           await query('COMMIT');
         }
-      }
-    } else {
-      verifyResult = await query(
-        `SELECT verification_status, status FROM ${tableName} WHERE id = ?`,
-        [businessId]
-      ) as any[];
-      
-      if (verifyResult && verifyResult.length > 0) {
-        const result = verifyResult[0];
-        console.log(`Verified status for ${tableName} with ID ${businessId}: verification_status=${result.verification_status}, status=${result.status}`);
+      }    } else {
+      // We should not reach here with the updated schema
+      console.log('Warning: The table does not have application_status column, but should have been migrated');
+      try {
+        // Create application_status column if it doesn't exist
+        await query(`ALTER TABLE ${tableName} ADD COLUMN application_status ENUM('pending', 'approved', 'declined', 'restricted') DEFAULT 'pending'`);
+        console.log(`Added application_status column to ${tableName} table`);
         
-        if (result.verification_status !== applicationStatus || result.status !== applicationStatus) {
-          console.error(`Status mismatch! Expected both verification_status and status to be ${applicationStatus}`);
-          
-          // Try to update again with a direct query
-          await query(
-            `UPDATE ${tableName} SET verification_status = ?, status = ? WHERE id = ?`,
-            [applicationStatus, applicationStatus, businessId]
-          );
-          await query('COMMIT');
-        }
+        // Set initial value based on declined state
+        await query(`UPDATE ${tableName} SET application_status = ? WHERE id = ?`, [applicationStatus, businessId]);
+        console.log(`Updated the new application_status column for business ID ${businessId}`);
+        await query('COMMIT');
+      } catch (err) {
+        console.error('Error adding application_status column:', err);
       }
     }
 

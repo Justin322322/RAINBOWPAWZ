@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "functions": {
+    "/api/auth/forgot-password": {},
+    "/api/auth/reset-password": {}
+  }
+}

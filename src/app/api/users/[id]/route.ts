@@ -45,27 +45,30 @@ export async function GET(request: NextRequest) {
         // For business accounts, fetch additional business details including verification status
         if (user.role === 'business') {
           try {
-            const businessResult = await query(
-              `SELECT id, business_name, business_type, verification_status
-               FROM business_profiles WHERE user_id = ? LIMIT 1`,
+            // Look up data in service_providers table instead of business_profiles
+            const serviceProviderResult = await query(
+              `SELECT id, name, provider_type, application_status
+               FROM service_providers WHERE user_id = ? LIMIT 1`,
               [user.id]
             ) as any[];
 
-            if (businessResult && businessResult.length > 0) {
-              const business = businessResult[0];
-              // Update the user's verification status based on the business profile record
-              user.is_verified = business.verification_status === 'verified' ? 1 : 0;
+            if (serviceProviderResult && serviceProviderResult.length > 0) {
+              const provider = serviceProviderResult[0];
+              // Update the user's verification status based on application status
+              user.is_verified = provider.application_status === 'approved' ? 1 : 0;
               // Add business details to the user object
-              user.business_name = business.business_name;
-              user.business_type = business.business_type;
-              user.business_id = business.id;
-              user.verification_status = business.verification_status;
+              user.business_name = provider.name;
+              user.business_type = provider.provider_type;
+              user.business_id = provider.id;
+              user.verification_status = provider.application_status;
               // Ensure user_type is set to 'business' for backward compatibility
               user.user_type = 'business';
+            } else {
+              console.log('No service provider record found for user ID:', user.id);
             }
           } catch (businessError) {
-            console.error('Error fetching business details:', businessError);
-            // Continue with basic user data if business details can't be fetched
+            console.error('Error fetching service provider details:', businessError);
+            // Continue with basic user data if service provider details can't be fetched
           }
         }
 

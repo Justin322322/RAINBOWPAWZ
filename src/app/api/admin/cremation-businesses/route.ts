@@ -285,14 +285,10 @@ export async function GET(request: NextRequest) {
       if (columnNames.includes('verification_status')) selectFields.push('bp.verification_status');
       if (columnNames.includes('application_status')) selectFields.push('bp.application_status');
       if (columnNames.includes('created_at')) selectFields.push('bp.created_at');
-      if (columnNames.includes('updated_at')) selectFields.push('bp.updated_at');
-
-      // Default is_verified to 0 if verification_status doesn't exist
+      if (columnNames.includes('updated_at')) selectFields.push('bp.updated_at');      // Check if business is verified based on application_status
       const verifiedCondition = columnNames.includes('application_status') 
-        ? `CASE WHEN bp.application_status IN ('approved', 'verified') THEN 1 ELSE 0 END`
-        : (columnNames.includes('verification_status') 
-          ? `CASE WHEN bp.verification_status = 'verified' THEN 1 ELSE 0 END` 
-          : '0');
+        ? `CASE WHEN bp.application_status = 'approved' THEN 1 ELSE 0 END`
+        : '0';
       
       selectFields.push(`${verifiedCondition} as is_verified`);
 

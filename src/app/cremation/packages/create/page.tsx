@@ -110,16 +110,56 @@ function CreatePackagePage({ userData }: CreatePackagePageProps) {
   };
 
   // Handle image upload
-  const handleImageUpload = (e: ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      // In a real app, you would upload these files to a server
-      // For now, we'll just create URLs for preview
-      const newImages = Array.from(e.target.files).map(file => URL.createObjectURL(file));
-
+      // Show loading indicator for each file
+      const fileNames = Array.from(e.target.files).map(file => file.name);
+      const loadingImages = fileNames.map(name => ({ name, loading: true }));
+      
+      // Show a toast notification
+      showToast('Uploading images...', 'info');
+      
+      // Upload each file to the server
+      const uploadPromises = Array.from(e.target.files).map(async (file) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        try {
+          const response = await fetch('/api/upload/package-image', {
+            method: 'POST',
+            body: formData,
+          });
+          
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to upload image');
+          }
+          
+          const data = await response.json();
+          return data.filePath; // Return the file path from the server
+        } catch (error) {
+          console.error('Error uploading image:', error);
+          showToast(`Failed to upload ${file.name}`, 'error');
+          return null;
+        }
+      });
+      
+      // Wait for all uploads to complete
+      const uploadedPaths = await Promise.all(uploadPromises);
+      
+      // Filter out any failed uploads
+      const validPaths = uploadedPaths.filter(path => path !== null);
+      
+      // Update form data with the new image paths
       setFormData(prev => ({
         ...prev,
-        images: [...prev.images, ...newImages]
+        images: [...prev.images, ...validPaths]
       }));
+      
+      // Show success toast
+      if (validPaths.length > 0) {
+        showToast(`${validPaths.length} images uploaded successfully`, 'success');
+      }
     }
   };
 
@@ -224,23 +264,34 @@ function CreatePackagePage({ userData }: CreatePackagePageProps) {
       {/* Form */}
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
         <form onSubmit={handleSubmit} className="p-6 max-w-4xl mx-auto">
-          {/* Package Images */}
+          {/* Images */}
           <div className="mb-8">
-            <h2 className="text-lg font-medium text-gray-800 mb-4">Package Images (Optional)</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            <h2 className="text-lg font-medium text-gray-800 mb-4">Images</h2>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
               {formData.images.map((image, index) => (
-                <div key={index} className="relative aspect-square">
-                  <img
-                    src={image}
-                    alt={`Package image ${index + 1}`}
-                    className="h-full w-full object-cover rounded-md"
-                  />
+                <div
+                  key={index}
+                  className="aspect-square bg-gray-100 rounded-md relative overflow-hidden"
+                >
+                  <div className="h-full w-full relative">
+                    <img
+                      src={image}
+                      alt={`Package image ${index + 1}`}
+                      className="h-full w-full object-cover"
+                      onError={(e) => {
+                        // Handle image load error
+                        const target = e.target as HTMLImageElement;
+                        target.src = '/images/placeholder-image.jpg';
+                        console.error('Failed to load image:', image);
+                      }}
+                    />
+                  </div>
                   <button
                     type="button"
                     onClick={() => handleRemoveImage(index)}
-                    className="absolute top-1 right-1 bg-white rounded-full p-1 shadow-sm hover:bg-red-100"
+                    className="absolute top-2 right-2 bg-white p-1 rounded-full shadow-md hover:bg-red-50"
                   >
-                    <XMarkIcon className="h-4 w-4 text-red-500" />
+                    <XMarkIcon className="h-5 w-5 text-red-500" />
                   </button>
                 </div>
               ))}
@@ -483,8 +534,6 @@ function CreatePackagePage({ userData }: CreatePackagePageProps) {
               <p className="mt-1 text-sm text-red-600">{errors.conditions}</p>
             )}
           </div>
-
-
 
           {/* Error message */}
           {errors.submit && (

@@ -87,19 +87,11 @@ export async function GET() {
     if (serviceProviderColumns.includes('province')) selectFields.push('sp.province');
     if (serviceProviderColumns.includes('city')) selectFields.push('sp.city');
     if (serviceProviderColumns.includes('zip')) selectFields.push('sp.zip');
-    if (serviceProviderColumns.includes('service_description')) selectFields.push('sp.service_description');
-
-    // Handle status fields
-    const hasApplicationStatus = serviceProviderColumns.includes('application_status');
-    const hasVerificationStatus = serviceProviderColumns.includes('verification_status');
-
-    if (hasApplicationStatus && hasVerificationStatus) {
-      selectFields.push('COALESCE(sp.application_status, COALESCE(sp.verification_status, \'pending\')) AS application_status');
-    } else if (hasApplicationStatus) {
+    if (serviceProviderColumns.includes('service_description')) selectFields.push('sp.service_description');    // Handle status field - in the updated schema we only have application_status
+    if (serviceProviderColumns.includes('application_status')) {
       selectFields.push('sp.application_status');
-    } else if (hasVerificationStatus) {
-      selectFields.push('sp.verification_status AS application_status');
     } else {
+      // Fallback to a default status if the column doesn't exist
       selectFields.push('\'pending\' AS application_status');
     }
 
@@ -156,12 +148,10 @@ export async function GET() {
         // Add created_at if it exists
         if (serviceProviderColumns.includes('created_at')) {
           minimalSelectFields.push('sp.created_at');
-        }
-
-        // Add at least one status field if available
-        if (hasApplicationStatus) {
+        }        // Add at least one status field if available
+        if (serviceProviderColumns.includes('application_status')) {
           minimalSelectFields.push('sp.application_status');
-        } else if (hasVerificationStatus) {
+        } else if (serviceProviderColumns.includes('verification_status')) {
           minimalSelectFields.push('sp.verification_status AS application_status');
         } else {
           minimalSelectFields.push("'pending' AS application_status");

@@ -15,8 +15,40 @@ export async function GET(
       );
     }
 
+    console.log(`Fetching details for service provider ID: ${providerId} - Enhanced version`);
+
     // Try to fetch from service_providers table
     try {
+      // First check which columns exist
+      const spColumnsResult = await query(`
+        SELECT COLUMN_NAME 
+        FROM INFORMATION_SCHEMA.COLUMNS 
+        WHERE TABLE_SCHEMA = DATABASE() 
+        AND TABLE_NAME = 'service_providers'
+      `) as any[];
+      
+      const spColumnNames = spColumnsResult.map(col => col.COLUMN_NAME);
+      const hasSPAppStatus = spColumnNames.includes('application_status');
+      const hasSPVerStatus = spColumnNames.includes('verification_status');
+      const hasStatus = spColumnNames.includes('status');
+      
+      // Build WHERE clause based on available columns
+      let whereClause = 'id = ?';
+      
+      // Add status condition
+      if (hasSPAppStatus) {
+        whereClause += " AND (application_status = 'approved' OR application_status = 'verified')";
+      } else if (hasSPVerStatus) {
+        whereClause += " AND verification_status = 'verified'";
+      }
+      
+      // Add active status condition if available
+      if (hasStatus) {
+        whereClause += " AND status = 'active'";
+      }
+      
+      console.log(`Service providers query WHERE clause: ${whereClause}`);
+      
       const providerResult = await query(`
         SELECT
           id,
@@ -26,23 +58,64 @@ export async function GET(
           phone,
           service_description as description,
           provider_type as type,
-          created_at
+          created_at,
+          ${hasSPAppStatus ? 'application_status' : hasSPVerStatus ? 'verification_status' : "'unknown' as status"}
         FROM service_providers
-        WHERE id = ? AND verification_status = 'verified' AND status = 'active'
+        WHERE ${whereClause}
         LIMIT 1
       `, [providerId]) as any[];
 
       if (providerResult && providerResult.length > 0) {
         const provider = providerResult[0];
+        console.log(`Found provider in service_providers: ${provider.name} with status: ${hasSPAppStatus ? provider.application_status : hasSPVerStatus ? provider.verification_status : 'unknown'}`);
 
         // Calculate approximate distance (mock data for now, but with consistent values)
-        const distanceValue = ((provider.id * 1.5) % 30).toFixed(1);
+        const distanceValue = ((Number(provider.id) * 1.5) % 30).toFixed(1);
         provider.distance = `${distanceValue} km away`;
+        
+        // Get package count
+        try {
+          const packagesCount = await query(`
+            SELECT COUNT(*) as count
+            FROM service_packages
+            WHERE service_provider_id = ? AND is_active = TRUE
+          `, [provider.id]) as any[];
+          
+          provider.packages = packagesCount[0]?.count || 0;
+        } catch (err) {
+          console.error(`Error getting package count: ${err}`);
+          provider.packages = 0;
+        }
 
         return NextResponse.json({ provider });
       }
 
       // If not found in service_providers, try business_profiles
+      console.log(`Provider not found in service_providers, checking business_profiles`);
+      
+      // Check which columns business_profiles has
+      const bpColumnsResult = await query(`
+        SELECT COLUMN_NAME 
+        FROM INFORMATION_SCHEMA.COLUMNS 
+        WHERE TABLE_SCHEMA = DATABASE() 
+        AND TABLE_NAME = 'business_profiles'
+      `) as any[];
+      
+      const bpColumnNames = bpColumnsResult.map(col => col.COLUMN_NAME);
+      const hasBPAppStatus = bpColumnNames.includes('application_status');
+      const hasBPVerStatus = bpColumnNames.includes('verification_status');
+      
+      // Build WHERE clause based on available columns
+      let bpWhereClause = 'bp.id = ?';
+      
+      if (hasBPAppStatus) {
+        bpWhereClause += " AND (bp.application_status = 'approved' OR bp.application_status = 'verified')";
+      } else if (hasBPVerStatus) {
+        bpWhereClause += " AND bp.verification_status = 'verified'";
+      }
+      
+      console.log(`Business profiles query WHERE clause: ${bpWhereClause}`);
+      
       const businessResult = await query(`
         SELECT
           bp.id,
@@ -53,31 +126,49 @@ export async function GET(
           u.email,
           bp.service_description as description,
           bp.business_type,
-          bp.created_at
+          bp.created_at,
+          ${hasBPAppStatus ? 'bp.application_status' : hasBPVerStatus ? 'bp.verification_status' : "'unknown'"} as status
         FROM business_profiles bp
         JOIN users u ON bp.user_id = u.id
-        WHERE bp.id = ? AND bp.verification_status = 'verified'
+        WHERE ${bpWhereClause}
         LIMIT 1
       `, [providerId]) as any[];
 
       if (businessResult && businessResult.length > 0) {
         const business = businessResult[0];
+        console.log(`Found business in business_profiles: ${business.name}`);
 
-        // Format the business data to match the expected format
+        // Process the address to include postal code if needed
+        const formattedAddress = business.address ? 
+          (business.address.includes('2100') ? business.address : business.address.replace('Philippines', '2100 Philippines')) : 
+          '';
+          
         const formattedBusiness = {
           id: business.id,
           name: business.name,
-          city: business.address ? business.address.split(',')[0] : (business.city || 'Bataan'),
-          address: business.address,
+          city: formattedAddress ? formattedAddress.split(',')[0] : (business.city || 'Bataan'),
+          address: formattedAddress,
           phone: business.phone,
           email: business.email,
           description: business.description || 'Pet cremation services',
           type: 'Pet Cremation Services',
-          distance: `${((business.id * 1.5) % 30).toFixed(1)} km away`, // Consistent distance based on ID
-          // Add postal code to ensure proper geocoding
-          address: business.address.includes('2100') ? business.address : business.address.replace('Philippines', '2100 Philippines'),
-          created_at: business.created_at
+          distance: `${((Number(business.id) * 1.5) % 30).toFixed(1)} km away`, // Consistent distance based on ID
+          created_at: business.created_at,
+          packages: 0 // Default value, will be updated if possible
         };
+        
+        // Get package count if possible
+        try {
+          const packagesCount = await query(`
+            SELECT COUNT(*) as count
+            FROM service_packages
+            WHERE business_id = ? AND is_active = TRUE
+          `, [business.id]) as any[];
+          
+          formattedBusiness.packages = packagesCount[0]?.count || 0;
+        } catch (err) {
+          console.error(`Error getting package count for business: ${err}`);
+        }
 
         return NextResponse.json({ provider: formattedBusiness });
       }
@@ -87,6 +178,8 @@ export async function GET(
 
       // Check if this is one of our test providers
       if (providerId === '1001' || providerId === '1002' || providerId === '1003') {
+        console.log(`Returning test provider data for ID ${providerId}`);
+        
         // Return the test provider data
         const testProviders = {
           '1001': {
@@ -133,31 +226,12 @@ export async function GET(
           }
         };
 
-        return NextResponse.json({ provider: testProviders[providerId] });
+        // Type-safe access to test provider data
+        const provider = testProviders[providerId as keyof typeof testProviders];
+        return NextResponse.json({ provider });
       }
 
-      // Check if there are any providers at all
-      const allProvidersResult = await query(`
-        SELECT COUNT(*) as count FROM service_providers
-        WHERE verification_status = 'verified' AND status = 'active'
-      `) as any[];
-
-      const allBusinessesResult = await query(`
-        SELECT COUNT(*) as count FROM business_profiles
-        WHERE verification_status = 'verified'
-      `) as any[];
-
-      const totalProviders =
-        (allProvidersResult[0]?.count || 0) +
-        (allBusinessesResult[0]?.count || 0);
-
-      if (totalProviders === 0) {
-        return NextResponse.json(
-          { error: 'No service providers available in the system. Please contact support.' },
-          { status: 404 }
-        );
-      }
-
+      // If we reach here, the provider wasn't found
       return NextResponse.json(
         { error: 'Provider not found. The requested service provider may have been removed or is no longer available.' },
         { status: 404 }

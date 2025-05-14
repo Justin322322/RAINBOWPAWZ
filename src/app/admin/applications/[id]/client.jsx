@@ -331,7 +331,13 @@ function ApplicationDetailContent({ id }) {
       const data = await response.json();
       console.log('Application data received:', data);
       console.log('Status from API:', data.status);
-      console.log('Verification status from API:', data.verificationStatus);
+      console.log('Application status from API:', data.application_status);
+      console.log('Verification status from API:', data.verification_status);
+      
+      // Map application_status to verificationStatus for backwards compatibility
+      if (data.application_status && !data.verificationStatus) {
+        data.verificationStatus = data.application_status;
+      }
 
       if (!data || Object.keys(data).length === 0) {
         throw new Error('No data received from the server');
@@ -413,19 +419,16 @@ function ApplicationDetailContent({ id }) {
         data.status = verificationStatusFromDB;
       }
 
-      // Ensure the status is correctly set based on verification_status
-      if (data.verificationStatus === 'declined' && data.status !== 'declined') {
-        console.log('Fixing status mismatch: Setting status to declined to match verification_status');
-        data.status = 'declined';
-      } else if (data.verificationStatus === 'documents_required' && data.status !== 'documents_required') {
-        console.log('Fixing status mismatch: Setting status to documents_required to match verification_status');
-        data.status = 'documents_required';
-      } else if (data.verificationStatus === 'restricted' && data.status !== 'restricted') {
-        console.log('Fixing status mismatch: Setting status to restricted to match verification_status');
-        data.status = 'restricted';
-      } else if (data.verificationStatus === 'verified' && data.status !== 'approved') {
-        console.log('Fixing status mismatch: Setting status to approved to match verification_status=verified');
-        data.status = 'approved';
+      // Set status based on application_status
+      if (data.application_status) {
+        console.log('Using application_status as the source of truth:', data.application_status);
+        data.status = data.application_status;
+        data.verificationStatus = data.application_status;
+      } 
+      // If we still have verification_status but no status, use it (backwards compatibility)
+      else if (data.verificationStatus && !data.status) {
+        console.log('Using verificationStatus as fallback:', data.verificationStatus);
+        data.status = data.verificationStatus;
       }
 
       console.log('Final application status after fixes:', data.status);

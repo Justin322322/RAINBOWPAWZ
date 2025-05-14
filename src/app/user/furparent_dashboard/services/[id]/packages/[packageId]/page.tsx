@@ -46,28 +46,53 @@ function PackageDetailPage({ userData }: PackageDetailPageProps) {
 
     const fetchData = async () => {
       try {
+        console.log(`Fetching details for provider ID: ${providerId} and package ID: ${packageId}`);
+        
         // Fetch provider details
         const providerResponse = await fetch(`/api/service-providers/${providerId}`);
 
         if (!providerResponse.ok) {
-          throw new Error('Failed to fetch provider details');
+          console.error(`Provider fetch failed: ${providerResponse.status} ${providerResponse.statusText}`);
+          throw new Error(`Failed to fetch provider details (${providerResponse.status})`);
         }
 
         const providerData = await providerResponse.json();
+        if (!providerData.provider) {
+          console.error('Provider data invalid:', providerData);
+          throw new Error('Provider data is invalid or empty');
+        }
+        
+        console.log('Successfully fetched provider:', providerData.provider.name);
         setProvider(providerData.provider);
 
         // Fetch specific package details
         const packageResponse = await fetch(`/api/packages/${packageId}`);
 
         if (!packageResponse.ok) {
-          throw new Error('Failed to fetch package details');
+          console.error(`Package fetch failed: ${packageResponse.status} ${packageResponse.statusText}`);
+          throw new Error(`Failed to fetch package details (${packageResponse.status})`);
         }
 
         const packageData = await packageResponse.json();
+        if (!packageData.package) {
+          console.error('Package data invalid:', packageData);
+          throw new Error('Package data is invalid or empty');
+        }
+        
+        console.log('Successfully fetched package:', packageData.package.name);
+        
+        // Filter out any blob URLs from images
+        if (packageData.package.images && packageData.package.images.length > 0) {
+          packageData.package.images = packageData.package.images.filter(
+            (imagePath: string) => imagePath && !imagePath.startsWith('blob:')
+          );
+          console.log(`Package has ${packageData.package.images.length} valid images after filtering`);
+        }
+        
         setPackageData(packageData.package);
-      } catch (err) {
+      } catch (err: any) {
         console.error('Error fetching data:', err);
-        setError('Failed to load package details');
+        setError(err.message || 'Failed to load package details');
       } finally {
         setLoading(false);
       }
@@ -153,16 +178,63 @@ function PackageDetailPage({ userData }: PackageDetailPageProps) {
               <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-8">
                 {/* Package Image Carousel */}
                 <div className="relative h-80 bg-gray-100 rounded-lg overflow-hidden">
-                  <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
-                    <div className="text-center p-4">
-                      <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
-                      <p className="mt-2 text-sm text-gray-500">No image available</p>
+                  {packageData.images && packageData.images.length > 0 ? (
+                    <>
+                      <Image
+                        src={packageData.images[currentImageIndex]}
+                        alt={packageData.name}
+                        fill
+                        className="object-cover"
+                        onError={(e) => {
+                          // Hide the image element on error and show the placeholder
+                          const target = e.target as HTMLImageElement;
+                          target.style.display = 'none';
+                          console.error('Failed to load package image:', packageData.images[currentImageIndex]);
+                          
+                          // Find parent and show placeholder if not already there
+                          const parent = target.parentElement;
+                          if (parent && !parent.querySelector('.placeholder-content')) {
+                            const placeholderDiv = document.createElement('div');
+                            placeholderDiv.className = 'placeholder-content text-gray-400 flex flex-col items-center justify-center h-full';
+                            placeholderDiv.innerHTML = `
+                              <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                              </svg>
+                              <span class="text-sm">Image unavailable</span>
+                            `;
+                            parent.appendChild(placeholderDiv);
+                          }
+                        }}
+                      />
+                      {packageData.images.length > 1 && (
+                        <>
+                          <button
+                            onClick={handlePrevImage}
+                            className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-white/70 p-1 rounded-full hover:bg-white transition"
+                            disabled={currentImageIndex === 0}
+                          >
+                            <ChevronLeftIcon className="h-6 w-6 text-gray-800" />
+                          </button>
+                          <button
+                            onClick={handleNextImage}
+                            className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-white/70 p-1 rounded-full hover:bg-white transition"
+                            disabled={currentImageIndex === packageData.images.length - 1}
+                          >
+                            <ChevronRightIcon className="h-6 w-6 text-gray-800" />
+                          </button>
+                        </>
+                      )}
+                    </>
+                  ) : (
+                    <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
+                      <div className="text-center p-4">
+                        <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        <p className="mt-2 text-sm text-gray-500">No image available</p>
+                      </div>
                     </div>
-                  </div>
-
-
+                  )}
                 </div>
 
                 {/* Package Info */}

@@ -45,12 +45,10 @@ export async function POST(request: NextRequest) {
 
     // Use the appropriate table name
     const tableName = useServiceProvidersTable ? 'service_providers' : 'business_profiles';
-    console.log(`Using table: ${tableName}`);
-
-    // Update business profile verification status
+    console.log(`Using table: ${tableName}`);    // Update business profile application status
     const updateResult = await query(
       `UPDATE ${tableName}
-       SET verification_status = 'verified',
+       SET application_status = 'approved',
            verification_date = NOW(),
            verification_notes = ?,
            updated_at = NOW()

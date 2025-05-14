@@ -219,7 +219,7 @@ export async function POST(request: Request) {
             const sql = `INSERT INTO service_providers
                         (user_id, name, provider_type, contact_first_name, contact_last_name,
                          phone, address, province, city, zip,
-                         hours, service_description, verification_status)
+                         hours, service_description, application_status)
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
             const values = [

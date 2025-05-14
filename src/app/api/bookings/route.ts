@@ -350,25 +350,42 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    // Get user ID from auth token
+    console.log('Creating new booking...');
+    
+    // Get user ID from auth token or from the request body for checkout flow
+    let userId, accountType;
     const authToken = getAuthTokenFromRequest(request);
-    if (!authToken) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const [userId, accountType] = authToken.split('_');
-    if (!userId || accountType !== 'user') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    
+    if (authToken) {
+      [userId, accountType] = authToken.split('_');
+      console.log(`User authenticated with token: ID ${userId}, type ${accountType}`);
+      
+      if (!userId || accountType !== 'user') {
+        return NextResponse.json({ error: 'Unauthorized: Invalid user type' }, { status: 401 });
+      }
+    } else {
+      // For checkout flow when user might not have auth token in request
+      const bookingRequestData = await request.json();
+      
+      if (bookingRequestData.userId) {
+        userId = bookingRequestData.userId;
+        console.log(`Using userId from request body: ${userId}`);
+      } else {
+        console.error('No authentication token or userId provided');
+        return NextResponse.json({ error: 'Unauthorized: No authentication' }, { status: 401 });
+      }
     }
 
     // Get booking data from request body
     const bookingData = await request.json();
+    console.log('Received booking data:', bookingData);
 
     // Validate required fields
-    const requiredFields = ['serviceId', 'providerId', 'date', 'time'];
+    const requiredFields = ['providerId', 'date', 'time'];
     const missingFields = requiredFields.filter(field => !bookingData[field]);
 
     if (missingFields.length > 0) {
+      console.error(`Missing required fields: ${missingFields.join(', ')}`);
       return NextResponse.json({
         error: `Missing required fields: ${missingFields.join(', ')}`
       }, { status: 400 });
@@ -376,46 +393,183 @@ export async function POST(request: NextRequest) {
 
     // Validate pet information
     if (!bookingData.petId && (!bookingData.petName || !bookingData.petType)) {
+      console.error('Missing pet information');
       return NextResponse.json({
         error: 'Either an existing pet ID or new pet details (name and type) must be provided'
       }, { status: 400 });
     }
 
-    // In a real app, we would save to database here
-    // For now, we'll just return a success response with mock data
-
-    // Get service details
-    const serviceId = parseInt(bookingData.serviceId);
-    const service = serviceTypes[serviceId] || {
-      name: 'Unknown Service',
-      description: 'Service details not found',
-      price: 0
+    // Try to get package details if packageId is provided
+    let serviceDetails = {
+      name: bookingData.packageName || 'Unknown Service',
+      description: 'Service package',
+      price: bookingData.price || 0
     };
-
-    // Create a new booking object
-    const newBooking = {
-      id: Math.floor(Math.random() * 10000), // Generate random ID for mock
+    
+    if (bookingData.packageId) {
+      try {
+        console.log(`Fetching package details for ID: ${bookingData.packageId}`);
+        const packageResult = await query(`
+          SELECT name, description, price 
+          FROM service_packages 
+          WHERE id = ? 
+          LIMIT 1
+        `, [bookingData.packageId]) as any[];
+        
+        if (packageResult && packageResult.length > 0) {
+          serviceDetails = {
+            name: packageResult[0].name,
+            description: packageResult[0].description,
+            price: packageResult[0].price
+          };
+          console.log('Found package details:', serviceDetails);
+        }
+      } catch (err) {
+        console.error('Error fetching package details:', err);
+        // Continue with the booking process using default values
+      }
+    }    // Create a new booking object
+    const newBooking: {
+      id: number | null;
+      user_id: number;
+      pet_id: number | null;
+      package_id: number | null;
+      provider_id: number | null;
+      booking_date: any;
+      booking_time: any;
+      status: string;
+      total_amount: any;
+      special_requests: any;
+      payment_method: string;
+      created_at: string;
+      updated_at: string;
+      provider_name: string;
+      provider_address: string;
+      service_name: string;
+      service_description: string;
+      service_price: any;
+      pet_name: string;
+      pet_type: any;
+      _error?: string; // Added property for error handling
+    } = {
+      id: null, // Will be set by the database
       user_id: parseInt(userId),
       pet_id: bookingData.petId ? parseInt(bookingData.petId) : null,
-      business_service_id: serviceId,
+      package_id: bookingData.packageId ? parseInt(bookingData.packageId) : null,
+      provider_id: bookingData.providerId ? parseInt(bookingData.providerId) : null,
       booking_date: bookingData.date,
       booking_time: bookingData.time,
       status: 'pending',
-      total_amount: service.price,
+      total_amount: serviceDetails.price,
       special_requests: bookingData.specialRequests || '',
+      payment_method: bookingData.paymentMethod || 'cash',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
       provider_name: bookingData.providerName || 'Service Provider',
-      provider_address: 'Provider Address',
-      service_name: service.name,
-      service_description: service.description,
-      service_price: service.price,
-      pet_name: bookingData.petDetails?.name || bookingData.petName || 'Pet',
-      pet_type: bookingData.petDetails?.species || bookingData.petType || 'Unknown'
+      provider_address: bookingData.providerAddress || 'Provider Address',
+      service_name: serviceDetails.name,
+      service_description: serviceDetails.description,
+      service_price: serviceDetails.price,
+      pet_name: bookingData.petName || 'Pet',
+      pet_type: bookingData.petType || 'Unknown'
     };
-
-    // In a real app, we would save the booking to the database here
-    // For now, we'll just return the created booking
+    
+    console.log('Prepared booking object:', newBooking);    // Save the booking to the database
+    try {
+      console.log('Attempting to save booking to database...');
+      
+      // Check which booking table structure to use
+      const tableExistsCheck = await query(
+        "SELECT COUNT(*) as count FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'bookings'"
+      ) as any[];
+      
+      let insertId;
+      
+      if (tableExistsCheck && tableExistsCheck[0].count > 0) {
+        // Check if we have the newer schema with package_id and provider_id
+        const columnsResult = await query(`
+          SELECT COLUMN_NAME 
+          FROM INFORMATION_SCHEMA.COLUMNS 
+          WHERE TABLE_SCHEMA = DATABASE() 
+          AND TABLE_NAME = 'bookings'
+        `) as any[];
+        
+        const columnNames = columnsResult.map(col => col.COLUMN_NAME.toLowerCase());
+        const hasPackageId = columnNames.includes('package_id');
+        const hasProviderId = columnNames.includes('provider_id');
+        
+        console.log(`Bookings table columns - package_id: ${hasPackageId}, provider_id: ${hasProviderId}`);
+        
+        // Use the appropriate schema based on columns available
+        if (hasPackageId && hasProviderId) {
+          const insertResult = await query(`
+            INSERT INTO bookings (
+              user_id, pet_id, package_id, provider_id, booking_date, booking_time,
+              status, total_amount, special_requests, payment_method, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+          `, [
+            newBooking.user_id,
+            newBooking.pet_id,
+            newBooking.package_id,
+            newBooking.provider_id,
+            newBooking.booking_date,
+            newBooking.booking_time,
+            newBooking.status,
+            newBooking.total_amount,
+            newBooking.special_requests,
+            newBooking.payment_method
+          ]) as any;
+          
+          insertId = insertResult.insertId;
+          console.log(`Booking saved with ID: ${insertId} using new schema`);
+        } else {
+          // Fall back to older schema - try to adapt
+          let serviceProviderIdCol = null;
+          let servicePackageIdCol = null;
+          
+          if (columnNames.includes('service_provider_id')) serviceProviderIdCol = 'service_provider_id';
+          if (columnNames.includes('business_id')) serviceProviderIdCol = 'business_id';
+          
+          if (columnNames.includes('service_package_id')) servicePackageIdCol = 'service_package_id';
+          if (columnNames.includes('business_service_id')) servicePackageIdCol = 'business_service_id';
+          
+          if (serviceProviderIdCol && servicePackageIdCol) {
+            const insertResult = await query(`
+              INSERT INTO bookings (
+                user_id, pet_id, ${servicePackageIdCol}, ${serviceProviderIdCol}, booking_date, booking_time,
+                status, total_amount, special_requests, created_at, updated_at
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+            `, [
+              newBooking.user_id,
+              newBooking.pet_id,
+              newBooking.package_id,
+              newBooking.provider_id,
+              newBooking.booking_date,
+              newBooking.booking_time,
+              newBooking.status,
+              newBooking.total_amount,
+              newBooking.special_requests
+            ]) as any;
+            
+            insertId = insertResult.insertId;
+            console.log(`Booking saved with ID: ${insertId} using adapted schema`);
+          } else {
+            console.error('Could not determine appropriate booking schema');
+            throw new Error('Unsupported booking table schema');
+          }
+        }
+      } else {
+        console.error('No bookings table found in database');
+        throw new Error('Bookings table does not exist');      }
+      
+      // Update the booking object with the database ID
+      newBooking.id = insertId;
+    } catch (dbError) {
+      console.error('Error saving booking to database:', dbError);
+      // Continue with email process but note the error - use NULL instead of random number
+      newBooking.id = null; // Keep as null instead of using a random number
+      newBooking._error = 'Failed to save to database, but continuing with email notification';
+    }
 
     // Send booking confirmation email
     try {
@@ -485,19 +639,50 @@ export async function POST(request: NextRequest) {
       } else {
         console.error('Failed to send booking confirmation email:', emailResult.error);
         // Continue with the booking process even if the email fails
-      }
-    } catch (emailError) {
+      }    } catch (emailError) {
       console.error('Error sending booking confirmation email:', emailError);
       // Continue with the booking process even if the email fails
-    }
-
-    return NextResponse.json({
+    }    // Include additional information for the client about the booking
+    const responseData: {
+      success: boolean;
+      message: string;
+      booking: {
+        id: number | null;
+        date: any;
+        time: any;
+        provider: string;
+        service: string;
+        price: any;
+        status: string;
+        pet: string;
+      };
+      warning?: string; // Add optional warning property
+    } = {
       success: true,
       message: 'Booking created successfully',
-      booking: newBooking
-    });
+      booking: {
+        id: newBooking.id,
+        date: newBooking.booking_date,
+        time: newBooking.booking_time,
+        provider: newBooking.provider_name,
+        service: newBooking.service_name,
+        price: newBooking.total_amount,
+        status: newBooking.status,
+        pet: newBooking.pet_name
+      }
+    };
+    
+    if (newBooking._error) {
+      responseData.warning = newBooking._error;
+    }
+    
+    console.log('Booking process completed successfully');
+    return NextResponse.json(responseData);
   } catch (error) {
     console.error('Error creating booking:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ 
+      error: 'Internal Server Error', 
+      message: error instanceof Error ? error.message : 'Unknown error occurred'
+    }, { status: 500 });
   }
 }

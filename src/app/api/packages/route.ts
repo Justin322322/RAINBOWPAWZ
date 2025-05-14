@@ -8,21 +8,25 @@ export async function GET(request: NextRequest) {
     const url = new URL(request.url);
     const providerId = url.searchParams.get('providerId');
     const packageId = url.searchParams.get('packageId');
+    const includeInactive = url.searchParams.get('includeInactive') === 'true';
 
     // If packageId is provided, fetch a specific package
     if (packageId) {
-      return await getPackageById(parseInt(packageId));
+      return await getPackageById(parseInt(packageId), includeInactive);
     }
 
     // If providerId is provided, fetch packages for that provider
     if (providerId) {
-      return await getPackagesByProviderId(parseInt(providerId));
+      return await getPackagesByProviderId(parseInt(providerId), includeInactive);
     }
 
     // Otherwise, fetch all packages (with pagination)
     const page = parseInt(url.searchParams.get('page') || '1');
     const limit = parseInt(url.searchParams.get('limit') || '10');
     const offset = (page - 1) * limit;
+
+    // Modify the query to optionally include inactive packages
+    const activeClause = includeInactive ? '' : 'WHERE sp.is_active = TRUE';
 
     const packagesResult = await query(`
       SELECT
@@ -34,18 +38,19 @@ export async function GET(request: NextRequest) {
         sp.processing_time as processingTime,
         sp.price,
         sp.conditions,
+        sp.is_active as isActive,
         svp.name as providerName,
         svp.id as providerId
       FROM service_packages sp
       JOIN service_providers svp ON sp.service_provider_id = svp.id
-      WHERE sp.is_active = TRUE
+      ${activeClause}
       ORDER BY sp.created_at DESC
       LIMIT ? OFFSET ?
     `, [limit, offset]) as any[];
 
     // Get total count for pagination
     const countResult = await query(`
-      SELECT COUNT(*) as total FROM service_packages
+      SELECT COUNT(*) as total FROM service_packages ${includeInactive ? '' : 'WHERE is_active = TRUE'}
     `) as any[];
 
     const total = countResult[0]?.total || 0;
@@ -205,8 +210,11 @@ export async function POST(request: NextRequest) {
 }
 
 // Helper function to get a specific package by ID
-async function getPackageById(packageId: number) {
+async function getPackageById(packageId: number, includeInactive: boolean = false) {
   try {
+    // Modify the query to optionally include inactive packages
+    const activeClause = includeInactive ? '' : 'AND sp.is_active = TRUE';
+    
     const packageResult = await query(`
       SELECT
         sp.id,
@@ -217,11 +225,12 @@ async function getPackageById(packageId: number) {
         sp.processing_time as processingTime,
         sp.price,
         sp.conditions,
+        sp.is_active as isActive,
         svp.name as providerName,
         svp.id as providerId
       FROM service_packages sp
       JOIN service_providers svp ON sp.service_provider_id = svp.id
-      WHERE sp.id = ? AND sp.is_active = TRUE
+      WHERE sp.id = ? ${activeClause}
       LIMIT 1
     `, [packageId]) as any[];
 
@@ -247,35 +256,109 @@ async function getPackageById(packageId: number) {
 }
 
 // Helper function to get packages by provider ID
-async function getPackagesByProviderId(providerId: number) {
+async function getPackagesByProviderId(providerId: number, includeInactive: boolean = false) {
   try {
+    console.log(`Fetching packages for provider ID: ${providerId}, includeInactive: ${includeInactive}`);
+    
     // Check if this is one of our test providers
     if (providerId === 1001 || providerId === 1002 || providerId === 1003) {
       // Return test packages for this provider
       const testPackages = getTestPackagesForProvider(providerId);
+      console.log(`Returning ${testPackages.length} test packages for provider ${providerId}`);
 
       return NextResponse.json({
         packages: testPackages
       });
     }
-
-    const packagesResult = await query(`
-      SELECT
-        sp.id,
-        sp.name,
-        sp.description,
-        sp.category,
-        sp.cremation_type as cremationType,
-        sp.processing_time as processingTime,
-        sp.price,
-        sp.conditions,
-        svp.name as providerName,
-        svp.id as providerId
-      FROM service_packages sp
-      JOIN service_providers svp ON sp.service_provider_id = svp.id
-      WHERE sp.service_provider_id = ? AND sp.is_active = TRUE
-      ORDER BY sp.created_at DESC
-    `, [providerId]) as any[];
+    
+    // Modify the query to optionally include inactive packages
+    const activeClause = includeInactive ? '' : 'AND sp.is_active = TRUE';
+    
+    // Check which columns exist in service_packages table
+    const packageColumnsResult = await query(`
+      SELECT COLUMN_NAME 
+      FROM INFORMATION_SCHEMA.COLUMNS 
+      WHERE TABLE_SCHEMA = DATABASE() 
+      AND TABLE_NAME = 'service_packages'
+    `) as any[];
+    
+    const packageColumns = packageColumnsResult.map(col => col.COLUMN_NAME.toLowerCase());
+    const hasServiceProviderId = packageColumns.includes('service_provider_id');
+    const hasProviderId = packageColumns.includes('provider_id');
+    const hasBusinessId = packageColumns.includes('business_id');
+    
+    console.log(`Package columns found - service_provider_id: ${hasServiceProviderId}, provider_id: ${hasProviderId}, business_id: ${hasBusinessId}`);
+    
+    let packagesResult = [] as any[];
+    
+    // Try to get packages using service_provider_id first
+    if (hasServiceProviderId) {
+      console.log(`Fetching packages with service_provider_id = ${providerId}`);
+      packagesResult = await query(`
+        SELECT
+          sp.id,
+          sp.name,
+          sp.description,
+          sp.category,
+          sp.cremation_type as cremationType,
+          sp.processing_time as processingTime,
+          sp.price,
+          sp.conditions,
+          sp.is_active as isActive,
+          svp.name as providerName,
+          svp.id as providerId
+        FROM service_packages sp
+        JOIN service_providers svp ON sp.service_provider_id = svp.id
+        WHERE sp.service_provider_id = ? ${activeClause}
+        ORDER BY sp.created_at DESC
+      `, [providerId]) as any[];
+    } 
+    // If no packages found or no service_provider_id column, try provider_id
+    else if (hasProviderId) {
+      console.log(`Fetching packages with provider_id = ${providerId}`);
+      packagesResult = await query(`
+        SELECT
+          sp.id,
+          sp.name,
+          sp.description,
+          sp.category,
+          sp.cremation_type as cremationType,
+          sp.processing_time as processingTime,
+          sp.price,
+          sp.conditions,
+          sp.is_active as isActive,
+          svp.name as providerName,
+          svp.id as providerId
+        FROM service_packages sp
+        JOIN service_providers svp ON sp.provider_id = svp.id
+        WHERE sp.provider_id = ? ${activeClause}
+        ORDER BY sp.created_at DESC
+      `, [providerId]) as any[];
+    }
+    // If still no packages found, try business_id
+    else if (hasBusinessId) {
+      console.log(`Fetching packages with business_id = ${providerId}`);
+      packagesResult = await query(`
+        SELECT
+          sp.id,
+          sp.name,
+          sp.description,
+          sp.category,
+          sp.cremation_type as cremationType,
+          sp.processing_time as processingTime,
+          sp.price,
+          sp.conditions,
+          sp.is_active as isActive,
+          bp.business_name as providerName,
+          bp.id as providerId
+        FROM service_packages sp
+        JOIN business_profiles bp ON sp.business_id = bp.id
+        WHERE sp.business_id = ? ${activeClause}
+        ORDER BY sp.created_at DESC
+      `, [providerId]) as any[];
+    }
+    
+    console.log(`Found ${packagesResult.length} packages for provider ${providerId}`);
 
     // Enhance packages with inclusions, add-ons, and images
     const enhancedPackages = await enhancePackagesWithDetails(packagesResult);
@@ -498,7 +581,24 @@ async function enhancePackagesWithDetails(packages: any[]) {
     if (!imagesByPackage[image.package_id]) {
       imagesByPackage[image.package_id] = [];
     }
-    imagesByPackage[image.package_id].push(image.image_path);
+    
+    // Handle image paths properly, skip blob URLs
+    const imagePath = image.image_path;
+    if (imagePath && !imagePath.startsWith('blob:')) {
+      // If it's already a complete path
+      if (imagePath.startsWith('/uploads/') || imagePath.startsWith('uploads/')) {
+        // Ensure it starts with a slash
+        imagesByPackage[image.package_id].push(
+          imagePath.startsWith('/') ? imagePath : `/${imagePath}`
+        );
+      } else {
+        // Otherwise assume it's in the packages directory
+        imagesByPackage[image.package_id].push(`/uploads/packages/${imagePath}`);
+      }
+    } else if (imagePath && imagePath.startsWith('blob:')) {
+      console.log(`Package ${image.package_id} has blob URL that can't be served: ${imagePath}`);
+      // Don't add blob URLs to the images array
+    }
   });
 
   // Enhance each package with its details

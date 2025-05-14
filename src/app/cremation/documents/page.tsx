@@ -51,13 +51,17 @@ export default function DocumentsUploadPage() {
   // Get user data from cookies when component mounts
   useEffect(() => {
     const authCookie = Cookies.get('auth_token');
+    console.log('Auth cookie found:', authCookie);
     if (authCookie) {
       try {
         const [userId] = authCookie.split('_');
+        console.log('Extracted userId from cookie:', userId);
         setUserData({ ...userData, id: userId });
       } catch (error) {
         console.error('Error parsing auth cookie:', error);
       }
+    } else {
+      console.warn('No auth_token cookie found');
     }
   }, []);
 
@@ -116,27 +120,34 @@ export default function DocumentsUploadPage() {
     
     try {
       const formData = new FormData();
+      
+      console.log('Creating FormData with userId:', userData.id);
       formData.append('userId', userData.id);
       
       // Append files if they exist
       if (files.businessPermit.file) {
+        console.log('Appending businessPermit:', files.businessPermit.file.name);
         formData.append('businessPermit', files.businessPermit.file);
       }
       
       if (files.birCertificate.file) {
+        console.log('Appending birCertificate:', files.birCertificate.file.name);
         formData.append('birCertificate', files.birCertificate.file);
       }
       
       if (files.governmentId.file) {
+        console.log('Appending governmentId:', files.governmentId.file.name);
         formData.append('governmentId', files.governmentId.file);
       }
       
+      console.log('Sending formData to API');
       const response = await fetch('/api/businesses/upload-documents', {
         method: 'POST',
         body: formData,
       });
       
       const data = await response.json();
+      console.log('Upload API response:', data);
       
       if (!response.ok) {
         throw new Error(data.error || 'Failed to upload documents');

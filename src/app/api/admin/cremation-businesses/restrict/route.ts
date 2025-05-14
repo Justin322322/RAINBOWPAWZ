@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
 
       // First, check if the business profile exists
       const checkResult = await query(`
-        SELECT id, user_id, verification_status, application_status, provider_type
+        SELECT id, user_id, application_status, provider_type
         FROM ${tableName}
         WHERE id = ?
       `, [businessId]) as any[];
@@ -104,7 +104,6 @@ export async function POST(request: NextRequest) {
       console.log('Available columns:', columnNames);
 
       // Check for required columns
-      const hasVerificationStatus = columnNames.includes('verification_status');
       const hasApplicationStatus = columnNames.includes('application_status');
       const hasStatus = columnNames.includes('status');
       const hasProviderType = columnNames.includes('provider_type');
@@ -113,16 +112,10 @@ export async function POST(request: NextRequest) {
       let updateParts = [];
       let updateParams = [];
 
-      // Always update application_status if it exists (primary status field)
+      // Update application_status (primary status field)
       if (hasApplicationStatus) {
         updateParts.push('application_status = ?');
         updateParams.push(newApplicationStatus);
-      }
-
-      // Update verification_status for backward compatibility
-      if (hasVerificationStatus) {
-        updateParts.push('verification_status = ?');
-        updateParams.push(newStatus);
       }
 
       // Update status field if it exists (though it should be removed in migration)
@@ -271,19 +264,19 @@ export async function POST(request: NextRequest) {
       console.log('No rows affected, but continuing with success response');
       // Check the current status to include in the response
       const currentStatusResult = await query(`
-        SELECT application_status, verification_status
+        SELECT application_status
         FROM ${tableName}
         WHERE id = ?
       `, [businessId]) as any[];
 
       const currentStatus = currentStatusResult && currentStatusResult.length > 0
         ? currentStatusResult[0]
-        : { application_status: newApplicationStatus, verification_status: newStatus };
+        : { application_status: newApplicationStatus };
 
       return NextResponse.json({
         success: true,
         message: `Business already in ${action === 'restrict' ? 'restricted' : 'restored'} state`,
-        newStatus: currentStatus.verification_status || newStatus,
+        newStatus: newApplicationStatus,
         newApplicationStatus: currentStatus.application_status || newApplicationStatus,
         noChanges: true
       });

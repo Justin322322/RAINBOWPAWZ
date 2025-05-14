@@ -10,11 +10,23 @@ import {
 } from '@heroicons/react/24/outline';
 import Link from 'next/link';
 
+// Define the interface for application type
+interface Application {
+  id: number;
+  businessId: number;
+  businessName: string;
+  owner: string;
+  email: string;
+  applicationStatus: string;
+  // Add other properties that might be used
+  [key: string]: any;
+}
+
 function AdminApplicationsContent() {
   const [searchTerm, setSearchTerm] = useState('');
-  const [applications, setApplications] = useState([]);
+  const [applications, setApplications] = useState<Application[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState('all');
 
   // Fetch applications data
@@ -51,7 +63,7 @@ function AdminApplicationsContent() {
         }
 
         // Process the applications to ensure statuses are correct
-        const processedApplications = data.applications.map(app => {
+        const processedApplications = data.applications.map((app: any) => {
           // Set a default status if none provided
           if (!app.applicationStatus) {
             return { ...app, applicationStatus: 'pending' };
@@ -132,8 +144,6 @@ function AdminApplicationsContent() {
             >
               <option value="all">All Statuses</option>
               <option value="pending">Pending</option>
-              <option value="reviewing">Under Review</option>
-              <option value="documents_required">Documents Required</option>
               <option value="approved">Approved</option>
               <option value="declined">Declined</option>
               <option value="restricted">Restricted</option>
@@ -210,22 +220,12 @@ function AdminApplicationsContent() {
                           Pending
                         </span>
                       )}
-                      {application.applicationStatus === 'reviewing' && (
-                        <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
-                          Reviewing
-                        </span>
-                      )}
-                      {application.applicationStatus === 'documents_required' && (
-                        <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-orange-100 text-orange-800">
-                          Documents Required
-                        </span>
-                      )}
-                      {(application.applicationStatus === 'approved' || application.applicationStatus === 'verified') && (
+                      {application.applicationStatus === 'approved' && (
                         <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
                           Approved
                         </span>
                       )}
-                      {(application.applicationStatus === 'declined' || application.applicationStatus === 'rejected') && (
+                      {application.applicationStatus === 'declined' && (
                         <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
                           Declined
                         </span>

@@ -98,7 +98,7 @@ export async function GET(request: NextRequest) {
           CONCAT(u.first_name, ' ', u.last_name) as owner,
           u.email,
           sp.created_at as submitDate,
-          COALESCE(sp.application_status, sp.verification_status, 'pending') as status
+          sp.application_status as status
         FROM service_providers sp
         JOIN users u ON sp.user_id = u.id
         WHERE sp.provider_type = 'cremation'
@@ -129,7 +129,7 @@ export async function GET(request: NextRequest) {
             id as businessId,
             name as businessName,
             created_at as submitDate,
-            COALESCE(application_status, verification_status, 'pending') as status
+            application_status as status
           FROM service_providers
           WHERE provider_type = 'cremation'
           ORDER BY created_at DESC

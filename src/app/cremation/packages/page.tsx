@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import CremationDashboardLayout from '@/components/navigation/CremationDashboardLayout';
@@ -19,8 +19,12 @@ import {
   TagIcon,
   ClockIcon,
   CurrencyDollarIcon,
-  CheckIcon
+  CheckIcon,
+  PencilIcon,
+  EyeIcon,
+  EyeSlashIcon
 } from '@heroicons/react/24/outline';
+import Image from 'next/image';
 
 interface PackageData {
   id: number;
@@ -34,6 +38,7 @@ interface PackageData {
   addOns: string[];
   conditions: string;
   images: string[];
+  isActive: boolean;
 }
 
 interface PackagesPageProps {
@@ -50,46 +55,47 @@ function PackagesPage({ userData }: PackagesPageProps) {
   const [packageToDelete, setPackageToDelete] = useState<number | null>(null);
   const [viewMode, setViewMode] = useState<'list' | 'card'>('card');
   const { showToast } = useToast();
+  const [toggleLoading, setToggleLoading] = useState<number | null>(null);
 
   // No mock data needed anymore as we're using the API
 
-  // Load packages on component mount
-  useEffect(() => {
-    const fetchPackages = async () => {
-      try {
-        setIsLoading(true);
+  // Memoize the fetchPackages function to prevent it from being recreated on every render
+  const fetchPackages = useCallback(async () => {
+    try {
+      // Get the business ID from userData if available
+      const providerId = userData?.business_id;
 
-        // Get the business ID from userData if available
-        const providerId = userData?.business_id;
-
-        if (!providerId) {
-          showToast('Unable to determine business ID', 'error');
-          setPackages([]);
-          setIsLoading(false);
-          return;
-        }
-
-        // Fetch packages from API
-        const response = await fetch(`/api/packages?providerId=${providerId}`);
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to fetch packages');
-        }
-
-        const data = await response.json();
-        setPackages(data.packages || []);
-        setIsLoading(false);
-      } catch (error) {
-        console.error('Error fetching packages:', error);
-        showToast(error instanceof Error ? error.message : 'Failed to fetch packages', 'error');
+      if (!providerId) {
+        showToast('Unable to determine business ID', 'error');
         setPackages([]);
         setIsLoading(false);
+        return;
       }
-    };
 
-    fetchPackages();
+      // Fetch packages from API
+      const response = await fetch(`/api/packages?providerId=${providerId}&includeInactive=true`);
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to fetch packages');
+      }
+
+      const data = await response.json();
+      setPackages(data.packages || []);
+    } catch (error) {
+      console.error('Error fetching packages:', error);
+      showToast(error instanceof Error ? error.message : 'Failed to fetch packages', 'error');
+      setPackages([]);
+    } finally {
+      setIsLoading(false);
+    }
   }, [userData, showToast]);
+
+  // Load packages on component mount
+  useEffect(() => {
+    setIsLoading(true);
+    fetchPackages();
+  }, [fetchPackages]);
 
   // Filter packages based on search term and category
   const filteredPackages = packages.filter(pkg => {
@@ -124,11 +130,45 @@ function PackagesPage({ userData }: PackagesPageProps) {
         setPackageToDelete(null);
 
         // Show success toast
-        showToast('Package deleted successfully', 'success');
+        showToast('Package deactivated successfully', 'success');
       } catch (error) {
         console.error('Error deleting package:', error);
         showToast(error instanceof Error ? error.message : 'Failed to delete package', 'error');
       }
+    }
+  };
+
+  const handleToggleActive = async (packageId: number, currentActiveState: boolean) => {
+    setToggleLoading(packageId);
+    try {
+      const response = await fetch(`/api/packages/${packageId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ isActive: !currentActiveState }),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to update package status: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      
+      // Update local state
+      setPackages(packages.map(pkg => 
+        pkg.id === packageId ? { ...pkg, isActive: !currentActiveState } : pkg
+      ));
+      
+      showToast(
+        `Package ${!currentActiveState ? 'activated' : 'deactivated'} successfully`, 
+        'success'
+      );
+    } catch (error) {
+      console.error('Error toggling package status:', error);
+      showToast('Failed to update package status. Please try again later.', 'error');
+    } finally {
+      setToggleLoading(null);
     }
   };
 
@@ -307,7 +347,7 @@ function PackagesPage({ userData }: PackagesPageProps) {
                         className="text-indigo-600 hover:text-indigo-900 mr-4"
                         aria-label={`Edit ${pkg.name}`}
                       >
-                        <PencilSquareIcon className="h-5 w-5" />
+                        <PencilIcon className="h-5 w-5" />
                       </button>
                       <button
                         onClick={() => handleDeleteClick(pkg.id)}
@@ -329,78 +369,93 @@ function PackagesPage({ userData }: PackagesPageProps) {
       {!isLoading && filteredPackages.length > 0 && viewMode === 'card' && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredPackages.map((pkg) => (
-            <div key={pkg.id} className="bg-white rounded-xl shadow-sm overflow-hidden hover:shadow-md transition-shadow duration-200">
-              <div className="relative h-48 bg-gray-200">
+            <div key={pkg.id} className={`border rounded-lg overflow-hidden transition-all duration-300 ${pkg.isActive ? 'border-gray-200' : 'border-red-200 bg-red-50'}`}>
+              <div className="h-40 relative bg-gray-100">
                 {pkg.images && pkg.images.length > 0 ? (
-                  <img
+                  <Image
                     src={pkg.images[0]}
                     alt={pkg.name}
-                    className="w-full h-full object-cover"
+                    fill
+                    className="object-cover"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = 'none';
+                      
+                      const parent = target.parentElement;
+                      if (parent && !parent.querySelector('.placeholder-content')) {
+                        const placeholderDiv = document.createElement('div');
+                        placeholderDiv.className = 'placeholder-content absolute inset-0 flex flex-col items-center justify-center text-gray-400';
+                        placeholderDiv.innerHTML = `
+                          <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                          <span class="text-sm">No image available</span>
+                        `;
+                        parent.appendChild(placeholderDiv);
+                      }
+                    }}
                   />
                 ) : (
-                  <div className="h-full w-full flex items-center justify-center text-gray-400">
-                    <svg className="h-16 w-16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
+                    <span className="text-sm">No image available</span>
                   </div>
                 )}
-                <div className="absolute top-2 right-2">
-                  <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                    pkg.category === 'Private' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
-                  }`}>
-                    {pkg.category}
-                  </span>
-                </div>
+                
+                {!pkg.isActive && (
+                  <div className="absolute top-2 right-2 bg-red-100 text-red-800 text-xs font-medium px-2.5 py-0.5 rounded">
+                    Inactive
+                  </div>
+                )}
               </div>
-
-              <div className="p-5">
-                <h3 className="text-lg font-semibold text-gray-900 mb-1">{pkg.name}</h3>
-                <p className="text-sm text-gray-500 mb-4 line-clamp-2">{pkg.description}</p>
-
-                <div className="flex flex-wrap gap-y-2 mb-4">
-                  <div className="w-1/2 flex items-center text-sm text-gray-600">
-                    <ClockIcon className="h-4 w-4 mr-1 text-gray-400" />
-                    {pkg.processingTime}
-                  </div>
-                  <div className="w-1/2 flex items-center text-sm text-gray-600">
-                    <CurrencyDollarIcon className="h-4 w-4 mr-1 text-gray-400" />
-                    ₱{pkg.price.toLocaleString()}
-                  </div>
+              
+              <div className="p-4">
+                <div className="flex justify-between mb-2">
+                  <h3 className="text-lg font-medium text-gray-800">{pkg.name}</h3>
+                  <span className="text-lg font-semibold text-gray-800">₱{pkg.price.toLocaleString()}</span>
                 </div>
-
-                {pkg.inclusions.length > 0 && (
-                  <div className="mb-4">
-                    <h4 className="text-xs font-medium text-gray-500 uppercase mb-2">Inclusions</h4>
-                    <ul className="space-y-1">
-                      {pkg.inclusions.slice(0, 3).map((inclusion, index) => (
-                        <li key={index} className="flex items-start text-sm">
-                          <CheckIcon className="h-4 w-4 mr-1 text-green-500 flex-shrink-0 mt-0.5" />
-                          <span className="text-gray-600 line-clamp-1">{inclusion}</span>
-                        </li>
-                      ))}
-                      {pkg.inclusions.length > 3 && (
-                        <li className="text-sm text-gray-500 italic">
-                          +{pkg.inclusions.length - 3} more inclusions
-                        </li>
-                      )}
-                    </ul>
+                
+                <p className="text-sm text-gray-600 mb-4 line-clamp-2">{pkg.description}</p>
+                
+                <div className="flex items-center justify-between mt-4">
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => router.push(`/cremation/packages/edit/${pkg.id}`)}
+                      className="p-2 text-blue-600 hover:bg-blue-50 rounded-full transition-colors"
+                      title="Edit Package"
+                    >
+                      <PencilIcon className="h-5 w-5" />
+                    </button>
+                    
+                    <button
+                      onClick={() => handleDeleteClick(pkg.id)}
+                      className="p-2 text-red-600 hover:bg-red-50 rounded-full transition-colors"
+                      title="Delete Package"
+                    >
+                      <TrashIcon className="h-5 w-5" />
+                    </button>
                   </div>
-                )}
-
-                <div className="flex justify-end space-x-2 pt-3 border-t border-gray-100">
+                  
                   <button
-                    onClick={() => router.push(`/cremation/packages/edit/${pkg.id}`)}
-                    className="inline-flex items-center px-3 py-1.5 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--primary-green)]"
+                    onClick={() => handleToggleActive(pkg.id, pkg.isActive)}
+                    disabled={toggleLoading === pkg.id}
+                    className={`flex items-center px-3 py-1.5 rounded-md text-sm transition-colors ${
+                      pkg.isActive 
+                        ? 'bg-red-50 text-red-700 hover:bg-red-100' 
+                        : 'bg-green-50 text-green-700 hover:bg-green-100'
+                    }`}
+                    title={pkg.isActive ? "Deactivate Package" : "Activate Package"}
                   >
-                    <PencilSquareIcon className="h-4 w-4 mr-1" />
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => handleDeleteClick(pkg.id)}
-                    className="inline-flex items-center px-3 py-1.5 border border-gray-300 rounded-md text-sm font-medium text-red-600 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                  >
-                    <TrashIcon className="h-4 w-4 mr-1" />
-                    Delete
+                    {toggleLoading === pkg.id ? (
+                      <div className="h-4 w-4 border-2 border-t-transparent border-green-700 animate-spin rounded-full mr-2"></div>
+                    ) : pkg.isActive ? (
+                      <EyeSlashIcon className="h-4 w-4 mr-1" />
+                    ) : (
+                      <EyeIcon className="h-4 w-4 mr-1" />
+                    )}
+                    {pkg.isActive ? "Deactivate" : "Activate"}
                   </button>
                 </div>
               </div>
@@ -413,14 +468,14 @@ function PackagesPage({ userData }: PackagesPageProps) {
       {showDeleteModal && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-md w-full">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Confirm Deletion</h3>
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Confirm Deactivation</h3>
             <p className="text-sm text-gray-500 mb-4">
-              Are you sure you want to delete this package? This action cannot be undone.
+              Are you sure you want to deactivate the package "{packages.find(pkg => pkg.id === packageToDelete)?.name}"? This will hide it from customers.
             </p>
             <div className="flex justify-end space-x-3">
               <button
                 onClick={() => setShowDeleteModal(false)}
-                className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
               >
                 Cancel
               </button>
@@ -428,7 +483,7 @@ function PackagesPage({ userData }: PackagesPageProps) {
                 onClick={confirmDelete}
                 className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700"
               >
-                Delete
+                Deactivate
               </button>
             </div>
           </div>

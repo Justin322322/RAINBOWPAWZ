@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: May 14, 2025 at 11:11 AM
+-- Generation Time: May 14, 2025 at 03:11 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -100,9 +100,7 @@ CREATE TABLE `business_application_stats` (
 `total` bigint(21)
 ,`approved` decimal(22,0)
 ,`pending` decimal(22,0)
-,`reviewing` decimal(22,0)
 ,`declined` decimal(22,0)
-,`documents_required` decimal(22,0)
 ,`restricted` decimal(22,0)
 );
 
@@ -189,7 +187,9 @@ CREATE TABLE `otp_attempts` (
 --
 
 INSERT INTO `otp_attempts` (`id`, `user_id`, `attempt_type`, `attempt_time`, `ip_address`) VALUES
-(65, 39, 'generate', '2025-05-14 09:02:18', '::ffff:192.168.56.1');
+(66, 40, 'generate', '2025-05-14 10:51:31', '::ffff:192.168.56.1'),
+(67, 40, 'generate', '2025-05-14 10:51:50', '::ffff:192.168.56.1'),
+(68, 40, 'verify', '2025-05-14 10:52:05', '::ffff:192.168.56.1');
 
 -- --------------------------------------------------------
 
@@ -211,7 +211,8 @@ CREATE TABLE `otp_codes` (
 --
 
 INSERT INTO `otp_codes` (`id`, `user_id`, `otp_code`, `expires_at`, `is_used`, `created_at`) VALUES
-(49, 39, '265259', '2025-05-14 17:12:18', 0, '2025-05-14 09:02:18');
+(50, 40, '714667', '2025-05-14 19:01:31', 1, '2025-05-14 10:51:31'),
+(51, 40, '927206', '2025-05-14 19:01:50', 1, '2025-05-14 10:51:50');
 
 -- --------------------------------------------------------
 
@@ -464,7 +465,7 @@ CREATE TABLE `service_providers` (
   `zip` varchar(20) NOT NULL,
   `hours` text DEFAULT NULL,
   `service_description` text DEFAULT NULL,
-  `application_status` enum('pending','reviewing','documents_required','approved','declined','verified','rejected','restricted') NOT NULL DEFAULT 'pending',
+  `application_status` enum('pending','declined','approved','restricted') NOT NULL DEFAULT 'pending',
   `verification_date` timestamp NULL DEFAULT NULL,
   `verification_notes` text DEFAULT NULL,
   `bir_certificate_path` varchar(255) DEFAULT NULL,
@@ -481,7 +482,7 @@ CREATE TABLE `service_providers` (
 
 INSERT INTO `service_providers` (`id`, `user_id`, `name`, `provider_type`, `contact_first_name`, `contact_last_name`, `phone`, `address`, `province`, `city`, `zip`, `hours`, `service_description`, `application_status`, `verification_date`, `verification_notes`, `bir_certificate_path`, `business_permit_path`, `government_id_path`, `created_at`, `updated_at`, `active_service_count`) VALUES
 (6, 31, 'Rainbow Bridge Pet Cremation', 'cremation', 'Admin', 'Rainbow', '09123456789', 'Capitol Drive, Balanga City, Bataan, Philippines', 'Bataan', 'Balanga City', '2100', 'Monday-Friday: 8:00 AM - 5:00 PM, Saturday: 8:00 AM - 12:00 PM, Sunday: Closed', 'Compassionate pet cremation services with personalized memorials. We provide dignified and respectful end-of-life care for your beloved companions. Our team understands the deep bond between pets and their families, and we strive to honor that connection through our thoughtful services.', 'declined', '2025-05-14 07:19:00', 'asdasd asdasd asdasd asdasd', NULL, NULL, NULL, '2025-05-13 22:58:24', '2025-05-14 08:31:52', 3),
-(7, 32, 'Peaceful Paws Memorial', 'cremation', 'Admin', 'Peaceful', '09234567890', 'Tuyo, Balanga City, Bataan, Philippines', 'Bataan', 'Balanga City', '2100', 'Monday-Saturday: 9:00 AM - 6:00 PM, Sunday: By appointment only', 'Dignified pet cremation with eco-friendly options. We focus on providing environmentally conscious memorial services while honoring your pet with the respect they deserve. Our facility is designed to provide a peaceful setting for families during this difficult time.', 'restricted', NULL, NULL, NULL, NULL, NULL, '2025-05-13 22:58:24', '2025-05-14 08:31:52', 3),
+(7, 32, 'Peaceful Paws Memorial', 'cremation', 'Admin', 'Peaceful', '09234567890', 'Tuyo, Balanga City, Bataan, Philippines', 'Bataan', 'Balanga City', '2100', 'Monday-Saturday: 9:00 AM - 6:00 PM, Sunday: By appointment only', 'Dignified pet cremation with eco-friendly options. We focus on providing environmentally conscious memorial services while honoring your pet with the respect they deserve. Our facility is designed to provide a peaceful setting for families during this difficult time.', 'approved', '2025-05-14 10:52:58', 'Unrestricted by admin', NULL, NULL, NULL, '2025-05-13 22:58:24', '2025-05-14 10:52:58', 3),
 (8, 33, 'Eternal Companions', 'cremation', 'Admin', 'Eternal', '09345678901', 'Tenejero, Balanga City, Bataan, Philippines', 'Bataan', 'Balanga City', '2100', 'Monday-Sunday: 24/7 Service Available', 'Honoring your pet with respectful cremation services. We offer 24/7 service to ensure your beloved companion receives timely and compassionate care. Our dedicated team is committed to providing support during this difficult time.', 'approved', '2025-05-14 06:16:37', 'Application approved', NULL, NULL, NULL, '2025-05-13 22:58:24', '2025-05-14 08:31:52', 3);
 
 -- --------------------------------------------------------
@@ -532,11 +533,11 @@ CREATE TABLE `users` (
 --
 
 INSERT INTO `users` (`id`, `email`, `password`, `first_name`, `last_name`, `phone_number`, `address`, `sex`, `role`, `status`, `is_verified`, `is_otp_verified`, `created_at`, `updated_at`, `last_login`) VALUES
-(19, 'testadmin@rainbowpaws.com', '$2b$10$rn9WwPcbn2pnhyufVIh0cuY1E0fpO.E0tnSSNMFTDax2To.2PjXaO', 'Test', 'Admin', NULL, NULL, NULL, 'admin', 'active', 1, 1, '2025-05-11 14:42:55', '2025-05-14 09:02:27', '2025-05-14 09:02:27'),
+(19, 'testadmin@rainbowpaws.com', '$2b$10$rn9WwPcbn2pnhyufVIh0cuY1E0fpO.E0tnSSNMFTDax2To.2PjXaO', 'Test', 'Admin', NULL, NULL, NULL, 'admin', 'active', 1, 1, '2025-05-11 14:42:55', '2025-05-14 12:59:22', '2025-05-14 12:59:22'),
 (31, 'rainbow_bridge@example.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Admin', 'Rainbow', '09123456789', NULL, NULL, 'business', 'active', 1, 1, '2025-05-13 22:58:24', '2025-05-13 22:58:24', NULL),
-(32, 'peaceful_paws@example.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Admin', 'Peaceful', '09234567890', NULL, NULL, 'business', 'active', 1, 1, '2025-05-13 22:58:24', '2025-05-13 22:58:24', NULL),
+(32, 'peaceful_paws@example.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Admin', 'Peaceful', '09234567890', NULL, NULL, 'business', 'active', 1, 1, '2025-05-13 22:58:24', '2025-05-14 10:52:58', NULL),
 (33, 'eternal_companions@example.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Admin', 'Eternal', '09345678901', NULL, NULL, 'business', 'active', 1, 1, '2025-05-13 22:58:24', '2025-05-13 22:58:24', NULL),
-(39, 'justinmarlosibonga@gmail.com', '$2b$10$ns3ZEPPWi9oPTjQ85DdZ/OmFqHqyRNWunnN2k6r7Gdv4xrTFHMzTK', 'Justin', 'Sibonga', '1111111', 'Capitol Compound, Tenejero', NULL, 'business', 'active', 0, 0, '2025-05-14 09:02:15', '2025-05-14 09:02:15', NULL);
+(40, 'justinmarlosibonga@gmail.com', '$2b$10$YnxAQblMwI8K3GfKn1zfxOs49VYuPc8LUljhGlph7VUlcA28wEbzq', 'Justin', 'Sibonga', '1111111', 'Capitol Compound, Tenejero', 'male', 'fur_parent', 'active', 0, 1, '2025-05-14 10:51:28', '2025-05-14 10:52:06', '2025-05-14 10:51:41');
 
 -- --------------------------------------------------------
 
@@ -545,7 +546,7 @@ INSERT INTO `users` (`id`, `email`, `password`, `first_name`, `last_name`, `phon
 --
 DROP TABLE IF EXISTS `business_application_stats`;
 
-CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `business_application_stats`  AS SELECT count(0) AS `total`, sum(case when `service_providers`.`application_status` = 'approved' or `service_providers`.`application_status` = 'verified' then 1 else 0 end) AS `approved`, sum(case when `service_providers`.`application_status` = 'pending' then 1 else 0 end) AS `pending`, sum(case when `service_providers`.`application_status` = 'reviewing' then 1 else 0 end) AS `reviewing`, sum(case when `service_providers`.`application_status` = 'declined' or `service_providers`.`application_status` = 'rejected' then 1 else 0 end) AS `declined`, sum(case when `service_providers`.`application_status` = 'documents_required' then 1 else 0 end) AS `documents_required`, sum(case when `service_providers`.`application_status` = 'restricted' then 1 else 0 end) AS `restricted` FROM `service_providers` ;
+CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `business_application_stats`  AS SELECT count(0) AS `total`, sum(case when `service_providers`.`application_status` = 'approved' then 1 else 0 end) AS `approved`, sum(case when `service_providers`.`application_status` = 'pending' then 1 else 0 end) AS `pending`, sum(case when `service_providers`.`application_status` = 'declined' then 1 else 0 end) AS `declined`, sum(case when `service_providers`.`application_status` = 'restricted' then 1 else 0 end) AS `restricted` FROM `service_providers` ;
 
 --
 -- Indexes for dumped tables
@@ -629,12 +630,7 @@ ALTER TABLE `package_inclusions`
 -- Indexes for table `password_reset_tokens`
 --
 ALTER TABLE `password_reset_tokens`
-  ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `unique_token` (`token`),
-  ADD KEY `idx_user_id` (`user_id`),
-  ADD KEY `idx_token` (`token`),
-  ADD KEY `idx_expires_at` (`expires_at`),
-  ADD KEY `idx_is_used` (`is_used`);
+  ADD PRIMARY KEY (`id`);
 
 --
 -- Indexes for table `pets`
@@ -657,8 +653,7 @@ ALTER TABLE `reviews`
 --
 ALTER TABLE `service_packages`
   ADD PRIMARY KEY (`id`),
-  ADD KEY `service_provider_id` (`service_provider_id`),
-  ADD KEY `idx_service_provider` (`service_provider_id`);
+  ADD KEY `service_provider_id` (`service_provider_id`);
 
 --
 -- Indexes for table `service_providers`
@@ -697,13 +692,13 @@ ALTER TABLE `admin_notifications`
 -- AUTO_INCREMENT for table `admin_profiles`
 --
 ALTER TABLE `admin_profiles`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT for table `bookings`
 --
 ALTER TABLE `bookings`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `email_queue`
@@ -721,13 +716,13 @@ ALTER TABLE `notifications`
 -- AUTO_INCREMENT for table `otp_attempts`
 --
 ALTER TABLE `otp_attempts`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=66;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=69;
 
 --
 -- AUTO_INCREMENT for table `otp_codes`
 --
 ALTER TABLE `otp_codes`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=50;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=52;
 
 --
 -- AUTO_INCREMENT for table `package_addons`
@@ -751,13 +746,13 @@ ALTER TABLE `package_inclusions`
 -- AUTO_INCREMENT for table `password_reset_tokens`
 --
 ALTER TABLE `password_reset_tokens`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=17;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `pets`
 --
 ALTER TABLE `pets`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `reviews`
@@ -775,19 +770,19 @@ ALTER TABLE `service_packages`
 -- AUTO_INCREMENT for table `service_providers`
 --
 ALTER TABLE `service_providers`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
 
 --
 -- AUTO_INCREMENT for table `successful_bookings`
 --
 ALTER TABLE `successful_bookings`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=41;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=40;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=41;
 
 --
 -- Constraints for dumped tables
@@ -805,7 +800,7 @@ ALTER TABLE `admin_profiles`
 ALTER TABLE `bookings`
   ADD CONSTRAINT `bookings_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `bookings_ibfk_2` FOREIGN KEY (`pet_id`) REFERENCES `pets` (`id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `bookings_ibfk_3` FOREIGN KEY (`business_service_id`) REFERENCES `business_services` (`id`) ON DELETE CASCADE;
+  ADD CONSTRAINT `bookings_ibfk_3` FOREIGN KEY (`business_service_id`) REFERENCES `service_packages` (`id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `notifications`
@@ -842,12 +837,6 @@ ALTER TABLE `package_images`
 --
 ALTER TABLE `package_inclusions`
   ADD CONSTRAINT `package_inclusions_ibfk_1` FOREIGN KEY (`package_id`) REFERENCES `service_packages` (`id`) ON DELETE CASCADE;
-
---
--- Constraints for table `password_reset_tokens`
---
-ALTER TABLE `password_reset_tokens`
-  ADD CONSTRAINT `password_reset_tokens_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `pets`

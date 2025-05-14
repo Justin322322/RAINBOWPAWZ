@@ -3,7 +3,7 @@ import { query } from '@/lib/db';
 
 export async function GET() {
   try {
-    console.log('Fetching service providers from database');
+    console.log('Fetching service providers from database - Enhanced version with application_status support');
 
     try {
       // Check which table exists: business_profiles or service_providers
@@ -29,8 +29,53 @@ export async function GET() {
       let providersResult;
 
       if (useServiceProvidersTable) {
-        // Fetch from service_providers table (updated structure)
-        console.log('Using service_providers table');
+        // First check which status columns exist in the service_providers table
+        const columnsResult = await query(`
+          SELECT COLUMN_NAME 
+          FROM INFORMATION_SCHEMA.COLUMNS 
+          WHERE TABLE_SCHEMA = DATABASE() 
+          AND TABLE_NAME = 'service_providers'
+        `) as any[];
+        
+        const columnNames = columnsResult.map(col => col.COLUMN_NAME);
+        const hasApplicationStatus = columnNames.includes('application_status');
+        const hasVerificationStatus = columnNames.includes('verification_status');
+        const hasStatus = columnNames.includes('status');
+        
+        console.log('Service providers table columns:', {
+          hasApplicationStatus,
+          hasVerificationStatus,
+          hasStatus
+        });
+        
+        // Build a WHERE clause based on available columns
+        let whereClause = '';
+        
+        // Primary condition: application_status = 'approved' (new schema)
+        if (hasApplicationStatus) {
+          whereClause = "(application_status = 'approved' OR application_status = 'verified')";
+        } 
+        // Fallback to verification_status if application_status doesn't exist
+        else if (hasVerificationStatus) {
+          whereClause = "verification_status = 'verified'";
+        } 
+        // If neither exists, use a default condition that always passes
+        else {
+          whereClause = "1=1";
+        }
+        
+        // Add provider_type filter if column exists
+        if (columnNames.includes('provider_type')) {
+          whereClause += " AND provider_type = 'cremation'";
+        }
+        
+        // Add active status filter if the column exists
+        if (hasStatus) {
+          whereClause += " AND status = 'active'";
+        }
+        
+        // Fetch from service_providers table with dynamic WHERE clause
+        console.log('Using service_providers table with WHERE clause:', whereClause);
         providersResult = await query(`
           SELECT
             id,
@@ -40,12 +85,20 @@ export async function GET() {
             phone,
             service_description as description,
             provider_type as type,
-            created_at
+            created_at,
+            ${hasApplicationStatus ? 'application_status' : hasVerificationStatus ? 'verification_status' : "'approved' as application_status"}
           FROM service_providers
-          WHERE verification_status = 'verified'
-          AND status = 'active'
+          WHERE ${whereClause}
           ORDER BY name ASC
         `) as any[];
+        
+        // Add detailed logging to see what's happening with the query
+        console.log(`Found ${providersResult.length} providers matching the criteria:`);
+        if (providersResult.length > 0) {
+          providersResult.forEach(provider => {
+            console.log(`- [ID: ${provider.id}] ${provider.name} (${hasApplicationStatus ? provider.application_status : hasVerificationStatus ? provider.verification_status : 'unknown status'})`);
+          });
+        }
       } else {
         // Use business_profiles table
         console.log('Using business_profiles table');
@@ -109,6 +162,28 @@ export async function GET() {
       // Only try business_profiles if it exists
       let businessResult = [];
       if (useBusinessProfilesTable) {
+        // Check which columns exist in business_profiles
+        const bpColumnsResult = await query(`
+          SELECT COLUMN_NAME 
+          FROM INFORMATION_SCHEMA.COLUMNS 
+          WHERE TABLE_SCHEMA = DATABASE() 
+          AND TABLE_NAME = 'business_profiles'
+        `) as any[];
+        
+        const bpColumns = bpColumnsResult.map(col => col.COLUMN_NAME);
+        const hasAppStatus = bpColumns.includes('application_status');
+        const hasVerStatus = bpColumns.includes('verification_status');
+        
+        // Build WHERE clause based on available columns
+        let bpWhereClause = '';
+        if (hasAppStatus) {
+          bpWhereClause = "(bp.application_status = 'approved' OR bp.application_status = 'verified')";
+        } else if (hasVerStatus) {
+          bpWhereClause = "bp.verification_status = 'verified'";
+        } else {
+          bpWhereClause = "1=1";
+        }
+        
         businessResult = await query(`
           SELECT
             bp.id,
@@ -122,7 +197,7 @@ export async function GET() {
             bp.created_at
           FROM business_profiles bp
           JOIN users u ON bp.user_id = u.id
-          WHERE bp.verification_status = 'verified'
+          WHERE ${bpWhereClause}
           AND bp.business_type = 'cremation'
           ORDER BY bp.business_name ASC
         `) as any[];
@@ -132,23 +207,28 @@ export async function GET() {
         console.log(`Found ${businessResult.length} cremation businesses in business_profiles table`);
 
         // Format the business data to match the expected format
-        const formattedBusinesses = businessResult.map(business => ({
-          id: business.id,
-          name: business.name,
-          // Extract specific location from address for display in cards
-          city: business.address ? business.address.split(',')[0] : (business.city || 'Bataan'),
-          address: business.address,
-          phone: business.phone,
-          email: business.email,
-          description: business.description || 'Pet cremation services',
-          type: 'Pet Cremation Services',
-          // Get actual package count instead of random number
-          packages: 0, // Will be updated below
-          distance: `${((business.id * 1.5) % 30).toFixed(1)} km away`, // Consistent distance based on ID
-          // Add postal code to ensure proper geocoding
-          address: business.address.includes('2100') ? business.address : business.address.replace('Philippines', '2100 Philippines'),
-          created_at: business.created_at
-        }));
+        const formattedBusinesses = businessResult.map(business => {
+          // Process the address to include postal code if needed
+          const formattedAddress = business.address ? 
+            (business.address.includes('2100') ? business.address : business.address.replace('Philippines', '2100 Philippines')) :
+            '';
+            
+          return {
+            id: business.id,
+            name: business.name,
+            // Extract specific location from address for display in cards
+            city: formattedAddress ? formattedAddress.split(',')[0] : (business.city || 'Bataan'),
+            address: formattedAddress,
+            phone: business.phone,
+            email: business.email,
+            description: business.description || 'Pet cremation services',
+            type: 'Pet Cremation Services',
+            // Get actual package count instead of random number
+            packages: 0, // Will be updated below
+            distance: `${((business.id * 1.5) % 30).toFixed(1)} km away`, // Consistent distance based on ID
+            created_at: business.created_at
+          };
+        });
 
         // Get actual package counts for each business
         for (const business of formattedBusinesses) {

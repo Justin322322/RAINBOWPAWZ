@@ -1,7 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import CremationDashboardLayout from '@/components/navigation/CremationDashboardLayout';
+import withBusinessVerification from '@/components/withBusinessVerification';
+import { useToast } from '@/context/ToastContext';
 import { 
   KeyIcon, 
   HomeIcon,
@@ -13,24 +15,89 @@ import {
   BuildingStorefrontIcon
 } from '@heroicons/react/24/outline';
 
-export default function CremationProfilePage() {
-  const [userName] = useState('Happy Paws Cremation');
+function CremationProfilePage({ userData }: { userData: any }) {
+  // Password states
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const [passwordSuccess, setPasswordSuccess] = useState('');
-
+  
+  // Address states
   const [address, setAddress] = useState({
-    street: '123 Pet Memorial Drive',
-    city: 'Balanga',
-    state: 'Bataan',
-    zipCode: '2100',
-    country: 'Philippines'
+    street: '',
+    city: '',
+    state: '',
+    zipCode: '',
+    country: ''
   });
   const [addressSuccess, setAddressSuccess] = useState('');
+  
+  // Contact info states
+  const [contactInfo, setContactInfo] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: ''
+  });
+  const [contactSuccess, setContactSuccess] = useState('');
 
-  const handlePasswordChange = (e: React.FormEvent) => {
+  // Profile data state
+  const [profileData, setProfileData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  
+  const { showToast } = useToast();
+
+  // Fetch profile data
+  useEffect(() => {
+    const fetchProfileData = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch('/api/cremation/profile');
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to fetch profile data');
+        }
+        
+        const data = await response.json();
+        setProfileData(data.profile);
+        
+        // Update form states with fetched data
+        if (data.profile) {
+          setAddress({
+            street: data.profile.address.street || '',
+            city: data.profile.address.city || '',
+            state: data.profile.address.state || '',
+            zipCode: data.profile.address.zipCode || '',
+            country: data.profile.address.country || 'Philippines'
+          });
+          
+          // Set contact info from profile data
+          const nameParts = data.profile.contactPerson.split(' ');
+          setContactInfo({
+            firstName: nameParts[0] || '',
+            lastName: nameParts.slice(1).join(' ') || '',
+            email: data.profile.email || '',
+            phone: data.profile.phone || ''
+          });
+        }
+        
+        setError(null);
+      } catch (error) {
+        console.error('Error fetching profile data:', error);
+        setError(error instanceof Error ? error.message : 'An error occurred while fetching data');
+        showToast('Failed to load profile data. Please try again.', 'error');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProfileData();
+  }, [showToast]);
+
+  const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
     setPasswordError('');
     setPasswordSuccess('');
@@ -51,28 +118,100 @@ export default function CremationProfilePage() {
       return;
     }
 
-    // Password change logic would go here (API call to change password)
-    // For now, just simulate success
-    setPasswordSuccess('Password changed successfully');
-    setCurrentPassword('');
-    setNewPassword('');
-    setConfirmPassword('');
+    try {
+      const response = await fetch('/api/cremation/profile', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          password: {
+            currentPassword,
+            newPassword
+          }
+        }),
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to update password');
+      }
+      
+      setPasswordSuccess('Password changed successfully');
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (error) {
+      console.error('Error updating password:', error);
+      setPasswordError(error instanceof Error ? error.message : 'Failed to update password');
+    }
   };
 
-  const handleAddressUpdate = (e: React.FormEvent) => {
+  const handleAddressUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Address update logic would go here (API call to update address)
-    // For now, just simulate success
-    setAddressSuccess('Address updated successfully');
     
-    // Clear success message after 3 seconds
-    setTimeout(() => {
-      setAddressSuccess('');
-    }, 3000);
+    try {
+      const response = await fetch('/api/cremation/profile', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ address }),
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to update address');
+      }
+      
+      setAddressSuccess('Address updated successfully');
+      showToast('Address updated successfully', 'success');
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => {
+        setAddressSuccess('');
+      }, 3000);
+    } catch (error) {
+      console.error('Error updating address:', error);
+      showToast(error instanceof Error ? error.message : 'Failed to update address', 'error');
+    }
+  };
+
+  const handleContactUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    try {
+      const response = await fetch('/api/cremation/profile', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ contactInfo }),
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to update contact information');
+      }
+      
+      setContactSuccess('Contact information updated successfully');
+      showToast('Contact information updated successfully', 'success');
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => {
+        setContactSuccess('');
+      }, 3000);
+    } catch (error) {
+      console.error('Error updating contact info:', error);
+      showToast(error instanceof Error ? error.message : 'Failed to update contact information', 'error');
+    }
   };
 
   return (
-    <CremationDashboardLayout activePage="profile" userName={userName}>
+    <CremationDashboardLayout activePage="profile" userData={userData}>
       {/* Header section */}
       <div className="mb-8 bg-white rounded-xl shadow-sm p-6">
         <div className="flex items-center">
@@ -86,215 +225,318 @@ export default function CremationProfilePage() {
         </div>
       </div>
 
-      {/* Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Account Information Panel */}
-        <div className="lg:col-span-3 bg-white rounded-xl shadow-sm overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-lg font-medium text-gray-800">Account Information</h2>
+      {loading ? (
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[var(--primary-green)]"></div>
+        </div>
+      ) : error ? (
+        <div className="bg-white rounded-xl shadow-sm p-8 text-center">
+          <div className="text-red-500 mb-4">
+            <svg className="h-12 w-12 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
           </div>
-          <div className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="bg-gray-50 rounded-lg p-4">
-                <div className="flex items-center mb-2">
-                  <UserIcon className="h-5 w-5 text-gray-500 mr-2" />
-                  <h3 className="text-sm font-medium text-gray-500">Business Name</h3>
+          <h3 className="text-lg font-medium text-gray-900 mb-1">Error Loading Profile</h3>
+          <p className="text-gray-500 mb-4">{error}</p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-[var(--primary-green)] text-white rounded-md hover:bg-opacity-90"
+          >
+            Try Again
+          </button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Account Information Panel */}
+          <div className="lg:col-span-3 bg-white rounded-xl shadow-sm overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h2 className="text-lg font-medium text-gray-800">Account Information</h2>
+            </div>
+            <div className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <div className="flex items-center mb-2">
+                    <UserIcon className="h-5 w-5 text-gray-500 mr-2" />
+                    <h3 className="text-sm font-medium text-gray-500">Business Name</h3>
+                  </div>
+                  <p className="text-base font-semibold text-gray-900">{profileData?.name || 'Not available'}</p>
                 </div>
-                <p className="text-base font-semibold text-gray-900">{userName}</p>
-              </div>
-              <div className="bg-gray-50 rounded-lg p-4">
-                <div className="flex items-center mb-2">
-                  <EnvelopeIcon className="h-5 w-5 text-gray-500 mr-2" />
-                  <h3 className="text-sm font-medium text-gray-500">Email Address</h3>
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <div className="flex items-center mb-2">
+                    <EnvelopeIcon className="h-5 w-5 text-gray-500 mr-2" />
+                    <h3 className="text-sm font-medium text-gray-500">Email Address</h3>
+                  </div>
+                  <p className="text-base font-semibold text-gray-900">{profileData?.email || 'Not available'}</p>
                 </div>
-                <p className="text-base font-semibold text-gray-900">info@happypawscremation.com</p>
-              </div>
-              <div className="bg-gray-50 rounded-lg p-4">
-                <div className="flex items-center mb-2">
-                  <PhoneIcon className="h-5 w-5 text-gray-500 mr-2" />
-                  <h3 className="text-sm font-medium text-gray-500">Phone Number</h3>
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <div className="flex items-center mb-2">
+                    <PhoneIcon className="h-5 w-5 text-gray-500 mr-2" />
+                    <h3 className="text-sm font-medium text-gray-500">Phone Number</h3>
+                  </div>
+                  <p className="text-base font-semibold text-gray-900">{profileData?.phone || 'Not available'}</p>
                 </div>
-                <p className="text-base font-semibold text-gray-900">(555) 123-4567</p>
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Change Password Panel */}
-        <div className="lg:col-span-3 bg-white rounded-xl shadow-sm overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-200 flex items-center">
-            <KeyIcon className="h-5 w-5 text-gray-500 mr-2" />
-            <h2 className="text-lg font-medium text-gray-800">Change Password</h2>
-          </div>
-          <div className="p-6">
-            <form onSubmit={handlePasswordChange} className="space-y-4 max-w-xl">
-              {passwordError && (
-                <div className="bg-red-50 text-red-800 p-3 rounded-lg flex items-start">
-                  <XCircleIcon className="h-5 w-5 text-red-500 mr-2 mt-0.5" />
-                  <p className="text-sm">{passwordError}</p>
+          {/* Contact Information Panel */}
+          <div className="lg:col-span-3 bg-white rounded-xl shadow-sm overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-200 flex items-center">
+              <UserIcon className="h-5 w-5 text-gray-500 mr-2" />
+              <h2 className="text-lg font-medium text-gray-800">Contact Information</h2>
+            </div>
+            <div className="p-6">
+              <form onSubmit={handleContactUpdate} className="space-y-4 max-w-xl">
+                {contactSuccess && (
+                  <div className="bg-green-50 text-green-800 p-3 rounded-lg flex items-start">
+                    <CheckCircleIcon className="h-5 w-5 text-green-500 mr-2 mt-0.5" />
+                    <p className="text-sm">{contactSuccess}</p>
+                  </div>
+                )}
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-1">
+                      First Name
+                    </label>
+                    <input
+                      type="text"
+                      id="firstName"
+                      value={contactInfo.firstName}
+                      onChange={(e) => setContactInfo({...contactInfo, firstName: e.target.value})}
+                      className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-1">
+                      Last Name
+                    </label>
+                    <input
+                      type="text"
+                      id="lastName"
+                      value={contactInfo.lastName}
+                      onChange={(e) => setContactInfo({...contactInfo, lastName: e.target.value})}
+                      className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
+                    />
+                  </div>
                 </div>
-              )}
-              
-              {passwordSuccess && (
-                <div className="bg-green-50 text-green-800 p-3 rounded-lg flex items-start">
-                  <CheckCircleIcon className="h-5 w-5 text-green-500 mr-2 mt-0.5" />
-                  <p className="text-sm">{passwordSuccess}</p>
-                </div>
-              )}
-              
-              <div>
-                <label htmlFor="current-password" className="block text-sm font-medium text-gray-700 mb-1">
-                  Current Password
-                </label>
-                <input
-                  type="password"
-                  id="current-password"
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                  className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
-                  placeholder="Enter your current password"
-                />
-              </div>
-              
-              <div>
-                <label htmlFor="new-password" className="block text-sm font-medium text-gray-700 mb-1">
-                  New Password
-                </label>
-                <input
-                  type="password"
-                  id="new-password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
-                  placeholder="Enter new password"
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Password must be at least 8 characters long and include a mix of letters, numbers, and symbols.
-                </p>
-              </div>
-              
-              <div>
-                <label htmlFor="confirm-password" className="block text-sm font-medium text-gray-700 mb-1">
-                  Confirm New Password
-                </label>
-                <input
-                  type="password"
-                  id="confirm-password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
-                  placeholder="Confirm new password"
-                />
-              </div>
-              
-              <div className="pt-2">
-                <button 
-                  type="submit"
-                  className="px-4 py-2 bg-[var(--primary-green)] text-white rounded-lg hover:bg-opacity-90 transition-all duration-300"
-                >
-                  Update Password
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-
-        {/* Update Address Panel */}
-        <div className="lg:col-span-3 bg-white rounded-xl shadow-sm overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-200 flex items-center">
-            <BuildingStorefrontIcon className="h-5 w-5 text-gray-500 mr-2" />
-            <h2 className="text-lg font-medium text-gray-800">Business Address</h2>
-          </div>
-          <div className="p-6">
-            <form onSubmit={handleAddressUpdate} className="space-y-4 max-w-xl">
-              {addressSuccess && (
-                <div className="bg-green-50 text-green-800 p-3 rounded-lg flex items-start">
-                  <CheckCircleIcon className="h-5 w-5 text-green-500 mr-2 mt-0.5" />
-                  <p className="text-sm">{addressSuccess}</p>
-                </div>
-              )}
-              
-              <div>
-                <label htmlFor="street" className="block text-sm font-medium text-gray-700 mb-1">
-                  Street Address
-                </label>
-                <input
-                  type="text"
-                  id="street"
-                  value={address.street}
-                  onChange={(e) => setAddress({...address, street: e.target.value})}
-                  className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
-                />
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                
                 <div>
-                  <label htmlFor="city" className="block text-sm font-medium text-gray-700 mb-1">
-                    City
+                  <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+                    Email Address
                   </label>
                   <input
-                    type="text"
-                    id="city"
-                    value={address.city}
-                    onChange={(e) => setAddress({...address, city: e.target.value})}
+                    type="email"
+                    id="email"
+                    value={contactInfo.email}
+                    onChange={(e) => setContactInfo({...contactInfo, email: e.target.value})}
                     className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
                   />
                 </div>
                 
                 <div>
-                  <label htmlFor="state" className="block text-sm font-medium text-gray-700 mb-1">
-                    State / Province
+                  <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
+                    Phone Number
                   </label>
                   <input
-                    type="text"
-                    id="state"
-                    value={address.state}
-                    onChange={(e) => setAddress({...address, state: e.target.value})}
-                    className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
-                  />
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label htmlFor="zipCode" className="block text-sm font-medium text-gray-700 mb-1">
-                    ZIP / Postal Code
-                  </label>
-                  <input
-                    type="text"
-                    id="zipCode"
-                    value={address.zipCode}
-                    onChange={(e) => setAddress({...address, zipCode: e.target.value})}
+                    type="tel"
+                    id="phone"
+                    value={contactInfo.phone}
+                    onChange={(e) => setContactInfo({...contactInfo, phone: e.target.value})}
                     className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
                   />
                 </div>
                 
+                <div className="pt-2">
+                  <button 
+                    type="submit"
+                    className="px-4 py-2 bg-[var(--primary-green)] text-white rounded-lg hover:bg-opacity-90 transition-all duration-300"
+                  >
+                    Update Contact Information
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          {/* Change Password Panel */}
+          <div className="lg:col-span-3 bg-white rounded-xl shadow-sm overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-200 flex items-center">
+              <KeyIcon className="h-5 w-5 text-gray-500 mr-2" />
+              <h2 className="text-lg font-medium text-gray-800">Change Password</h2>
+            </div>
+            <div className="p-6">
+              <form onSubmit={handlePasswordChange} className="space-y-4 max-w-xl">
+                {passwordError && (
+                  <div className="bg-red-50 text-red-800 p-3 rounded-lg flex items-start">
+                    <XCircleIcon className="h-5 w-5 text-red-500 mr-2 mt-0.5" />
+                    <p className="text-sm">{passwordError}</p>
+                  </div>
+                )}
+                
+                {passwordSuccess && (
+                  <div className="bg-green-50 text-green-800 p-3 rounded-lg flex items-start">
+                    <CheckCircleIcon className="h-5 w-5 text-green-500 mr-2 mt-0.5" />
+                    <p className="text-sm">{passwordSuccess}</p>
+                  </div>
+                )}
+                
                 <div>
-                  <label htmlFor="country" className="block text-sm font-medium text-gray-700 mb-1">
-                    Country
+                  <label htmlFor="current-password" className="block text-sm font-medium text-gray-700 mb-1">
+                    Current Password
+                  </label>
+                  <input
+                    type="password"
+                    id="current-password"
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
+                    placeholder="Enter your current password"
+                  />
+                </div>
+                
+                <div>
+                  <label htmlFor="new-password" className="block text-sm font-medium text-gray-700 mb-1">
+                    New Password
+                  </label>
+                  <input
+                    type="password"
+                    id="new-password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
+                    placeholder="Enter new password"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Password must be at least 8 characters long and include a mix of letters, numbers, and symbols.
+                  </p>
+                </div>
+                
+                <div>
+                  <label htmlFor="confirm-password" className="block text-sm font-medium text-gray-700 mb-1">
+                    Confirm New Password
+                  </label>
+                  <input
+                    type="password"
+                    id="confirm-password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
+                    placeholder="Confirm new password"
+                  />
+                </div>
+                
+                <div className="pt-2">
+                  <button 
+                    type="submit"
+                    className="px-4 py-2 bg-[var(--primary-green)] text-white rounded-lg hover:bg-opacity-90 transition-all duration-300"
+                  >
+                    Update Password
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          {/* Update Address Panel */}
+          <div className="lg:col-span-3 bg-white rounded-xl shadow-sm overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-200 flex items-center">
+              <BuildingStorefrontIcon className="h-5 w-5 text-gray-500 mr-2" />
+              <h2 className="text-lg font-medium text-gray-800">Business Address</h2>
+            </div>
+            <div className="p-6">
+              <form onSubmit={handleAddressUpdate} className="space-y-4 max-w-xl">
+                {addressSuccess && (
+                  <div className="bg-green-50 text-green-800 p-3 rounded-lg flex items-start">
+                    <CheckCircleIcon className="h-5 w-5 text-green-500 mr-2 mt-0.5" />
+                    <p className="text-sm">{addressSuccess}</p>
+                  </div>
+                )}
+                
+                <div>
+                  <label htmlFor="street" className="block text-sm font-medium text-gray-700 mb-1">
+                    Street Address
                   </label>
                   <input
                     type="text"
-                    id="country"
-                    value={address.country}
-                    onChange={(e) => setAddress({...address, country: e.target.value})}
+                    id="street"
+                    value={address.street}
+                    onChange={(e) => setAddress({...address, street: e.target.value})}
                     className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
                   />
                 </div>
-              </div>
-              
-              <div className="pt-2">
-                <button 
-                  type="submit"
-                  className="px-4 py-2 bg-[var(--primary-green)] text-white rounded-lg hover:bg-opacity-90 transition-all duration-300"
-                >
-                  Update Address
-                </button>
-              </div>
-            </form>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="city" className="block text-sm font-medium text-gray-700 mb-1">
+                      City
+                    </label>
+                    <input
+                      type="text"
+                      id="city"
+                      value={address.city}
+                      onChange={(e) => setAddress({...address, city: e.target.value})}
+                      className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label htmlFor="state" className="block text-sm font-medium text-gray-700 mb-1">
+                      State / Province
+                    </label>
+                    <input
+                      type="text"
+                      id="state"
+                      value={address.state}
+                      onChange={(e) => setAddress({...address, state: e.target.value})}
+                      className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
+                    />
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="zipCode" className="block text-sm font-medium text-gray-700 mb-1">
+                      ZIP / Postal Code
+                    </label>
+                    <input
+                      type="text"
+                      id="zipCode"
+                      value={address.zipCode}
+                      onChange={(e) => setAddress({...address, zipCode: e.target.value})}
+                      className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label htmlFor="country" className="block text-sm font-medium text-gray-700 mb-1">
+                      Country
+                    </label>
+                    <input
+                      type="text"
+                      id="country"
+                      value={address.country}
+                      onChange={(e) => setAddress({...address, country: e.target.value})}
+                      className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
+                    />
+                  </div>
+                </div>
+                
+                <div className="pt-2">
+                  <button 
+                    type="submit"
+                    className="px-4 py-2 bg-[var(--primary-green)] text-white rounded-lg hover:bg-opacity-90 transition-all duration-300"
+                  >
+                    Update Address
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </CremationDashboardLayout>
   );
-} 
+}
+
+export default withBusinessVerification(CremationProfilePage); 

@@ -36,59 +36,55 @@ export async function POST(request: Request) {
   console.log('Document upload API called');
   
   try {
+    // Parse the multipart form data
     const formData = await request.formData();
-    const userId = formData.get('userId') as string;
-
+    console.log('Form data received keys:', Array.from(formData.keys()));
+    
+    // Get user ID from form data
+    const userId = formData.get('userId');
+    console.log('Received userId in formData:', userId);
+    
     if (!userId) {
-      console.error('User ID is missing in the request');
+      console.error('No user ID provided in form data');
       return NextResponse.json({
-        error: 'User ID is required'
+        error: 'No user ID provided'
       }, { status: 400 });
     }
 
-    console.log(`Processing document upload for user ID: ${userId}`);
+    // Convert userId to string if it's not already
+    const userIdStr = userId.toString();
+    console.log('Using userId as string:', userIdStr);
 
-    // Check which table exists
-    const tableCheckResult = await query(`SHOW TABLES`) as any[];
-    const tableNames = tableCheckResult.map((row: any) => {
-      return String(Object.values(row)[0]);
-    });
-    
-    console.log('Available tables for document upload:', tableNames);
-    
-    const useServiceProvidersTable = tableNames.includes('service_providers');
-    const useBusinessProfilesTable = tableNames.includes('business_profiles');
-
-    if (!useServiceProvidersTable && !useBusinessProfilesTable) {
-      console.error('No business or service provider tables found in the database');
-      return NextResponse.json({
-        error: 'Required database tables not found'
-      }, { status: 500 });
-    }
-
-    console.log(`Using ${useServiceProvidersTable ? 'service_providers' : 'business_profiles'} table for document upload`);
-
-    // Check if the service provider or business profile exists
+    // Check if we should use service_providers or business_profiles table
+    const useServiceProvidersTable = true; // Default to service_providers table
     const tableName = useServiceProvidersTable ? 'service_providers' : 'business_profiles';
+    console.log(`Using table: ${tableName}`);
 
-    // Get all business profiles or service providers for this user
+    // Check if a business profile exists for this user
+    console.log(`Checking for existing ${tableName} record for user ID: ${userIdStr}`);
     const businessCheck = await query(
       `SELECT id FROM ${tableName} WHERE user_id = ?`,
-      [userId]
+      [userIdStr]
     ) as any[];
 
+    console.log(`${tableName} check result:`, businessCheck);
+
+    // If no business found, try to create one for service providers
     if (!businessCheck || businessCheck.length === 0) {
-      console.error(`No ${tableName} found with user_id: ${userId}`);
+      console.error(`No ${tableName} found with user_id: ${userIdStr}`);
       
       // If we didn't find an existing record, check if we need to create one
       if (useServiceProvidersTable) {
         // Check if user exists first
         const userCheck = await query(
-          `SELECT id, full_name, email FROM users WHERE id = ?`,
-          [userId]
+          `SELECT id, first_name, last_name, email FROM users WHERE id = ?`,
+          [userIdStr]
         ) as any[];
         
+        console.log('User check result:', userCheck);
+        
         if (!userCheck || userCheck.length === 0) {
+          console.error(`User not found with ID: ${userIdStr}`);
           return NextResponse.json({
             error: 'User not found'
           }, { status: 404 });
@@ -96,23 +92,28 @@ export async function POST(request: Request) {
         
         // User exists, create service provider record
         const user = userCheck[0];
-        console.log(`Creating new service provider record for user ${userId} (${user.full_name})`);
+        console.log(`Creating new service provider record for user ${userIdStr} (${user.first_name} ${user.last_name})`);
         
         try {
           // Insert a new service provider record
           const insertResult = await query(
             `INSERT INTO service_providers (user_id, name, provider_type, application_status, created_at, updated_at) 
              VALUES (?, ?, 'cremation', 'pending', NOW(), NOW())`,
-            [userId, user.full_name || 'New Cremation Service']
+            [userIdStr, user.first_name ? `${user.first_name} ${user.last_name || ''}` : 'New Cremation Service']
           );
+          
+          console.log('Service provider insert result:', insertResult);
           
           // Get the newly created record
           const newBusinessCheck = await query(
             `SELECT id FROM ${tableName} WHERE user_id = ?`,
-            [userId]
+            [userIdStr]
           ) as any[];
           
+          console.log('New business check result:', newBusinessCheck);
+          
           if (!newBusinessCheck || newBusinessCheck.length === 0) {
+            console.error('Failed to create service provider record');
             return NextResponse.json({
               error: 'Failed to create service provider record'
             }, { status: 500 });
@@ -143,7 +144,7 @@ export async function POST(request: Request) {
     const birCertificate = formData.get('birCertificate') as File;
     if (birCertificate && birCertificate instanceof File) {
       console.log(`Processing BIR Certificate: ${birCertificate.name}, size: ${birCertificate.size}`);
-      filePaths.birCertificatePath = await saveFile(birCertificate, userId, 'bir_certificate');
+      filePaths.birCertificatePath = await saveFile(birCertificate, userIdStr, 'bir_certificate');
       documentsUploaded = true;
     }
 
@@ -151,7 +152,7 @@ export async function POST(request: Request) {
     const businessPermit = formData.get('businessPermit') as File;
     if (businessPermit && businessPermit instanceof File) {
       console.log(`Processing Business Permit: ${businessPermit.name}, size: ${businessPermit.size}`);
-      filePaths.businessPermitPath = await saveFile(businessPermit, userId, 'business_permit');
+      filePaths.businessPermitPath = await saveFile(businessPermit, userIdStr, 'business_permit');
       documentsUploaded = true;
     }
 
@@ -159,7 +160,7 @@ export async function POST(request: Request) {
     const governmentId = formData.get('governmentId') as File;
     if (governmentId && governmentId instanceof File) {
       console.log(`Processing Government ID: ${governmentId.name}, size: ${governmentId.size}`);
-      filePaths.governmentIdPath = await saveFile(governmentId, userId, 'government_id');
+      filePaths.governmentIdPath = await saveFile(governmentId, userIdStr, 'government_id');
       documentsUploaded = true;
     }
 
