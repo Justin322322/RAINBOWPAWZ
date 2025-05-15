@@ -78,49 +78,56 @@ export async function POST(request: NextRequest) {
     // Generate unique filename
     const timestamp = Date.now();
     const fileExtension = fileType.split('/')[1];
-    const filename = `package_${providerId}_${timestamp}.${fileExtension}`;
-    console.log(`Generated filename: ${filename}`);
-    
-    // Create directory path
-    const dirPath = join(process.cwd(), 'public', 'uploads', 'packages');
     
     try {
-      // Check if directory exists
-      let dirExists = false;
-      try {
-        await fs.promises.access(dirPath);
-        dirExists = true;
-        console.log(`Directory exists: ${dirPath}`);
-      } catch (err) {
-        console.log(`Directory does not exist, will create: ${dirPath}`);
-      }
-      
-      // Create directory if it doesn't exist
-      if (!dirExists) {
-        try {
-          console.log(`Creating directory: ${dirPath}`);
-          await mkdir(dirPath, { recursive: true });
-          console.log(`Directory created successfully: ${dirPath}`);
-        } catch (mkdirError) {
-          console.error(`Error creating directory: ${mkdirError}`);
-          throw mkdirError;
+      // Check if packageId is provided and is valid
+      let packageIdInt = 0;
+      if (packageId) {
+        packageIdInt = parseInt(packageId);
+        if (isNaN(packageIdInt)) {
+          packageIdInt = 0;
         }
       }
       
+      // Define paths based on package ID
+      const baseDir = join(process.cwd(), 'public', 'uploads', 'packages');
+      let packageDir = baseDir;
+      let filename = '';
+      let relativePath = '';
+      
+      // If we have a valid package ID, create a package-specific directory
+      if (packageIdInt > 0) {
+        packageDir = join(baseDir, packageIdInt.toString());
+        filename = `${providerId}_${timestamp}.${fileExtension}`;
+        relativePath = `/uploads/packages/${packageIdInt}/${filename}`;
+      } else {
+        // No package ID yet, store in temporary location
+        filename = `package_${providerId}_${timestamp}.${fileExtension}`;
+        relativePath = `/uploads/packages/${filename}`;
+      }
+      
+      // Create base directory if it doesn't exist
+      if (!fs.existsSync(baseDir)) {
+        console.log(`Creating base directory: ${baseDir}`);
+        await mkdir(baseDir, { recursive: true });
+      }
+      
+      // Create package-specific directory if needed
+      if (packageIdInt > 0 && !fs.existsSync(packageDir)) {
+        console.log(`Creating package directory: ${packageDir}`);
+        await mkdir(packageDir, { recursive: true });
+      }
+      
       // Write file to directory
-      const filePath = join(dirPath, filename);
+      const filePath = join(packageIdInt > 0 ? packageDir : baseDir, filename);
       console.log(`Writing file to: ${filePath}`);
       const buffer = Buffer.from(await file.arrayBuffer());
       await writeFile(filePath, buffer);
       
-      // Return the relative path to be stored in the database
-      const relativePath = `/uploads/packages/${filename}`;
       console.log(`File saved successfully. Relative path: ${relativePath}`);
       
       // If packageId is provided, save in database
       if (packageId) {
-        const packageIdInt = parseInt(packageId);
-        
         if (!isNaN(packageIdInt)) {
           // Check if package belongs to this provider
           const packageResult = await query(

@@ -161,6 +161,11 @@ function EditPackagePage({ userData }: EditPackagePageProps) {
         const formData = new FormData();
         formData.append('file', file);
         
+        // Always include the package ID for proper storage in the correct folder
+        if (packageId) {
+          formData.append('packageId', packageId.toString());
+        }
+        
         try {
           const response = await fetch('/api/upload/package-image', {
             method: 'POST',

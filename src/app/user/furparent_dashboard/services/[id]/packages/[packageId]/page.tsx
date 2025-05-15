@@ -16,6 +16,7 @@ import withOTPVerification from '@/components/withOTPVerification';
 import FurParentPageSkeleton from '@/components/ui/FurParentPageSkeleton';
 import { useCart } from '@/contexts/CartContext';
 import CartSidebar from '@/components/cart/CartSidebar';
+import { getAllPackageImages, handleImageError } from '@/utils/imageUtils';
 
 interface PackageDetailPageProps {
   userData?: any;
@@ -81,12 +82,15 @@ function PackageDetailPage({ userData }: PackageDetailPageProps) {
         
         console.log('Successfully fetched package:', packageData.package.name);
         
-        // Filter out any blob URLs from images
-        if (packageData.package.images && packageData.package.images.length > 0) {
-          packageData.package.images = packageData.package.images.filter(
-            (imagePath: string) => imagePath && !imagePath.startsWith('blob:')
-          );
-          console.log(`Package has ${packageData.package.images.length} valid images after filtering`);
+        // Use our utility to get verified package images
+        try {
+          const verifiedImages = await getAllPackageImages(packageId);
+          if (verifiedImages && verifiedImages.length > 0) {
+            packageData.package.images = verifiedImages;
+            console.log(`Found ${verifiedImages.length} verified images for package ${packageId}:`, verifiedImages);
+          }
+        } catch (imgErr) {
+          console.error('Error fetching verified images:', imgErr);
         }
         
         setPackageData(packageData.package);
@@ -185,26 +189,7 @@ function PackageDetailPage({ userData }: PackageDetailPageProps) {
                         alt={packageData.name}
                         fill
                         className="object-cover"
-                        onError={(e) => {
-                          // Hide the image element on error and show the placeholder
-                          const target = e.target as HTMLImageElement;
-                          target.style.display = 'none';
-                          console.error('Failed to load package image:', packageData.images[currentImageIndex]);
-                          
-                          // Find parent and show placeholder if not already there
-                          const parent = target.parentElement;
-                          if (parent && !parent.querySelector('.placeholder-content')) {
-                            const placeholderDiv = document.createElement('div');
-                            placeholderDiv.className = 'placeholder-content text-gray-400 flex flex-col items-center justify-center h-full';
-                            placeholderDiv.innerHTML = `
-                              <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                              </svg>
-                              <span class="text-sm">Image unavailable</span>
-                            `;
-                            parent.appendChild(placeholderDiv);
-                          }
-                        }}
+                        onError={(e) => handleImageError(e, `/images/sample-package-${(parseInt(packageId as string) % 5) + 1}.jpg`)}
                       />
                       {packageData.images.length > 1 && (
                         <>

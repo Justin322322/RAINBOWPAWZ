@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import AdminDashboardLayout from '@/components/navigation/AdminDashboardLayout';
 import {
   MagnifyingGlassIcon,
-  FunnelIcon,
   FireIcon,
   QueueListIcon,
   ShieldCheckIcon,
@@ -17,6 +16,7 @@ import {
 import Link from 'next/link';
 import Image from 'next/image';
 import { PackageImage } from '@/components/packages/PackageImage';
+import { LoadingSpinner, EmptyState } from './client';
 
 export default function AdminServicesPage() {
   const [userName] = useState('System Administrator');
@@ -72,7 +72,54 @@ export default function AdminServicesPage() {
         const data = await response.json();
 
         if (data.success) {
-          setServices(data.services || []);
+          // Process service images to ensure they're consistent
+          console.log('API response data:', data);
+          
+          // Find what image files exist in the uploads directory
+          try {
+            fetch('/api/packages/available-images')
+              .then(resp => resp.json())
+              .then(imgData => {
+                console.log('Available package images:', imgData);
+                // Store available images in a cookie for the PackageImage component to use
+                if (imgData.images) {
+                  document.cookie = `packageFiles=${JSON.stringify(imgData.images)}; path=/; max-age=300`;
+                }
+              })
+              .catch(e => console.error('Error fetching available images:', e));
+          } catch (e) {
+            console.error('Error setting up image checker:', e);
+          }
+          
+          const servicesWithImages = data.services.map((service: any) => {
+            // Reset error state for all services
+            setImageError(prev => ({ ...prev, [service.id]: false }));
+            
+            // Ensure that images is always an array
+            const images = service.images && Array.isArray(service.images) 
+              ? service.images 
+              : service.image 
+                ? [service.image] 
+                : [];
+                
+            // Add a consistent path based on ID if no image is provided
+            if (images.length === 0) {
+              const defaultImagePath = `/images/sample-package-${service.id % 5 + 1}.jpg`;
+              images.push(defaultImagePath);
+              console.log(`Added default image path for service ${service.id}: ${defaultImagePath}`);
+            }
+            
+            // Debug output
+            console.log(`Service ${service.id} (${service.name}) images:`, images);
+            
+            return {
+              ...service,
+              image: images[0], // Set primary image
+              images: images    // Set images array
+            };
+          });
+          
+          setServices(servicesWithImages || []);
           setPagination(data.pagination || pagination);
 
           // Calculate stats
@@ -203,8 +250,41 @@ export default function AdminServicesPage() {
 
   // Helper function to render image or placeholder
   const renderServiceImage = (service: any, large: boolean = false) => {
-    // Check if service has an image
-    if (!service.image || imageError[service.id]) {
+    // Create a proper images array for the PackageImage component
+    let images: string[] = [];
+    
+    // Add images from service.images array if it exists
+    if (service.images && service.images.length > 0) {
+      images = [...service.images];
+    }
+    
+    // Add the main image if it exists and isn't already in the images array
+    if (service.image) {
+      // Process the path correctly
+      const imagePath = service.image.startsWith('http') 
+        ? service.image
+        : service.image.startsWith('/') 
+          ? service.image
+          : `/uploads/${service.image}`;
+          
+      if (!images.includes(imagePath)) {
+        images.push(imagePath);
+      }
+    }
+
+    // Add package ID specific paths if we have a package ID
+    if (service.id && !isNaN(parseInt(service.id))) {
+      const packageId = parseInt(service.id);
+      const packageSpecificPath = `/uploads/packages/${packageId}/1.jpg`;
+      
+      // Only add if not already in the images array
+      if (!images.includes(packageSpecificPath)) {
+        images.push(packageSpecificPath);
+      }
+    }
+
+    // Check if we have any images to display
+    if (images.length === 0 || imageError[service.id]) {
       return (
         <div className={`w-full h-full flex items-center justify-center bg-gray-100 ${large ? 'rounded-lg' : ''}`}>
           <div className="text-center p-4">
@@ -222,43 +302,22 @@ export default function AdminServicesPage() {
                 d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z"
               />
             </svg>
-            <p className="mt-2 text-sm text-gray-500">No Image Available</p>
           </div>
         </div>
       );
     }
 
-    // Get the image path
-    const imagePath = service.image.startsWith('http')
-      ? service.image
-      : `/uploads/${service.image}`;
-
-    // Create an array of images if service has multiple images
-    const images = service.images || [imagePath];
-
     return (
       <div className="relative w-full h-full">
-        {large ? (
-          <PackageImage
-            images={images}
-            alt={service.name}
-            size="large"
-            className="object-cover"
-            onError={() => {
-              setImageError(prev => ({ ...prev, [service.id]: true }));
-            }}
-          />
-        ) : (
-          <Image
-            src={imagePath}
-            alt={service.name}
-            fill
-            className="object-cover"
-            onError={() => {
-              setImageError(prev => ({ ...prev, [service.id]: true }));
-            }}
-          />
-        )}
+        <PackageImage
+          images={images}
+          alt={service.name || 'Service package'}
+          size={large ? 'large' : 'large'}
+          className="object-cover"
+          onError={() => {
+            setImageError(prev => ({ ...prev, [service.id]: true }));
+          }}
+        />
       </div>
     );
   };
@@ -409,49 +468,45 @@ export default function AdminServicesPage() {
         </div>
       </div>
 
-      {/* Services Grid */}
+      {/* Content */}
       {loading ? (
-        <div className="bg-white rounded-xl shadow-sm p-12 text-center">
-          <div className="p-3 rounded-full bg-gray-200 animate-pulse inline-flex">
-            <div className="h-12 w-12"></div>
-          </div>
-          <p className="text-gray-500 text-lg mt-4">Loading services...</p>
+        <div className="bg-white rounded-xl shadow-sm overflow-hidden mb-8">
+          <LoadingSpinner />
+        </div>
+      ) : error ? (
+        <div className="bg-white rounded-xl shadow-sm overflow-hidden mb-8 p-6 text-center">
+          <ExclamationCircleIcon className="h-12 w-12 text-red-500 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-900">Error Loading Services</h3>
+          <p className="mt-2 text-gray-500">{error}</p>
+        </div>
+      ) : filteredServices.length === 0 ? (
+        <div className="bg-white rounded-xl shadow-sm overflow-hidden mb-8">
+          <EmptyState />
         </div>
       ) : (
-        <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-            {filteredServices.map((service) => (
-              <div key={service.id} className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
-                <div className="w-full h-48 relative">
-                  <div className="absolute top-2 right-2 z-10">
-                    {getStatusBadge(service.status)}
-                  </div>
-                  <div className="absolute top-2 left-2 z-10">
-                    {getCategoryBadge(service.category)}
-                  </div>
-                  {renderServiceImage(service)}
+        // Card View
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+          {filteredServices.map((service) => (
+            <div key={service.id} className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
+              <div className="w-full h-48 relative">
+                <div className="absolute top-2 right-2 z-10">
+                  {getStatusBadge(service.status)}
                 </div>
-                <div className="p-4">
-                  <div className="flex justify-between items-start mb-2">
-                    <h3 className="font-semibold text-gray-900 text-lg">{service.name}</h3>
-                    <p className="font-bold text-[var(--primary-green)]">{service.price}</p>
-                  </div>
-                  <p className="text-sm text-gray-600 mb-3">{service.cremationCenter}</p>
-                  <p className="text-sm text-gray-700 line-clamp-2 mb-3">{service.description}</p>
-                  <div className="flex justify-between items-center">
-                    <div className="flex items-center">
-                      <div className="flex text-amber-400">
-                        {[...Array(5)].map((_, i) => (
-                          <svg key={i} className={`h-4 w-4 ${i < Math.floor(service.rating) ? 'text-amber-400' : 'text-gray-300'}`} fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                          </svg>
-                        ))}
-                      </div>
-                      <span className="text-xs text-gray-600 ml-1">{service.rating}</span>
-                    </div>
-                    <span className="text-xs text-gray-600">{service.bookings} bookings</span>
-                  </div>
-                  <div className="mt-4 flex justify-end space-x-2">
+                <div className="absolute top-2 left-2 z-10">
+                  {getCategoryBadge(service.category)}
+                </div>
+                {renderServiceImage(service)}
+              </div>
+              <div className="p-4">
+                <div className="flex justify-between items-start mb-2">
+                  <h3 className="font-semibold text-gray-900 text-lg">{service.name}</h3>
+                  <p className="font-bold text-[var(--primary-green)]">₱{service.price.toLocaleString()}</p>
+                </div>
+                <p className="text-sm text-gray-600 mb-3">{service.cremationCenter}</p>
+                <p className="text-sm text-gray-700 line-clamp-2 mb-3">{service.description}</p>
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-gray-600">{service.bookings || 0} bookings</span>
+                  <div className="flex space-x-2">
                     <button
                       onClick={() => handleViewDetails(service)}
                       className="px-3 py-1.5 bg-[var(--primary-green)] text-white text-sm rounded-lg flex items-center"
@@ -462,234 +517,177 @@ export default function AdminServicesPage() {
                   </div>
                 </div>
               </div>
-            ))}
-          </div>
-
-          {filteredServices.length === 0 && !loading && (
-            <div className="bg-white rounded-xl shadow-sm p-12 text-center">
-              <p className="text-gray-500 text-lg">No services match your search criteria.</p>
-              <button
-                onClick={() => {
-                  setSearchTerm('');
-                  setStatusFilter('all');
-                  setCategoryFilter('all');
-                }}
-                className="mt-4 px-4 py-2 bg-[var(--primary-green)] text-white rounded-lg hover:bg-opacity-90 text-sm font-medium"
-              >
-                Clear Filters
-              </button>
             </div>
-          )}
-
-          {/* Pagination */}
-          {pagination.totalPages > 1 && (
-            <div className="flex justify-center mt-8 mb-8">
-              <nav className="flex items-center space-x-2">
-                <button
-                  onClick={() => setPagination(prev => ({ ...prev, page: Math.max(1, prev.page - 1) }))}
-                  disabled={pagination.page === 1}
-                  className={`px-3 py-1 rounded-md ${
-                    pagination.page === 1
-                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                      : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300'
-                  }`}
-                >
-                  Previous
-                </button>
-
-                {[...Array(pagination.totalPages)].map((_, i) => {
-                  const pageNum = i + 1;
-                  // Only show a few page numbers around the current page
-                  if (
-                    pageNum === 1 ||
-                    pageNum === pagination.totalPages ||
-                    (pageNum >= pagination.page - 1 && pageNum <= pagination.page + 1)
-                  ) {
-                    return (
-                      <button
-                        key={pageNum}
-                        onClick={() => setPagination(prev => ({ ...prev, page: pageNum }))}
-                        className={`px-3 py-1 rounded-md ${
-                          pagination.page === pageNum
-                            ? 'bg-[var(--primary-green)] text-white'
-                            : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300'
-                        }`}
-                      >
-                        {pageNum}
-                      </button>
-                    );
-                  }
-
-                  // Show ellipsis for skipped pages
-                  if (
-                    (pageNum === 2 && pagination.page > 3) ||
-                    (pageNum === pagination.totalPages - 1 && pagination.page < pagination.totalPages - 2)
-                  ) {
-                    return <span key={pageNum} className="px-2">...</span>;
-                  }
-
-                  return null;
-                })}
-
-                <button
-                  onClick={() => setPagination(prev => ({ ...prev, page: Math.min(prev.totalPages, prev.page + 1) }))}
-                  disabled={pagination.page === pagination.totalPages}
-                  className={`px-3 py-1 rounded-md ${
-                    pagination.page === pagination.totalPages
-                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                      : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300'
-                  }`}
-                >
-                  Next
-                </button>
-              </nav>
-            </div>
-          )}
-        </>
+          ))}
+        </div>
       )}
 
       {/* Service Details Modal */}
       {showDetailsModal && selectedService && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-              <h2 className="text-xl font-semibold text-gray-800">Service Details</h2>
-              <button
-                onClick={() => setShowDetailsModal(false)}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <XMarkIcon className="h-6 w-6" />
-              </button>
-            </div>
-            <div className="p-6">
-              <div className="flex flex-col md:flex-row gap-8">
-                <div className="md:w-1/3">
-                  <div className="w-full h-64 rounded-lg overflow-hidden relative mb-4">
-                    {renderServiceImage(selectedService, true)}
-                  </div>
-                  <div className="space-y-4">
-                    <div>
-                      <p className="text-sm font-medium text-gray-500 mb-1">Status</p>
-                      <div>{getStatusBadge(selectedService.status)}</div>
+        <div className="fixed inset-0 overflow-y-auto z-50">
+          <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true"></div>
+            <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
+              <div className="absolute top-0 right-0 pt-4 pr-4">
+                <button
+                  type="button"
+                  onClick={() => setShowDetailsModal(false)}
+                  className="bg-white rounded-md text-gray-400 hover:text-gray-500 focus:outline-none"
+                >
+                  <XMarkIcon className="h-6 w-6" />
+                </button>
+              </div>
+              <div className="bg-white p-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {/* Service Image */}
+                  <div className="md:col-span-1">
+                    <div className="aspect-square w-full rounded-lg overflow-hidden mb-4">
+                      {renderServiceImage(selectedService, true)}
                     </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-500 mb-1">Category</p>
-                      <div>{getCategoryBadge(selectedService.category)}</div>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-500 mb-1">Price</p>
-                      <p className="text-lg font-semibold text-[var(--primary-green)]">{selectedService.price}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-500 mb-1">Rating</p>
-                      <div className="flex items-center">
-                        <div className="flex text-amber-400">
-                          {[...Array(5)].map((_, i) => (
-                            <svg key={i} className={`h-4 w-4 ${i < Math.floor(selectedService.rating) ? 'text-amber-400' : 'text-gray-300'}`} fill="currentColor" viewBox="0 0 20 20">
-                              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                            </svg>
-                          ))}
-                        </div>
-                        <span className="text-sm text-gray-600 ml-2">{selectedService.rating} ({selectedService.bookings} bookings)</span>
+                    <div className="flex justify-between items-center">
+                      <div>
+                        {getStatusBadge(selectedService.status)}
+                      </div>
+                      <div>
+                        {getCategoryBadge(selectedService.category)}
                       </div>
                     </div>
                   </div>
-                </div>
-                <div className="md:w-2/3">
-                  <div className="mb-6">
-                    <h3 className="text-2xl font-semibold text-gray-900 mb-1">{selectedService.name}</h3>
-                    <p className="text-[var(--primary-green)] font-medium">{selectedService.cremationCenter}</p>
+                  
+                  {/* Service Details */}
+                  <div className="md:col-span-2">
+                    <h3 className="text-xl font-medium text-gray-900 mb-4">{selectedService.name}</h3>
+                    
+                    <div className="grid grid-cols-2 gap-4 mb-4">
+                      <div>
+                        <p className="text-sm font-medium text-gray-500">Provider</p>
+                        <p className="text-base text-gray-900">{selectedService.cremationCenter}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-500">Price</p>
+                        <p className="text-base text-gray-900">₱{selectedService.price.toLocaleString()}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-500">Processing Time</p>
+                        <p className="text-base text-gray-900">{selectedService.processingTime || 'Not specified'}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-500">Bookings</p>
+                        <p className="text-base text-gray-900">{selectedService.bookings || 0}</p>
+                      </div>
+                    </div>
+                    
+                    <div className="mb-4">
+                      <p className="text-sm font-medium text-gray-500">Description</p>
+                      <p className="text-base text-gray-900">{selectedService.description}</p>
+                    </div>
+                    
+                    {selectedService.inclusions && selectedService.inclusions.length > 0 && (
+                      <div className="mb-4">
+                        <p className="text-sm font-medium text-gray-500 mb-2">Inclusions</p>
+                        <ul className="list-disc pl-5 text-sm text-gray-700 space-y-1">
+                          {selectedService.inclusions.map((inclusion: string, idx: number) => (
+                            <li key={idx}>{inclusion}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    
+                    {selectedService.addOns && selectedService.addOns.length > 0 && (
+                      <div className="mb-4">
+                        <p className="text-sm font-medium text-gray-500 mb-2">Add-ons</p>
+                        <ul className="list-disc pl-5 text-sm text-gray-700 space-y-1">
+                          {selectedService.addOns.map((addon: string, idx: number) => (
+                            <li key={idx}>{addon}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    
+                    {selectedService.conditions && (
+                      <div className="mb-4">
+                        <p className="text-sm font-medium text-gray-500 mb-2">Conditions</p>
+                        <p className="text-sm text-gray-700">{selectedService.conditions}</p>
+                      </div>
+                    )}
                   </div>
-
-                  <div className="mb-6">
-                    <h4 className="text-lg font-medium text-gray-900 mb-2">Description</h4>
-                    <p className="text-gray-700">{selectedService.description}</p>
-                  </div>
-
-                  {selectedService.cremationType && (
-                    <div className="mb-6">
-                      <h4 className="text-lg font-medium text-gray-900 mb-2">Cremation Type</h4>
-                      <p className="text-gray-700">{selectedService.cremationType}</p>
-                    </div>
-                  )}
-
-                  {selectedService.processingTime && (
-                    <div className="mb-6">
-                      <h4 className="text-lg font-medium text-gray-900 mb-2">Processing Time</h4>
-                      <p className="text-gray-700">{selectedService.processingTime}</p>
-                    </div>
-                  )}
-
-                  <div className="mb-6">
-                    <h4 className="text-lg font-medium text-gray-900 mb-2">Features</h4>
-                    <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {selectedService.features && selectedService.features.map((feature: string, index: number) => (
-                        <li key={index} className="flex items-center">
-                          <svg className="h-5 w-5 text-green-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                          </svg>
-                          <span className="text-gray-700">{feature}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  {selectedService.addOns && selectedService.addOns.length > 0 && (
-                    <div className="mb-6">
-                      <h4 className="text-lg font-medium text-gray-900 mb-2">Add-ons</h4>
-                      <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        {selectedService.addOns.map((addon: string, index: number) => (
-                          <li key={index} className="flex items-center">
-                            <svg className="h-5 w-5 text-blue-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                            </svg>
-                            <span className="text-gray-700">{addon}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-
-                  {selectedService.conditions && (
-                    <div className="mb-6">
-                      <h4 className="text-lg font-medium text-gray-900 mb-2">Conditions</h4>
-                      <p className="text-gray-700">{selectedService.conditions}</p>
-                    </div>
-                  )}
                 </div>
               </div>
-
-              {/* Action Buttons */}
-              <div className="flex justify-end space-x-3 mt-8 border-t pt-6">
+              <div className="bg-gray-50 px-6 py-3 flex flex-row-reverse">
                 <button
+                  type="button"
                   onClick={() => setShowDetailsModal(false)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--primary-green)]"
                 >
                   Close
                 </button>
-                <Link
-                  href={`/admin/services/${selectedService.id}`}
-                  className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm font-medium flex items-center"
-                >
-                  <ArrowTopRightOnSquareIcon className="h-4 w-4 mr-1" />
-                  View Full Details
-                </Link>
-                {selectedService.status === 'active' ? (
-                  <button
-                    className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm font-medium"
-                  >
-                    Deactivate Service
-                  </button>
-                ) : (
-                  <button
-                    className="px-4 py-2 bg-[var(--primary-green)] text-white rounded-lg hover:bg-opacity-90 text-sm font-medium"
-                  >
-                    Activate Service
-                  </button>
-                )}
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Pagination */}
+      {pagination.totalPages > 1 && (
+        <div className="flex justify-center mt-8 mb-8">
+          <nav className="flex items-center space-x-2">
+            <button
+              onClick={() => setPagination(prev => ({ ...prev, page: Math.max(1, prev.page - 1) }))}
+              disabled={pagination.page === 1}
+              className={`px-3 py-1 rounded-md ${
+                pagination.page === 1
+                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                  : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300'
+              }`}
+            >
+              Previous
+            </button>
+            
+            {/* Page numbers */}
+            {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
+              let pageNumber: number;
+              if (pagination.totalPages <= 5) {
+                // If we have 5 or fewer pages, show all page numbers
+                pageNumber = i + 1;
+              } else if (pagination.page <= 3) {
+                // If we're on pages 1-3, show pages 1-5
+                pageNumber = i + 1;
+              } else if (pagination.page >= pagination.totalPages - 2) {
+                // If we're on the last 3 pages, show the last 5 pages
+                pageNumber = pagination.totalPages - 4 + i;
+              } else {
+                // Otherwise, show 2 pages before and 2 pages after the current page
+                pageNumber = pagination.page - 2 + i;
+              }
+              
+              return (
+                <button
+                  key={pageNumber}
+                  onClick={() => setPagination(prev => ({ ...prev, page: pageNumber }))}
+                  className={`px-3 py-1 rounded-md ${
+                    pagination.page === pageNumber
+                      ? 'bg-[var(--primary-green)] text-white font-medium'
+                      : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300'
+                  }`}
+                >
+                  {pageNumber}
+                </button>
+              );
+            })}
+            
+            <button
+              onClick={() => setPagination(prev => ({ ...prev, page: Math.min(pagination.totalPages, prev.page + 1) }))}
+              disabled={pagination.page === pagination.totalPages}
+              className={`px-3 py-1 rounded-md ${
+                pagination.page === pagination.totalPages
+                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                  : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300'
+              }`}
+            >
+              Next
+            </button>
+          </nav>
         </div>
       )}
     </AdminDashboardLayout>

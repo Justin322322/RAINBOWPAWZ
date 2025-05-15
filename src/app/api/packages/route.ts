@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { getAuthTokenFromRequest } from '@/utils/auth';
+import * as fs from 'fs';
+import { join } from 'path';
 
 // GET endpoint to fetch packages
 export async function GET(request: NextRequest) {
@@ -177,12 +179,15 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      // Insert images
-      if (images.length > 0) {
-        for (let i = 0; i < images.length; i++) {
+      // Process images - move them to the package folder and update paths
+      const updatedImages = await moveImagesToPackageFolder(images, packageId);
+
+      // Insert images with updated paths
+      if (updatedImages.length > 0) {
+        for (let i = 0; i < updatedImages.length; i++) {
           await query(
             'INSERT INTO package_images (package_id, image_path, display_order) VALUES (?, ?, ?)',
-            [packageId, images[i], i]
+            [packageId, updatedImages[i], i]
           );
         }
       }
@@ -193,7 +198,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         success: true,
         packageId,
-        message: 'Package created successfully'
+        message: 'Package created successfully',
+        updatedImages // Return updated image paths for client-side UI update
       });
     } catch (error) {
       // Rollback the transaction on error
@@ -669,4 +675,74 @@ function groupBy(array: any[], key: string) {
     (result[item[key]] = result[item[key]] || []).push(item);
     return result;
   }, {});
+}
+
+/**
+ * Moves temporary package images to a package-specific folder after package creation
+ * @param images Array of image paths
+ * @param packageId The newly created package ID
+ * @returns Array of updated image paths
+ */
+async function moveImagesToPackageFolder(images: string[], packageId: number): Promise<string[]> {
+  // If no images or invalid package ID, return as is
+  if (!images.length || !packageId) return images;
+  
+  console.log(`Moving ${images.length} images to package folder for package ID ${packageId}`);
+  
+  // Create package directory if it doesn't exist
+  const baseDir = join(process.cwd(), 'public', 'uploads', 'packages');
+  const packageDir = join(baseDir, packageId.toString());
+  
+  if (!fs.existsSync(packageDir)) {
+    try {
+      fs.mkdirSync(packageDir, { recursive: true });
+      console.log(`Created package directory: ${packageDir}`);
+    } catch (err) {
+      console.error(`Failed to create directory for package ${packageId}:`, err);
+      return images; // Return original paths if directory creation fails
+    }
+  }
+  
+  // Process each image
+  const updatedPaths = await Promise.all(images.map(async (imagePath) => {
+    // Skip images that are already in the correct folder
+    if (imagePath.includes(`/uploads/packages/${packageId}/`)) {
+      console.log(`Image already in correct folder: ${imagePath}`);
+      return imagePath;
+    }
+    
+    try {
+      // Get source and destination paths
+      const filename = imagePath.split('/').pop() as string;
+      const sourcePath = join(process.cwd(), 'public', imagePath);
+      const newRelativePath = `/uploads/packages/${packageId}/${filename}`;
+      const destPath = join(process.cwd(), 'public', newRelativePath);
+      
+      // Check if source file exists
+      if (!fs.existsSync(sourcePath)) {
+        console.log(`Source file doesn't exist: ${sourcePath}`);
+        return imagePath; // Return original path if file doesn't exist
+      }
+      
+      // Copy file to new location
+      fs.copyFileSync(sourcePath, destPath);
+      console.log(`Moved file: ${sourcePath} -> ${destPath}`);
+      
+      // Delete the original file
+      try {
+        fs.unlinkSync(sourcePath);
+        console.log(`Deleted original file: ${sourcePath}`);
+      } catch (deleteErr) {
+        console.log(`Note: Could not delete original file ${sourcePath}:`, deleteErr);
+        // Continue even if delete fails
+      }
+      
+      return newRelativePath;
+    } catch (error) {
+      console.error(`Failed to move image ${imagePath}:`, error);
+      return imagePath; // Return original path on error
+    }
+  }));
+  
+  return updatedPaths;
 }

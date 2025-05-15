@@ -28,6 +28,7 @@ interface PackageFormData {
   addOns: string[];
   conditions: string;
   images: string[];
+  packageId?: number;
 }
 
 // MultiEntryField: Handles inclusions and add-ons lists
@@ -146,7 +147,7 @@ function usePackageForm(router: AppRouterInstance, showToast: {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [formData, setFormData] = useState<PackageFormData>({
     name: '', description: '', category: 'Private', cremationType: 'Standard', processingTime: '1-2 days', price: 0,
-    inclusions: [], addOns: [], conditions: '', images: []
+    inclusions: [], addOns: [], conditions: '', images: [], packageId: undefined
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [newInclusion, setNewInclusion] = useState('');
@@ -192,6 +193,12 @@ function usePackageForm(router: AppRouterInstance, showToast: {
     const uploadPromises = files.map(async file => {
       const payload = new FormData();
       payload.append('file', file);
+      
+      // If editing an existing package, add the package ID to ensure proper storage
+      if (formData.packageId) {
+        payload.append('packageId', formData.packageId.toString());
+      }
+      
       try {
         const res = await fetch('/api/upload/package-image', { method: 'POST', body: payload });
         if (!res.ok) {
@@ -211,7 +218,7 @@ function usePackageForm(router: AppRouterInstance, showToast: {
       setFormData(prev => ({ ...prev, images: [...prev.images, ...paths] }));
       showToast(`${paths.length} images uploaded`, 'success');
     }
-  }, [showToast]);
+  }, [showToast, formData.packageId]);
 
   const handleRemoveImage = useCallback((idx: number) => {
     setFormData(prev => ({ ...prev, images: prev.images.filter((_, i) => i !== idx) }));

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { getAuthTokenFromRequest } from '@/utils/auth';
+import * as fs from 'fs';
+import { join } from 'path';
 
 // GET a specific package by ID
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
@@ -95,11 +97,26 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
           console.log(`Removed leading slash: ${processedPath}`);
         }
         
+        // Check for the new folder structure first - /uploads/packages/{packageId}/{filename}
+        if (processedPath.match(/uploads\/packages\/\d+\//)) {
+          console.log(`Found new folder structure path: /${processedPath}`);
+          return `/${processedPath}`;
+        }
+        
         // For files in uploads/packages/ directory - most reliable approach
         if (processedPath.includes('uploads/packages/package_')) {
           // Use the filename directly with the correct path prefix
           const filename = processedPath.split('/').pop();
           if (filename) {
+            // Check if we can extract package id from the filename
+            const pkgMatch = filename.match(/package_(\d+)_/);
+            if (pkgMatch && pkgMatch[1] && parseInt(pkgMatch[1]) === packageId) {
+              // New structure path with ID folder
+              const newPath = `/uploads/packages/${packageId}/${filename}`;
+              console.log(`Converted to new folder structure path: ${newPath}`);
+              return newPath;
+            }
+            
             const fullPath = `/uploads/packages/${filename}`;
             console.log(`Using direct upload path with filename: ${fullPath}`);
             return fullPath;
@@ -330,15 +347,18 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
           
           // Handle images update if provided
           if (body.images && Array.isArray(body.images)) {
+            // Process images - move them to the package folder and update paths
+            const updatedImages = await moveImagesToPackageFolder(body.images, packageId);
+            
             // Only update images if there's a change
             // Delete old images
             await query('DELETE FROM package_images WHERE package_id = ?', [packageId]);
             
             // Insert new images
-            for (let i = 0; i < body.images.length; i++) {
+            for (let i = 0; i < updatedImages.length; i++) {
               await query(
                 'INSERT INTO package_images (package_id, image_path, display_order) VALUES (?, ?, ?)',
-                [packageId, body.images[i], i]
+                [packageId, updatedImages[i], i]
               );
             }
           }
@@ -450,44 +470,19 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
         }, { status: 403 });
       }
 
-      // Start a transaction to maintain data integrity
-      await query('START TRANSACTION');
+      // Delete the package
+      await query('DELETE FROM service_packages WHERE id = ?', [packageId]);
       
-      try {
-        // Delete related records first (foreign key relationships)
-        console.log(`Deleting related records for package ID: ${packageId}`);
-        
-        // Delete inclusions
-        await query('DELETE FROM package_inclusions WHERE package_id = ?', [packageId]);
-        
-        // Delete add-ons
-        await query('DELETE FROM package_addons WHERE package_id = ?', [packageId]);
-        
-        // Delete images
-        await query('DELETE FROM package_images WHERE package_id = ?', [packageId]);
-        
-        // Delete the package
-        console.log(`Deleting package ID: ${packageId}`);
-        await query('DELETE FROM service_packages WHERE id = ?', [packageId]);
-        
-        // Commit the transaction
-        await query('COMMIT');
-        
-        return NextResponse.json({
-          success: true,
-          message: 'Package deleted successfully'
-        });
-      } catch (error) {
-        // Rollback the transaction on error
-        await query('ROLLBACK');
-        console.error('Error during package deletion:', error);
-        throw error;
-      }
-    } catch (dbError) {
-      console.error('Database error when deleting package:', dbError);
       return NextResponse.json({
-        error: 'Database error occurred',
-        message: dbError.message || 'Unknown database error'
+        success: true,
+        message: 'Package deleted successfully'
+      });
+      
+    } catch (error) {
+      console.error('Error deleting package:', error);
+      return NextResponse.json({
+        error: 'Failed to delete package',
+        details: error instanceof Error ? error.message : 'Unknown error'
       }, { status: 500 });
     }
   } catch (error) {
@@ -497,4 +492,74 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
       details: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 });
   }
+}
+
+/**
+ * Moves temporary package images to a package-specific folder after package creation/update
+ * @param images Array of image paths
+ * @param packageId The package ID
+ * @returns Array of updated image paths
+ */
+async function moveImagesToPackageFolder(images: string[], packageId: number): Promise<string[]> {
+  // If no images or invalid package ID, return as is
+  if (!images.length || !packageId) return images;
+  
+  console.log(`Moving ${images.length} images to package folder for package ID ${packageId}`);
+  
+  // Create package directory if it doesn't exist
+  const baseDir = join(process.cwd(), 'public', 'uploads', 'packages');
+  const packageDir = join(baseDir, packageId.toString());
+  
+  if (!fs.existsSync(packageDir)) {
+    try {
+      fs.mkdirSync(packageDir, { recursive: true });
+      console.log(`Created package directory: ${packageDir}`);
+    } catch (err) {
+      console.error(`Failed to create directory for package ${packageId}:`, err);
+      return images; // Return original paths if directory creation fails
+    }
+  }
+  
+  // Process each image
+  const updatedPaths = await Promise.all(images.map(async (imagePath) => {
+    // Skip images that are already in the correct folder
+    if (imagePath.includes(`/uploads/packages/${packageId}/`)) {
+      console.log(`Image already in correct folder: ${imagePath}`);
+      return imagePath;
+    }
+    
+    try {
+      // Get source and destination paths
+      const filename = imagePath.split('/').pop() as string;
+      const sourcePath = join(process.cwd(), 'public', imagePath);
+      const newRelativePath = `/uploads/packages/${packageId}/${filename}`;
+      const destPath = join(process.cwd(), 'public', newRelativePath);
+      
+      // Check if source file exists
+      if (!fs.existsSync(sourcePath)) {
+        console.log(`Source file doesn't exist: ${sourcePath}`);
+        return imagePath; // Return original path if file doesn't exist
+      }
+      
+      // Copy file to new location
+      fs.copyFileSync(sourcePath, destPath);
+      console.log(`Moved file: ${sourcePath} -> ${destPath}`);
+      
+      // Delete the original file
+      try {
+        fs.unlinkSync(sourcePath);
+        console.log(`Deleted original file: ${sourcePath}`);
+      } catch (deleteErr) {
+        console.log(`Note: Could not delete original file ${sourcePath}:`, deleteErr);
+        // Continue even if delete fails
+      }
+      
+      return newRelativePath;
+    } catch (error) {
+      console.error(`Failed to move image ${imagePath}:`, error);
+      return imagePath; // Return original path on error
+    }
+  }));
+  
+  return updatedPaths;
 }

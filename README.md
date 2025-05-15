@@ -169,3 +169,28 @@ Or to specify a custom port:
 npm run build
 npm run start:any-port 8080
 ```
+
+## Package Image Organization
+
+Images for service packages are now organized in a folder structure for better management:
+
+- All package images are stored in folders based on their package ID
+- Path format: `/public/uploads/packages/{packageId}/{filename}`
+- This provides better organization and makes it easier to manage images for each package
+
+The migration script `migrate-package-images.js` can be run to organize existing package images into the database:
+
+```
+node migrate-package-images.js
+```
+
+For newly uploaded images that might be orphaned (not yet in their package folder), you can run:
+
+```
+node migrate-orphaned-images.js
+```
+
+When uploading new package images, the system automatically:
+1. Creates a folder with the package ID if it doesn't exist
+2. Stores the images in that folder
+3. Updates the database with the new path format

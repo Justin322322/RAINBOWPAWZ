@@ -1,6 +1,155 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { getAuthTokenFromRequest } from '@/utils/auth';
+import fs from 'fs';
+import path from 'path';
+
+// Function to check for existing images for a package
+async function getPackageImages(packageId: number) {
+  try {
+    // First, check if we have entries in the package_images table
+    const imagesResult = await query(`
+      SELECT image_path
+      FROM package_images
+      WHERE package_id = ?
+      ORDER BY display_order ASC
+    `, [packageId]) as any[];
+    
+    if (imagesResult && imagesResult.length > 0) {
+      // Process paths to ensure they have proper format
+      const processedImages = imagesResult.map((img: any) => {
+        if (!img.image_path) return null;
+        let path = img.image_path;
+        
+        // If path starts with http:// or https://, it's already a full URL
+        if (path.startsWith('http://') || path.startsWith('https://')) {
+          return path;
+        }
+        
+        // Handle paths from package_images table that might be relative to public folder
+        if (!path.startsWith('/')) {
+          path = `/${path}`;
+        }
+        
+        return path;
+      }).filter(Boolean);
+      
+      if (processedImages.length > 0) {
+        return processedImages;
+      }
+    }
+    
+    // If no database entries, check the filesystem for common patterns
+    const uploadsDir = path.join(process.cwd(), 'public', 'uploads', 'packages');
+    let packageImages: string[] = [];
+    
+    // Only try to read directory if it exists
+    if (fs.existsSync(uploadsDir)) {
+      try {
+        const files = fs.readdirSync(uploadsDir);
+        
+        // Look for files matching our package ID
+        const packageFiles = files.filter(file => {
+          // Match different patterns: 
+          // - package_ID_timestamp.ext
+          // - ID.ext
+          return (
+            file.startsWith(`package_${packageId}_`) || 
+            file === `${packageId}.jpg` || 
+            file === `${packageId}.png`
+          );
+        });
+        
+        packageImages = packageFiles.map(file => `/uploads/packages/${file}`);
+      } catch (err) {
+        console.error('Error reading uploads directory:', err);
+      }
+    }
+    
+    // If no images found, fallback to sample images
+    if (packageImages.length === 0) {
+      const sampleNum = (packageId % 5) + 1;
+      packageImages.push(`/images/sample-package-${sampleNum}.jpg`);
+    }
+    
+    return packageImages;
+  } catch (error) {
+    console.error(`Error getting images for package ${packageId}:`, error);
+    // Return sample image as fallback
+    const sampleNum = (packageId % 5) + 1;
+    return [`/images/sample-package-${sampleNum}.jpg`];
+  }
+}
+
+// Function to find existing image files for a package
+async function findPackageImagePaths(packageId: number) {
+  try {
+    const uploadsBaseDir = path.join(process.cwd(), 'public', 'uploads', 'packages');
+    let packageImages: string[] = [];
+    
+    console.log(`Looking for images for package ID: ${packageId}`);
+    
+    // First, check for the package-specific folder (new structure)
+    const packageDir = path.join(uploadsBaseDir, packageId.toString());
+    if (fs.existsSync(packageDir)) {
+      try {
+        console.log(`Package directory exists: ${packageDir}`);
+        const packageFiles = fs.readdirSync(packageDir);
+        
+        // Filter for image files only
+        const imageFiles = packageFiles.filter(file => {
+          const ext = path.extname(file).toLowerCase();
+          return ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg'].includes(ext);
+        });
+        
+        if (imageFiles.length > 0) {
+          console.log(`Found ${imageFiles.length} images in package directory:`, imageFiles);
+          packageImages = imageFiles.map(file => `/uploads/packages/${packageId}/${file}`);
+          return packageImages;
+        }
+      } catch (err) {
+        console.error(`Error reading package directory for ID ${packageId}:`, err);
+      }
+    }
+    
+    // If no package directory or no images in it, check the root uploads directory (old structure)
+    if (fs.existsSync(uploadsBaseDir)) {
+      try {
+        const files = fs.readdirSync(uploadsBaseDir);
+        
+        // Check for all package ID matches in the format of "package_[ID]_timestamp.ext"
+        const exactMatches = files.filter(file => {
+          // Check for common patterns:
+          // - package_ID_timestamp.ext
+          // - ID.ext
+          return (
+            file.startsWith(`package_${packageId}_`) || 
+            file === `${packageId}.jpg` || 
+            file === `${packageId}.png` ||
+            file === `${packageId}.jpeg` ||
+            file === `${packageId}.webp`
+          );
+        });
+        
+        if (exactMatches.length > 0) {
+          console.log(`Found ${exactMatches.length} exact matches in root dir for package ${packageId}:`, exactMatches);
+          packageImages = exactMatches.map(file => `/uploads/packages/${file}`);
+          return packageImages;
+        }
+      } catch (err) {
+        console.error('Error reading uploads root directory:', err);
+      }
+    }
+    
+    // If no images found in either location, fallback to placeholder image
+    const sampleNum = (packageId % 5) + 1;
+    return [`/images/sample-package-${sampleNum}.jpg`];
+  } catch (error) {
+    console.error(`Error finding images for package ${packageId}:`, error);
+    // Default to standard placeholder
+    return [`/images/sample-package-${(packageId % 5) + 1}.jpg`];
+  }
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -159,7 +308,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Format services for response
-    const formattedServices = servicesResult.map((service: any) => {
+    const formattedServicesPromises = servicesResult.map(async (service: any) => {
       // Determine status based on is_active field
       const status = service.is_active ? 'active' : 'inactive';
 
@@ -169,6 +318,21 @@ export async function GET(request: NextRequest) {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2
       })}`;
+
+      // Find possible image paths for this package
+      const imagePaths = await findPackageImagePaths(service.id);
+      
+      // Debug output for each package ID 
+      console.log(`Service ID ${service.id} has image paths:`, imagePaths);
+
+      // For each package, make sure there's an SVG placeholder ready
+      try {
+        // Call the placeholder generator for this ID
+        fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/placeholder?id=${service.id}`)
+          .catch(e => console.error(`Error generating placeholder for package ${service.id}:`, e));
+      } catch (e) {
+        console.error(`Failed to call placeholder API for package ${service.id}:`, e);
+      }
 
       return {
         id: service.id,
@@ -185,9 +349,12 @@ export async function GET(request: NextRequest) {
         providerId: service.providerId || 0,
         rating: service.rating || 0,
         bookings: service.bookings_count || 0,
-        image: '' // No image available in current implementation
+        image: imagePaths[0], // Use first image path
+        images: imagePaths // Include all potential paths
       };
     });
+
+    const formattedServices = await Promise.all(formattedServicesPromises);
 
     return NextResponse.json({
       success: true,
