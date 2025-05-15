@@ -16,6 +16,7 @@ import {
   ClockIcon
 } from '@heroicons/react/24/outline';
 import { useToast } from '@/context/ToastContext';
+import { PackageImage } from '@/components/packages/PackageImage';
 
 function CremationDashboardPage({ userData }: { userData: any }) {
   const [userName, setUserName] = useState('');
@@ -223,32 +224,19 @@ function CremationDashboardPage({ userData }: { userData: any }) {
                 dashboardData.servicePackages.map((pkg: any) => (
                   <div key={pkg.id} className="border border-gray-200 rounded-lg p-5 hover:shadow-md transition-shadow duration-300">
                     <div className="mb-4 h-40 relative overflow-hidden rounded-lg bg-gray-100 flex items-center justify-center">
-                      {pkg.imagePath ? (
-                        <Image 
-                          src={pkg.imagePath} 
+                      {pkg.images && pkg.images.length > 0 ? (
+                        <PackageImage 
+                          images={pkg.images} 
                           alt={pkg.name}
-                          fill
-                          className="object-cover"
-                          onError={(e) => {
-                            // Hide the image element
-                            const target = e.target as HTMLImageElement;
-                            target.style.display = 'none';
-                            console.error('Failed to load image:', pkg.imagePath);
-                            
-                            // Create placeholder element if not already there
-                            const parent = target.parentElement;
-                            if (parent && !parent.querySelector('.placeholder-content')) {
-                              const placeholderDiv = document.createElement('div');
-                              placeholderDiv.className = 'placeholder-content text-gray-400 flex flex-col items-center';
-                              placeholderDiv.innerHTML = `
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                </svg>
-                                <span class="text-sm">Image unavailable</span>
-                              `;
-                              parent.appendChild(placeholderDiv);
-                            }
-                          }}
+                          size="large"
+                          className="w-full h-full object-cover"
+                        />
+                      ) : pkg.image ? (
+                        <PackageImage 
+                          images={[pkg.image]} 
+                          alt={pkg.name}
+                          size="large"
+                          className="w-full h-full object-cover"
                         />
                       ) : (
                         <div className="text-gray-400 flex flex-col items-center">

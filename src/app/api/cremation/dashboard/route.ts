@@ -100,34 +100,46 @@ export async function GET(request: NextRequest) {
         `SELECT image_path
          FROM package_images
          WHERE package_id = ?
-         ORDER BY display_order ASC
-         LIMIT 1`,
+         ORDER BY display_order ASC`,
         [pkg.id]
       ) as any[];
       
       pkg.inclusions = inclusions.map((inc: any) => inc.description);
       
+      // Process all images instead of just the first one
+      pkg.images = [];
+      
       if (images.length > 0) {
-        // Properly handle image paths - ensure they're correctly formatted for the front end
-        const imagePath = images[0].image_path;
+        // Process all images
+        pkg.images = images.map((img: any) => {
+          const imagePath = img.image_path;
+          
+          // Skip blob URLs - they won't work as server paths
+          if (imagePath.startsWith('blob:')) {
+            console.log(`Package ${pkg.id} has blob URL that can't be served: ${imagePath}`);
+            return null;
+          }
+          // Check if it's already a complete path
+          else if (imagePath.startsWith('/uploads/') || imagePath.startsWith('uploads/')) {
+            // Ensure it starts with a slash
+            return imagePath.startsWith('/') ? imagePath : `/${imagePath}`;
+          } else {
+            // Otherwise assume it's in the packages directory
+            return `/uploads/packages/${imagePath}`;
+          }
+        }).filter(Boolean); // Remove null values
         
-        // Skip blob URLs - they won't work as server paths
-        if (imagePath.startsWith('blob:')) {
-          console.log(`Package ${pkg.id} has blob URL that can't be served: ${imagePath}`);
+        // Set the first image as the main image for backward compatibility
+        if (pkg.images.length > 0) {
+          pkg.image = pkg.images[0];
+        } else {
           pkg.image = null;
         }
-        // Check if it's already a complete path
-        else if (imagePath.startsWith('/uploads/') || imagePath.startsWith('uploads/')) {
-          // Ensure it starts with a slash
-          pkg.image = imagePath.startsWith('/') ? imagePath : `/${imagePath}`;
-        } else {
-          // Otherwise assume it's in the packages directory
-          pkg.image = `/uploads/packages/${imagePath}`;
-        }
         
-        // Log the image path for debugging
-        console.log(`Package ${pkg.id} image path: ${pkg.image}`);
+        // Log the image paths for debugging
+        console.log(`Package ${pkg.id} has ${pkg.images.length} images. First image: ${pkg.image}`);
       } else {
+        pkg.images = [];
         pkg.image = null;
       }
     }
@@ -199,7 +211,8 @@ export async function GET(request: NextRequest) {
         price: pkg.price,
         processingTime: pkg.processing_time,
         inclusions: pkg.inclusions || [],
-        imagePath: pkg.image || null
+        image: pkg.image || null,
+        images: pkg.images || []
       }))
     });
   } catch (error) {

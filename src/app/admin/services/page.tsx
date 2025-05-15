@@ -16,6 +16,7 @@ import {
 } from '@heroicons/react/24/outline';
 import Link from 'next/link';
 import Image from 'next/image';
+import { PackageImage } from '@/components/packages/PackageImage';
 
 export default function AdminServicesPage() {
   const [userName] = useState('System Administrator');
@@ -232,17 +233,32 @@ export default function AdminServicesPage() {
       ? service.image
       : `/uploads/${service.image}`;
 
+    // Create an array of images if service has multiple images
+    const images = service.images || [imagePath];
+
     return (
       <div className="relative w-full h-full">
-        <Image
-          src={imagePath}
-          alt={service.name}
-          fill
-          className="object-cover"
-          onError={() => {
-            setImageError(prev => ({ ...prev, [service.id]: true }));
-          }}
-        />
+        {large ? (
+          <PackageImage
+            images={images}
+            alt={service.name}
+            size="large"
+            className="object-cover"
+            onError={() => {
+              setImageError(prev => ({ ...prev, [service.id]: true }));
+            }}
+          />
+        ) : (
+          <Image
+            src={imagePath}
+            alt={service.name}
+            fill
+            className="object-cover"
+            onError={() => {
+              setImageError(prev => ({ ...prev, [service.id]: true }));
+            }}
+          />
+        )}
       </div>
     );
   };

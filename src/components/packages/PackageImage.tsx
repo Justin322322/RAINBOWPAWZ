@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 interface PackageImageProps {
   src?: string | null;
@@ -8,6 +8,7 @@ interface PackageImageProps {
   alt: string;
   className?: string;
   size?: 'small' | 'large';
+  onError?: () => void;
 }
 
 export const PackageImage: React.FC<PackageImageProps> = ({ 
@@ -15,7 +16,8 @@ export const PackageImage: React.FC<PackageImageProps> = ({
   images = [], 
   alt, 
   className = '', 
-  size = 'large'
+  size = 'large',
+  onError
 }) => {
   const [imageFailed, setImageFailed] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -26,14 +28,27 @@ export const PackageImage: React.FC<PackageImageProps> = ({
   const imagesList = images.length ? images : (src ? [src] : []);
   const [finalSrc, setFinalSrc] = useState(imagesList[0] || '');
   
+  // Debug log image sources on component mount
+  useEffect(() => {
+    console.log(`PackageImage component for ${alt}:`, { 
+      imagesList, 
+      srcProp: src, 
+      imagesProp: images,
+      finalSrc,
+      size
+    });
+  }, [alt, src, images, imagesList, finalSrc, size]);
+  
   // Reset current image index when images list changes
-  React.useEffect(() => {
+  useEffect(() => {
     if (imagesList.length > 0) {
       setCurrentImageIndex(0);
       setFinalSrc(imagesList[0]);
       setImageFailed(false);
+    } else {
+      console.log(`No images available for package: ${alt}`);
     }
-  }, [images, src]);
+  }, [images, src, alt, imagesList]);
   
   // Handle touch events for swipe
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -65,16 +80,24 @@ export const PackageImage: React.FC<PackageImageProps> = ({
   // Determine classes based on size
   const sizeClasses = {
     small: "h-10 w-10",
-    large: "absolute inset-0 w-full h-full"
+    large: "w-full h-full object-cover absolute inset-0"
   };
   
   // Base style for the container
   const containerStyle = size === 'small' 
     ? "flex-shrink-0 h-10 w-10 bg-gray-200 rounded-md overflow-hidden" 
-    : "";
+    : "h-full w-full relative";
+    
   const handleImageError = () => {
     // If image already failed after retries, don't try more alternatives
     if (imageFailed) return;
+    
+    console.log(`Image failed to load: ${finalSrc} for package: ${alt}`);
+    
+    // Call custom onError handler if provided
+    if (onError) {
+      onError();
+    }
     
     // Try to fix common path issues
     if (finalSrc) {
@@ -97,11 +120,20 @@ export const PackageImage: React.FC<PackageImageProps> = ({
           return;
         }
       }
+      
+      // Try sample images as fallback
+      const sampleImageNum = (currentImageIndex % 5) + 1;
+      const fallbackSrc = `/images/sample-package-${sampleImageNum}.jpg`;
+      console.log(`Trying sample image: ${fallbackSrc}`);
+      setFinalSrc(fallbackSrc);
+      return;
     }
     
     // If we reach here, all attempts failed
     setImageFailed(true);
-  };  // Navigation functions for the carousel
+  };
+  
+  // Navigation functions for the carousel
   const goToNextImage = (e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent event bubbling
     if (imagesList.length <= 1) return;
@@ -132,36 +164,40 @@ export const PackageImage: React.FC<PackageImageProps> = ({
 
   // If we have images and haven't failed, display the current image with navigation
   if (imagesList.length > 0 && !imageFailed) {
-    return (      <div 
-        className={`${containerStyle} relative group overflow-hidden`}
+    return (
+      <div 
+        className={`${containerStyle} group overflow-hidden`}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
-      >        <div className="absolute inset-0 bg-gray-100">
+      >
+        <div className="absolute inset-0 bg-gray-100 w-full h-full">
           <img 
             src={finalSrc}
             alt={`${alt} (${currentImageIndex + 1} of ${imagesList.length})`}
-            className={`object-cover ${sizeClasses[size]} ${className} transition-opacity duration-300 ease-in-out animate-fadeIn`}
+            className={`object-cover ${sizeClasses[size]} ${className} transition-opacity duration-300 ease-in-out`}
             onError={handleImageError}
             onLoad={() => console.log(`Successfully loaded image: ${finalSrc}`)}
             key={finalSrc} /* Key helps React recognize this as a new image for animation */
+            style={{width: '100%', height: '100%'}}
           />
         </div>
         
         {/* Photo counter display */}
         {size === 'large' && imagesList.length > 1 && (
-          <div className="absolute top-2 left-2 bg-black/40 text-white text-xs font-medium px-2 py-1 rounded-md backdrop-blur-sm">
+          <div className="absolute top-2 left-2 bg-black/40 text-white text-xs font-medium px-2 py-1 rounded-md backdrop-blur-sm z-10">
             {currentImageIndex + 1}/{imagesList.length}
           </div>
         )}
         
         {/* Only show navigation for large images with multiple photos */}
         {size === 'large' && imagesList.length > 1 && (
-          <>            {/* Previous button with improved visibility */}
+          <>
+            {/* Previous button with improved visibility */}
             <button 
               onClick={goToPrevImage}
               aria-label="Previous image"
-              className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/40 hover:bg-black/60 text-white rounded-full p-2 shadow-md backdrop-blur-sm transition-all transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-white opacity-80 hover:opacity-100 group-hover:opacity-100"
+              className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/40 hover:bg-black/60 text-white rounded-full p-2 shadow-md backdrop-blur-sm transition-all transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-white opacity-80 hover:opacity-100 group-hover:opacity-100 z-10"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
@@ -172,12 +208,15 @@ export const PackageImage: React.FC<PackageImageProps> = ({
             <button 
               onClick={goToNextImage}
               aria-label="Next image"
-              className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/40 hover:bg-black/60 text-white rounded-full p-2 shadow-md backdrop-blur-sm transition-all transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-white opacity-80 hover:opacity-100 group-hover:opacity-100"
+              className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/40 hover:bg-black/60 text-white rounded-full p-2 shadow-md backdrop-blur-sm transition-all transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-white opacity-80 hover:opacity-100 group-hover:opacity-100 z-10"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
               </svg>
-            </button>{/* Enhanced and more visible dot indicators */}            <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex space-x-2 bg-black/30 px-3 py-1.5 rounded-full shadow-lg">
+            </button>
+
+            {/* Enhanced and more visible dot indicators */}
+            <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex space-x-2 bg-black/30 px-3 py-1.5 rounded-full shadow-lg z-10">
               {imagesList.map((_, index) => (
                 <button 
                   key={index}
@@ -208,11 +247,13 @@ export const PackageImage: React.FC<PackageImageProps> = ({
       </div>
     );
   }
-    return (
+  
+  return (
     <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-400 bg-gray-100">
       <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-      </svg>      <span className="text-sm font-medium">{imageFailed ? 'Image failed to load' : 'No image available'}</span>
+      </svg>
+      <span className="text-sm font-medium">{imageFailed ? 'Image failed to load' : 'No image available'}</span>
       {imageFailed && finalSrc && <span className="text-xs mt-1 max-w-[90%] truncate text-gray-500">{finalSrc}</span>}
       
       {/* If we have multiple images but this one failed, show button to try next image */}

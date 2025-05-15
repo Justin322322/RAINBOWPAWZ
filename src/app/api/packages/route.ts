@@ -376,84 +376,90 @@ async function getPackagesByProviderId(providerId: number, includeInactive: bool
 
 // Function to get test packages for test providers
 function getTestPackagesForProvider(providerId: number) {
+  // Sample test data
   const testPackages = {
     1001: [
       {
         id: 10001,
-        name: "Basic Cremation Package",
-        description: "Simple cremation service with standard urn",
+        name: "Basic Cremation",
+        description: "Standard cremation service for small pets",
         category: "Communal",
         cremationType: "Standard",
-        processingTime: "2-3 days",
-        price: 3500,
-        conditions: "For pets up to 50 lbs. Additional fees may apply for larger pets.",
-        providerName: "Rainbow Bridge Pet Cremation",
+        processingTime: "3-4 days",
+        price: 2500,
+        conditions: "Suitable for pets up to 10kg",
+        providerName: "Happy Tails Cremation",
         providerId: 1001,
-        inclusions: ["Standard clay urn", "Memorial certificate", "Paw print impression"],
-        addOns: ["Personalized nameplate (+₱500)", "Photo frame (+₱800)"],
-        images: []
+        inclusions: ["Basic urn", "Memorial certificate"],
+        addOns: ["Paw print keepsake (+₱500)"],
+        images: ["/images/sample-package-1.jpg", "/images/sample-package-2.jpg"],
+        isActive: true
       },
       {
         id: 10002,
-        name: "Premium Cremation Package",
-        description: "Private cremation with premium urn and memorial certificate",
+        name: "Private Cremation",
+        description: "Individual cremation with return of ashes",
         category: "Private",
         cremationType: "Premium",
         processingTime: "1-2 days",
-        price: 5500,
-        conditions: "For pets up to 80 lbs. Includes home pickup within 10km radius.",
-        providerName: "Rainbow Bridge Pet Cremation",
+        price: 4500,
+        conditions: "Available for all pet sizes",
+        providerName: "Happy Tails Cremation",
         providerId: 1001,
-        inclusions: ["Premium wooden urn", "Memorial certificate", "Paw print keepsake", "Fur clipping", "Photo memorial"],
-        addOns: ["Custom engraving (+₱800)", "Additional keepsake urns (+₱1,200)"],
-        images: []
+        inclusions: ["Private viewing room", "Custom wooden urn", "Memorial certificate", "Paw print keepsake"],
+        addOns: ["Fur clipping (+₱300)", "Memorial jewelry (+₱1200)"],
+        images: ["/images/sample-package-3.jpg"],
+        isActive: true
       },
       {
         id: 10003,
-        name: "Deluxe Memorial Package",
-        description: "Comprehensive memorial service with deluxe urn and keepsakes",
+        name: "Premium Memorial Package",
+        description: "Complete memorial service with premium keepsakes",
         category: "Private",
-        cremationType: "Deluxe",
+        cremationType: "Premium",
         processingTime: "Same day",
-        price: 8500,
-        conditions: "Available for all pet sizes. Includes home pickup and delivery within 20km radius.",
-        providerName: "Rainbow Bridge Pet Cremation",
+        price: 8000,
+        conditions: "Booking must be made 24 hours in advance",
+        providerName: "Happy Tails Cremation",
         providerId: 1001,
-        inclusions: ["Deluxe marble urn", "Memorial photo book", "Paw print in clay", "Fur clipping in glass pendant", "Memorial certificate", "Flower arrangement"],
-        addOns: ["Video memorial tribute (+₱1,500)", "Additional keepsake jewelry (+₱1,800)"],
-        images: []
+        inclusions: ["Private viewing room", "Custom engraved urn", "Memorial photo frame", "Paw print in clay", "Fur clipping", "Memorial certificate"],
+        addOns: ["Professional photography (+₱2000)", "Video tribute (+₱1500)"],
+        images: ["/images/sample-package-4.jpg", "/images/sample-package-5.jpg", "/images/sample-package-1.jpg"],
+        isActive: false
       }
     ],
     1002: [
       {
         id: 10004,
-        name: "Eco-Friendly Cremation",
-        description: "Environmentally conscious cremation with biodegradable urn",
+        name: "Essential Cremation",
+        description: "Basic cremation service with standard urn",
         category: "Private",
         cremationType: "Standard",
         processingTime: "2-3 days",
-        price: 4500,
-        conditions: "For pets up to 60 lbs. Includes tree planting certificate.",
+        price: 3500,
+        conditions: "For pets up to 20kg",
         providerName: "Peaceful Paws Memorial",
         providerId: 1002,
-        inclusions: ["Biodegradable urn", "Tree planting certificate", "Memorial seed packet", "Paw print keepsake"],
-        addOns: ["Memorial garden stone (+₱1,200)", "Photo frame made from reclaimed wood (+₱900)"],
-        images: []
+        inclusions: ["Standard ceramic urn", "Memorial certificate", "Complimentary pet transport within 10km"],
+        addOns: ["Premium wooden urn (+₱800)"],
+        images: ["/images/sample-package-2.jpg"],
+        isActive: true
       },
       {
         id: 10005,
-        name: "Water Memorial Package",
-        description: "Special water-soluble urn for water ceremonies",
+        name: "Classic Memorial Service",
+        description: "Traditional memorial service with viewing room",
         category: "Private",
-        cremationType: "Premium",
-        processingTime: "3-4 days",
+        cremationType: "Deluxe",
+        processingTime: "24 hours",
         price: 6000,
-        conditions: "Includes detailed instructions for water memorial ceremony.",
+        conditions: "Viewing room available for up to 1 hour. Maximum 6 attendees.",
         providerName: "Peaceful Paws Memorial",
         providerId: 1002,
-        inclusions: ["Water-soluble urn", "Memorial certificate", "Ceremony guide", "Biodegradable flowers", "Paw print keepsake"],
-        addOns: ["Professional ceremony coordination (+₱2,500)", "Video recording of ceremony (+₱1,500)"],
-        images: []
+        inclusions: ["Private viewing room", "Premium hardwood urn", "Memorial photo display", "Paw print in clay", "Memorial certificate"],
+        addOns: ["Video recording of service (+₱1,500)", "Memorial book (+₱800)"],
+        images: ["/images/sample-package-3.jpg", "/images/sample-package-1.jpg"],
+        isActive: true
       }
     ],
     1003: [
@@ -470,7 +476,8 @@ function getTestPackagesForProvider(providerId: number) {
         providerId: 1003,
         inclusions: ["Home collection service", "Private viewing room access", "Wooden urn", "Memorial certificate", "Paw print keepsake"],
         addOns: ["Clay paw impression (+₱700)", "Custom photo urn (+₱1,500)"],
-        images: []
+        images: ["/images/sample-package-4.jpg", "/images/sample-package-5.jpg"],
+        isActive: true
       },
       {
         id: 10007,
@@ -485,7 +492,8 @@ function getTestPackagesForProvider(providerId: number) {
         providerId: 1003,
         inclusions: ["Private viewing room", "Ceremony coordination", "Premium wooden urn", "Memorial photo display", "Paw print in clay", "Memorial certificate"],
         addOns: ["Professional photography (+₱2,000)", "Catering services (+₱3,500)"],
-        images: []
+        images: ["/images/sample-package-1.jpg", "/images/sample-package-2.jpg"],
+        isActive: true
       },
       {
         id: 10008,
@@ -500,7 +508,8 @@ function getTestPackagesForProvider(providerId: number) {
         providerId: 1003,
         inclusions: ["Custom engraved urn", "Memorial video tribute", "Printed memorial booklets", "Paw print jewelry", "Fur clipping keepsake", "Memorial certificate", "Flower arrangement"],
         addOns: ["Live memorial service streaming (+₱1,800)", "Custom portrait painting (+₱4,500)"],
-        images: []
+        images: ["/images/sample-package-3.jpg", "/images/sample-package-4.jpg", "/images/sample-package-5.jpg"],
+        isActive: true
       },
       {
         id: 10009,
@@ -515,7 +524,8 @@ function getTestPackagesForProvider(providerId: number) {
         providerId: 1003,
         inclusions: ["Memorial certificate", "Donation to animal shelter in pet's name"],
         addOns: ["Memorial plaque in community garden (+₱1,200)"],
-        images: []
+        images: ["/images/sample-package-2.jpg"],
+        isActive: true
       }
     ]
   };
@@ -635,6 +645,14 @@ async function enhancePackagesWithDetails(packages: any[]) {
       console.log(`Using default path approach: /${path}`);
       return `/${path}`;
     }).filter(Boolean);
+
+    // If no valid images found and this is a production package, add sample images
+    if (processedImages.length === 0) {
+      // Use some placeholder images for testing
+      const sampleImageNum = (pkg.id % 5) + 1; // Use ID to get a consistent but varied image
+      processedImages.push(`/images/sample-package-${sampleImageNum}.jpg`);
+      console.log(`Added default sample image for package ${pkg.id}: /images/sample-package-${sampleImageNum}.jpg`);
+    }
 
     return {
       ...pkg,
