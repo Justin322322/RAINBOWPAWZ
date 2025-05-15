@@ -51,50 +51,77 @@ function CremationProfilePage({ userData }: { userData: any }) {
 
   // Fetch profile data
   useEffect(() => {
+    let isMounted = true; // Track if component is mounted
+    
     const fetchProfileData = async () => {
       try {
         setLoading(true);
-        const response = await fetch('/api/cremation/profile');
+        setError(null); // Clear any previous errors
         
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to fetch profile data');
-        }
+        // Add cache-busting query parameter and no-cache headers
+        const response = await fetch(`/api/cremation/profile?t=${Date.now()}`, {
+          method: 'GET',
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache'
+          }
+        });
         
+        // Parse response data first
         const data = await response.json();
-        setProfileData(data.profile);
         
-        // Update form states with fetched data
-        if (data.profile) {
-          setAddress({
-            street: data.profile.address.street || '',
-            city: data.profile.address.city || '',
-            state: data.profile.address.state || '',
-            zipCode: data.profile.address.zipCode || '',
-            country: data.profile.address.country || 'Philippines'
-          });
-          
-          // Set contact info from profile data
-          const nameParts = data.profile.contactPerson.split(' ');
-          setContactInfo({
-            firstName: nameParts[0] || '',
-            lastName: nameParts.slice(1).join(' ') || '',
-            email: data.profile.email || '',
-            phone: data.profile.phone || ''
-          });
+        // Check response status after parsing data
+        if (!response.ok) {
+          throw new Error(data.error || data.message || 'Failed to fetch profile data');
         }
         
-        setError(null);
+        // Only update state if component is still mounted
+        if (isMounted) {
+          setProfileData(data.profile);
+          
+          // Update form states with fetched data
+          if (data.profile) {
+            setAddress({
+              street: data.profile.address.street || '',
+              city: data.profile.address.city || '',
+              state: data.profile.address.state || '',
+              zipCode: data.profile.address.zipCode || '',
+              country: data.profile.address.country || 'Philippines'
+            });
+            
+            // Set contact info from profile data
+            const nameParts = data.profile.contactPerson.split(' ');
+            setContactInfo({
+              firstName: nameParts[0] || '',
+              lastName: nameParts.slice(1).join(' ') || '',
+              email: data.profile.email || '',
+              phone: data.profile.phone || ''
+            });
+          }
+          
+          setError(null);
+        }
       } catch (error) {
         console.error('Error fetching profile data:', error);
-        setError(error instanceof Error ? error.message : 'An error occurred while fetching data');
-        showToast('Failed to load profile data. Please try again.', 'error');
+        
+        if (isMounted) {
+          setError(error instanceof Error ? error.message : 'An error occurred while fetching data');
+          // Show toast only once
+          showToast(error instanceof Error ? error.message : 'Failed to load profile data. Please try again.', 'error');
+        }
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
 
     fetchProfileData();
+    
+    // Cleanup function to prevent state updates on unmounted component
+    return () => {
+      isMounted = false;
+    };
   }, [showToast]);
 
   const handlePasswordChange = async (e: React.FormEvent) => {

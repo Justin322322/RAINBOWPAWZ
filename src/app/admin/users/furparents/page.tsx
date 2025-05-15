@@ -105,16 +105,21 @@ export default function AdminFurParentsPage() {
       // Only fetch fur parents
       params.append('role', 'fur_parent');
 
+      console.log(`Fetching fur parents with params: ${params.toString()}`);
       const response = await fetch(`/api/users?${params.toString()}`);
 
       if (!response.ok) {
-        throw new Error('Failed to fetch users');
+        console.error(`API Error: ${response.status} ${response.statusText}`);
+        throw new Error(`Failed to fetch users: ${response.status} ${response.statusText}`);
       }
 
       const data = await response.json();
+      console.log(`Retrieved ${data.users?.length || 0} fur parent users`);
+      console.log(`Pagination data:`, data.pagination);
 
       // Process user data to add missing fields
       const processedUsers = data.users.map((user: User) => {
+        console.log(`Processing user: ${user.id}, role: ${user.role}, type: ${user.user_type}`);
         return {
           ...user,
           pets: user.pets || 0,

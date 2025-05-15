@@ -608,8 +608,15 @@ export default function MapComponent({
     // Set loading state
     setRouteInstructions({ distance: "Calculating...", duration: "Calculating...", steps: [] });
 
-    const startPoint = `${userCoordinates[1]},${userCoordinates[0]}`;
+    // Ensure we're using the current user marker position, not just the state
+    const currentUserPosition = userMarkerRef.current?.getLatLng() || 
+                               { lat: userCoordinates[0], lng: userCoordinates[1] };
+    
+    // Format coordinates correctly for OSRM API (longitude,latitude format)
+    const startPoint = `${currentUserPosition.lng},${currentUserPosition.lat}`;
     const endPoint = `${providerCoords[1]},${providerCoords[0]}`;
+
+    console.log("Routing from:", startPoint, "to:", endPoint);
 
     // Using OSRM demo server with instructions
     const osrmRequestUrl = `https://router.project-osrm.org/route/v1/driving/${startPoint};${endPoint}?overview=full&geometries=geojson&steps=true&annotations=true`;

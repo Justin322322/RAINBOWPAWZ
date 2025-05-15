@@ -249,7 +249,7 @@ function EditPackagePage({ userData }: EditPackagePageProps) {
     try {
       // Update package via API
       const response = await fetch(`/api/packages/${packageId}`, {
-        method: 'PUT',
+        method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },

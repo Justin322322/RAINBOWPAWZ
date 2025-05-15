@@ -1,0 +1,164 @@
+'use client';
+
+import { useState, useEffect, useCallback } from 'react';
+import { useToast } from '@/context/ToastContext';
+import { PackageData } from '@/types/packages';
+
+export interface UsePackagesProps {
+  userData?: any;
+}
+
+export function usePackages({ userData }: UsePackagesProps) {
+  const [packages, setPackages] = useState<PackageData[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [packageToDelete, setPackageToDelete] = useState<number | null>(null);
+  const [toggleLoading, setToggleLoading] = useState<number | null>(null);
+  const { showToast } = useToast();
+  // Fetch packages function - stabilize the dependency on userData.business_id
+  const providerId = userData?.business_id;
+  
+  const fetchPackages = useCallback(async () => {
+    try {
+      // Use the providerId from outside the callback to prevent unnecessary re-renders
+      if (!providerId) {
+        showToast('Unable to determine business ID', 'error');
+        setPackages([]);
+        setIsLoading(false);
+        return;
+      }
+
+      console.log(`Fetching packages for provider ID: ${providerId}`);
+      
+      // Fetch packages from API
+      const response = await fetch(`/api/packages?providerId=${providerId}&includeInactive=true`, {
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to fetch packages');
+      }
+
+      const data = await response.json();
+      
+      setPackages(data.packages || []);
+    } catch (error) {
+      console.error('Error fetching packages:', error);
+      showToast(error instanceof Error ? error.message : 'Failed to fetch packages', 'error');
+      setPackages([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [userData, showToast]);
+
+  // Handle package deletion
+  const handleDeleteClick = useCallback((packageId: number) => {
+    setPackageToDelete(packageId);
+    setShowDeleteModal(true);
+  }, []);
+
+  const confirmDelete = useCallback(async () => {
+    if (packageToDelete) {
+      try {
+        // Delete package via API
+        const response = await fetch(`/api/packages/${packageToDelete}`, {
+          method: 'DELETE',
+          // Include credentials to ensure auth token is sent
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to delete package');
+        }
+
+        // Remove from local state
+        setPackages(prevPackages => prevPackages.filter(pkg => pkg.id !== packageToDelete));
+        setPackageToDelete(null);
+        
+        // Return a resolved promise for ConfirmationModal
+        return Promise.resolve();
+      } catch (error) {
+        console.error('Error deleting package:', error);
+        showToast(error instanceof Error ? error.message : 'Failed to delete package', 'error');
+        // Re-throw the error to let the ConfirmationModal know it failed
+        throw error;
+      }
+    }
+  }, [packageToDelete, showToast]);
+
+  const handleToggleActive = useCallback(async (packageId: number, currentActiveState: boolean) => {
+    setToggleLoading(packageId);
+    try {
+      const response = await fetch(`/api/packages/${packageId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ isActive: !currentActiveState }),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to update package status: ${response.status}`);
+      }
+      
+      // Update local state
+      setPackages(prevPackages => 
+        prevPackages.map(pkg => 
+          pkg.id === packageId ? { ...pkg, isActive: !currentActiveState } : pkg
+        )
+      );
+      
+      showToast(
+        `Package ${!currentActiveState ? 'activated' : 'deactivated'} successfully`, 
+        'success'
+      );
+    } catch (error) {
+      console.error('Error toggling package status:', error);
+      showToast('Failed to update package status. Please try again later.', 'error');
+    } finally {
+      setToggleLoading(null);
+    }
+  }, [showToast]);
+  // Load packages only on component mount or if providerId changes
+  useEffect(() => {
+    setIsLoading(true);
+    fetchPackages();
+    // Only depend on providerId, not the entire fetchPackages function
+  }, [providerId]);
+
+  // Filter packages based on search term and category (memoized)
+  const filteredPackages = useCallback(() => {
+    return packages.filter(pkg => {
+      const matchesSearch = pkg.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          pkg.description.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesCategory = categoryFilter === 'all' || pkg.category === categoryFilter;
+      return matchesSearch && matchesCategory;
+    });
+  }, [packages, searchTerm, categoryFilter]);
+
+  return {
+    packages,
+    isLoading,
+    searchTerm,
+    setSearchTerm,
+    categoryFilter,
+    setCategoryFilter,
+    showDeleteModal,
+    setShowDeleteModal,
+    packageToDelete,
+    handleDeleteClick,
+    confirmDelete,
+    toggleLoading,
+    handleToggleActive,
+    filteredPackages: filteredPackages(),
+    fetchPackages,
+  };
+}

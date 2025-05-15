@@ -212,9 +212,8 @@ export async function POST(request: NextRequest) {
 // Helper function to get a specific package by ID
 async function getPackageById(packageId: number, includeInactive: boolean = false) {
   try {
-    // Modify the query to optionally include inactive packages
-    const activeClause = includeInactive ? '' : 'AND sp.is_active = TRUE';
-    
+    // When fetching by ID, always include inactive packages
+    // This allows editing deactivated packages
     const packageResult = await query(`
       SELECT
         sp.id,
@@ -230,7 +229,7 @@ async function getPackageById(packageId: number, includeInactive: boolean = fals
         svp.id as providerId
       FROM service_packages sp
       JOIN service_providers svp ON sp.service_provider_id = svp.id
-      WHERE sp.id = ? ${activeClause}
+      WHERE sp.id = ?
       LIMIT 1
     `, [packageId]) as any[];
 
@@ -526,86 +525,130 @@ function getTestPackagesForProvider(providerId: number) {
 
 // Helper function to enhance packages with their details
 async function enhancePackagesWithDetails(packages: any[]) {
-  if (!packages || packages.length === 0) return [];
+  if (!packages || packages.length === 0) {
+    return [];
+  }
 
+  // Get all package IDs
   const packageIds = packages.map(pkg => pkg.id);
 
   // Fetch inclusions for all packages
-  const inclusionsResult = await query(`
+  const inclusions = await query(`
     SELECT package_id, description
     FROM package_inclusions
     WHERE package_id IN (?)
   `, [packageIds]) as any[];
 
   // Fetch add-ons for all packages
-  const addOnsResult = await query(`
+  const addOns = await query(`
     SELECT package_id, description, price
     FROM package_addons
     WHERE package_id IN (?)
   `, [packageIds]) as any[];
 
   // Fetch images for all packages
-  const imagesResult = await query(`
+  const images = await query(`
     SELECT package_id, image_path
     FROM package_images
     WHERE package_id IN (?)
     ORDER BY display_order ASC
   `, [packageIds]) as any[];
 
-  // Group details by package ID
-  const inclusionsByPackage: Record<number, string[]> = {};
-  const addOnsByPackage: Record<number, string[]> = {};
-  const imagesByPackage: Record<number, string[]> = {};
-
-  inclusionsResult.forEach((inclusion: any) => {
-    if (!inclusionsByPackage[inclusion.package_id]) {
-      inclusionsByPackage[inclusion.package_id] = [];
-    }
-    inclusionsByPackage[inclusion.package_id].push(inclusion.description);
-  });
-
-  addOnsResult.forEach((addOn: any) => {
-    if (!addOnsByPackage[addOn.package_id]) {
-      addOnsByPackage[addOn.package_id] = [];
-    }
-
-    let addOnText = addOn.description;
-    if (addOn.price) {
-      addOnText += ` (+₱${addOn.price.toLocaleString()})`;
-    }
-
-    addOnsByPackage[addOn.package_id].push(addOnText);
-  });
-
-  imagesResult.forEach((image: any) => {
-    if (!imagesByPackage[image.package_id]) {
-      imagesByPackage[image.package_id] = [];
-    }
-    
-    // Handle image paths properly, skip blob URLs
-    const imagePath = image.image_path;
-    if (imagePath && !imagePath.startsWith('blob:')) {
-      // If it's already a complete path
-      if (imagePath.startsWith('/uploads/') || imagePath.startsWith('uploads/')) {
-        // Ensure it starts with a slash
-        imagesByPackage[image.package_id].push(
-          imagePath.startsWith('/') ? imagePath : `/${imagePath}`
-        );
-      } else {
-        // Otherwise assume it's in the packages directory
-        imagesByPackage[image.package_id].push(`/uploads/packages/${imagePath}`);
-      }
-    } else if (imagePath && imagePath.startsWith('blob:')) {
-      console.log(`Package ${image.package_id} has blob URL that can't be served: ${imagePath}`);
-      // Don't add blob URLs to the images array
-    }
-  });
+  // Group by package ID
+  const inclusionsByPackage = groupBy(inclusions, 'package_id');
+  const addOnsByPackage = groupBy(addOns, 'package_id');
+  const imagesByPackage = groupBy(images, 'package_id');
 
   // Enhance each package with its details
-  return packages.map(pkg => ({
-    ...pkg,
-    inclusions: inclusionsByPackage[pkg.id] || [],
-    addOns: addOnsByPackage[pkg.id] || [],
-    images: imagesByPackage[pkg.id] || []
-  }));
+  return packages.map(pkg => {
+    const pkgInclusions = inclusionsByPackage[pkg.id] || [];
+    const pkgAddOns = addOnsByPackage[pkg.id] || [];
+    const pkgImages = imagesByPackage[pkg.id] || [];
+
+    // Format add-ons
+    const formattedAddOns = pkgAddOns.map((addOn: any) => {
+      let text = addOn.description || '';
+      if (addOn.price) {
+        text += ` (+₱${parseFloat(addOn.price).toLocaleString()})`;
+      }
+      return text;
+    });
+
+    // Process images to ensure they have proper paths
+    const processedImages = pkgImages.map((img: any) => {
+      if (!img.image_path) return null;
+      let path = img.image_path;
+      
+      console.log(`Processing image path: ${path}`);
+      
+      // Skip blob URLs
+      if (path.startsWith('blob:')) {
+        console.log(`Skipping blob URL: ${path}`);
+        return null;
+      }
+      
+      // If path starts with http:// or https://, it's already a full URL
+      if (path.startsWith('http://') || path.startsWith('https://')) {
+        console.log(`Using full URL as is: ${path}`);
+        return path;
+      }
+      
+      // Handle paths from package_images table that might be relative to public folder
+      if (path.startsWith('/')) {
+        // Remove leading slash for consistency
+        path = path.substring(1);
+        console.log(`Removed leading slash: ${path}`);
+      }
+      
+      // For files in uploads/packages/ directory - most reliable approach
+      if (path.includes('uploads/packages/package_')) {
+        // Use the filename directly with the correct path prefix
+        const filename = path.split('/').pop();
+        if (filename) {
+          const fullPath = `/uploads/packages/${filename}`;
+          console.log(`Using direct upload path with filename: ${fullPath}`);
+          return fullPath;
+        }
+      }
+      
+      // For paths in uploads/packages/ directory but without the common format
+      if (path.includes('uploads/packages/')) {
+        const fullPath = `/${path.replace(/^\//, '')}`;
+        console.log(`Using package upload path: ${fullPath}`);
+        return fullPath;
+      }
+      
+      // For sample data that has paths like bg_2.png
+      if (path.match(/^bg_\d+\.png$/)) {
+        console.log(`Using background image path: /${path}`);
+        return `/${path}`;
+      }
+      
+      // For paths in uploads directory
+      if (path.includes('uploads/')) {
+        const fullPath = `/${path.replace(/^\//, '')}`;
+        console.log(`Using uploads path: ${fullPath}`);
+        return fullPath;
+      }
+      
+      // Default approach for images stored in public directory
+      console.log(`Using default path approach: /${path}`);
+      return `/${path}`;
+    }).filter(Boolean);
+
+    return {
+      ...pkg,
+      inclusions: pkgInclusions.map((inc: any) => inc.description),
+      addOns: formattedAddOns,
+      images: processedImages
+    };
+  });
+}
+
+// Helper function to group arrays by a key
+function groupBy(array: any[], key: string) {
+  return array.reduce((result, item) => {
+    (result[item[key]] = result[item[key]] || []).push(item);
+    return result;
+  }, {});
 }

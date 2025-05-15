@@ -70,6 +70,56 @@ export async function GET(request: NextRequest) {
     // Get bookings with their details
     console.log('Executing booking query...');
     try {
+      // First, check if the bookings table exists
+      const tableCheck = await query(`
+        SELECT COUNT(*) as count 
+        FROM information_schema.tables 
+        WHERE table_schema = DATABASE() 
+        AND table_name = 'bookings'
+      `);
+      
+      if (!tableCheck || tableCheck[0].count === 0) {
+        console.error('Bookings table does not exist');
+        return NextResponse.json({
+          bookings: [],
+          stats: {
+            totalBookings: 0,
+            completedBookings: 0,
+            cancelledBookings: 0,
+            totalRevenue: 0,
+            averageRevenue: 0
+          }
+        });
+      }
+      
+      // Check for required columns
+      const columnCheck = await query(`
+        SELECT 
+          COUNT(*) as has_booking_date,
+          SUM(CASE WHEN COLUMN_NAME = 'booking_time' THEN 1 ELSE 0 END) as has_booking_time,
+          SUM(CASE WHEN COLUMN_NAME = 'completed_at' THEN 1 ELSE 0 END) as has_completed_at
+        FROM information_schema.columns
+        WHERE table_schema = DATABASE() 
+        AND table_name = 'bookings'
+        AND COLUMN_NAME IN ('booking_date', 'booking_time', 'completed_at')
+      `);
+      
+      if (!columnCheck || columnCheck[0].has_booking_date === 0) {
+        console.error('Required columns missing in bookings table');
+        return NextResponse.json({
+          error: 'Database schema mismatch',
+          message: 'The database structure does not match the expected schema',
+          code: 'SCHEMA_ERROR'
+        }, { 
+          status: 500,
+          headers: {
+            'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+          }
+        });
+      }
+      
       const bookings = await query(`
         SELECT 
           b.id, 

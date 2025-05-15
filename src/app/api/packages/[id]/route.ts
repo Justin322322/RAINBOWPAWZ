@@ -11,6 +11,8 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       return NextResponse.json({ error: 'Invalid package ID' }, { status: 400 });
     }
     
+    // When accessing a package directly by ID, don't filter by is_active
+    // This allows editing inactive packages
     const packageResult = await query(`
       SELECT
         sp.id,
@@ -70,14 +72,63 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     const validImages = images
       .map((img: any) => {
         const path = img.image_path;
+        if (!path) return null;
+        
+        console.log(`Processing package ${packageId} image path: ${path}`);
+        
         if (path && path.startsWith('blob:')) {
           console.log(`Skipping blob URL: ${path}`);
           return null;
         }
-        if (path && (path.startsWith('/uploads/') || path.startsWith('uploads/'))) {
-          return path.startsWith('/') ? path : `/${path}`;
+        
+        // If path starts with http:// or https://, it's already a full URL
+        if (path.startsWith('http://') || path.startsWith('https://')) {
+          console.log(`Using full URL as is: ${path}`);
+          return path;
         }
-        return path ? `/uploads/packages/${path}` : null;
+        
+        // Handle paths from package_images table that might be relative to public folder
+        let processedPath = path;
+        if (path.startsWith('/')) {
+          // Remove leading slash for consistency
+          processedPath = path.substring(1);
+          console.log(`Removed leading slash: ${processedPath}`);
+        }
+        
+        // For files in uploads/packages/ directory - most reliable approach
+        if (processedPath.includes('uploads/packages/package_')) {
+          // Use the filename directly with the correct path prefix
+          const filename = processedPath.split('/').pop();
+          if (filename) {
+            const fullPath = `/uploads/packages/${filename}`;
+            console.log(`Using direct upload path with filename: ${fullPath}`);
+            return fullPath;
+          }
+        }
+        
+        // For paths in uploads/packages/ directory but without the common format
+        if (processedPath.includes('uploads/packages/')) {
+          const fullPath = `/${processedPath.replace(/^\//, '')}`;
+          console.log(`Using package upload path: ${fullPath}`);
+          return fullPath;
+        }
+        
+        // For sample data like bg_2.png
+        if (processedPath.match(/^bg_\d+\.png$/)) {
+          console.log(`Using background image path: /${processedPath}`);
+          return `/${processedPath}`;
+        }
+        
+        // For paths in uploads directory
+        if (processedPath.includes('uploads/')) {
+          const fullPath = `/${processedPath.replace(/^\//, '')}`;
+          console.log(`Using uploads path: ${fullPath}`);
+          return fullPath;
+        }
+        
+        // Default approach for images stored in public directory
+        console.log(`Using default path approach: /${processedPath}`);
+        return `/${processedPath}`;
       })
       .filter(Boolean);
 
@@ -101,22 +152,27 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 // PATCH endpoint to update package (including toggling active state)
 export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
   try {
+    console.log(`PATCH request received for package ID: ${params.id}`);
     const packageId = parseInt(params.id);
     
     if (isNaN(packageId)) {
+      console.log('Invalid package ID format');
       return NextResponse.json({ error: 'Invalid package ID' }, { status: 400 });
     }
     
     // Verify authentication
     const authToken = getAuthTokenFromRequest(request);
     if (!authToken) {
+      console.log('Unauthorized: No auth token');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const [userId, accountType] = authToken.split('_');
+    console.log(`User ID: ${userId}, Account Type: ${accountType}`);
 
     // Only allow business users to update packages
     if (accountType !== 'business') {
+      console.log('Permission denied: Not a business account');
       return NextResponse.json({
         error: 'Only business accounts can update packages'
       }, { status: 403 });
@@ -129,54 +185,196 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     ) as any[];
 
     if (!providerResult || providerResult.length === 0) {
+      console.log(`Service provider not found for user ID: ${userId}`);
       return NextResponse.json({
         error: 'Service provider not found'
       }, { status: 404 });
     }
 
     const providerId = providerResult[0].id;
+    console.log(`Provider ID: ${providerId}`);
 
     // Check if the package belongs to this provider
-    const packageResult = await query(
-      'SELECT service_provider_id FROM service_packages WHERE id = ?',
-      [packageId]
-    ) as any[];
+    try {
+      const packageResult = await query(
+        'SELECT service_provider_id FROM service_packages WHERE id = ?',
+        [packageId]
+      ) as any[];
 
-    if (!packageResult || packageResult.length === 0) {
-      return NextResponse.json({
-        error: 'Package not found'
-      }, { status: 404 });
-    }
+      if (!packageResult || packageResult.length === 0) {
+        console.log(`Package not found with ID: ${packageId}`);
+        return NextResponse.json({
+          error: 'Package not found'
+        }, { status: 404 });
+      }
 
-    if (packageResult[0].service_provider_id !== providerId) {
-      return NextResponse.json({
-        error: 'You do not have permission to update this package'
-      }, { status: 403 });
-    }
+      if (packageResult[0].service_provider_id !== providerId) {
+        console.log(`Permission denied: Package belongs to provider ${packageResult[0].service_provider_id}, not ${providerId}`);
+        return NextResponse.json({
+          error: 'You do not have permission to update this package'
+        }, { status: 403 });
+      }
 
-    // Get update data from request body
-    const body = await request.json();
-    
-    // If isActive is provided, toggle the active state
-    if (body.isActive !== undefined) {
-      await query(
-        'UPDATE service_packages SET is_active = ? WHERE id = ?',
-        [body.isActive ? 1 : 0, packageId]
-      );
+      // Get update data from request body
+      const body = await request.json();
+      console.log('Update data:', body);
       
+      // If isActive is provided, toggle the active state
+      if (body.isActive !== undefined) {
+        console.log(`Toggling active state to: ${body.isActive}`);
+        await query(
+          'UPDATE service_packages SET is_active = ? WHERE id = ?',
+          [body.isActive ? 1 : 0, packageId]
+        );
+        
+        return NextResponse.json({
+          success: true,
+          message: `Package ${body.isActive ? 'activated' : 'deactivated'} successfully`,
+          isActive: body.isActive
+        });
+      }
+      
+      // If there are other fields to update, implement full update logic here
+      if (body.name || body.description || body.price || body.category || body.cremationType || body.processingTime || body.conditions) {
+        console.log('Updating package fields');
+        
+        // Start a transaction
+        await query('START TRANSACTION');
+        
+        try {
+          // Build the update query based on provided fields
+          let updateFields = [];
+          let updateValues = [];
+          
+          if (body.name) {
+            updateFields.push('name = ?');
+            updateValues.push(body.name);
+          }
+          
+          if (body.description) {
+            updateFields.push('description = ?');
+            updateValues.push(body.description);
+          }
+          
+          if (body.price) {
+            updateFields.push('price = ?');
+            updateValues.push(body.price);
+          }
+          
+          if (body.category) {
+            updateFields.push('category = ?');
+            updateValues.push(body.category);
+          }
+          
+          if (body.cremationType) {
+            updateFields.push('cremation_type = ?');
+            updateValues.push(body.cremationType);
+          }
+          
+          if (body.processingTime) {
+            updateFields.push('processing_time = ?');
+            updateValues.push(body.processingTime);
+          }
+          
+          if (body.conditions) {
+            updateFields.push('conditions = ?');
+            updateValues.push(body.conditions);
+          }
+          
+          if (updateFields.length > 0) {
+            // Add packageId to values
+            updateValues.push(packageId);
+            
+            // Execute the update
+            const updateQuery = `UPDATE service_packages SET ${updateFields.join(', ')} WHERE id = ?`;
+            await query(updateQuery, updateValues);
+          }
+          
+          // Handle inclusions update
+          if (body.inclusions && Array.isArray(body.inclusions)) {
+            // Delete old inclusions
+            await query('DELETE FROM package_inclusions WHERE package_id = ?', [packageId]);
+            
+            // Insert new inclusions
+            for (const inclusion of body.inclusions) {
+              await query(
+                'INSERT INTO package_inclusions (package_id, description) VALUES (?, ?)',
+                [packageId, inclusion]
+              );
+            }
+          }
+          
+          // Handle addOns update
+          if (body.addOns && Array.isArray(body.addOns)) {
+            // Delete old add-ons
+            await query('DELETE FROM package_addons WHERE package_id = ?', [packageId]);
+            
+            // Insert new add-ons
+            for (const addOn of body.addOns) {
+              // Parse price from add-on string if it contains a price
+              let addOnText = addOn;
+              let addOnPrice = null;
+              
+              const priceMatch = addOn.match(/\(\+₱([\d,]+)\)/);
+              if (priceMatch) {
+                addOnPrice = parseFloat(priceMatch[1].replace(/,/g, ''));
+                addOnText = addOn.replace(/\s*\(\+₱[\d,]+\)/, '').trim();
+              }
+              
+              await query(
+                'INSERT INTO package_addons (package_id, description, price) VALUES (?, ?, ?)',
+                [packageId, addOnText, addOnPrice]
+              );
+            }
+          }
+          
+          // Handle images update if provided
+          if (body.images && Array.isArray(body.images)) {
+            // Only update images if there's a change
+            // Delete old images
+            await query('DELETE FROM package_images WHERE package_id = ?', [packageId]);
+            
+            // Insert new images
+            for (let i = 0; i < body.images.length; i++) {
+              await query(
+                'INSERT INTO package_images (package_id, image_path, display_order) VALUES (?, ?, ?)',
+                [packageId, body.images[i], i]
+              );
+            }
+          }
+          
+          // Commit the transaction
+          await query('COMMIT');
+          
+          return NextResponse.json({
+            success: true,
+            message: 'Package updated successfully'
+          });
+          
+        } catch (error) {
+          // Rollback the transaction on error
+          await query('ROLLBACK');
+          console.error('Error updating package:', error);
+          return NextResponse.json({
+            error: 'Failed to update package',
+            details: error instanceof Error ? error.message : 'Unknown error'
+          }, { status: 500 });
+        }
+      }
+      
+      // If we reach here, no valid update data was provided
+      console.log('No valid update data provided');
       return NextResponse.json({
-        success: true,
-        message: `Package ${body.isActive ? 'activated' : 'deactivated'} successfully`,
-        isActive: body.isActive
-      });
+        error: 'No update data provided'
+      }, { status: 400 });
+      
+    } catch (dbError) {
+      console.error('Database error when updating package:', dbError);
+      return NextResponse.json({
+        error: 'Database error occurred',
+        message: dbError.message || 'Unknown database error'
+      }, { status: 500 });
     }
-    
-    // Handle other update fields here if needed
-    // For now, we're just implementing the active toggle functionality
-    
-    return NextResponse.json({
-      error: 'No update data provided'
-    }, { status: 400 });
   } catch (error) {
     console.error('Error updating package:', error);
     return NextResponse.json({
@@ -189,22 +387,27 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
 // DELETE endpoint to remove a package
 export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
   try {
+    console.log(`DELETE request received for package ID: ${params.id}`);
     const packageId = parseInt(params.id);
     
     if (isNaN(packageId)) {
+      console.log('Invalid package ID format');
       return NextResponse.json({ error: 'Invalid package ID' }, { status: 400 });
     }
     
     // Verify authentication
     const authToken = getAuthTokenFromRequest(request);
     if (!authToken) {
+      console.log('Unauthorized: No auth token');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const [userId, accountType] = authToken.split('_');
+    console.log(`User ID: ${userId}, Account Type: ${accountType}`);
 
     // Only allow business users to delete packages
     if (accountType !== 'business') {
+      console.log('Permission denied: Not a business account');
       return NextResponse.json({
         error: 'Only business accounts can delete packages'
       }, { status: 403 });
@@ -217,41 +420,76 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
     ) as any[];
 
     if (!providerResult || providerResult.length === 0) {
+      console.log(`Service provider not found for user ID: ${userId}`);
       return NextResponse.json({
         error: 'Service provider not found'
       }, { status: 404 });
     }
 
     const providerId = providerResult[0].id;
+    console.log(`Provider ID: ${providerId}`);
 
-    // Check if the package belongs to this provider
-    const packageResult = await query(
-      'SELECT service_provider_id FROM service_packages WHERE id = ?',
-      [packageId]
-    ) as any[];
+    try {
+      // Check if the package belongs to this provider
+      const packageResult = await query(
+        'SELECT service_provider_id FROM service_packages WHERE id = ?',
+        [packageId]
+      ) as any[];
 
-    if (!packageResult || packageResult.length === 0) {
+      if (!packageResult || packageResult.length === 0) {
+        console.log(`Package not found with ID: ${packageId}`);
+        return NextResponse.json({
+          error: 'Package not found'
+        }, { status: 404 });
+      }
+
+      if (packageResult[0].service_provider_id !== providerId) {
+        console.log(`Permission denied: Package belongs to provider ${packageResult[0].service_provider_id}, not ${providerId}`);
+        return NextResponse.json({
+          error: 'You do not have permission to delete this package'
+        }, { status: 403 });
+      }
+
+      // Start a transaction to maintain data integrity
+      await query('START TRANSACTION');
+      
+      try {
+        // Delete related records first (foreign key relationships)
+        console.log(`Deleting related records for package ID: ${packageId}`);
+        
+        // Delete inclusions
+        await query('DELETE FROM package_inclusions WHERE package_id = ?', [packageId]);
+        
+        // Delete add-ons
+        await query('DELETE FROM package_addons WHERE package_id = ?', [packageId]);
+        
+        // Delete images
+        await query('DELETE FROM package_images WHERE package_id = ?', [packageId]);
+        
+        // Delete the package
+        console.log(`Deleting package ID: ${packageId}`);
+        await query('DELETE FROM service_packages WHERE id = ?', [packageId]);
+        
+        // Commit the transaction
+        await query('COMMIT');
+        
+        return NextResponse.json({
+          success: true,
+          message: 'Package deleted successfully'
+        });
+      } catch (error) {
+        // Rollback the transaction on error
+        await query('ROLLBACK');
+        console.error('Error during package deletion:', error);
+        throw error;
+      }
+    } catch (dbError) {
+      console.error('Database error when deleting package:', dbError);
       return NextResponse.json({
-        error: 'Package not found'
-      }, { status: 404 });
+        error: 'Database error occurred',
+        message: dbError.message || 'Unknown database error'
+      }, { status: 500 });
     }
-
-    if (packageResult[0].service_provider_id !== providerId) {
-      return NextResponse.json({
-        error: 'You do not have permission to delete this package'
-      }, { status: 403 });
-    }
-
-    // Instead of actually deleting, just set is_active to false
-    await query(
-      'UPDATE service_packages SET is_active = 0 WHERE id = ?',
-      [packageId]
-    );
-
-    return NextResponse.json({
-      success: true,
-      message: 'Package deactivated successfully'
-    });
   } catch (error) {
     console.error('Error deleting package:', error);
     return NextResponse.json({

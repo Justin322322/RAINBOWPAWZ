@@ -102,7 +102,7 @@ const nextConfig = {
   // Disable output during builds
   output: 'standalone',
   // Disable telemetry
-  distDir: process.env.NODE_ENV === 'production' ? '.next-prod' : '.next',
+  distDir: '.next',
   webpack: (config, { isServer }) => {
     if (!isServer) {
       // Don't resolve server-only modules on the client

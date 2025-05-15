@@ -6,80 +6,141 @@ import bcrypt from 'bcrypt';
 // GET endpoint to fetch cremation business profile
 export async function GET(request: NextRequest) {
   try {
+    console.log('Fetching cremation profile data...');
+    
     // Get auth token and validate
     const authToken = getAuthTokenFromRequest(request);
     if (!authToken) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      console.log('Unauthorized: No auth token provided');
+      return NextResponse.json({ error: 'Unauthorized' }, { 
+        status: 401,
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate',
+          'Pragma': 'no-cache'
+        }
+      });
     }
 
     const [userId, accountType] = authToken.split('_');
+    console.log(`User ID: ${userId}, Account Type: ${accountType}`);
     
     // Only cremation businesses should have access
     if (accountType !== 'business') {
-      return NextResponse.json({ error: 'Unauthorized access' }, { status: 403 });
+      console.log(`Unauthorized access: account type ${accountType} is not business`);
+      return NextResponse.json({ error: 'Unauthorized access' }, { 
+        status: 403,
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate',
+          'Pragma': 'no-cache'
+        }
+      });
     }
     
     // Get business information
-    const businessInfo = await query(`
-      SELECT 
-        sp.id, 
-        sp.name, 
-        sp.provider_type, 
-        sp.contact_first_name, 
-        sp.contact_last_name,
-        sp.contact_email,
-        sp.contact_phone,
-        sp.address_street,
-        sp.address_city,
-        sp.address_state,
-        sp.address_zip,
-        sp.address_country,
-        sp.description,
-        sp.logo_path,
-        sp.website,
-        sp.verified,
-        sp.created_at,
-        u.email as user_email
-      FROM service_providers sp
-      JOIN users u ON sp.user_id = u.id
-      WHERE sp.user_id = ? AND sp.provider_type = 'cremation'
-      LIMIT 1
-    `, [userId]) as any[];
-    
-    if (!businessInfo || businessInfo.length === 0) {
-      return NextResponse.json({ error: 'Business profile not found' }, { status: 404 });
-    }
-    
-    const businessData = businessInfo[0];
-    
-    // Format response
-    return NextResponse.json({
-      profile: {
-        id: businessData.id,
-        name: businessData.name,
-        email: businessData.user_email || businessData.contact_email,
-        phone: businessData.contact_phone,
-        contactPerson: `${businessData.contact_first_name} ${businessData.contact_last_name}`,
-        address: {
-          street: businessData.address_street || '',
-          city: businessData.address_city || '',
-          state: businessData.address_state || '',
-          zipCode: businessData.address_zip || '',
-          country: businessData.address_country || ''
-        },
-        description: businessData.description || '',
-        website: businessData.website || '',
-        logoPath: businessData.logo_path || null,
-        verified: businessData.verified === 1,
-        createdAt: businessData.created_at
+    try {
+      console.log('Querying database for business profile...');
+      const businessInfo = await query(`
+        SELECT 
+          sp.id, 
+          sp.name, 
+          sp.provider_type, 
+          sp.contact_first_name, 
+          sp.contact_last_name,
+          sp.phone,
+          sp.address,
+          sp.province,
+          sp.city,
+          sp.zip,
+          sp.hours,
+          sp.service_description,
+          sp.application_status,
+          sp.verification_date,
+          sp.created_at,
+          u.email as user_email
+        FROM service_providers sp
+        JOIN users u ON sp.user_id = u.id
+        WHERE sp.user_id = ? AND sp.provider_type = 'cremation'
+        LIMIT 1
+      `, [userId]) as any[];
+      
+      if (!businessInfo || businessInfo.length === 0) {
+        console.log(`Business profile not found for user ID: ${userId}`);
+        return NextResponse.json({ error: 'Business profile not found' }, { 
+          status: 404,
+          headers: {
+            'Cache-Control': 'no-store, no-cache, must-revalidate',
+            'Pragma': 'no-cache'
+          }
+        });
       }
-    });
+      
+      const businessData = businessInfo[0];
+      console.log(`Found business profile for: ${businessData.name}`);
+      
+      // Format response
+      return NextResponse.json({
+        profile: {
+          id: businessData.id,
+          name: businessData.name,
+          email: businessData.user_email,
+          phone: businessData.phone,
+          contactPerson: `${businessData.contact_first_name} ${businessData.contact_last_name}`,
+          address: {
+            street: businessData.address || '',
+            city: businessData.city || '',
+            state: businessData.province || '',
+            zipCode: businessData.zip || '',
+            country: ''
+          },
+          description: businessData.service_description || '',
+          website: businessData.hours || '',
+          logoPath: null,
+          verified: businessData.application_status === 'approved',
+          createdAt: businessData.created_at
+        }
+      }, {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate',
+          'Pragma': 'no-cache'
+        }
+      });
+    } catch (dbError) {
+      console.error('Database error when fetching business profile:', dbError);
+      
+      // Check for specific database errors
+      let errorMessage = 'Database error occurred';
+      if (dbError.code === 'ECONNREFUSED' || dbError.code === 'ETIMEDOUT') {
+        errorMessage = 'Could not connect to database - server may be unavailable';
+      } else if (dbError.code === 'ER_ACCESS_DENIED_ERROR') {
+        errorMessage = 'Database authentication failed';
+      } else if (dbError.code === 'PROTOCOL_CONNECTION_LOST') {
+        errorMessage = 'Database connection was lost during query';
+      }
+      
+      return NextResponse.json({
+        error: 'Failed to fetch profile data',
+        message: errorMessage,
+        code: dbError.code || 'UNKNOWN_ERROR'
+      }, { 
+        status: 500,
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate',
+          'Pragma': 'no-cache'
+        }
+      });
+    }
   } catch (error) {
     console.error('Error fetching cremation profile:', error);
     return NextResponse.json({
       error: 'Failed to fetch profile data',
       message: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 });
+    }, { 
+      status: 500,
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate',
+        'Pragma': 'no-cache'
+      }
+    });
   }
 }
 
@@ -165,13 +226,12 @@ export async function PATCH(request: NextRequest) {
       await query(`
         UPDATE service_providers 
         SET 
-          address_street = ?,
-          address_city = ?,
-          address_state = ?,
-          address_zip = ?,
-          address_country = ?
+          address = ?,
+          city = ?,
+          province = ?,
+          zip = ?
         WHERE id = ?`,
-        [street, city, state, zipCode, country, businessId]
+        [street, city, state, zipCode, businessId]
       );
       
       return NextResponse.json({ 
@@ -189,10 +249,9 @@ export async function PATCH(request: NextRequest) {
         SET 
           contact_first_name = ?,
           contact_last_name = ?,
-          contact_email = ?,
-          contact_phone = ?
+          phone = ?
         WHERE id = ?`,
-        [firstName, lastName, email, phone, businessId]
+        [firstName, lastName, phone, businessId]
       );
       
       // If email is updated, also update user email
