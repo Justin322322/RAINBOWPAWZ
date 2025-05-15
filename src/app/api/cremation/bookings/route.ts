@@ -17,6 +17,19 @@ export async function GET(request: NextRequest) {
       }, { status: 400 });
     }
     
+    // First, check which table structure is available
+    const tablesCheckQuery = `
+      SELECT TABLE_NAME 
+      FROM INFORMATION_SCHEMA.TABLES 
+      WHERE TABLE_SCHEMA = DATABASE() 
+      AND TABLE_NAME IN ('service_bookings', 'bookings')
+    `;
+    const tablesResult = await query(tablesCheckQuery) as any[];
+    const tableNames = tablesResult.map((row: any) => row.TABLE_NAME.toLowerCase());
+    
+    const useServiceBookings = tableNames.includes('service_bookings');
+    console.log(`Using ${useServiceBookings ? 'service_bookings' : 'bookings'} table for cremation bookings`);
+    
     // First, get the service packages for this provider
     const servicePackagesQuery = `
       SELECT id FROM service_packages WHERE service_provider_id = ?
@@ -42,62 +55,104 @@ export async function GET(request: NextRequest) {
     const packageIds = servicePackages.map((pkg: any) => pkg.id);
     
     // Build the SQL query with package IDs and filters
-    let sql = `
-      SELECT b.id, b.status, b.booking_date, b.booking_time, b.special_requests as notes, b.created_at, 
-             p.id as pet_id, p.name as pet_name, p.species as pet_type, p.breed, p.weight,
-             u.id as user_id, u.first_name, u.last_name, u.email, u.phone_number as phone,
-             sp.id as package_id, sp.name as service_name, sp.price, sp.processing_time
-      FROM bookings b
-      JOIN pets p ON b.pet_id = p.id
-      JOIN users u ON b.user_id = u.id
-      JOIN service_packages sp ON b.business_service_id = sp.id
-      WHERE b.business_service_id IN (?)
-    `;
+    let sql;
+    const queryParams: any[] = [];
     
-    const queryParams = [packageIds];
+    if (useServiceBookings) {
+      // Using service_bookings table
+      sql = `
+        SELECT sb.id, sb.status, sb.booking_date, sb.booking_time, sb.special_requests as notes, 
+               sb.created_at, sb.pet_name, sb.pet_type, sb.cause_of_death,
+               sb.pet_image_url, sb.payment_method, sb.delivery_option, sb.delivery_distance,
+               sb.delivery_fee, sb.price,
+               u.id as user_id, u.first_name, u.last_name, u.email, u.phone as phone,
+               sp.id as package_id, sp.name as service_name, sp.processing_time
+        FROM service_bookings sb
+        JOIN users u ON sb.user_id = u.id
+        LEFT JOIN service_packages sp ON sb.package_id = sp.id
+        WHERE (sb.package_id IN (?) OR sb.provider_id = ?)
+      `;
+      queryParams.push(packageIds, providerId);
+    } else {
+      // Using traditional bookings table
+      sql = `
+        SELECT b.id, b.status, b.booking_date, b.booking_time, b.special_requests as notes, 
+               b.created_at, 'N/A' as pet_name, 'N/A' as pet_type,
+               u.id as user_id, u.first_name, u.last_name, u.email, u.phone_number as phone,
+               sp.id as package_id, sp.name as service_name, sp.price, sp.processing_time
+        FROM bookings b
+        JOIN users u ON b.user_id = u.id
+        JOIN service_packages sp ON b.business_service_id = sp.id
+        WHERE b.business_service_id IN (?)
+      `;
+      queryParams.push(packageIds);
+    }
     
     // Add status filter if not 'all'
     if (statusFilter !== 'all') {
-      sql += ' AND b.status = ?';
+      sql += ' AND status = ?';
       queryParams.push(statusFilter);
     }
     
     // Add search term if provided
     if (searchTerm) {
-      sql += ` AND (
-        p.name LIKE ? OR 
-        u.first_name LIKE ? OR 
-        u.last_name LIKE ? OR 
-        b.id LIKE ?
-      )`;
+      if (useServiceBookings) {
+        sql += ` AND (
+          pet_name LIKE ? OR 
+          u.first_name LIKE ? OR 
+          u.last_name LIKE ? OR 
+          sb.id LIKE ?
+        )`;
+      } else {
+        sql += ` AND (
+          u.first_name LIKE ? OR 
+          u.last_name LIKE ? OR 
+          b.id LIKE ?
+        )`;
+      }
       const searchPattern = `%${searchTerm}%`;
-      queryParams.push(searchPattern, searchPattern, searchPattern, searchPattern);
+      queryParams.push(searchPattern, searchPattern, searchPattern);
     }
     
     // Add order by and limit
-    sql += ' ORDER BY b.created_at DESC LIMIT ? OFFSET ?';
+    sql += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
     queryParams.push(limit, offset);
     
     // Execute the query
+    console.log('Executing query:', sql);
+    console.log('With params:', queryParams);
     const bookings = await query(sql, queryParams) as any[];
     
-    // Get booking stats
-    const statsQueries = {
-      total: `SELECT COUNT(*) as count FROM bookings b WHERE b.business_service_id IN (?)`,
-      pending: `SELECT COUNT(*) as count FROM bookings b WHERE b.business_service_id IN (?) AND b.status = 'pending'`,
-      confirmed: `SELECT COUNT(*) as count FROM bookings b WHERE b.business_service_id IN (?) AND b.status = 'confirmed'`,
-      completed: `SELECT COUNT(*) as count FROM bookings b WHERE b.business_service_id IN (?) AND b.status = 'completed'`,
-      cancelled: `SELECT COUNT(*) as count FROM bookings b WHERE b.business_service_id IN (?) AND b.status = 'cancelled'`
-    };
+    // Get booking stats - adjust queries based on the table being used
+    let statsQueries;
+    
+    if (useServiceBookings) {
+      statsQueries = {
+        total: `SELECT COUNT(*) as count FROM service_bookings WHERE (package_id IN (?) OR provider_id = ?)`,
+        pending: `SELECT COUNT(*) as count FROM service_bookings WHERE (package_id IN (?) OR provider_id = ?) AND status = 'pending'`,
+        confirmed: `SELECT COUNT(*) as count FROM service_bookings WHERE (package_id IN (?) OR provider_id = ?) AND status = 'confirmed'`,
+        completed: `SELECT COUNT(*) as count FROM service_bookings WHERE (package_id IN (?) OR provider_id = ?) AND status = 'completed'`,
+        cancelled: `SELECT COUNT(*) as count FROM service_bookings WHERE (package_id IN (?) OR provider_id = ?) AND status = 'cancelled'`
+      };
+    } else {
+      statsQueries = {
+        total: `SELECT COUNT(*) as count FROM bookings WHERE business_service_id IN (?)`,
+        pending: `SELECT COUNT(*) as count FROM bookings WHERE business_service_id IN (?) AND status = 'pending'`,
+        confirmed: `SELECT COUNT(*) as count FROM bookings WHERE business_service_id IN (?) AND status = 'confirmed'`,
+        completed: `SELECT COUNT(*) as count FROM bookings WHERE business_service_id IN (?) AND status = 'completed'`,
+        cancelled: `SELECT COUNT(*) as count FROM bookings WHERE business_service_id IN (?) AND status = 'cancelled'`
+      };
+    }
     
     const stats: Record<string, number> = {};
     
-    for (const [key, sql] of Object.entries(statsQueries)) {
-      const result = await query(sql, [packageIds]) as any[];
+    for (const [key, sqlQuery] of Object.entries(statsQueries)) {
+      const statsParams = useServiceBookings ? [packageIds, providerId] : [packageIds];
+      const result = await query(sqlQuery, statsParams) as any[];
       stats[key] = result[0]?.count || 0;
     }
     
-    // Calculate total revenue from the bookings (since the successful_bookings table may not be used yet)
+    // Calculate total revenue from the bookings
     const totalRevenue = bookings.reduce((total: number, booking: any) => {
       if (booking.status === 'completed') {
         return total + (booking.price || 0);
@@ -108,21 +163,26 @@ export async function GET(request: NextRequest) {
     // Format the bookings data for response
     const formattedBookings = bookings.map((booking: any) => ({
       id: booking.id,
-      petName: booking.pet_name,
-      petType: booking.pet_type,
-      petSize: booking.weight ? `${getWeightCategory(booking.weight)} (${booking.weight} lbs)` : 'Unknown',
+      petName: booking.pet_name || 'Unknown',
+      petType: booking.pet_type || 'Unknown',
+      causeOfDeath: booking.cause_of_death || 'Not specified',
+      petImageUrl: booking.pet_image_url || null,
       owner: {
-        name: `${booking.first_name} ${booking.last_name}`,
-        email: booking.email,
+        name: `${booking.first_name || ''} ${booking.last_name || ''}`.trim() || 'Unknown',
+        email: booking.email || 'Not provided',
         phone: booking.phone || 'Not provided'
       },
-      service: booking.service_name,
-      package: booking.service_name,
-      status: booking.status,
-      scheduledDate: formatDate(booking.booking_date),
-      scheduledTime: formatTime(booking.booking_time),
+      service: booking.service_name || 'Unknown Service',
+      package: booking.service_name || 'Unknown Package',
+      status: booking.status || 'pending',
+      scheduledDate: booking.booking_date ? formatDate(booking.booking_date) : 'Not scheduled',
+      scheduledTime: booking.booking_time ? formatTime(booking.booking_time) : 'Not specified',
       notes: booking.notes || 'No special notes',
-      price: booking.price,
+      price: booking.price || 0,
+      paymentMethod: booking.payment_method || 'cash',
+      deliveryOption: booking.delivery_option || 'pickup',
+      deliveryDistance: booking.delivery_distance || 0,
+      deliveryFee: booking.delivery_fee || 0,
       createdAt: formatDate(booking.created_at)
     }));
     
@@ -147,13 +207,6 @@ export async function GET(request: NextRequest) {
   }
 }
 
-function getWeightCategory(weight: number): string {
-  if (weight <= 10) return 'Small';
-  if (weight <= 30) return 'Medium';
-  if (weight <= 60) return 'Large';
-  return 'X-Large';
-}
-
 function formatDate(dateString: string): string {
   const date = new Date(dateString);
   return date.toLocaleDateString('en-US', {
@@ -164,6 +217,8 @@ function formatDate(dateString: string): string {
 }
 
 function formatTime(timeString: string): string {
+  if (!timeString) return '';
+  
   // Handle SQL time format (HH:MM:SS)
   const [hours, minutes] = timeString.split(':');
   const date = new Date();

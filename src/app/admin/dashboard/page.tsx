@@ -45,10 +45,9 @@ function AdminDashboardPage({ adminData }: { adminData: any }) {
       bgColor: 'bg-blue-100',
       textColor: 'text-blue-800',
       iconColor: 'text-blue-800',
-    },
-    {
+    },    {
       key: 'applicationRequests',
-      name: 'Application Requests',
+      name: 'Pending Applications',
       icon: DocumentCheckIcon,
       bgColor: 'bg-yellow-100',
       textColor: 'text-yellow-800',

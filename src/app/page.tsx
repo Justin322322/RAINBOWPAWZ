@@ -181,11 +181,40 @@ export default function Home() {
                 BEGIN YOUR JOURNEY
               </button>
               <button onClick={openBusinessAccountModal}
-                className="px-8 py-4 bg-white/10 backdrop-blur-md hover:bg-white/20 text-white border border-white/30 rounded-full transition-all duration-300 transform hover:-translate-y-0.5 modern-label tracking-wide text-lg shadow-xl hover:shadow-2xl"
+                className={`${buttonBaseStyle} bg-white/10 backdrop-blur-md text-white hover:bg-white/20 border-white/30`}
               >
                 JOIN OUR PROVIDER NETWORK
               </button>
             </motion.div>
+            {process.env.NODE_ENV === 'development' && (
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 1.5 }}
+                className="mt-6"
+              >
+                <button
+                  onClick={async () => {
+                    try {
+                      const response = await fetch('/api/db-update');
+                      const result = await response.json();
+                      
+                      if (result.success) {
+                        alert('Database updated successfully: ' + result.message);
+                      } else {
+                        alert('Database update failed: ' + result.error);
+                      }
+                    } catch (err) {
+                      console.error('Error updating database:', err);
+                      alert('An error occurred while updating the database.');
+                    }
+                  }}
+                  className="text-xs bg-red-600 hover:bg-red-700 text-white py-1 px-3 rounded opacity-70 hover:opacity-100"
+                >
+                  Run DB Updates
+                </button>
+              </motion.div>
+            )}
           </div>
         </div>
       </section>

@@ -127,15 +127,14 @@ export async function GET(request: NextRequest) {
           b.booking_date, 
           b.booking_time,
           b.created_at,
-          b.completed_at,
-          p.name AS pet_name, 
-          p.species AS pet_type,
+          b.updated_at AS completed_at,
+          'N/A' AS pet_name, 
+          'N/A' AS pet_type,
           u.first_name, 
           u.last_name,
           sp.name AS service_name, 
           sp.price
         FROM bookings b
-        JOIN pets p ON b.pet_id = p.id
         JOIN users u ON b.user_id = u.id
         JOIN service_packages sp ON b.business_service_id = sp.id
         WHERE sp.service_provider_id = ?${dateCondition}${statusCondition}

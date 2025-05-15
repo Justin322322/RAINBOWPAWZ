@@ -407,39 +407,103 @@ export async function GET(request: NextRequest) {
     const previousRevenue = parseFloat(String(previousMonthRevenue[0]?.total || '0'));
     const revenueChange = calculateChange(currentRevenue, previousRevenue);
 
-    // Get previous month's applications count - safely handle if business_applications table doesn't exist
+    // Get previous month's pending applications count
     let previousMonthApplications = [{ count: 0 }];
     try {
-      // Check if business_applications table exists
-      const applicationsTableExists = await query(`
+      // Check if service_providers table exists with application_status column
+      const applicationStatusExists = await query(`
         SELECT COUNT(*) as count
-        FROM information_schema.tables
+        FROM information_schema.columns
         WHERE table_schema = DATABASE()
-        AND table_name = 'business_applications'
+        AND table_name = 'service_providers'
+        AND column_name = 'application_status'
       `) as any[];
 
-      if (applicationsTableExists[0]?.count === 1) {
-        // Check if created_at column exists
-        const appCreatedAtExists = await query(`
+      if (applicationStatusExists[0]?.count === 1) {
+        // Count previous month's pending applications
+        previousMonthApplications = await query(`
+          SELECT COUNT(*) as count 
+          FROM service_providers
+          WHERE application_status = 'pending' 
+          AND created_at < DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH)
+        `) as any[];
+      } else {
+        // Legacy fallback for old business_applications table
+        const applicationsTableExists = await query(`
           SELECT COUNT(*) as count
-          FROM information_schema.columns
+          FROM information_schema.tables
           WHERE table_schema = DATABASE()
           AND table_name = 'business_applications'
-          AND column_name = 'created_at'
         `) as any[];
 
-        if (appCreatedAtExists[0]?.count === 1) {
-          previousMonthApplications = await query(`
-            SELECT COUNT(*) as count FROM business_applications
-            WHERE created_at < DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH)
+        if (applicationsTableExists[0]?.count === 1) {
+          // Check if created_at and status columns exist
+          const appCreatedAtExists = await query(`
+            SELECT COUNT(*) as count
+            FROM information_schema.columns
+            WHERE table_schema = DATABASE()
+            AND table_name = 'business_applications'
+            AND column_name = 'created_at'
           `) as any[];
+          
+          const appStatusExists = await query(`
+            SELECT COUNT(*) as count
+            FROM information_schema.columns
+            WHERE table_schema = DATABASE()
+            AND table_name = 'business_applications'
+            AND column_name = 'status'
+          `) as any[];
+
+          if (appCreatedAtExists[0]?.count === 1 && appStatusExists[0]?.count === 1) {
+            previousMonthApplications = await query(`
+              SELECT COUNT(*) as count 
+              FROM business_applications
+              WHERE status = 'pending'
+              AND created_at < DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH)
+            `) as any[];
+          } else if (appCreatedAtExists[0]?.count === 1) {
+            // If no status column, just get count by date as a fallback
+            previousMonthApplications = await query(`
+              SELECT COUNT(*) as count 
+              FROM business_applications
+              WHERE created_at < DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH)
+            `) as any[];
+          }
         }
       }
     } catch (error) {
       console.error('Error fetching previous month applications:', error);
     }
 
-    const currentApplications = recentApplications.length;
+    // Get the total count of pending applications, not just the recent ones
+    let pendingApplicationsCount = 0;
+    try {
+      // Check if service_providers table exists with application_status column
+      const applicationStatusExists = await query(`
+        SELECT COUNT(*) as count
+        FROM information_schema.columns
+        WHERE table_schema = DATABASE()
+        AND table_name = 'service_providers'
+        AND column_name = 'application_status'
+      `) as any[];
+
+      if (applicationStatusExists[0]?.count === 1) {
+        // Count all pending applications
+        const pendingAppsResult = await query(`
+          SELECT COUNT(*) as count
+          FROM service_providers
+          WHERE application_status = 'pending'
+        `) as any[];
+        
+        pendingApplicationsCount = pendingAppsResult[0]?.count || 0;
+      }
+    } catch (error) {
+      console.error('Error fetching pending applications count:', error);
+      // Fallback to counting pending applications in the recent applications array
+      pendingApplicationsCount = recentApplications.filter((app: any) => app.status === 'pending').length;
+    }
+
+    const currentApplications = pendingApplicationsCount;
     const previousApplications = previousMonthApplications[0]?.count || 0;
     const applicationsChange = calculateChange(currentApplications, previousApplications);
 

@@ -18,6 +18,7 @@ import {
 import { useToast } from '@/context/ToastContext';
 import { PackageImage } from '@/components/packages/PackageImage';
 
+// The actual component that will be wrapped by withBusinessVerification HOC
 function CremationDashboardPage({ userData }: { userData: any }) {
   const [userName, setUserName] = useState('');
   const [loading, setLoading] = useState(true);
@@ -50,7 +51,8 @@ function CremationDashboardPage({ userData }: { userData: any }) {
 
       try {
         console.log('Fetching dashboard data for provider ID:', userData.business_id);
-        const response = await fetch(`/api/cremation/dashboard?providerId=${userData.business_id}`);
+        // Add cache busting parameter to prevent cached results
+        const response = await fetch(`/api/cremation/dashboard?providerId=${userData.business_id}&t=${Date.now()}`);
         
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
@@ -89,6 +91,9 @@ function CremationDashboardPage({ userData }: { userData: any }) {
     { bgColor: 'bg-yellow-100', textColor: 'text-yellow-800', iconColor: 'text-yellow-600' },
     { bgColor: 'bg-gray-100', textColor: 'text-gray-800', iconColor: 'text-gray-600' }
   ];
+
+  // This console.log should always happen when rendering to verify we're using this component correctly
+  console.log('Rendering cremation dashboard page with userData:', userData?.id);
 
   return (
     <CremationDashboardLayout activePage="dashboard" userData={userData}>
@@ -281,4 +286,5 @@ function CremationDashboardPage({ userData }: { userData: any }) {
   );
 }
 
+// Wrap with HOC and export
 export default withBusinessVerification(CremationDashboardPage);

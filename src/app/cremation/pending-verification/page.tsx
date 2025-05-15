@@ -7,13 +7,12 @@ import Cookies from 'js-cookie';
 
 export default function PendingVerificationPage() {
   const router = useRouter();
-  const [documentsUploaded, setDocumentsUploaded] = useState<boolean | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   
-  // Check if documents have been uploaded
+  // Check verification status
   useEffect(() => {
-    const checkDocuments = async () => {
+    const checkStatus = async () => {
       try {
         // Get user ID from cookie
         const authCookie = Cookies.get('auth_token');
@@ -26,32 +25,36 @@ export default function PendingVerificationPage() {
         const [id] = authCookie.split('_');
         setUserId(id);
         
-        // Call API to check document status
-        const response = await fetch(`/api/users/${id}`);
+        // Call API to check verification status
+        const response = await fetch(`/api/users/${id}?t=${Date.now()}`);
         if (!response.ok) {
           console.error('Failed to fetch user data');
-          setDocumentsUploaded(false);
+          setLoading(false);
           return;
         }
         
         const userData = await response.json();
         
-        // Check if they have a service provider profile with document paths
-        const hasDocuments = userData.service_provider && 
-          (userData.service_provider.business_permit_path || 
-           userData.service_provider.government_id_path || 
-           userData.service_provider.bir_certificate_path);
-           
-        setDocumentsUploaded(!!hasDocuments);
+        // Check verification status
+        const isPending = (userData.status === 'pending' || 
+                          (userData.service_provider && userData.service_provider.status === 'pending'));
+        
+        // If the user is verified, redirect to dashboard
+        if (!isPending && 
+            (userData.status === 'verified' || 
+             (userData.service_provider && userData.service_provider.status === 'verified'))) {
+          router.push('/cremation/dashboard');
+          return;
+        }
+        
+        setLoading(false);
       } catch (error) {
-        console.error('Error checking document status:', error);
-        setDocumentsUploaded(false);
-      } finally {
+        console.error('Error checking status:', error);
         setLoading(false);
       }
     };
     
-    checkDocuments();
+    checkStatus();
   }, [router]);
 
   return (
@@ -73,28 +76,6 @@ export default function PendingVerificationPage() {
         {loading ? (
           <div className="flex justify-center items-center py-8">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-t-2 border-[var(--primary-green)]"></div>
-          </div>
-        ) : !documentsUploaded ? (
-          <div className="mb-6 p-4 bg-red-50 rounded-lg border border-red-200">
-            <div className="flex items-center justify-center mb-4">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
-            </div>
-
-            <p className="text-gray-700 font-medium mb-2">
-              You need to upload required documents to complete your registration.
-            </p>
-            <p className="text-gray-700 mb-4">
-              Please upload your business permit, BIR certificate, and government ID before your account can be reviewed.
-            </p>
-
-            <button
-              onClick={() => router.push('/cremation/documents')}
-              className="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all duration-300"
-            >
-              Upload Documents Now
-            </button>
           </div>
         ) : (
           <div className="mb-6 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
@@ -138,15 +119,6 @@ export default function PendingVerificationPage() {
         </div>
 
         <div className="flex flex-col space-y-3">
-          {documentsUploaded && (
-            <button
-              onClick={() => router.push('/cremation/documents')}
-              className="w-full px-4 py-2 bg-[var(--primary-green)] text-white rounded-lg hover:bg-opacity-90 transition-all duration-300"
-            >
-              View My Documents
-            </button>
-          )}
-          
           <button
             onClick={() => router.push('/')}
             className="w-full px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-800 transition-all duration-300"

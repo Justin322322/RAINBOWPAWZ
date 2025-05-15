@@ -38,12 +38,6 @@ export default function CremationSidebar({ activePage: propActivePage }: Cremati
       id: 'dashboard'
     },
     {
-      name: 'Documents',
-      href: '/cremation/documents',
-      icon: DocumentTextIcon,
-      id: 'documents'
-    },
-    {
       name: 'My Packages',
       href: '/cremation/packages',
       icon: SquaresPlusIcon,

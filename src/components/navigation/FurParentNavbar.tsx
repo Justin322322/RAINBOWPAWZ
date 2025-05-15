@@ -121,11 +121,11 @@ export default function FurParentNavbar({ activePage: propActivePage, userName =
                   e.stopPropagation();
                   setIsCartOpen(!isCartOpen);
                 }}
-                className="text-white hover:text-gray-200 transition-colors relative"
+                className="text-white p-2 rounded-full hover:bg-white/10 transition-colors relative"
               >
                 <ShoppingCartIcon className="h-6 w-6" />
                 {itemCount > 0 && (
-                  <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center shadow-md">
                     {itemCount}
                   </span>
                 )}

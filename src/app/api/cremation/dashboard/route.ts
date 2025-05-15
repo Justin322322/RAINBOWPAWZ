@@ -61,22 +61,27 @@ export async function GET(request: NextRequest) {
       [providerId]
     ) as any[];
     
-    // Get recent bookings
-    // Modified to join with service_packages to link to service_provider_id
-    const recentBookings = await query(
-      `SELECT b.id, b.status, b.booking_date as scheduled_date, b.created_at, 
-              p.name as pet_name, p.species as pet_type,
-              u.first_name, u.last_name,
-              sp.name as service_name, sp.price
-       FROM bookings b
-       JOIN pets p ON b.pet_id = p.id
-       JOIN users u ON b.user_id = u.id
-       JOIN service_packages sp ON b.business_service_id = sp.id
-       WHERE sp.service_provider_id = ?
-       ORDER BY b.created_at DESC
-       LIMIT 5`,
-      [providerId]
-    ) as any[];
+    // Get recent bookings - modified to not depend on pets table
+    let recentBookings = [];
+    try {
+      recentBookings = await query(
+        `SELECT b.id, b.status, b.booking_date as scheduled_date, b.created_at, 
+                b.special_requests, 
+                u.first_name, u.last_name,
+                sp.name as service_name, sp.price
+         FROM bookings b
+         JOIN users u ON b.user_id = u.id
+         JOIN service_packages sp ON b.business_service_id = sp.id
+         WHERE sp.service_provider_id = ?
+         ORDER BY b.created_at DESC
+         LIMIT 5`,
+        [providerId]
+      ) as any[];
+    } catch (bookingError) {
+      console.error('Error fetching recent bookings:', bookingError);
+      // Continue with empty bookings
+      recentBookings = [];
+    }
     
     // Get service packages
     const servicePackages = await query(
@@ -192,8 +197,8 @@ export async function GET(request: NextRequest) {
       ],
       recentBookings: recentBookings.map((booking: any) => ({
         id: booking.id,
-        petName: booking.pet_name,
-        petType: booking.species || booking.pet_type,
+        petName: 'N/A', // Since we don't have pet data now
+        petType: 'N/A', // Since we don't have pet data now
         owner: `${booking.first_name} ${booking.last_name}`,
         service: booking.service_name,
         status: booking.status,

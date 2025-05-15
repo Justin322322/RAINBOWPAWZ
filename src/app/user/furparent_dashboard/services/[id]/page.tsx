@@ -20,6 +20,7 @@ import {
 import FurParentNavbar from '@/components/navigation/FurParentNavbar';
 import withOTPVerification from '@/components/withOTPVerification';
 import FurParentPageSkeleton from '@/components/ui/FurParentPageSkeleton';
+import { getPackageImageUrl, handleImageError } from '@/utils/imageUtils';
 
 interface ServiceDetailPageProps {
   userData?: any;
@@ -95,11 +96,34 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
         }
 
         const packagesData = await packagesResponse.json();
+        
+        // Process packages to fetch images
+        const packages = packagesData.packages || [];
+        
+        // Get images for each package
+        const packagesWithImages = await Promise.all(
+          packages.map(async (pkg: any) => {
+            try {
+              // Use our imageUtils function to get the verified images
+              const responseImages = await fetch(`/api/packages/available-images?id=${pkg.id}`);
+              const imagesData = await responseImages.json();
+              
+              if (imagesData.success && imagesData.imagesFound && imagesData.imagesFound.length > 0) {
+                return { ...pkg, images: imagesData.imagesFound };
+              }
+              
+              return pkg;
+            } catch (error) {
+              console.error(`Error fetching images for package ${pkg.id}:`, error);
+              return pkg;
+            }
+          })
+        );
 
         // Combine provider data with packages
         const providerWithPackages = {
           ...providerData.provider,
-          packages: packagesData.packages || []
+          packages: packagesWithImages
         };
 
         setProvider(providerWithPackages);
@@ -336,12 +360,24 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full mx-4">
                     {getSortedPackages().slice(currentPackageIndex, currentPackageIndex + 3).map((pkg: any) => (
                       <div key={pkg.id} className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-                        <div className="h-40 flex items-center justify-center bg-gray-100">
-                          <div className="text-center p-4">
-                            <svg className="mx-auto h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                            </svg>
-                          </div>
+                        <div className="h-40 relative overflow-hidden bg-gray-100">
+                          {pkg.images && pkg.images.length > 0 ? (
+                            <Image
+                              src={pkg.images[0]}
+                              alt={pkg.name}
+                              fill
+                              className="object-cover"
+                              onError={(e) => handleImageError(e)}
+                            />
+                          ) : (
+                            <Image
+                              src={`/bg_4.png`}
+                              alt={pkg.name}
+                              fill
+                              className="object-cover"
+                              onError={(e) => handleImageError(e)}
+                            />
+                          )}
                         </div>
                         <div className="p-4 text-center">
                           <h3 className="font-medium text-lg">{pkg.name}</h3>

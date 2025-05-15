@@ -9,14 +9,10 @@ import {
   MapPinIcon,
   PencilSquareIcon,
   CheckIcon,
-  XMarkIcon,
-  PlusIcon
+  XMarkIcon
 } from '@heroicons/react/24/outline';
 import FurParentNavbar from '@/components/navigation/FurParentNavbar';
 import withOTPVerification from '@/components/withOTPVerification';
-import PetCard from '@/components/pets/PetCard';
-import PetFormModal from '@/components/pets/PetFormModal';
-import DeleteConfirmationModal from '@/components/pets/DeleteConfirmationModal';
 
 interface ProfilePageProps {
   userData?: any;
@@ -38,20 +34,7 @@ function ProfilePage({ userData }: ProfilePageProps) {
     sex: ''
   });
 
-  // Pets state
-  const [pets, setPets] = useState<any[]>([]);
-
-  // Pet form modal state
-  const [isPetModalOpen, setIsPetModalOpen] = useState(false);
-  const [currentPet, setCurrentPet] = useState<any>(null);
-  const [isSubmittingPet, setIsSubmittingPet] = useState(false);
-
-  // Delete confirmation modal state
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [petToDelete, setPetToDelete] = useState<any>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
-
-  // Fetch user data and pets
+  // Fetch user data
   useEffect(() => {
     if (userData) {
       setFormData({
@@ -62,29 +45,8 @@ function ProfilePage({ userData }: ProfilePageProps) {
         address: userData.address || '',
         sex: userData.sex || ''
       });
-
-      // Fetch pets from the API
-      fetchPets();
     }
   }, [userData]);
-
-  // Function to fetch pets
-  const fetchPets = async () => {
-    try {
-      const response = await fetch('/api/pets');
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch pets');
-      }
-
-      const data = await response.json();
-      setPets(data.pets || []);
-    } catch (error) {
-      console.error('Error fetching pets:', error);
-      // Fallback to empty array if fetch fails
-      setPets([]);
-    }
-  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -140,130 +102,6 @@ function ProfilePage({ userData }: ProfilePageProps) {
       setError(err instanceof Error ? err.message : 'Failed to update profile. Please try again.');
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  // Function to handle opening the pet form modal for adding a new pet
-  const handleAddPet = () => {
-    setCurrentPet(null);
-    setIsPetModalOpen(true);
-  };
-
-  // Function to handle opening the pet form modal for editing an existing pet
-  const handleEditPet = (petId: number) => {
-    const petToEdit = pets.find(pet => pet.id === petId);
-    if (petToEdit) {
-      setCurrentPet(petToEdit);
-      setIsPetModalOpen(true);
-    }
-  };
-
-  // Function to handle opening the delete confirmation modal
-  const handleDeletePetClick = (petId: number) => {
-    const petToDelete = pets.find(pet => pet.id === petId);
-    if (petToDelete) {
-      setPetToDelete(petToDelete);
-      setIsDeleteModalOpen(true);
-    }
-  };
-
-  // Function to handle submitting the pet form (create or update)
-  const handlePetSubmit = async (petData: any) => {
-    setIsSubmittingPet(true);
-
-    try {
-      let response;
-
-      if (currentPet) {
-        // Update existing pet
-        response = await fetch(`/api/pets/${currentPet.id}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(petData),
-        });
-      } else {
-        // Create new pet
-        response = await fetch('/api/pets', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(petData),
-        });
-      }
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to save pet');
-      }
-
-      // Refresh the pets list
-      await fetchPets();
-
-      // Close the modal
-      setIsPetModalOpen(false);
-      setCurrentPet(null);
-
-      // Show success message
-      setSuccess(currentPet ? 'Pet updated successfully' : 'Pet added successfully');
-
-      // Clear success message after a delay
-      setTimeout(() => {
-        setSuccess(null);
-      }, 3000);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save pet. Please try again.');
-
-      // Clear error message after a delay
-      setTimeout(() => {
-        setError(null);
-      }, 3000);
-    } finally {
-      setIsSubmittingPet(false);
-    }
-  };
-
-  // Function to handle confirming pet deletion
-  const handleDeletePet = async () => {
-    if (!petToDelete) return;
-
-    setIsDeleting(true);
-
-    try {
-      const response = await fetch(`/api/pets/${petToDelete.id}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to delete pet');
-      }
-
-      // Refresh the pets list
-      await fetchPets();
-
-      // Close the modal
-      setIsDeleteModalOpen(false);
-      setPetToDelete(null);
-
-      // Show success message
-      setSuccess('Pet deleted successfully');
-
-      // Clear success message after a delay
-      setTimeout(() => {
-        setSuccess(null);
-      }, 3000);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete pet. Please try again.');
-
-      // Clear error message after a delay
-      setTimeout(() => {
-        setError(null);
-      }, 3000);
-    } finally {
-      setIsDeleting(false);
     }
   };
 
@@ -485,79 +323,6 @@ function ProfilePage({ userData }: ProfilePageProps) {
               )}
             </div>
           </div>
-
-          {/* Pets Section */}
-          <div className="bg-white rounded-lg shadow-md overflow-hidden">
-            <div className="bg-[var(--primary-green)] p-6 flex justify-between items-center">
-              <h2 className="text-xl font-semibold text-white">My Pets</h2>
-              <button
-                onClick={handleAddPet}
-                className="inline-flex items-center px-3 py-1 border border-transparent rounded-md text-sm font-medium text-[var(--primary-green)] bg-white hover:bg-gray-100 focus:outline-none transition-colors"
-              >
-                <PlusIcon className="h-5 w-5 mr-1" />
-                Add Pet
-              </button>
-            </div>
-
-            <div className="p-6">
-              {success && (
-                <div className="mb-6 bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded flex items-center">
-                  <CheckIcon className="h-5 w-5 mr-2 text-green-500" />
-                  {success}
-                </div>
-              )}
-
-              {error && (
-                <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded flex items-center">
-                  <XMarkIcon className="h-5 w-5 mr-2 text-red-500" />
-                  {error}
-                </div>
-              )}
-
-              {pets.length === 0 ? (
-                <div className="text-center py-8">
-                  <p className="text-gray-500">You haven't added any pets yet.</p>
-                  <button
-                    onClick={handleAddPet}
-                    className="mt-4 px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[var(--primary-green)] hover:bg-[var(--primary-green-hover)] focus:outline-none transition-colors"
-                  >
-                    <PlusIcon className="h-5 w-5 inline mr-1" />
-                    Add a Pet
-                  </button>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 gap-6">
-                  {pets.map(pet => (
-                    <PetCard
-                      key={pet.id}
-                      pet={pet}
-                      onEdit={handleEditPet}
-                      onDelete={handleDeletePetClick}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Pet Form Modal */}
-          <PetFormModal
-            isOpen={isPetModalOpen}
-            onClose={() => setIsPetModalOpen(false)}
-            pet={currentPet}
-            onSubmit={handlePetSubmit}
-            isSubmitting={isSubmittingPet}
-            title={currentPet ? `Edit ${currentPet.name}` : 'Add New Pet'}
-          />
-
-          {/* Delete Confirmation Modal */}
-          <DeleteConfirmationModal
-            isOpen={isDeleteModalOpen}
-            onClose={() => setIsDeleteModalOpen(false)}
-            onConfirm={handleDeletePet}
-            isDeleting={isDeleting}
-            petName={petToDelete?.name || ''}
-          />
         </motion.div>
       </main>
     </div>

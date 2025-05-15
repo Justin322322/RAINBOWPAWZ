@@ -15,7 +15,8 @@ export async function POST(request: NextRequest) {
 
     // Parse the form data
     const formData = await request.formData();
-    const file = formData.get('file') as File;
+    const file = formData.get('file') as File || formData.get('image') as File;
+    const petName = formData.get('petName') as string || '';
 
     if (!file) {
       return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
@@ -41,7 +42,10 @@ export async function POST(request: NextRequest) {
     const timestamp = Date.now();
     const originalName = file.name.replace(/\s+/g, '_').toLowerCase();
     const extension = originalName.split('.').pop();
-    const filename = `pet_${userId}_${timestamp}.${extension}`;
+    
+    // Use pet name in filename if available
+    const sanitizedPetName = petName ? petName.replace(/[^a-z0-9]/gi, '_').toLowerCase() + '_' : '';
+    const filename = `pet_${sanitizedPetName}${userId}_${timestamp}.${extension}`;
 
     // Create the uploads directory if it doesn't exist
     const uploadsDir = join(process.cwd(), 'public', 'uploads', 'pets');
@@ -70,6 +74,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         success: true,
         filePath: relativePath,
+        imageUrl: relativePath,  // Add imageUrl to match what the checkout page expects
         message: 'File uploaded successfully'
       });
     } catch (error) {

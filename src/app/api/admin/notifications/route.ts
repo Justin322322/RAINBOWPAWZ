@@ -34,131 +34,173 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({
         error: 'Unauthorized',
         details: 'Admin access required',
-        success: false
-      }, { status: 401 });
+        success: false,
+        notifications: []
+      }, { 
+        status: 401,
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        }
+      });
     }
 
     // Get notifications from the database
     // First check if the admin_notifications table exists
-    const tableCheck = await query(`
-      SELECT COUNT(*) as count
-      FROM information_schema.tables
-      WHERE table_schema = ? AND table_name = 'admin_notifications'
-    `, [process.env.DB_NAME || 'rainbow_paws']);
-
-    const tableExists = tableCheck && Array.isArray(tableCheck) &&
-                        tableCheck[0] && tableCheck[0].count > 0;
-
-    if (!tableExists) {
-      // If the table doesn't exist, create it
-      await query(`
-        CREATE TABLE admin_notifications (
-          id INT AUTO_INCREMENT PRIMARY KEY,
-          type VARCHAR(50) NOT NULL,
-          title VARCHAR(255) NOT NULL,
-          message TEXT NOT NULL,
-          entity_type VARCHAR(50),
-          entity_id INT,
-          link VARCHAR(255),
-          is_read BOOLEAN DEFAULT FALSE,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-      `);
-
-      console.log('Created admin_notifications table');
-    }
-
-    // Get unread notifications
-    const notifications = await query(`
-      SELECT * FROM admin_notifications
-      WHERE is_read = FALSE
-      ORDER BY created_at DESC
-      LIMIT 50
-    `);
-
-    // Check which table exists: business_profiles or service_providers
-    const tableCheckResult = await query(`
-      SELECT table_name
-      FROM information_schema.tables
-      WHERE table_schema = DATABASE()
-      AND table_name IN ('business_profiles', 'service_providers')
-    `) as any[];
-
-    const tableNames = tableCheckResult.map((row: any) => row.table_name);
-    const useServiceProvidersTable = tableNames.includes('service_providers');
-
-    console.log(`Using ${useServiceProvidersTable ? 'service_providers' : 'business_profiles'} table for pending applications`);
-
-    // Get pending applications count
-    let pendingCount = 0;
-
-    if (useServiceProvidersTable) {
-      const pendingApplications = await query(`
+    try {
+      const tableCheck = await query(`
         SELECT COUNT(*) as count
-        FROM service_providers
-        WHERE verification_status = 'pending'
+        FROM information_schema.tables
+        WHERE table_schema = DATABASE() AND table_name = 'admin_notifications'
       `);
 
-      pendingCount = pendingApplications && pendingApplications[0] ? pendingApplications[0].count : 0;
-    } else {
-      const pendingApplications = await query(`
-        SELECT COUNT(*) as count
-        FROM business_profiles
-        WHERE verification_status IS NULL OR verification_status = 'pending'
-      `);
+      const tableExists = tableCheck && Array.isArray(tableCheck) &&
+                          tableCheck[0] && tableCheck[0].count > 0;
 
-      pendingCount = pendingApplications && pendingApplications[0] ? pendingApplications[0].count : 0;
-    }
-
-    // If there are pending applications but no notification for them, create one
-    if (pendingCount > 0) {
-      const applicationNotification = await query(`
-        SELECT * FROM admin_notifications
-        WHERE type = 'pending_application' AND is_read = FALSE
-        LIMIT 1
-      `);
-
-      if (!applicationNotification || applicationNotification.length === 0) {
-        // Create a notification for pending applications
+      if (!tableExists) {
+        // If the table doesn't exist, create it
         await query(`
-          INSERT INTO admin_notifications (type, title, message, entity_type, link)
-          VALUES (?, ?, ?, ?, ?)
-        `, [
-          'pending_application',
-          'Pending Applications',
-          `You have ${pendingCount} pending business application${pendingCount > 1 ? 's' : ''} to review.`,
-          useServiceProvidersTable ? 'service_provider' : 'business_profile',
-          '/admin/applications'
-        ]);
-
-        // Fetch the newly created notification
-        const newNotifications = await query(`
-          SELECT * FROM admin_notifications
-          WHERE is_read = FALSE
-          ORDER BY created_at DESC
-          LIMIT 50
+          CREATE TABLE admin_notifications (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            type VARCHAR(50) NOT NULL,
+            title VARCHAR(255) NOT NULL,
+            message TEXT NOT NULL,
+            entity_type VARCHAR(50),
+            entity_id INT,
+            link VARCHAR(255),
+            is_read BOOLEAN DEFAULT FALSE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          )
         `);
 
-        return NextResponse.json({
-          success: true,
-          notifications: newNotifications,
-          pendingApplications: pendingCount
-        });
+        console.log('Created admin_notifications table');
       }
-    }
 
-    return NextResponse.json({
-      success: true,
-      notifications,
-      pendingApplications: pendingCount
-    });
+      // Get unread notifications
+      const notifications = await query(`
+        SELECT * FROM admin_notifications
+        WHERE is_read = FALSE
+        ORDER BY created_at DESC
+        LIMIT 50
+      `);
+
+      // Check which table exists: business_profiles or service_providers
+      const tableCheckResult = await query(`
+        SELECT table_name
+        FROM information_schema.tables
+        WHERE table_schema = DATABASE()
+        AND table_name IN ('business_profiles', 'service_providers')
+      `) as any[];
+
+      const tableNames = tableCheckResult.map((row: any) => row.table_name);
+      const useServiceProvidersTable = tableNames.includes('service_providers');
+
+      console.log(`Using ${useServiceProvidersTable ? 'service_providers' : 'business_profiles'} table for pending applications`);
+
+      // Get pending applications count
+      let pendingCount = 0;
+
+      if (useServiceProvidersTable) {
+        const pendingApplications = await query(`
+          SELECT COUNT(*) as count
+          FROM service_providers
+          WHERE application_status = 'pending'
+        `);
+
+        pendingCount = pendingApplications && pendingApplications[0] ? pendingApplications[0].count : 0;
+      } else {
+        const pendingApplications = await query(`
+          SELECT COUNT(*) as count
+          FROM business_profiles
+          WHERE verification_status IS NULL OR verification_status = 'pending'
+        `);
+
+        pendingCount = pendingApplications && pendingApplications[0] ? pendingApplications[0].count : 0;
+      }
+
+      // If there are pending applications but no notification for them, create one
+      if (pendingCount > 0) {
+        const applicationNotification = await query(`
+          SELECT * FROM admin_notifications
+          WHERE type = 'pending_application' AND is_read = FALSE
+          LIMIT 1
+        `);
+
+        if (!applicationNotification || applicationNotification.length === 0) {
+          // Create a notification for pending applications
+          await query(`
+            INSERT INTO admin_notifications (type, title, message, entity_type, link)
+            VALUES (?, ?, ?, ?, ?)
+          `, [
+            'pending_application',
+            'Pending Applications',
+            `You have ${pendingCount} pending business application${pendingCount > 1 ? 's' : ''} to review.`,
+            useServiceProvidersTable ? 'service_provider' : 'business_profile',
+            '/admin/applications'
+          ]);
+
+          // Fetch the newly created notification
+          const newNotifications = await query(`
+            SELECT * FROM admin_notifications
+            WHERE is_read = FALSE
+            ORDER BY created_at DESC
+            LIMIT 50
+          `);
+
+          return NextResponse.json({
+            success: true,
+            notifications: newNotifications,
+            pendingApplications: pendingCount
+          }, {
+            headers: {
+              'Cache-Control': 'no-cache, no-store, must-revalidate',
+              'Pragma': 'no-cache'
+            }
+          });
+        }
+      }
+
+      return NextResponse.json({
+        success: true,
+        notifications,
+        pendingApplications: pendingCount
+      }, {
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        }
+      });
+    } catch (dbError) {
+      console.error('Database error fetching admin notifications:', dbError);
+      return NextResponse.json({
+        success: false,
+        error: 'Database error',
+        details: dbError instanceof Error ? dbError.message : 'Unknown database error',
+        notifications: [],
+        pendingApplications: 0
+      }, {
+        status: 500,
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        }
+      });
+    }
   } catch (error) {
     console.error('Error fetching admin notifications:', error);
     return NextResponse.json({
       error: 'Failed to fetch notifications',
       details: error instanceof Error ? error.message : 'Unknown error',
-      success: false
-    }, { status: 500 });
+      success: false,
+      notifications: [],
+      pendingApplications: 0
+    }, { 
+      status: 500,
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache'
+      }
+    });
   }
 }
 
@@ -194,54 +236,94 @@ export async function POST(request: NextRequest) {
         error: 'Unauthorized',
         details: 'Admin access required',
         success: false
-      }, { status: 401 });
+      }, { 
+        status: 401,
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        }
+      });
     }
 
     // Get notification IDs from request body
     const body = await request.json();
     const { notificationIds, markAll, type } = body;
 
-    if (markAll) {
-      // Mark all notifications as read
-      if (type) {
-        // Mark all notifications of a specific type as read
-        await query(`
-          UPDATE admin_notifications
-          SET is_read = TRUE
-          WHERE type = ?
-        `, [type]);
-      } else {
+    try {
+      if (markAll) {
         // Mark all notifications as read
+        if (type) {
+          // Mark all notifications of a specific type as read
+          await query(`
+            UPDATE admin_notifications
+            SET is_read = TRUE
+            WHERE type = ?
+          `, [type]);
+        } else {
+          // Mark all notifications as read
+          await query(`
+            UPDATE admin_notifications
+            SET is_read = TRUE
+          `);
+        }
+      } else if (notificationIds && Array.isArray(notificationIds) && notificationIds.length > 0) {
+        // Mark specific notifications as read
+        // Use a safer approach with multiple parameters
+        const placeholders = notificationIds.map(() => '?').join(',');
         await query(`
           UPDATE admin_notifications
           SET is_read = TRUE
-        `);
+          WHERE id IN (${placeholders})
+        `, [...notificationIds]);
+      } else {
+        return NextResponse.json({
+          error: 'Invalid request',
+          details: 'Please provide notificationIds or set markAll to true',
+          success: false
+        }, { 
+          status: 400,
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache'
+          }
+        });
       }
-    } else if (notificationIds && Array.isArray(notificationIds) && notificationIds.length > 0) {
-      // Mark specific notifications as read
-      await query(`
-        UPDATE admin_notifications
-        SET is_read = TRUE
-        WHERE id IN (?)
-      `, [notificationIds]);
-    } else {
-      return NextResponse.json({
-        error: 'Invalid request',
-        details: 'Please provide notificationIds or set markAll to true',
-        success: false
-      }, { status: 400 });
-    }
 
-    return NextResponse.json({
-      success: true,
-      message: 'Notifications marked as read'
-    });
+      return NextResponse.json({
+        success: true,
+        message: 'Notifications marked as read'
+      }, {
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        }
+      });
+    } catch (dbError) {
+      console.error('Database error marking admin notifications as read:', dbError);
+      return NextResponse.json({
+        error: 'Database error while marking notifications as read',
+        details: dbError instanceof Error ? dbError.message : 'Unknown database error',
+        success: false
+      }, {
+        status: 500,
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        }
+      });
+    }
   } catch (error) {
     console.error('Error marking notifications as read:', error);
     return NextResponse.json({
       error: 'Failed to mark notifications as read',
       details: error instanceof Error ? error.message : 'Unknown error',
       success: false
-    }, { status: 500 });
+    }, { 
+      status: 500,
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache'
+      }
+    });
   }
 }

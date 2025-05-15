@@ -14,7 +14,8 @@ import {
   ClockIcon,
   UserIcon,
   PaperAirplaneIcon,
-  ExclamationCircleIcon
+  ExclamationCircleIcon,
+  TruckIcon
 } from '@heroicons/react/24/outline';
 import FurParentNavbar from '@/components/navigation/FurParentNavbar';
 import withOTPVerification from '@/components/withOTPVerification';
@@ -31,14 +32,22 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [bookingData, setBookingData] = useState<any>(null);
-  const [paymentMethod, setPaymentMethod] = useState<string>('credit_card');
+  const [paymentMethod, setPaymentMethod] = useState<string>('cash');
   const [isProcessing, setIsProcessing] = useState(false);
   const [checkoutComplete, setCheckoutComplete] = useState(false);
-  const [pets, setPets] = useState<any[]>([]);
-  const [selectedPet, setSelectedPet] = useState<number | null>(null);
+  const [petName, setPetName] = useState('');
+  const [causeOfDeath, setCauseOfDeath] = useState('');
+  const [petType, setPetType] = useState('');
   const [bookingDate, setBookingDate] = useState('');
   const [bookingTime, setBookingTime] = useState('');
   const [specialRequests, setSpecialRequests] = useState('');
+  const [petImageFile, setPetImageFile] = useState<File | null>(null);
+  const [petImagePreview, setPetImagePreview] = useState<string | null>(null);
+  const [deliveryOption, setDeliveryOption] = useState<'pickup' | 'delivery'>('pickup');
+  const [deliveryDistance, setDeliveryDistance] = useState<number>(0);
+  const [deliveryFee, setDeliveryFee] = useState<number>(0);
+  
+  // Remove selectedPet and pets states as we're removing the pet dropdown
 
   // Mock data for service providers and packages
   const serviceProviders = [
@@ -76,11 +85,30 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
     }
   ];
 
-  // Mock data for user's pets
-  const mockPets = [
-    { id: 1, name: 'Max', species: 'Dog', breed: 'Golden Retriever', age: 8 },
-    { id: 2, name: 'Luna', species: 'Cat', breed: 'Siamese', age: 5 }
-  ];
+  // Handle pet image upload
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setPetImageFile(file);
+      
+      // Create preview URL
+      const reader = new FileReader();
+      reader.onload = () => {
+        setPetImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+  
+  // Handle image removal
+  const handleRemoveImage = () => {
+    setPetImageFile(null);
+    setPetImagePreview(null);
+    
+    // Clear the file input
+    const fileInput = document.getElementById('pet-image') as HTMLInputElement;
+    if (fileInput) fileInput.value = '';
+  };
 
   useEffect(() => {
     // Get provider and package IDs from URL params
@@ -228,8 +256,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                 package: testPackage
               });
               
-              // Set mock pets
-              setPets(mockPets);
+              // We no longer need to set mock pets
               
               // Set default date to tomorrow
               const tomorrow = new Date();
@@ -280,21 +307,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
           package: packageData.package
         });
 
-        // Fetch user's pets
-        try {
-          const petsResponse = await fetch('/api/pets');
-          if (petsResponse.ok) {
-            const petsData = await petsResponse.json();
-            setPets(petsData.pets || []);
-            console.log('Successfully fetched pets:', petsData.pets);
-          } else {
-            console.warn('Could not fetch pets, using mock data:', petsResponse.status);
-            setPets(mockPets);
-          }
-        } catch (petError) {
-          console.error('Error fetching pets:', petError);
-          setPets(mockPets);
-        }
+        // We no longer fetch pets as we'll use petName and causeOfDeath fields directly
 
         // Set default date to tomorrow
         const tomorrow = new Date();
@@ -314,10 +327,20 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
     fetchData();
   }, [searchParams]);
 
+  // Calculate delivery fee when distance or option changes
+  useEffect(() => {
+    if (deliveryOption === 'delivery' && bookingData?.package?.deliveryFeePerKm) {
+      const fee = Math.round(deliveryDistance * bookingData.package.deliveryFeePerKm);
+      setDeliveryFee(fee);
+    } else {
+      setDeliveryFee(0);
+    }
+  }, [deliveryDistance, deliveryOption, bookingData]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!selectedPet || !bookingDate || !bookingTime) {
+    if (!petName || !petType || !bookingDate || !bookingTime) {
       setError('Please fill in all required fields');
       return;
     }
@@ -328,29 +351,58 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
     try {
       console.log('Submitting booking...');
       
-      // Get the selected pet details
-      const selectedPetDetails = pets.find(p => p.id === selectedPet);
+      // Upload pet image if available
+      let petImageUrl = null;
+      if (petImageFile) {
+        try {
+          const formData = new FormData();
+          formData.append('file', petImageFile); // Using 'file' as the parameter name to match the API
+          formData.append('petName', petName);
+          
+          const imageResponse = await fetch('/api/upload/pet-image', {
+            method: 'POST',
+            body: formData
+          });
+          
+          if (imageResponse.ok) {
+            const imageData = await imageResponse.json();
+            petImageUrl = imageData.imageUrl || imageData.filePath; // Get URL from either property
+            console.log('Successfully uploaded pet image:', petImageUrl);
+          } else {
+            console.error('Failed to upload pet image:', await imageResponse.text());
+          }
+        } catch (imageError) {
+          console.error('Error uploading pet image:', imageError);
+        }
+      }
       
       // Prepare booking data
       const bookingRequestData = {
         packageId: bookingData.package.id,
         providerId: bookingData.provider.id,
         providerName: bookingData.provider.name,
+        providerAddress: bookingData.provider.address || bookingData.provider.city || '',
         packageName: bookingData.package.name,
         price: bookingData.package.price,
         date: bookingDate,
         time: bookingTime,
-        petId: selectedPet,
-        petName: selectedPetDetails?.name || 'Unknown Pet',
-        petType: selectedPetDetails?.species || 'Unknown Species',
+        petName: petName,
+        petType: petType,
+        causeOfDeath: causeOfDeath || 'Not specified',
+        petImageUrl: petImageUrl, 
         specialRequests: specialRequests,
         paymentMethod: paymentMethod,
+        deliveryOption: deliveryOption,
+        deliveryDistance: deliveryOption === 'delivery' ? deliveryDistance : 0,
+        deliveryFee: deliveryOption === 'delivery' ? deliveryFee : 0,
+        totalPrice: bookingData.package.price + (deliveryOption === 'delivery' ? deliveryFee : 0),
         userId: userData?.id // Include user ID if available
       };
       
       console.log('Booking request data:', bookingRequestData);
 
       // Send booking request to API
+      console.log('Sending booking request to API...');
       const response = await fetch('/api/bookings', {
         method: 'POST',
         headers: {
@@ -359,7 +411,9 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
         body: JSON.stringify(bookingRequestData)
       });
 
+      console.log('API response status:', response.status);
       const responseData = await response.json();
+      console.log('API response data:', responseData);
       
       if (response.ok) {
         console.log('Booking successful:', responseData);
@@ -371,7 +425,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
         }, 3000);
       } else {
         console.error('Booking failed:', responseData);
-        setError(responseData.error || 'Failed to process your booking. Please try again.');
+        setError(responseData.error || responseData.message || 'Failed to process your booking. Please try again.');
       }
     } catch (err) {
       console.error('Error submitting booking:', err);
@@ -445,21 +499,95 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                   <div className="space-y-6">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Select Your Pet <span className="text-red-500">*</span>
+                        Name of Your Pet <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={petName}
+                        onChange={(e) => setPetName(e.target.value)}
+                        className="w-full p-3 border border-gray-300 rounded-md focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
+                        placeholder="Enter your pet's name"
+                        required
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Type of Pet <span className="text-red-500">*</span>
                       </label>
                       <select
-                        value={selectedPet || ''}
-                        onChange={(e) => setSelectedPet(Number(e.target.value))}
+                        value={petType}
+                        onChange={(e) => setPetType(e.target.value)}
                         className="w-full p-3 border border-gray-300 rounded-md focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
                         required
                       >
-                        <option value="">Select a pet</option>
-                        {pets.map(pet => (
-                          <option key={pet.id} value={pet.id}>
-                            {pet.name} ({pet.species})
-                          </option>
-                        ))}
+                        <option value="">Select Pet Type</option>
+                        <option value="Dog">Dog</option>
+                        <option value="Cat">Cat</option>
+                        <option value="Bird">Bird</option>
+                        <option value="Hamster">Hamster</option>
+                        <option value="Rabbit">Rabbit</option>
+                        <option value="Guinea Pig">Guinea Pig</option>
+                        <option value="Fish">Fish</option>
+                        <option value="Reptile">Reptile</option>
+                        <option value="Other">Other</option>
                       </select>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Cause of Death
+                      </label>
+                      <input
+                        type="text"
+                        value={causeOfDeath}
+                        onChange={(e) => setCauseOfDeath(e.target.value)}
+                        className="w-full p-3 border border-gray-300 rounded-md focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
+                        placeholder="Optional - enter cause of death"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Upload Pet Photo
+                      </label>
+                      <div className="mt-1 flex items-center space-x-4">
+                        {petImagePreview ? (
+                          <div className="relative">
+                            <img 
+                              src={petImagePreview} 
+                              alt="Pet preview" 
+                              className="w-24 h-24 rounded-md object-cover"
+                            />
+                            <button
+                              type="button"
+                              onClick={handleRemoveImage}
+                              className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 shadow-sm"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                              </svg>
+                            </button>
+                          </div>
+                        ) : (
+                          <label className="flex flex-col items-center justify-center w-24 h-24 bg-gray-100 rounded-md border-2 border-gray-300 border-dashed cursor-pointer hover:bg-gray-50">
+                            <div className="flex flex-col items-center justify-center">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                              </svg>
+                              <p className="text-xs text-gray-500 mt-1">Upload</p>
+                            </div>
+                            <input 
+                              id="pet-image" 
+                              type="file" 
+                              className="hidden" 
+                              accept="image/*"
+                              onChange={handleImageUpload}
+                            />
+                          </label>
+                        )}
+                        <span className="text-sm text-gray-500">Upload a photo of your pet for memorial purposes</span>
+                      </div>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -521,32 +649,6 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                           <input
                             type="radio"
                             name="payment-method"
-                            value="credit_card"
-                            checked={paymentMethod === 'credit_card'}
-                            onChange={() => setPaymentMethod('credit_card')}
-                            className="h-4 w-4 text-[var(--primary-green)] focus:ring-[var(--primary-green)]"
-                          />
-                          <CreditCardIcon className="h-6 w-6 ml-3 text-gray-600" />
-                          <span className="ml-2 text-gray-700">Credit Card</span>
-                        </label>
-
-                        <label className="flex items-center p-4 border rounded-md cursor-pointer hover:bg-gray-50 transition-colors">
-                          <input
-                            type="radio"
-                            name="payment-method"
-                            value="bank_transfer"
-                            checked={paymentMethod === 'bank_transfer'}
-                            onChange={() => setPaymentMethod('bank_transfer')}
-                            className="h-4 w-4 text-[var(--primary-green)] focus:ring-[var(--primary-green)]"
-                          />
-                          <BuildingLibraryIcon className="h-6 w-6 ml-3 text-gray-600" />
-                          <span className="ml-2 text-gray-700">Bank Transfer</span>
-                        </label>
-
-                        <label className="flex items-center p-4 border rounded-md cursor-pointer hover:bg-gray-50 transition-colors">
-                          <input
-                            type="radio"
-                            name="payment-method"
                             value="cash"
                             checked={paymentMethod === 'cash'}
                             onChange={() => setPaymentMethod('cash')}
@@ -555,6 +657,85 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                           <BanknotesIcon className="h-6 w-6 ml-3 text-gray-600" />
                           <span className="ml-2 text-gray-700">Cash on Arrival</span>
                         </label>
+
+                        <label className="flex items-center p-4 border rounded-md cursor-pointer hover:bg-gray-50 transition-colors">
+                          <input
+                            type="radio"
+                            name="payment-method"
+                            value="gcash"
+                            checked={paymentMethod === 'gcash'}
+                            onChange={() => setPaymentMethod('gcash')}
+                            className="h-4 w-4 text-[var(--primary-green)] focus:ring-[var(--primary-green)]"
+                          />
+                          <div className="h-6 w-6 ml-3 flex-shrink-0 relative">
+                            <img 
+                              src="/images/check-icon.svg" 
+                              alt="GCash" 
+                              className="h-6 w-6 object-contain"
+                              style={{ filter: 'invert(33%) sepia(93%) saturate(1352%) hue-rotate(184deg) brightness(97%) contrast(96%)' }}
+                            />
+                          </div>
+                          <span className="ml-2 text-gray-700">GCash</span>
+                        </label>
+                      </div>
+                    </div>
+
+                    <div>
+                      <h3 className="text-lg font-medium text-gray-900 mb-3">Delivery Options</h3>
+                      <div className="space-y-3">
+                        <label className="flex items-center p-4 border rounded-md cursor-pointer hover:bg-gray-50 transition-colors">
+                          <input
+                            type="radio"
+                            name="delivery-option"
+                            value="pickup"
+                            checked={deliveryOption === 'pickup'}
+                            onChange={() => setDeliveryOption('pickup')}
+                            className="h-4 w-4 text-[var(--primary-green)] focus:ring-[var(--primary-green)]"
+                          />
+                          <div className="ml-3">
+                            <span className="text-gray-700 font-medium">Pick-up</span>
+                            <p className="text-sm text-gray-500 mt-1">
+                              You'll need to visit the provider's location to pick up your pet's remains.
+                            </p>
+                          </div>
+                        </label>
+
+                        <label className="flex items-center p-4 border rounded-md cursor-pointer hover:bg-gray-50 transition-colors">
+                          <input
+                            type="radio"
+                            name="delivery-option"
+                            value="delivery"
+                            checked={deliveryOption === 'delivery'}
+                            onChange={() => setDeliveryOption('delivery')}
+                            className="h-4 w-4 text-[var(--primary-green)] focus:ring-[var(--primary-green)]"
+                          />
+                          <TruckIcon className="h-6 w-6 ml-3 text-gray-600" />
+                          <div className="ml-2">
+                            <span className="text-gray-700 font-medium">Delivery (additional fee)</span>
+                            <p className="text-sm text-gray-500 mt-1">
+                              Have your pet's remains delivered to your address.
+                            </p>
+                          </div>
+                        </label>
+
+                        {deliveryOption === 'delivery' && (
+                          <div className="ml-7 mt-2 p-4 bg-gray-50 rounded-md">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Delivery Distance (km)
+                            </label>
+                            <input
+                              type="number"
+                              min="1"
+                              value={deliveryDistance || ''}
+                              onChange={(e) => setDeliveryDistance(parseInt(e.target.value) || 0)}
+                              className="w-full p-2 border border-gray-300 rounded-md"
+                              placeholder="Enter distance in kilometers"
+                            />
+                            <p className="text-sm text-gray-500 mt-2">
+                              Delivery fee: ₱{deliveryFee} (₱{bookingData?.package?.deliveryFeePerKm || 0} per km)
+                            </p>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -624,11 +805,18 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                       <span className="font-medium">₱{bookingData.package.price.toLocaleString()}</span>
                     </div>
 
-                    {/* Add any additional fees or discounts here */}
+                    {deliveryOption === 'delivery' && deliveryFee > 0 && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Delivery Fee</span>
+                        <span className="font-medium">₱{deliveryFee.toLocaleString()}</span>
+                      </div>
+                    )}
 
                     <div className="flex justify-between pt-3 border-t border-gray-200">
                       <span className="font-medium">Total</span>
-                      <span className="font-bold text-[var(--primary-green)]">₱{bookingData.package.price.toLocaleString()}</span>
+                      <span className="font-bold text-[var(--primary-green)]">
+                        ₱{(bookingData.package.price + (deliveryOption === 'delivery' ? deliveryFee : 0)).toLocaleString()}
+                      </span>
                     </div>
                   </div>
 

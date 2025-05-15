@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import CremationDashboardLayout from '@/components/navigation/CremationDashboardLayout';
 import withBusinessVerification from '@/components/withBusinessVerification';
@@ -16,6 +16,7 @@ import {
   EyeSlashIcon
 } from '@heroicons/react/24/outline';
 import ConfirmationModal from '@/components/ConfirmationModal';
+import { toast } from 'react-hot-toast';
 
 // Import our newly created components and hooks
 import { PackageList } from '@/components/packages/PackageList';
@@ -48,6 +49,7 @@ function PackagesPage({ userData }: PackagesPageProps) {
     toggleLoading,
     handleToggleActive,
     filteredPackages,
+    setIsLoading,
   } = usePackages({ userData });
 
   // Navigation handler for edit
@@ -68,6 +70,19 @@ function PackagesPage({ userData }: PackagesPageProps) {
 
   // Check if filters are applied (for empty state messaging)
   const hasFiltersApplied = searchTerm !== '' || categoryFilter !== 'all';
+
+  // Check if user has a business ID before loading packages
+  useEffect(() => {
+    if (userData) {
+      if (!userData.business_id) {
+        // Show toast if business ID is missing
+        toast.error(
+          'Unable to determine business ID. Please try logging out and logging back in.',
+          { duration: 5000 }
+        );
+      }
+    }
+  }, [userData]);
 
   return (
     <CremationDashboardLayout activePage="packages" userData={userData}>

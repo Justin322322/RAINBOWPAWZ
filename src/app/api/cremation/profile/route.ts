@@ -56,6 +56,9 @@ export async function GET(request: NextRequest) {
           sp.application_status,
           sp.verification_date,
           sp.created_at,
+          sp.business_permit_path,
+          sp.bir_certificate_path,
+          sp.government_id_path,
           u.email as user_email
         FROM service_providers sp
         JOIN users u ON sp.user_id = u.id
@@ -96,7 +99,12 @@ export async function GET(request: NextRequest) {
           website: businessData.hours || '',
           logoPath: null,
           verified: businessData.application_status === 'approved',
-          createdAt: businessData.created_at
+          createdAt: businessData.created_at,
+          documents: {
+            businessPermitPath: businessData.business_permit_path || null,
+            birCertificatePath: businessData.bir_certificate_path || null,
+            governmentIdPath: businessData.government_id_path || null
+          }
         }
       }, {
         headers: {

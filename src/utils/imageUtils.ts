@@ -21,14 +21,12 @@ export async function getPackageImageUrl(packageId: number | string, imageIndex:
       return data.imagesFound[index];
     }
     
-    // Fallback to sample images if no actual images found
-    const sampleNum = (typeof packageId === 'string' ? parseInt(packageId) : packageId) % 5 + 1;
-    return `/images/sample-package-${sampleNum}.jpg`;
+    // Fallback to a reliable fallback image
+    return `/bg_4.png`;
   } catch (error) {
     console.error('Error fetching package image:', error);
     // Default fallback
-    const sampleNum = (typeof packageId === 'string' ? parseInt(packageId) : packageId) % 5 + 1;
-    return `/images/sample-package-${sampleNum}.jpg`;
+    return `/bg_4.png`;
   }
 }
 
@@ -48,14 +46,12 @@ export async function getAllPackageImages(packageId: number | string): Promise<s
       return data.imagesFound;
     }
     
-    // Fallback to sample images if no actual images found
-    const sampleNum = (typeof packageId === 'string' ? parseInt(packageId) : packageId) % 5 + 1;
-    return [`/images/sample-package-${sampleNum}.jpg`];
+    // Fallback to a reliable fallback image
+    return [`/bg_4.png`];
   } catch (error) {
     console.error('Error fetching package images:', error);
     // Default fallback
-    const sampleNum = (typeof packageId === 'string' ? parseInt(packageId) : packageId) % 5 + 1;
-    return [`/images/sample-package-${sampleNum}.jpg`];
+    return [`/bg_4.png`];
   }
 }
 
@@ -67,7 +63,7 @@ export async function getAllPackageImages(packageId: number | string): Promise<s
 export function handleImageError(event: React.SyntheticEvent<HTMLImageElement>, fallback?: string) {
   const target = event.target as HTMLImageElement;
   // Instead of hiding, replace with fallback
-  target.src = fallback || '/images/no-image-placeholder.jpg';
+  target.src = fallback || '/bg_4.png';
   // Remove any error styling
   target.classList.remove('error');
   // Add fallback styling if needed

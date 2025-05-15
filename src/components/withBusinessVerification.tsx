@@ -4,8 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { fastAuthCheck } from '@/utils/auth';
 
-// Global state to prevent re-verification on page navigation
-let globalBusinessAuthState = {
+// Force reset the global state to ensure verification checks happen every time
+const globalBusinessAuthState = {
   verified: false,
   userData: null as any,
 };
@@ -16,61 +16,14 @@ const withBusinessVerification = <P extends object>(
 ) => {
   const WithBusinessVerification: React.FC<Omit<P, 'userData'>> = (props) => {
     const router = useRouter();
-    const [isAuthenticated, setIsAuthenticated] = useState(globalBusinessAuthState.verified);
-    const [userData, setUserData] = useState<any>(globalBusinessAuthState.userData);
-    const [isLoading, setIsLoading] = useState(!globalBusinessAuthState.verified);
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const [userData, setUserData] = useState<any>(null);
+    const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-      // If already verified globally, we can skip the check
-      if (globalBusinessAuthState.verified && globalBusinessAuthState.userData) {
-        return;
-      }
-
-      // Fast check first to prevent flashing
-      const fastCheck = fastAuthCheck();
-      if (fastCheck.authenticated && fastCheck.accountType === 'business' && fastCheck.userData) {
-        // Check if business is verified
-        if (fastCheck.userData.is_verified !== 1) {
-          router.push('/cremation/pending-verification');
-          return;
-        }
-
-        setUserData(fastCheck.userData);
-        setIsAuthenticated(true);
-        globalBusinessAuthState = {
-          verified: true,
-          userData: fastCheck.userData
-        };
-        setIsLoading(false);
-        return;
-      }
-
-      // Check if we already have user data in session storage
-      const cachedUserData = sessionStorage.getItem('user_data');
-      if (cachedUserData) {
-        try {
-          const parsedData = JSON.parse(cachedUserData);
-
-          // Check if business is verified
-          if (parsedData.user_type === 'business' && parsedData.is_verified !== 1) {
-            router.push('/cremation/pending-verification');
-            return;
-          }
-
-          setUserData(parsedData);
-          setIsAuthenticated(true);
-          globalBusinessAuthState = {
-            verified: true,
-            userData: parsedData
-          };
-          setIsLoading(false);
-          return;
-        } catch (e) {
-          // If parsing fails, continue with normal auth
-          sessionStorage.removeItem('user_data');
-        }
-      }
-
+      // Always clear session storage verification cache on mount to force fresh check
+      sessionStorage.removeItem('verified_business');
+      
       // Check if user is authenticated and get user data
       const checkAuth = async () => {
         try {
@@ -109,7 +62,7 @@ const withBusinessVerification = <P extends object>(
 
           // Fetch user data to verify it exists in the database
           try {
-            const response = await fetch(`/api/users/${userId}`);
+            const response = await fetch(`/api/users/${userId}?_=${Date.now()}`);
 
             if (!response.ok) {
               router.replace('/');
@@ -118,27 +71,47 @@ const withBusinessVerification = <P extends object>(
 
             const userData = await response.json();
 
-            // Check if business is verified
-            if (userData.is_verified !== 1) {
-              router.push('/cremation/pending-verification');
+            // Check verification status before allowing dashboard access
+            const isVerified = checkBusinessVerification(userData);
+            if (!isVerified) {
+              console.log('Business not verified, redirecting to pending verification page');
+              router.replace('/cremation/pending-verification');
               return;
+            }
+            
+            // Make sure business_id is set for the user
+            if (!userData.business_id && userData.user_type === 'business') {
+              console.log('User lacks business_id, attempting to find from service_providers');
+              try {
+                const spResponse = await fetch(`/api/service-providers?userId=${userId}&_=${Date.now()}`);
+                if (spResponse.ok) {
+                  const spData = await spResponse.json();
+                  if (spData.provider && spData.provider.id) {
+                    userData.business_id = spData.provider.id;
+                    console.log(`Set business_id to ${userData.business_id}`);
+                  }
+                }
+              } catch (spError) {
+                console.error('Error fetching service provider:', spError);
+              }
             }
 
             // Set the user data and store in session storage
             setUserData(userData);
             setIsAuthenticated(true);
             sessionStorage.setItem('user_data', JSON.stringify(userData));
+            sessionStorage.setItem('verified_business', 'true');
 
             // Update global state
-            globalBusinessAuthState = {
-              verified: true,
-              userData: userData
-            };
+            globalBusinessAuthState.verified = true;
+            globalBusinessAuthState.userData = userData;
 
           } catch (fetchError) {
+            console.error('Error fetching user data:', fetchError);
             router.replace('/');
           }
         } catch (error) {
+          console.error('Authentication error:', error);
           router.replace('/');
         } finally {
           setIsLoading(false);
@@ -147,6 +120,46 @@ const withBusinessVerification = <P extends object>(
 
       checkAuth();
     }, [router]);
+
+    // Function to check if a business is verified
+    const checkBusinessVerification = (userData: any): boolean => {
+      console.log('Checking business verification status:', userData);
+      
+      // This is a hard verification check that cannot be bypassed
+      if (!userData) return false;
+      
+      // First check: verify the user has proper verification flags
+      if (userData.is_verified !== 1 || userData.status !== 'active') {
+        console.log('User verification check failed: is_verified or status not valid');
+        return false;
+      }
+      
+      // Second check: verify the service provider exists and is active
+      if (!userData.service_provider) {
+        console.log('Service provider data missing');
+        return false;
+      }
+      
+      // Third check: check provider status if available
+      if (userData.service_provider.status === 'pending' || 
+          userData.service_provider.status === 'unverified') {
+        console.log('Service provider status check failed');
+        return false;
+      }
+      
+      // Fourth check: verify documents are uploaded
+      const hasDocuments = userData.service_provider.business_permit_path || 
+                          userData.service_provider.government_id_path || 
+                          userData.service_provider.bir_certificate_path;
+      
+      if (!hasDocuments) {
+        console.log('Document verification check failed');
+        return false;
+      }
+      
+      console.log('All verification checks passed');
+      return true;
+    };
 
     // Import DashboardSkeleton at the top of the file
     if (isLoading) {

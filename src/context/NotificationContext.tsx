@@ -59,25 +59,49 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       setLoading(true);
       setError(null);
 
-      console.log('Fetching notifications, authenticated user:', getUserId());
-      // Determine if this is an admin user
-      const isAdmin = getUserId()?.includes('admin');
+      // Determine user type from auth token
+      const userId = getUserId();
+      const userType = userId?.split('_')[1] || '';
+      const isAdmin = userType === 'admin';
+      const isBusiness = userType === 'business';
 
       // Use the appropriate API endpoint based on user type
-      const apiUrl = isAdmin
-        ? `/api/admin/notifications?unread_only=${unreadOnly}`
-        : `/api/notifications?unread_only=${unreadOnly}`;
+      let apiUrl = '';
+      if (isAdmin) {
+        apiUrl = `/api/admin/notifications?unread_only=${unreadOnly}`;
+      } else if (isBusiness) {
+        // Cremation business users also use the regular notification endpoint
+        apiUrl = `/api/notifications?unread_only=${unreadOnly}`;
+      } else {
+        // Regular fur parent users
+        apiUrl = `/api/notifications?unread_only=${unreadOnly}`;
+      }
+
+      // Add cache-busting parameter to avoid stale data
+      apiUrl += `&t=${Date.now()}`;
 
       // Only log in development mode
       if (process.env.NODE_ENV === 'development') {
-        console.log('Using API URL:', apiUrl, 'isAdmin:', isAdmin);
+        console.log('Using API URL:', apiUrl, 'isAdmin:', isAdmin, 'isBusiness:', isBusiness);
       }
-      const response = await fetch(apiUrl);
+
+      // Use timeout to prevent hanging requests
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
+      
+      const response = await fetch(apiUrl, {
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        },
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         // If unauthorized or any other error, just set empty data without throwing an error
         // This makes the application more resilient to authentication issues
-        // Use console.log instead of console.error to avoid showing in the console
         if (process.env.NODE_ENV === 'development') {
           console.log(`Notification fetch returned status: ${response.status} ${response.statusText}`);
         }
@@ -99,10 +123,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
 
       try {
         const data = await response.json();
-        if (process.env.NODE_ENV === 'development') {
-          console.log('Notifications data received:', data);
-        }
-
+        
         // Ensure data has the expected structure
         if (!data || typeof data !== 'object') {
           console.error('Invalid data structure received:', data);
@@ -112,10 +133,25 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
         }
 
         // Set notifications with fallback to empty array if missing
-        setNotifications(Array.isArray(data.notifications) ? data.notifications : []);
-
-        // Set unread count with fallback to 0 if missing
-        setUnreadCount(typeof data.unreadCount === 'number' ? data.unreadCount : 0);
+        // For admin notifications, the structure is slightly different
+        if (isAdmin && Array.isArray(data.notifications)) {
+          setNotifications(data.notifications.map((notif: any) => ({
+            ...notif,
+            // Ensure we have the correct structure for all notification types
+            id: notif.id,
+            title: notif.title || 'Notification',
+            message: notif.message || '',
+            type: notif.type || 'info',
+            is_read: notif.is_read ? 1 : 0,
+            link: notif.link || null,
+            created_at: notif.created_at || new Date().toISOString()
+          })));
+          setUnreadCount(data.notifications.filter((n: any) => !n.is_read).length);
+        } else {
+          // Regular users
+          setNotifications(Array.isArray(data.notifications) ? data.notifications : []);
+          setUnreadCount(typeof data.unreadCount === 'number' ? data.unreadCount : 0);
+        }
 
         return data;
       } catch (jsonError) {
@@ -125,9 +161,14 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
         return { notifications: [], unreadCount: 0 };
       }
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
-      setError(errorMessage);
-      console.error('Error fetching notifications:', err);
+      // Handle AbortError specifically to avoid showing error messages for timeouts
+      if (err instanceof Error && err.name === 'AbortError') {
+        console.log('Notification fetch request timed out');
+      } else {
+        const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
+        setError(errorMessage);
+        console.error('Error fetching notifications:', err);
+      }
 
       // Set empty data on error
       setNotifications([]);
@@ -242,6 +283,9 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
 
   // Initial fetch of notifications only if user is authenticated
   useEffect(() => {
+    // Prevent multiple interval instances
+    let intervalId: NodeJS.Timeout | null = null;
+
     // Check if user is authenticated before fetching notifications
     if (typeof window !== 'undefined' && isAuthenticated()) {
       // Initial fetch with error handling
@@ -250,25 +294,38 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
         // Don't show error toast for initial load to avoid annoying users
       });
 
-      // Set up polling to check for new notifications every minute
-      const intervalId = setInterval(() => {
+      // Set up polling to check for new notifications every 2 minutes (reduced from 1 minute)
+      // This helps reduce server load and excessive API calls
+      intervalId = setInterval(() => {
         // Check authentication again before each fetch
         if (isAuthenticated()) {
           // Wrap in try/catch to prevent unhandled promise rejections
           try {
             fetchNotifications().catch(err => {
-              console.error('Periodic notification fetch failed:', err);
+              console.log('Periodic notification fetch failed:', err);
               // Silent fail for background updates
             });
           } catch (error) {
-            console.error('Error in notification interval:', error);
+            console.log('Error in notification interval:', error);
+          }
+        } else {
+          // If no longer authenticated, clear the interval
+          if (intervalId) {
+            clearInterval(intervalId);
+            intervalId = null;
           }
         }
-      }, 60000); // 60 seconds
-
-      return () => clearInterval(intervalId);
+      }, 120000); // 2 minutes
     }
-  }, []);
+
+    // Clean up interval on component unmount
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+        intervalId = null;
+      }
+    };
+  }, []); // Empty dependency array to run only once on mount
 
   return (
     <NotificationContext.Provider

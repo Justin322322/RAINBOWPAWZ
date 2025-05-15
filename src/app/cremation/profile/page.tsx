@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import CremationDashboardLayout from '@/components/navigation/CremationDashboardLayout';
 import withBusinessVerification from '@/components/withBusinessVerification';
 import { useToast } from '@/context/ToastContext';
@@ -12,7 +12,12 @@ import {
   UserIcon,
   EnvelopeIcon,
   PhoneIcon,
-  BuildingStorefrontIcon
+  BuildingStorefrontIcon,
+  DocumentIcon,
+  InformationCircleIcon,
+  XMarkIcon,
+  ArrowUpTrayIcon,
+  ExclamationTriangleIcon
 } from '@heroicons/react/24/outline';
 
 function CremationProfilePage({ userData }: { userData: any }) {
@@ -46,6 +51,22 @@ function CremationProfilePage({ userData }: { userData: any }) {
   const [profileData, setProfileData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Document upload states
+  const [showDocumentModal, setShowDocumentModal] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState('');
+  const [documents, setDocuments] = useState({
+    businessPermit: { file: null as File | null, preview: null as string | null },
+    birCertificate: { file: null as File | null, preview: null as string | null },
+    governmentId: { file: null as File | null, preview: null as string | null }
+  });
+  
+  const fileInputRefs = {
+    businessPermit: useRef<HTMLInputElement>(null),
+    birCertificate: useRef<HTMLInputElement>(null),
+    governmentId: useRef<HTMLInputElement>(null),
+  };
   
   const { showToast } = useToast();
 
@@ -234,6 +255,115 @@ function CremationProfilePage({ userData }: { userData: any }) {
     } catch (error) {
       console.error('Error updating contact info:', error);
       showToast(error instanceof Error ? error.message : 'Failed to update contact information', 'error');
+    }
+  };
+
+  // Document modal functions
+  const showDocumentsModal = () => {
+    setShowDocumentModal(true);
+  };
+
+  const hideDocumentsModal = () => {
+    setShowDocumentModal(false);
+    // Reset file upload state
+    setDocuments({
+      businessPermit: { file: null, preview: null },
+      birCertificate: { file: null, preview: null },
+      governmentId: { file: null, preview: null }
+    });
+    setUploadError('');
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: keyof typeof documents) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      const reader = new FileReader();
+      
+      reader.onload = (event) => {
+        setDocuments(prev => ({
+          ...prev,
+          [type]: {
+            file,
+            preview: event.target?.result as string
+          }
+        }));
+      };
+      
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const triggerFileInput = (ref: React.RefObject<HTMLInputElement>) => {
+    if (ref.current) {
+      ref.current.click();
+    }
+  };
+
+  const handleRemoveFile = (type: keyof typeof documents) => {
+    setDocuments(prev => ({
+      ...prev,
+      [type]: {
+        file: null,
+        preview: null
+      }
+    }));
+  };
+
+  const handleDocumentsUpload = async () => {
+    if (!userData?.id) {
+      showToast('User information not found. Please log in again.', 'error');
+      return;
+    }
+
+    // Check if at least one file is selected
+    const hasFiles = Object.values(documents).some(doc => doc.file !== null);
+    if (!hasFiles) {
+      setUploadError('Please select at least one document to upload');
+      return;
+    }
+    
+    setUploading(true);
+    setUploadError('');
+    
+    try {
+      const formData = new FormData();
+      formData.append('userId', userData.id);
+      
+      // Append files that exist
+      if (documents.businessPermit.file) {
+        formData.append('businessPermit', documents.businessPermit.file);
+      }
+      
+      if (documents.birCertificate.file) {
+        formData.append('birCertificate', documents.birCertificate.file);
+      }
+      
+      if (documents.governmentId.file) {
+        formData.append('governmentId', documents.governmentId.file);
+      }
+      
+      const response = await fetch('/api/businesses/upload-documents', {
+        method: 'POST',
+        body: formData,
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to upload documents');
+      }
+      
+      showToast('Documents uploaded successfully!', 'success');
+      hideDocumentsModal();
+      
+      // Refresh profile data to show new documents
+      fetchProfileData();
+      
+    } catch (error) {
+      console.error('Error uploading documents:', error);
+      setUploadError(error instanceof Error ? error.message : 'Failed to upload documents');
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -558,6 +688,354 @@ function CremationProfilePage({ userData }: { userData: any }) {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Documents Section */}
+      <div className="bg-white rounded-xl shadow-sm p-6 mb-8">
+        <div className="flex items-center mb-6">
+          <div className="bg-[var(--primary-green)] rounded-full p-2.5 mr-4">
+            <DocumentIcon className="h-6 w-6 text-white" />
+          </div>
+          <h2 className="text-xl font-semibold text-gray-800">Business Documents</h2>
+        </div>
+        
+        <div className="flex items-center mb-6 p-4 bg-blue-50 rounded-lg border border-blue-100">
+          <InformationCircleIcon className="h-6 w-6 text-blue-500 mr-3 flex-shrink-0" />
+          <p className="text-sm text-blue-700">
+            Your business documents help us verify your cremation service. You can update these documents at any time.
+            After updating, they will be reviewed by our admin team.
+          </p>
+        </div>
+
+        {profileData && profileData.documents && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Business Permit Document */}
+            <div className="border-2 rounded-lg p-4 border-gray-200">
+              <h3 className="font-medium text-gray-800 mb-2">Business Permit</h3>
+              <div className="relative mb-3">
+                {profileData.documents.businessPermitPath ? (
+                  <div className="aspect-w-16 aspect-h-9 bg-gray-100 rounded-md overflow-hidden">
+                    {profileData.documents.businessPermitPath.match(/\.(jpg|jpeg|png|gif)$/i) ? (
+                      <img 
+                        src={profileData.documents.businessPermitPath} 
+                        alt="Business Permit" 
+                        className="object-cover w-full h-full" 
+                      />
+                    ) : (
+                      <div className="flex flex-col items-center justify-center h-full">
+                        <DocumentIcon className="h-12 w-12 text-gray-400" />
+                        <span className="text-sm text-gray-500 mt-2">Document File</span>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-gray-300 rounded-md">
+                    <DocumentIcon className="h-12 w-12 text-gray-400 mb-2" />
+                    <p className="text-sm text-gray-500">No document uploaded</p>
+                  </div>
+                )}
+              </div>
+              <a 
+                href={profileData.documents.businessPermitPath || '#'} 
+                className={`w-full py-2 px-4 rounded-md text-center text-sm ${
+                  profileData.documents.businessPermitPath 
+                    ? 'bg-blue-100 text-blue-700 hover:bg-blue-200' 
+                    : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                }`}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => !profileData.documents.businessPermitPath && e.preventDefault()}
+              >
+                {profileData.documents.businessPermitPath ? 'View Document' : 'No Document'}
+              </a>
+            </div>
+
+            {/* BIR Certificate */}
+            <div className="border-2 rounded-lg p-4 border-gray-200">
+              <h3 className="font-medium text-gray-800 mb-2">BIR Certificate</h3>
+              <div className="relative mb-3">
+                {profileData.documents.birCertificatePath ? (
+                  <div className="aspect-w-16 aspect-h-9 bg-gray-100 rounded-md overflow-hidden">
+                    {profileData.documents.birCertificatePath.match(/\.(jpg|jpeg|png|gif)$/i) ? (
+                      <img 
+                        src={profileData.documents.birCertificatePath} 
+                        alt="BIR Certificate" 
+                        className="object-cover w-full h-full" 
+                      />
+                    ) : (
+                      <div className="flex flex-col items-center justify-center h-full">
+                        <DocumentIcon className="h-12 w-12 text-gray-400" />
+                        <span className="text-sm text-gray-500 mt-2">Document File</span>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-gray-300 rounded-md">
+                    <DocumentIcon className="h-12 w-12 text-gray-400 mb-2" />
+                    <p className="text-sm text-gray-500">No document uploaded</p>
+                  </div>
+                )}
+              </div>
+              <a 
+                href={profileData.documents.birCertificatePath || '#'} 
+                className={`w-full py-2 px-4 rounded-md text-center text-sm ${
+                  profileData.documents.birCertificatePath 
+                    ? 'bg-blue-100 text-blue-700 hover:bg-blue-200' 
+                    : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                }`}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => !profileData.documents.birCertificatePath && e.preventDefault()}
+              >
+                {profileData.documents.birCertificatePath ? 'View Document' : 'No Document'}
+              </a>
+            </div>
+
+            {/* Government ID */}
+            <div className="border-2 rounded-lg p-4 border-gray-200">
+              <h3 className="font-medium text-gray-800 mb-2">Government ID</h3>
+              <div className="relative mb-3">
+                {profileData.documents.governmentIdPath ? (
+                  <div className="aspect-w-16 aspect-h-9 bg-gray-100 rounded-md overflow-hidden">
+                    {profileData.documents.governmentIdPath.match(/\.(jpg|jpeg|png|gif)$/i) ? (
+                      <img 
+                        src={profileData.documents.governmentIdPath} 
+                        alt="Government ID" 
+                        className="object-cover w-full h-full" 
+                      />
+                    ) : (
+                      <div className="flex flex-col items-center justify-center h-full">
+                        <DocumentIcon className="h-12 w-12 text-gray-400" />
+                        <span className="text-sm text-gray-500 mt-2">Document File</span>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-gray-300 rounded-md">
+                    <DocumentIcon className="h-12 w-12 text-gray-400 mb-2" />
+                    <p className="text-sm text-gray-500">No document uploaded</p>
+                  </div>
+                )}
+              </div>
+              <a 
+                href={profileData.documents.governmentIdPath || '#'} 
+                className={`w-full py-2 px-4 rounded-md text-center text-sm ${
+                  profileData.documents.governmentIdPath 
+                    ? 'bg-blue-100 text-blue-700 hover:bg-blue-200' 
+                    : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                }`}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => !profileData.documents.governmentIdPath && e.preventDefault()}
+              >
+                {profileData.documents.governmentIdPath ? 'View Document' : 'No Document'}
+              </a>
+            </div>
+          </div>
+        )}
+
+        {/* Upload/Update Button */}
+        <div className="mt-6">
+          <button
+            onClick={() => showDocumentsModal()}
+            className="bg-[var(--primary-green)] hover:bg-[var(--primary-green-dark)] text-white py-2 px-4 rounded-md transition-colors"
+          >
+            Update Business Documents
+          </button>
+        </div>
+      </div>
+
+      {/* Document Upload Modal */}
+      {showDocumentModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b">
+              <div className="flex justify-between items-center">
+                <h2 className="text-xl font-semibold text-gray-800">Upload Business Documents</h2>
+                <button 
+                  onClick={hideDocumentsModal} 
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <XMarkIcon className="h-6 w-6" />
+                </button>
+              </div>
+            </div>
+            
+            <div className="p-6">
+              <div className="flex items-center mb-6 p-4 bg-blue-50 rounded-lg border border-blue-100">
+                <InformationCircleIcon className="h-6 w-6 text-blue-500 mr-3 flex-shrink-0" />
+                <p className="text-sm text-blue-700">
+                  These documents will be reviewed by our admin team to verify your business.
+                  Please upload clear, readable images or PDFs of your documents.
+                </p>
+              </div>
+              
+              {uploadError && (
+                <div className="mb-6 p-4 bg-red-50 rounded-lg border border-red-100">
+                  <div className="flex items-center">
+                    <ExclamationTriangleIcon className="h-5 w-5 text-red-500 mr-2" />
+                    <p className="text-sm text-red-700">{uploadError}</p>
+                  </div>
+                </div>
+              )}
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* Business Permit Upload */}
+                <div className="border-2 rounded-lg p-4 border-gray-200">
+                  <h3 className="font-medium text-gray-800 mb-2">Business Permit</h3>
+                  
+                  <input 
+                    type="file" 
+                    ref={fileInputRefs.businessPermit}
+                    onChange={(e) => handleFileChange(e, 'businessPermit')} 
+                    className="hidden" 
+                    accept=".pdf,.jpg,.jpeg,.png"
+                  />
+                  
+                  {documents.businessPermit.preview ? (
+                    <div className="relative mb-3">
+                      <div className="aspect-w-16 aspect-h-9 bg-gray-100 rounded-md overflow-hidden">
+                        {documents.businessPermit.preview.startsWith('data:image') ? (
+                          <img src={documents.businessPermit.preview} alt="Preview" className="object-cover" />
+                        ) : (
+                          <div className="flex items-center justify-center h-full">
+                            <DocumentIcon className="h-12 w-12 text-gray-400" />
+                          </div>
+                        )}
+                      </div>
+                      <button 
+                        onClick={() => handleRemoveFile('businessPermit')}
+                        className="absolute top-2 right-2 bg-white rounded-full p-1 shadow-md"
+                      >
+                        <XMarkIcon className="h-4 w-4 text-gray-500" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div 
+                      onClick={() => triggerFileInput(fileInputRefs.businessPermit)}
+                      className="border-2 border-dashed border-gray-300 rounded-md p-4 text-center cursor-pointer mb-3 hover:bg-gray-50 transition-colors"
+                    >
+                      <ArrowUpTrayIcon className="h-8 w-8 mx-auto text-gray-400 mb-2" />
+                      <p className="text-sm text-gray-500">Click to upload</p>
+                      <p className="text-xs text-gray-400 mt-1">PDF, JPG, or PNG</p>
+                    </div>
+                  )}
+                </div>
+                
+                {/* BIR Certificate Upload */}
+                <div className="border-2 rounded-lg p-4 border-gray-200">
+                  <h3 className="font-medium text-gray-800 mb-2">BIR Certificate</h3>
+                  
+                  <input 
+                    type="file" 
+                    ref={fileInputRefs.birCertificate}
+                    onChange={(e) => handleFileChange(e, 'birCertificate')} 
+                    className="hidden" 
+                    accept=".pdf,.jpg,.jpeg,.png"
+                  />
+                  
+                  {documents.birCertificate.preview ? (
+                    <div className="relative mb-3">
+                      <div className="aspect-w-16 aspect-h-9 bg-gray-100 rounded-md overflow-hidden">
+                        {documents.birCertificate.preview.startsWith('data:image') ? (
+                          <img src={documents.birCertificate.preview} alt="Preview" className="object-cover" />
+                        ) : (
+                          <div className="flex items-center justify-center h-full">
+                            <DocumentIcon className="h-12 w-12 text-gray-400" />
+                          </div>
+                        )}
+                      </div>
+                      <button 
+                        onClick={() => handleRemoveFile('birCertificate')}
+                        className="absolute top-2 right-2 bg-white rounded-full p-1 shadow-md"
+                      >
+                        <XMarkIcon className="h-4 w-4 text-gray-500" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div 
+                      onClick={() => triggerFileInput(fileInputRefs.birCertificate)}
+                      className="border-2 border-dashed border-gray-300 rounded-md p-4 text-center cursor-pointer mb-3 hover:bg-gray-50 transition-colors"
+                    >
+                      <ArrowUpTrayIcon className="h-8 w-8 mx-auto text-gray-400 mb-2" />
+                      <p className="text-sm text-gray-500">Click to upload</p>
+                      <p className="text-xs text-gray-400 mt-1">PDF, JPG, or PNG</p>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Government ID Upload */}
+                <div className="border-2 rounded-lg p-4 border-gray-200">
+                  <h3 className="font-medium text-gray-800 mb-2">Government ID</h3>
+                  
+                  <input 
+                    type="file" 
+                    ref={fileInputRefs.governmentId}
+                    onChange={(e) => handleFileChange(e, 'governmentId')} 
+                    className="hidden" 
+                    accept=".pdf,.jpg,.jpeg,.png"
+                  />
+                  
+                  {documents.governmentId.preview ? (
+                    <div className="relative mb-3">
+                      <div className="aspect-w-16 aspect-h-9 bg-gray-100 rounded-md overflow-hidden">
+                        {documents.governmentId.preview.startsWith('data:image') ? (
+                          <img src={documents.governmentId.preview} alt="Preview" className="object-cover" />
+                        ) : (
+                          <div className="flex items-center justify-center h-full">
+                            <DocumentIcon className="h-12 w-12 text-gray-400" />
+                          </div>
+                        )}
+                      </div>
+                      <button 
+                        onClick={() => handleRemoveFile('governmentId')}
+                        className="absolute top-2 right-2 bg-white rounded-full p-1 shadow-md"
+                      >
+                        <XMarkIcon className="h-4 w-4 text-gray-500" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div 
+                      onClick={() => triggerFileInput(fileInputRefs.governmentId)}
+                      className="border-2 border-dashed border-gray-300 rounded-md p-4 text-center cursor-pointer mb-3 hover:bg-gray-50 transition-colors"
+                    >
+                      <ArrowUpTrayIcon className="h-8 w-8 mx-auto text-gray-400 mb-2" />
+                      <p className="text-sm text-gray-500">Click to upload</p>
+                      <p className="text-xs text-gray-400 mt-1">PDF, JPG, or PNG</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+            
+            <div className="p-6 border-t bg-gray-50">
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={hideDocumentsModal}
+                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-100"
+                  disabled={uploading}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDocumentsUpload}
+                  className="px-4 py-2 bg-[var(--primary-green)] hover:bg-[var(--primary-green-dark)] text-white rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={uploading}
+                >
+                  {uploading ? (
+                    <>
+                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Uploading...
+                    </>
+                  ) : 'Upload Documents'}
+                </button>
+              </div>
             </div>
           </div>
         </div>

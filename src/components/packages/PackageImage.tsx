@@ -23,14 +23,42 @@ export const PackageImage: React.FC<PackageImageProps> = ({
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [touchStart, setTouchStart] = useState(0);
   const [touchEnd, setTouchEnd] = useState(0);
-  
-  // Use either a single src or an array of images
+    // Use either a single src or an array of images
   // Filter out any sample or placeholder images
-  const filteredImages = images?.length 
-    ? images.filter(img => !img.includes('/sample-package-') && !img.includes('/placeholder'))
-    : (src && !src.includes('/sample-package-') && !src.includes('/placeholder')) ? [src] : [];
+  const filteredImages = React.useMemo(() => {
+    console.log("Filtering images:", { images, src });
+    
+    // Process array of images if available
+    if (images && Array.isArray(images) && images.length > 0) {
+      // Filter out sample/placeholder images and nulls/undefined values
+      const filtered = images.filter(img => 
+        img && 
+        typeof img === 'string' && 
+        !img.includes('/sample-package-') && 
+        !img.includes('/placeholder')
+      );
+      console.log("Filtered images from array:", filtered);
+      return filtered.length > 0 ? filtered : [];
+    } 
+    // Process single src as fallback
+    else if (src && typeof src === 'string' && !src.includes('/sample-package-') && !src.includes('/placeholder')) {
+      console.log("Using single src as image:", [src]);
+      return [src];
+    }
+    // No valid images
+    return [];
+  }, [images, src]);
   
-  const [finalSrc, setFinalSrc] = useState(filteredImages[0] || '');
+  // Initialize finalSrc state
+  const [finalSrc, setFinalSrc] = useState('');
+  
+  // Initialize or update finalSrc when filteredImages changes
+  useEffect(() => {
+    if (filteredImages.length > 0) {
+      console.log(`Setting initial finalSrc to ${filteredImages[0]}`);
+      setFinalSrc(filteredImages[0]);
+    }
+  }, [filteredImages]);
   
   // Debug log image sources on component mount
   useEffect(() => {
@@ -54,10 +82,19 @@ export const PackageImage: React.FC<PackageImageProps> = ({
       console.log(`No images available for package: ${alt}`);
     }
   }, [images, src, alt, filteredImages]);
+
+  // Update finalSrc when currentImageIndex changes
+  useEffect(() => {
+    if (filteredImages.length > 0 && currentImageIndex >= 0 && currentImageIndex < filteredImages.length) {
+      console.log(`Updating finalSrc based on currentImageIndex change: ${currentImageIndex}`);
+      setFinalSrc(filteredImages[currentImageIndex]);
+    }
+  }, [currentImageIndex, filteredImages]);
   
   // Handle touch events for swipe
   const handleTouchStart = (e: React.TouchEvent) => {
     setTouchStart(e.targetTouches[0].clientX);
+    console.log('Touch start:', e.targetTouches[0].clientX);
   };
   
   const handleTouchMove = (e: React.TouchEvent) => {
@@ -67,19 +104,37 @@ export const PackageImage: React.FC<PackageImageProps> = ({
   const handleTouchEnd = () => {
     if (!touchStart || !touchEnd) return;
     const distance = touchStart - touchEnd;
-    const isLeftSwipe = distance > 50;
-    const isRightSwipe = distance < -50;
+    console.log('Touch distance:', distance, 'Start:', touchStart, 'End:', touchEnd);
+    
+    // Lower threshold for better detection - reduced from 30 to 20
+    const isLeftSwipe = distance > 20;
+    const isRightSwipe = distance < -20;
     
     if (isLeftSwipe && filteredImages.length > 1) {
-      goToNextImage({ stopPropagation: () => {} } as React.MouseEvent);
+      console.log('Left swipe detected, going to next image');
+      goToNextImage(null as any);
     }
     if (isRightSwipe && filteredImages.length > 1) {
-      goToPrevImage({ stopPropagation: () => {} } as React.MouseEvent);
+      console.log('Right swipe detected, going to previous image');
+      goToPrevImage(null as any);
     }
     
     // Reset values
     setTouchStart(0);
     setTouchEnd(0);
+  };
+
+  // Handle keyboard events for accessibility
+  const handleKeyDown = (e: React.KeyboardEvent, action: 'next' | 'prev') => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      console.log(`Keyboard ${action} triggered`);
+      if (action === 'next') {
+        goToNextImage(null);
+      } else {
+        goToPrevImage(null);
+      }
+    }
   };
 
   // Determine classes based on size
@@ -116,29 +171,46 @@ export const PackageImage: React.FC<PackageImageProps> = ({
   };
   
   // Navigation functions for the carousel
-  const goToNextImage = (e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent event bubbling
+  const goToNextImage = (e: React.MouseEvent | null) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation(); // Prevent event bubbling
+    }
+    
     if (filteredImages.length <= 1) return;
     
     const nextIndex = (currentImageIndex + 1) % filteredImages.length;
+    console.log(`Going to next image: ${nextIndex} of ${filteredImages.length}`);
     setCurrentImageIndex(nextIndex);
-    setFinalSrc(filteredImages[nextIndex]);
+    // Force immediate update of finalSrc
+    const nextImage = filteredImages[nextIndex];
+    console.log(`Next image source: ${nextImage}`);
+    setFinalSrc(nextImage);
     setImageFailed(false); // Reset error state for new image
   };
   
-  const goToPrevImage = (e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent event bubbling
+  const goToPrevImage = (e: React.MouseEvent | null) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation(); // Prevent event bubbling
+    }
+    
     if (filteredImages.length <= 1) return;
     
     const prevIndex = (currentImageIndex - 1 + filteredImages.length) % filteredImages.length;
+    console.log(`Going to previous image: ${prevIndex} of ${filteredImages.length}`);
     setCurrentImageIndex(prevIndex);
-    setFinalSrc(filteredImages[prevIndex]);
+    // Force immediate update of finalSrc
+    const prevImage = filteredImages[prevIndex];
+    console.log(`Previous image source: ${prevImage}`);
+    setFinalSrc(prevImage);
     setImageFailed(false); // Reset error state for new image
   };
   
   // Handle direct navigation to a specific image
   const goToImage = (index: number) => (e: React.MouseEvent) => {
-    e.stopPropagation();
+    if (e) e.stopPropagation();
+    console.log(`Directly going to image ${index}`);
     setCurrentImageIndex(index);
     setFinalSrc(filteredImages[index]);
     setImageFailed(false);
@@ -155,29 +227,35 @@ export const PackageImage: React.FC<PackageImageProps> = ({
 
   // If we have images and haven't failed, display the current image with navigation
   if (filteredImages.length > 0 && !imageFailed) {
+    console.log(`Rendering with: currentIndex=${currentImageIndex}, finalSrc=${finalSrc}, filteredImages:`, filteredImages);
+    
+    // Determine the current image source to display
+    const displaySrc = finalSrc || filteredImages[currentImageIndex] || '';
+    console.log(`Using display source: ${displaySrc}`);
+    
     return (
       <div 
         className={`${containerStyle} group overflow-hidden`}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
+        key={`container-${currentImageIndex}-${displaySrc}`}
       >
         <div className="absolute inset-0 bg-gray-100 w-full h-full">
           <img 
-            src={finalSrc}
+            src={displaySrc}
             alt={`${alt}`}
             className={`object-cover ${sizeClasses[size]} ${className} transition-opacity duration-300 ease-in-out`}
             onError={handleImageError}
-            onLoad={() => console.log(`Successfully loaded image: ${finalSrc}`)}
-            key={finalSrc}
+            onLoad={() => console.log(`Successfully loaded image: ${displaySrc}`)}
+            key={`image-${currentImageIndex}-${displaySrc}`}
             style={{width: '100%', height: '100%'}}
           />
         </div>
-        
-        {/* Photo counter display - always show actual count of images */}
-        {size === 'large' && (
+          {/* Photo counter display - only show when there are multiple images */}
+        {size === 'large' && filteredImages.length > 1 && (
           <div className="absolute top-2 left-2 bg-black/40 text-white text-xs font-medium px-2 py-1 rounded-md backdrop-blur-sm z-10">
-            {filteredImages.length}/{filteredImages.length}
+            {currentImageIndex + 1}/{filteredImages.length}
           </div>
         )}
         
@@ -186,22 +264,56 @@ export const PackageImage: React.FC<PackageImageProps> = ({
           <>
             {/* Previous button */}
             <button 
-              onClick={goToPrevImage}
+              onClick={(e) => {
+                e.preventDefault();
+                console.log("Previous button clicked");
+                goToPrevImage(e);
+              }}
+              onKeyDown={(e) => handleKeyDown(e, 'prev')}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                console.log("Mouse down on prev button");
+              }}
+              onMouseUp={(e) => {
+                e.preventDefault();
+                console.log("Mouse up on prev button");
+                goToPrevImage(e);
+              }}
               aria-label="Previous image"
-              className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/40 hover:bg-black/60 text-white rounded-full p-2 shadow-md backdrop-blur-sm transition-all transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-white opacity-80 hover:opacity-100 group-hover:opacity-100 z-20"
+              className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/70 hover:bg-black/90 text-white rounded-full p-2.5 shadow-lg backdrop-blur-sm transition-all transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-white opacity-100 z-20"
+              type="button"
+              role="button"
+              tabIndex={0}
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
               </svg>
             </button>
             
             {/* Next button */}
             <button 
-              onClick={goToNextImage}
+              onClick={(e) => {
+                e.preventDefault();
+                console.log("Next button clicked");
+                goToNextImage(e);
+              }}
+              onKeyDown={(e) => handleKeyDown(e, 'next')}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                console.log("Mouse down on next button");
+              }}
+              onMouseUp={(e) => {
+                e.preventDefault();
+                console.log("Mouse up on next button");
+                goToNextImage(e);
+              }}
               aria-label="Next image"
-              className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/40 hover:bg-black/60 text-white rounded-full p-2 shadow-md backdrop-blur-sm transition-all transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-white opacity-80 hover:opacity-100 group-hover:opacity-100 z-20"
+              className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/70 hover:bg-black/90 text-white rounded-full p-2.5 shadow-lg backdrop-blur-sm transition-all transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-white opacity-100 z-20"
+              type="button"
+              role="button"
+              tabIndex={0}
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
               </svg>
             </button>

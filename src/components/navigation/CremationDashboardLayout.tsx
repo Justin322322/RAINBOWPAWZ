@@ -28,65 +28,68 @@ export default function CremationDashboardLayout({
 
   // Authentication check effect
   useEffect(() => {
-    // If userData is provided via props, use it directly
-    if (propUserData) {
-      setUserData(propUserData);
-      setIsAuthenticated(true);
-      setIsLoading(false);
-      return;
-    }
-
-    const checkAuth = async () => {
+    // Always force a fresh verification check on each render
+    const doVerificationCheck = async () => {
       try {
-        const cookies = document.cookie.split(';');
-        const authCookie = cookies.find(cookie => cookie.trim().startsWith('auth_token='));
-
-        if (!authCookie) {
-          console.log('No auth cookie found, redirecting to home');
+        // If userData is provided via props, verify it directly
+        // but always fetch fresh data to ensure we have the latest verification status
+        const userId = propUserData?.id || getUserIdFromCookie();
+        
+        if (!userId) {
+          console.log('No user ID found, redirecting to home');
           router.push('/');
           return;
         }
-
-        // Extract user ID and account type from auth token
-        const authValue = authCookie.split('=')[1];
-        const [userId, accountType] = authValue.split('_');
-
-        // Validate account type
-        if (accountType !== 'business') {
-          console.log('Invalid account type for cremation dashboard:', accountType);
-          router.push('/');
-          return;
-        }
-
-        // Fetch user data to verify it exists in the database
+        
+        // Always fetch user data to get latest verification status
         try {
-          const response = await fetch(`/api/users/${userId}`);
-
+          const response = await fetch(`/api/users/${userId}?t=${Date.now()}`);
+          
           if (!response.ok) {
             console.error('Failed to fetch user data:', await response.text());
             setShowAccessDenied(true);
             setIsLoading(false);
             return;
           }
-
+          
           const userData = await response.json();
           console.log('Cremation user data fetched:', userData);
-
-          // Additional validation if needed
-          if (userData.user_type !== 'business') {
-            console.log('User is not a business account:', userData.user_type);
+          
+          // Verify user is a business account
+          if (userData.role !== 'business' && userData.user_type !== 'business') {
+            console.log('User is not a business account:', userData.role);
             setShowAccessDenied(true);
             setIsLoading(false);
             return;
           }
-
-          // Check if business is verified
-          if (userData.is_verified !== 1) {
-            console.log('Business account is not verified:', userData.id);
+          
+          // Strict verification checks
+          const isVerified = 
+            userData.is_verified === 1 && 
+            userData.status === 'active' &&
+            userData.service_provider &&
+            (userData.service_provider.status !== 'pending' && 
+             userData.service_provider.status !== 'unverified');
+          
+          if (!isVerified) {
+            console.log('Business account is not verified:', userData);
             router.push('/cremation/pending-verification');
             return;
           }
-
+          
+          // Check document uploads
+          const hasDocuments = userData.service_provider && (
+            userData.service_provider.business_permit_path ||
+            userData.service_provider.government_id_path ||
+            userData.service_provider.bir_certificate_path
+          );
+          
+          if (!hasDocuments) {
+            console.log('Business has not uploaded required documents');
+            router.push('/cremation/pending-verification');
+            return;
+          }
+          
           setUserData(userData);
           setIsAuthenticated(true);
           setIsLoading(false);
@@ -101,8 +104,41 @@ export default function CremationDashboardLayout({
         setIsLoading(false);
       }
     };
+    
+    const getUserIdFromCookie = (): string | null => {
+      try {
+        const cookies = document.cookie.split(';');
+        const authCookie = cookies.find(cookie => cookie.trim().startsWith('auth_token='));
+        
+        if (!authCookie) return null;
+        
+        // Extract user ID and account type from auth token
+        const cookieParts = authCookie.split('=');
+        if (cookieParts.length !== 2) return null;
+        
+        let authValue;
+        try {
+          authValue = decodeURIComponent(cookieParts[1]);
+        } catch (e) {
+          authValue = cookieParts[1]; // Use raw value if decoding fails
+        }
+        
+        const [userId, accountType] = authValue.split('_');
+        
+        // Validate account type
+        if (accountType !== 'business') {
+          console.log('Invalid account type for cremation dashboard:', accountType);
+          return null;
+        }
+        
+        return userId;
+      } catch (e) {
+        console.error('Error parsing auth cookie:', e);
+        return null;
+      }
+    };
 
-    checkAuth();
+    doVerificationCheck();
   }, [router, propUserData]);
 
   // Content loading state for skeleton animation only
@@ -171,7 +207,6 @@ export default function CremationDashboardLayout({
 
 const navigationItems = [
   { name: 'Dashboard', href: '/cremation/dashboard', icon: HomeIcon },
-  { name: 'Documents', href: '/cremation/documents', icon: DocumentTextIcon },
   { name: 'Services', href: '/cremation/packages', icon: ArchiveBoxIcon },
   { name: 'Bookings', href: '/cremation/bookings', icon: CalendarIcon },
   { name: 'History', href: '/cremation/history', icon: ClockIcon },

@@ -96,26 +96,18 @@ export default function AdminServicesPage() {
             setImageError(prev => ({ ...prev, [service.id]: false }));
             
             // Ensure that images is always an array
-            const images = service.images && Array.isArray(service.images) 
+            const images = service.images && Array.isArray(service.images) && service.images.length > 0
               ? service.images 
-              : service.image 
-                ? [service.image] 
+              : service.image && typeof service.image === 'string'
+                ? [service.image]
                 : [];
-                
-            // Add a consistent path based on ID if no image is provided
-            if (images.length === 0) {
-              const defaultImagePath = `/images/sample-package-${service.id % 5 + 1}.jpg`;
-              images.push(defaultImagePath);
-              console.log(`Added default image path for service ${service.id}: ${defaultImagePath}`);
-            }
-            
-            // Debug output
-            console.log(`Service ${service.id} (${service.name}) images:`, images);
+
+            // Remove default sample image fallback — show placeholder when no images provided
             
             return {
               ...service,
-              image: images[0], // Set primary image
-              images: images    // Set images array
+              image: images.length > 0 ? images[0] : null, // Set primary image or null
+              images: images    // Set images array (empty if none)
             };
           });
           

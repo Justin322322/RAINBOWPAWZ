@@ -13,7 +13,13 @@ export async function GET(request: NextRequest) {
         error: 'Unauthorized',
         notifications: [],
         unreadCount: 0
-      }, { status: 401 });
+      }, { 
+        status: 401,
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        }
+      });
     }
 
     const [userId, accountType] = authToken.split('_');
@@ -23,7 +29,13 @@ export async function GET(request: NextRequest) {
         error: 'Unauthorized',
         notifications: [],
         unreadCount: 0
-      }, { status: 401 });
+      }, { 
+        status: 401,
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        }
+      });
     }
 
     // Get query parameters
@@ -31,6 +43,30 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '10', 10);
     const offset = parseInt(searchParams.get('offset') || '0', 10);
     const unreadOnly = searchParams.get('unread_only') === 'true';
+    
+    // Add simple rate limiting by checking the timestamp
+    const timestamp = searchParams.get('t');
+    const now = Date.now();
+    
+    // If request has a timestamp and it's less than 5 seconds ago, return a cached response header
+    if (timestamp && now - parseInt(timestamp) < 5000) {
+      return NextResponse.json({
+        notifications: [],
+        pagination: {
+          total: 0,
+          limit,
+          offset,
+          hasMore: false
+        },
+        unreadCount: 0,
+        cached: true
+      }, {
+        headers: {
+          'Cache-Control': 'private, max-age=5',
+          'X-Rate-Limited': 'true'
+        }
+      });
+    }
 
     console.log('Fetching notifications for user:', userId, 'unreadOnly:', unreadOnly);
 
@@ -49,6 +85,11 @@ export async function GET(request: NextRequest) {
           hasMore: false
         },
         unreadCount: 0
+      }, {
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        }
       });
     }
 
@@ -100,6 +141,11 @@ export async function GET(request: NextRequest) {
           hasMore: offset + limit < total
         },
         unreadCount
+      }, {
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        }
       });
     } catch (queryError) {
       console.error('Error executing notification queries:', queryError);
@@ -113,6 +159,11 @@ export async function GET(request: NextRequest) {
           hasMore: false
         },
         unreadCount: 0
+      }, {
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        }
       });
     }
   } catch (error) {
@@ -123,7 +174,13 @@ export async function GET(request: NextRequest) {
       details: error instanceof Error ? error.message : 'Unknown error',
       notifications: [],
       unreadCount: 0
-    }, { status: 500 });
+    }, { 
+      status: 500,
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache'
+      }
+    });
   }
 }
 

@@ -59,6 +59,19 @@ export const getAuthToken = (): string | null => {
       }
     }
 
+    // Check for current port - if it's 3000, try the localStorage backup
+    if (typeof window !== 'undefined' && window.location.port === '3000') {
+      try {
+        const localStorageToken = localStorage.getItem('auth_token_3000');
+        if (localStorageToken && localStorageToken.includes('_')) {
+          console.log('Retrieved auth token from localStorage for port 3000');
+          return localStorageToken;
+        }
+      } catch (e) {
+        console.error('Error accessing localStorage:', e);
+      }
+    }
+
     // If cookie not found or invalid, try sessionStorage as fallback
     const sessionToken = sessionStorage.getItem('auth_token');
     if (sessionToken && sessionToken.includes('_')) {
@@ -149,16 +162,28 @@ export const setAuthToken = (userId: string, accountType: string, expirationDays
   // So we'll use SameSite=Lax instead which works better for HTTP
   const sameSiteValue = 'Lax';
 
-  // Set the cookie with appropriate attributes based on hostname
+  // Set the cookie with appropriate attributes for all environments
+  // Standard version without domain specification
+  document.cookie = `auth_token=${tokenValue}; path=/; expires=${expirationDate.toUTCString()}; SameSite=${sameSiteValue}`;
+  
+  // Add specific settings for localhost to ensure it works consistently
   if (hostname === 'localhost') {
-    // For localhost, don't specify domain (browser will use current hostname)
-    document.cookie = `auth_token=${tokenValue}; path=/; expires=${expirationDate.toUTCString()}; SameSite=${sameSiteValue}`;
-    console.log(`Setting cookie for localhost with SameSite=${sameSiteValue}`);
-  } else {
-    // For IP addresses, set with and without domain to ensure it works
-    document.cookie = `auth_token=${tokenValue}; path=/; expires=${expirationDate.toUTCString()}; SameSite=${sameSiteValue}`;
-    document.cookie = `auth_token=${tokenValue}; path=/; domain=${hostname}; expires=${expirationDate.toUTCString()}; SameSite=${sameSiteValue}`;
-    console.log(`Setting cookie for ${hostname} with SameSite=${sameSiteValue}`);
+    // Additional cookie specifically for localhost
+    document.cookie = `auth_token=${tokenValue}; path=/; domain=localhost; expires=${expirationDate.toUTCString()}; SameSite=${sameSiteValue}`;
+    console.log('Setting extra cookie specifically for localhost');
+  }
+  
+  console.log(`Setting cookie for ${hostname}:${port} with SameSite=${sameSiteValue}`);
+  
+  // Also add a cookie that's not port-specific (in case port is causing the issue)
+  if (port === '3000') {
+    try {
+      // Store the token in localStorage as a backup specifically for port 3000
+      localStorage.setItem('auth_token_3000', tokenValue);
+      console.log('Stored backup token in localStorage for port 3000');
+    } catch (e) {
+      console.error('Unable to store in localStorage:', e);
+    }
   }
 
   // Log cookie after setting for debugging
@@ -179,32 +204,32 @@ export const clearAuthToken = async (): Promise<void> => {
 
   // Clear all session storage
   sessionStorage.clear();
+  
+  // Clear localStorage backups
+  try {
+    localStorage.removeItem('auth_token_3000');
+  } catch (e) {
+    console.error('Error clearing localStorage:', e);
+  }
 
   // Get the current hostname
   const hostname = window.location.hostname;
+  const port = window.location.port;
 
   // Use SameSite=Lax for better compatibility with HTTP
   const sameSiteValue = 'Lax';
 
-  // Clear the cookie with multiple approaches to ensure it works
+  // Clear the cookie with simple approach - don't specify domain
+  document.cookie = `auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=${sameSiteValue}`;
+  document.cookie = `auth_token=; path=/; max-age=0; SameSite=${sameSiteValue}`;
+  
+  // Clear for localhost specifically
   if (hostname === 'localhost') {
-    // For localhost, don't specify domain
-    document.cookie = `auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=${sameSiteValue}`;
-    document.cookie = `auth_token=; path=/; max-age=0; SameSite=${sameSiteValue}`;
-  } else {
-    // For IP addresses, try with and without domain
-    document.cookie = `auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=${sameSiteValue}`;
-    document.cookie = `auth_token=; path=/; max-age=0; SameSite=${sameSiteValue}`;
-    document.cookie = `auth_token=; path=/; domain=${hostname}; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=${sameSiteValue}`;
-    document.cookie = `auth_token=; path=/; domain=${hostname}; max-age=0; SameSite=${sameSiteValue}`;
+    document.cookie = `auth_token=; path=/; domain=localhost; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=${sameSiteValue}`;
+    document.cookie = `auth_token=; path=/; domain=localhost; max-age=0; SameSite=${sameSiteValue}`;
   }
 
-  // Try with different paths to ensure all cookies are cleared
-  document.cookie = `auth_token=; path=/user; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=${sameSiteValue}`;
-  document.cookie = `auth_token=; path=/admin; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=${sameSiteValue}`;
-  document.cookie = `auth_token=; path=/cremation; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=${sameSiteValue}`;
-
-  console.log(`Clearing cookies for ${hostname}`);
+  console.log(`Clearing cookies for ${hostname}:${port}`);
 
   // Clear any other potential auth-related cookies
   document.cookie = `user_id=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=${sameSiteValue}`;

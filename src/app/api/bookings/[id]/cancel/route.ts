@@ -46,10 +46,9 @@ export async function POST(request: NextRequest) {
       try {
         // Try to get real booking data and user email from database
         const bookingResult = await query(
-          `SELECT b.*, u.email, u.first_name, u.last_name, p.name as pet_name
+          `SELECT b.*, u.email, u.first_name, u.last_name, 'N/A' as pet_name
            FROM bookings b
            JOIN users u ON b.user_id = u.id
-           LEFT JOIN pets p ON b.pet_id = p.id
            WHERE b.id = ? AND b.user_id = ?`,
           [bookingId, userId]
         ) as any[];
