@@ -321,13 +321,6 @@ const CreatePackagePage: React.FC<{ userData?: any }> = ({ userData }) => {
               </div>
 
               <div>
-                <label htmlFor="deliveryFeePerKm" className="block text-sm font-medium text-gray-700 mb-1">Delivery Fee Per Kilometer (₱)</label>
-                <input id="deliveryFeePerKm" name="deliveryFeePerKm" type="number" value={formData.deliveryFeePerKm || ''} onChange={handleInputChange} min="0" step="any"
-                  className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)] sm:text-sm" placeholder="e.g., 50" />
-                <p className="mt-1 text-xs text-gray-500">Set the fee charged per kilometer for delivery. Enter 0 if delivery is not available.</p>
-              </div>
-
-              <div>
                 <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">Description*</label>
                 <textarea id="description" name="description" rows={3} value={formData.description} onChange={handleInputChange}
                   className={`block w-full px-3 py-2 border ${errors.description ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)] sm:text-sm`} placeholder="Describe your package in detail" />

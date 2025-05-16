@@ -25,33 +25,99 @@ export async function GET(request: NextRequest) {
         error: 'Provider not found'
       }, { status: 404 });
     }
+
+    // Check which tables are available
+    const tablesResult = await query(`
+      SELECT TABLE_NAME 
+      FROM INFORMATION_SCHEMA.TABLES 
+      WHERE TABLE_SCHEMA = DATABASE() 
+      AND TABLE_NAME IN ('service_bookings', 'bookings')
+    `) as any[];
+    
+    const availableTables = tablesResult.map(row => row.TABLE_NAME.toLowerCase());
+    console.log('Available tables:', availableTables);
+    
+    const hasServiceBookings = availableTables.includes('service_bookings');
+    const hasBookings = availableTables.includes('bookings');
     
     // Calculate stats
-    // 1. Get revenue (from successful bookings)
-    const revenueResult = await query(
-      `SELECT COALESCE(SUM(transaction_amount), 0) as total_revenue
-       FROM successful_bookings
-       WHERE provider_id = ? AND payment_status = 'completed'`,
-      [providerId]
-    ) as any[];
+    // 1. Get revenue, using both tables if available
+    let totalRevenue = 0;
+    
+    if (hasServiceBookings) {
+      const serviceBookingsRevenue = await query(
+        `SELECT COALESCE(SUM(price), 0) as total_revenue
+         FROM service_bookings
+         WHERE provider_id = ? AND status = 'completed'`,
+        [providerId]
+      ) as any[];
+      
+      totalRevenue += serviceBookingsRevenue[0]?.total_revenue || 0;
+    }
+    
+    if (hasBookings) {
+      const bookingsRevenue = await query(
+        `SELECT COALESCE(SUM(b.total_amount), 0) as total_revenue
+         FROM bookings b
+         JOIN service_packages sp ON b.business_service_id = sp.id
+         WHERE sp.service_provider_id = ? AND b.status = 'completed'`,
+        [providerId]
+      ) as any[];
+      
+      totalRevenue += bookingsRevenue[0]?.total_revenue || 0;
+    }
     
     // 2. Get new clients count (last 30 days unique users)
-    const newClientsResult = await query(
-      `SELECT COUNT(DISTINCT user_id) as new_clients
-       FROM successful_bookings
-       WHERE provider_id = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)`,
-      [providerId]
-    ) as any[];
+    let newClients = 0;
+    
+    if (hasServiceBookings) {
+      const serviceBookingsClients = await query(
+        `SELECT COUNT(DISTINCT user_id) as new_clients
+         FROM service_bookings
+         WHERE provider_id = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)`,
+        [providerId]
+      ) as any[];
+      
+      newClients += serviceBookingsClients[0]?.new_clients || 0;
+    }
+    
+    if (hasBookings) {
+      const bookingsClients = await query(
+        `SELECT COUNT(DISTINCT b.user_id) as new_clients
+         FROM bookings b
+         JOIN service_packages sp ON b.business_service_id = sp.id
+         WHERE sp.service_provider_id = ? AND b.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)`,
+        [providerId]
+      ) as any[];
+      
+      newClients += bookingsClients[0]?.new_clients || 0;
+    }
     
     // 3. Get active bookings count
-    // Modified to join with service_packages to link to service_provider_id
-    const activeBookingsResult = await query(
-      `SELECT COUNT(*) as active_bookings
-       FROM bookings b
-       JOIN service_packages sp ON b.business_service_id = sp.id
-       WHERE sp.service_provider_id = ? AND b.status IN ('pending', 'confirmed', 'in_progress')`,
-      [providerId]
-    ) as any[];
+    let activeBookings = 0;
+    
+    if (hasServiceBookings) {
+      const serviceActiveBookings = await query(
+        `SELECT COUNT(*) as active_bookings
+         FROM service_bookings
+         WHERE provider_id = ? AND status IN ('pending', 'confirmed', 'in_progress')`,
+        [providerId]
+      ) as any[];
+      
+      activeBookings += serviceActiveBookings[0]?.active_bookings || 0;
+    }
+    
+    if (hasBookings) {
+      const bookingsActiveBookings = await query(
+        `SELECT COUNT(*) as active_bookings
+         FROM bookings b
+         JOIN service_packages sp ON b.business_service_id = sp.id
+         WHERE sp.service_provider_id = ? AND b.status IN ('pending', 'confirmed', 'in_progress')`,
+        [providerId]
+      ) as any[];
+      
+      activeBookings += bookingsActiveBookings[0]?.active_bookings || 0;
+    }
     
     // 4. Get average rating (from reviews)
     const ratingResult = await query(
@@ -61,27 +127,64 @@ export async function GET(request: NextRequest) {
       [providerId]
     ) as any[];
     
-    // Get recent bookings - modified to not depend on pets table
-    let recentBookings = [];
-    try {
-      recentBookings = await query(
-        `SELECT b.id, b.status, b.booking_date as scheduled_date, b.created_at, 
-                b.special_requests, 
-                u.first_name, u.last_name,
-                sp.name as service_name, sp.price
-         FROM bookings b
-         JOIN users u ON b.user_id = u.id
-         JOIN service_packages sp ON b.business_service_id = sp.id
-         WHERE sp.service_provider_id = ?
-         ORDER BY b.created_at DESC
-         LIMIT 5`,
-        [providerId]
-      ) as any[];
-    } catch (bookingError) {
-      console.error('Error fetching recent bookings:', bookingError);
-      // Continue with empty bookings
-      recentBookings = [];
+    // Get recent bookings from both tables if available
+    let recentBookings: any[] = [];
+    
+    if (hasServiceBookings) {
+      try {
+        const serviceRecentBookings = await query(
+          `SELECT 
+            sb.id, sb.status, sb.booking_date as scheduled_date, 
+            sb.booking_time as scheduled_time, sb.created_at, 
+            sb.special_requests, sb.pet_name, sb.pet_type, sb.pet_image_url,
+            u.first_name, u.last_name,
+            sp.name as service_name, sb.price
+           FROM service_bookings sb
+           JOIN users u ON sb.user_id = u.id
+           JOIN service_packages sp ON sb.package_id = sp.id
+           WHERE sb.provider_id = ?
+           ORDER BY sb.created_at DESC
+           LIMIT 5`,
+          [providerId]
+        ) as any[];
+        
+        recentBookings = [...recentBookings, ...serviceRecentBookings];
+      } catch (bookingError) {
+        console.error('Error fetching service_bookings:', bookingError);
+      }
     }
+    
+    if (hasBookings && recentBookings.length < 5) {
+      try {
+        const legacyRecentBookings = await query(
+          `SELECT b.id, b.status, b.booking_date as scheduled_date, 
+                  b.booking_time as scheduled_time, b.created_at, 
+                  b.special_requests, 
+                  u.first_name, u.last_name,
+                  sp.name as service_name, sp.price,
+                  p.name as pet_name, p.species as pet_type, p.photo_path as pet_image_url
+           FROM bookings b
+           JOIN users u ON b.user_id = u.id
+           JOIN service_packages sp ON b.business_service_id = sp.id
+           LEFT JOIN pets p ON p.user_id = u.id AND p.created_at <= DATE_ADD(b.created_at, INTERVAL 5 SECOND)
+           WHERE sp.service_provider_id = ?
+           GROUP BY b.id
+           ORDER BY b.created_at DESC
+           LIMIT ${5 - recentBookings.length}`,
+          [providerId]
+        ) as any[];
+        
+        recentBookings = [...recentBookings, ...legacyRecentBookings];
+      } catch (bookingError) {
+        console.error('Error fetching bookings:', bookingError);
+      }
+    }
+    
+    // Sort combined bookings by creation date
+    recentBookings.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    
+    // Limit to 5 most recent
+    recentBookings = recentBookings.slice(0, 5);
     
     // Get service packages
     const servicePackages = await query(
@@ -151,15 +254,12 @@ export async function GET(request: NextRequest) {
     
     // Calculate stats changes compared to previous period
     // This would normally involve more complex queries, but we'll simplify
-    const totalRevenue = revenueResult[0]?.total_revenue || 0;
     const previousRevenue = totalRevenue * 0.9; // Simplified, just for demonstration
     const revenueChange = totalRevenue > 0 ? ((totalRevenue - previousRevenue) / previousRevenue) * 100 : 0;
     
-    const newClients = newClientsResult[0]?.new_clients || 0;
     const previousClients = newClients - 2; // Simplified
     const clientsChange = previousClients > 0 ? ((newClients - previousClients) / previousClients) * 100 : 0;
     
-    const activeBookings = activeBookingsResult[0]?.active_bookings || 0;
     const previousActive = activeBookings + 1; // Simplified
     const bookingsChange = previousActive > 0 ? ((activeBookings - previousActive) / previousActive) * 100 : 0;
     
@@ -197,16 +297,14 @@ export async function GET(request: NextRequest) {
       ],
       recentBookings: recentBookings.map((booking: any) => ({
         id: booking.id,
-        petName: 'N/A', // Since we don't have pet data now
-        petType: 'N/A', // Since we don't have pet data now
+        petName: booking.pet_name || 'Unknown Pet',
+        petType: booking.pet_type || 'Unknown',
         owner: `${booking.first_name} ${booking.last_name}`,
         service: booking.service_name,
         status: booking.status,
-        date: new Date(booking.scheduled_date).toLocaleDateString('en-US', {
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric'
-        }),
+        scheduledDate: booking.scheduled_date ? formatDate(booking.scheduled_date) : 'Not scheduled',
+        scheduledTime: booking.scheduled_time ? formatTime(booking.scheduled_time) : 'Not specified',
+        createdAt: formatDate(booking.created_at),
         statusColor: getStatusColor(booking.status)
       })),
       servicePackages: servicePackages.map((pkg: any) => ({
@@ -229,8 +327,32 @@ export async function GET(request: NextRequest) {
   }
 }
 
+function formatDate(dateString: string): string {
+  const date = new Date(dateString);
+  return date.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+}
+
+function formatTime(timeString: string): string {
+  if (!timeString) return '';
+  
+  // Handle SQL time format (HH:MM:SS)
+  const [hours, minutes] = timeString.split(':').map(Number);
+  const date = new Date();
+  date.setHours(hours);
+  date.setMinutes(minutes);
+  
+  return date.toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+}
+
 function getStatusColor(status: string): string {
-  switch (status.toLowerCase()) {
+  switch (status?.toLowerCase()) {
     case 'scheduled':
     case 'confirmed':
       return 'bg-yellow-100 text-yellow-800';

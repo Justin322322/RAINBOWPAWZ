@@ -13,7 +13,7 @@ async function ensurePetsTableExists() {
 
     if (tableExists[0].count === 0) {
       console.log('Creating pets table as it does not exist...');
-      
+
       // Create the pets table
       await query(`
         CREATE TABLE pets (
@@ -32,11 +32,11 @@ async function ensurePetsTableExists() {
           INDEX (user_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
       `);
-      
+
       console.log('Pets table created successfully');
       return true;
     }
-    
+
     return true;
   } catch (error) {
     console.error('Error ensuring pets table exists:', error);
@@ -137,16 +137,20 @@ export async function POST(request: NextRequest) {
 
     // Get pet data from request body
     const body = await request.json();
-    const {
-      name,
-      species,
-      breed,
-      gender,
-      age,
-      weight,
-      imagePath,
-      specialNotes
-    } = body;
+
+    // Extract fields with support for multiple field name formats
+    const name = body.name;
+    const species = body.species;
+    const breed = body.breed;
+    const gender = body.gender;
+    const age = body.age;
+    const weight = body.weight;
+
+    // Support multiple field names for image path
+    const imagePath = body.imagePath || body.image_url || body.photoPath || body.imageUrl;
+
+    // Support multiple field names for special notes
+    const specialNotes = body.specialNotes || body.special_notes || body.notes;
 
     // Validate required fields
     if (!name || !species) {

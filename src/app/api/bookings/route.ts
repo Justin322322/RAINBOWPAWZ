@@ -28,13 +28,22 @@ export async function GET(request: NextRequest) {
   try {
     // Get user ID from auth token
     const authToken = getAuthTokenFromRequest(request);
+    console.log('Auth token:', authToken ? 'Present' : 'Missing');
+
     if (!authToken) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const [userId, accountType] = authToken.split('_');
-    if (!userId || accountType !== 'user') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    console.log('User ID from token:', userId);
+    console.log('Account type from token:', accountType);
+
+    if (!userId || (accountType !== 'user' && accountType !== 'fur_parent')) {
+      console.log('Unauthorized: Invalid user ID or account type');
+      return NextResponse.json({
+        error: 'Unauthorized',
+        details: `Invalid account type: ${accountType}. Expected 'user' or 'fur_parent'`
+      }, { status: 401 });
     }
 
     // Get query parameters
@@ -43,8 +52,57 @@ export async function GET(request: NextRequest) {
 
     console.log('Fetching bookings for user:', userId);
 
-    // First, check which bookings table exists in the database
-    let bookingsTable = 'bookings';
+    // First, try a direct query to service_bookings table
+    try {
+      console.log('Trying direct query to service_bookings table first...');
+
+      // Try both string and number versions of the user ID
+      const userIdNumber = Number(userId);
+      console.log('User ID as number:', userIdNumber, 'isNaN:', isNaN(userIdNumber));
+
+      // Query with both string and number versions of the user ID
+      const directQuery = `
+        SELECT * FROM service_bookings
+        WHERE user_id = ? OR user_id = ?
+      `;
+      const directResult = await query(directQuery, [userIdNumber, userId.toString()]) as any[];
+      console.log('Direct service_bookings query result count:', directResult?.length || 0);
+
+      if (directResult && directResult.length > 0) {
+        console.log('Found bookings in service_bookings table directly');
+        console.log('Sample booking:', directResult[0]);
+
+        // Format the bookings data
+        const formattedBookings = directResult.map(booking => {
+          // Format dates for consistency
+          const bookingDate = booking.booking_date ? new Date(booking.booking_date) : null;
+          const formattedDate = bookingDate ? bookingDate.toISOString().split('T')[0] : null;
+
+          // Format time if available
+          const timeString = booking.booking_time ?
+            booking.booking_time.toString().padStart(8, '0') : null;
+
+          return {
+            ...booking,
+            booking_date: formattedDate,
+            booking_time: timeString,
+            provider_name: 'Service Provider',
+            provider_address: 'Provider Address',
+            service_name: 'Cremation Service',
+            service_description: 'Pet cremation service',
+            service_price: booking.price || 0,
+            pet_name: booking.pet_name || 'Unknown Pet',
+            pet_type: booking.pet_type || 'Unknown Type'
+          };
+        });
+
+        return NextResponse.json({ bookings: formattedBookings });
+      }
+    } catch (directError) {
+      console.error('Error with direct service_bookings query:', directError);
+    }
+
+    // If direct query didn't work, proceed with the regular flow
     let bookingsQuery = '';
     let bookingsParams = [];
 
@@ -135,30 +193,30 @@ export async function GET(request: NextRequest) {
             const petsTableCheck = await query(
               "SELECT COUNT(*) as count FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'pets'"
             ) as any[];
-            
+
             const petsTableExists = petsTableCheck && petsTableCheck[0].count > 0;
             console.log(`Pets table exists: ${petsTableExists}`);
-            
+
             // Check if bookings table has pet_name and pet_type columns
             const petColumnsCheck = await query(`
-              SELECT COLUMN_NAME 
-              FROM INFORMATION_SCHEMA.COLUMNS 
-              WHERE TABLE_SCHEMA = DATABASE() 
-              AND TABLE_NAME = 'bookings' 
+              SELECT COLUMN_NAME
+              FROM INFORMATION_SCHEMA.COLUMNS
+              WHERE TABLE_SCHEMA = DATABASE()
+              AND TABLE_NAME = 'bookings'
               AND COLUMN_NAME IN ('pet_name', 'pet_type')
             `) as any[];
-            
+
             const hasPetNameColumn = petColumnsCheck.some((col: any) => col.COLUMN_NAME === 'pet_name');
             const hasPetTypeColumn = petColumnsCheck.some((col: any) => col.COLUMN_NAME === 'pet_type');
-            
+
             // Check if business_services table exists
             const businessServicesCheck = await query(
               "SELECT COUNT(*) as count FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'business_services'"
             ) as any[];
-            
+
             const businessServicesExists = businessServicesCheck && businessServicesCheck[0].count > 0;
             console.log(`business_services table exists: ${businessServicesExists}`);
-            
+
             // Build query based on the structure we have
             if (petsTableExists) {
               // Original query with pets table join
@@ -255,67 +313,121 @@ export async function GET(request: NextRequest) {
       // If no bookings found, return empty array
       if (!bookings || bookings.length === 0) {
         console.log('No bookings found for user:', userId);
-        
+
         // Check service_bookings table as a fallback
         try {
+          // Use a more detailed query to get service_bookings with package information
           const serviceBookingsQuery = `
-            SELECT * FROM service_bookings WHERE user_id = ?
+            SELECT sb.*,
+                   sp.name as package_name,
+                   sp.description as package_description,
+                   bp.business_name as provider_name,
+                   bp.business_address as provider_address
+            FROM service_bookings sb
+            LEFT JOIN service_packages sp ON sb.package_id = sp.id
+            LEFT JOIN business_profiles bp ON sb.provider_id = bp.id
+            WHERE sb.user_id = ?
           `;
-          console.log('Checking service_bookings table...');
+          console.log('Checking service_bookings table with joins...');
           const serviceBookings = await query(serviceBookingsQuery, [userId]) as any[];
-          
+
           if (serviceBookings && serviceBookings.length > 0) {
             console.log(`Found ${serviceBookings.length} bookings in service_bookings table`);
-            
+
             // Format the bookings data
             const formattedBookings = serviceBookings.map(booking => {
               // Format dates for consistency
               const bookingDate = booking.booking_date ? new Date(booking.booking_date) : null;
               const formattedDate = bookingDate ? bookingDate.toISOString().split('T')[0] : null;
 
+              // Format time if available
+              const timeString = booking.booking_time ?
+                booking.booking_time.toString().padStart(8, '0') : null;
+
               return {
                 ...booking,
                 booking_date: formattedDate,
+                booking_time: timeString,
                 provider_name: booking.provider_name || 'Service Provider',
-                provider_address: booking.location_address || 'No address available',
-                service_name: booking.service_name || 'Cremation Service',
-                service_description: booking.description || 'No description available',
+                provider_address: booking.provider_address || 'No address available',
+                service_name: booking.package_name || 'Cremation Service',
+                service_description: booking.package_description || 'Pet cremation service',
+                service_price: booking.price || 0,
                 pet_name: booking.pet_name || 'Unknown Pet',
                 pet_type: booking.pet_type || 'Unknown Type'
               };
             });
-            
+
             return NextResponse.json({ bookings: formattedBookings });
+          }
+
+          // If the join query fails, try a simpler query
+          if (!serviceBookings || serviceBookings.length === 0) {
+            console.log('Trying simple service_bookings query without joins...');
+            const simpleServiceBookingsQuery = `
+              SELECT * FROM service_bookings WHERE user_id = ?
+            `;
+            const simpleServiceBookings = await query(simpleServiceBookingsQuery, [userId]) as any[];
+
+            if (simpleServiceBookings && simpleServiceBookings.length > 0) {
+              console.log(`Found ${simpleServiceBookings.length} bookings in service_bookings table (simple query)`);
+
+              // Format the bookings data
+              const formattedBookings = simpleServiceBookings.map(booking => {
+                // Format dates for consistency
+                const bookingDate = booking.booking_date ? new Date(booking.booking_date) : null;
+                const formattedDate = bookingDate ? bookingDate.toISOString().split('T')[0] : null;
+
+                // Format time if available
+                const timeString = booking.booking_time ?
+                  booking.booking_time.toString().padStart(8, '0') : null;
+
+                return {
+                  ...booking,
+                  booking_date: formattedDate,
+                  booking_time: timeString,
+                  provider_name: 'Service Provider',
+                  provider_address: 'Provider Address',
+                  service_name: 'Cremation Service',
+                  service_description: 'Pet cremation service',
+                  service_price: booking.price || 0,
+                  pet_name: booking.pet_name || 'Unknown Pet',
+                  pet_type: booking.pet_type || 'Unknown Type'
+                };
+              });
+
+              return NextResponse.json({ bookings: formattedBookings });
+            }
           }
         } catch (fallbackError) {
           console.error('Error checking service_bookings table:', fallbackError);
         }
-        
+
         // If we reach here, no bookings were found in either table
         console.log('Debug info - database tables:');
-        
+
         try {
           const tables = await query(
             "SELECT table_name FROM information_schema.tables WHERE table_schema = DATABASE()"
           ) as any[];
           console.log('Available tables:', tables.map((t: any) => t.table_name));
-          
+
           // Check bookings table structure
           const bookingsColumns = await query(
             "SELECT column_name FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'bookings'"
           ) as any[];
           console.log('Bookings table columns:', bookingsColumns.map((c: any) => c.column_name));
-          
+
           // Try a direct simple count
           const bookingsCount = await query(
             "SELECT COUNT(*) as count FROM bookings"
           ) as any[];
           console.log('Total bookings count:', bookingsCount[0].count);
-          
+
         } catch (debugError) {
           console.error('Error getting debug info:', debugError);
         }
-        
+
         return NextResponse.json({ bookings: [] });
       }
 
@@ -361,16 +473,16 @@ export async function GET(request: NextRequest) {
 
         // First check if bookings table has pet_id column for proper join
         const petIdCheck = await query(`
-          SELECT COLUMN_NAME 
-          FROM INFORMATION_SCHEMA.COLUMNS 
-          WHERE TABLE_SCHEMA = DATABASE() 
-          AND TABLE_NAME = 'bookings' 
+          SELECT COLUMN_NAME
+          FROM INFORMATION_SCHEMA.COLUMNS
+          WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = 'bookings'
           AND COLUMN_NAME = 'pet_id'
         `) as any[];
-        
+
         const hasPetIdColumn = petIdCheck.length > 0;
         console.log('Bookings table has pet_id column:', hasPetIdColumn);
-        
+
         // Get bookings first
         const bookingsQuery = `
           SELECT b.*,
@@ -384,36 +496,36 @@ export async function GET(request: NextRequest) {
           LEFT JOIN service_providers sp ON spkg.service_provider_id = sp.id
           WHERE b.user_id = ?
         `;
-        
+
         // Execute query to get bookings
         const bookingsResult = await query(bookingsQuery, [userId]) as any[];
-        
+
         if (bookingsResult && bookingsResult.length > 0) {
           console.log('Found bookings:', bookingsResult.length);
-          
+
           // Since we have bookings, fetch pets separately
           const petsQuery = `
-            SELECT * 
-            FROM pets 
+            SELECT *
+            FROM pets
             WHERE user_id = ?
             ORDER BY created_at DESC
           `;
-          
+
           const petsResult = await query(petsQuery, [userId]) as any[];
           console.log('Found pets for user:', petsResult?.length || 0);
-          
+
           // Map bookings with pet info
           const formattedBookings = bookingsResult.map(booking => {
             // Find the most recent pet that was created before or at the same time as the booking
             // This likely matches the pet associated with the booking
-            const matchingPet = petsResult?.find(pet => 
+            const matchingPet = petsResult?.find(pet =>
               new Date(pet.created_at).getTime() <= new Date(booking.created_at).getTime() + 5000
             );
-            
+
             // Format dates for consistency
             const bookingDate = booking.booking_date ? new Date(booking.booking_date) : null;
             const formattedDate = bookingDate ? bookingDate.toISOString().split('T')[0] : null;
-            
+
             return {
               ...booking,
               booking_date: formattedDate,
@@ -428,31 +540,31 @@ export async function GET(request: NextRequest) {
               service_description: booking.service_description || 'Pet cremation service'
             };
           });
-          
+
           return NextResponse.json({ bookings: formattedBookings });
         }
 
         // Fallback to simple query if no bookings found
         console.log('Trying simple query...');
-        
+
         // First check if bookings table has pet_id column for proper join
         const fallbackPetIdCheck = await query(`
-          SELECT COLUMN_NAME 
-          FROM INFORMATION_SCHEMA.COLUMNS 
-          WHERE TABLE_SCHEMA = DATABASE() 
-          AND TABLE_NAME = 'bookings' 
+          SELECT COLUMN_NAME
+          FROM INFORMATION_SCHEMA.COLUMNS
+          WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = 'bookings'
           AND COLUMN_NAME = 'pet_id'
         `) as any[];
-        
+
         const fallbackHasPetIdColumn = fallbackPetIdCheck.length > 0;
         console.log('Bookings table has pet_id column:', fallbackHasPetIdColumn);
-        
+
         // Construct query based on available columns
         let simpleQuery = '';
         if (fallbackHasPetIdColumn) {
           simpleQuery = `
             SELECT b.*,
-                   p.name as pet_name, 
+                   p.name as pet_name,
                    p.species as pet_type,
                    p.breed as pet_breed,
                    sp.name as provider_name,
@@ -470,7 +582,7 @@ export async function GET(request: NextRequest) {
           // If no pet_id column, we can't join with pets table
           simpleQuery = `
             SELECT b.*,
-                   'Pet' as pet_name, 
+                   'Pet' as pet_name,
                    'Unknown' as pet_type,
                    '' as pet_breed,
                    sp.name as provider_name,
@@ -484,7 +596,7 @@ export async function GET(request: NextRequest) {
             WHERE b.user_id = ?
           `;
         }
-        
+
         const simpleParams = [userId];
 
         try {
@@ -517,16 +629,16 @@ export async function GET(request: NextRequest) {
           }
         } catch (simpleQueryError) {
           console.error('Simple query failed:', simpleQueryError);
-          
+
           // Try to join with just the pets table
           try {
             console.log('Trying query with just pets table');
-            
+
             let petsQuery = '';
             if (fallbackHasPetIdColumn) {
               petsQuery = `
                 SELECT b.*,
-                       p.name as pet_name, 
+                       p.name as pet_name,
                        p.species as pet_type,
                        p.breed as pet_breed,
                        'Service Provider' as provider_name,
@@ -542,7 +654,7 @@ export async function GET(request: NextRequest) {
               // If no pet_id column, use basic query
               petsQuery = `
                 SELECT b.*,
-                       'Pet' as pet_name, 
+                       'Pet' as pet_name,
                        'Unknown' as pet_type,
                        '' as pet_breed,
                        'Service Provider' as provider_name,
@@ -554,26 +666,26 @@ export async function GET(request: NextRequest) {
                 WHERE b.user_id = ?
               `;
             }
-            
+
             const petsResult = await query(petsQuery, [userId]) as any[];
-            
+
             if (petsResult && petsResult.length > 0) {
               console.log('Found bookings with pets join:', petsResult.length);
-              
+
               // Format with data from pets table
               const formattedBookings = petsResult.map(booking => ({
                 ...booking,
-                booking_date: booking.booking_date ? 
+                booking_date: booking.booking_date ?
                   new Date(booking.booking_date).toISOString().split('T')[0] : null,
                 provider_name: 'Service Provider',
                 provider_address: 'Provider Address',
-                service_name: 'Cremation Service', 
+                service_name: 'Cremation Service',
                 service_description: 'Pet cremation service',
                 service_price: booking.total_amount,
                 pet_name: booking.pet_name || 'Pet',
                 pet_type: booking.pet_type || 'Unknown'
               }));
-              
+
               return NextResponse.json({ bookings: formattedBookings });
             }
           } catch (petsQueryError) {
@@ -588,6 +700,22 @@ export async function GET(request: NextRequest) {
           console.log('All bookings in database:', rawBookings.length);
           if (rawBookings.length > 0) {
             console.log('Sample booking:', rawBookings[0]);
+          }
+
+          // Also check service_bookings table
+          console.log('Getting raw service_bookings data for debugging');
+          const rawServiceBookings = await query('SELECT * FROM service_bookings') as any[];
+          console.log('All service_bookings in database:', rawServiceBookings.length);
+          if (rawServiceBookings.length > 0) {
+            console.log('Sample service_booking:', rawServiceBookings[0]);
+            console.log('User ID in sample service_booking:', rawServiceBookings[0].user_id);
+            console.log('Current user ID:', userId);
+
+            // Check if there are any bookings for this user
+            const userServiceBookings = rawServiceBookings.filter(booking =>
+              booking.user_id.toString() === userId.toString()
+            );
+            console.log(`Service bookings for user ${userId}:`, userServiceBookings.length);
           }
         } catch (debugError) {
           console.error('Debug query failed:', debugError);
@@ -613,22 +741,22 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     console.log('Creating new booking...');
-    
+
     // Get user ID from auth token or from the request body for checkout flow
     let userId, accountType;
     const authToken = getAuthTokenFromRequest(request);
-    
+
     if (authToken) {
       [userId, accountType] = authToken.split('_');
       console.log(`User authenticated with token: ID ${userId}, type ${accountType}`);
-      
+
       if (!userId || accountType !== 'user') {
         return NextResponse.json({ error: 'Unauthorized: Invalid user type' }, { status: 401 });
       }
     } else {
       // For checkout flow when user might not have auth token in request
       const bookingRequestData = await request.json();
-      
+
       if (bookingRequestData.userId) {
         userId = bookingRequestData.userId;
         console.log(`Using userId from request body: ${userId}`);
@@ -662,7 +790,7 @@ export async function POST(request: NextRequest) {
     try {
       // Ensure pets table exists
       await ensurePetsTableExists();
-      
+
       // Check if pet ID is provided from cart
       let petId;
       if (bookingData.petId) {
@@ -670,7 +798,7 @@ export async function POST(request: NextRequest) {
         petId = bookingData.petId;
         console.log(`Using existing pet ID from cart: ${petId}`);
       } else {
-        // Create pet record 
+        // Create pet record
         console.log('Creating pet record...');
         const petResult = await query(`
           INSERT INTO pets (
@@ -695,34 +823,34 @@ export async function POST(request: NextRequest) {
           bookingData.petImageUrl || null,
           bookingData.petSpecialNotes || null
         ]) as any;
-        
+
         petId = petResult.insertId;
         console.log(`Pet record created with ID: ${petId}`);
       }
-      
+
       console.log('Creating booking record with exact column mapping...');
-      
+
       // Try to get column information from the bookings table
       const columnsQuery = `
-        SELECT COLUMN_NAME 
-        FROM INFORMATION_SCHEMA.COLUMNS 
-        WHERE TABLE_SCHEMA = DATABASE() 
+        SELECT COLUMN_NAME
+        FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE()
         AND TABLE_NAME = 'bookings'
       `;
       const columnsResult = await query(columnsQuery) as any[];
       const columnNames = columnsResult.map((row: any) => row.COLUMN_NAME.toLowerCase());
       console.log('Available columns in bookings table:', columnNames);
-      
+
       // Build dynamic SQL based on available columns
       let insertColumns = ['user_id', 'booking_date', 'booking_time', 'status', 'total_amount', 'special_requests'];
       let insertValues = [userId, bookingData.date, bookingData.time, 'pending', totalAmount, bookingData.specialRequests || ''];
-      
+
       // Add pet_id only if the column exists in the table
       if (columnNames.includes('pet_id')) {
         insertColumns.push('pet_id');
         insertValues.push(petId);
       }
-      
+
       // Add business_service_id if available
       if (columnNames.includes('business_service_id')) {
         insertColumns.push('business_service_id');
@@ -731,73 +859,73 @@ export async function POST(request: NextRequest) {
         insertColumns.push('package_id');
         insertValues.push(bookingData.packageId || null);
       }
-      
+
       // Add provider_id if available
       if (columnNames.includes('provider_id')) {
         insertColumns.push('provider_id');
         insertValues.push(bookingData.providerId || null);
       }
-      
+
       // Add customer details if available
       if (columnNames.includes('pet_name')) {
         insertColumns.push('pet_name');
         insertValues.push(bookingData.petName);
       }
-      
+
       if (columnNames.includes('pet_type')) {
         insertColumns.push('pet_type');
         insertValues.push(bookingData.petType);
       }
-      
+
       if (columnNames.includes('provider_name')) {
         insertColumns.push('provider_name');
         insertValues.push(bookingData.providerName || 'Service Provider');
       }
-      
+
       if (columnNames.includes('package_name')) {
         insertColumns.push('package_name');
         insertValues.push(bookingData.packageName || 'Cremation Service');
       }
-      
+
       if (columnNames.includes('payment_method')) {
         insertColumns.push('payment_method');
         insertValues.push(bookingData.paymentMethod || 'cash');
       }
-      
+
       if (columnNames.includes('cause_of_death')) {
         insertColumns.push('cause_of_death');
         insertValues.push(bookingData.causeOfDeath || null);
       }
-      
+
       // Add timestamps if available
       if (columnNames.includes('created_at')) {
         insertColumns.push('created_at');
         insertValues.push('NOW()');
       }
-      
+
       if (columnNames.includes('updated_at')) {
         insertColumns.push('updated_at');
         insertValues.push('NOW()');
       }
-      
+
       // Create final SQL with placeholders
       const placeholders = insertValues.map(() => '?').join(', ');
       const insertSQL = `
         INSERT INTO bookings (${insertColumns.join(', ')})
         VALUES (${placeholders})
       `;
-      
+
       // Replace NOW() with the function call since it can't be parameterized
       const finalValues = insertValues.map(val => val === 'NOW()' ? new Date() : val);
-      
+
       console.log('Insert SQL:', insertSQL);
       console.log('With parameters:', finalValues);
-      
+
       const insertResult = await query(insertSQL, finalValues) as any;
-      
+
       console.log('Insert result:', insertResult);
       const insertId = insertResult.insertId;
-      
+
       // Return success response
       return NextResponse.json({
         success: true,
@@ -824,9 +952,9 @@ export async function POST(request: NextRequest) {
       });
     } catch (error) {
       console.error('Error creating booking:', error);
-      return NextResponse.json({ 
+      return NextResponse.json({
         success: false,
-        error: 'Database error', 
+        error: 'Database error',
         message: 'Could not create booking record',
         details: error instanceof Error ? error.message : 'Unknown error',
         code: (error as any)?.code,
@@ -835,9 +963,9 @@ export async function POST(request: NextRequest) {
     }
   } catch (error) {
     console.error('Error creating booking:', error);
-    return NextResponse.json({ 
+    return NextResponse.json({
       success: false,
-      error: 'Internal Server Error', 
+      error: 'Internal Server Error',
       message: error instanceof Error ? error.message : 'Unknown error occurred',
       details: 'The booking could not be completed due to a server error.'
     }, { status: 500 });
@@ -855,7 +983,7 @@ async function ensurePetsTableExists() {
 
     if (tableExists[0].count === 0) {
       console.log('Creating pets table as it does not exist...');
-      
+
       // Create the pets table
       await query(`
         CREATE TABLE pets (
@@ -874,11 +1002,11 @@ async function ensurePetsTableExists() {
           INDEX (user_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
       `);
-      
+
       console.log('Pets table created successfully');
       return true;
     }
-    
+
     return true;
   } catch (error) {
     console.error('Error ensuring pets table exists:', error);

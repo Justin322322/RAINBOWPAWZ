@@ -15,7 +15,62 @@ export async function GET(
       );
     }
 
-    console.log(`Fetching details for service provider ID: ${providerId} - Enhanced version`);
+    console.log(`Fetching details for service provider ID: ${providerId} - Enhanced version with improved error handling`);
+
+    // Check if this is a test provider first to avoid database errors
+    if (providerId === '1001' || providerId === '1002' || providerId === '1003') {
+      console.log(`Returning test provider data for ID ${providerId}`);
+      
+      // Return the test provider data
+      const testProviders = {
+        '1001': {
+          id: 1001,
+          name: "Rainbow Bridge Pet Cremation",
+          city: "Balanga City, Bataan",
+          address: "Capitol Drive, Balanga City, Bataan, 2100 Philippines",
+          phone: "(123) 456-7890",
+          email: "info@rainbowbridge.com",
+          description: "Compassionate pet cremation services with personalized memorials. We offer a range of options to help you honor your beloved pet's memory, including private and communal cremation services, custom urns, memorial jewelry, and paw print keepsakes.",
+          type: "Pet Cremation Services",
+          packages: 3,
+          distance: "5.5 km away",
+          distanceValue: 5.5,
+          created_at: new Date().toISOString()
+        },
+        '1002': {
+          id: 1002,
+          name: "Peaceful Paws Memorial",
+          city: "Orani, Bataan",
+          address: "National Road, Orani, Bataan, 2112 Philippines",
+          phone: "(234) 567-8901",
+          email: "care@peacefulpaws.com",
+          description: "Dignified pet cremation with eco-friendly options. Our services include gentle handling of your pet, environmentally conscious cremation processes, biodegradable urns, and memorial tree planting options to create a living tribute to your pet.",
+          type: "Pet Cremation Services",
+          packages: 2,
+          distance: "12.3 km away",
+          distanceValue: 12.3,
+          created_at: new Date().toISOString()
+        },
+        '1003': {
+          id: 1003,
+          name: "Forever Friends Pet Services",
+          city: "Dinalupihan, Bataan",
+          address: "San Ramon Highway, Dinalupihan, Bataan, 2110 Philippines",
+          phone: "(345) 678-9012",
+          email: "service@foreverfriends.com",
+          description: "Comprehensive pet memorial services with home pickup options. We understand that saying goodbye is difficult, so we offer compassionate home collection services, private viewing rooms for final goodbyes, and a range of memorial products to honor your pet's memory.",
+          type: "Pet Cremation Services",
+          packages: 4,
+          distance: "18.7 km away",
+          distanceValue: 18.7,
+          created_at: new Date().toISOString()
+        }
+      };
+
+      // Type-safe access to test provider data
+      const provider = testProviders[providerId as keyof typeof testProviders];
+      return NextResponse.json({ provider });
+    }
 
     // Try to fetch from service_providers table
     try {
@@ -176,62 +231,6 @@ export async function GET(
       } catch (businessError) {
         console.error('Error looking up business profile:', businessError);
         // Continue to check for test providers
-      }
-
-      // If provider not found or there were database errors, check if this is a test provider
-      console.log(`Checking if providerId ${providerId} is a test provider`);
-      if (providerId === '1001' || providerId === '1002' || providerId === '1003') {
-        console.log(`Returning test provider data for ID ${providerId}`);
-        
-        // Return the test provider data
-        const testProviders = {
-          '1001': {
-            id: 1001,
-            name: "Rainbow Bridge Pet Cremation",
-            city: "Balanga City, Bataan",
-            address: "Capitol Drive, Balanga City, Bataan, 2100 Philippines",
-            phone: "(123) 456-7890",
-            email: "info@rainbowbridge.com",
-            description: "Compassionate pet cremation services with personalized memorials. We offer a range of options to help you honor your beloved pet's memory, including private and communal cremation services, custom urns, memorial jewelry, and paw print keepsakes.",
-            type: "Pet Cremation Services",
-            packages: 3,
-            distance: "5.5 km away",
-            distanceValue: 5.5,
-            created_at: new Date().toISOString()
-          },
-          '1002': {
-            id: 1002,
-            name: "Peaceful Paws Memorial",
-            city: "Orani, Bataan",
-            address: "National Road, Orani, Bataan, 2112 Philippines",
-            phone: "(234) 567-8901",
-            email: "care@peacefulpaws.com",
-            description: "Dignified pet cremation with eco-friendly options. Our services include gentle handling of your pet, environmentally conscious cremation processes, biodegradable urns, and memorial tree planting options to create a living tribute to your pet.",
-            type: "Pet Cremation Services",
-            packages: 2,
-            distance: "12.3 km away",
-            distanceValue: 12.3,
-            created_at: new Date().toISOString()
-          },
-          '1003': {
-            id: 1003,
-            name: "Forever Friends Pet Services",
-            city: "Dinalupihan, Bataan",
-            address: "San Ramon Highway, Dinalupihan, Bataan, 2110 Philippines",
-            phone: "(345) 678-9012",
-            email: "service@foreverfriends.com",
-            description: "Comprehensive pet memorial services with home pickup options. We understand that saying goodbye is difficult, so we offer compassionate home collection services, private viewing rooms for final goodbyes, and a range of memorial products to honor your pet's memory.",
-            type: "Pet Cremation Services",
-            packages: 4,
-            distance: "18.7 km away",
-            distanceValue: 18.7,
-            created_at: new Date().toISOString()
-          }
-        };
-
-        // Type-safe access to test provider data
-        const provider = testProviders[providerId as keyof typeof testProviders];
-        return NextResponse.json({ provider });
       }
 
       // If provider not found in either table

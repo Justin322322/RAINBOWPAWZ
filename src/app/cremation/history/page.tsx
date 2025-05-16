@@ -14,23 +14,51 @@ import {
   ArrowPathIcon,
   CurrencyDollarIcon,
   EyeIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon
 } from '@heroicons/react/24/outline';
 
 function CremationHistoryPage({ userData }: { userData: any }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [dateFilter, setDateFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [bookings, setBookings] = useState<any[]>([]);
+  const [filteredBookings, setFilteredBookings] = useState<any[]>([]);
   const [stats, setStats] = useState({
     totalBookings: 0,
     completedBookings: 0,
     cancelledBookings: 0,
     totalRevenue: 0,
-    averageRevenue: 0
+    averageRevenue: 0,
+    averageRating: 0
   });
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const [retryCount, setRetryCount] = useState(0);
   const { showToast } = useToast();
+
+  // Effect to filter bookings whenever search term, date filter, or status filter changes
+  useEffect(() => {
+    if (!bookings) return;
+    
+    const filtered = bookings.filter(booking => {
+      // Filter by search term
+      const matchesSearch = searchTerm === '' || 
+        booking.petName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        booking.owner?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        booking.id?.toString().includes(searchTerm);
+      
+      // Filter by status
+      const matchesStatus = statusFilter === 'all' || booking.status === statusFilter;
+      
+      return matchesSearch && matchesStatus;
+    });
+    
+    setFilteredBookings(filtered);
+    setCurrentPage(1); // Reset to first page when filters change
+  }, [bookings, searchTerm, statusFilter]);
 
   // Function to fetch booking history with retry logic
   const fetchBookingHistory = async (retry = false) => {
@@ -43,6 +71,8 @@ function CremationHistoryPage({ userData }: { userData: any }) {
       if (dateFilter === 'last7days') periodParam = 'last7days';
       else if (dateFilter === 'last30days') periodParam = 'last30days';
       else if (dateFilter === 'last90days') periodParam = 'last90days';
+      else if (dateFilter === 'last6months') periodParam = 'last6months';
+      else if (dateFilter === 'thisyear') periodParam = 'thisyear';
       else periodParam = 'all';
       
       console.log(`Fetching history data with period: ${periodParam}`);
@@ -73,7 +103,8 @@ function CremationHistoryPage({ userData }: { userData: any }) {
         completedBookings: 0,
         cancelledBookings: 0,
         totalRevenue: 0,
-        averageRevenue: 0
+        averageRevenue: 0,
+        averageRating: 0
       });
       
       // Reset retry count on success
@@ -109,16 +140,58 @@ function CremationHistoryPage({ userData }: { userData: any }) {
     fetchBookingHistory();
   };
 
-  // Filter bookings based on search term
-  const filteredBookings = bookings.filter(booking => {
-    if (!searchTerm) return true;
+  // Export data as CSV
+  const exportAsCSV = () => {
+    if (!filteredBookings.length) {
+      showToast('No data to export', 'info');
+      return;
+    }
     
-    const searchLower = searchTerm.toLowerCase();
-    return booking.petName?.toLowerCase().includes(searchLower) ||
-           booking.owner?.toLowerCase().includes(searchLower) ||
-           booking.id?.toString().includes(searchLower) ||
-           booking.package?.toLowerCase().includes(searchLower);
-  });
+    try {
+      // Define headers
+      const headers = [
+        'ID',
+        'Pet Name',
+        'Pet Type',
+        'Owner',
+        'Service',
+        'Status',
+        'Date',
+        'Price',
+        'Payment Method'
+      ].join(',');
+      
+      // Map data to CSV rows
+      const rows = filteredBookings.map(booking => [
+        booking.id,
+        `"${booking.petName || ''}"`,
+        `"${booking.petType || ''}"`,
+        `"${booking.owner || ''}"`,
+        `"${booking.package || ''}"`,
+        `"${booking.status || ''}"`,
+        `"${booking.createdAt || ''}"`,
+        booking.price || 0,
+        `"${booking.paymentMethod || 'Not specified'}"`
+      ].join(','));
+      
+      // Combine headers and rows
+      const csv = [headers, ...rows].join('\n');
+      
+      // Create download link
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.setAttribute('hidden', '');
+      a.setAttribute('href', url);
+      a.setAttribute('download', `cremation-history-${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('Error exporting CSV:', error);
+      showToast('Failed to export CSV', 'error');
+    }
+  };
 
   const getStatusBadge = (status: string) => {
     switch(status) {
@@ -161,9 +234,85 @@ function CremationHistoryPage({ userData }: { userData: any }) {
     }
   };
 
-  const handleExportCSV = () => {
-    // Export functionality would go here
-    showToast('Export functionality is not yet implemented', 'info');
+  // Pagination logic
+  const totalPages = Math.ceil(filteredBookings.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = Math.min(startIndex + itemsPerPage, filteredBookings.length);
+  const currentBookings = filteredBookings.slice(startIndex, endIndex);
+
+  const goToPage = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
+  };
+
+  const renderPagination = () => {
+    if (totalPages <= 1) return null;
+    
+    return (
+      <div className="flex items-center justify-between border-t border-gray-200 px-4 py-3 sm:px-6 mt-4">
+        <div className="flex flex-1 justify-between sm:hidden">
+          <button
+            onClick={() => goToPage(currentPage - 1)}
+            disabled={currentPage === 1}
+            className="relative inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+          >
+            Previous
+          </button>
+          <button
+            onClick={() => goToPage(currentPage + 1)}
+            disabled={currentPage === totalPages}
+            className="relative ml-3 inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+          >
+            Next
+          </button>
+        </div>
+        <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm text-gray-700">
+              Showing <span className="font-medium">{startIndex + 1}</span> to <span className="font-medium">{endIndex}</span> of{' '}
+              <span className="font-medium">{filteredBookings.length}</span> results
+            </p>
+          </div>
+          <div>
+            <nav className="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
+              <button
+                onClick={() => goToPage(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50"
+              >
+                <span className="sr-only">Previous</span>
+                <ChevronLeftIcon className="h-5 w-5" aria-hidden="true" />
+              </button>
+              
+              {/* Page numbers */}
+              {Array.from({length: totalPages}, (_, i) => i + 1).map(page => (
+                <button
+                  key={page}
+                  onClick={() => goToPage(page)}
+                  className={`relative inline-flex items-center px-4 py-2 text-sm font-semibold ${
+                    page === currentPage
+                      ? 'bg-[var(--primary-green)] text-white focus:z-20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary-green)]'
+                      : 'text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0'
+                  }`}
+                >
+                  {page}
+                </button>
+              ))}
+              
+              <button
+                onClick={() => goToPage(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50"
+              >
+                <span className="sr-only">Next</span>
+                <ChevronRightIcon className="h-5 w-5" aria-hidden="true" />
+              </button>
+            </nav>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -177,7 +326,7 @@ function CremationHistoryPage({ userData }: { userData: any }) {
           </div>
           <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3">
             <button 
-              onClick={handleExportCSV}
+              onClick={exportAsCSV}
               className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
             >
               <ArrowDownTrayIcon className="h-5 w-5 mr-2 text-gray-500" />
@@ -203,7 +352,7 @@ function CremationHistoryPage({ userData }: { userData: any }) {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
         <div className="bg-white p-6 rounded-xl shadow-sm">
           <div className="flex items-center">
             <div className="p-3 rounded-full bg-indigo-100 text-indigo-800 mr-4">
@@ -228,6 +377,17 @@ function CremationHistoryPage({ userData }: { userData: any }) {
         </div>
         <div className="bg-white p-6 rounded-xl shadow-sm">
           <div className="flex items-center">
+            <div className="p-3 rounded-full bg-red-100 text-red-800 mr-4">
+              <FunnelIcon className="h-6 w-6" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-600">Cancelled</p>
+              <p className="text-2xl font-semibold text-gray-900">{stats.cancelledBookings}</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white p-6 rounded-xl shadow-sm">
+          <div className="flex items-center">
             <div className="p-3 rounded-full bg-yellow-100 text-yellow-800 mr-4">
               <CurrencyDollarIcon className="h-6 w-6" />
             </div>
@@ -239,7 +399,7 @@ function CremationHistoryPage({ userData }: { userData: any }) {
         </div>
         <div className="bg-white p-6 rounded-xl shadow-sm">
           <div className="flex items-center">
-            <div className="p-3 rounded-full bg-red-100 text-red-800 mr-4">
+            <div className="p-3 rounded-full bg-blue-100 text-blue-800 mr-4">
               <FunnelIcon className="h-6 w-6" />
             </div>
             <div>
@@ -250,67 +410,72 @@ function CremationHistoryPage({ userData }: { userData: any }) {
         </div>
       </div>
 
-      {/* Filters and Search */}
+      {/* Filter controls */}
       <div className="bg-white rounded-xl shadow-sm p-6 mb-8">
-        <div className="flex flex-col md:flex-row md:justify-between md:items-center space-y-4 md:space-y-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              onClick={() => setDateFilter('all')}
-              className={`px-4 py-2 text-sm font-medium rounded-lg ${
-                dateFilter === 'all'
-                  ? 'bg-[var(--primary-green)] text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              All Time
-            </button>
-            <button
-              onClick={() => setDateFilter('last7days')}
-              className={`px-4 py-2 text-sm font-medium rounded-lg ${
-                dateFilter === 'last7days'
-                  ? 'bg-[var(--primary-green)] text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              Last 7 Days
-            </button>
-            <button
-              onClick={() => setDateFilter('last30days')}
-              className={`px-4 py-2 text-sm font-medium rounded-lg ${
-                dateFilter === 'last30days'
-                  ? 'bg-[var(--primary-green)] text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              Last 30 Days
-            </button>
-            <button
-              onClick={() => setDateFilter('last90days')}
-              className={`px-4 py-2 text-sm font-medium rounded-lg ${
-                dateFilter === 'last90days'
-                  ? 'bg-[var(--primary-green)] text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              Last 90 Days
-            </button>
-          </div>
-          <div className="relative min-w-[200px]">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Search filter */}
+          <div>
+            <label htmlFor="search" className="block text-sm font-medium text-gray-700 mb-1">
+              Search
+            </label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
+              </div>
+              <input
+                type="text"
+                id="search"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)] sm:text-sm"
+                placeholder="Search by pet name, owner..."
+              />
             </div>
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)] sm:text-sm"
-              placeholder="Search by pet or owner..."
-            />
+          </div>
+          
+          {/* Date range filter */}
+          <div>
+            <label htmlFor="date-filter" className="block text-sm font-medium text-gray-700 mb-1">
+              Date Range
+            </label>
+            <select
+              id="date-filter"
+              value={dateFilter}
+              onChange={(e) => setDateFilter(e.target.value)}
+              className="block w-full pl-3 pr-10 py-2 border border-gray-300 rounded-md leading-5 bg-white focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)] sm:text-sm"
+            >
+              <option value="all">All Time</option>
+              <option value="last7days">Last 7 Days</option>
+              <option value="last30days">Last 30 Days</option>
+              <option value="last90days">Last 90 Days</option>
+              <option value="last6months">Last 6 Months</option>
+              <option value="thisyear">This Year</option>
+            </select>
+          </div>
+          
+          {/* Status filter */}
+          <div>
+            <label htmlFor="status-filter" className="block text-sm font-medium text-gray-700 mb-1">
+              Status
+            </label>
+            <select
+              id="status-filter"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="block w-full pl-3 pr-10 py-2 border border-gray-300 rounded-md leading-5 bg-white focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)] sm:text-sm"
+            >
+              <option value="all">All Statuses</option>
+              <option value="completed">Completed</option>
+              <option value="cancelled">Cancelled</option>
+              <option value="in_progress">In Progress</option>
+              <option value="confirmed">Confirmed</option>
+              <option value="pending">Pending</option>
+            </select>
           </div>
         </div>
       </div>
 
-      {/* Table View */}
+      {/* Bookings table */}
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-200">
           <h2 className="text-lg font-medium text-gray-800">Booking History</h2>
@@ -318,17 +483,17 @@ function CremationHistoryPage({ userData }: { userData: any }) {
         
         {loading ? (
           <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[var(--primary-green)]"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[var(--primary-green)]"></div>
           </div>
         ) : error ? (
           <div className="p-6 text-center">
-            <p className="text-red-500 mb-4">{error}</p>
-            <button 
-              onClick={handleRefresh}
-              className="inline-flex items-center px-4 py-2 bg-[var(--primary-green)] text-white rounded-lg hover:bg-opacity-90"
+            <p className="text-red-500">{error}</p>
+            <button
+              onClick={() => fetchBookingHistory()}
+              className="mt-4 inline-flex items-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
             >
               <ArrowPathIcon className="h-5 w-5 mr-2" />
-              Try Again
+              Retry
             </button>
           </div>
         ) : filteredBookings.length === 0 ? (
@@ -342,6 +507,8 @@ function CremationHistoryPage({ userData }: { userData: any }) {
                 ? 'Try changing your search term to see more results.'
                 : dateFilter !== 'all'
                 ? 'Try changing the date filter to see more results.'
+                : statusFilter !== 'all' 
+                ? 'Try changing the status filter to see more results.'
                 : 'There are no completed or cancelled bookings to display at this time.'}
             </p>
           </div>
@@ -360,7 +527,7 @@ function CremationHistoryPage({ userData }: { userData: any }) {
                     Owner
                   </th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Package
+                    Service
                   </th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Date
@@ -368,8 +535,8 @@ function CremationHistoryPage({ userData }: { userData: any }) {
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Status
                   </th>
-                  <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Amount
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Price
                   </th>
                   <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Actions
@@ -377,45 +544,69 @@ function CremationHistoryPage({ userData }: { userData: any }) {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {filteredBookings.map((booking) => (
+                {currentBookings.map((booking) => (
                   <tr key={booking.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="text-sm text-gray-500">#{booking.id}</span>
+                      <div className="text-sm font-medium text-gray-900">#{booking.id}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">{booking.petName || 'Unknown'}</div>
-                      <div className="text-sm text-gray-500">{booking.petType || 'Unknown'}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900 truncate max-w-[200px]">{booking.owner || 'Unknown'}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{booking.package || 'Unknown Package'}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{booking.date || 'Not scheduled'}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {getStatusBadge(booking.status || 'pending')}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right">
-                      <div className="text-sm font-medium text-gray-900">
-                        ₱{parseFloat(booking.amount || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                      <div className="flex items-center">
+                        <div className="h-10 w-10 flex-shrink-0">
+                          {booking.petImageUrl ? (
+                            <img 
+                              className="h-10 w-10 rounded-full object-cover" 
+                              src={booking.petImageUrl} 
+                              alt={booking.petName || 'Pet'} 
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).src = '/icons/pet-placeholder.png';
+                              }}
+                            />
+                          ) : (
+                            <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
+                              <span className="text-gray-500 text-xs">{booking.petName?.charAt(0) || '?'}</span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="ml-4">
+                          <div className="text-sm font-medium text-gray-900">{booking.petName || 'Unknown'}</div>
+                          <div className="text-sm text-gray-500">{booking.petType || 'Not specified'}</div>
+                        </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">{booking.owner || 'Unknown'}</div>
+                      <div className="text-sm text-gray-500">{booking.owner?.email}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">{booking.package || 'Unknown Service'}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">{booking.createdAt}</div>
+                      <div className="text-sm text-gray-500">{booking.scheduledDate !== 'Not scheduled' ? booking.scheduledDate : ''}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {getStatusBadge(booking.status)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-medium text-gray-900">₱{booking.price?.toLocaleString() || '0'}</div>
+                      <div className="text-sm text-gray-500">{booking.paymentMethod || 'Not specified'}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <Link 
-                        href={`/cremation/bookings/${booking.id}`}
-                        className="inline-flex items-center px-2.5 py-1.5 border border-gray-300 text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50"
+                        href={`/cremation/bookings/${booking.id}`} 
+                        className="text-[var(--primary-green)] hover:text-[var(--primary-green-hover)] inline-flex items-center"
                       >
                         <EyeIcon className="h-4 w-4 mr-1" />
-                        Details
+                        View
                       </Link>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+            
+            {/* Pagination component */}
+            {renderPagination()}
           </div>
         )}
       </div>

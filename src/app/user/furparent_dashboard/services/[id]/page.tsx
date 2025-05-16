@@ -21,6 +21,7 @@ import FurParentNavbar from '@/components/navigation/FurParentNavbar';
 import withOTPVerification from '@/components/withOTPVerification';
 import FurParentPageSkeleton from '@/components/ui/FurParentPageSkeleton';
 import { getPackageImageUrl, handleImageError } from '@/utils/imageUtils';
+import TimeSlotSelector from '@/components/booking/TimeSlotSelector';
 
 interface ServiceDetailPageProps {
   userData?: any;
@@ -44,6 +45,8 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [bookingSuccess, setBookingSuccess] = useState(false);
   const [bookingError, setBookingError] = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = useState<string | undefined>(undefined);
+  const [selectedTimeSlot, setSelectedTimeSlot] = useState<any | null>(null);
 
   // Will fetch real data from API
 
@@ -240,6 +243,12 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleDateTimeSelected = (date: string, timeSlot: any | null) => {
+    setSelectedDate(date);
+    setSelectedTimeSlot(timeSlot);
+    console.log('Selected date and time:', date, timeSlot);
   };
 
   return (

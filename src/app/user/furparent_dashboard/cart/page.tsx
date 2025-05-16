@@ -20,7 +20,7 @@ interface CartPageProps {
 
 function CartPage({ userData }: CartPageProps) {
   const router = useRouter();
-  const { items, removeItem, totalPrice } = useCart();
+  const { items, removeItem, totalPrice, clearCart } = useCart();
   const { showToast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [checkoutSuccess, setCheckoutSuccess] = useState(false);
@@ -38,10 +38,9 @@ function CartPage({ userData }: CartPageProps) {
       return;
     }
 
-    // Get the first item from the cart and redirect to checkout
+    // Always redirect to the checkout page with the first item's details
+    // The checkout page will handle the item from the cart context
     const item = items[0];
-    
-    // Redirect to the checkout page with the first item's details
     router.push(`/user/furparent_dashboard/bookings/checkout?provider=${item.providerId}&package=${item.packageId}&fromCart=true&petId=${item.petId}&petName=${encodeURIComponent(item.petName || '')}`);
   };
 
@@ -130,7 +129,7 @@ function CartPage({ userData }: CartPageProps) {
                               <p className="text-[var(--primary-green)] font-semibold mt-1">
                                 ₱{item.price.toLocaleString()}
                               </p>
-                              
+
                               {/* Only show selected pet if available */}
                               {item.petId && item.petName && (
                                 <p className="text-sm text-gray-700 mt-2">
@@ -188,10 +187,10 @@ function CartPage({ userData }: CartPageProps) {
 
                 <button
                   onClick={handleCheckout}
-                  disabled={isLoading || items.length === 0}
+                  disabled={items.length === 0}
                   className="w-full py-3 bg-[var(--primary-green)] text-white rounded-md hover:bg-[var(--primary-green-hover)] disabled:bg-gray-300 disabled:cursor-not-allowed"
                 >
-                  {isLoading ? 'Processing...' : 'Proceed to Checkout'}
+                  Proceed to Checkout
                 </button>
               </div>
             </div>

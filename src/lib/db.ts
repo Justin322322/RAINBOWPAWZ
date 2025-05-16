@@ -253,4 +253,90 @@ export async function testConnection() {
   }
 }
 
+// Helper function to ensure the availability tables exist
+export async function ensureAvailabilityTablesExist(): Promise<boolean> {
+  try {
+    // Check if tables exist
+    const tablesCheckQuery = `
+      SELECT TABLE_NAME 
+      FROM INFORMATION_SCHEMA.TABLES 
+      WHERE TABLE_SCHEMA = DATABASE() 
+      AND TABLE_NAME IN ('provider_availability', 'provider_time_slots')
+    `;
+    
+    const tablesResult = await query(tablesCheckQuery) as any[];
+    const existingTables = tablesResult.map((row: any) => row.TABLE_NAME.toLowerCase());
+    
+    console.log('[DB] Checking availability tables, found:', existingTables);
+    
+    // Create provider_availability table if needed
+    if (!existingTables.includes('provider_availability')) {
+      console.log('[DB] Creating provider_availability table...');
+      const createAvailabilityTableQuery = `
+        CREATE TABLE provider_availability (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          provider_id INT NOT NULL,
+          date DATE NOT NULL,
+          is_available BOOLEAN DEFAULT TRUE,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          UNIQUE KEY provider_date_unique (provider_id, date)
+        )
+      `;
+      await query(createAvailabilityTableQuery);
+      console.log('[DB] provider_availability table created successfully');
+    }
+    
+    // Create provider_time_slots table if needed
+    if (!existingTables.includes('provider_time_slots')) {
+      console.log('[DB] Creating provider_time_slots table...');
+      const createTimeSlotsTableQuery = `
+        CREATE TABLE provider_time_slots (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          provider_id INT NOT NULL,
+          date DATE NOT NULL,
+          start_time TIME NOT NULL,
+          end_time TIME NOT NULL,
+          available_services TEXT DEFAULT NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          INDEX (provider_id, date)
+        )
+      `;
+      await query(createTimeSlotsTableQuery);
+      console.log('[DB] provider_time_slots table created successfully');
+    } else {
+      // Check if available_services column exists in the provider_time_slots table
+      const columnCheckQuery = `
+        SELECT COLUMN_NAME 
+        FROM INFORMATION_SCHEMA.COLUMNS 
+        WHERE TABLE_SCHEMA = DATABASE() 
+        AND TABLE_NAME = 'provider_time_slots' 
+        AND COLUMN_NAME = 'available_services'
+      `;
+      
+      const columnResult = await query(columnCheckQuery) as any[];
+      
+      // If the column doesn't exist, add it
+      if (columnResult.length === 0) {
+        console.log('[DB] Adding available_services column to provider_time_slots table...');
+        const addColumnQuery = `
+          ALTER TABLE provider_time_slots
+          ADD COLUMN available_services TEXT DEFAULT NULL
+        `;
+        
+        await query(addColumnQuery);
+        console.log('[DB] Added available_services column to provider_time_slots table');
+      } else {
+        console.log('[DB] available_services column already exists in provider_time_slots table');
+      }
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('[DB] Error ensuring availability tables exist:', error);
+    return false;
+  }
+}
+
 export default pool;

@@ -4,6 +4,7 @@ import { useState, useEffect, Fragment } from 'react';
 import { motion } from 'framer-motion';
 import { format } from 'date-fns';
 import { Dialog, Transition } from '@headlessui/react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   ClockIcon,
   CheckCircleIcon,
@@ -15,7 +16,10 @@ import {
   MapPinIcon,
   PhoneIcon,
   EnvelopeIcon,
-  ExclamationTriangleIcon
+  ExclamationTriangleIcon,
+  BanknotesIcon,
+  CreditCardIcon,
+  ArrowPathIcon
 } from '@heroicons/react/24/outline';
 import FurParentNavbar from '@/components/navigation/FurParentNavbar';
 import withOTPVerification from '@/components/withOTPVerification';
@@ -24,13 +28,16 @@ import FurParentPageSkeleton from '@/components/ui/FurParentPageSkeleton';
 interface BookingData {
   id: number;
   user_id: number;
-  pet_id: number;
-  business_service_id: number;
+  pet_id?: number;
+  provider_id?: number;
+  package_id?: number;
+  business_service_id?: number;
   booking_date: string;
   booking_time: string;
-  status: 'pending' | 'confirmed' | 'completed' | 'cancelled';
-  total_amount: number;
-  special_requests: string;
+  status: 'pending' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled';
+  total_amount?: number;
+  price?: number;
+  special_requests?: string;
   created_at: string;
   updated_at: string;
   service_name: string;
@@ -41,6 +48,14 @@ interface BookingData {
   pet_name: string;
   pet_type: string;
   pet_breed?: string;
+  pet_image_url?: string;
+  cause_of_death?: string;
+  payment_method?: string;
+  payment_status?: 'not_paid' | 'partially_paid' | 'paid';
+  delivery_option?: string;
+  delivery_address?: string;
+  delivery_distance?: number;
+  delivery_fee?: number;
 }
 
 interface BookingsPageProps {
@@ -55,6 +70,32 @@ function BookingsPage({ userData }: BookingsPageProps) {
   const [allBookings, setAllBookings] = useState<BookingData[]>([]);
   const [dbCheckResult, setDbCheckResult] = useState<any>(null);
   const [isCheckingDb, setIsCheckingDb] = useState(false);
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  const [successBookingId, setSuccessBookingId] = useState<string | null>(null);
+
+  // Check for success parameter in URL
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const success = searchParams.get('success');
+    const bookingId = searchParams.get('bookingId');
+
+    if (success === 'true' && bookingId) {
+      setShowSuccessMessage(true);
+      setSuccessBookingId(bookingId);
+
+      // Clear the URL parameters after a delay
+      setTimeout(() => {
+        router.replace('/user/furparent_dashboard/bookings');
+      }, 5000);
+
+      // Auto-hide the success message after some time
+      setTimeout(() => {
+        setShowSuccessMessage(false);
+      }, 8000);
+    }
+  }, [searchParams, router]);
 
   // Modal states
   const [selectedBooking, setSelectedBooking] = useState<BookingData | null>(null);
@@ -260,6 +301,8 @@ function BookingsPage({ userData }: BookingsPageProps) {
         return <CheckCircleIcon className="h-5 w-5 text-green-500" />;
       case 'pending':
         return <ClockIcon className="h-5 w-5 text-yellow-500" />;
+      case 'in_progress':
+        return <ClipboardDocumentListIcon className="h-5 w-5 text-orange-500" />;
       case 'completed':
         return <ClipboardDocumentCheckIcon className="h-5 w-5 text-blue-500" />;
       case 'cancelled':
@@ -275,12 +318,40 @@ function BookingsPage({ userData }: BookingsPageProps) {
         return 'bg-green-100 text-green-800';
       case 'pending':
         return 'bg-yellow-100 text-yellow-800';
+      case 'in_progress':
+        return 'bg-orange-100 text-orange-800';
       case 'completed':
         return 'bg-blue-100 text-blue-800';
       case 'cancelled':
         return 'bg-red-100 text-red-800';
       default:
         return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getPaymentStatusClass = (status: string) => {
+    switch (status) {
+      case 'paid':
+        return 'bg-green-100 text-green-800';
+      case 'partially_paid':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'not_paid':
+        return 'bg-red-100 text-red-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getPaymentStatusIcon = (status: string) => {
+    switch (status) {
+      case 'paid':
+        return <CheckCircleIcon className="h-5 w-5 text-green-500" />;
+      case 'partially_paid':
+        return <ClockIcon className="h-5 w-5 text-yellow-500" />;
+      case 'not_paid':
+        return <XCircleIcon className="h-5 w-5 text-red-500" />;
+      default:
+        return <ClockIcon className="h-5 w-5 text-gray-500" />;
     }
   };
 
@@ -336,6 +407,30 @@ function BookingsPage({ userData }: BookingsPageProps) {
           </div>
         </motion.div>
 
+        {/* Success Message */}
+        {showSuccessMessage && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg flex items-start"
+          >
+            <CheckCircleIcon className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
+            <div className="ml-3">
+              <p className="text-green-800 font-medium">Booking successfully created!</p>
+              <p className="text-green-700 text-sm mt-1">
+                Your booking (ID: {successBookingId}) has been confirmed. You can view the details below.
+              </p>
+            </div>
+            <button
+              onClick={() => setShowSuccessMessage(false)}
+              className="ml-auto text-green-500 hover:text-green-700"
+            >
+              <XCircleIcon className="h-5 w-5" />
+            </button>
+          </motion.div>
+        )}
+
         {/* Filters */}
         <div className="mb-8">
           <div className="flex flex-wrap gap-2">
@@ -368,6 +463,16 @@ function BookingsPage({ userData }: BookingsPageProps) {
               }`}
             >
               Confirmed
+            </button>
+            <button
+              onClick={() => handleFilterChange('in_progress')}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors duration-200 ${
+                activeFilter === 'in_progress'
+                  ? 'bg-[var(--primary-green)] text-white'
+                  : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+              }`}
+            >
+              In Progress
             </button>
             <button
               onClick={() => handleFilterChange('completed')}
@@ -421,6 +526,36 @@ function BookingsPage({ userData }: BookingsPageProps) {
                     {isCheckingDb ? 'Checking...' : 'Check Database'}
                   </button>
                   <button
+                    onClick={async () => {
+                      try {
+                        const response = await fetch('/api/debug/auth');
+                        const data = await response.json();
+                        console.log('Auth debug info:', data);
+                        setDbCheckResult({
+                          auth: data,
+                          timestamp: new Date().toISOString()
+                        });
+                      } catch (e) {
+                        console.error('Error checking auth:', e);
+                        setDbCheckResult({
+                          error: e instanceof Error ? e.message : 'Unknown error',
+                          timestamp: new Date().toISOString()
+                        });
+                      }
+                    }}
+                    className="px-4 py-2 border border-blue-300 rounded-md text-sm font-medium text-blue-700 bg-white hover:bg-blue-50 transition-colors"
+                  >
+                    Debug Auth
+                  </button>
+                  <button
+                    onClick={() => {
+                      window.location.href = '/user/furparent_dashboard/bookings/debug';
+                    }}
+                    className="px-4 py-2 border border-green-300 rounded-md text-sm font-medium text-green-700 bg-white hover:bg-green-50 transition-colors"
+                  >
+                    Advanced Debug
+                  </button>
+                  <button
                     onClick={() => {
                       setError(null);
                       setIsLoading(true);
@@ -472,15 +607,37 @@ function BookingsPage({ userData }: BookingsPageProps) {
                         <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusClass(booking.status)}`}>
                           <div className="flex items-center">
                             {getStatusIcon(booking.status)}
-                            <span className="ml-1 capitalize">{booking.status}</span>
+                            <span className="ml-1 capitalize">{booking.status.replace('_', ' ')}</span>
                           </div>
                         </span>
                       </div>
                       <p className="text-sm text-gray-600 mt-1">{booking.service_name || 'Service'}</p>
+
+                      {/* Mini Progress Bar */}
+                      <div className="mt-2">
+                        <div className="flex items-center space-x-1">
+                          <div className="w-full bg-gray-200 rounded-full h-1.5">
+                            <div
+                              className={`h-1.5 rounded-full ${
+                                booking.status === 'cancelled'
+                                  ? 'bg-red-500'
+                                  : 'bg-[var(--primary-green)]'
+                              }`}
+                              style={{
+                                width: booking.status === 'pending' ? '20%' :
+                                       booking.status === 'confirmed' ? '40%' :
+                                       booking.status === 'in_progress' ? '70%' :
+                                       booking.status === 'completed' ? '100%' :
+                                       booking.status === 'cancelled' ? '100%' : '0%'
+                              }}
+                            ></div>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                     <div className="text-right">
                       <p className="text-lg font-semibold text-[var(--primary-green)]">
-                        ₱{booking.total_amount?.toLocaleString() || booking.service_price?.toLocaleString() || '0.00'}
+                        ₱{(booking.total_amount || booking.price || booking.service_price || 0).toLocaleString()}
                       </p>
                       <p className="text-sm text-gray-600">
                         {formatDateTime(booking.booking_date, booking.booking_time)}
@@ -493,17 +650,17 @@ function BookingsPage({ userData }: BookingsPageProps) {
                       <div>
                         <h4 className="text-sm font-medium text-gray-500">Pet Information</h4>
                         <p className="mt-1 text-sm text-gray-900">
-                          {booking.pet_name && booking.pet_name !== 'Pet' && booking.pet_name !== 'Unknown' ? 
-                            `${booking.pet_name}${booking.pet_type && booking.pet_type !== 'Unknown' ? ` (${booking.pet_type})` : ''}` : 
+                          {booking.pet_name && booking.pet_name !== 'Pet' && booking.pet_name !== 'Unknown' ?
+                            `${booking.pet_name}${booking.pet_type && booking.pet_type !== 'Unknown' ? ` (${booking.pet_type})` : ''}` :
                             'Pet information not available'}
                         </p>
                       </div>
                       <div>
                         <h4 className="text-sm font-medium text-gray-500">Service Location</h4>
                         <p className="mt-1 text-sm text-gray-900">
-                          {booking.provider_address && booking.provider_address !== 'Provider Address' && booking.provider_address !== 'Service Address' ? 
-                            booking.provider_address : 
-                            (booking.provider_name && booking.provider_name !== 'Service Provider' ? 
+                          {booking.provider_address && booking.provider_address !== 'Provider Address' && booking.provider_address !== 'Service Address' ?
+                            booking.provider_address :
+                            (booking.provider_name && booking.provider_name !== 'Service Provider' ?
                               booking.provider_name : 'Location information not available')}
                         </p>
                       </div>
@@ -584,9 +741,32 @@ function BookingsPage({ userData }: BookingsPageProps) {
                           <div className="bg-gray-50 p-4 rounded-lg">
                             <p className="text-lg font-semibold text-gray-900 mb-1">{selectedBooking.service_name}</p>
                             <p className="text-sm text-gray-600 mb-3">{selectedBooking.service_description}</p>
-                            <p className="text-lg font-semibold text-[var(--primary-green)]">
-                              ₱{selectedBooking.total_amount?.toLocaleString() || selectedBooking.service_price?.toLocaleString() || '0.00'}
-                            </p>
+                            <div className="flex flex-col space-y-1">
+                              <div className="flex justify-between">
+                                <p className="text-sm text-gray-600">Service Price:</p>
+                                <p className="text-sm font-medium text-gray-900">
+                                  ₱{(selectedBooking.service_price || selectedBooking.price || 0).toLocaleString()}
+                                </p>
+                              </div>
+
+                              {selectedBooking.delivery_fee > 0 && (
+                                <div className="flex justify-between">
+                                  <p className="text-sm text-gray-600">Delivery Fee:</p>
+                                  <p className="text-sm font-medium text-gray-900">
+                                    ₱{selectedBooking.delivery_fee.toLocaleString()}
+                                  </p>
+                                </div>
+                              )}
+
+                              <div className="flex justify-between pt-2 border-t border-gray-200 mt-1">
+                                <p className="text-sm font-medium text-gray-900">Total:</p>
+                                <p className="text-lg font-semibold text-[var(--primary-green)]">
+                                  ₱{(Number(selectedBooking.total_amount) ||
+                                     (Number(selectedBooking.price) + Number(selectedBooking.delivery_fee || 0)) ||
+                                     Number(selectedBooking.service_price) || 0).toLocaleString()}
+                                </p>
+                              </div>
+                            </div>
                           </div>
 
                           <h4 className="text-sm font-medium text-gray-500 mt-4 mb-2">Provider Information</h4>
@@ -601,6 +781,71 @@ function BookingsPage({ userData }: BookingsPageProps) {
                               <p className="mt-2 text-sm text-gray-600 italic">Address information not available</p>
                             )}
                           </div>
+
+                          {(selectedBooking.payment_method || selectedBooking.delivery_option) && (
+                            <>
+                              <h4 className="text-sm font-medium text-gray-500 mt-4 mb-2">Delivery & Payment</h4>
+                              <div className="bg-gray-50 p-4 rounded-lg">
+                                {selectedBooking.delivery_option && (
+                                  <div className="mb-3">
+                                    <p className="text-sm text-gray-600 mb-1">Delivery Option</p>
+                                    <p className="text-base font-medium text-gray-900 capitalize">
+                                      {selectedBooking.delivery_option}
+                                    </p>
+
+                                    {selectedBooking.delivery_option === 'delivery' && selectedBooking.delivery_address && (
+                                      <div className="mt-2">
+                                        <p className="text-sm text-gray-600 mb-1">Delivery Address</p>
+                                        <p className="text-sm text-gray-900">{selectedBooking.delivery_address}</p>
+
+                                        {selectedBooking.delivery_distance > 0 && (
+                                          <p className="text-xs text-gray-500 mt-1">
+                                            Distance: {selectedBooking.delivery_distance.toFixed(1)} km
+                                          </p>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+
+                                {selectedBooking.payment_method && (
+                                  <div className="mb-3">
+                                    <p className="text-sm text-gray-600 mb-1">Payment Method</p>
+                                    <div className="flex items-center">
+                                      {selectedBooking.payment_method === 'cash' ? (
+                                        <BanknotesIcon className="h-5 w-5 text-gray-400 mr-2" />
+                                      ) : (
+                                        <CreditCardIcon className="h-5 w-5 text-gray-400 mr-2" />
+                                      )}
+                                      <p className="text-base font-medium text-gray-900 capitalize">
+                                        {selectedBooking.payment_method}
+                                      </p>
+                                    </div>
+                                  </div>
+                                )}
+
+                                {selectedBooking.payment_status && (
+                                  <div>
+                                    <p className="text-sm text-gray-600 mb-1">Payment Status</p>
+                                    <div className="flex items-center">
+                                      <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${getPaymentStatusClass(selectedBooking.payment_status)}`}>
+                                        <div className="flex items-center">
+                                          {getPaymentStatusIcon(selectedBooking.payment_status)}
+                                          <span className="ml-1 capitalize">{selectedBooking.payment_status.replace('_', ' ')}</span>
+                                        </div>
+                                      </span>
+                                    </div>
+
+                                    {selectedBooking.payment_method === 'gcash' && selectedBooking.payment_status === 'paid' && (
+                                      <p className="text-xs text-green-600 mt-2">
+                                        GCash payments are automatically marked as paid
+                                      </p>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            </>
+                          )}
                         </div>
 
                         <div>
@@ -611,9 +856,98 @@ function BookingsPage({ userData }: BookingsPageProps) {
                               <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusClass(selectedBooking.status)}`}>
                                 <div className="flex items-center">
                                   {getStatusIcon(selectedBooking.status)}
-                                  <span className="ml-1 capitalize">{selectedBooking.status}</span>
+                                  <span className="ml-1 capitalize">{selectedBooking.status.replace('_', ' ')}</span>
                                 </div>
                               </span>
+                            </div>
+
+                            {/* Status Tracking UI */}
+                            <div className="my-4 pt-2 pb-3">
+                              <p className="text-sm font-medium text-gray-700 mb-3">Booking Progress</p>
+                              <div className="relative">
+                                {/* Progress Bar */}
+                                <div className="overflow-hidden h-2 mb-4 text-xs flex rounded bg-gray-200">
+                                  <div
+                                    className={`shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center ${
+                                      selectedBooking.status === 'cancelled'
+                                        ? 'bg-red-500'
+                                        : 'bg-[var(--primary-green)]'
+                                    }`}
+                                    style={{
+                                      width: selectedBooking.status === 'pending' ? '20%' :
+                                             selectedBooking.status === 'confirmed' ? '40%' :
+                                             selectedBooking.status === 'in_progress' ? '70%' :
+                                             selectedBooking.status === 'completed' ? '100%' :
+                                             selectedBooking.status === 'cancelled' ? '100%' : '0%'
+                                    }}
+                                  ></div>
+                                </div>
+
+                                {/* Status Steps */}
+                                <div className="flex justify-between -mt-1.5">
+                                  <div className="text-center relative">
+                                    <div className={`w-6 h-6 mx-auto rounded-full flex items-center justify-center ${
+                                      ['pending', 'confirmed', 'in_progress', 'completed'].includes(selectedBooking.status)
+                                        ? 'bg-[var(--primary-green)] text-white'
+                                        : selectedBooking.status === 'cancelled'
+                                          ? 'bg-red-500 text-white'
+                                          : 'bg-gray-300 text-gray-500'
+                                    }`}>
+                                      <ClockIcon className="h-3 w-3" />
+                                    </div>
+                                    <div className="text-xs mt-1 text-gray-600">Pending</div>
+                                  </div>
+
+                                  <div className="text-center relative">
+                                    <div className={`w-6 h-6 mx-auto rounded-full flex items-center justify-center ${
+                                      ['confirmed', 'in_progress', 'completed'].includes(selectedBooking.status)
+                                        ? 'bg-[var(--primary-green)] text-white'
+                                        : selectedBooking.status === 'cancelled'
+                                          ? 'bg-gray-300 text-gray-500'
+                                          : 'bg-gray-300 text-gray-500'
+                                    }`}>
+                                      <CheckCircleIcon className="h-3 w-3" />
+                                    </div>
+                                    <div className="text-xs mt-1 text-gray-600">Confirmed</div>
+                                  </div>
+
+                                  <div className="text-center relative">
+                                    <div className={`w-6 h-6 mx-auto rounded-full flex items-center justify-center ${
+                                      ['in_progress', 'completed'].includes(selectedBooking.status)
+                                        ? 'bg-[var(--primary-green)] text-white'
+                                        : selectedBooking.status === 'cancelled'
+                                          ? 'bg-gray-300 text-gray-500'
+                                          : 'bg-gray-300 text-gray-500'
+                                    }`}>
+                                      <ArrowPathIcon className="h-3 w-3" />
+                                    </div>
+                                    <div className="text-xs mt-1 text-gray-600">In Progress</div>
+                                  </div>
+
+                                  <div className="text-center relative">
+                                    <div className={`w-6 h-6 mx-auto rounded-full flex items-center justify-center ${
+                                      selectedBooking.status === 'completed'
+                                        ? 'bg-[var(--primary-green)] text-white'
+                                        : selectedBooking.status === 'cancelled'
+                                          ? 'bg-gray-300 text-gray-500'
+                                          : 'bg-gray-300 text-gray-500'
+                                    }`}>
+                                      <ClipboardDocumentCheckIcon className="h-3 w-3" />
+                                    </div>
+                                    <div className="text-xs mt-1 text-gray-600">Completed</div>
+                                  </div>
+                                </div>
+
+                                {/* Cancelled Status (if applicable) */}
+                                {selectedBooking.status === 'cancelled' && (
+                                  <div className="mt-3 bg-red-50 p-2 rounded-md border border-red-100">
+                                    <div className="flex items-center justify-center text-red-700">
+                                      <XCircleIcon className="h-4 w-4 mr-1" />
+                                      <span className="text-xs font-medium">This booking has been cancelled</span>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
                             </div>
 
                             <div className="flex justify-between items-center mb-3">
@@ -638,19 +972,41 @@ function BookingsPage({ userData }: BookingsPageProps) {
 
                           <h4 className="text-sm font-medium text-gray-500 mt-4 mb-2">Pet Information</h4>
                           <div className="bg-gray-50 p-4 rounded-lg">
-                            {selectedBooking.pet_name && selectedBooking.pet_name !== 'Pet' && selectedBooking.pet_name !== 'Unknown' ? (
-                              <>
-                                <p className="text-lg font-semibold text-gray-900 mb-1">{selectedBooking.pet_name}</p>
-                                {selectedBooking.pet_type && selectedBooking.pet_type !== 'Unknown' && (
-                                  <p className="text-sm text-gray-600">{selectedBooking.pet_type}</p>
+                            <div className="flex items-start">
+                              {selectedBooking.pet_image_url ? (
+                                <div className="mr-4 flex-shrink-0">
+                                  <img
+                                    src={selectedBooking.pet_image_url}
+                                    alt={selectedBooking.pet_name || 'Pet'}
+                                    className="h-20 w-20 object-cover rounded-lg shadow-sm"
+                                    onError={(e) => {
+                                      const target = e.target as HTMLImageElement;
+                                      target.onerror = null; // Prevent infinite loop
+                                      target.src = '/placeholder-pet.png'; // Fallback image
+                                      target.className = 'h-20 w-20 object-contain rounded-lg bg-gray-100';
+                                    }}
+                                  />
+                                </div>
+                              ) : null}
+                              <div className="flex-1">
+                                {selectedBooking.pet_name && selectedBooking.pet_name !== 'Pet' && selectedBooking.pet_name !== 'Unknown' ? (
+                                  <>
+                                    <p className="text-lg font-semibold text-gray-900 mb-1">{selectedBooking.pet_name}</p>
+                                    {selectedBooking.pet_type && selectedBooking.pet_type !== 'Unknown' && (
+                                      <p className="text-sm text-gray-600">{selectedBooking.pet_type}</p>
+                                    )}
+                                    {selectedBooking.pet_breed && (
+                                      <p className="text-sm text-gray-600 mt-1">Breed: {selectedBooking.pet_breed}</p>
+                                    )}
+                                    {selectedBooking.cause_of_death && (
+                                      <p className="text-sm text-gray-600 mt-1">Cause of Death: {selectedBooking.cause_of_death}</p>
+                                    )}
+                                  </>
+                                ) : (
+                                  <p className="text-sm text-gray-700">Pet information not available</p>
                                 )}
-                                {selectedBooking.pet_breed && (
-                                  <p className="text-sm text-gray-600 mt-1">Breed: {selectedBooking.pet_breed}</p>
-                                )}
-                              </>
-                            ) : (
-                              <p className="text-sm text-gray-700">Pet information not available</p>
-                            )}
+                              </div>
+                            </div>
                           </div>
                         </div>
                       </div>

@@ -5,7 +5,7 @@ import { existsSync } from 'fs';
 import { getAuthTokenFromRequest } from '@/utils/auth';
 
 // Function to ensure directory exists
-async function ensureDirectoryExists(dirPath) {
+async function ensureDirectoryExists(dirPath: string) {
   if (!existsSync(dirPath)) {
     console.log(`Creating directory: ${dirPath}`);
     await mkdir(dirPath, { recursive: true });
@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
     const timestamp = Date.now();
     const originalName = file.name.replace(/\s+/g, '_').toLowerCase();
     const extension = originalName.split('.').pop();
-    
+
     // Use pet name in filename if available
     const sanitizedPetName = petName ? petName.replace(/[^a-z0-9]/gi, '_').toLowerCase() + '_' : '';
     const filename = `pet_${sanitizedPetName}${userId}_${timestamp}.${extension}`;
@@ -67,16 +67,17 @@ export async function POST(request: NextRequest) {
     // Convert file to buffer and save
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
-    
+
     await writeFile(filePath, buffer);
 
     // Return the relative path to the image
     const relativePath = `/uploads/pets/${filename}`;
-    
+
     return NextResponse.json({
       success: true,
       message: 'File uploaded successfully',
-      imagePath: relativePath
+      imagePath: relativePath,
+      imageUrl: relativePath // Add imageUrl for backward compatibility
     });
   } catch (error) {
     console.error('Error uploading file:', error);
