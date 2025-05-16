@@ -34,16 +34,38 @@ export default function PendingVerificationPage() {
         }
         
         const userData = await response.json();
+        console.log('FULL USER DATA:', JSON.stringify(userData, null, 2));
         
-        // Check verification status
-        const isPending = (userData.status === 'pending' || 
-                          (userData.service_provider && userData.service_provider.status === 'pending'));
+        // Extract all possible status values from service provider
+        const serviceProvider = userData.service_provider;
         
-        // If the user is verified, redirect to dashboard
-        if (!isPending && 
-            (userData.status === 'verified' || 
-             (userData.service_provider && userData.service_provider.status === 'verified'))) {
-          router.push('/cremation/dashboard');
+        if (!serviceProvider) {
+          console.log('No service provider data available');
+          setLoading(false);
+          return;
+        }
+        
+        // ONLY check application_status - ignore other non-existent fields 
+        const applicationStatus = serviceProvider.application_status ? 
+                                 String(serviceProvider.application_status).toLowerCase() : null;
+
+        console.log('Application status:', applicationStatus);
+        
+        // DIRECTLY check if application_status === 'approved'
+        if (applicationStatus === 'approved') {
+          console.log('APPLICATION STATUS IS APPROVED - REDIRECTING TO PROFILE');
+          router.push('/cremation/profile');
+          return;
+        }
+        
+        // If application_status is not 'approved', check for documents
+        const hasDocuments = serviceProvider.business_permit_path || 
+                             serviceProvider.government_id_path || 
+                             serviceProvider.bir_certificate_path;
+        
+        if (hasDocuments && !applicationStatus) {
+          console.log('No status found but documents available, redirecting to profile');
+          router.push('/cremation/profile');
           return;
         }
         

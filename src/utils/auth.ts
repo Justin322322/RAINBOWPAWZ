@@ -6,32 +6,57 @@ import { NextRequest } from 'next/server';
 // Get auth token from server request (for API routes)
 export const getAuthTokenFromRequest = (request: NextRequest): string | null => {
   const cookieHeader = request.headers.get('cookie');
-  if (!cookieHeader) return null;
+  console.log('Cookie header:', cookieHeader);
+  
+  if (!cookieHeader) {
+    console.log('No cookie header found in request');
+    return null;
+  }
 
   const cookies = cookieHeader.split(';');
-  const authCookie = cookies.find(cookie => cookie.trim().startsWith('auth_token='));
+  console.log('Parsed cookies:', cookies);
+  
+  // Try to find auth_token with different approaches
+  let authCookie = cookies.find(cookie => cookie.trim().startsWith('auth_token='));
+  
+  // Log all cookies for debugging
+  cookies.forEach(cookie => {
+    const [name, value] = cookie.trim().split('=');
+    console.log(`Cookie: ${name} = ${value?.substring(0, 10)}${value?.length > 10 ? '...' : ''}`);
+  });
 
   if (!authCookie) {
+    console.log('No auth_token cookie found');
     return null;
   }
 
   // Extract the token value and decode it
-  const encodedToken = authCookie.split('=')[1];
+  const cookieParts = authCookie.split('=');
+  if (cookieParts.length < 2) {
+    console.log('Invalid auth_token cookie format');
+    return null;
+  }
+  
+  const encodedToken = cookieParts[1];
   if (!encodedToken) {
+    console.log('Empty auth_token value');
     return null;
   }
 
   // Decode the URI component
   try {
     const token = decodeURIComponent(encodedToken);
+    console.log(`Decoded token: ${token.split('_')[0]}_[HIDDEN]`);
 
     // Validate token format (should be userId_accountType)
     if (!token || !token.includes('_')) {
+      console.log('Invalid token format - missing underscore');
       return null;
     }
 
     return token;
   } catch (error) {
+    console.error('Error decoding token:', error);
     return null;
   }
 };

@@ -19,6 +19,7 @@ import {
   ArrowUpTrayIcon,
   ExclamationTriangleIcon
 } from '@heroicons/react/24/outline';
+import { getAuthToken, isBusiness } from '@/utils/auth';
 
 function CremationProfilePage({ userData }: { userData: any }) {
   // Password states
@@ -70,74 +71,113 @@ function CremationProfilePage({ userData }: { userData: any }) {
   
   const { showToast } = useToast();
 
+  // Define fetchProfileData function outside useEffect so it can be called elsewhere
+  const fetchProfileData = async () => {
+    try {
+      // Check authentication before making the API call
+      const authToken = getAuthToken();
+      if (!authToken || !isBusiness()) {
+        throw new Error('You are not authorized to access this page. Please log in as a business account.');
+      }
+      
+      setLoading(true);
+      setError(null); // Clear any previous errors
+      
+      // Add cache-busting query parameter and no-cache headers
+      const response = await fetch(`/api/cremation/profile?t=${Date.now()}`, {
+        method: 'GET',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        },
+        credentials: 'include' // Important: Include credentials with the request
+      });
+      
+      // Parse response data first
+      let data;
+      try {
+        data = await response.json();
+      } catch (jsonError) {
+        throw new Error('Failed to parse server response');
+      }
+      
+      // Check response status after parsing data
+      if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error('Authentication failed. Please try logging in again.');
+        } else if (response.status === 403) {
+          throw new Error('You do not have permission to access this resource.');
+        } else {
+          throw new Error(data.error || data.message || 'Failed to fetch profile data');
+        }
+      }
+      
+      setProfileData(data.profile);
+      
+      // Update form states with fetched data
+      if (data.profile) {
+        setAddress({
+          street: data.profile.address.street || '',
+          city: data.profile.address.city || '',
+          state: data.profile.address.state || '',
+          zipCode: data.profile.address.zipCode || '',
+          country: data.profile.address.country || 'Philippines'
+        });
+        
+        // Set contact info from profile data
+        const nameParts = data.profile.contactPerson.split(' ');
+        setContactInfo({
+          firstName: nameParts[0] || '',
+          lastName: nameParts.slice(1).join(' ') || '',
+          email: data.profile.email || '',
+          phone: data.profile.phone || ''
+        });
+      }
+      
+      setError(null);
+    } catch (error) {
+      console.error('Error fetching profile data:', error);
+      
+      setError(error instanceof Error ? error.message : 'An error occurred while fetching data');
+      // Show toast only once
+      showToast(error instanceof Error ? error.message : 'Failed to load profile data. Please try again.', 'error');
+      
+      // If authentication error, redirect to login after a short delay
+      if (error instanceof Error && 
+          (error.message.includes('Authentication failed') || 
+            error.message.includes('not authorized'))) {
+        setTimeout(() => {
+          window.location.href = '/api/auth/logout';
+        }, 3000);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Check for showDocuments query parameter on page load
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('showDocuments') === 'true') {
+      showDocumentsModal();
+      
+      // Clear the URL parameter after showing the modal
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
+
   // Fetch profile data
   useEffect(() => {
     let isMounted = true; // Track if component is mounted
     
-    const fetchProfileData = async () => {
-      try {
-        setLoading(true);
-        setError(null); // Clear any previous errors
-        
-        // Add cache-busting query parameter and no-cache headers
-        const response = await fetch(`/api/cremation/profile?t=${Date.now()}`, {
-          method: 'GET',
-          headers: {
-            'Cache-Control': 'no-cache, no-store, must-revalidate',
-            'Pragma': 'no-cache'
-          }
-        });
-        
-        // Parse response data first
-        const data = await response.json();
-        
-        // Check response status after parsing data
-        if (!response.ok) {
-          throw new Error(data.error || data.message || 'Failed to fetch profile data');
-        }
-        
-        // Only update state if component is still mounted
-        if (isMounted) {
-          setProfileData(data.profile);
-          
-          // Update form states with fetched data
-          if (data.profile) {
-            setAddress({
-              street: data.profile.address.street || '',
-              city: data.profile.address.city || '',
-              state: data.profile.address.state || '',
-              zipCode: data.profile.address.zipCode || '',
-              country: data.profile.address.country || 'Philippines'
-            });
-            
-            // Set contact info from profile data
-            const nameParts = data.profile.contactPerson.split(' ');
-            setContactInfo({
-              firstName: nameParts[0] || '',
-              lastName: nameParts.slice(1).join(' ') || '',
-              email: data.profile.email || '',
-              phone: data.profile.phone || ''
-            });
-          }
-          
-          setError(null);
-        }
-      } catch (error) {
-        console.error('Error fetching profile data:', error);
-        
-        if (isMounted) {
-          setError(error instanceof Error ? error.message : 'An error occurred while fetching data');
-          // Show toast only once
-          showToast(error instanceof Error ? error.message : 'Failed to load profile data. Please try again.', 'error');
-        }
-      } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
+    const fetchData = async () => {
+      // Only proceed if component is still mounted
+      if (isMounted) {
+        await fetchProfileData();
       }
     };
 
-    fetchProfileData();
+    fetchData();
     
     // Cleanup function to prevent state updates on unmounted component
     return () => {
@@ -172,6 +212,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include', // Include credentials with the request
         body: JSON.stringify({
           password: {
             currentPassword,
@@ -205,6 +246,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include', // Include credentials with the request
         body: JSON.stringify({ address }),
       });
       
@@ -236,6 +278,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include', // Include credentials with the request
         body: JSON.stringify({ contactInfo }),
       });
       
@@ -344,6 +387,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
       
       const response = await fetch('/api/businesses/upload-documents', {
         method: 'POST',
+        credentials: 'include',
         body: formData,
       });
       
@@ -404,6 +448,37 @@ function CremationProfilePage({ userData }: { userData: any }) {
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Document Upload Reminder */}
+          {profileData && 
+            (!profileData.documents.businessPermitPath && 
+             !profileData.documents.birCertificatePath && 
+             !profileData.documents.governmentIdPath) && (
+            <div className="lg:col-span-3 bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-lg mb-4">
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <ExclamationTriangleIcon className="h-5 w-5 text-yellow-400" />
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm font-medium text-yellow-800">
+                    Your business documents are missing
+                  </p>
+                  <p className="text-sm text-yellow-700 mt-1">
+                    Please upload your business documents to complete your registration. 
+                    Your account will be verified by our admin team after you submit your documents.
+                  </p>
+                  <div className="mt-3">
+                    <button
+                      onClick={showDocumentsModal}
+                      className="bg-yellow-200 hover:bg-yellow-300 text-yellow-800 px-3 py-1.5 rounded-md text-sm font-medium"
+                    >
+                      Upload Documents Now
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Account Information Panel */}
           <div className="lg:col-span-3 bg-white rounded-xl shadow-sm overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-200">

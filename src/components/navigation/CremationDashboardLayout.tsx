@@ -43,7 +43,12 @@ export default function CremationDashboardLayout({
         
         // Always fetch user data to get latest verification status
         try {
-          const response = await fetch(`/api/users/${userId}?t=${Date.now()}`);
+          const response = await fetch(`/api/users/${userId}?t=${Date.now()}`, {
+            headers: {
+              'Cache-Control': 'no-cache, no-store, must-revalidate',
+              'Pragma': 'no-cache'
+            }
+          });
           
           if (!response.ok) {
             console.error('Failed to fetch user data:', await response.text());
@@ -63,36 +68,63 @@ export default function CremationDashboardLayout({
             return;
           }
           
-          // Strict verification checks
-          const isVerified = 
-            userData.is_verified === 1 && 
-            userData.status === 'active' &&
-            userData.service_provider &&
-            (userData.service_provider.status !== 'pending' && 
-             userData.service_provider.status !== 'unverified');
+          // Extract all possible status values
+          console.log('Checking verification status');
+          const serviceProvider = userData.service_provider;
           
-          if (!isVerified) {
-            console.log('Business account is not verified:', userData);
+          if (!serviceProvider) {
+            console.log('No service provider data found, redirecting to pending verification');
             router.push('/cremation/pending-verification');
             return;
           }
           
-          // Check document uploads
-          const hasDocuments = userData.service_provider && (
-            userData.service_provider.business_permit_path ||
-            userData.service_provider.government_id_path ||
-            userData.service_provider.bir_certificate_path
-          );
+          console.log('FULL USER DATA:', JSON.stringify(userData, null, 2));
+          
+          // ONLY check application_status - ignore other fields that might not exist
+          const applicationStatus = serviceProvider.application_status ? 
+                                    String(serviceProvider.application_status).toLowerCase() : null;
+          
+          console.log('Application status:', applicationStatus);
+          
+          // DIRECTLY check if application_status === 'approved'
+          if (applicationStatus === 'approved') {
+            console.log('APPLICATION STATUS IS APPROVED - ALLOWING ACCESS');
+            setUserData(userData);
+            setIsAuthenticated(true);
+            setIsLoading(false);
+            return;
+          }
+          
+          // If application_status is 'pending', redirect to verification page
+          if (applicationStatus === 'pending') {
+            console.log('Application status is pending, redirecting to verification page');
+            router.push('/cremation/pending-verification');
+            return;
+          }
+          
+          // Check for documents as a fallback
+          const hasDocuments = serviceProvider.business_permit_path || 
+                              serviceProvider.government_id_path || 
+                              serviceProvider.bir_certificate_path;
           
           if (!hasDocuments) {
-            console.log('Business has not uploaded required documents');
+            console.log('No documents uploaded, redirecting to pending verification');
             router.push('/cremation/pending-verification');
             return;
           }
           
-          setUserData(userData);
-          setIsAuthenticated(true);
-          setIsLoading(false);
+          // If we get here and there's no specific status but they have documents, allow access
+          if (hasDocuments && !applicationStatus) {
+            console.log('No status found but documents available, allowing access');
+            setUserData(userData);
+            setIsAuthenticated(true);
+            setIsLoading(false);
+            return;
+          }
+          
+          // Any other case, redirect to pending verification
+          console.log('Verification check failed, redirecting to pending verification');
+          router.push('/cremation/pending-verification');
         } catch (fetchError) {
           console.error('Error fetching user data:', fetchError);
           setShowAccessDenied(true);

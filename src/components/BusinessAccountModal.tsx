@@ -110,6 +110,12 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
     if (type === 'file') {
       const fileInput = e.target as HTMLInputElement;
       const file = fileInput.files ? fileInput.files[0] : null;
+      
+      // Log the file details for debugging
+      if (file) {
+        console.log(`File selected for ${name}:`, file.name, file.type, file.size);
+      }
+      
       setFormData(prev => ({
         ...prev,
         [name]: file
@@ -178,15 +184,58 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
         }
       }
 
+      // Now upload the documents if registration was successful
+      if (formData.birCertificate || formData.businessPermit || formData.governmentId) {
+        try {
+          // Create FormData for documents upload
+          const docFormData = new FormData();
+          
+          // Add the user ID from the registration response
+          docFormData.append('userId', regData.userId);
+          
+          // Add files if they exist
+          if (formData.businessPermit) {
+            docFormData.append('businessPermit', formData.businessPermit);
+          }
+          
+          if (formData.birCertificate) {
+            docFormData.append('birCertificate', formData.birCertificate);
+          }
+          
+          if (formData.governmentId) {
+            docFormData.append('governmentId', formData.governmentId);
+          }
+          
+          // Send the document upload request
+          const docResponse = await fetch('/api/businesses/upload-documents', {
+            method: 'POST',
+            body: docFormData,
+          });
+          
+          const docData = await docResponse.json();
+          
+          if (!docResponse.ok) {
+            console.error('Document upload error:', docData.error);
+            // We'll continue even if document upload fails
+            // since the user account has been created
+          } else {
+            console.log('Documents uploaded successfully');
+          }
+        } catch (docError) {
+          console.error('Error uploading documents:', docError);
+          // Continue with registration even if document upload fails
+        }
+      }
+
       // Show success toast notification
-      showToast('Registration successful! Please upload your documents to continue.', 'success');
+      showToast('Registration successful!', 'success');
       
       // Close the modal
       onClose();
       
-      // Redirect to document upload page after a brief delay
+      // Redirect to the dashboard page
       setTimeout(() => {
-        window.location.href = '/cremation/documents';
+        window.location.href = '/cremation/dashboard';
       }, 1500);
     } catch (error) {
       console.error('Registration error:', error);
@@ -435,8 +484,12 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
                 name="birCertificate"
                 onChange={handleChange}
                 className={inputClasses}
+                accept=".pdf,.jpg,.jpeg,.png"
                 required
               />
+              <p className="text-xs text-gray-500 mt-1">
+                {formData.birCertificate ? formData.birCertificate.name : "No file selected"}
+              </p>
             </div>
 
             <div>
@@ -449,8 +502,12 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
                 name="businessPermit"
                 onChange={handleChange}
                 className={inputClasses}
+                accept=".pdf,.jpg,.jpeg,.png"
                 required
               />
+              <p className="text-xs text-gray-500 mt-1">
+                {formData.businessPermit ? formData.businessPermit.name : "No file selected"}
+              </p>
             </div>
 
             <div>
@@ -463,8 +520,12 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
                 name="governmentId"
                 onChange={handleChange}
                 className={inputClasses}
+                accept=".pdf,.jpg,.jpeg,.png"
                 required
               />
+              <p className="text-xs text-gray-500 mt-1">
+                {formData.governmentId ? formData.governmentId.name : "No file selected"}
+              </p>
             </div>
           </div>
 

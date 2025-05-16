@@ -129,25 +129,36 @@ const withBusinessVerification = <P extends object>(
       if (!userData) return false;
       
       // First check: verify the user has proper verification flags
-      if (userData.is_verified !== 1 || userData.status !== 'active') {
-        console.log('User verification check failed: is_verified or status not valid');
+      if (userData.is_verified !== 1) {
+        console.log('User verification check failed: is_verified not valid');
         return false;
       }
       
-      // Second check: verify the service provider exists and is active
+      // Second check: verify the service provider exists
       if (!userData.service_provider) {
         console.log('Service provider data missing');
         return false;
       }
       
-      // Third check: check provider status if available
-      if (userData.service_provider.status === 'pending' || 
-          userData.service_provider.status === 'unverified') {
-        console.log('Service provider status check failed');
+      // ONLY check application_status - ignore other fields that might not exist
+      const applicationStatus = userData.service_provider.application_status ? 
+                                String(userData.service_provider.application_status).toLowerCase() : null;
+      
+      console.log('Application status:', applicationStatus);
+      
+      // DIRECTLY check if application_status === 'approved'
+      if (applicationStatus === 'approved') {
+        console.log('APPLICATION STATUS IS APPROVED - SHOULD GRANT ACCESS');
+        return true;
+      }
+      
+      // If application_status is 'pending', deny access
+      if (applicationStatus === 'pending') {
+        console.log('Application is pending verification');
         return false;
       }
       
-      // Fourth check: verify documents are uploaded
+      // Check for documents as a fallback
       const hasDocuments = userData.service_provider.business_permit_path || 
                           userData.service_provider.government_id_path || 
                           userData.service_provider.bir_certificate_path;
@@ -157,8 +168,15 @@ const withBusinessVerification = <P extends object>(
         return false;
       }
       
-      console.log('All verification checks passed');
-      return true;
+      // If we get here and there's no specific status but they have documents, allow access
+      if (hasDocuments && !applicationStatus) {
+        console.log('No status found but documents uploaded, allowing access');
+        return true;
+      }
+      
+      // Any other case, deny access
+      console.log('Verification check failed, access denied');
+      return false;
     };
 
     // Import DashboardSkeleton at the top of the file

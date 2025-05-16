@@ -336,9 +336,9 @@ export async function POST(request: Request) {
       return NextResponse.json({
         success: true,
         message: 'Registration successful',
-        user_id: userId
+        userId: userId
       }, {
-        status: 201,
+        status: 200,
         headers
       });
     } else {

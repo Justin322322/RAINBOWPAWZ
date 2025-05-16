@@ -31,7 +31,7 @@ const withOTPVerification = <P extends object>(
     const [isAuthenticated, setIsAuthenticated] = useState(globalUserAuthState.verified);
     const [userData, setUserData] = useState<UserData | null>(globalUserAuthState.userData);
     const [showOTPModal, setShowOTPModal] = useState(false);
-
+    
     // Check if we've already shown the OTP modal in this session
     const [hasShownOTPModal, setHasShownOTPModal] = useState(false);
     // Use a ref to track if we've shown the modal to prevent multiple renders from showing it again
@@ -40,13 +40,39 @@ const withOTPVerification = <P extends object>(
     useEffect(() => {
       // If already verified globally, we can skip the check
       if (globalUserAuthState.verified && globalUserAuthState.userData) {
+        // Check if the user is verified in the global state
+        if (globalUserAuthState.userData.is_otp_verified === 1) {
+          setUserData(globalUserAuthState.userData);
+          setIsAuthenticated(true);
+          return;
+        }
+
+        // Check if OTP is verified in session but not reflected in global state yet
+        const otpVerifiedInSession = sessionStorage.getItem('otp_verified') === 'true';
+        if (otpVerifiedInSession) {
+          // Update global state to reflect verified status
+          const updatedUserData = {
+            ...globalUserAuthState.userData,
+            is_otp_verified: 1
+          };
+          globalUserAuthState = {
+            verified: true,
+            userData: updatedUserData
+          };
+          setUserData(updatedUserData);
+          setIsAuthenticated(true);
+          return;
+        }
+
         // Still check if OTP modal needs to be shown
-        const otpVerifiedInSession = sessionStorage.getItem('otp_verified');
         if (globalUserAuthState.userData.is_otp_verified === 0 && !otpVerifiedInSession && !hasShownOTPModalRef.current) {
           hasShownOTPModalRef.current = true;
           setShowOTPModal(true);
           setHasShownOTPModal(true);
         }
+        
+        setUserData(globalUserAuthState.userData);
+        setIsAuthenticated(true);
         return;
       }
 
@@ -112,7 +138,21 @@ const withOTPVerification = <P extends object>(
           }
 
           // Extract user ID and account type from auth token
-          const authValue = authCookie.split('=')[1];
+          const cookieParts = authCookie.split('=');
+          if (cookieParts.length !== 2) {
+            router.replace('/');
+            return;
+          }
+
+          // Properly decode the token value
+          let authValue;
+          try {
+            authValue = decodeURIComponent(cookieParts[1]);
+          } catch (e) {
+            authValue = cookieParts[1]; // Use raw value if decoding fails
+          }
+
+          // Extract user ID and account type from auth token
           const [userId, accountType] = authValue.split('_');
 
           // Validate account type
@@ -123,7 +163,7 @@ const withOTPVerification = <P extends object>(
 
           // Fetch user data to verify it exists in the database
           try {
-            const response = await fetch(`/api/users/${userId}`);
+            const response = await fetch(`/api/users/${userId}?t=${Date.now()}`);
 
             if (!response.ok) {
               router.replace('/');
@@ -156,9 +196,11 @@ const withOTPVerification = <P extends object>(
               setHasShownOTPModal(true);
             }
           } catch (fetchError) {
+            console.error('Error fetching user data:', fetchError);
             router.replace('/');
           }
         } catch (error) {
+          console.error('Authentication error:', error);
           router.replace('/');
         }
       };
@@ -167,22 +209,42 @@ const withOTPVerification = <P extends object>(
     }, [router, hasShownOTPModal]);
 
     const handleVerificationSuccess = () => {
+      console.log('HOC: Verification success handler called');
       // Update user data to reflect verification
       if (userData) {
         const updatedUserData = {
           ...userData,
           is_otp_verified: 1
         };
+        
+        // Update component state first
         setUserData(updatedUserData);
-        // Update session storage and global state with verified status
-        sessionStorage.setItem('user_data', JSON.stringify(updatedUserData));
-        sessionStorage.setItem('otp_verified', 'true');
-        globalUserAuthState = {
-          verified: true,
-          userData: updatedUserData
-        };
+        
+        // Then update all persistence mechanisms
+        try {
+          // 1. Session storage
+          sessionStorage.setItem('user_data', JSON.stringify(updatedUserData));
+          sessionStorage.setItem('otp_verified', 'true');
+          sessionStorage.removeItem('needs_otp_verification');
+          
+          // 2. Global state
+          globalUserAuthState = {
+            verified: true,
+            userData: updatedUserData
+          };
+          
+          // 3. Additional localStorage backup
+          localStorage.setItem('user_verified', 'true');
+          
+          console.log('HOC: All verification states updated successfully');
+        } catch (e) {
+          console.error('HOC: Error updating verification states:', e);
+        }
       }
+      
+      // Simply hide the modal, don't navigate
       setShowOTPModal(false);
+      console.log('HOC: OTP modal hidden, user should remain on dashboard');
     };
 
     // Don't render anything while verifying - prevents flash
@@ -199,12 +261,18 @@ const withOTPVerification = <P extends object>(
             onVerificationSuccess={handleVerificationSuccess}
             userEmail={userData.email}
             userId={userData.id}
-            onClose={() => setShowOTPModal(false)}
+            onClose={() => {
+              // If user closes the modal without verifying, send them back to home
+              router.replace('/');
+            }}
           />
         )}
 
         {/* Render the wrapped component with a blur effect if OTP verification is required */}
-        <div className={userData.is_otp_verified === 0 ? 'filter blur-sm pointer-events-none' : ''}>
+        <div 
+          className={userData.is_otp_verified === 0 ? 'filter blur-sm pointer-events-none' : ''}
+          style={{ position: 'relative', minHeight: '100vh' }}
+        >
           <Component {...(props as P)} userData={userData} />
         </div>
       </>

@@ -27,7 +27,7 @@ function AdminApplicationsContent() {
   const [applications, setApplications] = useState<Application[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('pending');
 
   // Fetch applications data
   useEffect(() => {
@@ -106,7 +106,7 @@ function AdminApplicationsContent() {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">Application Management</h1>
-          <p className="mt-1 text-sm text-gray-600">Review and manage business applications</p>
+          <p className="mt-1 text-sm text-gray-600">Review and manage pending business applications</p>
         </div>
         <button
           onClick={() => window.location.reload()}
@@ -154,8 +154,15 @@ function AdminApplicationsContent() {
 
       {/* Applications Table */}
       <div className="bg-white shadow-sm rounded-xl overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-lg font-medium text-gray-800">Business Applications</h2>
+        <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+          <h2 className="text-lg font-medium text-gray-800">
+            {statusFilter === 'pending' ? 'Pending Applications' : 'Business Applications'}
+          </h2>
+          {statusFilter === 'pending' && (
+            <span className="px-2 py-1 text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+              Showing pending applications
+            </span>
+          )}
         </div>
 
         {isLoading ? (
@@ -184,9 +191,13 @@ function AdminApplicationsContent() {
             <DocumentMagnifyingGlassIcon className="mx-auto h-12 w-12 text-gray-300" />
             <h3 className="mt-2 text-sm font-medium text-gray-900">No applications found</h3>
             <p className="mt-1 text-sm text-gray-500">
-              {searchTerm || statusFilter !== 'all'
-                ? "Try adjusting your search filters to find what you're looking for."
-                : "There are no business applications in the system yet."}
+              {searchTerm 
+                ? "Try adjusting your search term to find what you're looking for."
+                : statusFilter === 'pending'
+                  ? "There are no pending business applications at this time."
+                  : statusFilter !== 'all'
+                    ? `No applications with '${statusFilter}' status found.`
+                    : "There are no business applications in the system yet."}
             </p>
           </div>
         ) : (

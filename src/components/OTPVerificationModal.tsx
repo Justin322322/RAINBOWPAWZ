@@ -228,11 +228,18 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
 
         // Mark as sent before generating to prevent race conditions
         markOtpSentGlobally();
-
-        // Generate OTP with a slight delay to ensure storage is updated first
+        
+        // Set a short debounce before sending OTP to prevent duplicate generation
+        // This allows time for other potential OTPVerificationModal instances to recognize
+        // that OTP generation has already been initiated
         setTimeout(() => {
-          generateOTP();
-        }, 100);
+          // Double-check no other component has generated an OTP in the meantime
+          if (!isGeneratingOtpRef.current && hasOtpBeenSentGlobally()) {
+            generateOTP();
+          } else {
+            console.log('OTP generation was handled by another component');
+          }
+        }, 500); // Extended delay to prevent race conditions
       } else {
         console.log('Modal reopened after initial OTP was already sent');
       }
@@ -266,30 +273,19 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
   // Success animation timeout
   useEffect(() => {
     if (verificationStatus === 'success') {
-      // Set a session storage flag to indicate OTP has been verified
-      sessionStorage.setItem('otp_verified', 'true');
-
-      // Clear the persistence flags on successful verification
-      clearStoredCooldownEndTime();
-      try {
-        // Clear both session and local storage flags
-        sessionStorage.removeItem(initialOtpSentKey);
-        window.localStorage.removeItem(globalOtpSentKey);
-        console.log('Cleared OTP flags from both sessionStorage and localStorage');
-      } catch (e) {
-        console.error('Error clearing OTP storage flags:', e);
-      }
-
+      // We'll use a very simple approach here - just close the modal after 
+      // a brief delay to show the success animation
       const timer = setTimeout(() => {
-        onVerificationSuccess();
-        // Only call onClose if it exists
+        // Close the modal if needed, but only after verification is fully complete
         if (typeof onClose === 'function') {
-          onClose(); // Close the modal after success animation
+          console.log('Animation complete, closing modal');
+          onClose();
         }
-      }, 2000);
+      }, 1500);
+      
       return () => clearTimeout(timer);
     }
-  }, [verificationStatus, onVerificationSuccess, onClose, initialOtpSentKey]);
+  }, [verificationStatus, onClose]);
 
   const handleInputChange = (index: number, value: string) => {
     // Only allow numbers
@@ -371,11 +367,69 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
         return;
       }
 
-      // Set a session storage flag to indicate OTP has been verified
+      console.log('OTP verification successful, updating all states...');
+      
+      // CRITICAL: Complete persistence for verification status
+      // 1. Session Storage - immediate updates for current session
       sessionStorage.setItem('otp_verified', 'true');
+      sessionStorage.removeItem('needs_otp_verification');
+      
+      // 2. Update user data in multiple storage locations
+      try {
+        const userDataStr = sessionStorage.getItem('user_data');
+        if (userDataStr) {
+          const userData = JSON.parse(userDataStr);
+          userData.is_otp_verified = 1;
+          
+          // Update session storage
+          sessionStorage.setItem('user_data', JSON.stringify(userData));
+          
+          // Update global state if available
+          try {
+            // @ts-ignore - access global variable from HOC
+            if (typeof globalUserAuthState !== 'undefined') {
+              // @ts-ignore
+              globalUserAuthState.verified = true;
+              // @ts-ignore
+              globalUserAuthState.userData = userData;
+              console.log('Global state updated with verified status');
+            }
+          } catch (e) {
+            console.error('Error updating global state:', e);
+          }
+          
+          // Also update localStorage as an extra backup
+          try {
+            localStorage.setItem('user_verified', 'true');
+          } catch (e) {
+            console.error('Error updating localStorage:', e);
+          }
+        }
+      } catch (e) {
+        console.error('Error updating user data in session storage:', e);
+      }
 
+      // Clear the persistence flags for OTP generation
+      clearStoredCooldownEndTime();
+      try {
+        sessionStorage.removeItem(initialOtpSentKey);
+        window.localStorage.removeItem(globalOtpSentKey);
+        console.log('Cleared OTP flags from both sessionStorage and localStorage');
+      } catch (e) {
+        console.error('Error clearing OTP storage flags:', e);
+      }
+
+      // Set success state to trigger animation
       setVerificationStatus('success');
-      // onVerificationSuccess will be called after animation completes
+      
+      // Call the success callback directly but with a delay to ensure 
+      // all state updates have propagated
+      setTimeout(() => {
+        console.log('Calling verification success callback...');
+        onVerificationSuccess();
+        
+        // The modal will be closed by the animation effect
+      }, 1000);
     } catch (error) {
       console.error('OTP verification error:', error);
       setErrorMessage(error instanceof Error ? error.message : 'Failed to verify OTP. Please try again.');

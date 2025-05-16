@@ -7,12 +7,13 @@ import bcrypt from 'bcrypt';
 export async function GET(request: NextRequest) {
   try {
     console.log('Fetching cremation profile data...');
+    console.log('Request cookies:', request.headers.get('cookie'));
     
     // Get auth token and validate
     const authToken = getAuthTokenFromRequest(request);
     if (!authToken) {
-      console.log('Unauthorized: No auth token provided');
-      return NextResponse.json({ error: 'Unauthorized' }, { 
+      console.log('Unauthorized: No auth token provided in request cookies');
+      return NextResponse.json({ error: 'Unauthorized', message: 'Authentication token not found' }, { 
         status: 401,
         headers: {
           'Cache-Control': 'no-store, no-cache, must-revalidate',
@@ -21,13 +22,19 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    const [userId, accountType] = authToken.split('_');
+    const parts = authToken.split('_');
+    if (parts.length !== 2) {
+      console.log(`Invalid token format: ${authToken}`);
+      return NextResponse.json({ error: 'Unauthorized', message: 'Invalid authentication token format' }, { status: 401 });
+    }
+
+    const [userId, accountType] = parts;
     console.log(`User ID: ${userId}, Account Type: ${accountType}`);
     
     // Only cremation businesses should have access
     if (accountType !== 'business') {
       console.log(`Unauthorized access: account type ${accountType} is not business`);
-      return NextResponse.json({ error: 'Unauthorized access' }, { 
+      return NextResponse.json({ error: 'Unauthorized access', message: 'Only business accounts can access this resource' }, { 
         status: 403,
         headers: {
           'Cache-Control': 'no-store, no-cache, must-revalidate',
@@ -68,7 +75,7 @@ export async function GET(request: NextRequest) {
       
       if (!businessInfo || businessInfo.length === 0) {
         console.log(`Business profile not found for user ID: ${userId}`);
-        return NextResponse.json({ error: 'Business profile not found' }, { 
+        return NextResponse.json({ error: 'Business profile not found', message: 'No cremation business profile associated with this account' }, { 
           status: 404,
           headers: {
             'Cache-Control': 'no-store, no-cache, must-revalidate',
