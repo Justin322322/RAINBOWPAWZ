@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
@@ -20,6 +20,7 @@ import {
 import FurParentNavbar from '@/components/navigation/FurParentNavbar';
 import withOTPVerification from '@/components/withOTPVerification';
 import FurParentPageSkeleton from '@/components/ui/FurParentPageSkeleton';
+import { useCart } from '@/contexts/CartContext';
 
 interface CheckoutPageProps {
   userData?: any;
@@ -28,6 +29,7 @@ interface CheckoutPageProps {
 function CheckoutPage({ userData }: CheckoutPageProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { items, removeItem } = useCart();
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -36,6 +38,10 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [checkoutComplete, setCheckoutComplete] = useState(false);
   const [petName, setPetName] = useState('');
+  const [petBreed, setPetBreed] = useState('');
+  const [petGender, setPetGender] = useState('');
+  const [petAge, setPetAge] = useState('');
+  const [petWeight, setPetWeight] = useState('');
   const [causeOfDeath, setCauseOfDeath] = useState('');
   const [petType, setPetType] = useState('');
   const [bookingDate, setBookingDate] = useState('');
@@ -46,6 +52,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
   const [deliveryOption, setDeliveryOption] = useState<'pickup' | 'delivery'>('pickup');
   const [deliveryDistance, setDeliveryDistance] = useState<number>(0);
   const [deliveryFee, setDeliveryFee] = useState<number>(0);
+  const [petSpecialNotes, setPetSpecialNotes] = useState('');
   
   // Remove selectedPet and pets states as we're removing the pet dropdown
 
@@ -114,6 +121,9 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
     // Get provider and package IDs from URL params
     const providerId = searchParams.get('provider');
     const packageId = searchParams.get('package');
+    const fromCart = searchParams.get('fromCart');
+    const petIdParam = searchParams.get('petId');
+    const petNameParam = searchParams.get('petName');
 
     if (!providerId || !packageId) {
       setError('Missing booking information. Please try again.');
@@ -266,6 +276,30 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
               // Set default time
               setBookingTime('10:00');
               
+              // Set pet information if coming from cart
+              if (fromCart === 'true' && petIdParam && petNameParam) {
+                setPetName(decodeURIComponent(petNameParam));
+                
+                // Fetch additional pet details if available
+                try {
+                  const petResponse = await fetch(`/api/pets/${petIdParam}`);
+                  if (petResponse.ok) {
+                    const petData = await petResponse.json();
+                    if (petData.pet) {
+                      const pet = petData.pet;
+                      setPetType(pet.species || '');
+                      setPetBreed(pet.breed || '');
+                      setPetGender(pet.gender || '');
+                      setPetAge(pet.age || '');
+                      setPetWeight(pet.weight?.toString() || '');
+                      setPetSpecialNotes(pet.special_notes || '');
+                    }
+                  }
+                } catch (petError) {
+                  console.error('Error fetching pet details:', petError);
+                }
+              }
+              
               // Mark as loaded
               setLoading(false);
               return;
@@ -316,6 +350,30 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
 
         // Set default time
         setBookingTime('10:00');
+        
+        // Set pet information if coming from cart
+        if (fromCart === 'true' && petIdParam && petNameParam) {
+          setPetName(decodeURIComponent(petNameParam));
+          
+          // Fetch additional pet details if available
+          try {
+            const petResponse = await fetch(`/api/pets/${petIdParam}`);
+            if (petResponse.ok) {
+              const petData = await petResponse.json();
+              if (petData.pet) {
+                const pet = petData.pet;
+                setPetType(pet.species || '');
+                setPetBreed(pet.breed || '');
+                setPetGender(pet.gender || '');
+                setPetAge(pet.age || '');
+                setPetWeight(pet.weight?.toString() || '');
+                setPetSpecialNotes(pet.special_notes || '');
+              }
+            }
+          } catch (petError) {
+            console.error('Error fetching pet details:', petError);
+          }
+        }
       } catch (err) {
         console.error('Failed to load booking information:', err);
         setError('Failed to load booking information. Please try again.');
@@ -327,15 +385,26 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
     fetchData();
   }, [searchParams]);
 
-  // Calculate delivery fee when distance or option changes
+  // Calculate delivery fee based on provider's distance when option changes
   useEffect(() => {
-    if (deliveryOption === 'delivery' && bookingData?.package?.deliveryFeePerKm) {
-      const fee = Math.round(deliveryDistance * bookingData.package.deliveryFeePerKm);
+    if (deliveryOption === 'delivery' && bookingData?.provider?.distance) {
+      // Extract distance value from provider.distance (format: "X.X km away")
+      const distanceStr = bookingData.provider.distance.split(' ')[0];
+      const distance = parseFloat(distanceStr) || 0;
+      
+      // Update delivery distance state
+      setDeliveryDistance(distance);
+      
+      // Use default rate of 50 pesos per km if not specified in package
+      const ratePerKm = bookingData?.package?.deliveryFeePerKm || 50;
+      
+      // Calculate fee
+      const fee = Math.round(distance * ratePerKm);
       setDeliveryFee(fee);
     } else {
       setDeliveryFee(0);
     }
-  }, [deliveryDistance, deliveryOption, bookingData]);
+  }, [deliveryOption, bookingData]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -366,7 +435,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
           
           if (imageResponse.ok) {
             const imageData = await imageResponse.json();
-            petImageUrl = imageData.imageUrl || imageData.filePath; // Get URL from either property
+            petImageUrl = imageData.imageUrl || imageData.imagePath || imageData.filePath; // Get URL from any property
             console.log('Successfully uploaded pet image:', petImageUrl);
           } else {
             console.error('Failed to upload pet image:', await imageResponse.text());
@@ -375,6 +444,10 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
           console.error('Error uploading pet image:', imageError);
         }
       }
+      
+      // Check if we're processing a cart item
+      const fromCart = searchParams.get('fromCart') === 'true';
+      const petIdParam = searchParams.get('petId');
       
       // Prepare booking data
       const bookingRequestData = {
@@ -388,15 +461,22 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
         time: bookingTime,
         petName: petName,
         petType: petType,
+        petBreed: petBreed,
+        petGender: petGender,
+        petAge: petAge,
+        petWeight: petWeight,
         causeOfDeath: causeOfDeath || 'Not specified',
+        petSpecialNotes: petSpecialNotes,
         petImageUrl: petImageUrl, 
         specialRequests: specialRequests,
         paymentMethod: paymentMethod,
         deliveryOption: deliveryOption,
         deliveryDistance: deliveryOption === 'delivery' ? deliveryDistance : 0,
         deliveryFee: deliveryOption === 'delivery' ? deliveryFee : 0,
-        totalPrice: bookingData.package.price + (deliveryOption === 'delivery' ? deliveryFee : 0),
-        userId: userData?.id // Include user ID if available
+        totalPrice: Number(bookingData.package.price) + (deliveryOption === 'delivery' ? Number(deliveryFee) : 0),
+        userId: userData?.id, // Include user ID if available
+        petId: petIdParam || undefined, // Include pet ID if coming from cart
+        fromCart: fromCart
       };
       
       console.log('Booking request data:', bookingRequestData);
@@ -415,14 +495,71 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
       const responseData = await response.json();
       console.log('API response data:', responseData);
       
-      if (response.ok) {
+      if (response.ok && responseData.success) {
         console.log('Booking successful:', responseData);
+        
+        // Store pet information for future use
+        if (responseData.booking && responseData.booking.pet && responseData.booking.pet.id) {
+          try {
+            localStorage.setItem('last_pet_used', JSON.stringify({
+              id: responseData.booking.pet.id,
+              name: responseData.booking.pet.name,
+              type: responseData.booking.pet.type,
+              breed: responseData.booking.pet.breed
+            }));
+          } catch (e) {
+            console.log('Could not save pet information to local storage');
+          }
+        }
+        
         setCheckoutComplete(true);
 
-        // Redirect to confirmation page after a delay
-        setTimeout(() => {
-          router.push('/user/furparent_dashboard/bookings');
-        }, 3000);
+        // Handle cart after successful booking
+        if (fromCart) {
+          try {
+            // Get the packageId and petId from the params
+            const packageId = searchParams.get('package');
+            const petId = searchParams.get('petId');
+            
+            if (packageId && petId) {
+              // Find the item ID format that matches our cart
+              const cartItems = items.filter(item => 
+                item.packageId.toString() === packageId && 
+                item.petId?.toString() === petId
+              );
+              
+              if (cartItems.length > 0) {
+                // Remove the item from the cart
+                removeItem(cartItems[0].id);
+                console.log(`Removed item ${cartItems[0].id} from cart`);
+              }
+            }
+            
+            // After short delay, check if there are more items in cart and redirect accordingly
+            setTimeout(() => {
+              if (items.length > 0) {
+                // We still have cart items, redirect to the next item
+                const nextItem = items[0];
+                router.push(`/user/furparent_dashboard/bookings/checkout?provider=${nextItem.providerId}&package=${nextItem.packageId}&fromCart=true&petId=${nextItem.petId}&petName=${encodeURIComponent(nextItem.petName || '')}`);
+              } else {
+                // Cart is empty, go to bookings page
+                router.push('/user/furparent_dashboard/bookings');
+              }
+            }, 2000);
+          } catch (cartError) {
+            console.error('Error updating cart:', cartError);
+            
+            // Fallback: redirect to bookings page
+            setTimeout(() => {
+              router.push('/user/furparent_dashboard/bookings');
+            }, 3000);
+          }
+        } else {
+          // Regular redirect for non-cart bookings
+          setTimeout(() => {
+            router.push('/user/furparent_dashboard/bookings');
+          }, 3000);
+        }
       } else {
         console.error('Booking failed:', responseData);
         setError(responseData.error || responseData.message || 'Failed to process your booking. Please try again.');
@@ -536,6 +673,65 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                     
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Breed
+                      </label>
+                      <input
+                        type="text"
+                        value={petBreed}
+                        onChange={(e) => setPetBreed(e.target.value)}
+                        className="w-full p-3 border border-gray-300 rounded-md focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
+                        placeholder="Enter your pet's breed"
+                      />
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Gender
+                        </label>
+                        <select
+                          value={petGender}
+                          onChange={(e) => setPetGender(e.target.value)}
+                          className="w-full p-3 border border-gray-300 rounded-md focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
+                        >
+                          <option value="">Select Gender</option>
+                          <option value="Male">Male</option>
+                          <option value="Female">Female</option>
+                          <option value="Unknown">Unknown</option>
+                        </select>
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Age
+                        </label>
+                        <input
+                          type="text"
+                          value={petAge}
+                          onChange={(e) => setPetAge(e.target.value)}
+                          className="w-full p-3 border border-gray-300 rounded-md focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
+                          placeholder="e.g. 5 years, 8 months"
+                        />
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Weight (kg)
+                      </label>
+                      <input
+                        type="number"
+                        value={petWeight}
+                        onChange={(e) => setPetWeight(e.target.value)}
+                        min="0"
+                        step="0.1"
+                        className="w-full p-3 border border-gray-300 rounded-md focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
+                        placeholder="Enter weight in kilograms"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
                         Cause of Death
                       </label>
                       <input
@@ -545,6 +741,19 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                         className="w-full p-3 border border-gray-300 rounded-md focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
                         placeholder="Optional - enter cause of death"
                       />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Special Notes
+                      </label>
+                      <textarea
+                        value={petSpecialNotes}
+                        onChange={(e) => setPetSpecialNotes(e.target.value)}
+                        rows={2}
+                        className="w-full p-3 border border-gray-300 rounded-md focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
+                        placeholder="Any special details about your pet..."
+                      ></textarea>
                     </div>
                     
                     <div>
@@ -720,19 +929,19 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
 
                         {deliveryOption === 'delivery' && (
                           <div className="ml-7 mt-2 p-4 bg-gray-50 rounded-md">
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                              Delivery Distance (km)
-                            </label>
-                            <input
-                              type="number"
-                              min="1"
-                              value={deliveryDistance || ''}
-                              onChange={(e) => setDeliveryDistance(parseInt(e.target.value) || 0)}
-                              className="w-full p-2 border border-gray-300 rounded-md"
-                              placeholder="Enter distance in kilometers"
-                            />
-                            <p className="text-sm text-gray-500 mt-2">
-                              Delivery fee: ₱{deliveryFee} (₱{bookingData?.package?.deliveryFeePerKm || 0} per km)
+                            <div className="flex justify-between items-center mb-2">
+                              <label className="block text-sm font-medium text-gray-700">
+                                Delivery Distance
+                              </label>
+                              <span className="text-sm font-semibold text-[var(--primary-green)]">
+                                {bookingData?.provider?.distance?.split(' ')[0] || '0'} km
+                              </span>
+                            </div>
+                            <p className="text-sm text-gray-700 mb-3">
+                              Based on your location from {bookingData?.provider?.name}
+                            </p>
+                            <p className="text-sm text-gray-500">
+                              Delivery fee: ₱{deliveryFee} (₱{bookingData?.package?.deliveryFeePerKm || 50} per km)
                             </p>
                           </div>
                         )}
@@ -815,7 +1024,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                     <div className="flex justify-between pt-3 border-t border-gray-200">
                       <span className="font-medium">Total</span>
                       <span className="font-bold text-[var(--primary-green)]">
-                        ₱{(bookingData.package.price + (deliveryOption === 'delivery' ? deliveryFee : 0)).toLocaleString()}
+                        ₱{(Number(bookingData.package.price) + (deliveryOption === 'delivery' ? Number(deliveryFee) : 0)).toLocaleString()}
                       </span>
                     </div>
                   </div>

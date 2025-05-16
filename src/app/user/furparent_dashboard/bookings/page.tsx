@@ -40,6 +40,7 @@ interface BookingData {
   provider_address: string;
   pet_name: string;
   pet_type: string;
+  pet_breed?: string;
 }
 
 interface BookingsPageProps {
@@ -492,16 +493,23 @@ function BookingsPage({ userData }: BookingsPageProps) {
                       <div>
                         <h4 className="text-sm font-medium text-gray-500">Pet Information</h4>
                         <p className="mt-1 text-sm text-gray-900">
-                          {booking.pet_name ? `${booking.pet_name} (${booking.pet_type})` : 'No pet information'}
+                          {booking.pet_name && booking.pet_name !== 'Pet' && booking.pet_name !== 'Unknown' ? 
+                            `${booking.pet_name}${booking.pet_type && booking.pet_type !== 'Unknown' ? ` (${booking.pet_type})` : ''}` : 
+                            'Pet information not available'}
                         </p>
                       </div>
                       <div>
                         <h4 className="text-sm font-medium text-gray-500">Service Location</h4>
-                        <p className="mt-1 text-sm text-gray-900">{booking.provider_address || 'No address available'}</p>
+                        <p className="mt-1 text-sm text-gray-900">
+                          {booking.provider_address && booking.provider_address !== 'Provider Address' && booking.provider_address !== 'Service Address' ? 
+                            booking.provider_address : 
+                            (booking.provider_name && booking.provider_name !== 'Service Provider' ? 
+                              booking.provider_name : 'Location information not available')}
+                        </p>
                       </div>
                     </div>
 
-                    {booking.special_requests && (
+                    {booking.special_requests && booking.special_requests !== 'asdasdasd' && (
                       <div className="mt-4">
                         <h4 className="text-sm font-medium text-gray-500">Special Instructions</h4>
                         <p className="mt-1 text-sm text-gray-900">{booking.special_requests}</p>
@@ -584,10 +592,14 @@ function BookingsPage({ userData }: BookingsPageProps) {
                           <h4 className="text-sm font-medium text-gray-500 mt-4 mb-2">Provider Information</h4>
                           <div className="bg-gray-50 p-4 rounded-lg">
                             <p className="text-lg font-semibold text-gray-900 mb-1">{selectedBooking.provider_name}</p>
-                            <div className="flex items-start mt-2">
-                              <MapPinIcon className="h-5 w-5 text-gray-400 mt-0.5 flex-shrink-0" />
-                              <p className="ml-2 text-sm text-gray-600">{selectedBooking.provider_address}</p>
-                            </div>
+                            {selectedBooking.provider_address && selectedBooking.provider_address !== 'Service Address' ? (
+                              <div className="flex items-start mt-2">
+                                <MapPinIcon className="h-5 w-5 text-gray-400 mt-0.5 flex-shrink-0" />
+                                <p className="ml-2 text-sm text-gray-600">{selectedBooking.provider_address}</p>
+                              </div>
+                            ) : (
+                              <p className="mt-2 text-sm text-gray-600 italic">Address information not available</p>
+                            )}
                           </div>
                         </div>
 
@@ -626,13 +638,24 @@ function BookingsPage({ userData }: BookingsPageProps) {
 
                           <h4 className="text-sm font-medium text-gray-500 mt-4 mb-2">Pet Information</h4>
                           <div className="bg-gray-50 p-4 rounded-lg">
-                            <p className="text-lg font-semibold text-gray-900 mb-1">{selectedBooking.pet_name}</p>
-                            <p className="text-sm text-gray-600">{selectedBooking.pet_type}</p>
+                            {selectedBooking.pet_name && selectedBooking.pet_name !== 'Pet' && selectedBooking.pet_name !== 'Unknown' ? (
+                              <>
+                                <p className="text-lg font-semibold text-gray-900 mb-1">{selectedBooking.pet_name}</p>
+                                {selectedBooking.pet_type && selectedBooking.pet_type !== 'Unknown' && (
+                                  <p className="text-sm text-gray-600">{selectedBooking.pet_type}</p>
+                                )}
+                                {selectedBooking.pet_breed && (
+                                  <p className="text-sm text-gray-600 mt-1">Breed: {selectedBooking.pet_breed}</p>
+                                )}
+                              </>
+                            ) : (
+                              <p className="text-sm text-gray-700">Pet information not available</p>
+                            )}
                           </div>
                         </div>
                       </div>
 
-                      {selectedBooking.special_requests && (
+                      {selectedBooking.special_requests && selectedBooking.special_requests !== 'asdasdasd' && (
                         <div className="mt-6">
                           <h4 className="text-sm font-medium text-gray-500 mb-2">Special Requests</h4>
                           <div className="bg-gray-50 p-4 rounded-lg">

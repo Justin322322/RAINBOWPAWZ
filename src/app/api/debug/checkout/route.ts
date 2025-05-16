@@ -127,10 +127,45 @@ export async function GET(request: NextRequest) {
       };
       
     } catch (dbError) {
-      debugInfo.databaseChecks.error = {
-        message: dbError instanceof Error ? dbError.message : 'Unknown error',
-        stack: dbError instanceof Error ? dbError.stack : undefined
+      console.error('Database check error in debug route:', dbError);
+      
+      // Create a serializable error object
+      let errorObj: any = {
+        message: 'Unknown database error'
       };
+      
+      if (dbError instanceof Error) {
+        errorObj.message = dbError.message;
+        errorObj.name = dbError.name;
+        
+        // Add additional properties if they exist
+        if ('code' in dbError) {
+          errorObj.code = (dbError as any).code;
+        }
+        
+        if ('errno' in dbError) {
+          errorObj.errno = (dbError as any).errno;
+        }
+        
+        if ('sqlState' in dbError) {
+          errorObj.sqlState = (dbError as any).sqlState;
+        }
+        
+        if ('sqlMessage' in dbError) {
+          errorObj.sqlMessage = (dbError as any).sqlMessage;
+        }
+      } else if (typeof dbError === 'string') {
+        errorObj.message = dbError;
+      } else {
+        // Try to convert to string if possible
+        try {
+          errorObj.details = JSON.stringify(dbError);
+        } catch (e) {
+          errorObj.details = 'Error could not be stringified';
+        }
+      }
+      
+      debugInfo.databaseChecks.error = errorObj;
     }
 
     // Now try to call the actual API endpoints

@@ -264,17 +264,8 @@ export default function AdminServicesPage() {
       }
     }
 
-    // Add package ID specific paths if we have a package ID
-    if (service.id && !isNaN(parseInt(service.id))) {
-      const packageId = parseInt(service.id);
-      const packageSpecificPath = `/uploads/packages/${packageId}/1.jpg`;
-      
-      // Only add if not already in the images array
-      if (!images.includes(packageSpecificPath)) {
-        images.push(packageSpecificPath);
-      }
-    }
-
+    // Removed automatic image path generation based on package ID
+    
     // Check if we have any images to display
     if (images.length === 0 || imageError[service.id]) {
       return (
@@ -561,12 +552,20 @@ export default function AdminServicesPage() {
                         <p className="text-base text-gray-900">₱{selectedService.price.toLocaleString()}</p>
                       </div>
                       <div>
+                        <p className="text-sm font-medium text-gray-500">Cremation Type</p>
+                        <p className="text-base text-gray-900">{selectedService.cremationType || 'Standard'}</p>
+                      </div>
+                      <div>
                         <p className="text-sm font-medium text-gray-500">Processing Time</p>
-                        <p className="text-base text-gray-900">{selectedService.processingTime || 'Not specified'}</p>
+                        <p className="text-base text-gray-900">{selectedService.processingTime || '2-3 days'}</p>
                       </div>
                       <div>
                         <p className="text-sm font-medium text-gray-500">Bookings</p>
                         <p className="text-base text-gray-900">{selectedService.bookings || 0}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-500">Category</p>
+                        <p className="text-base capitalize text-gray-900">{selectedService.category || 'Standard'}</p>
                       </div>
                     </div>
                     
@@ -575,34 +574,36 @@ export default function AdminServicesPage() {
                       <p className="text-base text-gray-900">{selectedService.description}</p>
                     </div>
                     
-                    {selectedService.inclusions && selectedService.inclusions.length > 0 && (
-                      <div className="mb-4">
-                        <p className="text-sm font-medium text-gray-500 mb-2">Inclusions</p>
+                    <div className="mb-4">
+                      <p className="text-sm font-medium text-gray-500 mb-2">Inclusions</p>
+                      {selectedService.inclusions && selectedService.inclusions.length > 0 ? (
                         <ul className="list-disc pl-5 text-sm text-gray-700 space-y-1">
                           {selectedService.inclusions.map((inclusion: string, idx: number) => (
                             <li key={idx}>{inclusion}</li>
                           ))}
                         </ul>
-                      </div>
-                    )}
+                      ) : (
+                        <p className="text-sm text-gray-500">No inclusions specified</p>
+                      )}
+                    </div>
                     
-                    {selectedService.addOns && selectedService.addOns.length > 0 && (
-                      <div className="mb-4">
-                        <p className="text-sm font-medium text-gray-500 mb-2">Add-ons</p>
+                    <div className="mb-4">
+                      <p className="text-sm font-medium text-gray-500 mb-2">Add-ons</p>
+                      {selectedService.addOns && selectedService.addOns.length > 0 ? (
                         <ul className="list-disc pl-5 text-sm text-gray-700 space-y-1">
                           {selectedService.addOns.map((addon: string, idx: number) => (
                             <li key={idx}>{addon}</li>
                           ))}
                         </ul>
-                      </div>
-                    )}
+                      ) : (
+                        <p className="text-sm text-gray-500">No add-ons available</p>
+                      )}
+                    </div>
                     
-                    {selectedService.conditions && (
-                      <div className="mb-4">
-                        <p className="text-sm font-medium text-gray-500 mb-2">Conditions</p>
-                        <p className="text-sm text-gray-700">{selectedService.conditions}</p>
-                      </div>
-                    )}
+                    <div className="mb-4">
+                      <p className="text-sm font-medium text-gray-500 mb-2">Conditions</p>
+                      <p className="text-sm text-gray-700">{selectedService.conditions || 'No specific conditions'}</p>
+                    </div>
                   </div>
                 </div>
               </div>

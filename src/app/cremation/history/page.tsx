@@ -13,6 +13,7 @@ import {
   CalendarDaysIcon,
   ArrowPathIcon,
   CurrencyDollarIcon,
+  EyeIcon,
 } from '@heroicons/react/24/outline';
 
 function CremationHistoryPage({ userData }: { userData: any }) {
@@ -44,6 +45,7 @@ function CremationHistoryPage({ userData }: { userData: any }) {
       else if (dateFilter === 'last90days') periodParam = 'last90days';
       else periodParam = 'all';
       
+      console.log(`Fetching history data with period: ${periodParam}`);
       const response = await fetch(`/api/cremation/history?period=${periodParam}&t=${Date.now()}`, {
         method: 'GET',
         headers: {
@@ -54,6 +56,7 @@ function CremationHistoryPage({ userData }: { userData: any }) {
       
       // Parse the JSON response regardless of status code
       const data = await response.json();
+      console.log(`Response status: ${response.status}`, data);
       
       if (!response.ok) {
         // Use the specific error message from the API if available
@@ -61,6 +64,8 @@ function CremationHistoryPage({ userData }: { userData: any }) {
         console.error('API Error:', errorMessage, data);
         throw new Error(errorMessage);
       }
+      
+      console.log(`Received ${data.bookings?.length || 0} bookings`);
       
       setBookings(data.bookings || []);
       setStats(data.stats || {
@@ -106,12 +111,13 @@ function CremationHistoryPage({ userData }: { userData: any }) {
 
   // Filter bookings based on search term
   const filteredBookings = bookings.filter(booking => {
-    const matchesSearch = 
-      booking.petName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      booking.owner.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      booking.id.toString().toLowerCase().includes(searchTerm.toLowerCase());
+    if (!searchTerm) return true;
     
-    return matchesSearch;
+    const searchLower = searchTerm.toLowerCase();
+    return booking.petName?.toLowerCase().includes(searchLower) ||
+           booking.owner?.toLowerCase().includes(searchLower) ||
+           booking.id?.toString().includes(searchLower) ||
+           booking.package?.toLowerCase().includes(searchLower);
   });
 
   const getStatusBadge = (status: string) => {
@@ -142,7 +148,7 @@ function CremationHistoryPage({ userData }: { userData: any }) {
         );
       case 'in_progress':
         return (
-          <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-indigo-100 text-indigo-800 min-w-[90px] justify-center">
+          <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800 min-w-[90px] justify-center">
             In Progress
           </span>
         );
@@ -248,100 +254,95 @@ function CremationHistoryPage({ userData }: { userData: any }) {
       <div className="bg-white rounded-xl shadow-sm p-6 mb-8">
         <div className="flex flex-col md:flex-row md:justify-between md:items-center space-y-4 md:space-y-0">
           <div className="flex flex-wrap items-center gap-2">
-            <p className="text-sm font-medium text-gray-700 mr-2">Filter by:</p>
-            <div className="flex flex-wrap gap-2">
-              <button 
-                onClick={() => setDateFilter('all')}
-                className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
-                  dateFilter === 'all' 
-                    ? 'bg-[var(--primary-green)] text-white' 
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                All Time
-              </button>
-              <button 
-                onClick={() => setDateFilter('last7days')}
-                className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
-                  dateFilter === 'last7days' 
-                    ? 'bg-[var(--primary-green)] text-white' 
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                Last 7 Days
-              </button>
-              <button 
-                onClick={() => setDateFilter('last30days')}
-                className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
-                  dateFilter === 'last30days' 
-                    ? 'bg-[var(--primary-green)] text-white' 
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                Last 30 Days
-              </button>
-              <button 
-                onClick={() => setDateFilter('last90days')}
-                className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
-                  dateFilter === 'last90days' 
-                    ? 'bg-[var(--primary-green)] text-white' 
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                Last 90 Days
-              </button>
-            </div>
+            <button
+              onClick={() => setDateFilter('all')}
+              className={`px-4 py-2 text-sm font-medium rounded-lg ${
+                dateFilter === 'all'
+                  ? 'bg-[var(--primary-green)] text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              All Time
+            </button>
+            <button
+              onClick={() => setDateFilter('last7days')}
+              className={`px-4 py-2 text-sm font-medium rounded-lg ${
+                dateFilter === 'last7days'
+                  ? 'bg-[var(--primary-green)] text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              Last 7 Days
+            </button>
+            <button
+              onClick={() => setDateFilter('last30days')}
+              className={`px-4 py-2 text-sm font-medium rounded-lg ${
+                dateFilter === 'last30days'
+                  ? 'bg-[var(--primary-green)] text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              Last 30 Days
+            </button>
+            <button
+              onClick={() => setDateFilter('last90days')}
+              className={`px-4 py-2 text-sm font-medium rounded-lg ${
+                dateFilter === 'last90days'
+                  ? 'bg-[var(--primary-green)] text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              Last 90 Days
+            </button>
           </div>
-          
-          <div className="relative w-full md:w-64">
-            <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+          <div className="relative min-w-[200px]">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
             </div>
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
-              placeholder="Search bookings..."
+              className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)] sm:text-sm"
+              placeholder="Search by pet or owner..."
             />
           </div>
         </div>
       </div>
 
-      {/* Bookings Table */}
+      {/* Table View */}
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-200">
+          <h2 className="text-lg font-medium text-gray-800">Booking History</h2>
+        </div>
+        
         {loading ? (
           <div className="flex justify-center items-center h-64">
             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[var(--primary-green)]"></div>
           </div>
         ) : error ? (
-          <div className="flex flex-col items-center justify-center p-8 text-center">
-            <div className="text-red-500 mb-4">
-              <svg className="h-12 w-12 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-1">Error Loading Data</h3>
-            <p className="text-gray-500 mb-4">{error}</p>
+          <div className="p-6 text-center">
+            <p className="text-red-500 mb-4">{error}</p>
             <button 
-              onClick={() => window.location.reload()}
-              className="px-4 py-2 bg-[var(--primary-green)] text-white rounded-md hover:bg-opacity-90"
+              onClick={handleRefresh}
+              className="inline-flex items-center px-4 py-2 bg-[var(--primary-green)] text-white rounded-lg hover:bg-opacity-90"
             >
+              <ArrowPathIcon className="h-5 w-5 mr-2" />
               Try Again
             </button>
           </div>
         ) : filteredBookings.length === 0 ? (
           <div className="flex flex-col items-center justify-center p-8 text-center">
             <div className="text-gray-400 mb-4">
-              <svg className="h-12 w-12 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-              </svg>
+              <CalendarDaysIcon className="h-12 w-12 mx-auto" />
             </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-1">No Bookings Found</h3>
-            <p className="text-gray-500">
-              {searchTerm 
-                ? 'No bookings match your search criteria. Try different search terms.' 
-                : 'No booking history found for the selected time period.'}
+            <h3 className="text-lg font-medium text-gray-900 mb-1">No booking history found</h3>
+            <p className="text-gray-500 max-w-md">
+              {searchTerm
+                ? 'Try changing your search term to see more results.'
+                : dateFilter !== 'all'
+                ? 'Try changing the date filter to see more results.'
+                : 'There are no completed or cancelled bookings to display at this time.'}
             </p>
           </div>
         ) : (
@@ -350,25 +351,28 @@ function CremationHistoryPage({ userData }: { userData: any }) {
               <thead className="bg-gray-50">
                 <tr>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Booking ID
+                    ID
                   </th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Pet Name
+                    Pet Details
                   </th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Owner
                   </th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Service
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
+                    Package
                   </th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Date
                   </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Status
+                  </th>
                   <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Revenue
+                    Amount
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
                   </th>
                 </tr>
               </thead>
@@ -376,32 +380,37 @@ function CremationHistoryPage({ userData }: { userData: any }) {
                 {filteredBookings.map((booking) => (
                   <tr key={booking.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-[var(--primary-green)]">
-                        <Link href={`/cremation/bookings/${booking.id}`} className="hover:underline">
-                          #{booking.id}
-                        </Link>
-                      </div>
+                      <span className="text-sm text-gray-500">#{booking.id}</span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">{booking.petName}</div>
-                      <div className="text-xs text-gray-500">{booking.petType}</div>
+                      <div className="text-sm font-medium text-gray-900">{booking.petName || 'Unknown'}</div>
+                      <div className="text-sm text-gray-500">{booking.petType || 'Unknown'}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{booking.owner}</div>
+                      <div className="text-sm text-gray-900 truncate max-w-[200px]">{booking.owner || 'Unknown'}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{booking.service}</div>
+                      <div className="text-sm text-gray-900">{booking.package || 'Unknown Package'}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      {getStatusBadge(booking.status)}
+                      <div className="text-sm text-gray-900">{booking.date || 'Not scheduled'}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{booking.completedDate || booking.bookingDate}</div>
+                      {getStatusBadge(booking.status || 'pending')}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right">
-                      <div className={`text-sm font-medium ${booking.revenue > 0 ? 'text-green-600' : 'text-gray-500'}`}>
-                        {booking.revenue > 0 ? `₱${booking.revenue.toLocaleString()}` : '-'}
+                      <div className="text-sm font-medium text-gray-900">
+                        ₱{parseFloat(booking.amount || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                       </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right">
+                      <Link 
+                        href={`/cremation/bookings/${booking.id}`}
+                        className="inline-flex items-center px-2.5 py-1.5 border border-gray-300 text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50"
+                      >
+                        <EyeIcon className="h-4 w-4 mr-1" />
+                        Details
+                      </Link>
                     </td>
                   </tr>
                 ))}

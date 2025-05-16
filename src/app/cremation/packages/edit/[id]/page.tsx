@@ -22,6 +22,7 @@ interface PackageFormData {
   cremationType: string;
   processingTime: string;
   price: number;
+  deliveryFeePerKm: number;
   inclusions: string[];
   addOns: string[];
   conditions: string;
@@ -52,6 +53,7 @@ function EditPackagePage({ userData }: EditPackagePageProps) {
     cremationType: 'Standard',
     processingTime: '1-2 days',
     price: 0,
+    deliveryFeePerKm: 0,
     inclusions: [],
     addOns: [],
     conditions: '',
@@ -108,7 +110,7 @@ function EditPackagePage({ userData }: EditPackagePageProps) {
 
     setFormData(prev => ({
       ...prev,
-      [name]: name === 'price' ? parseFloat(value) || 0 : value
+      [name]: name === 'price' || name === 'deliveryFeePerKm' ? parseFloat(value) || 0 : value
     }));
   };
 
@@ -405,6 +407,23 @@ function EditPackagePage({ userData }: EditPackagePageProps) {
                 {errors.price && (
                   <p className="mt-1 text-sm text-red-600">{errors.price}</p>
                 )}
+              </div>
+              <div>
+                <label htmlFor="deliveryFeePerKm" className="block text-sm font-medium text-gray-700 mb-1">
+                  Delivery Fee Per Kilometer (₱)
+                </label>
+                <input
+                  type="number"
+                  id="deliveryFeePerKm"
+                  name="deliveryFeePerKm"
+                  value={formData.deliveryFeePerKm || ''}
+                  onChange={handleInputChange}
+                  min="0"
+                  step="any"
+                  className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)] sm:text-sm"
+                  placeholder="e.g., 50"
+                />
+                <p className="mt-1 text-xs text-gray-500">Set the fee charged per kilometer for delivery. Enter 0 if delivery is not available.</p>
               </div>
               <div>
                 <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">

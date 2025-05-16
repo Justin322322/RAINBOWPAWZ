@@ -1,7 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { writeFile } from 'fs/promises';
+import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
+import { existsSync } from 'fs';
 import { getAuthTokenFromRequest } from '@/utils/auth';
+
+// Function to ensure directory exists
+async function ensureDirectoryExists(dirPath) {
+  if (!existsSync(dirPath)) {
+    console.log(`Creating directory: ${dirPath}`);
+    await mkdir(dirPath, { recursive: true });
+    console.log(`Directory created: ${dirPath}`);
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -49,41 +59,25 @@ export async function POST(request: NextRequest) {
 
     // Create the uploads directory if it doesn't exist
     const uploadsDir = join(process.cwd(), 'public', 'uploads', 'pets');
+    await ensureDirectoryExists(uploadsDir);
 
-    try {
-      // Ensure the directory exists
-      const fs = require('fs');
-      if (!fs.existsSync(uploadsDir)) {
-        fs.mkdirSync(uploadsDir, { recursive: true });
-        console.log(`Created directory: ${uploadsDir}`);
-      }
+    // Create file path
+    const filePath = join(uploadsDir, filename);
 
-      // Convert the file to a Buffer
-      const bytes = await file.arrayBuffer();
-      const buffer = Buffer.from(bytes);
+    // Convert file to buffer and save
+    const bytes = await file.arrayBuffer();
+    const buffer = Buffer.from(bytes);
+    
+    await writeFile(filePath, buffer);
 
-      // Write the file to the uploads directory
-      const filePath = join(uploadsDir, filename);
-      await writeFile(filePath, buffer);
-
-      console.log(`File saved successfully to: ${filePath}`);
-
-      // Return the file path relative to the public directory
-      const relativePath = `/uploads/pets/${filename}`;
-
-      return NextResponse.json({
-        success: true,
-        filePath: relativePath,
-        imageUrl: relativePath,  // Add imageUrl to match what the checkout page expects
-        message: 'File uploaded successfully'
-      });
-    } catch (error) {
-      console.error('Error saving file:', error);
-      return NextResponse.json({
-        error: 'Failed to save file',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      }, { status: 500 });
-    }
+    // Return the relative path to the image
+    const relativePath = `/uploads/pets/${filename}`;
+    
+    return NextResponse.json({
+      success: true,
+      message: 'File uploaded successfully',
+      imagePath: relativePath
+    });
   } catch (error) {
     console.error('Error uploading file:', error);
     return NextResponse.json({

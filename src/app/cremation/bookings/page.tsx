@@ -205,19 +205,8 @@ function CremationBookingsPage({ userData }: { userData: any }) {
               <ClockIcon className="h-6 w-6 text-yellow-600" />
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-600">Scheduled</p>
-              <p className="text-2xl font-semibold text-gray-900">{stats.scheduled}</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <div className="flex items-center">
-            <div className="bg-purple-100 p-3 rounded-full mr-4">
-              <ArrowPathIcon className="h-6 w-6 text-purple-600" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-600">In Progress</p>
-              <p className="text-2xl font-semibold text-gray-900">{stats.inProgress}</p>
+              <p className="text-sm font-medium text-gray-600">Pending</p>
+              <p className="text-2xl font-semibold text-gray-900">{stats.pending}</p>
             </div>
           </div>
         </div>
@@ -232,33 +221,57 @@ function CremationBookingsPage({ userData }: { userData: any }) {
             </div>
           </div>
         </div>
+        <div className="bg-white rounded-xl shadow-sm p-6">
+          <div className="flex items-center">
+            <div className="bg-red-100 p-3 rounded-full mr-4">
+              <XMarkIcon className="h-6 w-6 text-red-600" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-600">Cancelled</p>
+              <p className="text-2xl font-semibold text-gray-900">{stats.cancelled}</p>
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Bookings table */}
+      {/* Bookings Table */}
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-200">
+          <h2 className="text-lg font-medium text-gray-800">Booking List</h2>
+        </div>
+        
         {loading ? (
           <div className="flex justify-center items-center h-64">
             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[var(--primary-green)]"></div>
           </div>
+        ) : bookings.length === 0 ? (
+          <div className="flex flex-col items-center justify-center p-8 text-center">
+            <div className="text-gray-400 mb-4">
+              <CalendarIcon className="h-12 w-12 mx-auto" />
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 mb-1">No bookings found</h3>
+            <p className="text-gray-500 max-w-md">
+              {searchTerm || statusFilter !== 'all'
+                ? 'Try changing your search or filter settings to see more results.'
+                : 'There are no cremation service bookings to display at this time.'}
+            </p>
+          </div>
         ) : (
-          <>
+          <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Booking ID
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Pet
+                    Pet Details
                   </th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Owner
                   </th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Service
+                    Package
                   </th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Date & Time
+                    Date
                   </th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Status
@@ -271,20 +284,39 @@ function CremationBookingsPage({ userData }: { userData: any }) {
               <tbody className="bg-white divide-y divide-gray-200">
                 {bookings.map((booking) => (
                   <tr key={booking.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      #{booking.id}
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <div className="flex-shrink-0 h-10 w-10">
+                          {booking.petImageUrl ? (
+                            <img 
+                              className="h-10 w-10 rounded-full object-cover" 
+                              src={booking.petImageUrl} 
+                              alt={booking.petName}
+                            />
+                          ) : (
+                            <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
+                              <span className="text-gray-500 text-xs">{booking.petName?.charAt(0) || '?'}</span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="ml-4">
+                          <div className="text-sm font-medium text-gray-900">{booking.petName}</div>
+                          <div className="text-sm text-gray-500">{booking.petType}</div>
+                        </div>
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">{booking.petName}</div>
-                      <div className="text-sm text-gray-500">{booking.petType}</div>
+                      <div className="text-sm text-gray-900">{booking.owner.name}</div>
+                      <div className="flex items-center text-sm text-gray-500 space-x-2">
+                        <EnvelopeIcon className="h-3 w-3" />
+                        <span className="truncate max-w-[150px]">{booking.owner.email}</span>
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">{booking.owner.name}</div>
-                      <div className="text-sm text-gray-500">{booking.owner.email}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{booking.service}</div>
-                      <div className="text-sm text-gray-500">₱{booking.price?.toLocaleString()}</div>
+                      <div className="text-sm text-gray-900">{booking.package}</div>
+                      <div className="text-sm text-gray-500">
+                        ₱{parseFloat(booking.price).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900">{booking.scheduledDate}</div>
@@ -293,120 +325,77 @@ function CremationBookingsPage({ userData }: { userData: any }) {
                     <td className="px-6 py-4 whitespace-nowrap">
                       {getStatusBadge(booking.status)}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
-                      <button
-                        onClick={() => handleViewDetails(booking)}
-                        className="text-[var(--primary-green)] hover:text-[var(--primary-green-hover)] mr-3"
-                      >
-                        <EyeIcon className="h-5 w-5" />
-                      </button>
-                      <button
-                        className="text-gray-600 hover:text-gray-900"
-                      >
-                        <PencilSquareIcon className="h-5 w-5" />
-                      </button>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <div className="flex justify-end space-x-2">
+                        <button
+                          onClick={() => handleViewDetails(booking)}
+                          className="inline-flex items-center px-2.5 py-1.5 border border-gray-300 text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50"
+                        >
+                          <EyeIcon className="h-4 w-4 mr-1" />
+                          View
+                        </button>
+                        <Link 
+                          href={`/cremation/bookings/${booking.id}`}
+                          className="inline-flex items-center px-2.5 py-1.5 border border-gray-300 text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50"
+                        >
+                          <PencilSquareIcon className="h-4 w-4 mr-1" />
+                          Manage
+                        </Link>
+                      </div>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
-            {bookings.length === 0 && (
-              <div className="px-6 py-8 text-center">
-                <p className="text-gray-500 text-sm">No bookings match your search criteria.</p>
-              </div>
-            )}
-          </>
+          </div>
         )}
       </div>
 
-      {/* Booking details modal */}
+      {/* Details Modal - simplified for this example */}
       {showDetailsModal && selectedBooking && (
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto">
             <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
               <h3 className="text-lg font-medium text-gray-900">Booking Details</h3>
-              <button
+              <button 
                 onClick={() => setShowDetailsModal(false)}
                 className="text-gray-400 hover:text-gray-500"
               >
-                <XMarkIcon className="h-6 w-6" />
+                <XMarkIcon className="h-5 w-5" />
               </button>
             </div>
-            <div className="px-6 py-4 border-b border-gray-200">
-              <div className="mb-4">
-                <h4 className="text-sm font-medium text-gray-500">Booking ID</h4>
-                <p className="text-base font-medium text-gray-900">#{selectedBooking.id}</p>
-              </div>
-              <div className="mb-4">
-                <h4 className="text-sm font-medium text-gray-500">Status</h4>
-                <div className="mt-1">{getStatusBadge(selectedBooking.status)}</div>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-                <div>
-                  <h4 className="text-sm font-medium text-gray-500">Scheduled Date</h4>
-                  <p className="text-base text-gray-900">{selectedBooking.scheduledDate}</p>
-                </div>
-                <div>
-                  <h4 className="text-sm font-medium text-gray-500">Scheduled Time</h4>
-                  <p className="text-base text-gray-900">{selectedBooking.scheduledTime}</p>
-                </div>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-                <div>
-                  <h4 className="text-sm font-medium text-gray-500">Service</h4>
-                  <p className="text-base text-gray-900">{selectedBooking.service}</p>
-                </div>
-                <div>
-                  <h4 className="text-sm font-medium text-gray-500">Price</h4>
-                  <p className="text-base text-gray-900">₱{selectedBooking.price?.toLocaleString()}</p>
-                </div>
-              </div>
-              <div className="mb-4">
-                <h4 className="text-sm font-medium text-gray-500">Notes</h4>
-                <p className="text-base text-gray-900">{selectedBooking.notes || 'No special notes'}</p>
-              </div>
-            </div>
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h4 className="text-base font-medium text-gray-700 mb-2">Pet Information</h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <h5 className="text-sm font-medium text-gray-500">Name</h5>
-                  <p className="text-base text-gray-900">{selectedBooking.petName}</p>
-                </div>
-                <div>
-                  <h5 className="text-sm font-medium text-gray-500">Type</h5>
-                  <p className="text-base text-gray-900">{selectedBooking.petType}</p>
-                </div>
-                <div>
-                  <h5 className="text-sm font-medium text-gray-500">Size</h5>
-                  <p className="text-base text-gray-900">{selectedBooking.petSize}</p>
-                </div>
-              </div>
-            </div>
             <div className="px-6 py-4">
-              <h4 className="text-base font-medium text-gray-700 mb-2">Owner Information</h4>
-              <div className="grid grid-cols-1 gap-4">
-                <div>
-                  <h5 className="text-sm font-medium text-gray-500">Name</h5>
-                  <p className="text-base text-gray-900">{selectedBooking.owner.name}</p>
-                </div>
-                <div>
-                  <h5 className="text-sm font-medium text-gray-500">Contact</h5>
-                  <div className="flex items-center mt-1">
-                    <PhoneIcon className="h-4 w-4 text-gray-400 mr-1" />
-                    <p className="text-base text-gray-900">{selectedBooking.owner.phone}</p>
-                  </div>
-                  <div className="flex items-center mt-1">
-                    <EnvelopeIcon className="h-4 w-4 text-gray-400 mr-1" />
-                    <p className="text-base text-gray-900">{selectedBooking.owner.email}</p>
-                  </div>
-                </div>
-              </div>
+              <p className="text-gray-700 mb-4">
+                <span className="font-medium">Booking ID:</span> #{selectedBooking.id}
+              </p>
+              <p className="text-gray-700 mb-4">
+                <span className="font-medium">Pet:</span> {selectedBooking.petName} ({selectedBooking.petType})
+              </p>
+              <p className="text-gray-700 mb-4">
+                <span className="font-medium">Owner:</span> {selectedBooking.owner.name}
+              </p>
+              <p className="text-gray-700 mb-4">
+                <span className="font-medium">Date:</span> {selectedBooking.scheduledDate} at {selectedBooking.scheduledTime}
+              </p>
+              <p className="text-gray-700 mb-4">
+                <span className="font-medium">Service:</span> {selectedBooking.service}
+              </p>
+              <p className="text-gray-700 mb-4">
+                <span className="font-medium">Status:</span> {selectedBooking.status}
+              </p>
+              <p className="text-gray-700 mb-4">
+                <span className="font-medium">Total:</span> ₱{parseFloat(selectedBooking.price).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+              </p>
+              {selectedBooking.notes && (
+                <p className="text-gray-700 mb-4">
+                  <span className="font-medium">Notes:</span> {selectedBooking.notes}
+                </p>
+              )}
             </div>
-            <div className="px-6 py-4 border-t border-gray-200 flex justify-end">
+            <div className="px-6 py-3 border-t border-gray-200 flex justify-end">
               <button
                 onClick={() => setShowDetailsModal(false)}
-                className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 focus:outline-none"
+                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
               >
                 Close
               </button>

@@ -2,6 +2,48 @@ import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { getAuthTokenFromRequest } from '@/utils/auth';
 
+// Function to check if pets table exists and create it if not
+async function ensurePetsTableExists() {
+  try {
+    // Check if the table exists
+    const tableExists = await query(`
+      SELECT COUNT(*) as count FROM information_schema.tables
+      WHERE table_schema = 'rainbow_paws' AND table_name = 'pets'
+    `);
+
+    if (tableExists[0].count === 0) {
+      console.log('Creating pets table as it does not exist...');
+      
+      // Create the pets table
+      await query(`
+        CREATE TABLE pets (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          user_id VARCHAR(255) NOT NULL,
+          name VARCHAR(255) NOT NULL,
+          species VARCHAR(100) NOT NULL,
+          breed VARCHAR(255),
+          gender VARCHAR(50),
+          age VARCHAR(50),
+          weight DECIMAL(8,2),
+          photo_path VARCHAR(255),
+          special_notes TEXT,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          INDEX (user_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+      `);
+      
+      console.log('Pets table created successfully');
+      return true;
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Error ensuring pets table exists:', error);
+    return false;
+  }
+}
+
 export async function GET(request: NextRequest) {
   try {
     // Verify authentication
@@ -19,6 +61,9 @@ export async function GET(request: NextRequest) {
     //     error: 'Only fur parent accounts can access pets'
     //   }, { status: 403 });
     // }
+
+    // Ensure pets table exists
+    await ensurePetsTableExists();
 
     try {
       // Fetch pets from the database
@@ -86,6 +131,9 @@ export async function POST(request: NextRequest) {
         error: 'Only fur parent accounts can create pets'
       }, { status: 403 });
     }
+
+    // Ensure pets table exists before insertion
+    await ensurePetsTableExists();
 
     // Get pet data from request body
     const body = await request.json();

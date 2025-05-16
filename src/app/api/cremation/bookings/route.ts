@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
                sb.created_at, sb.pet_name, sb.pet_type, sb.cause_of_death,
                sb.pet_image_url, sb.payment_method, sb.delivery_option, sb.delivery_distance,
                sb.delivery_fee, sb.price,
-               u.id as user_id, u.first_name, u.last_name, u.email, u.phone as phone,
+               u.id as user_id, u.first_name, u.last_name, u.email, u.phone_number as phone,
                sp.id as package_id, sp.name as service_name, sp.processing_time
         FROM service_bookings sb
         JOIN users u ON sb.user_id = u.id
@@ -77,13 +77,15 @@ export async function GET(request: NextRequest) {
       // Using traditional bookings table
       sql = `
         SELECT b.id, b.status, b.booking_date, b.booking_time, b.special_requests as notes, 
-               b.created_at, 'N/A' as pet_name, 'N/A' as pet_type,
+               b.created_at, p.name as pet_name, p.species as pet_type, p.image_url as pet_image_url,
                u.id as user_id, u.first_name, u.last_name, u.email, u.phone_number as phone,
                sp.id as package_id, sp.name as service_name, sp.price, sp.processing_time
         FROM bookings b
         JOIN users u ON b.user_id = u.id
+        LEFT JOIN pets p ON p.user_id = u.id
         JOIN service_packages sp ON b.business_service_id = sp.id
         WHERE b.business_service_id IN (?)
+        GROUP BY b.id
       `;
       queryParams.push(packageIds);
     }
@@ -131,6 +133,7 @@ export async function GET(request: NextRequest) {
         total: `SELECT COUNT(*) as count FROM service_bookings WHERE (package_id IN (?) OR provider_id = ?)`,
         pending: `SELECT COUNT(*) as count FROM service_bookings WHERE (package_id IN (?) OR provider_id = ?) AND status = 'pending'`,
         confirmed: `SELECT COUNT(*) as count FROM service_bookings WHERE (package_id IN (?) OR provider_id = ?) AND status = 'confirmed'`,
+        inProgress: `SELECT COUNT(*) as count FROM service_bookings WHERE (package_id IN (?) OR provider_id = ?) AND status = 'in_progress'`,
         completed: `SELECT COUNT(*) as count FROM service_bookings WHERE (package_id IN (?) OR provider_id = ?) AND status = 'completed'`,
         cancelled: `SELECT COUNT(*) as count FROM service_bookings WHERE (package_id IN (?) OR provider_id = ?) AND status = 'cancelled'`
       };
@@ -139,6 +142,7 @@ export async function GET(request: NextRequest) {
         total: `SELECT COUNT(*) as count FROM bookings WHERE business_service_id IN (?)`,
         pending: `SELECT COUNT(*) as count FROM bookings WHERE business_service_id IN (?) AND status = 'pending'`,
         confirmed: `SELECT COUNT(*) as count FROM bookings WHERE business_service_id IN (?) AND status = 'confirmed'`,
+        inProgress: `SELECT COUNT(*) as count FROM bookings WHERE business_service_id IN (?) AND status = 'in_progress'`,
         completed: `SELECT COUNT(*) as count FROM bookings WHERE business_service_id IN (?) AND status = 'completed'`,
         cancelled: `SELECT COUNT(*) as count FROM bookings WHERE business_service_id IN (?) AND status = 'cancelled'`
       };
@@ -191,10 +195,10 @@ export async function GET(request: NextRequest) {
       stats: {
         totalBookings: stats.total,
         scheduled: stats.confirmed || 0,
-        inProgress: 0, // This status doesn't exist in the schema, mapping to 0
-        completed: stats.completed,
-        cancelled: stats.cancelled,
-        pending: stats.pending,
+        inProgress: stats.inProgress || 0,
+        completed: stats.completed || 0,
+        cancelled: stats.cancelled || 0,
+        pending: stats.pending || 0,
         totalRevenue: totalRevenue
       }
     });
@@ -202,6 +206,82 @@ export async function GET(request: NextRequest) {
     console.error('Error fetching cremation bookings:', error);
     return NextResponse.json({
       error: 'Failed to fetch bookings data',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 });
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const {
+      userId,
+      providerId,
+      packageId,
+      bookingDate,
+      bookingTime,
+      specialRequests,
+      petName,
+      petType,
+      petImageUrl,
+      causeOfDeath,
+      paymentMethod,
+      deliveryOption,
+      deliveryDistance,
+      deliveryFee,
+      price
+    } = body;
+
+    // Validate required fields
+    if (!userId || !providerId || !packageId || !price) {
+      return NextResponse.json({
+        error: 'Missing required fields: userId, providerId, packageId, and price are required'
+      }, { status: 400 });
+    }
+
+    // Insert into service_bookings table
+    const insertQuery = `
+      INSERT INTO service_bookings (
+        user_id, provider_id, package_id, 
+        booking_date, booking_time, special_requests,
+        pet_name, pet_type, pet_image_url, cause_of_death,
+        payment_method, delivery_option, 
+        delivery_distance, delivery_fee, price
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `;
+
+    const result = await query(insertQuery, [
+      userId,
+      providerId,
+      packageId,
+      bookingDate || null,
+      bookingTime || null,
+      specialRequests || null,
+      petName || null,
+      petType || null,
+      petImageUrl || null,
+      causeOfDeath || null,
+      paymentMethod || 'cash',
+      deliveryOption || 'pickup',
+      deliveryDistance || 0,
+      deliveryFee || 0,
+      price
+    ]) as any;
+
+    if (!result.insertId) {
+      throw new Error('Failed to insert booking record');
+    }
+
+    // Return created booking data
+    return NextResponse.json({
+      success: true,
+      message: 'Booking created successfully',
+      bookingId: result.insertId
+    }, { status: 201 });
+  } catch (error) {
+    console.error('Error creating cremation booking:', error);
+    return NextResponse.json({
+      error: 'Failed to create booking',
       message: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 });
   }

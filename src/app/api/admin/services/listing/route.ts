@@ -66,18 +66,12 @@ async function getPackageImages(packageId: number) {
       }
     }
     
-    // If no images found, fallback to sample images
-    if (packageImages.length === 0) {
-      const sampleNum = (packageId % 5) + 1;
-      packageImages.push(`/images/sample-package-${sampleNum}.jpg`);
-    }
-    
+    // Return empty array if no images are found
     return packageImages;
   } catch (error) {
     console.error(`Error getting images for package ${packageId}:`, error);
-    // Return sample image as fallback
-    const sampleNum = (packageId % 5) + 1;
-    return [`/images/sample-package-${sampleNum}.jpg`];
+    // Return empty array instead of fallback image
+    return [];
   }
 }
 
@@ -141,13 +135,12 @@ async function findPackageImagePaths(packageId: number) {
       }
     }
     
-    // If no images found in either location, fallback to placeholder image
-    const sampleNum = (packageId % 5) + 1;
-    return [`/images/sample-package-${sampleNum}.jpg`];
+    // Return empty array if no images found - don't add fallback sample images
+    return [];
   } catch (error) {
     console.error(`Error finding images for package ${packageId}:`, error);
-    // Default to standard placeholder
-    return [`/images/sample-package-${(packageId % 5) + 1}.jpg`];
+    // Return empty array instead of fallback
+    return [];
   }
 }
 
@@ -221,11 +214,12 @@ export async function GET(request: NextRequest) {
         COALESCE(p.is_active, 1) as is_active,
         COALESCE(p.category, 'standard') as category,
         COALESCE(p.cremation_type, '') as cremationType,
-        COALESCE(p.processing_time, '') as processingTime,
+        COALESCE(p.processing_time, '2-3 days') as processingTime,
         COALESCE(p.bookings_count, 0) as bookings_count,
         COALESCE(p.rating, 0) as rating,
+        COALESCE(p.conditions, '') as conditions,
         sp.id as providerId,
-        COALESCE(sp.name, 'Unknown Provider') as providerName
+        COALESCE(sp.name, 'Cremation Center') as providerName
       FROM 
         service_packages p
       LEFT JOIN 
@@ -275,7 +269,11 @@ export async function GET(request: NextRequest) {
             created_at, 
             updated_at,
             COALESCE(is_active, 1) as is_active,
-            'Unknown' as providerName,
+            COALESCE(category, 'Private') as category,
+            COALESCE(cremation_type, 'Standard') as cremationType,
+            COALESCE(processing_time, '2-3 days') as processingTime,
+            COALESCE(conditions, '') as conditions,
+            'Cremation Center' as providerName,
             0 as providerId
           FROM service_packages
           LIMIT ? OFFSET ?
@@ -325,13 +323,26 @@ export async function GET(request: NextRequest) {
       // Debug output for each package ID 
       console.log(`Service ID ${service.id} has image paths:`, imagePaths);
 
-      // For each package, make sure there's an SVG placeholder ready
+      // Get package inclusions and add-ons
+      let inclusions = [];
+      let addOns = [];
+      
       try {
-        // Call the placeholder generator for this ID
-        fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/placeholder?id=${service.id}`)
-          .catch(e => console.error(`Error generating placeholder for package ${service.id}:`, e));
-      } catch (e) {
-        console.error(`Failed to call placeholder API for package ${service.id}:`, e);
+        const inclusionsResult = await query(
+          `SELECT description FROM package_inclusions WHERE package_id = ?`,
+          [service.id]
+        ) as any[];
+        
+        inclusions = inclusionsResult.map((item: any) => item.description);
+        
+        const addOnsResult = await query(
+          `SELECT description FROM package_addons WHERE package_id = ?`,
+          [service.id]
+        ) as any[];
+        
+        addOns = addOnsResult.map((item: any) => item.description);
+      } catch (err) {
+        console.error(`Error fetching inclusions/add-ons for package ${service.id}:`, err);
       }
 
       return {
@@ -339,18 +350,20 @@ export async function GET(request: NextRequest) {
         name: service.name || 'Unnamed Service',
         description: service.description || '',
         category: (service.category || 'standard').toLowerCase(),
-        cremationType: service.cremationType || '',
-        processingTime: service.processingTime || '',
+        cremationType: service.cremationType || 'Standard',
+        processingTime: service.processingTime || '2-3 days',
         price: formattedPrice,
         priceValue: priceValue,
         conditions: service.conditions || '',
         status,
-        cremationCenter: service.providerName || 'Unknown Provider',
+        cremationCenter: service.providerName || 'Cremation Center',
         providerId: service.providerId || 0,
         rating: service.rating || 0,
         bookings: service.bookings_count || 0,
         image: imagePaths[0], // Use first image path
-        images: imagePaths // Include all potential paths
+        images: imagePaths, // Include all potential paths
+        inclusions: inclusions,
+        addOns: addOns
       };
     });
 

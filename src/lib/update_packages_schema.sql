@@ -13,26 +13,28 @@ ALTER TABLE service_packages ADD COLUMN conditions TEXT AFTER price;
 -- Add is_active column to service_packages table if it doesn't exist
 ALTER TABLE service_packages ADD COLUMN is_active BOOLEAN DEFAULT TRUE AFTER conditions;
 
--- Add delivery_fee_per_km column to service_packages table
--- Check if column exists first to avoid errors in migrations
-
-SET @dbname = DATABASE();
-SET @tablename = "service_packages";
+-- Add delivery_fee_per_km column to service_packages table if it doesn't exist
 SET @columnname = "delivery_fee_per_km";
-SET @preparedStatement = (SELECT IF(
-  (
-    SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
-    WHERE
-      (TABLE_SCHEMA = @dbname)
-      AND (TABLE_NAME = @tablename)
-      AND (COLUMN_NAME = @columnname)
-  ) > 0,
+SET @tablename = "service_packages";
+SET @columnexists = 0;
+SET @sqlstmt = CONCAT("SELECT COUNT(*) INTO @columnexists FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = '", @tablename, "' AND column_name = '", @columnname, "'");
+
+PREPARE checkcolumn FROM @sqlstmt;
+EXECUTE checkcolumn;
+DEALLOCATE PREPARE checkcolumn;
+
+SET @sqlstmt = IF(
+  @columnexists > 0,
   "SELECT 'Column delivery_fee_per_km already exists in service_packages table' AS result",
-  "ALTER TABLE service_packages ADD COLUMN delivery_fee_per_km DECIMAL(10,2) DEFAULT 0 AFTER price"
-));
-PREPARE alterIfNotExists FROM @preparedStatement;
-EXECUTE alterIfNotExists;
-DEALLOCATE PREPARE alterIfNotExists;
+  "ALTER TABLE service_packages ADD COLUMN delivery_fee_per_km DECIMAL(10,2) DEFAULT 50.00 AFTER price"
+);
+
+PREPARE stmt FROM @sqlstmt;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- Update existing records to have a default delivery fee per km if null
+UPDATE service_packages SET delivery_fee_per_km = 50.00 WHERE delivery_fee_per_km IS NULL;
 
 -- Create package_inclusions table if it doesn't exist
 CREATE TABLE IF NOT EXISTS package_inclusions (

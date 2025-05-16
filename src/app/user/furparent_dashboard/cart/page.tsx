@@ -5,8 +5,6 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import {
   TrashIcon,
-  MinusIcon,
-  PlusIcon,
   ShoppingCartIcon,
   ArrowLeftIcon,
   CheckIcon
@@ -14,6 +12,7 @@ import {
 import { useCart } from '@/contexts/CartContext';
 import FurParentNavbar from '@/components/navigation/FurParentNavbar';
 import withOTPVerification from '@/components/withOTPVerification';
+import { useToast } from '@/context/ToastContext';
 
 interface CartPageProps {
   userData?: any;
@@ -21,140 +20,37 @@ interface CartPageProps {
 
 function CartPage({ userData }: CartPageProps) {
   const router = useRouter();
-  const { items, removeItem, updateQuantity, updateAddOns, updatePet, totalPrice, clearCart } = useCart();
-  const [pets, setPets] = useState<any[]>([]);
+  const { items, removeItem, totalPrice } = useCart();
+  const { showToast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [checkoutSuccess, setCheckoutSuccess] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
-  // Fetch user's pets
-  useEffect(() => {
-    const fetchPets = async () => {
-      try {
-        const response = await fetch('/api/pets');
-        if (response.ok) {
-          const data = await response.json();
-          setPets(data.pets || []);
-        } else {
-          console.error('Failed to fetch pets');
-
-          // Fallback to mock pets if API fails
-          setPets([
-            { id: 1, name: 'Max', species: 'Dog' },
-            { id: 2, name: 'Luna', species: 'Cat' },
-            { id: 3, name: 'Buddy', species: 'Dog' }
-          ]);
-        }
-      } catch (error) {
-        console.error('Error fetching pets:', error);
-
-        // Fallback to mock pets if API fails
-        setPets([
-          { id: 1, name: 'Max', species: 'Dog' },
-          { id: 2, name: 'Luna', species: 'Cat' },
-          { id: 3, name: 'Buddy', species: 'Dog' }
-        ]);
-      }
-    };
-
-    fetchPets();
-  }, []);
-
   // Handle checkout
-  const handleCheckout = async () => {
+  const handleCheckout = () => {
     if (items.length === 0) return;
 
     // Check if all items have a pet selected
     const missingPet = items.some(item => !item.petId);
     if (missingPet) {
       setCheckoutError('Please select a pet for all items in your cart');
+      showToast('Please select a pet for all items in your cart', 'error');
       return;
     }
 
-    setIsLoading(true);
-    setCheckoutError(null);
-
-    try {
-      // Create bookings for each item
-      const bookingPromises = items.map(async (item) => {
-        const bookingData = {
-          packageId: item.packageId,
-          providerId: item.providerId,
-          petId: item.petId,
-          quantity: item.quantity,
-          selectedAddOns: item.selectedAddOns,
-          totalPrice: calculateItemTotal(item)
-        };
-
-        const response = await fetch('/api/cart-bookings', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(bookingData)
-        });
-
-        if (!response.ok) {
-          throw new Error(`Failed to create booking for ${item.packageName}`);
-        }
-
-        return await response.json();
-      });
-
-      await Promise.all(bookingPromises);
-
-      // Clear cart and show success message
-      clearCart();
-      setCheckoutSuccess(true);
-
-      // Redirect to bookings page after a delay
-      setTimeout(() => {
-        router.push('/user/furparent_dashboard/bookings');
-      }, 3000);
-    } catch (error) {
-      console.error('Checkout error:', error);
-      setCheckoutError(error instanceof Error ? error.message : 'Failed to complete checkout');
-    } finally {
-      setIsLoading(false);
-    }
+    // Get the first item from the cart and redirect to checkout
+    const item = items[0];
+    
+    // Redirect to the checkout page with the first item's details
+    router.push(`/user/furparent_dashboard/bookings/checkout?provider=${item.providerId}&package=${item.packageId}&fromCart=true&petId=${item.petId}&petName=${encodeURIComponent(item.petName || '')}`);
   };
 
   // Calculate total price for a single item including add-ons
   const calculateItemTotal = (item: any) => {
-    let total = item.price * item.quantity;
+    let total = item.price;
 
-    item.selectedAddOns.forEach((addOn: string) => {
-      const priceMatch = addOn.match(/\(\+₱([\d,]+)\)/);
-      if (priceMatch) {
-        const addOnPrice = parseFloat(priceMatch[1].replace(/,/g, ''));
-        total += addOnPrice * item.quantity;
-      }
-    });
-
+    // Add-ons are now handled at checkout
     return total;
-  };
-
-  // Handle pet selection
-  const handlePetChange = (itemId: string, e: React.ChangeEvent<HTMLSelectElement>) => {
-    const petId = parseInt(e.target.value);
-    if (petId) {
-      const pet = pets.find(p => p.id === petId);
-      if (pet) {
-        updatePet(itemId, petId, pet.name);
-      }
-    }
-  };
-
-  // Handle add-on selection
-  const handleAddOnToggle = (itemId: string, addOn: string) => {
-    const item = items.find(item => item.id === itemId);
-    if (!item) return;
-
-    const newSelectedAddOns = item.selectedAddOns.includes(addOn)
-      ? item.selectedAddOns.filter(a => a !== addOn)
-      : [...item.selectedAddOns, addOn];
-
-    updateAddOns(itemId, newSelectedAddOns);
   };
 
   return (
@@ -222,7 +118,7 @@ function CartPage({ userData }: CartPageProps) {
                           )}
                         </div>
 
-                        {/* Item Details */}
+                        {/* Item Details - Simplified */}
                         <div className="sm:ml-6 flex-grow">
                           <div className="flex justify-between">
                             <div>
@@ -234,6 +130,13 @@ function CartPage({ userData }: CartPageProps) {
                               <p className="text-[var(--primary-green)] font-semibold mt-1">
                                 ₱{item.price.toLocaleString()}
                               </p>
+                              
+                              {/* Only show selected pet if available */}
+                              {item.petId && item.petName && (
+                                <p className="text-sm text-gray-700 mt-2">
+                                  <span className="font-medium">Selected Pet:</span> {item.petName}
+                                </p>
+                              )}
                             </div>
                             <button
                               onClick={() => removeItem(item.id)}
@@ -241,66 +144,6 @@ function CartPage({ userData }: CartPageProps) {
                             >
                               <TrashIcon className="h-5 w-5" />
                             </button>
-                          </div>
-
-                          {/* Pet Selection */}
-                          <div className="mt-4">
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                              Select Pet:
-                            </label>
-                            <select
-                              value={item.petId || ''}
-                              onChange={(e) => handlePetChange(item.id, e)}
-                              className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)] sm:text-sm"
-                            >
-                              <option value="">Select a pet</option>
-                              {pets.map(pet => (
-                                <option key={pet.id} value={pet.id}>
-                                  {pet.name} ({pet.species})
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-
-                          {/* Add-ons */}
-                          {item.addOns.length > 0 && (
-                            <div className="mt-4">
-                              <p className="text-sm font-medium text-gray-700 mb-1">Add-ons:</p>
-                              <div className="space-y-1">
-                                {item.addOns.map((addon: string, index: number) => (
-                                  <label key={index} className="flex items-center">
-                                    <input
-                                      type="checkbox"
-                                      checked={item.selectedAddOns.includes(addon)}
-                                      onChange={() => handleAddOnToggle(item.id, addon)}
-                                      className="h-4 w-4 text-[var(--primary-green)] focus:ring-[var(--primary-green)] border-gray-300 rounded"
-                                    />
-                                    <span className="ml-2 text-sm text-gray-700">{addon}</span>
-                                  </label>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Quantity Controls */}
-                          <div className="flex items-center mt-4">
-                            <span className="text-sm text-gray-700 mr-2">Quantity:</span>
-                            <div className="flex items-center border rounded-md">
-                              <button
-                                onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                                className="px-2 py-1 text-gray-500 hover:bg-gray-100"
-                                disabled={item.quantity <= 1}
-                              >
-                                <MinusIcon className="h-4 w-4" />
-                              </button>
-                              <span className="px-3 py-1">{item.quantity}</span>
-                              <button
-                                onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                                className="px-2 py-1 text-gray-500 hover:bg-gray-100"
-                              >
-                                <PlusIcon className="h-4 w-4" />
-                              </button>
-                            </div>
                           </div>
                         </div>
                       </div>
@@ -319,7 +162,7 @@ function CartPage({ userData }: CartPageProps) {
                   {items.map((item) => (
                     <div key={item.id} className="flex justify-between text-sm">
                       <span className="text-gray-600">
-                        {item.packageName} x{item.quantity}
+                        {item.packageName}
                       </span>
                       <span className="font-medium">
                         ₱{calculateItemTotal(item).toLocaleString()}

@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: May 16, 2025 at 02:42 AM
+-- Generation Time: May 16, 2025 at 07:08 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -49,7 +49,8 @@ INSERT INTO `admin_notifications` (`id`, `type`, `title`, `message`, `entity_typ
 (3, 'new_cremation_center', 'New Cremation Center Registration', 'business has registered as a cremation center and is pending verification.', 'service_provider', 9, '/admin/applications/9', 0, '2025-05-14 15:10:01'),
 (4, 'new_cremation_center', 'New Cremation Center Registration', 'business has registered as a cremation center and is pending verification.', 'service_provider', 10, '/admin/applications/10', 0, '2025-05-14 17:32:31'),
 (5, 'new_cremation_center', 'New Cremation Center Registration', 'business has registered as a cremation center and is pending verification.', 'service_provider', 12, '/admin/applications/12', 0, '2025-05-15 23:25:47'),
-(6, 'new_cremation_center', 'New Cremation Center Registration', 'business has registered as a cremation center and is pending verification.', 'service_provider', 13, '/admin/applications/13', 0, '2025-05-16 00:04:22');
+(6, 'new_cremation_center', 'New Cremation Center Registration', 'business has registered as a cremation center and is pending verification.', 'service_provider', 13, '/admin/applications/13', 0, '2025-05-16 00:04:22'),
+(7, 'new_cremation_center', 'New Cremation Center Registration', 'business has registered as a cremation center and is pending verification.', 'service_provider', 14, '/admin/applications/14', 0, '2025-05-16 00:54:30');
 
 -- --------------------------------------------------------
 
@@ -91,7 +92,7 @@ CREATE TABLE `bookings` (
 --
 
 INSERT INTO `bookings` (`id`, `user_id`, `business_service_id`, `booking_date`, `booking_time`, `status`, `total_amount`, `special_requests`, `created_at`, `updated_at`) VALUES
-(4, 44, 21, '2025-05-16', '10:00:00', 'pending', 3500.00, 'asdasdasd', '2025-05-15 18:10:17', '2025-05-15 18:10:17');
+(10, 49, 46, '2025-05-17', '10:00:00', 'completed', 13373.00, 'asdasdasd', '2025-05-16 04:57:38', '2025-05-16 04:58:32');
 
 -- --------------------------------------------------------
 
@@ -150,8 +151,8 @@ INSERT INTO `notifications` (`id`, `user_id`, `title`, `message`, `type`, `is_re
 (79, 44, 'Application Approved', 'Your business application for business has been approved.', 'success', 1, '/cremation/dashboard', '2025-05-14 17:33:49', '2025-05-14 17:38:49'),
 (80, 44, 'Application Approved', 'Your business application for business has been approved. You can now start offering services.', 'success', 1, '/business/dashboard', '2025-05-14 17:35:51', '2025-05-14 17:38:49'),
 (81, 44, 'Application Approved', 'Your business application for business has been approved.', 'success', 1, '/cremation/dashboard', '2025-05-14 17:35:54', '2025-05-14 17:38:49'),
-(84, 47, 'Application Approved', 'Your business application for business has been approved. You can now start offering services.', 'success', 0, '/business/dashboard', '2025-05-16 00:05:59', '2025-05-16 00:05:59'),
-(85, 47, 'Application Approved', 'Your business application for business has been approved.', 'success', 0, '/cremation/dashboard', '2025-05-16 00:06:01', '2025-05-16 00:06:01');
+(88, 48, 'Application Approved', 'Your business application for business has been approved. You can now start offering services.', 'success', 0, '/business/dashboard', '2025-05-16 00:56:19', '2025-05-16 00:56:19'),
+(89, 48, 'Application Approved', 'Your business application for business has been approved.', 'success', 0, '/cremation/dashboard', '2025-05-16 00:56:22', '2025-05-16 00:56:22');
 
 -- --------------------------------------------------------
 
@@ -173,7 +174,10 @@ CREATE TABLE `otp_attempts` (
 
 INSERT INTO `otp_attempts` (`id`, `user_id`, `attempt_type`, `attempt_time`, `ip_address`) VALUES
 (76, 44, 'generate', '2025-05-14 17:32:34', '::ffff:192.168.56.1'),
-(91, 47, 'generate', '2025-05-16 00:04:29', '::1');
+(92, 48, 'generate', '2025-05-16 00:54:32', '::1'),
+(93, 49, 'generate', '2025-05-16 01:07:45', '::1'),
+(94, 49, 'generate', '2025-05-16 01:08:06', '::1'),
+(95, 49, 'verify', '2025-05-16 01:08:16', '::1');
 
 -- --------------------------------------------------------
 
@@ -196,7 +200,9 @@ CREATE TABLE `otp_codes` (
 
 INSERT INTO `otp_codes` (`id`, `user_id`, `otp_code`, `expires_at`, `is_used`, `created_at`) VALUES
 (57, 44, '691270', '2025-05-15 01:42:34', 0, '2025-05-14 17:32:34'),
-(66, 47, '899141', '2025-05-16 08:14:29', 0, '2025-05-16 00:04:29');
+(67, 48, '153345', '2025-05-16 09:04:32', 0, '2025-05-16 00:54:32'),
+(68, 49, '468346', '2025-05-16 09:17:45', 1, '2025-05-16 01:07:45'),
+(69, 49, '590329', '2025-05-16 09:18:06', 1, '2025-05-16 01:08:06');
 
 -- --------------------------------------------------------
 
@@ -211,30 +217,6 @@ CREATE TABLE `package_addons` (
   `price` decimal(10,2) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `package_addons`
---
-
-INSERT INTO `package_addons` (`id`, `package_id`, `description`, `price`, `created_at`) VALUES
-(23, 21, 'Personalized nameplate', 500.00, '2025-05-13 22:58:24'),
-(24, 21, 'Photo frame', 800.00, '2025-05-13 22:58:24'),
-(25, 22, 'Memorial video', 1200.00, '2025-05-13 22:58:24'),
-(26, 22, 'Additional urns', 1500.00, '2025-05-13 22:58:24'),
-(27, 23, 'Memorial jewelry', 2000.00, '2025-05-13 22:58:24'),
-(28, 23, 'Canvas portrait', 2500.00, '2025-05-13 22:58:24'),
-(29, 24, 'Tree planting ceremony', 1200.00, '2025-05-13 22:58:24'),
-(30, 24, 'Memorial garden stone', 900.00, '2025-05-13 22:58:24'),
-(31, 25, 'Memorial tree planting', 2000.00, '2025-05-13 22:58:24'),
-(32, 25, 'Biodegradable water burial urn', 1500.00, '2025-05-13 22:58:24'),
-(33, 26, 'Video tribute', 1800.00, '2025-05-13 22:58:24'),
-(34, 26, 'Custom memorial garden', 3500.00, '2025-05-13 22:58:24'),
-(35, 27, 'Personalized photo frame', 700.00, '2025-05-13 22:58:24'),
-(36, 27, 'Memorial candle', 500.00, '2025-05-13 22:58:24'),
-(37, 28, 'Memorial video montage', 1500.00, '2025-05-13 22:58:24'),
-(38, 28, 'Additional keepsake urns', 1200.00, '2025-05-13 22:58:24'),
-(39, 29, 'Custom memorial jewelry', 2200.00, '2025-05-13 22:58:24'),
-(40, 29, 'Memorial garden stone', 1800.00, '2025-05-13 22:58:24');
 
 -- --------------------------------------------------------
 
@@ -256,33 +238,7 @@ CREATE TABLE `package_images` (
 --
 
 INSERT INTO `package_images` (`id`, `package_id`, `image_path`, `image_id`, `display_order`, `created_at`) VALUES
-(2, 21, '/uploads/packages/21/bg_2.png', NULL, 0, '2025-05-13 22:58:24'),
-(3, 21, '/uploads/packages/21/bg_3.png', NULL, 1, '2025-05-13 22:58:24'),
-(4, 21, '/uploads/packages/21/bg_4.png', NULL, 2, '2025-05-13 22:58:24'),
-(5, 22, '/uploads/packages/22/bg_2.png', NULL, 0, '2025-05-13 22:58:24'),
-(6, 22, '/uploads/packages/22/bg_3.png', NULL, 1, '2025-05-13 22:58:24'),
-(7, 22, '/uploads/packages/22/bg_4.png', NULL, 2, '2025-05-13 22:58:24'),
-(8, 23, '/uploads/packages/23/bg_2.png', NULL, 0, '2025-05-13 22:58:24'),
-(9, 23, '/uploads/packages/23/bg_3.png', NULL, 1, '2025-05-13 22:58:24'),
-(10, 23, '/uploads/packages/23/bg_4.png', NULL, 2, '2025-05-13 22:58:24'),
-(11, 24, '/uploads/packages/24/bg_2.png', NULL, 0, '2025-05-13 22:58:24'),
-(12, 24, '/uploads/packages/24/bg_3.png', NULL, 1, '2025-05-13 22:58:24'),
-(13, 24, '/uploads/packages/24/bg_4.png', NULL, 2, '2025-05-13 22:58:24'),
-(14, 25, '/uploads/packages/25/bg_2.png', NULL, 0, '2025-05-13 22:58:24'),
-(15, 25, '/uploads/packages/25/bg_3.png', NULL, 1, '2025-05-13 22:58:24'),
-(16, 25, '/uploads/packages/25/bg_4.png', NULL, 2, '2025-05-13 22:58:24'),
-(17, 26, '/uploads/packages/26/bg_2.png', NULL, 0, '2025-05-13 22:58:24'),
-(18, 26, '/uploads/packages/26/bg_3.png', NULL, 1, '2025-05-13 22:58:24'),
-(19, 26, '/uploads/packages/26/bg_4.png', NULL, 2, '2025-05-13 22:58:24'),
-(20, 27, '/uploads/packages/27/bg_2.png', NULL, 0, '2025-05-13 22:58:24'),
-(21, 27, '/uploads/packages/27/bg_3.png', NULL, 1, '2025-05-13 22:58:24'),
-(22, 27, '/uploads/packages/27/bg_4.png', NULL, 2, '2025-05-13 22:58:24'),
-(23, 28, '/uploads/packages/28/bg_2.png', NULL, 0, '2025-05-13 22:58:24'),
-(24, 28, '/uploads/packages/28/bg_3.png', NULL, 1, '2025-05-13 22:58:24'),
-(25, 28, '/uploads/packages/28/bg_4.png', NULL, 2, '2025-05-13 22:58:24'),
-(26, 29, '/uploads/packages/29/bg_2.png', NULL, 0, '2025-05-13 22:58:24'),
-(27, 29, '/uploads/packages/29/bg_3.png', NULL, 1, '2025-05-13 22:58:24'),
-(28, 29, '/uploads/packages/29/bg_4.png', NULL, 2, '2025-05-13 22:58:24');
+(56, 46, '/uploads/packages/46/package_14_1747371402493.png', NULL, 0, '2025-05-16 04:56:53');
 
 -- --------------------------------------------------------
 
@@ -302,42 +258,7 @@ CREATE TABLE `package_inclusions` (
 --
 
 INSERT INTO `package_inclusions` (`id`, `package_id`, `description`, `created_at`) VALUES
-(25, 21, 'Standard clay urn', '2025-05-13 22:58:24'),
-(26, 21, 'Memorial certificate', '2025-05-13 22:58:24'),
-(27, 21, 'Paw print impression', '2025-05-13 22:58:24'),
-(28, 22, 'Wooden urn with nameplate', '2025-05-13 22:58:24'),
-(29, 22, 'Memorial certificate', '2025-05-13 22:58:24'),
-(30, 22, 'Paw print impression', '2025-05-13 22:58:24'),
-(31, 22, 'Fur clipping', '2025-05-13 22:58:24'),
-(32, 23, 'Custom wooden urn', '2025-05-13 22:58:24'),
-(33, 23, 'Memorial service', '2025-05-13 22:58:24'),
-(34, 23, 'Photo memorial', '2025-05-13 22:58:24'),
-(35, 23, 'Paw print keepsake', '2025-05-13 22:58:24'),
-(36, 23, 'Fur clipping', '2025-05-13 22:58:24'),
-(37, 24, 'Biodegradable urn', '2025-05-13 22:58:24'),
-(38, 24, 'Plantable memorial card', '2025-05-13 22:58:24'),
-(39, 24, 'Digital memorial', '2025-05-13 22:58:24'),
-(40, 25, 'Bamboo urn', '2025-05-13 22:58:24'),
-(41, 25, 'Seed paper memorial card', '2025-05-13 22:58:24'),
-(42, 25, 'Paw print in clay', '2025-05-13 22:58:24'),
-(43, 25, 'Digital memorial album', '2025-05-13 22:58:24'),
-(44, 26, 'Choice of sustainable urn', '2025-05-13 22:58:24'),
-(45, 26, 'Memorial service', '2025-05-13 22:58:24'),
-(46, 26, 'Photo tribute', '2025-05-13 22:58:24'),
-(47, 26, 'Paw print keepsake', '2025-05-13 22:58:24'),
-(48, 26, 'Memorial planting', '2025-05-13 22:58:24'),
-(49, 27, 'Simple ceramic urn', '2025-05-13 22:58:24'),
-(50, 27, 'Memorial certificate', '2025-05-13 22:58:24'),
-(51, 27, 'Digital photo tribute', '2025-05-13 22:58:24'),
-(52, 28, 'Personalized wooden urn', '2025-05-13 22:58:24'),
-(53, 28, 'Memorial certificate', '2025-05-13 22:58:24'),
-(54, 28, 'Paw print keepsake', '2025-05-13 22:58:24'),
-(55, 28, 'Fur clipping in glass vial', '2025-05-13 22:58:24'),
-(56, 29, 'Custom engraved wooden urn', '2025-05-13 22:58:24'),
-(57, 29, 'Memorial service at home or facility', '2025-05-13 22:58:24'),
-(58, 29, 'Framed photo memorial', '2025-05-13 22:58:24'),
-(59, 29, 'Paw print in clay', '2025-05-13 22:58:24'),
-(60, 29, 'Fur clipping in keepsake locket', '2025-05-13 22:58:24');
+(92, 46, 'asdsd', '2025-05-16 04:56:53');
 
 -- --------------------------------------------------------
 
@@ -354,14 +275,34 @@ CREATE TABLE `password_reset_tokens` (
   `is_used` tinyint(1) DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+-- --------------------------------------------------------
+
 --
--- Dumping data for table `password_reset_tokens`
+-- Table structure for table `pets`
 --
 
-INSERT INTO `password_reset_tokens` (`id`, `user_id`, `token`, `created_at`, `expires_at`, `is_used`) VALUES
-(1, 44, '92b749d24fd9ccdb59dbd8d81c6d6e095da2f85d9ec0ac9ac46c4aeaae11d413', '2025-05-15 02:01:33', '2025-05-15 11:01:33', 1),
-(2, 44, '9dda3fbc6bb8b1b665ebe0f7f5d3534be9510870e2687751adff15b59d9554af', '2025-05-15 02:02:48', '2025-05-15 11:02:48', 0),
-(3, 19, 'e8a21ae248bf8f537f74fad66a03a4a5e72d69320405c59b47dac630ee45d8d8', '2025-05-15 12:08:38', '2025-05-15 21:08:38', 0);
+CREATE TABLE `pets` (
+  `id` int(11) NOT NULL,
+  `user_id` varchar(255) NOT NULL,
+  `name` varchar(255) NOT NULL,
+  `species` varchar(100) NOT NULL,
+  `breed` varchar(255) DEFAULT NULL,
+  `gender` varchar(50) DEFAULT NULL,
+  `age` varchar(50) DEFAULT NULL,
+  `weight` decimal(8,2) DEFAULT NULL,
+  `photo_path` varchar(255) DEFAULT NULL,
+  `special_notes` text DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `pets`
+--
+
+INSERT INTO `pets` (`id`, `user_id`, `name`, `species`, `breed`, `gender`, `age`, `weight`, `photo_path`, `special_notes`, `created_at`, `updated_at`) VALUES
+(6, '49', 'test', 'Dog', 'aspin ', NULL, '5', 32.00, '/uploads/pets/pet_test_49_1747370581632.png', 'ssdasd sdsd', '2025-05-16 04:43:01', '2025-05-16 04:43:01'),
+(7, '49', 'asdas', 'Cat', 'asdasd', 'Female', NULL, 23.00, '/uploads/pets/pet_asdas_49_1747371458544.png', 'asdsd', '2025-05-16 04:57:38', '2025-05-16 04:57:38');
 
 -- --------------------------------------------------------
 
@@ -376,6 +317,34 @@ CREATE TABLE `reviews` (
   `booking_id` int(11) NOT NULL,
   `rating` int(11) NOT NULL CHECK (`rating` between 1 and 5),
   `comment` text DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `service_bookings`
+--
+
+CREATE TABLE `service_bookings` (
+  `id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `provider_id` int(11) NOT NULL,
+  `package_id` int(11) NOT NULL,
+  `booking_date` date DEFAULT NULL,
+  `booking_time` time DEFAULT NULL,
+  `status` enum('pending','confirmed','in_progress','completed','cancelled') DEFAULT 'pending',
+  `special_requests` text DEFAULT NULL,
+  `pet_name` varchar(255) DEFAULT NULL,
+  `pet_type` varchar(255) DEFAULT NULL,
+  `pet_image_url` varchar(255) DEFAULT NULL,
+  `cause_of_death` varchar(255) DEFAULT NULL,
+  `payment_method` varchar(50) DEFAULT 'cash',
+  `delivery_option` varchar(50) DEFAULT 'pickup',
+  `delivery_distance` float DEFAULT 0,
+  `delivery_fee` decimal(10,2) DEFAULT 0.00,
+  `price` decimal(10,2) NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
@@ -407,15 +376,7 @@ CREATE TABLE `service_packages` (
 --
 
 INSERT INTO `service_packages` (`id`, `service_provider_id`, `name`, `description`, `category`, `cremation_type`, `processing_time`, `price`, `delivery_fee_per_km`, `conditions`, `is_active`, `created_at`, `updated_at`) VALUES
-(21, 6, 'Basic Cremation', 'Simple cremation service with standard urn', 'Communal', 'Standard', '2-3 days', 3500.00, 0.00, 'For pets up to 50 lbs. Additional fees may apply for larger pets.', 1, '2025-05-13 22:58:24', '2025-05-13 22:58:24'),
-(22, 6, 'Premium Cremation', 'Private cremation with premium urn and memorial certificate', 'Private', 'Premium', '1-2 days', 5500.00, 0.00, 'Available for all pet sizes. Viewing options available upon request.', 1, '2025-05-13 22:58:24', '2025-05-13 22:58:24'),
-(23, 6, 'Deluxe Package', 'Private cremation with wooden urn and memorial service', 'Private', 'Deluxe', 'Same day', 6000.00, 0.00, 'Includes private viewing room for family. 24-hour service available.', 1, '2025-05-13 22:58:24', '2025-05-13 22:58:24'),
-(24, 7, 'Eco-Friendly Basic', 'Environmentally conscious cremation with biodegradable urn', 'Communal', 'Standard', '2-3 days', 3800.00, 0.00, 'For pets up to 40 lbs. Additional fees may apply for larger pets.', 1, '2025-05-13 22:58:24', '2025-05-13 22:58:24'),
-(25, 7, 'Private Eco-Cremation', 'Private cremation with sustainable memorial options', 'Private', 'Premium', '1-2 days', 5800.00, 0.00, 'Available for all pet sizes. Carbon offset included in price.', 1, '2025-05-13 22:58:24', '2025-05-13 22:58:24'),
-(26, 7, 'Legacy Memorial', 'Comprehensive memorial service with sustainable options', 'Private', 'Deluxe', 'Same day', 7500.00, 0.00, 'Includes private viewing room and memorial planning assistance.', 1, '2025-05-13 22:58:24', '2025-05-13 22:58:24'),
-(27, 8, 'Simple Farewell', 'Basic communal cremation service with memorial keepsake', 'Communal', 'Standard', '2-3 days', 3200.00, 0.00, 'For pets up to 60 lbs. 24/7 pickup service available.', 1, '2025-05-13 22:58:24', '2025-05-13 22:58:24'),
-(28, 8, 'Private Remembrance', 'Individual cremation with personalized memorial options', 'Private', 'Premium', '1-2 days', 5200.00, 0.00, 'All pet sizes welcome. Includes home pickup service within Bataan.', 1, '2025-05-13 22:58:24', '2025-05-13 22:58:24'),
-(29, 8, 'Forever Memorial', 'Comprehensive private cremation with custom memorial service', 'Private', 'Deluxe', 'Same day', 6800.00, 0.00, 'Includes 24/7 service, home pickup, and private viewing options.', 1, '2025-05-13 22:58:24', '2025-05-13 22:58:24');
+(46, 14, 'asdsd', 'asedasds', 'Private', 'Standard', '1-2 days', 12323.00, 0.00, 'adsd', 1, '2025-05-16 04:56:53', '2025-05-16 04:56:53');
 
 -- --------------------------------------------------------
 
@@ -453,10 +414,7 @@ CREATE TABLE `service_providers` (
 --
 
 INSERT INTO `service_providers` (`id`, `user_id`, `name`, `provider_type`, `contact_first_name`, `contact_last_name`, `phone`, `address`, `province`, `city`, `zip`, `hours`, `service_description`, `application_status`, `verification_date`, `verification_notes`, `bir_certificate_path`, `business_permit_path`, `government_id_path`, `created_at`, `updated_at`, `active_service_count`) VALUES
-(6, 31, 'Rainbow Bridge Pet Cremation', 'cremation', 'Admin', 'Rainbow', '09123456789', 'Capitol Drive, Balanga City, Bataan, Philippines', 'Bataan', 'Balanga City', '2100', 'Monday-Friday: 8:00 AM - 5:00 PM, Saturday: 8:00 AM - 12:00 PM, Sunday: Closed', 'Compassionate pet cremation services with personalized memorials. We provide dignified and respectful end-of-life care for your beloved companions. Our team understands the deep bond between pets and their families, and we strive to honor that connection through our thoughtful services.', 'approved', '2025-05-15 14:11:05', 'asdasd asdasd asdasd asdasd', NULL, NULL, NULL, '2025-05-13 22:58:24', '2025-05-15 14:11:05', 3),
-(7, 32, 'Peaceful Paws Memorial', 'cremation', 'Admin', 'Peaceful', '09234567890', 'Tuyo, Balanga City, Bataan, Philippines', 'Bataan', 'Balanga City', '2100', 'Monday-Saturday: 9:00 AM - 6:00 PM, Sunday: By appointment only', 'Dignified pet cremation with eco-friendly options. We focus on providing environmentally conscious memorial services while honoring your pet with the respect they deserve. Our facility is designed to provide a peaceful setting for families during this difficult time.', 'approved', '2025-05-14 15:03:47', 'Unrestricted by admin', NULL, NULL, NULL, '2025-05-13 22:58:24', '2025-05-14 15:03:47', 3),
-(8, 33, 'Eternal Companions', 'cremation', 'Admin', 'Eternal', '09345678901', 'Tenejero, Balanga City, Bataan, Philippines', 'Bataan', 'Balanga City', '2100', 'Monday-Sunday: 24/7 Service Available', 'Honoring your pet with respectful cremation services. We offer 24/7 service to ensure your beloved companion receives timely and compassionate care. Our dedicated team is committed to providing support during this difficult time.', 'approved', '2025-05-14 17:30:42', 'Application approved', NULL, NULL, NULL, '2025-05-13 22:58:24', '2025-05-14 17:30:42', 3),
-(13, 47, 'business', 'cremation', 'Justin', 'Sibonga', 'asdasdasd', 'Capitol Compound, Tenejero', 'Bataan', 'Balanga City', '2100', 'asdasd', 'asdasds', 'approved', '2025-05-16 00:20:39', 'Application approved', NULL, NULL, NULL, '2025-05-16 00:04:22', '2025-05-16 00:20:39', 0);
+(14, 48, 'business', 'cremation', 'Justin', 'Sibonga', 'asdasd', 'Orani, Bataan', 'Bataan', 'Balanga City', '2100', 'asdasd', 'asdasd', 'approved', '2025-05-16 00:56:19', 'Application approved', '/uploads/businesses/48/bir_certificate_1747356877315.png', '/uploads/businesses/48/business_permit_1747356877309.png', '/uploads/businesses/48/government_id_1747356877320.png', '2025-05-16 00:54:30', '2025-05-16 01:09:39', 0);
 
 -- --------------------------------------------------------
 
@@ -509,8 +467,10 @@ INSERT INTO `users` (`id`, `email`, `password`, `first_name`, `last_name`, `phon
 (31, 'rainbow_bridge@example.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Admin', 'Rainbow', '09123456789', NULL, NULL, 'business', 'active', 1, 1, '2025-05-13 22:58:24', '2025-05-15 23:23:25', NULL),
 (32, 'peaceful_paws@example.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Admin', 'Peaceful', '09234567890', NULL, NULL, 'business', 'active', 1, 1, '2025-05-13 22:58:24', '2025-05-14 15:03:47', NULL),
 (33, 'eternal_companions@example.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Admin', 'Eternal', '09345678901', NULL, NULL, 'business', 'active', 1, 1, '2025-05-13 22:58:24', '2025-05-14 17:30:42', NULL),
-(44, 'admin@rainbowpaws.com', '$2b$10$CPyPK.A9FBeSkzotK0Zt6e3UW2NOqaQ.ovwjz/wt/tDgNWXIocV.W', 'System', 'Admin', 'asdasd', 'BPSU', 'male', 'admin', 'active', 1, 1, '2025-05-14 17:32:31', '2025-05-16 00:28:49', '2025-05-16 00:28:49'),
-(47, 'justinmarlosibonga@gmail.com', '$2b$10$f0nuX/38Fcf4YNigJKJ1Ne1V42cvrgUBaqYjzrbKclN7ydWBgzDp6', 'Justin', 'Sibonga', 'asdasdasd', 'Capitol Compound, Tenejero', NULL, 'business', 'active', 1, 0, '2025-05-16 00:04:22', '2025-05-16 00:41:08', '2025-05-16 00:41:08');
+(44, 'admin@rainbowpaws.com', '$2b$10$CPyPK.A9FBeSkzotK0Zt6e3UW2NOqaQ.ovwjz/wt/tDgNWXIocV.W', 'System', 'Admin', 'asdasd', 'BPSU', 'male', 'admin', 'active', 1, 1, '2025-05-14 17:32:31', '2025-05-16 04:49:29', '2025-05-16 04:49:29'),
+(48, 'serviceprovider@rainbowpaws.com', '$2b$10$VKUv2y08iJyRnR.q9bO0v.9jqxrQyTl/AGRvFJFmo5A9aRyuHqAmC', 'Business', 'Business', 'asdasd', 'Orani, Bataan', NULL, 'business', 'active', 1, 0, '2025-05-16 00:54:30', '2025-05-16 05:03:54', '2025-05-16 05:03:54'),
+(49, 'justinmarlosibonga@gmail.com', '$2b$10$jkEiy.CIv3Tm18FOsDKkCOxToeZw..KFXLFJHE1ggGrv3MBbXuoKC', 'Justin', 'Sibonga', '1111111', 'Balanga, Bataan', 'male', 'fur_parent', 'active', 0, 1, '2025-05-16 01:07:42', '2025-05-16 04:58:55', '2025-05-16 04:58:55'),
+(50, 'furparent@example.com', 'password123', 'Sample', 'User', NULL, NULL, NULL, '', 'active', 0, 0, '2025-05-16 02:27:43', '2025-05-16 02:27:43', NULL);
 
 -- --------------------------------------------------------
 
@@ -536,8 +496,7 @@ CREATE TABLE `user_restrictions` (
 
 INSERT INTO `user_restrictions` (`id`, `user_id`, `reason`, `restriction_date`, `duration`, `report_count`, `is_active`, `created_at`, `updated_at`) VALUES
 (2, 33, 'Restricted by admin', '2025-05-14 17:30:31', 'indefinite', 0, 0, '2025-05-14 17:30:31', '2025-05-14 17:30:42'),
-(4, 31, 'Restricted by admin', '2025-05-15 14:11:00', 'indefinite', 0, 0, '2025-05-15 14:11:00', '2025-05-15 14:11:05'),
-(5, 47, 'Restricted by admin', '2025-05-16 00:20:34', 'indefinite', 0, 0, '2025-05-16 00:20:34', '2025-05-16 00:20:39');
+(4, 31, 'Restricted by admin', '2025-05-15 14:11:00', 'indefinite', 0, 0, '2025-05-15 14:11:00', '2025-05-15 14:11:05');
 
 -- --------------------------------------------------------
 
@@ -628,6 +587,13 @@ ALTER TABLE `password_reset_tokens`
   ADD PRIMARY KEY (`id`);
 
 --
+-- Indexes for table `pets`
+--
+ALTER TABLE `pets`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `user_id` (`user_id`);
+
+--
 -- Indexes for table `reviews`
 --
 ALTER TABLE `reviews`
@@ -635,6 +601,14 @@ ALTER TABLE `reviews`
   ADD KEY `user_id` (`user_id`),
   ADD KEY `service_provider_id` (`service_provider_id`),
   ADD KEY `booking_id` (`booking_id`);
+
+--
+-- Indexes for table `service_bookings`
+--
+ALTER TABLE `service_bookings`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `user_id` (`user_id`),
+  ADD KEY `package_id` (`package_id`);
 
 --
 -- Indexes for table `service_packages`
@@ -681,7 +655,7 @@ ALTER TABLE `user_restrictions`
 -- AUTO_INCREMENT for table `admin_notifications`
 --
 ALTER TABLE `admin_notifications`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
 -- AUTO_INCREMENT for table `admin_profiles`
@@ -693,49 +667,55 @@ ALTER TABLE `admin_profiles`
 -- AUTO_INCREMENT for table `bookings`
 --
 ALTER TABLE `bookings`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
 
 --
 -- AUTO_INCREMENT for table `notifications`
 --
 ALTER TABLE `notifications`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=86;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=90;
 
 --
 -- AUTO_INCREMENT for table `otp_attempts`
 --
 ALTER TABLE `otp_attempts`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=92;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=96;
 
 --
 -- AUTO_INCREMENT for table `otp_codes`
 --
 ALTER TABLE `otp_codes`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=67;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=70;
 
 --
 -- AUTO_INCREMENT for table `package_addons`
 --
 ALTER TABLE `package_addons`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=47;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=61;
 
 --
 -- AUTO_INCREMENT for table `package_images`
 --
 ALTER TABLE `package_images`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=45;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=57;
 
 --
 -- AUTO_INCREMENT for table `package_inclusions`
 --
 ALTER TABLE `package_inclusions`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=73;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=93;
 
 --
 -- AUTO_INCREMENT for table `password_reset_tokens`
 --
 ALTER TABLE `password_reset_tokens`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+
+--
+-- AUTO_INCREMENT for table `pets`
+--
+ALTER TABLE `pets`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
 -- AUTO_INCREMENT for table `reviews`
@@ -744,16 +724,22 @@ ALTER TABLE `reviews`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
+-- AUTO_INCREMENT for table `service_bookings`
+--
+ALTER TABLE `service_bookings`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
+
+--
 -- AUTO_INCREMENT for table `service_packages`
 --
 ALTER TABLE `service_packages`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=41;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=47;
 
 --
 -- AUTO_INCREMENT for table `service_providers`
 --
 ALTER TABLE `service_providers`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
 
 --
 -- AUTO_INCREMENT for table `successful_bookings`
@@ -765,7 +751,7 @@ ALTER TABLE `successful_bookings`
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=48;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=51;
 
 --
 -- AUTO_INCREMENT for table `user_restrictions`
@@ -833,6 +819,13 @@ ALTER TABLE `reviews`
   ADD CONSTRAINT `reviews_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `reviews_ibfk_2` FOREIGN KEY (`service_provider_id`) REFERENCES `service_providers` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `reviews_ibfk_3` FOREIGN KEY (`booking_id`) REFERENCES `bookings` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `service_bookings`
+--
+ALTER TABLE `service_bookings`
+  ADD CONSTRAINT `service_bookings_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `service_bookings_ibfk_2` FOREIGN KEY (`package_id`) REFERENCES `service_packages` (`id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `service_packages`

@@ -30,18 +30,16 @@ export const PackageImage: React.FC<PackageImageProps> = ({
     
     // Process array of images if available
     if (images && Array.isArray(images) && images.length > 0) {
-      // Filter out sample/placeholder images and nulls/undefined values
+      // Only include explicitly provided images, no automatic fallbacks
       const filtered = images.filter(img => 
         img && 
-        typeof img === 'string' && 
-        !img.includes('/sample-package-') && 
-        !img.includes('/placeholder')
+        typeof img === 'string'
       );
       console.log("Filtered images from array:", filtered);
       return filtered.length > 0 ? filtered : [];
     } 
     // Process single src as fallback
-    else if (src && typeof src === 'string' && !src.includes('/sample-package-') && !src.includes('/placeholder')) {
+    else if (src && typeof src === 'string') {
       console.log("Using single src as image:", [src]);
       return [src];
     }
@@ -252,12 +250,6 @@ export const PackageImage: React.FC<PackageImageProps> = ({
             style={{width: '100%', height: '100%'}}
           />
         </div>
-          {/* Photo counter display - only show when there are multiple images */}
-        {size === 'large' && filteredImages.length > 1 && (
-          <div className="absolute top-2 left-2 bg-black/40 text-white text-xs font-medium px-2 py-1 rounded-md backdrop-blur-sm z-10">
-            {currentImageIndex + 1}/{filteredImages.length}
-          </div>
-        )}
         
         {/* Only show navigation for large images with multiple photos */}
         {size === 'large' && filteredImages.length > 1 && (

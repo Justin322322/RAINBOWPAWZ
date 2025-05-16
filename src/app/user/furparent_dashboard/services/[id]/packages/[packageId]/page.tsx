@@ -17,6 +17,7 @@ import FurParentPageSkeleton from '@/components/ui/FurParentPageSkeleton';
 import { useCart } from '@/contexts/CartContext';
 import CartSidebar from '@/components/cart/CartSidebar';
 import { getAllPackageImages, handleImageError } from '@/utils/imageUtils';
+import { useToast } from '@/context/ToastContext';
 
 interface PackageDetailPageProps {
   userData?: any;
@@ -27,6 +28,7 @@ function PackageDetailPage({ userData }: PackageDetailPageProps) {
   const router = useRouter();
   const providerId = params.id;
   const packageId = params.packageId;
+  const { showToast } = useToast();
 
   const [provider, setProvider] = useState<any>(null);
   const [packageData, setPackageData] = useState<any>(null);
@@ -34,7 +36,6 @@ function PackageDetailPage({ userData }: PackageDetailPageProps) {
   const [error, setError] = useState<string | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isCartOpen, setIsCartOpen] = useState(false);
-  const [showToast, setShowToast] = useState(false);
 
   // Get cart functions from context
   const { addItem: addToCart } = useCart();
@@ -131,20 +132,6 @@ function PackageDetailPage({ userData }: PackageDetailPageProps) {
 
       {/* Cart Sidebar */}
       <CartSidebar isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
-
-      {/* Toast Notification */}
-      {showToast && (
-        <div className="fixed bottom-4 right-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded shadow-md flex items-center z-50">
-          <CheckIcon className="h-5 w-5 mr-2" />
-          <span>Item added to cart!</span>
-          <button
-            onClick={() => setIsCartOpen(true)}
-            className="ml-4 underline text-green-800 hover:text-green-900"
-          >
-            View Cart
-          </button>
-        </div>
-      )}
 
       {loading ? (
         <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
@@ -325,8 +312,10 @@ function PackageDetailPage({ userData }: PackageDetailPageProps) {
                             addToCart(cartItem);
 
                             // Show toast notification
-                            setShowToast(true);
-                            setTimeout(() => setShowToast(false), 3000);
+                            showToast('Item added to cart!', 'success', 3000);
+                            
+                            // Optional: Open cart sidebar after short delay
+                            setTimeout(() => setIsCartOpen(true), 1000);
                           }
                         }}
                         className="w-full py-3 px-4 border border-[var(--primary-green)] text-[var(--primary-green)] font-medium rounded-md hover:bg-green-50 transition-colors flex items-center justify-center"

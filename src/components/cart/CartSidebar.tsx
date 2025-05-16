@@ -42,7 +42,8 @@ const CartSidebar: React.FC<CartSidebarProps> = ({ isOpen, onClose }) => {
   const handleCheckout = () => {
     if (items.length === 0) return;
     
-    router.push('/user/furparent_dashboard/cart');
+    const item = items[0];
+    router.push(`/user/furparent_dashboard/bookings/checkout?provider=${item.providerId}&package=${item.packageId}`);
     handleClose();
   };
 

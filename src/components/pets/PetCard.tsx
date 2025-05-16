@@ -11,6 +11,7 @@ interface PetCardProps {
     age?: number | null;
     weight?: number | null;
     image_path?: string | null;
+    photo_path?: string | null;
     special_notes?: string | null;
   };
   onEdit: (petId: number) => void;
@@ -18,18 +19,21 @@ interface PetCardProps {
 }
 
 const PetCard: React.FC<PetCardProps> = ({ pet, onEdit, onDelete }) => {
+  // Get the correct image path from either photo_path or image_path
+  const imagePath = pet.photo_path || pet.image_path;
+
   return (
     <div className="border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow">
       <div className="flex flex-col sm:flex-row">
         {/* Pet Image */}
         <div className="w-full sm:w-1/3 h-40 sm:h-auto">
-          {pet.image_path ? (
+          {imagePath ? (
             <img
-              src={pet.image_path.startsWith('/') ? pet.image_path : `/${pet.image_path}`}
+              src={imagePath.startsWith('/') ? imagePath : `/${imagePath}`}
               alt={pet.name}
               className="w-full h-full object-cover"
               onError={(e) => {
-                console.error('Failed to load pet image:', pet.image_path);
+                console.error('Failed to load pet image:', imagePath);
                 const target = e.target as HTMLImageElement;
                 target.onerror = null; // Prevent infinite loop
                 target.src = '/placeholder-pet.png'; // Fallback image
