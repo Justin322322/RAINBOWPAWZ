@@ -20,15 +20,8 @@ const transporter = nodemailer.createTransport({
 
 export async function sendEmail({ to, subject, text, html }: EmailData) {
   try {
-    // For development/testing, just log the email
+    // For development/testing, just return without sending
     if (process.env.NODE_ENV === 'development') {
-      console.log('Email would be sent in production:');
-      console.log({
-        to,
-        subject,
-        text,
-        html
-      });
       return;
     }
 
@@ -41,10 +34,8 @@ export async function sendEmail({ to, subject, text, html }: EmailData) {
       html: html || text.replace(/\n/g, '<br>'),
     });
 
-    console.log('Message sent: %s', info.messageId);
     return info;
   } catch (error) {
-    console.error('Error sending email:', error);
     throw error;
   }
-} 
+}

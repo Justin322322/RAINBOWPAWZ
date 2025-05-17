@@ -103,6 +103,7 @@ function BookingsPage({ userData }: BookingsPageProps) {
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
   const [cancelSuccess, setCancelSuccess] = useState(false);
+  const [cancelledBookingIds, setCancelledBookingIds] = useState<number[]>([]);
 
   useEffect(() => {
     async function fetchBookings() {
@@ -113,8 +114,10 @@ function BookingsPage({ userData }: BookingsPageProps) {
         // Add a small delay to ensure the skeleton is visible
         await new Promise(resolve => setTimeout(resolve, 1000));
 
-        // Always fetch all bookings
-        const response = await fetch('/api/bookings');
+        // Always fetch all bookings with credentials to ensure cookies are sent
+        const response = await fetch('/api/bookings', {
+          credentials: 'include' // This ensures cookies (including auth_token) are sent with the request
+        });
 
         if (!response.ok) {
           console.error('API response not OK:', response.status, response.statusText);
@@ -206,7 +209,9 @@ function BookingsPage({ userData }: BookingsPageProps) {
       setIsCheckingDb(true);
       setDbCheckResult(null);
 
-      const response = await fetch('/api/db-check');
+      const response = await fetch('/api/db-check', {
+        credentials: 'include' // This ensures cookies (including auth_token) are sent with the request
+      });
       const data = await response.json();
 
       console.log('Database check result:', data);
@@ -241,6 +246,8 @@ function BookingsPage({ userData }: BookingsPageProps) {
   // Handle initiating booking cancellation
   const handleCancelBooking = (booking: BookingData) => {
     setSelectedBooking(booking);
+    // Reset cancel success state when opening the modal
+    setCancelSuccess(false);
     setShowCancelModal(true);
   };
 
@@ -252,44 +259,70 @@ function BookingsPage({ userData }: BookingsPageProps) {
     setCancelSuccess(false);
 
     try {
-      // In a real app, this would be an API call to cancel the booking
+      // Make API call to cancel the booking with credentials to ensure cookies are sent
       const response = await fetch(`/api/bookings/${selectedBooking.id}/cancel`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
-        }
+        },
+        credentials: 'include' // This ensures cookies (including auth_token) are sent with the request
       });
 
-      if (response.ok) {
-        // Update the booking status locally
-        const updatedBookings = allBookings.map(booking =>
-          booking.id === selectedBooking.id
-            ? { ...booking, status: 'cancelled' as BookingData['status'] }
-            : booking
-        );
-
-        setAllBookings(updatedBookings);
-
-        // Apply current filter
-        if (activeFilter) {
-          setBookings(updatedBookings.filter(booking => booking.status === activeFilter));
-        } else {
-          setBookings(updatedBookings);
+      if (!response.ok) {
+        // Try to get error details from the response
+        let errorMessage = 'Failed to cancel booking';
+        try {
+          const errorData = await response.json();
+          if (errorData.error) {
+            errorMessage = errorData.error;
+          }
+        } catch (parseError) {
+          console.error('Error parsing error response:', parseError);
         }
-
-        setCancelSuccess(true);
-
-        // Close the modal after a delay
-        setTimeout(() => {
-          setShowCancelModal(false);
-          setSelectedBooking(null);
-        }, 2000);
-      } else {
-        throw new Error('Failed to cancel booking');
+        throw new Error(errorMessage);
       }
+
+      // Update the booking status locally
+      const updatedBookings = allBookings.map(booking =>
+        booking.id === selectedBooking.id
+          ? { ...booking, status: 'cancelled' as BookingData['status'] }
+          : booking
+      );
+
+      setAllBookings(updatedBookings);
+
+      // Apply current filter
+      if (activeFilter) {
+        setBookings(updatedBookings.filter(booking => booking.status === activeFilter));
+      } else {
+        setBookings(updatedBookings);
+      }
+
+      // Mark this booking as successfully cancelled
+      setCancelSuccess(true);
+
+      // Add this booking ID to the list of cancelled bookings
+      if (selectedBooking.id) {
+        setCancelledBookingIds(prev => [...prev, selectedBooking.id]);
+      }
+
+      // Close the modal after a delay
+      setTimeout(() => {
+        setShowCancelModal(false);
+        setSelectedBooking(null);
+      }, 2000);
     } catch (error) {
       console.error('Error cancelling booking:', error);
-      // In a real app, we would show an error message
+      // Show error message to the user
+      setError(error instanceof Error ? error.message : 'Failed to cancel booking. Please try again.');
+
+      // Close the cancel modal and show the error
+      setShowCancelModal(false);
+
+      // Clear the error after a few seconds
+      setTimeout(() => {
+        setError(null);
+      }, 5000);
     } finally {
       setIsCancelling(false);
     }
@@ -528,7 +561,9 @@ function BookingsPage({ userData }: BookingsPageProps) {
                   <button
                     onClick={async () => {
                       try {
-                        const response = await fetch('/api/debug/auth');
+                        const response = await fetch('/api/debug/auth', {
+                          credentials: 'include' // This ensures cookies (including auth_token) are sent with the request
+                        });
                         const data = await response.json();
                         console.log('Auth debug info:', data);
                         setDbCheckResult({
@@ -679,9 +714,10 @@ function BookingsPage({ userData }: BookingsPageProps) {
                       <button
                         onClick={() => handleCancelBooking(booking)}
                         className="px-4 py-2 border border-red-300 text-red-700 rounded-md text-sm font-medium hover:bg-red-50 flex items-center"
+                        disabled={cancelledBookingIds.includes(booking.id)}
                       >
                         <XCircleIcon className="h-4 w-4 mr-2" />
-                        Cancel Booking
+                        {cancelledBookingIds.includes(booking.id) ? 'Cancelled' : 'Cancel Booking'}
                       </button>
                     )}
                     <button
@@ -1021,7 +1057,7 @@ function BookingsPage({ userData }: BookingsPageProps) {
                       )}
 
                       <div className="mt-6 flex justify-end">
-                        {selectedBooking.status === 'pending' && (
+                        {selectedBooking.status === 'pending' && !cancelledBookingIds.includes(selectedBooking.id) && (
                           <button
                             type="button"
                             className="mr-3 inline-flex justify-center rounded-md border border-red-300 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50 focus:outline-none"
@@ -1033,6 +1069,12 @@ function BookingsPage({ userData }: BookingsPageProps) {
                             <XCircleIcon className="h-5 w-5 mr-2" />
                             Cancel Booking
                           </button>
+                        )}
+                        {selectedBooking.status === 'pending' && cancelledBookingIds.includes(selectedBooking.id) && (
+                          <div className="mr-3 inline-flex items-center rounded-md border border-green-300 px-4 py-2 text-sm font-medium text-green-700 bg-green-50">
+                            <CheckCircleIcon className="h-5 w-5 mr-2" />
+                            Cancellation Pending
+                          </div>
                         )}
                         <button
                           type="button"
@@ -1078,14 +1120,14 @@ function BookingsPage({ userData }: BookingsPageProps) {
                 leaveTo="opacity-0 scale-95"
               >
                 <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
-                  {cancelSuccess ? (
+                  {selectedBooking && cancelSuccess ? (
                     <div className="text-center py-4">
                       <CheckCircleIcon className="mx-auto h-12 w-12 text-green-500 mb-4" />
                       <Dialog.Title as="h3" className="text-lg font-medium leading-6 text-gray-900">
                         Booking Cancelled
                       </Dialog.Title>
                       <p className="mt-2 text-sm text-gray-500">
-                        Your booking has been successfully cancelled.
+                        Your booking (ID: {selectedBooking.id}) has been successfully cancelled.
                       </p>
                     </div>
                   ) : (

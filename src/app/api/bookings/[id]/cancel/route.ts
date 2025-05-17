@@ -2,8 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthTokenFromRequest } from '@/utils/auth';
 import { query } from '@/lib/db';
 
-// Import the simple email service
-const { sendBookingStatusUpdateEmail } = require('@/lib/simpleEmailService');
+// Import the email templates
+import { createBookingStatusUpdateEmail } from '@/lib/emailTemplates';
+// Import the unified email service
+import { sendEmail } from '@/lib/unifiedEmailService';
 
 export async function POST(request: NextRequest) {
   // Extract ID from URL
@@ -28,11 +30,41 @@ export async function POST(request: NextRequest) {
 
     console.log(`Cancelling booking ${bookingId} for user ${userId}`);
 
-    // In a real app, we would update the booking status in the database
-    // For now, we'll just return a success response
+    // Update the booking status in the database
+    try {
+      // First try to update in the service_bookings table
+      const updateResult = await query(
+        `UPDATE service_bookings
+         SET status = 'cancelled', updated_at = NOW()
+         WHERE id = ? AND user_id = ?`,
+        [bookingId, userId]
+      );
 
-    // Simulate a delay to show loading state
-    await new Promise(resolve => setTimeout(resolve, 1000));
+      // If no rows were affected, try the bookings table
+      if (updateResult && 'affectedRows' in updateResult && updateResult.affectedRows === 0) {
+        const bookingsUpdateResult = await query(
+          `UPDATE bookings
+           SET status = 'cancelled', updated_at = NOW()
+           WHERE id = ? AND user_id = ?`,
+          [bookingId, userId]
+        );
+
+        if (bookingsUpdateResult && 'affectedRows' in bookingsUpdateResult && bookingsUpdateResult.affectedRows === 0) {
+          console.log(`No booking found with ID ${bookingId} for user ${userId}`);
+          // We'll still continue with the process to maintain backward compatibility
+        } else {
+          console.log(`Successfully updated booking status in bookings table`);
+        }
+      } else {
+        console.log(`Successfully updated booking status in service_bookings table`);
+      }
+    } catch (dbError) {
+      console.error('Error updating booking status in database:', dbError);
+      // Continue with the process even if the database update fails
+    }
+
+    // Simulate a small delay to show loading state
+    await new Promise(resolve => setTimeout(resolve, 500));
 
     // Send booking cancellation email
     try {
@@ -139,13 +171,25 @@ export async function POST(request: NextRequest) {
         };
       }
 
-      // Send email using simple email service
-      const emailResult = await sendBookingStatusUpdateEmail(userEmail, bookingDetails);
+      // Create email content using template
+      const emailContent = createBookingStatusUpdateEmail(bookingDetails);
 
-      if (emailResult.success) {
-        console.log(`Booking cancellation email sent successfully to ${userEmail}. Message ID: ${emailResult.messageId}`);
-      } else {
-        console.error('Failed to send booking cancellation email:', emailResult.error);
+      // Send email using unified email service
+      try {
+        const emailResult = await sendEmail({
+          to: userEmail,
+          subject: emailContent.subject,
+          html: emailContent.html
+        });
+
+        if (emailResult.success) {
+          console.log(`Booking cancellation email sent successfully to ${userEmail}. Message ID: ${emailResult.messageId}`);
+        } else {
+          console.error('Failed to send booking cancellation email:', emailResult.error);
+          // Continue with the cancellation process even if the email fails
+        }
+      } catch (emailSendError) {
+        console.error('Error sending booking cancellation email:', emailSendError);
         // Continue with the cancellation process even if the email fails
       }
     } catch (emailError) {

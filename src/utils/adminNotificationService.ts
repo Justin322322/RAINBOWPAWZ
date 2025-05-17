@@ -19,8 +19,6 @@ export async function createAdminNotification({
   entityId = null
 }: AdminNotificationParams): Promise<{ success: boolean; notificationId?: number; error?: string }> {
   try {
-    console.log('Creating admin notification:', { type, title, message, entityType, entityId });
-    
     // Ensure the admin_notifications table exists
     await ensureAdminNotificationsTable();
 
@@ -37,28 +35,18 @@ export async function createAdminNotification({
       }
     }
 
-    console.log(`Notification link created: ${link}`);
-
     // Insert the notification
-    console.log('Inserting notification into admin_notifications table...');
     const result = await query(
       `INSERT INTO admin_notifications (type, title, message, entity_type, entity_id, link)
        VALUES (?, ?, ?, ?, ?, ?)`,
       [type, title, message, entityType, entityId, link]
     ) as any;
 
-    console.log('Admin notification created successfully with ID:', result.insertId);
-
     return {
       success: true,
       notificationId: result.insertId
     };
   } catch (error) {
-    console.error('Error creating admin notification:', error);
-    if (error instanceof Error) {
-      console.error('Error message:', error.message);
-      console.error('Error stack:', error.stack);
-    }
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error creating notification'
@@ -80,7 +68,6 @@ async function ensureAdminNotificationsTable(): Promise<boolean> {
     `) as any[];
 
     if (tableExists[0].count === 0) {
-      console.log('Admin notifications table does not exist. Creating now...');
       // Create the table if it doesn't exist
       await query(`
         CREATE TABLE IF NOT EXISTS admin_notifications (
@@ -95,12 +82,10 @@ async function ensureAdminNotificationsTable(): Promise<boolean> {
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
       `);
-      console.log('Admin notifications table created successfully');
     }
 
     return true;
   } catch (error) {
-    console.error('Error ensuring admin_notifications table exists:', error);
     return false;
   }
 }

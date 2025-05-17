@@ -54,7 +54,7 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
     }
     return new Date();
   });
-  
+
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [availabilityData, setAvailabilityData] = useState<DayAvailability[]>(() => {
     // Try to load cached data from localStorage
@@ -87,8 +87,6 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
   const [showConflictMessage, setShowConflictMessage] = useState<boolean>(false);
   const [conflictMessage, setConflictMessage] = useState<string>('');
   const [calendarKey, setCalendarKey] = useState<number>(0);
-  const [showDebugInfo, setShowDebugInfo] = useState<boolean>(false);
-  const isDevEnv = process.env.NODE_ENV === 'development';
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -158,7 +156,7 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
       setPackageLoadError(null); // Reset error state
       console.log(`Fetching packages for provider ID: ${providerId}`);
       const response = await fetch(`/api/packages?providerId=${providerId}&t=${Date.now()}`);
-      
+
       if (!response.ok) {
         // Get detailed error information
         const errorText = await response.text();
@@ -174,7 +172,7 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
           throw new Error(errorMessage);
         }
       }
-      
+
       const data = await response.json();
       console.log(`Received ${data.packages?.length || 0} packages from API`);
       setAvailablePackages(data.packages || []);
@@ -196,25 +194,25 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
       setLoading(true);
       setError(null);
       console.log(`[AvailabilityCalendar] Provider ID for fetch: ${providerId}`);
-      
+
       // Get the first and last day that will be displayed in the calendar
       const year = currentMonth.getFullYear();
       const month = currentMonth.getMonth();
-      
+
       // First day of the month
       const firstDay = new Date(year, month, 1);
       // Last day of the month
       const lastDay = new Date(year, month + 1, 0);
-      
+
       // First day shown in calendar (could be previous month)
       const firstCalendarDay = new Date(year, month, 1);
       // Last day shown in calendar (could be next month)
       const lastCalendarDay = new Date(year, month + 1, 0);
-      
+
       // Format dates for API
       const startDate = firstCalendarDay.toISOString().split('T')[0];
       const endDate = lastCalendarDay.toISOString().split('T')[0];
-      
+
       const monthString = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}`;
       console.log(`[AvailabilityCalendar] Fetching availability data for month: ${monthString}, provider: ${providerId}`);
       console.log(`[AvailabilityCalendar] Calendar view range: ${startDate} to ${endDate}`);
@@ -222,7 +220,7 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
       // Add a timestamp to force fresh data
       const timestamp = new Date().getTime();
       const url = `/api/cremation/availability?providerId=${providerId}&startDate=${startDate}&endDate=${endDate}&month=${monthString}&t=${timestamp}`;
-      
+
       console.log(`[AvailabilityCalendar] Fetching from URL: ${url}`);
 
       const headers = new Headers({
@@ -230,14 +228,14 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
         'Pragma': 'no-cache',
         'Expires': '0'
       });
-      
+
       // Using fetch with more robust options
-      const response = await fetch(url, { 
+      const response = await fetch(url, {
         headers,
         method: 'GET',
         credentials: 'same-origin', // Include cookies in the request
       });
-      
+
       if (!response.ok) {
         const errorText = await response.text();
         console.error(`Failed to fetch availability: ${response.status}`, errorText);
@@ -251,95 +249,95 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
 
       const data = await response.json();
       console.log('[AvailabilityCalendar] Raw data from API:', JSON.stringify(data, null, 2));
-      
+
       if (Array.isArray(data.availability)) {
         if (data.availability.length === 0) {
           console.warn('[AvailabilityCalendar] API returned empty availability array.');
         }
-        
+
         // Validate and clean availability data
         const validatedData = data.availability.map((day: any) => {
           // Ensure timeSlots is always an array
-          const timeSlots = Array.isArray(day.timeSlots) ? 
+          const timeSlots = Array.isArray(day.timeSlots) ?
             day.timeSlots.map((slot: any) => ({
               ...slot,
               id: slot.id || Date.now().toString() + Math.random().toString(36).substring(2, 9) // Ensure each slot has a unique ID
-            })) : 
+            })) :
             [];
-          
+
           // Log days with time slots for debugging
           if (timeSlots.length > 0) {
-            console.log(`[AvailabilityCalendar] Day ${day.date} has ${timeSlots.length} time slots:`, 
+            console.log(`[AvailabilityCalendar] Day ${day.date} has ${timeSlots.length} time slots:`,
               timeSlots.map((slot: any) => `${slot.start}-${slot.end}`).join(', '));
           }
-          
+
           return {
             date: day.date,
             isAvailable: Boolean(day.isAvailable), // Force boolean
             timeSlots: timeSlots
           };
         });
-        
+
         console.log('[AvailabilityCalendar] Validated data from API:', JSON.stringify(validatedData, null, 2));
-        
+
         // Log overall availability stats
         const availableDays = validatedData.filter((day: DayAvailability) => day.isAvailable).length;
         const daysWithTimeSlots = validatedData.filter((day: DayAvailability) => day.timeSlots && day.timeSlots.length > 0).length;
         const totalTimeSlots = validatedData.reduce((total: number, day: DayAvailability) => total + (day.timeSlots ? day.timeSlots.length : 0), 0);
-        
+
         console.log(`[AvailabilityCalendar] Availability data from API processing: ${validatedData.length} total days, ${availableDays} available, ${daysWithTimeSlots} with time slots, ${totalTimeSlots} total time slots`);
-        
+
         setAvailabilityData(prevData => {
           // If clearExisting is true, just use the new data
           if (clearExisting) {
             console.log('[AvailabilityCalendar] Replacing all availability data with new data (clearExisting = true)');
             return validatedData;
           }
-          
+
           // Otherwise, merge old and new data with new data taking precedence
           console.log('[AvailabilityCalendar] Merging new data with existing data (clearExisting = false)');
           const finalDataMap = new Map(prevData.map((item: DayAvailability) => [item.date, item]));
-          
+
           // Log the dates we're updating
           validatedData.forEach((item: DayAvailability) => {
             const existing = finalDataMap.get(item.date);
             if (existing) {
-              console.log(`[AvailabilityCalendar] Updating existing date ${item.date}: ` + 
+              console.log(`[AvailabilityCalendar] Updating existing date ${item.date}: ` +
                 `was ${existing.timeSlots.length} slots, now ${item.timeSlots.length} slots`);
             } else {
               console.log(`[AvailabilityCalendar] Adding new date ${item.date} with ${item.timeSlots.length} slots`);
             }
             finalDataMap.set(item.date, item);
           });
-          
+
           const sortedData = Array.from(finalDataMap.values()).sort((a, b) => {
             const dateA = new Date(a.date);
             const dateB = new Date(b.date);
             // Handle cases where dates might be invalid, though they should be YYYY-MM-DD strings
-            if (isNaN(dateA.getTime())) return 1; 
+            if (isNaN(dateA.getTime())) return 1;
             if (isNaN(dateB.getTime())) return -1;
             return dateA.getTime() - dateB.getTime();
           });
-          
+
           console.log(`[AvailabilityCalendar] Updated availabilityData state with ${sortedData.length} items.`);
           const daysWithSlots = sortedData.filter(d => d.timeSlots.length > 0);
-          console.log(`[AvailabilityCalendar] Days with slots (${daysWithSlots.length}):`, 
+          console.log(`[AvailabilityCalendar] Days with slots (${daysWithSlots.length}):`,
             daysWithSlots.map(d => `${d.date}: ${d.timeSlots.length} slots`));
-          
+
           console.log('[AvailabilityCalendar] State `availabilityData` after update:', JSON.stringify(validatedData, null, 2));
-          
+
           return sortedData;
         });
-        
+
         // Force calendar re-render
         forceCalendarRefresh();
-        
+
         if (validatedData.length === 0) {
           setError('No availability data found for this month.');
         } else {
           setError(null);
         }
-        
+
         if (onAvailabilityChange) onAvailabilityChange(validatedData);
       } else {
         console.warn('[AvailabilityCalendar] API did not return availability array', data);
@@ -352,9 +350,7 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
       // Don't clear availability data on error to preserve existing state
     } finally {
       setLoading(false);
-      if (!isDisabled) {
-        forceCalendarRefresh(); // Always force refresh calendar after data fetching completes
-      }
+      forceCalendarRefresh(); // Always force refresh calendar after data fetching completes
     }
   };
 
@@ -366,16 +362,16 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
     try {
       setLoading(true);
       setError(null);
-      console.log('[AvailabilityCalendar] Saving availability data:', JSON.stringify({ 
-        providerId, 
-        availability: updatedDayAvailability 
+      console.log('[AvailabilityCalendar] Saving availability data:', JSON.stringify({
+        providerId,
+        availability: updatedDayAvailability
       }, null, 2));
-      
+
       // Update local state FIRST for immediate feedback
       setAvailabilityData(prevData => {
         const newData = [...prevData];
         const existingIndex = newData.findIndex(day => day.date === updatedDayAvailability.date);
-        
+
         if (existingIndex >= 0) {
           newData[existingIndex] = {...updatedDayAvailability};
           console.log(`[AvailabilityCalendar] Updated existing date ${updatedDayAvailability.date} in local state`);
@@ -383,10 +379,10 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
           newData.push({...updatedDayAvailability});
           console.log(`[AvailabilityCalendar] Added new date ${updatedDayAvailability.date} to local state`);
         }
-        
+
         return newData;
       });
-      
+
       // Ensure each time slot has an id and availableServices is properly formatted
       const fixedTimeSlots = updatedDayAvailability.timeSlots.map(slot => ({
         ...slot,
@@ -404,7 +400,7 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
       };
 
       console.log('[AvailabilityCalendar] Sending data payload to API:', JSON.stringify(payload, null, 2));
-      
+
       const response = await fetch('/api/cremation/availability', {
         method: 'POST',
         headers: {
@@ -418,7 +414,7 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
       if (!response.ok) {
         const errorText = await response.text();
         console.error(`Error response from API during save: Status ${response.status}`, errorText);
-        
+
         try {
           const errorData = JSON.parse(errorText);
           throw new Error(errorData.error || 'Failed to save availability data');
@@ -429,26 +425,26 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
 
       const responseData = await response.json();
       console.log('[AvailabilityCalendar] Availability saved successfully (API response):', responseData);
-      
+
       // After successfully saving to the server, force a refresh to get the latest data
       // Add a slight delay to ensure database commit
       setTimeout(() => {
         fetchAvailabilityData(true); // Force clear and fetch fresh data
       }, 500);
-      
+
       // Force calendar re-render to ensure UI reflects the latest data
       forceCalendarRefresh();
-      
+
       // Show success message
       setShowSuccessMessage(true);
-      
+
       // Call the callback
       onSaveSuccess?.();
 
     } catch (err) {
       console.error('[AvailabilityCalendar] Error saving availability data:', err);
       setError(`Failed to save: ${err instanceof Error ? err.message : String(err)}`);
-      
+
       // Don't refresh data on error to preserve local changes
     } finally {
       setLoading(false);
@@ -463,36 +459,36 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
     const daysInMonth = lastDay.getDate();
     const firstDayOfWeek = firstDay.getDay();
     const days: CalendarDay[] = [];
-    
+
     console.log(`[AvailabilityCalendar] Generating calendar days for ${year}-${String(month + 1).padStart(2, '0')}`);
     console.log('[AvailabilityCalendar] Current availabilityData state items:', availabilityData.length);
-    
+
     // Add empty cells for days of previous month
     for (let i = 0; i < firstDayOfWeek; i++) {
       days.push({ type: 'empty' });
     }
-    
+
     // Add cells for days of current month
     for (let i = 1; i <= daysInMonth; i++) {
       const date = new Date(year, month, i);
       const dateString = formatDateToString(date);
-      
+
       const availabilityInfo = availabilityData.find((day: DayAvailability) => day.date === dateString);
-      
+
       if (availabilityInfo) {
         console.log(`[AvailabilityCalendar] Day ${dateString}: Found availabilityInfo. isAvailable=${availabilityInfo.isAvailable}, timeSlots=${availabilityInfo.timeSlots?.length || 0}`);
       } else {
         console.log(`[AvailabilityCalendar] Day ${dateString}: No availabilityInfo found in state.`);
       }
-      
+
       // Ensure timeSlots is always an array
-      const timeSlots = availabilityInfo && Array.isArray(availabilityInfo.timeSlots) 
-        ? [...availabilityInfo.timeSlots] 
+      const timeSlots = availabilityInfo && Array.isArray(availabilityInfo.timeSlots)
+        ? [...availabilityInfo.timeSlots]
         : [];
-      
+
       // A day is available if it has time slots or is explicitly marked as available
       const isAvailable = timeSlots.length > 0 || (availabilityInfo && availabilityInfo.isAvailable);
-      
+
       days.push({
         type: 'day',
         date,
@@ -501,13 +497,13 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
         timeSlots,
       });
     }
-    
+
     // Fill remaining cells with empty cells to complete the grid
     const remainingCells = (Math.ceil((firstDayOfWeek + daysInMonth) / 7) * 7) - (firstDayOfWeek + daysInMonth);
     for (let i = 0; i < remainingCells; i++) {
       days.push({ type: 'empty' });
     }
-    
+
     return days;
   };
 
@@ -518,27 +514,27 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
     // Prevent selecting past dates
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
+
     if (date < today) {
       console.log('Cannot select past dates');
       return;
     }
-    
+
     setSelectedDate(date);
-    
+
     // Fetch the day data directly from availabilityData
     const dateString = formatDateToString(date);
     const dayData = availabilityData.find(day => day.date === dateString);
-    
+
     // If the selected date is not in the current month, we may need to switch months
     const selectedMonth = date.getMonth();
     const currentViewMonth = currentMonth.getMonth();
-    
+
     if (selectedMonth !== currentViewMonth) {
       console.log(`Selected date is in a different month (${selectedMonth+1} vs current ${currentViewMonth+1})`);
       setCurrentMonth(new Date(date.getFullYear(), date.getMonth(), 1));
     }
-    
+
     // Log selected day data
     if (dayData) {
       console.log(`Selected date ${dateString} has ${dayData.timeSlots.length} time slots`, dayData);
@@ -550,7 +546,7 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
   const toggleDayAvailability = (date: Date) => {
     const dateString = formatDateToString(date);
     const existingDay = availabilityData.find(day => day.date === dateString);
-    
+
     // Create updated day with toggled availability but preserve time slots
     const updatedDay: DayAvailability = {
       date: dateString,
@@ -558,7 +554,7 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
       // Always preserve existing time slots when toggling availability
       timeSlots: existingDay?.timeSlots || []
     };
-    
+
     // Save the availability
     saveAvailability(updatedDay);
   };
@@ -574,24 +570,24 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
       setShowTimeSlotModal(false);
       return;
     }
-    
+
     // Validate time inputs
     if (!timeSlotStart || !timeSlotEnd) {
       setServiceSelectionError("Please select both start and end times");
       return;
     }
-    
+
     // Check if end time is after start time
     if (timeSlotStart >= timeSlotEnd) {
       setServiceSelectionError("End time must be after start time");
       return;
     }
-    
+
     // If no packages are available, show a warning but still allow creating time slots
     if (availablePackages.length === 0) {
       console.warn("[AvailabilityCalendar] No packages available, creating time slot without package selection");
       setServiceSelectionError("Warning: No packages available. Time slot will be created but won't be visible to customers until packages are added.");
-      
+
       // Create a default package selection to allow the time slot to be saved
       setSelectedPackages([0]); // Use 0 as a placeholder ID
     }
@@ -600,29 +596,29 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
       setServiceSelectionError("Please select at least one service");
       return;
     }
-    
+
     console.log("[AvailabilityCalendar] Adding time slot for date:", selectedDate);
-    
+
     // Format the date to string for API
     const dateString = formatDateToString(selectedDate);
-    
+
     // Find existing day or create a new one
     const existingDay = availabilityData.find(day => day.date === dateString);
-    
+
     // Check for time slot conflicts
     if (existingDay && existingDay.timeSlots.length > 0) {
       const newStartTime = timeSlotStart;
       const newEndTime = timeSlotEnd;
-      
+
       // Check if new time slot overlaps with any existing time slot
       const hasConflict = existingDay.timeSlots.some(slot => {
         const existingStart = slot.start;
         const existingEnd = slot.end;
-        
+
         // Check if new slot overlaps with existing slot
         return (newStartTime < existingEnd && newEndTime > existingStart);
       });
-      
+
       if (hasConflict) {
         setServiceSelectionError("This time slot conflicts with an existing time slot");
         setConflictMessage(`Time slot conflict: ${newStartTime} - ${newEndTime} overlaps with an existing time slot`);
@@ -630,34 +626,34 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
         return;
       }
     }
-    
+
     // Build the new time slot
-    const newTimeSlot: TimeSlot = { 
-      id: Date.now().toString(), 
-      start: timeSlotStart, 
+    const newTimeSlot: TimeSlot = {
+      id: Date.now().toString(),
+      start: timeSlotStart,
       end: timeSlotEnd,
       availableServices: selectedPackages // Always include selected packages
     };
-    
+
     // Create the updated day object - ALWAYS set isAvailable to true when adding a time slot
     const updatedDay: DayAvailability = {
       date: dateString,
       isAvailable: true, // Always make the day available when adding a time slot
-      timeSlots: existingDay && Array.isArray(existingDay.timeSlots) 
-        ? [...existingDay.timeSlots, newTimeSlot] 
+      timeSlots: existingDay && Array.isArray(existingDay.timeSlots)
+        ? [...existingDay.timeSlots, newTimeSlot]
         : [newTimeSlot]
     };
-    
+
     console.log(`[AvailabilityCalendar] Created updated day with ${updatedDay.timeSlots.length} time slots:`, updatedDay);
-    
+
     // Save the availability to backend
     saveAvailability(updatedDay);
-    
+
     // Close modal and reset state
     setShowTimeSlotModal(false);
     setSelectedPackages([]);
     setServiceSelectionError(null);
-    
+
     // Show success message
     setShowSuccessMessage(true);
   };
@@ -686,14 +682,14 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
     fetchAvailabilityData();
     forceCalendarRefresh();
   };
-  
+
   const isDisabled = !providerId || providerId <= 0;
 
   useEffect(() => {
     // Add this effect to trace when availabilityData changes
     console.log(`availabilityData updated with ${availabilityData.length} days`);
     console.log(`Days with time slots: ${availabilityData.filter(d => d.timeSlots.length > 0).length}`);
-    
+
     // Force re-render of the calendar data
     const days = getDaysInMonth();
     console.log(`Calendar contains ${days.filter(d => d.type === 'day' && d.timeSlots && d.timeSlots.length > 0).length} days with time slots`);
@@ -740,12 +736,12 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
           </div>
         ))}
       </div>
-      
+
       <div key={calendarKey} className="grid grid-cols-7 gap-1">
         {days.map((day, index) => {
           const isToday = day.date && formatDateToString(day.date) === formatDateToString(new Date());
           const isPastDay = day.date && day.date < new Date(new Date().setHours(0, 0, 0, 0));
-          
+
           return (
             <div key={index} className="aspect-square p-0.5">
               {day.type === 'empty' ? (
@@ -756,13 +752,13 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
                   disabled={isPastDay}
                   className={`
                     h-full w-full flex flex-col items-center justify-center rounded-md p-1 transition-colors
-                    ${isPastDay ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 
-                      day.timeSlots && day.timeSlots.length > 0 
-                        ? 'bg-green-100 hover:bg-green-200 text-green-800 border border-green-300' 
+                    ${isPastDay ? 'bg-gray-100 text-gray-400 cursor-not-allowed' :
+                      day.timeSlots && day.timeSlots.length > 0
+                        ? 'bg-green-100 hover:bg-green-200 text-green-800 border border-green-300'
                         : 'bg-gray-50 hover:bg-gray-100 text-gray-800'
                     }
-                    ${selectedDate && day.dateString === formatDateToString(selectedDate) 
-                      ? 'ring-2 ring-[var(--primary-green)]' 
+                    ${selectedDate && day.dateString === formatDateToString(selectedDate)
+                      ? 'ring-2 ring-[var(--primary-green)]'
                       : ''
                     }
                   `}
@@ -811,101 +807,17 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
             <ExclamationCircleIcon className="h-5 w-5 text-orange-500 mr-2 mt-0.5 flex-shrink-0" />
             <p className="text-orange-700">{error}</p>
           </div>
-          <button 
-            onClick={() => fetchAvailabilityData(true)} 
+          <button
+            onClick={() => fetchAvailabilityData(true)}
             className="px-3 py-1 bg-orange-100 hover:bg-orange-200 text-orange-800 rounded-md text-sm"
           >
             Retry
           </button>
         </div>
       )}
-      
-      {isDevEnv && (
-        <div className="mb-4">
-          <button 
-            onClick={() => setShowDebugInfo(!showDebugInfo)} 
-            className="text-xs bg-gray-200 hover:bg-gray-300 px-2 py-1 rounded-md text-gray-700"
-          >
-            {showDebugInfo ? 'Hide Debug Info' : 'Show Debug Info'}
-          </button>
-          
-          {showDebugInfo && (
-            <div className="mt-2 p-3 bg-gray-100 rounded-md text-xs text-gray-800 font-mono overflow-auto max-h-60">
-              <p className="font-semibold">Provider and Date Info:</p>
-              <p>Provider ID: {providerId}</p>
-              <p>Current Month: {currentMonth.toISOString().substring(0, 7)}</p>
-              
-              <p className="font-semibold mt-2">Calendar Range:</p>
-              {(() => {
-                const year = currentMonth.getFullYear();
-                const month = currentMonth.getMonth();
-                const firstDay = new Date(year, month, 1);
-                const lastDay = new Date(year, month + 1, 0);
-                const firstCalendarDay = new Date(year, month, 1 - firstDay.getDay());
-                const lastCalendarDay = new Date(year, month + 1, 6 - lastDay.getDay());
-                
-                return (
-                  <>
-                    <p>First Day of Month: {firstDay.toISOString().split('T')[0]}</p>
-                    <p>Last Day of Month: {lastDay.toISOString().split('T')[0]}</p>
-                    <p>First Calendar Day: {firstCalendarDay.toISOString().split('T')[0]}</p>
-                    <p>Last Calendar Day: {lastCalendarDay.toISOString().split('T')[0]}</p>
-                  </>
-                );
-              })()}
-              
-              <p className="font-semibold mt-2">Time Slot Data:</p>
-              <p>Total Days in State: {availabilityData.length}</p>
-              <p>Days With Slots: {availabilityData.filter(d => d.timeSlots.length > 0).length}</p>
-              <p>Total Time Slots: {availabilityData.reduce((total, day) => total + day.timeSlots.length, 0)}</p>
-              <p>Time Slots for Current Month: {
-                availabilityData
-                  .filter(day => {
-                    const date = new Date(day.date);
-                    return date.getMonth() === currentMonth.getMonth() && 
-                           date.getFullYear() === currentMonth.getFullYear();
-                  })
-                  .reduce((total, day) => total + day.timeSlots.length, 0)
-              }</p>
-              
-              <p className="font-semibold mt-2">All Days with Time Slots:</p>
-              <ul>
-                {availabilityData
-                  .filter(day => day.timeSlots.length > 0)
-                  .map(day => (
-                    <li key={day.date}>
-                      {day.date}: {day.timeSlots.length} slot(s) [
-                      {day.timeSlots.map(slot => `${slot.start}-${slot.end}`).join(', ')}
-                      ]
-                    </li>
-                  ))}
-              </ul>
-              
-              {selectedDate && (
-                <>
-                  <p className="font-semibold mt-2">Selected Date:</p>
-                  <p>Date: {formatDateToString(selectedDate)}</p>
-                  <p>Time Slots: {
-                    selectedDayData 
-                      ? selectedDayData.timeSlots.length 
-                      : 'None'
-                  }</p>
-                  {selectedDayData && selectedDayData.timeSlots.length > 0 && (
-                    <ul>
-                      {selectedDayData.timeSlots.map(slot => (
-                        <li key={slot.id}>
-                          ID: {slot.id}, Time: {slot.start}-{slot.end}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-      
+
+
+
       {showSuccessMessage && (
         <div className="bg-green-50 border border-green-200 rounded-md p-4 mb-4 flex items-center justify-between">
           <div className="flex items-start">
@@ -940,7 +852,7 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
                 {selectedDate.toLocaleDateString('default', { weekday: 'long', month: 'long', day: 'numeric' })}
               </h3>
               <button
-                onClick={() => { 
+                onClick={() => {
                   setServiceSelectionError(null);
                   setSelectedPackages([]);
                   setShowTimeSlotModal(true);
@@ -957,8 +869,8 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
                 <h4 className="text-sm font-medium text-gray-600">Time Slots:</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                   {selectedDayData.timeSlots.map((slot) => (
-                    <div 
-                      key={slot.id} 
+                    <div
+                      key={slot.id}
                       className="flex justify-between items-center p-2 bg-gray-50 hover:bg-gray-100 rounded-md border border-gray-200"
                     >
                       <div className="flex items-center">
@@ -971,7 +883,7 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
                           </span>
                         )}
                       </div>
-                      <button 
+                      <button
                         onClick={() => handleRemoveTimeSlot(selectedDayData.date, slot.id)}
                         className="text-red-500 hover:text-red-700 p-1 hover:bg-red-50 rounded-full"
                         title="Remove time slot"
@@ -1032,7 +944,7 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
                   required
                 />
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Available Services for this Time Slot <span className="text-red-500">*</span>
@@ -1071,7 +983,7 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
                   </div>
                 )}
               </div>
-              
+
               <div className="flex justify-end space-x-3 pt-2">
                 <button
                   onClick={() => setShowTimeSlotModal(false)}

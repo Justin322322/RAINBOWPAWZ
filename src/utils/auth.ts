@@ -6,57 +6,42 @@ import { NextRequest } from 'next/server';
 // Get auth token from server request (for API routes)
 export const getAuthTokenFromRequest = (request: NextRequest): string | null => {
   const cookieHeader = request.headers.get('cookie');
-  console.log('Cookie header:', cookieHeader);
-  
+
   if (!cookieHeader) {
-    console.log('No cookie header found in request');
     return null;
   }
 
   const cookies = cookieHeader.split(';');
-  console.log('Parsed cookies:', cookies);
-  
+
   // Try to find auth_token with different approaches
   let authCookie = cookies.find(cookie => cookie.trim().startsWith('auth_token='));
-  
-  // Log all cookies for debugging
-  cookies.forEach(cookie => {
-    const [name, value] = cookie.trim().split('=');
-    console.log(`Cookie: ${name} = ${value?.substring(0, 10)}${value?.length > 10 ? '...' : ''}`);
-  });
 
   if (!authCookie) {
-    console.log('No auth_token cookie found');
     return null;
   }
 
   // Extract the token value and decode it
   const cookieParts = authCookie.split('=');
   if (cookieParts.length < 2) {
-    console.log('Invalid auth_token cookie format');
     return null;
   }
-  
+
   const encodedToken = cookieParts[1];
   if (!encodedToken) {
-    console.log('Empty auth_token value');
     return null;
   }
 
   // Decode the URI component
   try {
     const token = decodeURIComponent(encodedToken);
-    console.log(`Decoded token: ${token.split('_')[0]}_[HIDDEN]`);
 
     // Validate token format (should be userId_accountType)
     if (!token || !token.includes('_')) {
-      console.log('Invalid token format - missing underscore');
       return null;
     }
 
     return token;
   } catch (error) {
-    console.error('Error decoding token:', error);
     return null;
   }
 };
@@ -89,11 +74,10 @@ export const getAuthToken = (): string | null => {
       try {
         const localStorageToken = localStorage.getItem('auth_token_3000');
         if (localStorageToken && localStorageToken.includes('_')) {
-          console.log('Retrieved auth token from localStorage for port 3000');
           return localStorageToken;
         }
       } catch (e) {
-        console.error('Error accessing localStorage:', e);
+        // Silently fail if localStorage is not available
       }
     }
 
@@ -112,7 +96,6 @@ export const getAuthToken = (): string | null => {
     // If all else fails, return null
     return null;
   } catch (error) {
-    console.error('Error getting auth token:', error);
     return null;
   }
 };
@@ -163,13 +146,8 @@ export const isFurParent = (): boolean => {
 export const setAuthToken = (userId: string, accountType: string, expirationDays: number = 30): void => {
   if (typeof document === 'undefined') return;
 
-  console.log(`Setting auth token: userId=${userId}, accountType=${accountType}`);
-
   // Create the token value - format is userId_accountType
   const tokenValue = `${userId}_${accountType}`;
-
-  // Log for debugging
-  console.log(`Auth token value: ${tokenValue}`);
 
   // Clear any existing auth token - use multiple approaches to ensure it's cleared
   document.cookie = 'auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
@@ -190,29 +168,22 @@ export const setAuthToken = (userId: string, accountType: string, expirationDays
   // Set the cookie with appropriate attributes for all environments
   // Standard version without domain specification
   document.cookie = `auth_token=${tokenValue}; path=/; expires=${expirationDate.toUTCString()}; SameSite=${sameSiteValue}`;
-  
+
   // Add specific settings for localhost to ensure it works consistently
   if (hostname === 'localhost') {
     // Additional cookie specifically for localhost
     document.cookie = `auth_token=${tokenValue}; path=/; domain=localhost; expires=${expirationDate.toUTCString()}; SameSite=${sameSiteValue}`;
-    console.log('Setting extra cookie specifically for localhost');
   }
-  
-  console.log(`Setting cookie for ${hostname}:${port} with SameSite=${sameSiteValue}`);
-  
+
   // Also add a cookie that's not port-specific (in case port is causing the issue)
   if (port === '3000') {
     try {
       // Store the token in localStorage as a backup specifically for port 3000
       localStorage.setItem('auth_token_3000', tokenValue);
-      console.log('Stored backup token in localStorage for port 3000');
     } catch (e) {
-      console.error('Unable to store in localStorage:', e);
+      // Silently fail if localStorage is not available
     }
   }
-
-  // Log cookie after setting for debugging
-  console.log(`Cookies after setting: ${document.cookie}`);
 
   // Also store in sessionStorage as a backup
   sessionStorage.setItem('auth_user_id', userId);
@@ -229,17 +200,16 @@ export const clearAuthToken = async (): Promise<void> => {
 
   // Clear all session storage
   sessionStorage.clear();
-  
+
   // Clear localStorage backups
   try {
     localStorage.removeItem('auth_token_3000');
   } catch (e) {
-    console.error('Error clearing localStorage:', e);
+    // Silently fail if localStorage is not available
   }
 
   // Get the current hostname
   const hostname = window.location.hostname;
-  const port = window.location.port;
 
   // Use SameSite=Lax for better compatibility with HTTP
   const sameSiteValue = 'Lax';
@@ -247,14 +217,12 @@ export const clearAuthToken = async (): Promise<void> => {
   // Clear the cookie with simple approach - don't specify domain
   document.cookie = `auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=${sameSiteValue}`;
   document.cookie = `auth_token=; path=/; max-age=0; SameSite=${sameSiteValue}`;
-  
+
   // Clear for localhost specifically
   if (hostname === 'localhost') {
     document.cookie = `auth_token=; path=/; domain=localhost; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=${sameSiteValue}`;
     document.cookie = `auth_token=; path=/; domain=localhost; max-age=0; SameSite=${sameSiteValue}`;
   }
-
-  console.log(`Clearing cookies for ${hostname}:${port}`);
 
   // Clear any other potential auth-related cookies
   document.cookie = `user_id=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=${sameSiteValue}`;
@@ -413,7 +381,6 @@ export const fastAuthCheck = (): {
       adminData: null
     };
   } catch (error) {
-    console.error('Error in fastAuthCheck:', error);
     return defaultState;
   }
 };

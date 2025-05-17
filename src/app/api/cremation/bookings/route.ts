@@ -71,6 +71,7 @@ export async function GET(request: NextRequest) {
         JOIN users u ON sb.user_id = u.id
         LEFT JOIN service_packages sp ON sb.package_id = sp.id
         WHERE (sb.package_id IN (?) OR sb.provider_id = ?)
+        AND sb.status NOT IN ('completed', 'cancelled')
       `;
       queryParams.push(packageIds, providerId);
     } else {
@@ -85,6 +86,7 @@ export async function GET(request: NextRequest) {
         LEFT JOIN pets p ON p.user_id = u.id AND p.created_at <= DATE_ADD(b.created_at, INTERVAL 5 SECOND)
         JOIN service_packages sp ON b.business_service_id = sp.id
         WHERE b.business_service_id IN (?)
+        AND b.status NOT IN ('completed', 'cancelled')
         GROUP BY b.id
       `;
       queryParams.push(packageIds);

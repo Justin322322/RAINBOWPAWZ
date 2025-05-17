@@ -15,7 +15,7 @@ const DirectImageWithFallback = ({
   alt,
   className = "w-full h-full object-cover",
   fallbackText = 'No image available',
-  debug = true // Set to true by default to help diagnose issues
+  debug = false // Set to false by default for production
 }: DirectImageWithFallbackProps) => {
   const [error, setError] = useState(false);
   const [imgSrc, setImgSrc] = useState('');
@@ -33,7 +33,6 @@ const DirectImageWithFallback = ({
       (pathParts.length > 3 ? pathParts[pathParts.length - 2] : null);
 
     if (!extractedPackageId || isNaN(Number(extractedPackageId))) {
-      console.log('[Image Debug] Could not extract package ID from path');
       return null;
     }
 
@@ -50,13 +49,11 @@ const DirectImageWithFallback = ({
       const data = await response.json();
 
       if (data.success && data.fixedPath) {
-        console.log('[Image Debug] Image path fixed:', data.fixedPath);
         return data.fixedPath;
       }
 
       return null;
     } catch (error) {
-      console.error('[Image Debug] Error fixing image path:', error);
       return null;
     }
   };
@@ -81,12 +78,6 @@ const DirectImageWithFallback = ({
 
     // Log debugging info
     if (debug) {
-      console.log(`[Image Debug] Loading image: ${newSrc}`);
-      console.log(`[Image Debug] Original path: ${src}`);
-      if (fixedPath) {
-        console.log(`[Image Debug] Using fixed path: ${fixedPath}`);
-      }
-
       // Extract information from the path
       const pathParts = cleanSrc.split('/');
       const fileName = pathParts[pathParts.length - 1];
@@ -118,11 +109,8 @@ const DirectImageWithFallback = ({
             contentLength,
             checkedAt: new Date().toISOString()
           }));
-
-          console.log(`[Image Debug] File check: exists=${exists}, status=${status}, type=${contentType}, size=${contentLength}`);
         })
         .catch(err => {
-          console.error(`[Image Debug] File check error:`, err);
           setDebugInfo(prev => ({
             ...prev,
             fileExists: false,
@@ -142,20 +130,18 @@ const DirectImageWithFallback = ({
 
   // Function to handle image error and try to fix the path
   const handleImageError = async (e: React.SyntheticEvent<HTMLImageElement>) => {
-    console.error('[Image Debug] Direct image failed to load:', imgSrc);
-
     // Update debug info
-    setDebugInfo(prev => ({
-      ...prev,
-      loaded: false,
-      errorAt: new Date().toISOString(),
-      errorEvent: e.type
-    }));
+    if (debug) {
+      setDebugInfo(prev => ({
+        ...prev,
+        loaded: false,
+        errorAt: new Date().toISOString(),
+        errorEvent: e.type
+      }));
+    }
 
     // Try to fix the image path if we haven't already
     if (!fixedPath && src) {
-      console.log('[Image Debug] Attempting to fix image path...');
-
       // Extract package ID from path if possible
       const pathParts = src.split('/');
       let packageId = null;
@@ -178,12 +164,9 @@ const DirectImageWithFallback = ({
       }
 
       if (packageId) {
-        console.log('[Image Debug] Extracted package ID:', packageId);
-
         // Try to fix the path using the image-check API
         const fixed = await fixImagePath(src, packageId);
         if (fixed) {
-          console.log('[Image Debug] Successfully fixed image path:', fixed);
           setFixedPath(fixed);
           setError(false); // Reset error to try with the new path
           return;
@@ -193,19 +176,17 @@ const DirectImageWithFallback = ({
         // Construct a standard path based on the package ID and filename
         const filename = pathParts[pathParts.length - 1];
         const standardPath = `/uploads/packages/${packageId}/${filename}`;
-        console.log('[Image Debug] Trying standard path:', standardPath);
 
         // Check if this file exists
         try {
           const checkResponse = await fetch(standardPath, { method: 'HEAD' });
           if (checkResponse.ok) {
-            console.log('[Image Debug] Standard path exists:', standardPath);
             setFixedPath(standardPath);
             setError(false);
             return;
           }
         } catch (err) {
-          console.error('[Image Debug] Error checking standard path:', err);
+          // Silently fail
         }
       }
     }
@@ -222,12 +203,13 @@ const DirectImageWithFallback = ({
           alt={alt}
           className={className}
           onLoad={() => {
-            console.log('[Image Debug] Direct image loaded successfully:', imgSrc);
-            setDebugInfo(prev => ({
-              ...prev,
-              loaded: true,
-              loadedAt: new Date().toISOString()
-            }));
+            if (debug) {
+              setDebugInfo(prev => ({
+                ...prev,
+                loaded: true,
+                loadedAt: new Date().toISOString()
+              }));
+            }
           }}
           onError={handleImageError}
         />

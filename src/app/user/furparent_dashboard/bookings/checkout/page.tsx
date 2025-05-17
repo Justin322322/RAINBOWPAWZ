@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
+import { useToast } from '@/context/ToastContext';
 import {
   ArrowLeftIcon,
   CheckIcon,
@@ -31,11 +32,12 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { items, removeItem } = useCart();
+  const { showToast } = useToast();
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [bookingData, setBookingData] = useState<any>(null);
-  const [paymentMethod, setPaymentMethod] = useState<string>('cash');
+  const [paymentMethod, setPaymentMethod] = useState<string>('gcash');
   const [isProcessing, setIsProcessing] = useState(false);
   const [checkoutComplete, setCheckoutComplete] = useState(false);
   const [petName, setPetName] = useState('');
@@ -47,6 +49,18 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
   const [petType, setPetType] = useState('');
   const [selectedDate, setSelectedDate] = useState<string | undefined>(undefined);
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<any | null>(null);
+
+  // Field validation state
+  const [validationErrors, setValidationErrors] = useState<{
+    petName?: string;
+    petType?: string;
+    selectedDate?: string;
+    selectedTimeSlot?: string;
+    deliveryAddress?: string;
+    formSubmitted: boolean;
+  }>({
+    formSubmitted: false
+  });
   // We'll use petSpecialNotes instead of specialRequests
   const [petImageFile, setPetImageFile] = useState<File | null>(null);
   const [petImagePreview, setPetImagePreview] = useState<string | null>(null);
@@ -120,28 +134,151 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
     if (fileInput) fileInput.value = '';
   };
 
-  // Handle date and time selection
+  // Clear validation error for a specific field
+  const clearValidationError = (field: string) => {
+    if (validationErrors[field as keyof typeof validationErrors]) {
+      setValidationErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[field as keyof typeof validationErrors];
+        return newErrors;
+      });
+    }
+  };
+
+  // Validate a field and show toast if invalid
+  const validateField = (fieldName: string, value: string, displayName: string) => {
+    if (!value.trim()) {
+      // Set validation error
+      setValidationErrors(prev => ({
+        ...prev,
+        [fieldName]: `${displayName} is required`,
+        formSubmitted: true // Set this to true to show the error immediately
+      }));
+
+      // Show toast notification
+      showToast(`${displayName} is required`, 'error');
+      return false;
+    }
+
+    // Clear validation error if field is valid
+    clearValidationError(fieldName);
+    return true;
+  };
+
+  // Handle pet name change with validation
+  const handlePetNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setPetName(value);
+
+    // Clear validation error if field is now valid
+    if (value.trim()) {
+      clearValidationError('petName');
+    }
+  };
+
+  // Handle pet name blur with validation
+  const handlePetNameBlur = () => {
+    validateField('petName', petName, 'Pet name');
+  };
+
+  // Handle pet type change with validation
+  const handlePetTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = e.target.value;
+    setPetType(value);
+
+    // Clear validation error if field is now valid
+    if (value) {
+      clearValidationError('petType');
+    }
+  };
+
+  // Handle pet type blur with validation
+  const handlePetTypeBlur = () => {
+    validateField('petType', petType, 'Pet type');
+  };
+
+  // Handle delivery option change with validation
+  const handleDeliveryOptionChange = (option: 'pickup' | 'delivery') => {
+    setDeliveryOption(option);
+
+    // Clear delivery address validation error if switching to pickup
+    if (option === 'pickup') {
+      clearValidationError('deliveryAddress');
+    } else if (option === 'delivery' && userData && (!userData.address && !userData.city)) {
+      // If switching to delivery and user doesn't have an address, show validation error
+      setValidationErrors(prev => ({
+        ...prev,
+        deliveryAddress: "Your profile does not have a delivery address. Please update your profile before selecting delivery.",
+        formSubmitted: true
+      }));
+      showToast("Your profile does not have a delivery address. Please update your profile.", 'error');
+    }
+  };
+
+  // Validate delivery address if delivery option is selected
+  const validateDeliveryAddress = () => {
+    if (deliveryOption === 'delivery' && userData && (!userData.address && !userData.city)) {
+      setValidationErrors(prev => ({
+        ...prev,
+        deliveryAddress: "Your profile does not have a delivery address. Please update your profile before selecting delivery.",
+        formSubmitted: true
+      }));
+      showToast("Your profile does not have a delivery address. Please update your profile.", 'error');
+      return false;
+    }
+    return true;
+  };
+
+  // Validate date selection
+  const validateDateSelection = () => {
+    if (!selectedDate) {
+      setValidationErrors(prev => ({
+        ...prev,
+        selectedDate: "Please select a date for your booking",
+        formSubmitted: true
+      }));
+      showToast("Please select a date for your booking", 'error');
+      return false;
+    }
+    return true;
+  };
+
+  // Validate time slot selection
+  const validateTimeSlotSelection = () => {
+    if (!selectedTimeSlot) {
+      setValidationErrors(prev => ({
+        ...prev,
+        selectedTimeSlot: "Please select a time slot for your booking",
+        formSubmitted: true
+      }));
+      showToast("Please select a time slot for your booking", 'error');
+      return false;
+    }
+    return true;
+  };
+
+  // Handle date and time selection with validation
   const handleDateTimeSelected = (date: string, timeSlot: any | null) => {
     console.log('[Checkout] Date/time selection changed:', { date, timeSlot });
 
     // Only update state if we have valid values
     if (date) {
       setSelectedDate(date);
+      clearValidationError('selectedDate');
     }
 
     // Only update time slot if one is provided
     // This prevents clearing the time slot when just the date is selected
     if (timeSlot) {
       setSelectedTimeSlot(timeSlot);
+      clearValidationError('selectedTimeSlot');
     }
 
     // Always clear any date/time related errors when the user is making selections
-    // This prevents showing errors while the user is in the middle of the selection process
     if (error && (
-      error === "Please select a date for your booking" ||
-      error === "Please select a time slot for your booking" ||
-      error === "Please select a date and time slot for your booking" ||
-      error === "Missing booking information. Please try again."
+      error.includes("date") ||
+      error.includes("time slot") ||
+      error.includes("Missing booking information")
     )) {
       setError(null);
     }
@@ -150,6 +287,11 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
     if (date && !timeSlot) {
       console.log('[Checkout] Date selected but no time slot yet. Waiting for time slot selection.');
       // We don't set an error here because the user is still in the process of selecting
+    }
+
+    // If both date and time slot are selected, show a success toast
+    if (date && timeSlot) {
+      showToast(`Date and time selected: ${new Date(date).toLocaleDateString()} at ${timeSlot.start}`, 'success');
     }
   };
 
@@ -173,9 +315,12 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
     const paymentMethodParam = searchParams.get('payment-method');
     const deliveryOptionParam = searchParams.get('delivery-option');
 
-    // Set payment method if provided in URL
-    if (paymentMethodParam && ['cash', 'gcash'].includes(paymentMethodParam)) {
-      setPaymentMethod(paymentMethodParam);
+    // Set payment method if provided in URL (only accept gcash)
+    if (paymentMethodParam && paymentMethodParam === 'gcash') {
+      setPaymentMethod('gcash');
+    } else {
+      // Default to gcash regardless of what's in the URL
+      setPaymentMethod('gcash');
     }
 
     // Set delivery option if provided in URL
@@ -207,21 +352,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
       try {
         console.log(`Fetching provider (ID: ${providerIdParam}) and package (ID: ${packageIdParam}) data for checkout`);
 
-        // First try to fetch debug data to check status of provider and package
-        try {
-          console.log('Getting debug information for checkout...');
-          const debugResponse = await fetch(`/api/debug/checkout?provider=${providerIdParam}&package=${packageIdParam}`);
-          const debugData = await debugResponse.json();
-          console.log('Debug data:', debugData);
-
-          // If we have debug data, we can better understand any issues
-          if (debugData.databaseChecks?.error) {
-            console.error('Database check error in debug route:', debugData.databaseChecks.error);
-          }
-        } catch (debugError) {
-          console.warn('Could not fetch debug information:', debugError);
-          // Continue with normal checkout - debug is optional
-        }
+        // Debug section removed - no longer needed
 
         // Fetch provider data
         const providerResponse = await fetch(`/api/service-providers/${providerIdParam}`);
@@ -339,16 +470,9 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
 
               // We no longer need to set mock pets
 
-              // Set default date to tomorrow
-              const tomorrow = new Date();
-              tomorrow.setDate(tomorrow.getDate() + 1);
-              setSelectedDate(tomorrow.toISOString().split('T')[0]);
-
-              // Set default time
-              setSelectedTimeSlot({
-                start: '10:00',
-                end: '11:00'
-              });
+              // Don't set default date and time - require user to select them
+              setSelectedDate('');
+              setSelectedTimeSlot(null);
 
               // Set pet information if coming from cart
               if (fromCart === 'true' && petIdParam && petNameParam) {
@@ -417,16 +541,9 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
 
         // We no longer fetch pets as we'll use petName and causeOfDeath fields directly
 
-        // Set default date to tomorrow
-        const tomorrow = new Date();
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        setSelectedDate(tomorrow.toISOString().split('T')[0]);
-
-        // Set default time
-        setSelectedTimeSlot({
-          start: '10:00',
-          end: '11:00'
-        });
+        // Don't set default date and time - require user to select them
+        setSelectedDate('');
+        setSelectedTimeSlot(null);
 
         // Set pet information if coming from cart
         if (fromCart === 'true' && petIdParam && petNameParam) {
@@ -496,45 +613,28 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Collect all validation errors
-    const errors = [];
+    // Mark the form as submitted to show all validation errors
+    setValidationErrors(prev => ({ ...prev, formSubmitted: true }));
 
-    // Validate inputs
-    if (!petName) {
-      errors.push("Please enter your pet's name");
-    }
+    // Validate all required fields using our validation functions
+    const isPetNameValid = validateField('petName', petName, 'Pet name');
+    const isPetTypeValid = validateField('petType', petType, 'Pet type');
+    const isDateValid = validateDateSelection();
+    const isTimeSlotValid = validateTimeSlotSelection();
+    const isDeliveryAddressValid = validateDeliveryAddress();
 
-    // Validate date and time slot selection - only on form submission
-    if (!selectedDate) {
-      errors.push("Please select a date for your booking");
-    }
-
-    if (!selectedTimeSlot) {
-      // If date is selected but time slot isn't, provide a more specific message
-      if (selectedDate) {
-        errors.push("Please select a time slot for your booking");
-      } else {
-        errors.push("Please select a date and time slot for your booking");
+    // Check if all validations passed
+    if (!isPetNameValid || !isPetTypeValid || !isDateValid || !isTimeSlotValid || !isDeliveryAddressValid) {
+      // Scroll to the first error field
+      const firstErrorField = document.querySelector('.error-field');
+      if (firstErrorField) {
+        firstErrorField.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
-    } else if (!selectedTimeSlot.start || !selectedTimeSlot.end) {
-      errors.push("Invalid time slot selected. Please try again.");
-    }
-
-    if (!petType) {
-      errors.push("Please select your pet type");
-    }
-
-    // Only validate delivery address if we're doing delivery and user doesn't have an address
-    if (deliveryOption === 'delivery' && !userData?.address && !userData?.city) {
-      errors.push("Your profile does not have a delivery address. Please update your profile before selecting delivery.");
-    }
-
-    // If there are errors, show the first one and stop
-    if (errors.length > 0) {
-      setError(errors[0]);
-      console.log("[Checkout] Form validation errors:", errors);
       return;
     }
+
+    // Clear any previous errors if validation passes
+    setError(null);
 
     console.log("[Checkout] Proceeding with booking:", {
       provider: providerId,
@@ -546,7 +646,9 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
     });
 
     if (!userData) {
-      setError('You must be logged in to complete a booking');
+      const message = 'You must be logged in to complete a booking';
+      setError(message);
+      showToast(message, 'error');
       return;
     }
 
@@ -569,13 +671,27 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
             body: formData
           });
 
-          if (uploadResponse.ok) {
-            const uploadData = await uploadResponse.json();
-            // The API returns imagePath, not imageUrl
-            petImageUrl = uploadData.imagePath;
-            console.log('Pet image uploaded successfully:', petImageUrl);
-          } else {
-            console.error('Failed to upload pet image:', await uploadResponse.text());
+          try {
+            const responseText = await uploadResponse.text();
+            let uploadData;
+
+            try {
+              uploadData = JSON.parse(responseText);
+            } catch (parseError) {
+              console.error('Failed to parse upload response as JSON:', responseText);
+              throw new Error('Invalid response from image upload server');
+            }
+
+            if (uploadResponse.ok) {
+              // The API returns imagePath, not imageUrl
+              petImageUrl = uploadData.imagePath;
+              console.log('Pet image uploaded successfully:', petImageUrl);
+            } else {
+              console.error('Failed to upload pet image:', uploadData.error || 'Unknown error');
+            }
+          } catch (responseError) {
+            console.error('Error processing upload response:', responseError);
+            // Continue with booking even if image upload fails
           }
         } catch (uploadError) {
           console.error('Error during image upload:', uploadError);
@@ -609,28 +725,37 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
             body: JSON.stringify(petData)
           });
 
-          if (petResponse.ok) {
-            const petResult = await petResponse.json();
-            console.log('Pet information saved successfully:', petResult);
+          try {
+            const responseText = await petResponse.text();
+            let petResult;
 
-            // Check for petId in different possible response formats
-            if (petResult.pet && petResult.pet.id) {
-              petId = petResult.pet.id;
-            } else if (petResult.petId) {
-              petId = petResult.petId;
-            } else if (petResult.id) {
-              petId = petResult.id;
-            }
-
-            console.log('Pet ID extracted:', petId);
-          } else {
             try {
-              const errorData = await petResponse.json();
-              console.error('Failed to save pet information:', errorData);
+              petResult = JSON.parse(responseText);
             } catch (parseError) {
-              console.error('Failed to parse pet error response:', await petResponse.text());
+              console.error('Failed to parse pet response as JSON:', responseText);
+              throw new Error('Invalid response from pet saving server');
             }
-            // Don't fail the booking if pet saving fails, just log the error
+
+            if (petResponse.ok) {
+              console.log('Pet information saved successfully:', petResult);
+
+              // Check for petId in different possible response formats
+              if (petResult.pet && petResult.pet.id) {
+                petId = petResult.pet.id;
+              } else if (petResult.petId) {
+                petId = petResult.petId;
+              } else if (petResult.id) {
+                petId = petResult.id;
+              }
+
+              console.log('Pet ID extracted:', petId);
+            } else {
+              console.error('Failed to save pet information:', petResult.error || 'Unknown error');
+              // Don't fail the booking if pet saving fails, just log the error
+            }
+          } catch (responseError) {
+            console.error('Error processing pet save response:', responseError);
+            // Continue with booking even if pet saving fails
           }
         } catch (petError) {
           console.error('Error saving pet information:', petError);
@@ -674,12 +799,26 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
         body: JSON.stringify(bookingData)
       });
 
-      if (!bookingResponse.ok) {
-        const errorData = await bookingResponse.json();
-        throw new Error(errorData.error || 'Failed to create booking');
-      }
+      let responseData;
+      try {
+        // Try to parse the response as JSON
+        const responseText = await bookingResponse.text();
+        try {
+          responseData = JSON.parse(responseText);
+        } catch (parseError) {
+          // If JSON parsing fails, handle the error
+          console.error('Failed to parse response as JSON:', responseText);
+          throw new Error('Invalid response from server. Please try again later.');
+        }
 
-      const responseData = await bookingResponse.json();
+        // Check if the response was not OK
+        if (!bookingResponse.ok) {
+          throw new Error(responseData.error || 'Failed to create booking');
+        }
+      } catch (responseError) {
+        console.error('Error processing booking response:', responseError);
+        throw responseError;
+      }
       console.log('Booking created successfully:', responseData);
 
       // Clear cart if booking was from cart
@@ -701,6 +840,9 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
       // Store the booking ID for reference in the success message
       const bookingId = responseData.bookingId;
 
+      // Show success toast
+      showToast('Booking completed successfully!', 'success');
+
       // Redirect to the bookings page after a short delay
       setTimeout(() => {
         router.push('/user/furparent_dashboard/bookings?success=true&bookingId=' + bookingId);
@@ -708,7 +850,9 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
 
     } catch (error) {
       console.error('Error processing booking:', error);
-      setError(error instanceof Error ? error.message : 'An error occurred while processing your booking.');
+      const errorMessage = error instanceof Error ? error.message : 'An error occurred while processing your booking.';
+      setError(errorMessage);
+      showToast(errorMessage, 'error');
     } finally {
       setIsProcessing(false);
     }
@@ -783,7 +927,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                   <h2 className="text-xl font-bold text-white">Booking Details</h2>
                 </div>
 
-                <form className="p-6" onSubmit={(e) => e.preventDefault()}>
+                <form className="p-6" onSubmit={handleSubmit}>
                   <div className="space-y-6">
                     {/* Pet Information Section */}
                     <div className="border-b pb-6">
@@ -793,39 +937,81 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                       </h3>
 
                       <div className="space-y-4">
-                        <div>
+                        <div className={validationErrors.petName && validationErrors.formSubmitted ? 'error-field' : ''}>
                           <label className="block text-sm font-medium text-gray-700 mb-2">
                             Name of Your Pet <span className="text-red-500">*</span>
                           </label>
-                          <input
-                            type="text"
-                            value={petName}
-                            onChange={(e) => setPetName(e.target.value)}
-                            className="w-full p-3 border border-gray-300 rounded-md focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
-                            placeholder="Enter your pet's name"
-                          />
+                          <div className="relative">
+                            <input
+                              type="text"
+                              value={petName}
+                              onChange={handlePetNameChange}
+                              onBlur={handlePetNameBlur}
+                              className={`w-full p-3 border ${
+                                validationErrors.petName && validationErrors.formSubmitted
+                                  ? 'border-red-500 bg-red-50'
+                                  : 'border-gray-300'
+                              } rounded-md focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]`}
+                              placeholder="Enter your pet's name"
+                              required
+                              aria-invalid={validationErrors.petName && validationErrors.formSubmitted ? 'true' : 'false'}
+                              aria-describedby={validationErrors.petName && validationErrors.formSubmitted ? 'pet-name-error' : undefined}
+                            />
+                            {validationErrors.petName && validationErrors.formSubmitted && (
+                              <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                <ExclamationCircleIcon className="h-5 w-5 text-red-500" aria-hidden="true" />
+                              </div>
+                            )}
+                          </div>
+                          {validationErrors.petName && validationErrors.formSubmitted && (
+                            <p className="mt-2 text-sm text-red-600 flex items-center" id="pet-name-error">
+                              <ExclamationCircleIcon className="h-4 w-4 mr-1 flex-shrink-0" />
+                              {validationErrors.petName}
+                            </p>
+                          )}
                         </div>
 
-                        <div>
+                        <div className={validationErrors.petType && validationErrors.formSubmitted ? 'error-field' : ''}>
                           <label className="block text-sm font-medium text-gray-700 mb-2">
                             Type of Pet <span className="text-red-500">*</span>
                           </label>
-                          <select
-                            value={petType}
-                            onChange={(e) => setPetType(e.target.value)}
-                            className="w-full p-3 border border-gray-300 rounded-md focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
-                          >
-                            <option value="">Select Pet Type</option>
-                            <option value="Dog">Dog</option>
-                            <option value="Cat">Cat</option>
-                            <option value="Bird">Bird</option>
-                            <option value="Hamster">Hamster</option>
-                            <option value="Rabbit">Rabbit</option>
-                            <option value="Guinea Pig">Guinea Pig</option>
-                            <option value="Fish">Fish</option>
-                            <option value="Reptile">Reptile</option>
-                            <option value="Other">Other</option>
-                          </select>
+                          <div className="relative">
+                            <select
+                              value={petType}
+                              onChange={handlePetTypeChange}
+                              onBlur={handlePetTypeBlur}
+                              className={`w-full p-3 border ${
+                                validationErrors.petType && validationErrors.formSubmitted
+                                  ? 'border-red-500 bg-red-50'
+                                  : 'border-gray-300'
+                              } rounded-md focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]`}
+                              required
+                              aria-invalid={validationErrors.petType && validationErrors.formSubmitted ? 'true' : 'false'}
+                              aria-describedby={validationErrors.petType && validationErrors.formSubmitted ? 'pet-type-error' : undefined}
+                            >
+                              <option value="">Select Pet Type</option>
+                              <option value="Dog">Dog</option>
+                              <option value="Cat">Cat</option>
+                              <option value="Bird">Bird</option>
+                              <option value="Hamster">Hamster</option>
+                              <option value="Rabbit">Rabbit</option>
+                              <option value="Guinea Pig">Guinea Pig</option>
+                              <option value="Fish">Fish</option>
+                              <option value="Reptile">Reptile</option>
+                              <option value="Other">Other</option>
+                            </select>
+                            {validationErrors.petType && validationErrors.formSubmitted && (
+                              <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                <ExclamationCircleIcon className="h-5 w-5 text-red-500" aria-hidden="true" />
+                              </div>
+                            )}
+                          </div>
+                          {validationErrors.petType && validationErrors.formSubmitted && (
+                            <p className="mt-2 text-sm text-red-600 flex items-center" id="pet-type-error">
+                              <ExclamationCircleIcon className="h-4 w-4 mr-1 flex-shrink-0" />
+                              {validationErrors.petType}
+                            </p>
+                          )}
                         </div>
 
                         <div>
@@ -965,13 +1151,39 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                         Schedule
                       </h3>
 
-                      <TimeSlotSelector
-                        providerId={providerId || 0}
-                        onDateTimeSelected={handleDateTimeSelected}
-                        selectedDate={selectedDate}
-                        selectedTimeSlot={selectedTimeSlot}
-                        packageId={packageId || 0}
-                      />
+                      <div className={
+                        (validationErrors.selectedDate || validationErrors.selectedTimeSlot) && validationErrors.formSubmitted
+                          ? 'border-2 border-red-300 rounded-lg p-1 error-field'
+                          : ''
+                      }>
+                        <TimeSlotSelector
+                          providerId={providerId || 0}
+                          onDateTimeSelected={handleDateTimeSelected}
+                          selectedDate={selectedDate}
+                          selectedTimeSlot={selectedTimeSlot}
+                          packageId={packageId || 0}
+                        />
+                      </div>
+
+                      {/* Validation error messages for date/time selection */}
+                      {(validationErrors.selectedDate || validationErrors.selectedTimeSlot) && validationErrors.formSubmitted && (
+                        <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-md">
+                          <div className="flex">
+                            <ExclamationCircleIcon className="h-5 w-5 text-red-500 mr-2 flex-shrink-0" />
+                            <div>
+                              {validationErrors.selectedDate && (
+                                <p className="text-sm text-red-600 font-medium">{validationErrors.selectedDate}</p>
+                              )}
+                              {validationErrors.selectedTimeSlot && (
+                                <p className="text-sm text-red-600 font-medium">{validationErrors.selectedTimeSlot}</p>
+                              )}
+                              <p className="text-sm text-red-500 mt-1">
+                                Please select both a date and time slot from the calendar above.
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     {/* Payment Method Section */}
@@ -982,29 +1194,8 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                       </h3>
 
                       <div className="space-y-3">
-                        <label className="flex items-center p-4 border rounded-md cursor-pointer hover:bg-gray-50 transition-colors">
-                          <input
-                            type="radio"
-                            name="payment-method"
-                            value="cash"
-                            checked={paymentMethod === 'cash'}
-                            onChange={() => setPaymentMethod('cash')}
-                            className="h-4 w-4 text-[var(--primary-green)] focus:ring-[var(--primary-green)]"
-                          />
-                          <BanknotesIcon className="h-6 w-6 ml-3 text-gray-600" />
-                          <span className="ml-2 text-gray-700">Cash on Arrival</span>
-                        </label>
-
-                        <label className="flex items-center p-4 border rounded-md cursor-pointer hover:bg-gray-50 transition-colors">
-                          <input
-                            type="radio"
-                            name="payment-method"
-                            value="gcash"
-                            checked={paymentMethod === 'gcash'}
-                            onChange={() => setPaymentMethod('gcash')}
-                            className="h-4 w-4 text-[var(--primary-green)] focus:ring-[var(--primary-green)]"
-                          />
-                          <div className="h-6 w-6 ml-3 flex-shrink-0 relative">
+                        <div className="flex items-center p-4 border rounded-md bg-blue-50 border-blue-200">
+                          <div className="h-6 w-6 flex-shrink-0 relative">
                             <img
                               src="/images/check-icon.svg"
                               alt="GCash"
@@ -1012,8 +1203,21 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                               style={{ filter: 'invert(33%) sepia(93%) saturate(1352%) hue-rotate(184deg) brightness(97%) contrast(96%)' }}
                             />
                           </div>
-                          <span className="ml-2 text-gray-700">GCash</span>
-                        </label>
+                          <div className="ml-3">
+                            <span className="font-medium text-gray-800">GCash</span>
+                            <p className="text-sm text-gray-600 mt-1">
+                              Pay securely using your GCash account. You will receive payment instructions after booking.
+                            </p>
+                          </div>
+                          <CheckIcon className="h-5 w-5 ml-auto text-green-500" />
+                        </div>
+
+                        {/* Hidden input to maintain the payment method state */}
+                        <input
+                          type="hidden"
+                          name="payment-method"
+                          value="gcash"
+                        />
                       </div>
                     </div>
 
@@ -1031,7 +1235,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                             name="delivery-option"
                             value="pickup"
                             checked={deliveryOption === 'pickup'}
-                            onChange={() => setDeliveryOption('pickup')}
+                            onChange={() => handleDeliveryOptionChange('pickup')}
                             className="h-4 w-4 text-[var(--primary-green)] focus:ring-[var(--primary-green)]"
                           />
                           <div className="ml-3">
@@ -1048,7 +1252,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                             name="delivery-option"
                             value="delivery"
                             checked={deliveryOption === 'delivery'}
-                            onChange={() => setDeliveryOption('delivery')}
+                            onChange={() => handleDeliveryOptionChange('delivery')}
                             className="h-4 w-4 text-[var(--primary-green)] focus:ring-[var(--primary-green)]"
                           />
                           <TruckIcon className="h-6 w-6 ml-3 text-gray-600" />
@@ -1061,7 +1265,13 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                         </label>
 
                         {deliveryOption === 'delivery' && (
-                          <div className="ml-7 mt-2 p-4 bg-gray-50 rounded-md">
+                          <div className={`ml-7 mt-2 p-4 ${
+                            validationErrors.deliveryAddress && validationErrors.formSubmitted
+                              ? 'bg-red-50 border border-red-200'
+                              : 'bg-gray-50'
+                          } rounded-md ${
+                            validationErrors.deliveryAddress && validationErrors.formSubmitted ? 'error-field' : ''
+                          }`}>
                             <div className="flex justify-between items-center mb-2">
                               <label className="block text-sm font-medium text-gray-700">
                                 Delivery Distance
@@ -1078,15 +1288,22 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                                 <p className="text-sm text-gray-600">{userData.city}, {userData.region}</p>
                               </div>
                             ) : (
-                              <div className="mb-3 p-2 bg-yellow-50 border border-yellow-200 rounded-md">
-                                <p className="text-sm text-yellow-700">
-                                  <ExclamationCircleIcon className="h-4 w-4 inline mr-1" />
-                                  Your profile doesn't have a complete address.
-                                </p>
+                              <div className="mb-3 p-2 bg-red-50 border border-red-200 rounded-md">
+                                <div className="flex">
+                                  <ExclamationCircleIcon className="h-5 w-5 text-red-500 mr-2 flex-shrink-0" />
+                                  <div>
+                                    <p className="text-sm text-red-700 font-medium">
+                                      Your profile doesn't have a delivery address.
+                                    </p>
+                                    {validationErrors.deliveryAddress && validationErrors.formSubmitted && (
+                                      <p className="text-sm text-red-600 mt-1">{validationErrors.deliveryAddress}</p>
+                                    )}
+                                  </div>
+                                </div>
                                 <button
                                   type="button"
                                   onClick={() => router.push('/user/furparent_dashboard/profile')}
-                                  className="mt-2 px-3 py-1 bg-[var(--primary-green)] text-white text-sm rounded-md"
+                                  className="mt-3 px-3 py-1 bg-[var(--primary-green)] text-white text-sm rounded-md"
                                 >
                                   Update Profile
                                 </button>
@@ -1102,32 +1319,48 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                     </div>
                   </div>
 
-                  {/* Only show errors on form submission or for critical issues */}
-                  {error && (
-                    <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-md flex items-start">
-                      <ExclamationCircleIcon className="h-5 w-5 text-red-500 mt-0.5 flex-shrink-0" />
-                      <div className="ml-3">
-                        <p className="text-red-700 font-medium">{error}</p>
-                        {(error.includes("time slot") || error.includes("date")) && (
-                          <p className="text-red-600 text-sm mt-1">
-                            Please select both a date and time slot in the Schedule section above.
-                          </p>
-                        )}
-                      </div>
+                  {/* Subtle validation indicator */}
+                  {(error || Object.keys(validationErrors).filter(key => key !== 'formSubmitted').length > 0) && validationErrors.formSubmitted && (
+                    <div className="mt-6 text-center">
+                      <p className="text-sm text-gray-600">
+                        Please complete all required fields marked with <span className="text-red-500">*</span> before proceeding.
+                      </p>
                     </div>
                   )}
 
                   <div className="mt-8">
                     <button
-                      type="button"
-                      onClick={(e) => handleSubmit(e)}
+                      type="submit"
                       disabled={isProcessing}
-                      className="w-full py-3 px-4 bg-[var(--primary-green)] text-white font-medium rounded-md hover:bg-[var(--primary-green-hover)] transition-colors disabled:opacity-70 flex items-center justify-center"
+                      className={`w-full py-3 px-4 ${
+                        Object.keys(validationErrors).filter(key => key !== 'formSubmitted').length > 0 && validationErrors.formSubmitted
+                          ? 'bg-gray-400 hover:bg-gray-500'
+                          : 'bg-[var(--primary-green)] hover:bg-[var(--primary-green-hover)]'
+                      } text-white font-medium rounded-md transition-colors disabled:opacity-70 flex items-center justify-center`}
+                      onClick={(e) => {
+                        // If there are validation errors and the form has been submitted,
+                        // show a toast reminding the user to fix the errors
+                        if (Object.keys(validationErrors).filter(key => key !== 'formSubmitted').length > 0 && validationErrors.formSubmitted) {
+                          e.preventDefault(); // Prevent default to avoid double validation
+                          showToast('Please fix the highlighted fields before proceeding', 'warning');
+
+                          // Scroll to the first error field
+                          const firstErrorField = document.querySelector('.error-field');
+                          if (firstErrorField) {
+                            firstErrorField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                          }
+                        }
+                      }}
                     >
                       {isProcessing ? (
                         <>
                           <div className="spinner-sm mr-2"></div>
                           Processing...
+                        </>
+                      ) : Object.keys(validationErrors).filter(key => key !== 'formSubmitted').length > 0 && validationErrors.formSubmitted ? (
+                        <>
+                          <ExclamationCircleIcon className="h-5 w-5 mr-2" />
+                          Fix Required Fields
                         </>
                       ) : (
                         <>
@@ -1136,6 +1369,11 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                         </>
                       )}
                     </button>
+
+                    {/* Help text */}
+                    <p className="text-sm text-gray-500 text-center mt-3">
+                      By completing this booking, you agree to our terms and conditions.
+                    </p>
                   </div>
                 </form>
               </motion.div>

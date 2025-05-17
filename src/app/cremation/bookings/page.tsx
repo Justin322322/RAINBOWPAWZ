@@ -56,16 +56,16 @@ function CremationBookingsPage({ userData }: { userData: any }) {
         });
 
         const response = await fetch(`/api/cremation/bookings?${params.toString()}`);
-        
+
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
           console.error('API response not OK:', response.status, errorData);
           throw new Error(`Failed to fetch bookings data: ${response.status} ${errorData.error || ''}`);
         }
-        
+
         const data = await response.json();
         console.log('Bookings data fetched successfully', data);
-        
+
         setBookings(data.bookings || []);
         setStats(data.stats || {
           totalBookings: 0,
@@ -150,7 +150,7 @@ function CremationBookingsPage({ userData }: { userData: any }) {
         <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
           <div>
             <h1 className="text-2xl font-semibold text-gray-800">Active Bookings</h1>
-            <p className="text-gray-600 mt-1">Manage your current cremation service bookings</p>
+            <p className="text-gray-600 mt-1">Manage your active cremation service bookings (completed and cancelled bookings are not shown here)</p>
           </div>
           <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3 w-full md:w-auto">
             <div className="relative flex-grow sm:max-w-xs">
@@ -174,12 +174,10 @@ function CremationBookingsPage({ userData }: { userData: any }) {
                 onChange={handleStatusFilterChange}
                 className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)] sm:text-sm appearance-none"
               >
-                <option value="all">All Statuses</option>
+                <option value="all">All Active Statuses</option>
                 <option value="scheduled">Scheduled</option>
                 <option value="in_progress">In Progress</option>
                 <option value="pending">Pending</option>
-                <option value="completed">Completed</option>
-                <option value="cancelled">Cancelled</option>
               </select>
             </div>
           </div>
@@ -239,7 +237,7 @@ function CremationBookingsPage({ userData }: { userData: any }) {
         <div className="px-6 py-4 border-b border-gray-200">
           <h2 className="text-lg font-medium text-gray-800">Booking List</h2>
         </div>
-        
+
         {loading ? (
           <div className="flex justify-center items-center h-64">
             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[var(--primary-green)]"></div>
@@ -253,7 +251,7 @@ function CremationBookingsPage({ userData }: { userData: any }) {
             <p className="text-gray-500 max-w-md">
               {searchTerm || statusFilter !== 'all'
                 ? 'Try changing your search or filter settings to see more results.'
-                : 'There are no cremation service bookings to display at this time.'}
+                : 'There are no active cremation service bookings to display at this time.'}
             </p>
           </div>
         ) : (
@@ -288,9 +286,9 @@ function CremationBookingsPage({ userData }: { userData: any }) {
                       <div className="flex items-center">
                         <div className="flex-shrink-0 h-10 w-10">
                           {booking.petImageUrl ? (
-                            <img 
-                              className="h-10 w-10 rounded-full object-cover" 
-                              src={booking.petImageUrl} 
+                            <img
+                              className="h-10 w-10 rounded-full object-cover"
+                              src={booking.petImageUrl}
                               alt={booking.petName}
                             />
                           ) : (
@@ -334,7 +332,7 @@ function CremationBookingsPage({ userData }: { userData: any }) {
                           <EyeIcon className="h-4 w-4 mr-1" />
                           View
                         </button>
-                        <Link 
+                        <Link
                           href={`/cremation/bookings/${booking.id}`}
                           className="inline-flex items-center px-2.5 py-1.5 border border-gray-300 text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50"
                         >
@@ -357,7 +355,7 @@ function CremationBookingsPage({ userData }: { userData: any }) {
           <div className="bg-white rounded-lg shadow-xl max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto">
             <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
               <h3 className="text-lg font-medium text-gray-900">Booking Details</h3>
-              <button 
+              <button
                 onClick={() => setShowDetailsModal(false)}
                 className="text-gray-400 hover:text-gray-500"
               >
@@ -407,4 +405,4 @@ function CremationBookingsPage({ userData }: { userData: any }) {
   );
 }
 
-export default withBusinessVerification(CremationBookingsPage); 
+export default withBusinessVerification(CremationBookingsPage);

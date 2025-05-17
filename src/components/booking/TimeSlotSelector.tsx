@@ -34,15 +34,18 @@ export default function TimeSlotSelector({
   const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
   const [availabilityData, setAvailabilityData] = useState<DayAvailability[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
-  const [selectedDateState, setSelectedDateState] = useState<string | undefined>(selectedDate);
-  const [selectedTimeSlotState, setSelectedTimeSlotState] = useState<TimeSlot | null>(selectedTimeSlot || null);
+  const [selectedDateState, setSelectedDateState] = useState<string | undefined>(selectedDate || '');
+  const [selectedTimeSlotState, setSelectedTimeSlotState] = useState<TimeSlot | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // Update internal state when props change
   useEffect(() => {
-    if (selectedDate) {
+    // Only update if the selectedDate is a non-empty string
+    if (selectedDate && selectedDate.trim() !== '') {
       setSelectedDateState(selectedDate);
     }
+
+    // Only update if selectedTimeSlot is not null
     if (selectedTimeSlot) {
       setSelectedTimeSlotState(selectedTimeSlot);
     }

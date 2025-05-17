@@ -1,29 +1,7 @@
 import mysql from 'mysql2/promise';
 
-// Only log in development mode
+// Only for conditional operations in development mode
 const isDev = process.env.NODE_ENV === 'development';
-
-// Conditional logging function
-const logDebug = (message: string, data?: any) => {
-  if (isDev) {
-    if (data) {
-      console.log(message, data);
-    } else {
-      console.log(message);
-    }
-  }
-};
-
-// Log environment variables for debugging (only in development)
-if (isDev) {
-  console.log('Environment variables in db.ts:');
-  console.log('NODE_ENV:', process.env.NODE_ENV);
-  console.log('DB_HOST:', process.env.DB_HOST);
-  console.log('DB_USER:', process.env.DB_USER);
-  console.log('DB_PASSWORD:', process.env.DB_PASSWORD ? '[SET]' : '[NOT SET]');
-  console.log('DB_NAME:', process.env.DB_NAME);
-  console.log('DB_PORT:', process.env.DB_PORT);
-}
 
 // IMPORTANT: Always use 3306 for MySQL, regardless of the web server port
 const MYSQL_PORT = 3306;
@@ -43,13 +21,7 @@ const dbConfig = {
   insecureAuth: true,
 };
 
-// Log the database configuration (only in development)
-logDebug('Database configuration in db.ts:', {
-  host: dbConfig.host,
-  user: dbConfig.user,
-  port: dbConfig.port,
-  database: dbConfig.database
-});
+
 
 // Create a connection pool with error handling
 let pool;
@@ -73,32 +45,16 @@ const finalConfig = process.env.NODE_ENV === 'production'
   ? productionConfig
   : dbConfig;
 
-logDebug('Final database configuration:', {
-  host: finalConfig.host,
-  user: finalConfig.user,
-  port: finalConfig.port,
-  database: finalConfig.database,
-  environment: process.env.NODE_ENV
-});
+
 
 try {
-  logDebug('Attempting to create MySQL connection pool with config:', {
-    host: finalConfig.host,
-    user: finalConfig.user,
-    database: finalConfig.database,
-    port: finalConfig.port
-  });
-
   pool = mysql.createPool(finalConfig);
-  logDebug('MySQL connection pool created successfully');
 
   // Test the connection immediately
   (async () => {
     try {
       const connection = await pool.getConnection();
-      logDebug('Successfully got a test connection from the pool');
       connection.release();
-      logDebug('Test connection released back to pool');
     } catch (testError) {
       console.error('Failed to get a test connection from the pool:', testError);
     }
@@ -117,10 +73,8 @@ try {
   }
 
   // Create a fallback pool with default values
-  logDebug('Creating fallback MySQL connection pool with default values');
   try {
     pool = mysql.createPool(productionConfig);
-    logDebug('Fallback pool created successfully');
   } catch (fallbackError) {
     console.error('Failed to create fallback pool:', fallbackError);
     // Create a minimal pool as last resort
@@ -137,41 +91,16 @@ try {
 // Helper function to execute SQL queries
 export async function query(sql: string, params: any[] = []) {
   try {
-    // Always log the query in development mode
-    if (isDev) {
-      console.log(`Executing query: ${sql}`);
-      if (params && params.length > 0) {
-        console.log('Query parameters:', params);
-      }
-    }
-
     // Get a connection from the pool
     const connection = await pool.getConnection();
-    logDebug('Got connection from pool');
 
     try {
       // Execute the query
       const [results] = await connection.query(sql, params);
-
-      // Log the results in development mode
-      if (isDev) {
-        if (Array.isArray(results)) {
-          console.log(`Query returned ${results.length} rows`);
-          if (results.length > 0 && results.length <= 5) {
-            console.log('Sample results:', results);
-          } else if (results.length > 5) {
-            console.log('First 5 results:', results.slice(0, 5));
-          }
-        } else {
-          console.log('Query result:', results);
-        }
-      }
-
       return results;
     } finally {
       // Release the connection back to the pool
       connection.release();
-      logDebug('Connection released back to pool');
     }
   } catch (error) {
     console.error('Database query error:', error);
@@ -209,15 +138,11 @@ export async function query(sql: string, params: any[] = []) {
 // Test the database connection
 export async function testConnection() {
   try {
-    logDebug('Testing database connection...');
     const result = await query('SELECT 1 as test');
-    logDebug('Database connection test successful');
 
     // Check if users table exists
     try {
-      logDebug('Checking users table...');
       const users = await query('SELECT COUNT(*) as count FROM users');
-      logDebug(`Users table has ${users[0].count} records`);
     } catch (tableError) {
       console.error('Error checking users table:', tableError.message);
     }
@@ -228,7 +153,6 @@ export async function testConnection() {
 
     // Try to connect directly without using the pool
     try {
-      logDebug('Trying direct connection without pool...');
       const connection = await mysql.createConnection({
         host: finalConfig.host,
         user: finalConfig.user,
@@ -237,13 +161,10 @@ export async function testConnection() {
         database: finalConfig.database
       });
 
-      logDebug('Direct connection successful');
       await connection.end();
-      logDebug('Direct connection closed');
 
       // If direct connection works but pool doesn't, recreate the pool
       pool = mysql.createPool(finalConfig);
-      logDebug('Connection pool recreated');
 
       return true;
     } catch (directError) {
@@ -258,20 +179,17 @@ export async function ensureAvailabilityTablesExist(): Promise<boolean> {
   try {
     // Check if tables exist
     const tablesCheckQuery = `
-      SELECT TABLE_NAME 
-      FROM INFORMATION_SCHEMA.TABLES 
-      WHERE TABLE_SCHEMA = DATABASE() 
+      SELECT TABLE_NAME
+      FROM INFORMATION_SCHEMA.TABLES
+      WHERE TABLE_SCHEMA = DATABASE()
       AND TABLE_NAME IN ('provider_availability', 'provider_time_slots')
     `;
-    
+
     const tablesResult = await query(tablesCheckQuery) as any[];
     const existingTables = tablesResult.map((row: any) => row.TABLE_NAME.toLowerCase());
-    
-    console.log('[DB] Checking availability tables, found:', existingTables);
-    
+
     // Create provider_availability table if needed
     if (!existingTables.includes('provider_availability')) {
-      console.log('[DB] Creating provider_availability table...');
       const createAvailabilityTableQuery = `
         CREATE TABLE provider_availability (
           id INT AUTO_INCREMENT PRIMARY KEY,
@@ -284,12 +202,10 @@ export async function ensureAvailabilityTablesExist(): Promise<boolean> {
         )
       `;
       await query(createAvailabilityTableQuery);
-      console.log('[DB] provider_availability table created successfully');
     }
-    
+
     // Create provider_time_slots table if needed
     if (!existingTables.includes('provider_time_slots')) {
-      console.log('[DB] Creating provider_time_slots table...');
       const createTimeSlotsTableQuery = `
         CREATE TABLE provider_time_slots (
           id INT AUTO_INCREMENT PRIMARY KEY,
@@ -304,34 +220,29 @@ export async function ensureAvailabilityTablesExist(): Promise<boolean> {
         )
       `;
       await query(createTimeSlotsTableQuery);
-      console.log('[DB] provider_time_slots table created successfully');
     } else {
       // Check if available_services column exists in the provider_time_slots table
       const columnCheckQuery = `
-        SELECT COLUMN_NAME 
-        FROM INFORMATION_SCHEMA.COLUMNS 
-        WHERE TABLE_SCHEMA = DATABASE() 
-        AND TABLE_NAME = 'provider_time_slots' 
+        SELECT COLUMN_NAME
+        FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'provider_time_slots'
         AND COLUMN_NAME = 'available_services'
       `;
-      
+
       const columnResult = await query(columnCheckQuery) as any[];
-      
+
       // If the column doesn't exist, add it
       if (columnResult.length === 0) {
-        console.log('[DB] Adding available_services column to provider_time_slots table...');
         const addColumnQuery = `
           ALTER TABLE provider_time_slots
           ADD COLUMN available_services TEXT DEFAULT NULL
         `;
-        
+
         await query(addColumnQuery);
-        console.log('[DB] Added available_services column to provider_time_slots table');
-      } else {
-        console.log('[DB] available_services column already exists in provider_time_slots table');
       }
     }
-    
+
     return true;
   } catch (error) {
     console.error('[DB] Error ensuring availability tables exist:', error);
