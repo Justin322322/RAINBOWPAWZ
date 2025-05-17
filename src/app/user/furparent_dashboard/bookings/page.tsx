@@ -109,7 +109,6 @@ function BookingsPage({ userData }: BookingsPageProps) {
     async function fetchBookings() {
       try {
         setIsLoading(true);
-        console.log('Fetching bookings...');
 
         // Add a small delay to ensure the skeleton is visible
         await new Promise(resolve => setTimeout(resolve, 1000));
@@ -120,12 +119,10 @@ function BookingsPage({ userData }: BookingsPageProps) {
         });
 
         if (!response.ok) {
-          console.error('API response not OK:', response.status, response.statusText);
           let errorMessage = `Failed to fetch bookings: ${response.status} ${response.statusText}`;
 
           try {
             const errorData = await response.json();
-            console.error('Error response data:', errorData);
             if (errorData.error) {
               errorMessage = errorData.error;
               if (errorData.details) {
@@ -134,27 +131,22 @@ function BookingsPage({ userData }: BookingsPageProps) {
             }
           } catch (parseError) {
             const errorText = await response.text();
-            console.error('Error response text:', errorText);
           }
 
           throw new Error(errorMessage);
         }
 
         const data = await response.json();
-        console.log('Bookings data received:', data);
 
         // Check if there's a warning message
         if (data.warning) {
-          console.warn('API warning:', data.warning);
           // We could display this warning to the user if needed
         }
 
         const fetchedBookings = data.bookings || [];
 
         if (fetchedBookings.length === 0) {
-          console.log('No bookings found');
         } else {
-          console.log(`Found ${fetchedBookings.length} bookings`);
         }
 
         setAllBookings(fetchedBookings);
@@ -162,7 +154,6 @@ function BookingsPage({ userData }: BookingsPageProps) {
         // Apply filter if active
         if (activeFilter) {
           const filtered = fetchedBookings.filter((booking: BookingData) => booking.status === activeFilter);
-          console.log(`Filtered to ${filtered.length} ${activeFilter} bookings`);
           setBookings(filtered);
         } else {
           setBookings(fetchedBookings);
@@ -170,7 +161,6 @@ function BookingsPage({ userData }: BookingsPageProps) {
 
         setError(null);
       } catch (err) {
-        console.error('Error fetching bookings:', err);
         if (err instanceof Error) {
           setError(err.message || 'Failed to load your bookings. Please try again later.');
         } else {
@@ -200,8 +190,6 @@ function BookingsPage({ userData }: BookingsPageProps) {
       setBookings(allBookings);
     }
 
-    console.log('Filter applied:', filter);
-    console.log('Filtered bookings:', filter ? allBookings.filter(booking => booking.status === filter).length : allBookings.length);
   };
 
   const checkDatabaseConnection = async () => {
@@ -214,7 +202,6 @@ function BookingsPage({ userData }: BookingsPageProps) {
       });
       const data = await response.json();
 
-      console.log('Database check result:', data);
       setDbCheckResult(data);
 
       if (data.status === 'success') {
@@ -226,7 +213,6 @@ function BookingsPage({ userData }: BookingsPageProps) {
         setError(`Database check failed: ${data.message}`);
       }
     } catch (err) {
-      console.error('Error checking database:', err);
       if (err instanceof Error) {
         setDbCheckResult({ status: 'error', message: err.message });
       } else {
@@ -277,7 +263,6 @@ function BookingsPage({ userData }: BookingsPageProps) {
             errorMessage = errorData.error;
           }
         } catch (parseError) {
-          console.error('Error parsing error response:', parseError);
         }
         throw new Error(errorMessage);
       }
@@ -312,7 +297,6 @@ function BookingsPage({ userData }: BookingsPageProps) {
         setSelectedBooking(null);
       }, 2000);
     } catch (error) {
-      console.error('Error cancelling booking:', error);
       // Show error message to the user
       setError(error instanceof Error ? error.message : 'Failed to cancel booking. Please try again.');
 
@@ -393,19 +377,62 @@ function BookingsPage({ userData }: BookingsPageProps) {
     if (!date) return 'Not scheduled';
 
     try {
-      // Handle different date formats
-      let dateObj;
-      if (date.includes('T')) {
-        // ISO format
-        dateObj = new Date(date);
-      } else {
-        // YYYY-MM-DD format
-        dateObj = new Date(`${date}T${time || '00:00:00'}`);
+      // Log the input for debugging
+      console.log('Formatting date and time:', { date, time });
+
+      // Normalize the time string
+      const timeString = time || '00:00:00';
+
+      // Parse the date components manually to avoid timezone issues
+      // This is the most reliable way to handle dates consistently
+      const [year, month, day] = date.split('-').map(Number);
+
+      // Validate date components
+      if (isNaN(year) || isNaN(month) || isNaN(day) ||
+          month < 1 || month > 12 || day < 1 || day > 31) {
+        console.error('Invalid date components:', { year, month, day });
+        throw new Error('Invalid date components');
       }
 
+      // Parse time components
+      const [hours, minutes] = timeString.split(':').map(Number);
+
+      // Create date object with local timezone (months are 0-indexed in JS)
+      // This approach avoids timezone issues by explicitly setting each component
+      const dateObj = new Date(year, month - 1, day,
+                              isNaN(hours) ? 0 : hours,
+                              isNaN(minutes) ? 0 : minutes);
+
+      // Validate the date object
+      if (isNaN(dateObj.getTime())) {
+        console.error('Invalid date object created:', dateObj);
+        throw new Error('Invalid date object');
+      }
+
+      // Log the parsed date for debugging
+      console.log('Parsed date object:', dateObj, 'Year:', year, 'Month:', month, 'Day:', day);
+      console.log('Formatted date:', format(dateObj, 'MMM d, yyyy • h:mm a'));
+
+      // Format the date consistently
       return format(dateObj, 'MMM d, yyyy • h:mm a');
     } catch (error) {
-      console.error('Error formatting date/time:', error, { date, time });
+      console.error('Date formatting error:', error, { date, time });
+
+      // Fallback: Try a different approach for parsing
+      try {
+        // Try to create a date string that's unambiguous
+        const dateTimeString = `${date}T${time || '00:00:00'}`;
+        const fallbackDate = new Date(dateTimeString);
+
+        if (!isNaN(fallbackDate.getTime())) {
+          console.log('Fallback date parsing succeeded:', fallbackDate);
+          return format(fallbackDate, 'MMM d, yyyy • h:mm a');
+        }
+      } catch (fallbackError) {
+        console.error('Fallback date parsing failed:', fallbackError);
+      }
+
+      // If all else fails, return a formatted string
       return `${date} at ${time || '00:00'}`;
     }
   };
@@ -565,13 +592,11 @@ function BookingsPage({ userData }: BookingsPageProps) {
                           credentials: 'include' // This ensures cookies (including auth_token) are sent with the request
                         });
                         const data = await response.json();
-                        console.log('Auth debug info:', data);
                         setDbCheckResult({
                           auth: data,
                           timestamp: new Date().toISOString()
                         });
                       } catch (e) {
-                        console.error('Error checking auth:', e);
                         setDbCheckResult({
                           error: e instanceof Error ? e.message : 'Unknown error',
                           timestamp: new Date().toISOString()
@@ -637,7 +662,9 @@ function BookingsPage({ userData }: BookingsPageProps) {
                     <div className="mb-4 md:mb-0">
                       <div className="flex items-center">
                         <h3 className="text-xl font-semibold text-gray-900 mr-3">
-                          {booking.provider_name || 'Service Provider'}
+                          {booking.provider_name && booking.provider_name !== 'Service Provider'
+                            ? booking.provider_name
+                            : (booking.provider_name || 'Service Provider')}
                         </h3>
                         <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusClass(booking.status)}`}>
                           <div className="flex items-center">
@@ -807,8 +834,14 @@ function BookingsPage({ userData }: BookingsPageProps) {
 
                           <h4 className="text-sm font-medium text-gray-500 mt-4 mb-2">Provider Information</h4>
                           <div className="bg-gray-50 p-4 rounded-lg">
-                            <p className="text-lg font-semibold text-gray-900 mb-1">{selectedBooking.provider_name}</p>
-                            {selectedBooking.provider_address && selectedBooking.provider_address !== 'Service Address' ? (
+                            <p className="text-lg font-semibold text-gray-900 mb-1">
+                              {selectedBooking.provider_name && selectedBooking.provider_name !== 'Service Provider'
+                                ? selectedBooking.provider_name
+                                : (selectedBooking.provider_name || 'Service Provider')}
+                            </p>
+                            {selectedBooking.provider_address &&
+                             selectedBooking.provider_address !== 'Service Address' &&
+                             selectedBooking.provider_address !== 'Provider Address' ? (
                               <div className="flex items-start mt-2">
                                 <MapPinIcon className="h-5 w-5 text-gray-400 mt-0.5 flex-shrink-0" />
                                 <p className="ml-2 text-sm text-gray-600">{selectedBooking.provider_address}</p>

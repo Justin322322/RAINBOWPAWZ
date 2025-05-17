@@ -105,21 +105,16 @@ export default function AdminFurParentsPage() {
       // Only fetch fur parents
       params.append('role', 'fur_parent');
 
-      console.log(`Fetching fur parents with params: ${params.toString()}`);
       const response = await fetch(`/api/users?${params.toString()}`);
 
       if (!response.ok) {
-        console.error(`API Error: ${response.status} ${response.statusText}`);
         throw new Error(`Failed to fetch users: ${response.status} ${response.statusText}`);
       }
 
       const data = await response.json();
-      console.log(`Retrieved ${data.users?.length || 0} fur parent users`);
-      console.log(`Pagination data:`, data.pagination);
 
       // Process user data to add missing fields
       const processedUsers = data.users.map((user: User) => {
-        console.log(`Processing user: ${user.id}, role: ${user.role}, type: ${user.user_type}`);
         return {
           ...user,
           pets: user.pets || 0,
@@ -135,7 +130,6 @@ export default function AdminFurParentsPage() {
       setUsers(processedUsers);
       setPagination(data.pagination);
     } catch (err) {
-      console.error('Error fetching users:', err);
       setError(err instanceof Error ? err.message : 'An unknown error occurred');
     } finally {
       setLoading(false);
@@ -174,7 +168,6 @@ export default function AdminFurParentsPage() {
       setSelectedUser(userData);
       setShowDetailsModal(true);
     } catch (err) {
-      console.error('Error fetching user details:', err);
       // Fall back to using the basic user data
       setSelectedUser(user);
       setShowDetailsModal(true);
@@ -231,7 +224,6 @@ export default function AdminFurParentsPage() {
         setSelectedUser(updatedUser);
       }
     } catch (err) {
-      console.error('Error updating user status:', err);
       alert('Failed to update user status. Please try again.');
     }
   };
@@ -308,7 +300,6 @@ export default function AdminFurParentsPage() {
         fetchUsers();
       }, 3000);
     } catch (err) {
-      console.error('Error updating user restriction:', err);
       alert('Failed to update user restriction. Please try again.');
     } finally {
       setIsProcessing(false);

@@ -82,7 +82,6 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
 
       // Only log in development mode
       if (process.env.NODE_ENV === 'development') {
-        console.log('Using API URL:', apiUrl, 'isAdmin:', isAdmin, 'isBusiness:', isBusiness);
       }
 
       // Use timeout to prevent hanging requests
@@ -103,7 +102,6 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
         // If unauthorized or any other error, just set empty data without throwing an error
         // This makes the application more resilient to authentication issues
         if (process.env.NODE_ENV === 'development') {
-          console.log(`Notification fetch returned status: ${response.status} ${response.statusText}`);
         }
         setNotifications([]);
         setUnreadCount(0);
@@ -113,9 +111,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       // Check the content type to ensure it's JSON
       const contentType = response.headers.get('content-type');
       if (!contentType || !contentType.includes('application/json')) {
-        console.error('Received non-JSON response:', contentType);
         const text = await response.text();
-        console.error('Response text:', text.substring(0, 200) + (text.length > 200 ? '...' : ''));
         setNotifications([]);
         setUnreadCount(0);
         return { notifications: [], unreadCount: 0 };
@@ -126,7 +122,6 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
         
         // Ensure data has the expected structure
         if (!data || typeof data !== 'object') {
-          console.error('Invalid data structure received:', data);
           setNotifications([]);
           setUnreadCount(0);
           return { notifications: [], unreadCount: 0 };
@@ -155,7 +150,6 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
 
         return data;
       } catch (jsonError) {
-        console.error('Error parsing JSON response:', jsonError);
         setNotifications([]);
         setUnreadCount(0);
         return { notifications: [], unreadCount: 0 };
@@ -163,11 +157,9 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
     } catch (err) {
       // Handle AbortError specifically to avoid showing error messages for timeouts
       if (err instanceof Error && err.name === 'AbortError') {
-        console.log('Notification fetch request timed out');
       } else {
         const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
         setError(errorMessage);
-        console.error('Error fetching notifications:', err);
       }
 
       // Set empty data on error
@@ -208,7 +200,6 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       if (!response.ok) {
         // If any error occurs, just log it and continue without throwing
         if (process.env.NODE_ENV === 'development') {
-          console.log(`Error marking notification as read: ${response.status} ${response.statusText}`);
         }
         return;
       }
@@ -228,7 +219,6 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
       showToast(errorMessage, 'error');
-      console.error('Error marking notification as read:', err);
     }
   };
 
@@ -261,7 +251,6 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       if (!response.ok) {
         // If any error occurs, just log it and continue without throwing
         if (process.env.NODE_ENV === 'development') {
-          console.log(`Error marking all notifications as read: ${response.status} ${response.statusText}`);
         }
         return;
       }
@@ -277,7 +266,6 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
       showToast(errorMessage, 'error');
-      console.error('Error marking all notifications as read:', err);
     }
   };
 
@@ -290,7 +278,6 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
     if (typeof window !== 'undefined' && isAuthenticated()) {
       // Initial fetch with error handling
       fetchNotifications().catch(err => {
-        console.error('Initial notification fetch failed:', err);
         // Don't show error toast for initial load to avoid annoying users
       });
 
@@ -302,11 +289,9 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
           // Wrap in try/catch to prevent unhandled promise rejections
           try {
             fetchNotifications().catch(err => {
-              console.log('Periodic notification fetch failed:', err);
               // Silent fail for background updates
             });
           } catch (error) {
-            console.log('Error in notification interval:', error);
           }
         } else {
           // If no longer authenticated, clear the interval

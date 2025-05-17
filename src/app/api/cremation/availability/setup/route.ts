@@ -3,14 +3,11 @@ import { query } from '@/lib/db';
 
 export async function GET(request: NextRequest) {
   try {
-    console.log('Setting up availability tables...');
     
     // First, test if we can connect to the database at all
     try {
       const testConnection = await query('SELECT 1 as test');
-      console.log('Database connection test successful:', testConnection);
     } catch (connectionError) {
-      console.error('Database connection failed:', connectionError);
       
       // Since we can't connect to the database, we'll return mock data
       return NextResponse.json({
@@ -33,12 +30,10 @@ export async function GET(request: NextRequest) {
       const tablesResult = await query(tablesCheckQuery) as any[];
       const existingTables = tablesResult.map((row: any) => row.TABLE_NAME.toLowerCase());
       
-      console.log('Existing availability tables:', existingTables);
       let tablesCreated = false;
       
       // Create provider_availability table if needed
       if (!existingTables.includes('provider_availability')) {
-        console.log('Creating provider_availability table...');
         const createAvailabilityTableQuery = `
           CREATE TABLE provider_availability (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -51,13 +46,11 @@ export async function GET(request: NextRequest) {
           )
         `;
         await query(createAvailabilityTableQuery);
-        console.log('provider_availability table created successfully');
         tablesCreated = true;
       }
       
       // Create provider_time_slots table if needed
       if (!existingTables.includes('provider_time_slots')) {
-        console.log('Creating provider_time_slots table...');
         const createTimeSlotsTableQuery = `
           CREATE TABLE provider_time_slots (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -72,7 +65,6 @@ export async function GET(request: NextRequest) {
           )
         `;
         await query(createTimeSlotsTableQuery);
-        console.log('provider_time_slots table created successfully');
         tablesCreated = true;
       } else {
         // Check if available_services column exists in the provider_time_slots table
@@ -88,14 +80,12 @@ export async function GET(request: NextRequest) {
         
         // If the column doesn't exist, add it
         if (columnResult.length === 0) {
-          console.log('Adding available_services column to provider_time_slots table...');
           const addColumnQuery = `
             ALTER TABLE provider_time_slots
             ADD COLUMN available_services TEXT DEFAULT NULL
           `;
           
           await query(addColumnQuery);
-          console.log('Added available_services column to provider_time_slots table');
           tablesCreated = true;
         }
       }
@@ -107,7 +97,6 @@ export async function GET(request: NextRequest) {
         message: tablesCreated ? 'Tables set up successfully' : 'Tables already exist'
       });
     } catch (tableError) {
-      console.error('Error checking or creating tables:', tableError);
       
       // Return a more detailed error message
       return NextResponse.json({
@@ -117,7 +106,6 @@ export async function GET(request: NextRequest) {
       }, { status: 500 });
     }
   } catch (error) {
-    console.error('Error setting up availability tables:', error);
     return NextResponse.json({
       success: false,
       error: 'Failed to set up availability tables',

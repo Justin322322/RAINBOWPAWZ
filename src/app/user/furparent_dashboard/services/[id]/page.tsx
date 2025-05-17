@@ -117,7 +117,6 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
               
               return pkg;
             } catch (error) {
-              console.error(`Error fetching images for package ${pkg.id}:`, error);
               return pkg;
             }
           })
@@ -142,11 +141,9 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
             setPets(mockPets);
           }
         } catch (petError) {
-          console.error('Error fetching pets:', petError);
           setPets(mockPets);
         }
       } catch (err) {
-        console.error('Error fetching provider data:', err);
         setError('Failed to load provider details');
       } finally {
         setLoading(false);
@@ -239,7 +236,6 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
       }
     } catch (error) {
       setBookingError('An error occurred while creating your booking');
-      console.error('Booking error:', error);
     } finally {
       setIsSubmitting(false);
     }
@@ -248,7 +244,6 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
   const handleDateTimeSelected = (date: string, timeSlot: any | null) => {
     setSelectedDate(date);
     setSelectedTimeSlot(timeSlot);
-    console.log('Selected date and time:', date, timeSlot);
   };
 
   return (

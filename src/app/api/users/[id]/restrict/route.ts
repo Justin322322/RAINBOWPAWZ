@@ -193,7 +193,6 @@ export async function PUT(request: NextRequest) {
       throw error;
     }
   } catch (error) {
-    console.error('Error updating user restriction:', error);
     return NextResponse.json({
       error: 'Failed to update user restriction',
       message: error instanceof Error ? error.message : 'Unknown error'

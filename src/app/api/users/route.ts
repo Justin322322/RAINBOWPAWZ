@@ -30,7 +30,6 @@ export async function GET(request: NextRequest) {
     const sortBy = searchParams.get('sortBy') || 'created_at';
     const sortOrder = searchParams.get('sortOrder') || 'desc';
 
-    console.log(`API Request - Fetching users: role=${role}, status=${status}, search=${search}, page=${page}, limit=${limit}`);
 
     // Calculate offset
     const offset = (page - 1) * limit;
@@ -45,7 +44,6 @@ export async function GET(request: NextRequest) {
       ) as any[];
       
       if (!tablesResult || tablesResult[0].count === 0) {
-        console.error('Users table does not exist');
         return NextResponse.json({
           error: 'Database schema error',
           message: 'Users table does not exist'
@@ -61,7 +59,6 @@ export async function GET(request: NextRequest) {
       ) as any[];
       
       const columns = columnsResult.map((col: any) => col.COLUMN_NAME.toLowerCase());
-      console.log('Available columns in users table:', columns);
       
       const hasUserType = columns.includes('user_type');
       const hasRole = columns.includes('role');
@@ -131,18 +128,13 @@ export async function GET(request: NextRequest) {
       usersQuery += ` LIMIT ? OFFSET ?`;
       queryParams.push(limit, offset);
 
-      console.log('Count Query:', countQuery);
-      console.log('Users Query:', usersQuery);
-      console.log('Query params:', queryParams.length);
 
       // Execute count query
       const countResult = await query(countQuery, queryParams.slice(0, queryParams.length - 2)) as any[];
       const total = countResult[0].total;
-      console.log(`Found ${total} total users matching criteria`);
 
       // Execute users query
       const usersResult = await query(usersQuery, queryParams) as any[];
-      console.log(`Retrieved ${usersResult.length} users for current page`);
 
       // Process users to add additional information
       const users = await Promise.all(usersResult.map(async (user) => {
@@ -179,7 +171,6 @@ export async function GET(request: NextRequest) {
                 user.verification_status = business.verification_status;
               }
             } catch (error) {
-              console.error(`Error fetching business details for user ${user.id}:`, error);
             }
           }
 
@@ -188,7 +179,6 @@ export async function GET(request: NextRequest) {
 
           return user;
         } catch (userProcessingError) {
-          console.error(`Error processing user ${user.id}:`, userProcessingError);
           // Return the user with basic info to avoid breaking the entire list
           return {
             ...user,
@@ -216,7 +206,6 @@ export async function GET(request: NextRequest) {
         }
       });
     } catch (queryError) {
-      console.error('Database query error:', queryError);
       return NextResponse.json({
         error: 'Database query failed',
         message: queryError instanceof Error ? queryError.message : 'Unknown database error',
@@ -224,7 +213,6 @@ export async function GET(request: NextRequest) {
       }, { status: 500 });
     }
   } catch (error) {
-    console.error('Error fetching users:', error);
     return NextResponse.json({
       error: 'Failed to fetch users',
       message: error instanceof Error ? error.message : 'Unknown error',

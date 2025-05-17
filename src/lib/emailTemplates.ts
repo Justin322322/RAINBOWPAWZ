@@ -129,7 +129,6 @@ export const createPasswordResetEmail = (resetToken: string) => {
 
   // Log the link in development mode
   if (process.env.NODE_ENV === 'development') {
-    console.log('Generated reset link:', resetLink);
   }
 
   const subject = 'Reset Your Password';

@@ -76,16 +76,13 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
         const path = img.image_path;
         if (!path) return null;
         
-        console.log(`Processing package ${packageId} image path: ${path}`);
         
         if (path && path.startsWith('blob:')) {
-          console.log(`Skipping blob URL: ${path}`);
           return null;
         }
         
         // If path starts with http:// or https://, it's already a full URL
         if (path.startsWith('http://') || path.startsWith('https://')) {
-          console.log(`Using full URL as is: ${path}`);
           return path;
         }
         
@@ -94,12 +91,10 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
         if (path.startsWith('/')) {
           // Remove leading slash for consistency
           processedPath = path.substring(1);
-          console.log(`Removed leading slash: ${processedPath}`);
         }
         
         // Check for the new folder structure first - /uploads/packages/{packageId}/{filename}
         if (processedPath.match(/uploads\/packages\/\d+\//)) {
-          console.log(`Found new folder structure path: /${processedPath}`);
           return `/${processedPath}`;
         }
         
@@ -113,12 +108,10 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
             if (pkgMatch && pkgMatch[1] && parseInt(pkgMatch[1]) === packageId) {
               // New structure path with ID folder
               const newPath = `/uploads/packages/${packageId}/${filename}`;
-              console.log(`Converted to new folder structure path: ${newPath}`);
               return newPath;
             }
             
             const fullPath = `/uploads/packages/${filename}`;
-            console.log(`Using direct upload path with filename: ${fullPath}`);
             return fullPath;
           }
         }
@@ -126,25 +119,21 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
         // For paths in uploads/packages/ directory but without the common format
         if (processedPath.includes('uploads/packages/')) {
           const fullPath = `/${processedPath.replace(/^\//, '')}`;
-          console.log(`Using package upload path: ${fullPath}`);
           return fullPath;
         }
         
         // For sample data like bg_2.png
         if (processedPath.match(/^bg_\d+\.png$/)) {
-          console.log(`Using background image path: /${processedPath}`);
           return `/${processedPath}`;
         }
         
         // For paths in uploads directory
         if (processedPath.includes('uploads/')) {
           const fullPath = `/${processedPath.replace(/^\//, '')}`;
-          console.log(`Using uploads path: ${fullPath}`);
           return fullPath;
         }
         
         // Default approach for images stored in public directory
-        console.log(`Using default path approach: /${processedPath}`);
         return `/${processedPath}`;
       })
       .filter(Boolean);
@@ -158,7 +147,6 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       }
     });
   } catch (error) {
-    console.error('Error fetching package:', error);
     return NextResponse.json({
       error: 'Failed to fetch package',
       details: error instanceof Error ? error.message : 'Unknown error'
@@ -169,27 +157,22 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 // PATCH endpoint to update package (including toggling active state)
 export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    console.log(`PATCH request received for package ID: ${params.id}`);
     const packageId = parseInt(params.id);
     
     if (isNaN(packageId)) {
-      console.log('Invalid package ID format');
       return NextResponse.json({ error: 'Invalid package ID' }, { status: 400 });
     }
     
     // Verify authentication
     const authToken = getAuthTokenFromRequest(request);
     if (!authToken) {
-      console.log('Unauthorized: No auth token');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const [userId, accountType] = authToken.split('_');
-    console.log(`User ID: ${userId}, Account Type: ${accountType}`);
 
     // Only allow business users to update packages
     if (accountType !== 'business') {
-      console.log('Permission denied: Not a business account');
       return NextResponse.json({
         error: 'Only business accounts can update packages'
       }, { status: 403 });
@@ -202,14 +185,12 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     ) as any[];
 
     if (!providerResult || providerResult.length === 0) {
-      console.log(`Service provider not found for user ID: ${userId}`);
       return NextResponse.json({
         error: 'Service provider not found'
       }, { status: 404 });
     }
 
     const providerId = providerResult[0].id;
-    console.log(`Provider ID: ${providerId}`);
 
     // Check if the package belongs to this provider
     try {
@@ -219,14 +200,12 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
       ) as any[];
 
       if (!packageResult || packageResult.length === 0) {
-        console.log(`Package not found with ID: ${packageId}`);
         return NextResponse.json({
           error: 'Package not found'
         }, { status: 404 });
       }
 
       if (packageResult[0].service_provider_id !== providerId) {
-        console.log(`Permission denied: Package belongs to provider ${packageResult[0].service_provider_id}, not ${providerId}`);
         return NextResponse.json({
           error: 'You do not have permission to update this package'
         }, { status: 403 });
@@ -234,11 +213,9 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
 
       // Get update data from request body
       const body = await request.json();
-      console.log('Update data:', body);
       
       // If isActive is provided, toggle the active state
       if (body.isActive !== undefined) {
-        console.log(`Toggling active state to: ${body.isActive}`);
         await query(
           'UPDATE service_packages SET is_active = ? WHERE id = ?',
           [body.isActive ? 1 : 0, packageId]
@@ -253,7 +230,6 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
       
       // If there are other fields to update, implement full update logic here
       if (body.name || body.description || body.price || body.category || body.cremationType || body.processingTime || body.conditions) {
-        console.log('Updating package fields');
         
         // Start a transaction
         await query('START TRANSACTION');
@@ -374,7 +350,6 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
         } catch (error) {
           // Rollback the transaction on error
           await query('ROLLBACK');
-          console.error('Error updating package:', error);
           return NextResponse.json({
             error: 'Failed to update package',
             details: error instanceof Error ? error.message : 'Unknown error'
@@ -383,20 +358,17 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
       }
       
       // If we reach here, no valid update data was provided
-      console.log('No valid update data provided');
       return NextResponse.json({
         error: 'No update data provided'
       }, { status: 400 });
       
     } catch (dbError) {
-      console.error('Database error when updating package:', dbError);
       return NextResponse.json({
         error: 'Database error occurred',
         message: dbError.message || 'Unknown database error'
       }, { status: 500 });
     }
   } catch (error) {
-    console.error('Error updating package:', error);
     return NextResponse.json({
       error: 'Failed to update package',
       details: error instanceof Error ? error.message : 'Unknown error'
@@ -407,27 +379,22 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
 // DELETE endpoint to remove a package
 export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    console.log(`DELETE request received for package ID: ${params.id}`);
     const packageId = parseInt(params.id);
     
     if (isNaN(packageId)) {
-      console.log('Invalid package ID format');
       return NextResponse.json({ error: 'Invalid package ID' }, { status: 400 });
     }
     
     // Verify authentication
     const authToken = getAuthTokenFromRequest(request);
     if (!authToken) {
-      console.log('Unauthorized: No auth token');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const [userId, accountType] = authToken.split('_');
-    console.log(`User ID: ${userId}, Account Type: ${accountType}`);
 
     // Only allow business users to delete packages
     if (accountType !== 'business') {
-      console.log('Permission denied: Not a business account');
       return NextResponse.json({
         error: 'Only business accounts can delete packages'
       }, { status: 403 });
@@ -440,14 +407,12 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
     ) as any[];
 
     if (!providerResult || providerResult.length === 0) {
-      console.log(`Service provider not found for user ID: ${userId}`);
       return NextResponse.json({
         error: 'Service provider not found'
       }, { status: 404 });
     }
 
     const providerId = providerResult[0].id;
-    console.log(`Provider ID: ${providerId}`);
 
     try {
       // Check if the package belongs to this provider
@@ -457,14 +422,12 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
       ) as any[];
 
       if (!packageResult || packageResult.length === 0) {
-        console.log(`Package not found with ID: ${packageId}`);
         return NextResponse.json({
           error: 'Package not found'
         }, { status: 404 });
       }
 
       if (packageResult[0].service_provider_id !== providerId) {
-        console.log(`Permission denied: Package belongs to provider ${packageResult[0].service_provider_id}, not ${providerId}`);
         return NextResponse.json({
           error: 'You do not have permission to delete this package'
         }, { status: 403 });
@@ -479,14 +442,12 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
       });
       
     } catch (error) {
-      console.error('Error deleting package:', error);
       return NextResponse.json({
         error: 'Failed to delete package',
         details: error instanceof Error ? error.message : 'Unknown error'
       }, { status: 500 });
     }
   } catch (error) {
-    console.error('Error deleting package:', error);
     return NextResponse.json({
       error: 'Failed to delete package',
       details: error instanceof Error ? error.message : 'Unknown error'
@@ -504,7 +465,6 @@ async function moveImagesToPackageFolder(images: string[], packageId: number): P
   // If no images or invalid package ID, return as is
   if (!images.length || !packageId) return images;
   
-  console.log(`Moving ${images.length} images to package folder for package ID ${packageId}`);
   
   // Create package directory if it doesn't exist
   const baseDir = join(process.cwd(), 'public', 'uploads', 'packages');
@@ -513,9 +473,7 @@ async function moveImagesToPackageFolder(images: string[], packageId: number): P
   if (!fs.existsSync(packageDir)) {
     try {
       fs.mkdirSync(packageDir, { recursive: true });
-      console.log(`Created package directory: ${packageDir}`);
     } catch (err) {
-      console.error(`Failed to create directory for package ${packageId}:`, err);
       return images; // Return original paths if directory creation fails
     }
   }
@@ -524,7 +482,6 @@ async function moveImagesToPackageFolder(images: string[], packageId: number): P
   const updatedPaths = await Promise.all(images.map(async (imagePath) => {
     // Skip images that are already in the correct folder
     if (imagePath.includes(`/uploads/packages/${packageId}/`)) {
-      console.log(`Image already in correct folder: ${imagePath}`);
       return imagePath;
     }
     
@@ -537,26 +494,21 @@ async function moveImagesToPackageFolder(images: string[], packageId: number): P
       
       // Check if source file exists
       if (!fs.existsSync(sourcePath)) {
-        console.log(`Source file doesn't exist: ${sourcePath}`);
         return imagePath; // Return original path if file doesn't exist
       }
       
       // Copy file to new location
       fs.copyFileSync(sourcePath, destPath);
-      console.log(`Moved file: ${sourcePath} -> ${destPath}`);
       
       // Delete the original file
       try {
         fs.unlinkSync(sourcePath);
-        console.log(`Deleted original file: ${sourcePath}`);
       } catch (deleteErr) {
-        console.log(`Note: Could not delete original file ${sourcePath}:`, deleteErr);
         // Continue even if delete fails
       }
       
       return newRelativePath;
     } catch (error) {
-      console.error(`Failed to move image ${imagePath}:`, error);
       return imagePath; // Return original path on error
     }
   }));

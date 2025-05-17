@@ -108,7 +108,6 @@ export const reverseGeocode = async (coordinates: [number, number]): Promise<str
 
     return address || 'Unknown location';
   } catch (error) {
-    console.error('Error reverse geocoding:', error);
     return 'Unknown location';
   }
 };

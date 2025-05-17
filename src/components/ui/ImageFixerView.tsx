@@ -36,7 +36,6 @@ const ImageFixerView = ({ packageId, imagePath }: ImageFixerViewProps) => {
           const fileName = pathParts[pathParts.length - 1];
           const standardPath = `/uploads/packages/${packageId}/${fileName}`;
           
-          console.log('Image is accessible. Standard path:', standardPath);
           setStatus('fixed');
           setMessage('Image is accessible ✅');
           setFixedPath(standardPath);
@@ -137,7 +136,6 @@ const ImageFixerView = ({ packageId, imagePath }: ImageFixerViewProps) => {
               alt="Package Image"
               className="w-full h-full object-cover"
               onError={(e) => {
-                console.error('Regular img tag failed to load:', fixedPath);
                 const target = e.target as HTMLImageElement;
                 target.style.display = 'none';
                 

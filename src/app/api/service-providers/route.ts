@@ -3,7 +3,6 @@ import { query } from '@/lib/db';
 
 export async function GET() {
   try {
-    console.log('Fetching service providers from database - Enhanced version with application_status support');
 
     try {
       // Check which table exists: business_profiles or service_providers
@@ -16,13 +15,11 @@ export async function GET() {
 
       // Determine which table to use
       const tableNames = tableCheckResult.map(row => row.table_name);
-      console.log('Available tables:', tableNames);
 
       const useServiceProvidersTable = tableNames.includes('service_providers');
       const useBusinessProfilesTable = tableNames.includes('business_profiles');
 
       if (!useServiceProvidersTable && !useBusinessProfilesTable) {
-        console.error('Neither business_profiles nor service_providers table exists in the database');
         throw new Error('Database schema error: Required tables do not exist');
       }
 
@@ -31,51 +28,44 @@ export async function GET() {
       if (useServiceProvidersTable) {
         // First check which status columns exist in the service_providers table
         const columnsResult = await query(`
-          SELECT COLUMN_NAME 
-          FROM INFORMATION_SCHEMA.COLUMNS 
-          WHERE TABLE_SCHEMA = DATABASE() 
+          SELECT COLUMN_NAME
+          FROM INFORMATION_SCHEMA.COLUMNS
+          WHERE TABLE_SCHEMA = DATABASE()
           AND TABLE_NAME = 'service_providers'
         `) as any[];
-        
+
         const columnNames = columnsResult.map(col => col.COLUMN_NAME);
         const hasApplicationStatus = columnNames.includes('application_status');
         const hasVerificationStatus = columnNames.includes('verification_status');
         const hasStatus = columnNames.includes('status');
-        
-        console.log('Service providers table columns:', {
-          hasApplicationStatus,
-          hasVerificationStatus,
-          hasStatus
-        });
-        
+
         // Build a WHERE clause based on available columns
         let whereClause = '';
-        
+
         // Primary condition: application_status = 'approved' (new schema)
         if (hasApplicationStatus) {
           whereClause = "(application_status = 'approved' OR application_status = 'verified')";
-        } 
+        }
         // Fallback to verification_status if application_status doesn't exist
         else if (hasVerificationStatus) {
           whereClause = "verification_status = 'verified'";
-        } 
+        }
         // If neither exists, use a default condition that always passes
         else {
           whereClause = "1=1";
         }
-        
+
         // Add provider_type filter if column exists
         if (columnNames.includes('provider_type')) {
           whereClause += " AND provider_type = 'cremation'";
         }
-        
+
         // Add active status filter if the column exists
         if (hasStatus) {
           whereClause += " AND status = 'active'";
         }
-        
+
         // Fetch from service_providers table with dynamic WHERE clause
-        console.log('Using service_providers table with WHERE clause:', whereClause);
         providersResult = await query(`
           SELECT
             id,
@@ -91,22 +81,18 @@ export async function GET() {
           WHERE ${whereClause}
           ORDER BY name ASC
         `) as any[];
-        
+
         // Add detailed logging to see what's happening with the query
-        console.log(`Found ${providersResult.length} providers matching the criteria:`);
         if (providersResult.length > 0) {
           providersResult.forEach(provider => {
-            console.log(`- [ID: ${provider.id}] ${provider.name} (${hasApplicationStatus ? provider.application_status : hasVerificationStatus ? provider.verification_status : 'unknown status'})`);
           });
         }
       } else {
         // Use business_profiles table
-        console.log('Using business_profiles table');
         providersResult = [];
       }
 
       if (providersResult && providersResult.length > 0) {
-        console.log(`Found ${providersResult.length} service providers in service_providers table`);
 
         // Get the number of packages for each provider
         for (const provider of providersResult) {
@@ -135,7 +121,6 @@ export async function GET() {
                 WHERE provider_id = ? AND is_active = TRUE
               `, [provider.id]) as any[];
             } else {
-              console.error('service_packages table missing required columns');
               packagesResult = [{ package_count: 0 }];
             }
 
@@ -147,7 +132,6 @@ export async function GET() {
             provider.distance = `${distanceValue} km away`;
             provider.distanceValue = parseFloat(distanceValue); // Store numeric value for sorting
           } catch (error) {
-            console.error(`Error fetching packages for provider ${provider.id}:`, error);
             provider.packages = 0;
             provider.distance = 'Distance unavailable';
           }
@@ -157,23 +141,22 @@ export async function GET() {
       }
 
       // If no results from service_providers, try to fetch from business_profiles as fallback
-      console.log('No results from previous query, trying business_profiles');
 
       // Only try business_profiles if it exists
       let businessResult = [];
       if (useBusinessProfilesTable) {
         // Check which columns exist in business_profiles
         const bpColumnsResult = await query(`
-          SELECT COLUMN_NAME 
-          FROM INFORMATION_SCHEMA.COLUMNS 
-          WHERE TABLE_SCHEMA = DATABASE() 
+          SELECT COLUMN_NAME
+          FROM INFORMATION_SCHEMA.COLUMNS
+          WHERE TABLE_SCHEMA = DATABASE()
           AND TABLE_NAME = 'business_profiles'
         `) as any[];
-        
+
         const bpColumns = bpColumnsResult.map(col => col.COLUMN_NAME);
         const hasAppStatus = bpColumns.includes('application_status');
         const hasVerStatus = bpColumns.includes('verification_status');
-        
+
         // Build WHERE clause based on available columns
         let bpWhereClause = '';
         if (hasAppStatus) {
@@ -183,7 +166,7 @@ export async function GET() {
         } else {
           bpWhereClause = "1=1";
         }
-        
+
         businessResult = await query(`
           SELECT
             bp.id,
@@ -204,15 +187,14 @@ export async function GET() {
       }
 
       if (businessResult && businessResult.length > 0) {
-        console.log(`Found ${businessResult.length} cremation businesses in business_profiles table`);
 
         // Format the business data to match the expected format
         const formattedBusinesses = businessResult.map(business => {
           // Process the address to include postal code if needed
-          const formattedAddress = business.address ? 
+          const formattedAddress = business.address ?
             (business.address.includes('2100') ? business.address : business.address.replace('Philippines', '2100 Philippines')) :
             '';
-            
+
           return {
             id: business.id,
             name: business.name,
@@ -264,13 +246,11 @@ export async function GET() {
                 WHERE business_id = ? AND is_active = TRUE
               `, [business.id]) as any[];
             } else {
-              console.error('service_packages table missing required columns');
               packagesResult = [{ package_count: 0 }];
             }
 
             business.packages = packagesResult[0]?.package_count || 0;
           } catch (error) {
-            console.error(`Error fetching packages for business ${business.id}:`, error);
           }
         }
 
@@ -278,7 +258,6 @@ export async function GET() {
       }
 
       // If no providers found in either table, create test providers
-      console.log('No providers found in any table, creating test providers');
 
       // Create test providers in Bataan area
       const testProviders = [
@@ -328,11 +307,9 @@ export async function GET() {
 
       return NextResponse.json({ providers: testProviders });
     } catch (dbError) {
-      console.error('Database error fetching service providers:', dbError);
       return NextResponse.json({ providers: [], error: 'Database error' });
     }
   } catch (error) {
-    console.error('Error fetching service providers:', error);
     return NextResponse.json(
       { error: 'Failed to fetch service providers' },
       { status: 500 }

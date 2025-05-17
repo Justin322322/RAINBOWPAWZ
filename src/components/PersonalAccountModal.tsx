@@ -120,19 +120,11 @@ const PersonalAccountModal: React.FC<PersonalAccountModalProps> = ({ isOpen, onC
     }
 
     try {
-      console.log('Submitting registration form for:', formData.email);
-
-      // Log the form data being sent
-      console.log('Form data being sent:', {
-        ...formData,
-        account_type: 'personal',
-        password: '[REDACTED]' // Don't log the actual password
-      });
+      // Proceed with registration
 
       // Use window.location.origin to get the current URL including port
       const baseUrl = window.location.origin;
 
-      console.log('Using base URL:', baseUrl);
 
       // Call our Next.js API route for registration with a timeout
       const controller = new AbortController();
@@ -140,19 +132,15 @@ const PersonalAccountModal: React.FC<PersonalAccountModalProps> = ({ isOpen, onC
 
       try {
         // Create a simple test request first to check if the server is responding
-        console.log('Testing server connectivity...');
         try {
           const testResponse = await fetch(`/api/health-check`, {
             method: 'GET',
             signal: AbortSignal.timeout(5000) // 5 second timeout
           });
-          console.log('Server connectivity test result:', testResponse.status);
         } catch (testError) {
-          console.log('Server connectivity test failed, continuing with registration anyway');
         }
 
         // Now send the actual registration request
-        console.log('Sending registration request to:', `/api/auth/register`);
         const response = await fetch(`/api/auth/register`, {
           method: 'POST',
           headers: {
@@ -167,27 +155,17 @@ const PersonalAccountModal: React.FC<PersonalAccountModalProps> = ({ isOpen, onC
 
         clearTimeout(timeoutId); // Clear the timeout if the request completes
 
-        console.log('Registration response status:', response.status);
-        console.log('Registration response headers:', {
-          contentType: response.headers.get('content-type'),
-          contentLength: response.headers.get('content-length')
-        });
-
         // Get the raw response text first for debugging
         const responseText = await response.text();
-        console.log('Raw response text:', responseText);
 
         // Try to parse the response as JSON
         let data;
         try {
           data = JSON.parse(responseText);
-          console.log('Registration response data:', data);
         } catch (jsonError) {
-          console.error('Error parsing JSON response:', jsonError);
 
           // If we can't parse the response as JSON, check if it's an HTML error page
           if (responseText.includes('<!DOCTYPE html>')) {
-            console.error('Received HTML response instead of JSON');
             throw new Error('Server error: Received HTML response instead of JSON. The server might be misconfigured.');
           } else {
             throw new Error(`Failed to parse server response: ${responseText.substring(0, 100)}${responseText.length > 100 ? '...' : ''}`);
@@ -212,7 +190,6 @@ const PersonalAccountModal: React.FC<PersonalAccountModalProps> = ({ isOpen, onC
         showToast('Registration successful! Check your email for confirmation.', 'success');
         onClose();
       } catch (fetchError: any) {
-        console.error('Fetch error:', fetchError);
 
         // Handle network errors
         let errorMessage = 'Network error. Please check your internet connection and try again.';
@@ -225,13 +202,9 @@ const PersonalAccountModal: React.FC<PersonalAccountModalProps> = ({ isOpen, onC
         showToast(errorMessage, 'error');
       }
     } catch (error) {
-      console.error('Registration error:', error);
 
       // Log more detailed error information
       if (error instanceof Error) {
-        console.error('Error name:', error.name);
-        console.error('Error message:', error.message);
-        console.error('Error stack:', error.stack);
       }
 
       const errorMsg = error instanceof Error ? error.message : 'Failed to create account. Please try again.';

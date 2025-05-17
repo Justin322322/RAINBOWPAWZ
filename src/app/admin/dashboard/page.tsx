@@ -93,7 +93,6 @@ function AdminDashboardPage({ adminData }: { adminData: any }) {
           setError(result.error || 'Failed to fetch dashboard data');
         }
       } catch (err) {
-        console.error('Error fetching dashboard data:', err);
         setError(err instanceof Error ? err.message : 'An unknown error occurred');
       } finally {
         setIsLoading(false);

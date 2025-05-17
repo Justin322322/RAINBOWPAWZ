@@ -59,7 +59,6 @@ const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({ isOpen, onClo
         onShowLogin();
       }, 3000);
     } catch (error) {
-      console.error('Password reset error:', error);
       setErrorMessage(error instanceof Error ? error.message : 'Failed to send reset instructions. Please try again.');
     } finally {
       setIsLoading(false);

@@ -53,27 +53,22 @@ function CremationDashboardPage({ userData }: { userData: any }) {
   useEffect(() => {
     const fetchDashboardData = async () => {
       if (!userData?.business_id) {
-        console.log('No business ID found in user data', userData);
         setLoading(false);
         return;
       }
 
       try {
-        console.log('Fetching dashboard data for provider ID:', userData.business_id);
         // Add cache busting parameter to prevent cached results
         const response = await fetch(`/api/cremation/dashboard?providerId=${userData.business_id}&t=${Date.now()}`);
         
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
-          console.error('API response not OK:', response.status, errorData);
           throw new Error(`Failed to fetch dashboard data: ${response.status} ${errorData.error || ''}`);
         }
         
         const data = await response.json();
-        console.log('Dashboard data fetched successfully', data);
         setDashboardData(data);
       } catch (error) {
-        console.error('Error fetching dashboard data:', error);
         showToast('Failed to load dashboard data. Please try again later.', 'error');
       } finally {
         setLoading(false);
@@ -89,11 +84,9 @@ function CremationDashboardPage({ userData }: { userData: any }) {
       if (!userData?.business_id) return;
       
       try {
-        console.log('Checking if availability tables exist...');
         const response = await fetch('/api/cremation/availability?providerId=' + userData.business_id);
         
         if (response.status === 500) {
-          console.log('Availability API returned 500, might need to set up tables');
           setAvailabilitySetupNeeded(true);
           setAvailabilityError('Database tables for availability calendar need to be set up.');
         } else {
@@ -101,7 +94,6 @@ function CremationDashboardPage({ userData }: { userData: any }) {
           setAvailabilityError(null);
         }
       } catch (error) {
-        console.error('Error checking availability tables:', error);
         setAvailabilitySetupNeeded(true);
         setAvailabilityError('Could not check if availability tables exist.');
       }
@@ -119,13 +111,11 @@ function CremationDashboardPage({ userData }: { userData: any }) {
         // Call our setup API instead of directly calling ensureAvailabilityTablesExist
         const response = await fetch('/api/cremation/availability/setup');
         if (!response.ok) {
-          console.warn('Failed to set up availability tables:', response.statusText);
           if (isMounted) {
             setAvailabilityError('The availability calendar is experiencing temporary technical difficulties.');
           }
         } else {
           const data = await response.json();
-          console.log('Setup tables response:', data);
           
           if (data.mock) {
             if (isMounted) {
@@ -138,7 +128,6 @@ function CremationDashboardPage({ userData }: { userData: any }) {
           }
         }
       } catch (error) {
-        console.error('Error initializing availability tables:', error);
         if (isMounted) {
           setAvailabilityError('Failed to connect to availability service. Calendar is in read-only mode.');
         }
@@ -170,19 +159,15 @@ function CremationDashboardPage({ userData }: { userData: any }) {
     { bgColor: 'bg-gray-100', textColor: 'text-gray-800', iconColor: 'text-gray-600' }
   ];
 
-  // This console.log should always happen when rendering to verify we're using this component correctly
-  console.log('Rendering cremation dashboard page with userData:', userData?.id);
 
   // Handle availability changes (called when calendar data is fetched or updated)
   const handleAvailabilityChange = (availability: any) => {
-    console.log('Dashboard: Availability data synced from calendar:', availability);
     // DO NOT show toast here, as this is called on initial load too.
     // Toast will be triggered by a more specific onSaveSuccess callback.
   };
 
   // This function is specifically called only after a successful save action
   const handleSaveSuccess = () => {
-    console.log('Showing success toast because an availability setting was saved');
     showToast('Availability settings saved successfully', 'success');
   };
 
@@ -368,7 +353,6 @@ function CremationDashboardPage({ userData }: { userData: any }) {
                   </div>
                 </div>
               ) : null}
-              {console.log("Rendering AvailabilityCalendar with providerId:", userData?.business_id)}
               <AvailabilityCalendar 
                 providerId={userData?.business_id || 0} 
                 onAvailabilityChange={handleAvailabilityChange}

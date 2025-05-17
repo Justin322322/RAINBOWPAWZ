@@ -64,18 +64,15 @@ function ServicesPage({ userData }: ServicesPageProps) {
             address: userData.address,
             source: 'profile'
           };
-          console.log('Using address from user profile:', userData.address);
         } else {
           location = {
             address: defaultAddress,
             source: 'default'
           };
-          console.log('No address in user profile, using default:', defaultAddress);
         }
 
         setUserLocation(location);
       } catch (error) {
-        console.error('Error setting user location:', error);
         // Fall back to default address
         setUserLocation({
           address: defaultAddress,
@@ -146,7 +143,6 @@ function ServicesPage({ userData }: ServicesPageProps) {
         // Reset to first page when providers change
         setCurrentPage(1);
       } catch (error) {
-        console.error('Error fetching service providers:', error);
         // Fallback to empty array if fetch fails
         setServiceProviders([]);
       } finally {

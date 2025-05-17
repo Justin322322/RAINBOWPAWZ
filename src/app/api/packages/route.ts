@@ -70,7 +70,6 @@ export async function GET(request: NextRequest) {
       }
     });
   } catch (error) {
-    console.error('Error fetching packages:', error);
     return NextResponse.json({
       error: 'Failed to fetch packages',
       details: error instanceof Error ? error.message : 'Unknown error'
@@ -207,7 +206,6 @@ export async function POST(request: NextRequest) {
       throw error;
     }
   } catch (error) {
-    console.error('Error creating package:', error);
     return NextResponse.json({
       error: 'Failed to create package',
       details: error instanceof Error ? error.message : 'Unknown error'
@@ -252,7 +250,6 @@ async function getPackageById(packageId: number, includeInactive: boolean = fals
       package: enhancedPackages[0]
     });
   } catch (error) {
-    console.error(`Error fetching package ${packageId}:`, error);
     return NextResponse.json({
       error: 'Failed to fetch package',
       details: error instanceof Error ? error.message : 'Unknown error'
@@ -263,13 +260,11 @@ async function getPackageById(packageId: number, includeInactive: boolean = fals
 // Helper function to get packages by provider ID
 async function getPackagesByProviderId(providerId: number, includeInactive: boolean = false) {
   try {
-    console.log(`Fetching packages for provider ID: ${providerId}, includeInactive: ${includeInactive}`);
     
     // Check if this is one of our test providers
     if (providerId === 1001 || providerId === 1002 || providerId === 1003) {
       // Return test packages for this provider
       const testPackages = getTestPackagesForProvider(providerId);
-      console.log(`Returning ${testPackages.length} test packages for provider ${providerId}`);
 
       return NextResponse.json({
         packages: testPackages
@@ -292,13 +287,11 @@ async function getPackagesByProviderId(providerId: number, includeInactive: bool
     const hasProviderId = packageColumns.includes('provider_id');
     const hasBusinessId = packageColumns.includes('business_id');
     
-    console.log(`Package columns found - service_provider_id: ${hasServiceProviderId}, provider_id: ${hasProviderId}, business_id: ${hasBusinessId}`);
     
     let packagesResult = [] as any[];
     
     // Try to get packages using service_provider_id first
     if (hasServiceProviderId) {
-      console.log(`Fetching packages with service_provider_id = ${providerId}`);
       packagesResult = await query(`
         SELECT
           sp.id,
@@ -320,7 +313,6 @@ async function getPackagesByProviderId(providerId: number, includeInactive: bool
     } 
     // If no packages found or no service_provider_id column, try provider_id
     else if (hasProviderId) {
-      console.log(`Fetching packages with provider_id = ${providerId}`);
       packagesResult = await query(`
         SELECT
           sp.id,
@@ -342,7 +334,6 @@ async function getPackagesByProviderId(providerId: number, includeInactive: bool
     }
     // If still no packages found, try business_id
     else if (hasBusinessId) {
-      console.log(`Fetching packages with business_id = ${providerId}`);
       packagesResult = await query(`
         SELECT
           sp.id,
@@ -363,7 +354,6 @@ async function getPackagesByProviderId(providerId: number, includeInactive: bool
       `, [providerId]) as any[];
     }
     
-    console.log(`Found ${packagesResult.length} packages for provider ${providerId}`);
 
     // Enhance packages with inclusions, add-ons, and images
     const enhancedPackages = await enhancePackagesWithDetails(packagesResult);
@@ -372,7 +362,6 @@ async function getPackagesByProviderId(providerId: number, includeInactive: bool
       packages: enhancedPackages
     });
   } catch (error) {
-    console.error(`Error fetching packages for provider ${providerId}:`, error);
     return NextResponse.json({
       error: 'Failed to fetch packages',
       details: error instanceof Error ? error.message : 'Unknown error'
@@ -595,17 +584,14 @@ async function enhancePackagesWithDetails(packages: any[]) {
       if (!img.image_path) return null;
       let path = img.image_path;
       
-      console.log(`Processing image path: ${path}`);
       
       // Skip blob URLs
       if (path.startsWith('blob:')) {
-        console.log(`Skipping blob URL: ${path}`);
         return null;
       }
       
       // If path starts with http:// or https://, it's already a full URL
       if (path.startsWith('http://') || path.startsWith('https://')) {
-        console.log(`Using full URL as is: ${path}`);
         return path;
       }
       
@@ -613,7 +599,6 @@ async function enhancePackagesWithDetails(packages: any[]) {
       if (path.startsWith('/')) {
         // Remove leading slash for consistency
         path = path.substring(1);
-        console.log(`Removed leading slash: ${path}`);
       }
       
       // For files in uploads/packages/ directory - most reliable approach
@@ -622,7 +607,6 @@ async function enhancePackagesWithDetails(packages: any[]) {
         const filename = path.split('/').pop();
         if (filename) {
           const fullPath = `/uploads/packages/${filename}`;
-          console.log(`Using direct upload path with filename: ${fullPath}`);
           return fullPath;
         }
       }
@@ -630,25 +614,21 @@ async function enhancePackagesWithDetails(packages: any[]) {
       // For paths in uploads/packages/ directory but without the common format
       if (path.includes('uploads/packages/')) {
         const fullPath = `/${path.replace(/^\//, '')}`;
-        console.log(`Using package upload path: ${fullPath}`);
         return fullPath;
       }
       
       // For sample data that has paths like bg_2.png
       if (path.match(/^bg_\d+\.png$/)) {
-        console.log(`Using background image path: /${path}`);
         return `/${path}`;
       }
       
       // For paths in uploads directory
       if (path.includes('uploads/')) {
         const fullPath = `/${path.replace(/^\//, '')}`;
-        console.log(`Using uploads path: ${fullPath}`);
         return fullPath;
       }
       
       // Default approach for images stored in public directory
-      console.log(`Using default path approach: /${path}`);
       return `/${path}`;
     }).filter(Boolean);
 
@@ -657,7 +637,6 @@ async function enhancePackagesWithDetails(packages: any[]) {
       // Use some placeholder images for testing
       const sampleImageNum = (pkg.id % 5) + 1; // Use ID to get a consistent but varied image
       processedImages.push(`/images/sample-package-${sampleImageNum}.jpg`);
-      console.log(`Added default sample image for package ${pkg.id}: /images/sample-package-${sampleImageNum}.jpg`);
     }
 
     return {
@@ -687,7 +666,6 @@ async function moveImagesToPackageFolder(images: string[], packageId: number): P
   // If no images or invalid package ID, return as is
   if (!images.length || !packageId) return images;
   
-  console.log(`Moving ${images.length} images to package folder for package ID ${packageId}`);
   
   // Create package directory if it doesn't exist
   const baseDir = join(process.cwd(), 'public', 'uploads', 'packages');
@@ -696,9 +674,7 @@ async function moveImagesToPackageFolder(images: string[], packageId: number): P
   if (!fs.existsSync(packageDir)) {
     try {
       fs.mkdirSync(packageDir, { recursive: true });
-      console.log(`Created package directory: ${packageDir}`);
     } catch (err) {
-      console.error(`Failed to create directory for package ${packageId}:`, err);
       return images; // Return original paths if directory creation fails
     }
   }
@@ -707,7 +683,6 @@ async function moveImagesToPackageFolder(images: string[], packageId: number): P
   const updatedPaths = await Promise.all(images.map(async (imagePath) => {
     // Skip images that are already in the correct folder
     if (imagePath.includes(`/uploads/packages/${packageId}/`)) {
-      console.log(`Image already in correct folder: ${imagePath}`);
       return imagePath;
     }
     
@@ -720,26 +695,21 @@ async function moveImagesToPackageFolder(images: string[], packageId: number): P
       
       // Check if source file exists
       if (!fs.existsSync(sourcePath)) {
-        console.log(`Source file doesn't exist: ${sourcePath}`);
         return imagePath; // Return original path if file doesn't exist
       }
       
       // Copy file to new location
       fs.copyFileSync(sourcePath, destPath);
-      console.log(`Moved file: ${sourcePath} -> ${destPath}`);
       
       // Delete the original file
       try {
         fs.unlinkSync(sourcePath);
-        console.log(`Deleted original file: ${sourcePath}`);
       } catch (deleteErr) {
-        console.log(`Note: Could not delete original file ${sourcePath}:`, deleteErr);
         // Continue even if delete fails
       }
       
       return newRelativePath;
     } catch (error) {
-      console.error(`Failed to move image ${imagePath}:`, error);
       return imagePath; // Return original path on error
     }
   }));

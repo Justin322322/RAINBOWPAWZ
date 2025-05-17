@@ -11,11 +11,11 @@ interface PackageImageProps {
   onError?: () => void;
 }
 
-export const PackageImage: React.FC<PackageImageProps> = ({ 
-  src, 
-  images = [], 
-  alt, 
-  className = '', 
+export const PackageImage: React.FC<PackageImageProps> = ({
+  src,
+  images = [],
+  alt,
+  className = '',
   size = 'large',
   onError
 }) => {
@@ -26,97 +26,79 @@ export const PackageImage: React.FC<PackageImageProps> = ({
     // Use either a single src or an array of images
   // Filter out any sample or placeholder images
   const filteredImages = React.useMemo(() => {
-    console.log("Filtering images:", { images, src });
-    
+
     // Process array of images if available
     if (images && Array.isArray(images) && images.length > 0) {
       // Only include explicitly provided images, no automatic fallbacks
-      const filtered = images.filter(img => 
-        img && 
+      const filtered = images.filter(img =>
+        img &&
         typeof img === 'string'
       );
-      console.log("Filtered images from array:", filtered);
       return filtered.length > 0 ? filtered : [];
-    } 
+    }
     // Process single src as fallback
     else if (src && typeof src === 'string') {
-      console.log("Using single src as image:", [src]);
       return [src];
     }
     // No valid images
     return [];
   }, [images, src]);
-  
+
   // Initialize finalSrc state
   const [finalSrc, setFinalSrc] = useState('');
-  
+
   // Initialize or update finalSrc when filteredImages changes
   useEffect(() => {
     if (filteredImages.length > 0) {
-      console.log(`Setting initial finalSrc to ${filteredImages[0]}`);
       setFinalSrc(filteredImages[0]);
     }
   }, [filteredImages]);
-  
-  // Debug log image sources on component mount
+
+  // Check image sources on component mount
   useEffect(() => {
-    console.log(`PackageImage component for ${alt}:`, { 
-      filteredImages, 
-      srcProp: src, 
-      imagesProp: images,
-      finalSrc,
-      size,
-      isEmpty: filteredImages.length === 0
-    });
+    // Monitor image sources for changes
   }, [alt, src, images, filteredImages, finalSrc, size]);
-  
+
   // Reset current image index when images list changes
   useEffect(() => {
     if (filteredImages.length > 0) {
       setCurrentImageIndex(0);
       setFinalSrc(filteredImages[0]);
       setImageFailed(false);
-    } else {
-      console.log(`No images available for package: ${alt}`);
     }
   }, [images, src, alt, filteredImages]);
 
   // Update finalSrc when currentImageIndex changes
   useEffect(() => {
     if (filteredImages.length > 0 && currentImageIndex >= 0 && currentImageIndex < filteredImages.length) {
-      console.log(`Updating finalSrc based on currentImageIndex change: ${currentImageIndex}`);
       setFinalSrc(filteredImages[currentImageIndex]);
     }
   }, [currentImageIndex, filteredImages]);
-  
+
   // Handle touch events for swipe
   const handleTouchStart = (e: React.TouchEvent) => {
     setTouchStart(e.targetTouches[0].clientX);
-    console.log('Touch start:', e.targetTouches[0].clientX);
   };
-  
+
   const handleTouchMove = (e: React.TouchEvent) => {
     setTouchEnd(e.targetTouches[0].clientX);
   };
-  
+
   const handleTouchEnd = () => {
     if (!touchStart || !touchEnd) return;
     const distance = touchStart - touchEnd;
-    console.log('Touch distance:', distance, 'Start:', touchStart, 'End:', touchEnd);
-    
+
     // Lower threshold for better detection - reduced from 30 to 20
     const isLeftSwipe = distance > 20;
     const isRightSwipe = distance < -20;
-    
+
     if (isLeftSwipe && filteredImages.length > 1) {
-      console.log('Left swipe detected, going to next image');
       goToNextImage(null as any);
     }
     if (isRightSwipe && filteredImages.length > 1) {
-      console.log('Right swipe detected, going to previous image');
       goToPrevImage(null as any);
     }
-    
+
     // Reset values
     setTouchStart(0);
     setTouchEnd(0);
@@ -126,7 +108,6 @@ export const PackageImage: React.FC<PackageImageProps> = ({
   const handleKeyDown = (e: React.KeyboardEvent, action: 'next' | 'prev') => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
-      console.log(`Keyboard ${action} triggered`);
       if (action === 'next') {
         goToNextImage(null);
       } else {
@@ -140,75 +121,68 @@ export const PackageImage: React.FC<PackageImageProps> = ({
     small: "h-10 w-10",
     large: "w-full h-full object-cover absolute inset-0"
   };
-  
+
   // Base style for the container
-  const containerStyle = size === 'small' 
-    ? "flex-shrink-0 h-10 w-10 bg-gray-200 rounded-md overflow-hidden" 
+  const containerStyle = size === 'small'
+    ? "flex-shrink-0 h-10 w-10 bg-gray-200 rounded-md overflow-hidden"
     : "h-full w-full relative";
-    
+
   const handleImageError = () => {
     if (imageFailed) return;
-    
-    console.log(`Image failed to load: ${finalSrc} for package: ${alt}`);
-    
+
+
     // Call custom onError handler if provided
     if (onError) {
       onError();
     }
-    
+
     // Simple fix attempt for double slashes
     if (finalSrc && finalSrc.startsWith('//')) {
       const newSrc = finalSrc.replace('//', '/');
-      console.log(`Trying alternative path: ${newSrc}`);
       setFinalSrc(newSrc);
       return;
     }
-    
+
     // If we reach here, image failed to load
     setImageFailed(true);
   };
-  
+
   // Navigation functions for the carousel
   const goToNextImage = (e: React.MouseEvent | null) => {
     if (e) {
       e.preventDefault();
       e.stopPropagation(); // Prevent event bubbling
     }
-    
+
     if (filteredImages.length <= 1) return;
-    
+
     const nextIndex = (currentImageIndex + 1) % filteredImages.length;
-    console.log(`Going to next image: ${nextIndex} of ${filteredImages.length}`);
     setCurrentImageIndex(nextIndex);
     // Force immediate update of finalSrc
     const nextImage = filteredImages[nextIndex];
-    console.log(`Next image source: ${nextImage}`);
     setFinalSrc(nextImage);
     setImageFailed(false); // Reset error state for new image
   };
-  
+
   const goToPrevImage = (e: React.MouseEvent | null) => {
     if (e) {
       e.preventDefault();
       e.stopPropagation(); // Prevent event bubbling
     }
-    
+
     if (filteredImages.length <= 1) return;
-    
+
     const prevIndex = (currentImageIndex - 1 + filteredImages.length) % filteredImages.length;
-    console.log(`Going to previous image: ${prevIndex} of ${filteredImages.length}`);
     setCurrentImageIndex(prevIndex);
     // Force immediate update of finalSrc
     const prevImage = filteredImages[prevIndex];
-    console.log(`Previous image source: ${prevImage}`);
     setFinalSrc(prevImage);
     setImageFailed(false); // Reset error state for new image
   };
-  
+
   // Handle direct navigation to a specific image
   const goToImage = (index: number) => (e: React.MouseEvent) => {
     if (e) e.stopPropagation();
-    console.log(`Directly going to image ${index}`);
     setCurrentImageIndex(index);
     setFinalSrc(filteredImages[index]);
     setImageFailed(false);
@@ -225,14 +199,12 @@ export const PackageImage: React.FC<PackageImageProps> = ({
 
   // If we have images and haven't failed, display the current image with navigation
   if (filteredImages.length > 0 && !imageFailed) {
-    console.log(`Rendering with: currentIndex=${currentImageIndex}, finalSrc=${finalSrc}, filteredImages:`, filteredImages);
-    
+
     // Determine the current image source to display
     const displaySrc = finalSrc || filteredImages[currentImageIndex] || '';
-    console.log(`Using display source: ${displaySrc}`);
-    
+
     return (
-      <div 
+      <div
         className={`${containerStyle} group overflow-hidden`}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
@@ -240,35 +212,31 @@ export const PackageImage: React.FC<PackageImageProps> = ({
         key={`container-${currentImageIndex}-${displaySrc}`}
       >
         <div className="absolute inset-0 bg-gray-100 w-full h-full">
-          <img 
+          <img
             src={displaySrc}
             alt={`${alt}`}
             className={`object-cover ${sizeClasses[size]} ${className} transition-opacity duration-300 ease-in-out`}
             onError={handleImageError}
-            onLoad={() => console.log(`Successfully loaded image: ${displaySrc}`)}
             key={`image-${currentImageIndex}-${displaySrc}`}
             style={{width: '100%', height: '100%'}}
           />
         </div>
-        
+
         {/* Only show navigation for large images with multiple photos */}
         {size === 'large' && filteredImages.length > 1 && (
           <>
             {/* Previous button */}
-            <button 
+            <button
               onClick={(e) => {
                 e.preventDefault();
-                console.log("Previous button clicked");
                 goToPrevImage(e);
               }}
               onKeyDown={(e) => handleKeyDown(e, 'prev')}
               onMouseDown={(e) => {
                 e.preventDefault();
-                console.log("Mouse down on prev button");
               }}
               onMouseUp={(e) => {
                 e.preventDefault();
-                console.log("Mouse up on prev button");
                 goToPrevImage(e);
               }}
               aria-label="Previous image"
@@ -281,22 +249,19 @@ export const PackageImage: React.FC<PackageImageProps> = ({
                 <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
               </svg>
             </button>
-            
+
             {/* Next button */}
-            <button 
+            <button
               onClick={(e) => {
                 e.preventDefault();
-                console.log("Next button clicked");
                 goToNextImage(e);
               }}
               onKeyDown={(e) => handleKeyDown(e, 'next')}
               onMouseDown={(e) => {
                 e.preventDefault();
-                console.log("Mouse down on next button");
               }}
               onMouseUp={(e) => {
                 e.preventDefault();
-                console.log("Mouse up on next button");
                 goToNextImage(e);
               }}
               aria-label="Next image"
@@ -313,12 +278,12 @@ export const PackageImage: React.FC<PackageImageProps> = ({
             {/* Dot indicators */}
             <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex space-x-2 bg-black/30 px-3 py-1.5 rounded-full shadow-lg z-20">
               {filteredImages.map((_, index) => (
-                <button 
+                <button
                   key={index}
                   onClick={goToImage(index)}
                   className={`h-2.5 w-2.5 rounded-full transition-all duration-300 ${
-                    currentImageIndex === index 
-                      ? 'bg-white scale-110 ring-2 ring-white/50' 
+                    currentImageIndex === index
+                      ? 'bg-white scale-110 ring-2 ring-white/50'
                       : 'bg-white/50 hover:bg-white/80'
                   }`}
                   aria-label={`View image ${index + 1} of ${filteredImages.length}`}
@@ -331,7 +296,7 @@ export const PackageImage: React.FC<PackageImageProps> = ({
       </div>
     );
   }
-  
+
   // Default placeholder when image is not available or failed to load
   if (size === 'small') {
     return (
@@ -342,6 +307,6 @@ export const PackageImage: React.FC<PackageImageProps> = ({
       </div>
     );
   }
-  
+
   return renderPlaceholder();
 };

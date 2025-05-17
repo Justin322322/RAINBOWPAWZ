@@ -75,7 +75,6 @@ function CremationHistoryPage({ userData }: { userData: any }) {
       else if (dateFilter === 'thisyear') periodParam = 'thisyear';
       else periodParam = 'all';
       
-      console.log(`Fetching history data with period: ${periodParam}`);
       const response = await fetch(`/api/cremation/history?period=${periodParam}&t=${Date.now()}`, {
         method: 'GET',
         headers: {
@@ -86,16 +85,13 @@ function CremationHistoryPage({ userData }: { userData: any }) {
       
       // Parse the JSON response regardless of status code
       const data = await response.json();
-      console.log(`Response status: ${response.status}`, data);
       
       if (!response.ok) {
         // Use the specific error message from the API if available
         const errorMessage = data.message || data.error || 'Failed to fetch booking history';
-        console.error('API Error:', errorMessage, data);
         throw new Error(errorMessage);
       }
       
-      console.log(`Received ${data.bookings?.length || 0} bookings`);
       
       setBookings(data.bookings || []);
       setStats(data.stats || {
@@ -110,7 +106,6 @@ function CremationHistoryPage({ userData }: { userData: any }) {
       // Reset retry count on success
       setRetryCount(0);
     } catch (error) {
-      console.error('Error fetching booking history:', error);
       setError(error instanceof Error ? error.message : 'An error occurred while fetching data');
       
       // Only show toast once per fetch attempt
@@ -188,7 +183,6 @@ function CremationHistoryPage({ userData }: { userData: any }) {
       a.click();
       document.body.removeChild(a);
     } catch (error) {
-      console.error('Error exporting CSV:', error);
       showToast('Failed to export CSV', 'error');
     }
   };

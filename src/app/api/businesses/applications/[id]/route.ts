@@ -5,19 +5,16 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
   // Extract ID from params
   const id = params.id;
 
-  console.log('Fetching application details for ID:', id);
 
   try {
     const businessId = parseInt(id);
     if (isNaN(businessId)) {
-      console.error('Invalid business ID:', id);
       return NextResponse.json({ message: 'Invalid business ID' }, { status: 400 });
     }
 
     // Since you've migrated from business_profiles to service_providers,
     // we'll use only the service_providers table
     const tableName = 'service_providers';
-    console.log(`Using table: ${tableName}`);
 
     // Check if application_status column exists
     const columnsResult = await query(`
@@ -25,7 +22,6 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     `) as any[];
     
     const hasApplicationStatus = columnsResult.length > 0;
-    console.log(`Table ${tableName} has application_status column: ${hasApplicationStatus}`);
 
     // Fetch business profile data with all fields
     let businessResult;
@@ -78,18 +74,14 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     }
 
     // Log the raw query result for debugging
-    console.log('Raw business result:', JSON.stringify(businessResult[0], null, 2));
 
-    console.log('Query result:', businessResult ? `Found ${businessResult.length} results` : 'No results');
 
     if (!businessResult || businessResult.length === 0) {
-      console.error('Business profile not found for ID:', businessId);
       return NextResponse.json({ message: 'Business profile not found' }, { status: 404 });
     }
 
     // Get the business name (could be in business_name or name field)
     const businessName = businessResult[0].business_name || businessResult[0].name || 'Unknown';
-    console.log('Found business profile:', businessName);
 
     const business = businessResult[0];
 
@@ -179,13 +171,11 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 
     return NextResponse.json(applicationData);
   } catch (error) {
-    console.error('Error fetching business application:', error);
 
     // Get more detailed error information
     let errorMessage = 'Failed to fetch business application';
     if (error instanceof Error) {
       errorMessage = `${errorMessage}: ${error.message}`;
-      console.error('Error stack:', error.stack);
     }
 
     return NextResponse.json(

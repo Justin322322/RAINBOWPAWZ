@@ -28,7 +28,6 @@ export async function GET(request: NextRequest) {
     // Direct SQL method if requested
     if (method === 'direct') {
       try {
-        console.log('Using direct SQL connection method');
         
         // Connect directly to the database
         const mysql = require('mysql2/promise');
@@ -75,7 +74,6 @@ export async function GET(request: NextRequest) {
           note: 'Please reload the page to see changes'
         });
       } catch (error) {
-        console.error('Error in direct SQL method:', error);
         return NextResponse.json({
           success: false,
           message: 'Failed to execute direct SQL updates',
@@ -123,11 +121,9 @@ export async function GET(request: NextRequest) {
           note: 'Please reload the page to see changes'
         });
       } catch (error) {
-        console.error('Error approving service provider:', error);
         
         // Fallback method - try with direct SQL
         try {
-          console.log('Attempting fallback method with raw SQL');
           
           // Try setting just the application_status in the most direct way possible
           const conn = await (await import('mysql2/promise')).createConnection({
@@ -165,7 +161,6 @@ export async function GET(request: NextRequest) {
       }
 
     } catch (error) {
-      console.error('Error approving service provider:', error);
       return NextResponse.json({
         success: false,
         message: 'Failed to approve service provider',
@@ -174,7 +169,6 @@ export async function GET(request: NextRequest) {
     }
 
   } catch (error) {
-    console.error('Error approving service provider:', error);
     return NextResponse.json({
       success: false,
       message: 'Failed to approve service provider',

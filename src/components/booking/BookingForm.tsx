@@ -87,7 +87,6 @@ export default function BookingForm({
       setPackageDesc(data.description);
       setBasePrice(data.price || 0);
     } catch (error) {
-      console.error('Error fetching package details:', error);
       showToast('Error loading package details. Please try again.', 'error');
     } finally {
       setLoading(false);
@@ -111,7 +110,6 @@ export default function BookingForm({
         setBasePrice(data.packages[0].price || 0);
       }
     } catch (error) {
-      console.error('Error fetching available packages:', error);
       showToast('Error loading packages. Please try again.', 'error');
     } finally {
       setLoading(false);
@@ -160,7 +158,6 @@ export default function BookingForm({
       const data = await response.json();
       return data.imageUrl;
     } catch (error) {
-      console.error('Error uploading pet image:', error);
       throw new Error('Error uploading pet image');
     } finally {
       setPetImageUploading(false);
@@ -204,7 +201,6 @@ export default function BookingForm({
       setDeliveryDistance(distance);
       setDeliveryFee(fee);
     } catch (error) {
-      console.error('Error estimating delivery fee:', error);
       setDeliveryFee(100); // Default fee in case of error
     }
   };
@@ -281,7 +277,6 @@ export default function BookingForm({
         router.push('/user/furparent_dashboard/bookings');
       }
     } catch (error) {
-      console.error('Error creating booking:', error);
       showToast('Error creating booking: ' + (error instanceof Error ? error.message : 'Unknown error'), 'error');
     } finally {
       setLoading(false);

@@ -17,7 +17,7 @@ interface CremationDashboardLayoutProps {
 export default function CremationDashboardLayout({
   children,
   activePage,
-  userName = 'Cremation Provider',
+  userName: propUserName = 'Cremation Provider',
   userData: propUserData
 }: CremationDashboardLayoutProps) {
   const router = useRouter();
@@ -25,6 +25,21 @@ export default function CremationDashboardLayout({
   const [isLoading, setIsLoading] = useState(true);
   const [userData, setUserData] = useState<any>(null);
   const [showAccessDenied, setShowAccessDenied] = useState(false);
+
+  // State for mobile sidebar visibility
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+
+  // Content loading state for skeleton animation only
+  const [contentLoading, setContentLoading] = useState(true);
+
+  // Get stored username from localStorage or use the prop
+  const storedUserName = typeof window !== 'undefined' ? localStorage.getItem('cremation_user_name') : null;
+  const [userName, setUserName] = useState(storedUserName || propUserName);
+
+  // Toggle mobile sidebar
+  const toggleMobileSidebar = () => {
+    setIsMobileSidebarOpen(!isMobileSidebarOpen);
+  };
 
   // Authentication check effect
   useEffect(() => {
@@ -36,7 +51,6 @@ export default function CremationDashboardLayout({
         const userId = propUserData?.id || getUserIdFromCookie();
 
         if (!userId) {
-          console.log('No user ID found, redirecting to home');
           router.push('/');
           return;
         }
@@ -51,44 +65,36 @@ export default function CremationDashboardLayout({
           });
 
           if (!response.ok) {
-            console.error('Failed to fetch user data:', await response.text());
             setShowAccessDenied(true);
             setIsLoading(false);
             return;
           }
 
           const userData = await response.json();
-          console.log('Cremation user data fetched:', userData);
 
           // Verify user is a business account
           if (userData.role !== 'business' && userData.user_type !== 'business') {
-            console.log('User is not a business account:', userData.role);
             setShowAccessDenied(true);
             setIsLoading(false);
             return;
           }
 
           // Extract all possible status values
-          console.log('Checking verification status');
           const serviceProvider = userData.service_provider;
 
           if (!serviceProvider) {
-            console.log('No service provider data found, redirecting to pending verification');
             router.push('/cremation/pending-verification');
             return;
           }
 
-          console.log('FULL USER DATA:', JSON.stringify(userData, null, 2));
 
           // ONLY check application_status - ignore other fields that might not exist
           const applicationStatus = serviceProvider.application_status ?
                                     String(serviceProvider.application_status).toLowerCase() : null;
 
-          console.log('Application status:', applicationStatus);
 
           // DIRECTLY check if application_status === 'approved'
           if (applicationStatus === 'approved') {
-            console.log('APPLICATION STATUS IS APPROVED - ALLOWING ACCESS');
             setUserData(userData);
             setIsAuthenticated(true);
             setIsLoading(false);
@@ -97,7 +103,6 @@ export default function CremationDashboardLayout({
 
           // If application_status is 'pending', redirect to verification page
           if (applicationStatus === 'pending') {
-            console.log('Application status is pending, redirecting to verification page');
             router.push('/cremation/pending-verification');
             return;
           }
@@ -108,14 +113,12 @@ export default function CremationDashboardLayout({
                               serviceProvider.bir_certificate_path;
 
           if (!hasDocuments) {
-            console.log('No documents uploaded, redirecting to pending verification');
             router.push('/cremation/pending-verification');
             return;
           }
 
           // If we get here and there's no specific status but they have documents, allow access
           if (hasDocuments && !applicationStatus) {
-            console.log('No status found but documents available, allowing access');
             setUserData(userData);
             setIsAuthenticated(true);
             setIsLoading(false);
@@ -123,15 +126,12 @@ export default function CremationDashboardLayout({
           }
 
           // Any other case, redirect to pending verification
-          console.log('Verification check failed, redirecting to pending verification');
           router.push('/cremation/pending-verification');
         } catch (fetchError) {
-          console.error('Error fetching user data:', fetchError);
           setShowAccessDenied(true);
           setIsLoading(false);
         }
       } catch (error) {
-        console.error('Authentication error:', error);
         setShowAccessDenied(true);
         setIsLoading(false);
       }
@@ -159,13 +159,11 @@ export default function CremationDashboardLayout({
 
         // Validate account type
         if (accountType !== 'business') {
-          console.log('Invalid account type for cremation dashboard:', accountType);
           return null;
         }
 
         return userId;
       } catch (e) {
-        console.error('Error parsing auth cookie:', e);
         return null;
       }
     };
@@ -173,28 +171,47 @@ export default function CremationDashboardLayout({
     doVerificationCheck();
   }, [router, propUserData]);
 
-  // Content loading state for skeleton animation only
-  const [contentLoading, setContentLoading] = useState(true);
-
   // Effect to simulate content loading with a short delay
   useEffect(() => {
     if (isAuthenticated && userData) {
-      // Reduce the delay to minimize flickering
+      // Match the admin dashboard delay for consistency
       const timer = setTimeout(() => {
         setContentLoading(false);
-      }, 100);
+      }, 300);
 
       return () => clearTimeout(timer);
     }
   }, [isAuthenticated, userData]);
 
+  // Effect to store the display name in localStorage when it changes
+  useEffect(() => {
+    if (userData?.first_name) {
+      const displayName = userData.business_name ||
+        `${userData.first_name} ${userData.last_name || ''}`;
+      if (displayName && displayName !== 'Cremation Provider') {
+        localStorage.setItem('cremation_user_name', displayName);
+      }
+    }
+  }, [userData]);
+
   // Show skeleton during initial loading
   if (isLoading) {
+    // Get the most up-to-date username from multiple sources in order of preference
+    const sessionUserName = typeof window !== 'undefined' ? sessionStorage.getItem('user_full_name') : null;
+    const localUserName = typeof window !== 'undefined' ? localStorage.getItem('cremation_user_name') : null;
+
+    // Use the best available name source (session > local > state > default)
+    const loadingDisplayName = sessionUserName || localUserName || userName;
+
     return (
       <div className="min-h-screen bg-gray-50">
-        <CremationSidebar activePage={activePage} />
-        <div className="pl-64">
-          <CremationNavbar activePage={activePage} userName={userName} />
+        <CremationSidebar activePage={activePage} isMobileOpen={false} />
+        <div className="lg:pl-64">
+          <CremationNavbar
+            activePage={activePage}
+            userName={loadingDisplayName}
+            onMenuToggle={toggleMobileSidebar}
+          />
           <main className="p-6">
             <DashboardSkeleton type="cremation" />
           </main>
@@ -211,7 +228,7 @@ export default function CremationDashboardLayout({
           <p className="text-gray-500">You do not have permission to access this page.</p>
           <button
             onClick={() => router.push('/')}
-            className="mt-4 px-4 py-2 bg-[var(--primary-green)] text-white rounded-md hover:bg-opacity-90"
+            className="mt-4 px-4 py-2 bg-[var(--primary-green)] text-white rounded-md hover:bg-opacity-90 transition-all duration-300"
           >
             Return to Home
           </button>
@@ -220,12 +237,30 @@ export default function CremationDashboardLayout({
     );
   }
 
+  // Get the most up-to-date username from multiple sources in order of preference
+  const sessionUserName = typeof window !== 'undefined' ? sessionStorage.getItem('user_full_name') : null;
+  const localUserName = typeof window !== 'undefined' ? localStorage.getItem('cremation_user_name') : null;
+
+  // Get display name from user data
+  const userDataName = userData?.first_name ? `${userData.first_name} ${userData.last_name || ''}` : null;
+
+  // Use the best available name (prioritize in this order: userData > sessionStorage > localStorage > state > default)
+  const bestDisplayName = userDataName || sessionUserName || localUserName || userName;
+
   // Render the dashboard if authenticated
   return (
     <div className="min-h-screen bg-gray-50">
-      <CremationSidebar activePage={activePage} />
-      <div className="pl-64"> {/* This padding should match the width of the sidebar */}
-        <CremationNavbar activePage={activePage} userName={userData?.first_name ? `${userData.first_name} ${userData.last_name || ''}` : userName} />
+      <CremationSidebar
+        activePage={activePage}
+        isMobileOpen={isMobileSidebarOpen}
+        onCloseMobile={() => setIsMobileSidebarOpen(false)}
+      />
+      <div className="lg:pl-64 transition-all duration-300"> {/* This padding should match the width of the sidebar */}
+        <CremationNavbar
+          activePage={activePage}
+          userName={bestDisplayName}
+          onMenuToggle={toggleMobileSidebar}
+        />
         <main className="p-6">
           {contentLoading ? (
             <DashboardSkeleton type="cremation" />

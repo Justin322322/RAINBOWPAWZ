@@ -42,11 +42,13 @@ export default function TimeSlotSelector({
   useEffect(() => {
     // Only update if the selectedDate is a non-empty string
     if (selectedDate && selectedDate.trim() !== '') {
+      console.log(`TimeSlotSelector: Updating selected date from props: ${selectedDate}`);
       setSelectedDateState(selectedDate);
     }
 
     // Only update if selectedTimeSlot is not null
     if (selectedTimeSlot) {
+      console.log(`TimeSlotSelector: Updating selected time slot from props: ${selectedTimeSlot.start}-${selectedTimeSlot.end}`);
       setSelectedTimeSlotState(selectedTimeSlot);
     }
   }, [selectedDate, selectedTimeSlot]);
@@ -54,7 +56,6 @@ export default function TimeSlotSelector({
   // Fetch availability data when component mounts or provider/month changes
   useEffect(() => {
     if (providerId) {
-      console.log(`[TimeSlotSelector] Provider ID changed to ${providerId}, fetching availability data...`);
       fetchAvailabilityData();
     }
   }, [providerId, currentMonth]);
@@ -64,9 +65,7 @@ export default function TimeSlotSelector({
     if (selectedDate && availabilityData.length > 0) {
       const selectedDayData = availabilityData.find(day => day.date === selectedDate);
       if (selectedDayData) {
-        console.log(`[TimeSlotSelector] Found data for pre-selected date ${selectedDate}: ${selectedDayData.timeSlots.length} time slots`);
       } else {
-        console.log(`[TimeSlotSelector] No data found for pre-selected date ${selectedDate}`);
       }
     }
   }, [selectedDate, availabilityData]);
@@ -78,34 +77,56 @@ export default function TimeSlotSelector({
 
       // Format for month: YYYY-MM
       const monthString = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}`;
+      console.log(`TimeSlotSelector: Fetching availability data for provider ${providerId}, month ${monthString}`);
 
       // Add timestamp to prevent caching
       const timestamp = new Date().getTime();
-      console.log(`[TimeSlotSelector] Fetching availability for provider ${providerId}, month ${monthString}, package ${packageId || 'any'}`);
-      const response = await fetch(`/api/cremation/availability?providerId=${providerId}&month=${monthString}&t=${timestamp}`);
+      const url = `/api/cremation/availability?providerId=${providerId}&month=${monthString}&t=${timestamp}`;
+      console.log(`TimeSlotSelector: API URL: ${url}`);
+
+      const response = await fetch(url, {
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      });
 
       if (!response.ok) {
-        console.warn(`[TimeSlotSelector] Failed to fetch availability data: ${response.status} ${response.statusText}`);
+        console.error(`TimeSlotSelector: API response not OK: ${response.status} ${response.statusText}`);
         setError('No available time slots found. Please contact the service provider.');
         setAvailabilityData([]);
         return;
       }
 
       const data = await response.json();
+      console.log(`TimeSlotSelector: Received ${data.availability?.length || 0} days of availability data`);
 
       // Debug data received from API
-      console.log(`[TimeSlotSelector] Got availability data with ${data.availability?.length || 0} days`);
       if (data.availability?.length > 0) {
         const daysWithSlots = data.availability.filter((day: any) => day.timeSlots?.length > 0);
-        console.log(`[TimeSlotSelector] Days with time slots: ${daysWithSlots.length}`);
-        daysWithSlots.forEach((day: any) => {
-          console.log(`[TimeSlotSelector] Day ${day.date}: ${day.timeSlots.length} slots`);
+        console.log(`TimeSlotSelector: Found ${daysWithSlots.length} days with time slots`);
+
+        // Log the first few days with slots for debugging
+        daysWithSlots.slice(0, 3).forEach((day: any) => {
+          console.log(`TimeSlotSelector: Day ${day.date} has ${day.timeSlots.length} slots`);
         });
       }
 
       setAvailabilityData(data.availability || []);
+
+      // If we have a selected date, check if it's in the fetched data
+      if (selectedDateState) {
+        const selectedDayData = data.availability?.find((day: any) => day.date === selectedDateState);
+        if (selectedDayData) {
+          console.log(`TimeSlotSelector: Selected date ${selectedDateState} found in fetched data with ${selectedDayData.timeSlots?.length || 0} slots`);
+        } else {
+          console.log(`TimeSlotSelector: Selected date ${selectedDateState} NOT found in fetched data`);
+        }
+      }
+
     } catch (error) {
-      console.error('[TimeSlotSelector] Error fetching availability data:', error);
+      console.error('TimeSlotSelector: Error fetching availability data:', error);
       setError('No available time slots found. Please contact the service provider.');
       setAvailabilityData([]);
     } finally {
@@ -136,9 +157,7 @@ export default function TimeSlotSelector({
       const dateString = formatDateToString(date);
       const availabilityInfo = availabilityData.find(day => day.date === dateString);
 
-      console.log(`[TimeSlotSelector] Checking day ${dateString}: Found in availabilityData=${!!availabilityInfo}`);
       if (availabilityInfo) {
-        console.log(`[TimeSlotSelector] Day ${dateString}: isAvailable=${availabilityInfo.isAvailable}, timeSlots=${availabilityInfo.timeSlots?.length || 0}`);
       }
 
       // Only include days that are available and have time slots
@@ -155,7 +174,6 @@ export default function TimeSlotSelector({
           // Check if this package is included in the available services
           return slot.availableServices.includes(packageId);
         });
-        console.log(`[TimeSlotSelector] Day ${dateString}: Filtered slots from ${unfilteredCount} to ${filteredTimeSlots.length} for package ${packageId}`);
       }
 
       // A day is available if:
@@ -166,7 +184,6 @@ export default function TimeSlotSelector({
                         (filteredTimeSlots.length > 0) &&
                         (date >= new Date(new Date().setHours(0, 0, 0, 0))); // No past dates
 
-      console.log(`[TimeSlotSelector] Day ${dateString}: Final availability=${isAvailable}, has ${filteredTimeSlots.length} filtered slots`);
 
       days.push({
         type: 'day',
@@ -180,8 +197,17 @@ export default function TimeSlotSelector({
     return days;
   };
 
+  // Fix for date discrepancy - ensure we're using the correct date without timezone issues
   const formatDateToString = (date: Date): string => {
-    return date.toISOString().split('T')[0];
+    // Create a new date object to avoid modifying the original
+    const d = new Date(date);
+    // Get year, month, and day components
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
+    const day = String(d.getDate()).padStart(2, '0');
+
+    // Format as YYYY-MM-DD
+    return `${year}-${month}-${day}`;
   };
 
   const handlePreviousMonth = () => {
@@ -205,7 +231,7 @@ export default function TimeSlotSelector({
   };
 
   const handleDateSelect = (dateString: string, timeSlots: TimeSlot[]) => {
-    console.log(`[TimeSlotSelector] Date selected: ${dateString} with ${timeSlots.length} time slots`);
+    console.log(`TimeSlotSelector: Date selected: ${dateString} with ${timeSlots.length} time slots`);
     setSelectedDateState(dateString);
     setSelectedTimeSlotState(null); // Clear time slot selection when date changes
 
@@ -215,30 +241,36 @@ export default function TimeSlotSelector({
     // Check if this date has time slots
     const hasTimeSlots = timeSlots && timeSlots.length > 0;
     if (hasTimeSlots) {
-      console.log(`[TimeSlotSelector] Date has time slots, keeping parent selection active`);
+      console.log(`TimeSlotSelector: Date ${dateString} has ${timeSlots.length} time slots available`);
       // We don't notify the parent yet to prevent validation errors
       // The parent will be notified when a time slot is selected
+
+      // But we do notify the parent about the date selection
+      onDateTimeSelected(dateString, null);
     } else {
-      console.log(`[TimeSlotSelector] Date has no time slots, showing message`);
+      console.log(`TimeSlotSelector: Date ${dateString} has no time slots available`);
 
       // Only show a message about no available slots, not an error
       if (timeSlots.length === 0) {
         setError('This date has no available time slots. Please select another date.');
       }
+
+      // Still notify the parent about the date selection
+      onDateTimeSelected(dateString, null);
     }
   };
 
   const handleTimeSlotSelect = (timeSlot: TimeSlot) => {
-    console.log(`[TimeSlotSelector] Time slot selected: ${timeSlot.start}-${timeSlot.end} (ID: ${timeSlot.id})`);
+    console.log(`TimeSlotSelector: Time slot selected: ${timeSlot.start}-${timeSlot.end} (ID: ${timeSlot.id})`);
     setSelectedTimeSlotState(timeSlot);
 
     if (selectedDateState) {
-      console.log(`[TimeSlotSelector] Notifying parent of selection: date=${selectedDateState}, time=${timeSlot.start}-${timeSlot.end}`);
+      console.log(`TimeSlotSelector: Notifying parent of date/time selection: ${selectedDateState} at ${timeSlot.start}`);
       // Now that both date and time slot are selected, notify the parent
       // This is the proper time to trigger validation if needed
       onDateTimeSelected(selectedDateState, timeSlot);
     } else {
-      console.log(`[TimeSlotSelector] Cannot notify parent - no date selected`);
+      console.error('TimeSlotSelector: Cannot select time slot without a date');
     }
   };
 
@@ -257,52 +289,42 @@ export default function TimeSlotSelector({
   // Get available time slots for the selected date
   const getAvailableTimeSlots = () => {
     if (!selectedDateState) {
-      console.log('[TimeSlotSelector] No selected date, returning empty time slots');
       return [];
     }
 
     const selectedDayData = availabilityData.find(day => day.date === selectedDateState);
     if (!selectedDayData) {
-      console.log(`[TimeSlotSelector] No data found for selected date ${selectedDateState}`);
       return [];
     }
 
-    console.log(`[TimeSlotSelector] Found data for selected date ${selectedDateState}: isAvailable=${selectedDayData.isAvailable}, timeSlots=${selectedDayData.timeSlots?.length || 0}`);
 
     let timeSlots = selectedDayData.timeSlots || [];
 
     // If time slots array is empty, show a more specific message
     if (timeSlots.length === 0) {
-      console.log(`[TimeSlotSelector] No time slots available for ${selectedDateState}`);
     }
 
     // If packageId is provided, filter time slots that have this package available
     if (packageId && timeSlots.length > 0) {
-      console.log(`[TimeSlotSelector] Filtering ${timeSlots.length} time slots for package ${packageId}`);
       const originalCount = timeSlots.length;
 
       timeSlots = timeSlots.filter(slot => {
         // No available services defined means all services are available
         if (!slot.availableServices || slot.availableServices.length === 0) {
-          console.log(`[TimeSlotSelector] Slot ${slot.id} (${slot.start}-${slot.end}) has no specific services restrictions, keeping it`);
           return true;
         }
 
         // Check if this package is included in the available services
         const hasPackage = slot.availableServices.includes(packageId);
         if (hasPackage) {
-          console.log(`[TimeSlotSelector] Slot ${slot.id} (${slot.start}-${slot.end}) includes package ${packageId}`);
         } else {
-          console.log(`[TimeSlotSelector] Slot ${slot.id} (${slot.start}-${slot.end}) does NOT include package ${packageId}, available services:`, slot.availableServices);
         }
         return hasPackage;
       });
 
-      console.log(`[TimeSlotSelector] After filtering: ${timeSlots.length} of ${originalCount} time slots available for package ${packageId}`);
 
       // If filtering results in no time slots, show a message
       if (timeSlots.length === 0) {
-        console.log(`[TimeSlotSelector] No time slots available for package ${packageId} on ${selectedDateState} after filtering`);
       }
     }
 

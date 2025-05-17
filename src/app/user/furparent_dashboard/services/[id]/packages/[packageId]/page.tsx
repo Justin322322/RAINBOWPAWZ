@@ -48,55 +48,45 @@ function PackageDetailPage({ userData }: PackageDetailPageProps) {
 
     const fetchData = async () => {
       try {
-        console.log(`Fetching details for provider ID: ${providerId} and package ID: ${packageId}`);
         
         // Fetch provider details
         const providerResponse = await fetch(`/api/service-providers/${providerId}`);
 
         if (!providerResponse.ok) {
-          console.error(`Provider fetch failed: ${providerResponse.status} ${providerResponse.statusText}`);
           throw new Error(`Failed to fetch provider details (${providerResponse.status})`);
         }
 
         const providerData = await providerResponse.json();
         if (!providerData.provider) {
-          console.error('Provider data invalid:', providerData);
           throw new Error('Provider data is invalid or empty');
         }
         
-        console.log('Successfully fetched provider:', providerData.provider.name);
         setProvider(providerData.provider);
 
         // Fetch specific package details
         const packageResponse = await fetch(`/api/packages/${packageId}`);
 
         if (!packageResponse.ok) {
-          console.error(`Package fetch failed: ${packageResponse.status} ${packageResponse.statusText}`);
           throw new Error(`Failed to fetch package details (${packageResponse.status})`);
         }
 
         const packageData = await packageResponse.json();
         if (!packageData.package) {
-          console.error('Package data invalid:', packageData);
           throw new Error('Package data is invalid or empty');
         }
         
-        console.log('Successfully fetched package:', packageData.package.name);
         
         // Use our utility to get verified package images
         try {
           const verifiedImages = await getAllPackageImages(packageId);
           if (verifiedImages && verifiedImages.length > 0) {
             packageData.package.images = verifiedImages;
-            console.log(`Found ${verifiedImages.length} verified images for package ${packageId}:`, verifiedImages);
           }
         } catch (imgErr) {
-          console.error('Error fetching verified images:', imgErr);
         }
         
         setPackageData(packageData.package);
       } catch (err: any) {
-        console.error('Error fetching data:', err);
         setError(err.message || 'Failed to load package details');
       } finally {
         setLoading(false);

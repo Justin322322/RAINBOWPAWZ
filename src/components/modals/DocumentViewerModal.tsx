@@ -25,12 +25,10 @@ const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
   };
 
   const handleImageError = (e: React.SyntheticEvent<HTMLImageElement | HTMLIFrameElement>) => {
-    console.error('Document loading error:', e);
     setIsLoading(false);
     setError(`Failed to load document: ${formattedDocumentUrl}. Please check if the file exists.`);
 
     // Log the document URL for debugging
-    console.log('Attempted to load document from URL:', formattedDocumentUrl);
   };
 
   // Ensure document URL is properly formatted with leading slash if it's a relative path

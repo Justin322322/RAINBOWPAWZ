@@ -32,7 +32,6 @@ const PackageImage = ({ src, alt, fallbackText = 'No image available' }: Package
   }, [error, useFallbackImg]);
 
   const handleError = () => {
-    console.error('Image failed to load:', imgSrc);
     setError(true);
   };
 
@@ -46,7 +45,6 @@ const PackageImage = ({ src, alt, fallbackText = 'No image available' }: Package
           sizes="(max-width: 768px) 100vw, 33vw"
           className={`object-cover transition-opacity duration-300 ${loaded ? 'opacity-100' : 'opacity-0'}`}
           onLoad={() => {
-            console.log('Image loaded successfully with Next.js Image:', imgSrc);
             setLoaded(true);
           }}
           onError={handleError}
@@ -59,24 +57,19 @@ const PackageImage = ({ src, alt, fallbackText = 'No image available' }: Package
           alt={alt}
           className="w-full h-full object-cover"
           onLoad={() => {
-            console.log('Image loaded successfully with HTML img:', imgSrc);
             setLoaded(true);
             setError(false);
           }}
           onError={() => {
-            console.error('HTML img also failed to load:', imgSrc);
             setError(true);
             
             // Attempt to fetch the image to see server response
             fetch(imgSrc)
               .then(response => {
-                console.log('Image fetch response:', response.status, response.statusText);
                 if (!response.ok) {
-                  console.error('Image not found on server, status:', response.status);
                 }
               })
               .catch(fetchError => {
-                console.error('Error fetching image:', fetchError);
               });
           }}
         />

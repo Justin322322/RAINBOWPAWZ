@@ -155,7 +155,6 @@ export async function GET(request: NextRequest) {
     });
     
   } catch (error) {
-    console.error('Error in direct access endpoint:', error);
     return NextResponse.json({
       success: false,
       message: 'Failed to process request',

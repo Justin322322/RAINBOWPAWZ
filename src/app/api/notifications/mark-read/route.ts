@@ -82,7 +82,6 @@ export async function POST(request: NextRequest) {
         }
       });
     } catch (dbError) {
-      console.error('Database error marking notifications as read:', dbError);
       return NextResponse.json({
         error: 'Database error while marking notifications as read',
         details: dbError instanceof Error ? dbError.message : 'Unknown database error',
@@ -96,7 +95,6 @@ export async function POST(request: NextRequest) {
       });
     }
   } catch (error) {
-    console.error('Error marking notifications as read:', error);
     return NextResponse.json({
       error: 'Failed to mark notifications as read',
       details: error instanceof Error ? error.message : 'Unknown error',

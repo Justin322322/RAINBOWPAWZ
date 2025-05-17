@@ -1,5 +1,5 @@
 import { query } from '@/lib/db';
-import { sendEmail } from '@/lib/unifiedEmailService';
+import { sendEmail } from '@/lib/consolidatedEmailService';
 
 /**
  * Interface for creating a new notification
@@ -41,10 +41,10 @@ export async function createNotification({
     if (sendEmail) {
       // Get user email
       const userResult = await query('SELECT email, first_name FROM users WHERE id = ?', [userId]) as any[];
-      
+
       if (userResult && userResult.length > 0) {
         const { email, first_name } = userResult[0];
-        
+
         // Send the email notification
         await sendEmail({
           to: email,
@@ -60,7 +60,6 @@ export async function createNotification({
       notificationId: result.insertId
     };
   } catch (error) {
-    console.error('Error creating notification:', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error'
@@ -93,7 +92,7 @@ function createEmailHtml(firstName: string, title: string, message: string, type
   // The app URL, should be replaced with environment variable in production
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
   const color = getTypeColor();
-  
+
   return `
     <!DOCTYPE html>
     <html>
@@ -188,7 +187,7 @@ function createEmailHtml(firstName: string, title: string, message: string, type
  */
 function createEmailText(firstName: string, title: string, message: string, link: string | null): string {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-  
+
   return `
 Rainbow Paws Notification
 
@@ -215,10 +214,9 @@ export async function getUnreadNotificationCount(userId: number): Promise<number
       'SELECT COUNT(*) as count FROM notifications WHERE user_id = ? AND is_read = 0',
       [userId]
     ) as any[];
-    
+
     return result[0].count || 0;
   } catch (error) {
-    console.error('Error getting unread notification count:', error);
     return 0;
   }
 }
@@ -235,7 +233,6 @@ async function ensureNotificationsTable() {
     ) as any[];
 
     if (tableExists[0].count === 0) {
-      console.log('Notifications table does not exist. Creating now...');
       // Create the table if it doesn't exist
       await query(`
         CREATE TABLE IF NOT EXISTS notifications (
@@ -254,10 +251,8 @@ async function ensureNotificationsTable() {
           FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
       `);
-      console.log('Notifications table created');
     }
   } catch (error) {
-    console.error('Error ensuring notifications table:', error);
     throw error;
   }
-} 
+}

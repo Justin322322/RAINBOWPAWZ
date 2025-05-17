@@ -89,7 +89,6 @@ export async function PUT(request: NextRequest) {
       user
     });
   } catch (error) {
-    console.error('Error updating user status:', error);
     return NextResponse.json({
       error: 'Failed to update user status',
       message: error instanceof Error ? error.message : 'Unknown error'

@@ -51,7 +51,6 @@ export default function LogoutModal({ isOpen, onClose, userName = 'User' }: Logo
         router.push('/');
       }, 1500);
     } catch (error) {
-      console.error('Logout error:', error);
       // Still clear the token and redirect even if the API call fails
       clearAuthToken();
       showToast('Logged out successfully', 'success');

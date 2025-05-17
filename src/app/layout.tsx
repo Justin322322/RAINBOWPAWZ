@@ -67,7 +67,6 @@ export default function RootLayout({
                       if (window.location.pathname.startsWith('/cremation/') && 
                           !window.location.pathname.includes('/cremation/pending-verification') &&
                           !window.location.pathname.includes('/cremation/documents')) {
-                        console.log('Forcing verification check on cremation page');
                         
                         // We'll keep the user_data but force a new verification check
                         sessionStorage.removeItem('verified_business');
@@ -75,11 +74,9 @@ export default function RootLayout({
                     }
                   }
                 } catch (e) {
-                  console.error('Error parsing user data:', e);
                 }
               }
             } catch (e) {
-              console.error('Error in verification script:', e);
             }
           `}
         </Script>

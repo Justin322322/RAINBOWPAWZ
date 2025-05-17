@@ -116,13 +116,10 @@ export async function GET(request: NextRequest) {
         })
       }));
 
-      console.log(`Found ${recentApplications.length} recent applications`);
     } catch (error) {
-      console.error('Error fetching applications from service_providers:', error);
       
       // Attempt fallback query with fewer joins if the main one fails
       try {
-        console.log('Attempting fallback query for recent applications');
         recentApplications = await query(`
           SELECT
             id,
@@ -148,9 +145,7 @@ export async function GET(request: NextRequest) {
           })
         }));
         
-        console.log(`Found ${recentApplications.length} recent applications using fallback query`);
       } catch (fallbackError) {
-        console.error('Error with fallback applications query:', fallbackError);
         // If all else fails, return an empty array
         recentApplications = [];
       }
@@ -243,7 +238,6 @@ export async function GET(request: NextRequest) {
         }
       }
     } catch (error) {
-      console.error('Error fetching pending applications:', error);
     }
 
     // Get restricted users count from users table
@@ -296,7 +290,6 @@ export async function GET(request: NextRequest) {
         }
       }
     } catch (error) {
-      console.error('Error fetching restricted cremation centers:', error);
     }
 
     // Get previous month's data for comparison - safely handle if created_at doesn't exist
@@ -321,7 +314,6 @@ export async function GET(request: NextRequest) {
         previousMonthUsersCount = [{ count: Math.floor((usersCount[0]?.count || 0) * 0.8) }];
       }
     } catch (error) {
-      console.error('Error fetching previous month users count:', error);
     }
 
     let previousMonthServicesCount = [{ count: 0 }];
@@ -345,7 +337,6 @@ export async function GET(request: NextRequest) {
         previousMonthServicesCount = [{ count: Math.floor((activeServicesCount[0]?.count || 0) * 0.7) }];
       }
     } catch (error) {
-      console.error('Error fetching previous month services count:', error);
     }
 
     // Get previous month's revenue
@@ -381,7 +372,6 @@ export async function GET(request: NextRequest) {
           previousMonthRevenue = [{ total: estimatedTotal }];
         }
       } catch (error) {
-        console.error('Error fetching previous month revenue:', error);
       }
     }
 
@@ -472,7 +462,6 @@ export async function GET(request: NextRequest) {
         }
       }
     } catch (error) {
-      console.error('Error fetching previous month applications:', error);
     }
 
     // Get the total count of pending applications, not just the recent ones
@@ -498,7 +487,6 @@ export async function GET(request: NextRequest) {
         pendingApplicationsCount = pendingAppsResult[0]?.count || 0;
       }
     } catch (error) {
-      console.error('Error fetching pending applications count:', error);
       // Fallback to counting pending applications in the recent applications array
       pendingApplicationsCount = recentApplications.filter((app: any) => app.status === 'pending').length;
     }
@@ -568,7 +556,6 @@ export async function GET(request: NextRequest) {
       data: dashboardData
     });
   } catch (error) {
-    console.error('Error fetching dashboard data:', error);
     return NextResponse.json({
       error: 'Failed to fetch dashboard data',
       details: error instanceof Error ? error.message : 'Unknown error',

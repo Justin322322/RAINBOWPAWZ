@@ -11,7 +11,6 @@ export async function GET(request: NextRequest) {
 
     // Get auth token from request
     const authToken = getAuthTokenFromRequest(request);
-    console.log('Auth token:', authToken ? 'Present' : 'Missing');
 
     // In development mode, we'll allow requests without auth token for testing
     const isDevelopment = process.env.NODE_ENV === 'development';
@@ -25,7 +24,6 @@ export async function GET(request: NextRequest) {
       }
     } else if (isDevelopment) {
       // In development, allow requests without auth for testing
-      console.log('Development mode: Bypassing authentication for testing');
       isAuthenticated = true;
     }
 
@@ -73,7 +71,6 @@ export async function GET(request: NextRequest) {
           )
         `);
 
-        console.log('Created admin_notifications table');
       }
 
       // Get unread notifications
@@ -95,7 +92,6 @@ export async function GET(request: NextRequest) {
       const tableNames = tableCheckResult.map((row: any) => row.table_name);
       const useServiceProvidersTable = tableNames.includes('service_providers');
 
-      console.log(`Using ${useServiceProvidersTable ? 'service_providers' : 'business_profiles'} table for pending applications`);
 
       // Get pending applications count
       let pendingCount = 0;
@@ -171,7 +167,6 @@ export async function GET(request: NextRequest) {
         }
       });
     } catch (dbError) {
-      console.error('Database error fetching admin notifications:', dbError);
       return NextResponse.json({
         success: false,
         error: 'Database error',
@@ -187,7 +182,6 @@ export async function GET(request: NextRequest) {
       });
     }
   } catch (error) {
-    console.error('Error fetching admin notifications:', error);
     return NextResponse.json({
       error: 'Failed to fetch notifications',
       details: error instanceof Error ? error.message : 'Unknown error',
@@ -226,7 +220,6 @@ export async function POST(request: NextRequest) {
       }
     } else if (isDevelopment) {
       // In development, allow requests without auth for testing
-      console.log('Development mode: Bypassing authentication for testing');
       isAuthenticated = true;
     }
 
@@ -299,7 +292,6 @@ export async function POST(request: NextRequest) {
         }
       });
     } catch (dbError) {
-      console.error('Database error marking admin notifications as read:', dbError);
       return NextResponse.json({
         error: 'Database error while marking notifications as read',
         details: dbError instanceof Error ? dbError.message : 'Unknown database error',
@@ -313,7 +305,6 @@ export async function POST(request: NextRequest) {
       });
     }
   } catch (error) {
-    console.error('Error marking notifications as read:', error);
     return NextResponse.json({
       error: 'Failed to mark notifications as read',
       details: error instanceof Error ? error.message : 'Unknown error',

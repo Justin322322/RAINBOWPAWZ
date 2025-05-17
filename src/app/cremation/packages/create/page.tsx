@@ -208,7 +208,6 @@ function usePackageForm(router: AppRouterInstance, showToast: {
         const data = await res.json();
         return data.filePath as string;
       } catch (err) {
-        console.error(err);
         showToast(`Failed to upload ${file.name}`, 'error');
         return null;
       }
@@ -251,7 +250,6 @@ function usePackageForm(router: AppRouterInstance, showToast: {
       showToast('Package created!', 'success' as ToastType);
       router.push('/cremation/packages');
     } catch (err) {
-      console.error(err);
       const msg = err instanceof Error ? err.message : 'Failed to create';
       setErrors({ submit: msg });
       showToast(msg, 'error' as ToastType);

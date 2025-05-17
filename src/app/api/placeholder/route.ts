@@ -67,7 +67,6 @@ export async function GET(request: NextRequest) {
       packagePlaceholder: `/uploads/packages/${packageId}/1.svg`
     });
   } catch (error) {
-    console.error('Error creating placeholder images:', error);
     return NextResponse.json({
       success: false,
       error: 'Failed to create placeholder images',

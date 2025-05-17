@@ -18,7 +18,6 @@ const formatDate = (dateString: string) => {
 // Get all business applications with status and documents
 export async function GET() {
   try {
-    console.log('Fetching applications...');
 
     // First check if service_providers table exists
     let hasServiceProviders = false;
@@ -27,16 +26,13 @@ export async function GET() {
     try {
       const tablesResult = await query(`SHOW TABLES`) as any[];
       const tableNames = tablesResult.map(row => Object.values(row)[0]);
-      console.log('Available tables:', tableNames);
 
       hasServiceProviders = tableNames.includes('service_providers');
       hasUsers = tableNames.includes('users');
     } catch (err) {
-      console.error('Error checking tables:', err);
     }
 
     if (!hasUsers || !hasServiceProviders) {
-      console.error('Required tables missing:', { hasUsers, hasServiceProviders });
       return NextResponse.json({
         success: true,
         applications: [],
@@ -55,16 +51,12 @@ export async function GET() {
       userColumns = userColumnsResult.map(col => col.Field);
       hasFullName = userColumns.includes('full_name');
 
-      console.log('Users table columns:', userColumns);
-      console.log('Users table has full_name column:', hasFullName);
 
       // Check service_providers table structure
       const spColumnsResult = await query(`SHOW COLUMNS FROM service_providers`) as any[];
       serviceProviderColumns = spColumnsResult.map(col => col.Field);
 
-      console.log('Service providers table columns:', serviceProviderColumns);
     } catch (err) {
-      console.error('Error checking table structure:', err);
     }
 
     // Use a simplified, stable query with dynamic column selection based on schema
@@ -123,16 +115,13 @@ export async function GET() {
         ${serviceProviderColumns.includes('created_at') ? 'sp.created_at DESC' : 'sp.id DESC'}
     `;
 
-    console.log('Executing query:', applicationQuery);
 
     // Run the query with error handling
     let applications = [];
 
     try {
       applications = await query(applicationQuery) as any[];
-      console.log(`Retrieved ${applications.length} applications`);
     } catch (err) {
-      console.error('Error executing application query:', err);
 
       // Try a simplified backup query with dynamic fields
       try {
@@ -157,7 +146,6 @@ export async function GET() {
           minimalSelectFields.push("'pending' AS application_status");
         }
 
-        console.log('Attempting fallback query with fewer fields');
 
         const backupQuery = `
           SELECT
@@ -173,12 +161,9 @@ export async function GET() {
           LIMIT 50
         `;
         
-        console.log('Fallback query:', backupQuery);
         
         applications = await query(backupQuery) as any[];
-        console.log(`Retrieved ${applications.length} applications using backup query`);
       } catch (backupErr) {
-        console.error('Backup query also failed:', backupErr);
         return NextResponse.json({
           success: false,
           applications: [],
@@ -195,7 +180,6 @@ export async function GET() {
         try {
           submitDate = formatDate(app.created_at);
         } catch (e) {
-          console.warn('Error formatting date for app', app.id);
         }
       }
 
@@ -256,7 +240,6 @@ export async function GET() {
       applications: formattedApplications
     });
   } catch (error) {
-    console.error('Error fetching applications:', error);
     return NextResponse.json({
       success: false,
       error: 'Failed to fetch applications: ' + (error instanceof Error ? error.message : 'Unknown error'),

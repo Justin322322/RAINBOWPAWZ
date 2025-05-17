@@ -83,25 +83,21 @@ const withBusinessVerification = <P extends object>(
             // Check verification status before allowing dashboard access
             const isVerified = checkBusinessVerification(userData);
             if (!isVerified) {
-              console.log('Business not verified, redirecting to pending verification page');
               router.replace('/cremation/pending-verification');
               return;
             }
 
             // Make sure business_id is set for the user
             if (!userData.business_id && userData.user_type === 'business') {
-              console.log('User lacks business_id, attempting to find from service_providers');
               try {
                 const spResponse = await fetch(`/api/service-providers?userId=${userId}&_=${Date.now()}`);
                 if (spResponse.ok) {
                   const spData = await spResponse.json();
                   if (spData.provider && spData.provider.id) {
                     userData.business_id = spData.provider.id;
-                    console.log(`Set business_id to ${userData.business_id}`);
                   }
                 }
               } catch (spError) {
-                console.error('Error fetching service provider:', spError);
               }
             }
 
@@ -111,16 +107,23 @@ const withBusinessVerification = <P extends object>(
             sessionStorage.setItem('user_data', JSON.stringify(userData));
             sessionStorage.setItem('verified_business', 'true');
 
+            // Store the user's name in localStorage for persistence across page loads
+            // Always prioritize the user's actual name over business name
+            if (userData.first_name) {
+              const fullName = `${userData.first_name} ${userData.last_name || ''}`;
+              localStorage.setItem('cremation_user_name', fullName);
+              // Also store in sessionStorage for immediate access
+              sessionStorage.setItem('user_full_name', fullName);
+            }
+
             // Update global state
             globalBusinessAuthState.verified = true;
             globalBusinessAuthState.userData = userData;
 
           } catch (fetchError) {
-            console.error('Error fetching user data:', fetchError);
             router.replace('/');
           }
         } catch (error) {
-          console.error('Authentication error:', error);
           router.replace('/');
         } finally {
           setIsLoading(false);
@@ -132,20 +135,17 @@ const withBusinessVerification = <P extends object>(
 
     // Function to check if a business is verified
     const checkBusinessVerification = (userData: any): boolean => {
-      console.log('Checking business verification status:', userData);
 
       // This is a hard verification check that cannot be bypassed
       if (!userData) return false;
 
       // First check: verify the user has proper verification flags
       if (userData.is_verified !== 1) {
-        console.log('User verification check failed: is_verified not valid');
         return false;
       }
 
       // Second check: verify the service provider exists
       if (!userData.service_provider) {
-        console.log('Service provider data missing');
         return false;
       }
 
@@ -153,17 +153,14 @@ const withBusinessVerification = <P extends object>(
       const applicationStatus = userData.service_provider.application_status ?
                                 String(userData.service_provider.application_status).toLowerCase() : null;
 
-      console.log('Application status:', applicationStatus);
 
       // DIRECTLY check if application_status === 'approved'
       if (applicationStatus === 'approved') {
-        console.log('APPLICATION STATUS IS APPROVED - SHOULD GRANT ACCESS');
         return true;
       }
 
       // If application_status is 'pending', deny access
       if (applicationStatus === 'pending') {
-        console.log('Application is pending verification');
         return false;
       }
 
@@ -173,18 +170,15 @@ const withBusinessVerification = <P extends object>(
                           userData.service_provider.bir_certificate_path;
 
       if (!hasDocuments) {
-        console.log('Document verification check failed');
         return false;
       }
 
       // If we get here and there's no specific status but they have documents, allow access
       if (hasDocuments && !applicationStatus) {
-        console.log('No status found but documents uploaded, allowing access');
         return true;
       }
 
       // Any other case, deny access
-      console.log('Verification check failed, access denied');
       return false;
     };
 

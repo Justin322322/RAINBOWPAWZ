@@ -13,7 +13,6 @@ export async function GET(request: NextRequest) {
       }, { status: 400 });
     }
 
-    console.log('Fetching user data for ID:', userId);
 
     // Try to fetch user data from database
     try {
@@ -24,7 +23,6 @@ export async function GET(request: NextRequest) {
         [userId]
       ) as any[];
 
-      console.log('User query result:', userResult);
 
       // If user found in database, return it with defaults for missing fields
       if (userResult && userResult.length > 0) {
@@ -72,10 +70,8 @@ export async function GET(request: NextRequest) {
               // Ensure user_type is set to 'business' for backward compatibility
               user.user_type = 'business';
             } else {
-              console.log('No service provider record found for user ID:', user.id);
             }
           } catch (businessError) {
-            console.error('Error fetching service provider details:', businessError);
             // Continue with basic user data if service provider details can't be fetched
           }
         }
@@ -86,7 +82,6 @@ export async function GET(request: NextRequest) {
         return NextResponse.json(user);
       }
     } catch (dbError) {
-      console.error('Database error fetching user:', dbError);
       // Continue to fallback instead of throwing
     }
 
@@ -136,7 +131,6 @@ export async function GET(request: NextRequest) {
         [userId]
       ) as any[];
 
-      console.log('Admin query result:', adminResult);
 
       if (adminResult && adminResult.length > 0) {
         const admin = adminResult[0];
@@ -148,11 +142,9 @@ export async function GET(request: NextRequest) {
         return NextResponse.json(admin);
       }
     } catch (adminDbError) {
-      console.error('Database error fetching admin:', adminDbError);
     }
 
     // Fallback: Return a mock user if database query fails or user not found
-    console.log('User not found in database, returning mock user');
 
     const mockUser = {
       id: parseInt(userId),
@@ -173,7 +165,6 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(mockUser);
   } catch (error) {
-    console.error('User data fetch error:', error);
     return NextResponse.json({
       error: 'Failed to fetch user data',
       message: error instanceof Error ? error.message : 'Unknown error'

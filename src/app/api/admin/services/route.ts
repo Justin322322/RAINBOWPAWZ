@@ -4,12 +4,11 @@ import { getAuthTokenFromRequest } from '@/utils/auth';
 
 export async function GET(request: NextRequest) {
   try {
-    // Verify admin authentication in production only
-    const isDevelopment = process.env.NODE_ENV === 'development';
+    // Verify admin authentication
     let isAuthenticated = false;
 
     const authToken = getAuthTokenFromRequest(request);
-    
+
     if (authToken) {
       // If we have a token, validate it
       const tokenParts = authToken.split('_');
@@ -17,10 +16,6 @@ export async function GET(request: NextRequest) {
         const accountType = tokenParts[1];
         isAuthenticated = accountType === 'admin';
       }
-    } else if (isDevelopment) {
-      // In development, allow requests without auth for testing
-      console.log('Development mode: Bypassing authentication for testing');
-      isAuthenticated = true;
     }
 
     // Check authentication result
@@ -43,18 +38,16 @@ export async function GET(request: NextRequest) {
       }, { status: 400 });
     }
 
-    console.log('Getting services for provider ID:', providerId);
 
     // Check which tables exist
     const tablesResult = await query(`
-      SELECT table_name 
-      FROM information_schema.tables 
-      WHERE table_schema = DATABASE() 
+      SELECT table_name
+      FROM information_schema.tables
+      WHERE table_schema = DATABASE()
       AND table_name IN ('service_packages', 'service_providers')
     `) as any[];
 
     const tableNames = tablesResult.map((row: any) => row.table_name);
-    console.log('Available tables:', tableNames);
 
     const hasServicePackages = tableNames.includes('service_packages');
     const hasServiceProviders = tableNames.includes('service_providers');
@@ -79,11 +72,10 @@ export async function GET(request: NextRequest) {
     `) as any[];
 
     const columnNames = columnsResult.map((col: any) => col.Field);
-    console.log('Service packages columns:', columnNames);
 
     // Check for provider ID column
-    const providerIdColumn = columnNames.includes('service_provider_id') 
-      ? 'service_provider_id' 
+    const providerIdColumn = columnNames.includes('service_provider_id')
+      ? 'service_provider_id'
       : (columnNames.includes('provider_id') ? 'provider_id' : null);
 
     if (!providerIdColumn) {
@@ -98,7 +90,7 @@ export async function GET(request: NextRequest) {
 
     // Build the SQL query based on available columns
     let sql = `SELECT * FROM service_packages WHERE ${providerIdColumn} = ?`;
-    
+
     if (hasIsActive) {
       sql += ' ORDER BY is_active DESC';
     }
@@ -106,7 +98,6 @@ export async function GET(request: NextRequest) {
     // Execute the query
     const services = await query(sql, [providerId]);
 
-    console.log(`Found ${services.length} services for provider ID ${providerId}`);
 
     return NextResponse.json({
       success: true,
@@ -114,8 +105,7 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Error fetching services:', error);
-    
+
     return NextResponse.json({
       error: 'Failed to fetch services',
       details: error instanceof Error ? error.message : 'Unknown error',

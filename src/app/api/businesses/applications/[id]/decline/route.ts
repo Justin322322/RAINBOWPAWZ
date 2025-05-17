@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
     }    // With the updated schema, we only have 'declined' as the status for declined applications
     // No separate 'documents_required' status in the enum
     const applicationStatus = 'declined';
-    
+
     // Check which table exists: business_profiles or service_providers
     const tableCheckResult = await query(`
       SELECT table_name
@@ -40,13 +40,11 @@ export async function POST(request: NextRequest) {
 
     // Determine which table to use
     const tableNames = tableCheckResult.map(row => row.table_name);
-    console.log('Available tables:', tableNames);
 
     const useServiceProvidersTable = tableNames.includes('service_providers');
     const useBusinessProfilesTable = tableNames.includes('business_profiles');
 
     if (!useServiceProvidersTable && !useBusinessProfilesTable) {
-      console.error('Neither business_profiles nor service_providers table exists in the database');
       return NextResponse.json({
         message: 'Database schema error: Required tables do not exist'
       }, { status: 500 });
@@ -54,15 +52,13 @@ export async function POST(request: NextRequest) {
 
     // Use the appropriate table name
     const tableName = useServiceProvidersTable ? 'service_providers' : 'business_profiles';
-    console.log(`Using table: ${tableName}`);
 
     // Check if the table has the application_status column
     const columnsResult = await query(`
       SHOW COLUMNS FROM ${tableName} LIKE 'application_status'
     `) as any[];
-    
+
     const hasApplicationStatus = columnsResult.length > 0;
-    console.log(`Table ${tableName} has application_status column: ${hasApplicationStatus}`);    // Update business application status
     let updateResult;
     updateResult = await query(
       `UPDATE ${tableName}
@@ -73,10 +69,8 @@ export async function POST(request: NextRequest) {
        WHERE id = ?`,
       [applicationStatus, note.trim(), businessId]
     ) as mysql.ResultSetHeader;
-    
-    console.log(`Updated ${tableName} with ID ${businessId} to application_status: ${applicationStatus}`);
 
-    console.log(`Update result:`, updateResult);
+
 
     if (updateResult.affectedRows === 0) {
       return NextResponse.json({ message: 'Business profile not found' }, { status: 404 });
@@ -84,7 +78,6 @@ export async function POST(request: NextRequest) {
 
     // Force a commit to ensure the transaction is completed
     await query('COMMIT');
-    console.log(`Committed transaction for status update`);
 
     // Verify the status was updated correctly
     let verifyResult;
@@ -92,13 +85,11 @@ export async function POST(request: NextRequest) {
         `SELECT application_status FROM ${tableName} WHERE id = ?`,
         [businessId]
       ) as any[];
-      
+
       if (verifyResult && verifyResult.length > 0) {        const result = verifyResult[0];
-        console.log(`Verified status for ${tableName} with ID ${businessId}: application_status=${result.application_status}`);
-        
+
         if (result.application_status !== applicationStatus) {
-          console.error(`Status mismatch! Expected application_status=${applicationStatus}, but got application_status=${result.application_status}`);
-          
+
           // Try to update again with a direct query
           await query(
             `UPDATE ${tableName} SET application_status = ? WHERE id = ?`,
@@ -108,18 +99,14 @@ export async function POST(request: NextRequest) {
         }
       }    } else {
       // We should not reach here with the updated schema
-      console.log('Warning: The table does not have application_status column, but should have been migrated');
       try {
         // Create application_status column if it doesn't exist
         await query(`ALTER TABLE ${tableName} ADD COLUMN application_status ENUM('pending', 'approved', 'declined', 'restricted') DEFAULT 'pending'`);
-        console.log(`Added application_status column to ${tableName} table`);
-        
+
         // Set initial value based on declined state
         await query(`UPDATE ${tableName} SET application_status = ? WHERE id = ?`, [applicationStatus, businessId]);
-        console.log(`Updated the new application_status column for business ID ${businessId}`);
         await query('COMMIT');
       } catch (err) {
-        console.error('Error adding application_status column:', err);
       }
     }
 
@@ -154,7 +141,6 @@ export async function POST(request: NextRequest) {
     if (business) {
       // Send email notification using the simple email service
       try {
-        console.log(`Preparing to send notification email to ${business.email} for business ${business.business_name || business.name}`);
 
         // Send email using simple email service
         const emailResult = await sendBusinessVerificationEmail(
@@ -168,14 +154,11 @@ export async function POST(request: NextRequest) {
         );
 
         if (emailResult.success) {
-          console.log(`Notification email sent successfully to ${business.email}. Message ID: ${emailResult.messageId}`);
           emailSent = true;
         } else {
-          console.error('Failed to send notification email:', emailResult.error);
           // Continue with the process even if the email fails
         }
       } catch (emailError) {
-        console.error('Failed to send notification email:', emailError);
         // Continue with the process even if the email fails
       }
 
@@ -209,7 +192,6 @@ export async function POST(request: NextRequest) {
         }
       } catch (notificationError) {
         // Non-critical error, just log it
-        console.error('Failed to create notification:', notificationError);
       }
     }
 
@@ -228,7 +210,7 @@ export async function POST(request: NextRequest) {
         }),
         1 // TODO: Replace with actual admin ID from auth
       ]
-    ).catch(err => console.error('Failed to log admin action:', err));
+    );
 
     // Response uses application_status if available, otherwise falls back to verification_status
     return NextResponse.json({
@@ -239,7 +221,6 @@ export async function POST(request: NextRequest) {
       emailSent: emailSent
     });
   } catch (error) {
-    console.error('Error processing application:', error);
     return NextResponse.json(
       { message: 'Failed to process application' },
       { status: 500 }

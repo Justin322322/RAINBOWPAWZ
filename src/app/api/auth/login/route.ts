@@ -11,13 +11,11 @@ interface LoginResponse {
 }
 
 export async function POST(request: Request) {
-  console.log('Login API called');
   // Get the origin/host to identify if this is coming from port 3000
   const origin = request.headers.get('origin') || '';
   const host = request.headers.get('host') || '';
   const isPort3000 = origin.includes(':3000') || host.includes(':3000');
   
-  console.log(`Login request from: ${origin || host}, isPort3000: ${isPort3000}`);
 
   // Add CORS headers
   const headers = {
@@ -36,10 +34,8 @@ export async function POST(request: Request) {
 
   try {
     // Test database connection first
-    console.log('Testing database connection...');
     const isConnected = await testConnection();
     if (!isConnected) {
-      console.error('Database connection failed during login');
       return NextResponse.json({
         error: 'Database connection error',
         message: 'Unable to connect to the database. Please try again later.'
@@ -48,7 +44,6 @@ export async function POST(request: Request) {
         headers
       });
     }
-    console.log('Database connection successful');
 
     const body = await request.json();
     const { email, password } = body;
@@ -63,19 +58,15 @@ export async function POST(request: Request) {
       });
     }
 
-    console.log('Login attempt for:', email);
 
     // Check in users table - this now handles all account types
-    console.log('Querying database for user with email:', email);
     let userResult;
     try {
       userResult = await query(
         'SELECT id, first_name, last_name, email, password, role, is_verified, is_otp_verified, status FROM users WHERE email = ? LIMIT 1',
         [email]
       ) as any[];
-      console.log('Query result:', userResult ? `Found ${userResult.length} users` : 'No result');
     } catch (queryError) {
-      console.error('Error querying user:', queryError);
       throw queryError;
     }
 
@@ -84,7 +75,6 @@ export async function POST(request: Request) {
 
       // Check if user is restricted
       if (user.status === 'restricted') {
-        console.log('User is restricted, login denied:', user.id);
         return NextResponse.json({
           error: 'Account restricted',
           message: 'Your account has been restricted. Please contact support for assistance.'
@@ -95,17 +85,9 @@ export async function POST(request: Request) {
       }
 
       try {
-        console.log('Comparing password for user:', user.id);
-        console.log('Stored password hash length:', user.password ? user.password.length : 0);
-        console.log('Password from request (first 3 chars):', password.substring(0, 3) + '...');
-        console.log('Stored hash (first 20 chars):', user.password ? user.password.substring(0, 20) + '...' : 'null');
-        console.log('User role:', user.role);
-        console.log('User verification status:', user.is_verified ? 'Verified' : 'Not verified');
-        console.log('User status:', user.status);
 
         // Check if password hash is valid
         if (!user.password || user.password.length < 20) {
-          console.error('Invalid password hash in database');
           return NextResponse.json({
             error: 'Authentication error',
             message: 'Your account has an invalid password format. Please reset your password.'
@@ -117,9 +99,7 @@ export async function POST(request: Request) {
 
         try {
           const passwordMatch = await bcrypt.compare(password, user.password);
-          console.log('Password match result:', passwordMatch);
         } catch (bcryptCompareError) {
-          console.error('bcrypt.compare error:', bcryptCompareError);
           throw bcryptCompareError;
         }
 
@@ -128,12 +108,10 @@ export async function POST(request: Request) {
         
         // Special handling for port 3000 where bcrypt might behave differently
         if (!passwordMatch && isPort3000) {
-          console.log('Port 3000 detected and password match failed. Trying direct comparison...');
           
           // For development only - if the password starts with 'Test' and we're on port 3000
           // This is a special case for development testing only
           if (password === 'Test@123' && user.email.includes('admin')) {
-            console.log('Using development override for admin account on port 3000');
             passwordMatch = true;
           }
         }
@@ -181,7 +159,6 @@ export async function POST(request: Request) {
                 });
               }
             } catch (adminError) {
-              console.error('Error fetching admin profile details:', adminError);
               // Continue with basic user data if admin details can't be fetched
             }
           }
@@ -235,7 +212,6 @@ export async function POST(request: Request) {
                 });
               }
             } catch (businessError) {
-              console.error('Error fetching business profile details:', businessError);
               // Continue with basic user data if business details can't be fetched
             }
           }
@@ -263,7 +239,6 @@ export async function POST(request: Request) {
           });
         }
       } catch (bcryptError) {
-        console.error('Error comparing user password:', bcryptError);
         return NextResponse.json({
           error: 'Authentication error',
           message: 'An error occurred during authentication. Please try again.'
@@ -275,7 +250,6 @@ export async function POST(request: Request) {
     }
 
     // If we get here, no user with this email was found
-    console.log('No account found with email:', email);
     return NextResponse.json({
       error: 'User not found',
       message: 'No account exists with this email address. Please check your email or create a new account.'
@@ -285,7 +259,6 @@ export async function POST(request: Request) {
     });
 
   } catch (error) {
-    console.error('Login error:', error);
     return NextResponse.json({
       error: 'Login failed',
       message: error instanceof Error ? error.message : 'Unknown error'

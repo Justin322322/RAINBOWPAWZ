@@ -71,7 +71,6 @@ function CartPage({ userData }: CartPageProps) {
 
         setCartItems(mockCartItems);
       } catch (error) {
-        console.error('Error fetching cart items:', error);
       } finally {
         setLoading(false);
       }

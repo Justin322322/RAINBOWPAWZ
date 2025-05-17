@@ -39,7 +39,6 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
     try {
       return sessionStorage.getItem(initialOtpSentKey) === 'true';
     } catch (error) {
-      console.error('Error reading from sessionStorage:', error);
       return false;
     }
   };
@@ -50,9 +49,7 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
       // Store in both session storage (for current session) and local storage (for persistence)
       sessionStorage.setItem(initialOtpSentKey, 'true');
       window.localStorage.setItem(globalOtpSentKey, 'true');
-      console.log('Initial OTP marked as sent in both sessionStorage and localStorage');
     } catch (error) {
-      console.error('Error writing to storage:', error);
     }
   };
 
@@ -61,7 +58,6 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
       const stored = sessionStorage.getItem(cooldownKey);
       return stored ? parseInt(stored) : null;
     } catch (error) {
-      console.error('Error reading from sessionStorage:', error);
       return null;
     }
   };
@@ -70,18 +66,14 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
     try {
       const endTime = Date.now() + (durationInSeconds * 1000);
       sessionStorage.setItem(cooldownKey, endTime.toString());
-      console.log(`Cooldown end time set: ${new Date(endTime).toLocaleTimeString()}`);
     } catch (error) {
-      console.error('Error writing to sessionStorage:', error);
     }
   };
 
   const clearStoredCooldownEndTime = () => {
     try {
       sessionStorage.removeItem(cooldownKey);
-      console.log('Cooldown timer cleared from storage');
     } catch (error) {
-      console.error('Error clearing sessionStorage:', error);
     }
   };
 
@@ -94,7 +86,6 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
 
         if (cooldownEndTime && cooldownEndTime > Date.now()) {
           const remainingTime = Math.ceil((cooldownEndTime - Date.now()) / 1000);
-          console.log(`Setting cooldown timer: ${remainingTime}s remaining`);
           setResendCooldown(remainingTime);
         } else {
           setResendCooldown(0);
@@ -120,7 +111,6 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
   const generateOTP = useCallback(async () => {
     // Prevent duplicate calls
     if (isGeneratingOtpRef.current) {
-      console.log('OTP generation already in progress, skipping duplicate call');
       return;
     }
 
@@ -130,7 +120,6 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
 
       setIsResending(true);
       setErrorMessage('');
-      console.log(`Attempting to generate OTP for user ID ${userId}`);
 
       const response = await fetch('/api/auth/otp/generate', {
         method: 'POST',
@@ -144,7 +133,6 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
       });
 
       const data = await response.json();
-      console.log('OTP generation response:', data);
 
       if (!response.ok) {
         throw new Error(data.message || data.error || 'Failed to generate OTP');
@@ -154,7 +142,6 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
       const cooldownDuration = 60; // 60 seconds cooldown
       setResendCooldown(cooldownDuration);
       setStoredCooldownEndTime(cooldownDuration);
-      console.log(`Cooldown set for ${cooldownDuration}s`);
 
       // Mark that initial OTP has been sent for this user
       markInitialOtpSent();
@@ -174,7 +161,6 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
         }, 5000);
       }
     } catch (error) {
-      console.error('OTP generation error:', error);
       setErrorMessage(error instanceof Error ? error.message : 'Failed to send OTP. Please try again.');
     } finally {
       setIsResending(false);
@@ -196,7 +182,6 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
     try {
       return window.localStorage.getItem(globalOtpSentKey) === 'true';
     } catch (error) {
-      console.error('Error reading from localStorage:', error);
       return false;
     }
   };
@@ -208,7 +193,6 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
       // Also set the session storage for backward compatibility
       sessionStorage.setItem(initialOtpSentKey, 'true');
     } catch (error) {
-      console.error('Error writing to localStorage:', error);
     }
   };
 
@@ -220,11 +204,9 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
 
       // Check both global and session storage
       const initialOtpAlreadySent = hasOtpBeenSentGlobally() || hasInitialOtpBeenSent();
-      console.log(`Initial OTP already sent: ${initialOtpAlreadySent}`);
 
       if (!initialOtpAlreadySent && !isGeneratingOtpRef.current) {
         // No OTP has been sent yet - first login
-        console.log('First time opening modal, generating initial OTP');
 
         // Mark as sent before generating to prevent race conditions
         markOtpSentGlobally();
@@ -237,11 +219,9 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
           if (!isGeneratingOtpRef.current && hasOtpBeenSentGlobally()) {
             generateOTP();
           } else {
-            console.log('OTP generation was handled by another component');
           }
         }, 500); // Extended delay to prevent race conditions
       } else {
-        console.log('Modal reopened after initial OTP was already sent');
       }
 
       // Mark as initialized in state too
@@ -278,7 +258,6 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
       const timer = setTimeout(() => {
         // Close the modal if needed, but only after verification is fully complete
         if (typeof onClose === 'function') {
-          console.log('Animation complete, closing modal');
           onClose();
         }
       }, 1500);
@@ -367,7 +346,6 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
         return;
       }
 
-      console.log('OTP verification successful, updating all states...');
       
       // CRITICAL: Complete persistence for verification status
       // 1. Session Storage - immediate updates for current session
@@ -392,21 +370,17 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
               globalUserAuthState.verified = true;
               // @ts-ignore
               globalUserAuthState.userData = userData;
-              console.log('Global state updated with verified status');
             }
           } catch (e) {
-            console.error('Error updating global state:', e);
           }
           
           // Also update localStorage as an extra backup
           try {
             localStorage.setItem('user_verified', 'true');
           } catch (e) {
-            console.error('Error updating localStorage:', e);
           }
         }
       } catch (e) {
-        console.error('Error updating user data in session storage:', e);
       }
 
       // Clear the persistence flags for OTP generation
@@ -414,9 +388,7 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
       try {
         sessionStorage.removeItem(initialOtpSentKey);
         window.localStorage.removeItem(globalOtpSentKey);
-        console.log('Cleared OTP flags from both sessionStorage and localStorage');
       } catch (e) {
-        console.error('Error clearing OTP storage flags:', e);
       }
 
       // Set success state to trigger animation
@@ -425,13 +397,11 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
       // Call the success callback directly but with a delay to ensure 
       // all state updates have propagated
       setTimeout(() => {
-        console.log('Calling verification success callback...');
         onVerificationSuccess();
         
         // The modal will be closed by the animation effect
       }, 1000);
     } catch (error) {
-      console.error('OTP verification error:', error);
       setErrorMessage(error instanceof Error ? error.message : 'Failed to verify OTP. Please try again.');
       setVerificationStatus('error');
     } finally {

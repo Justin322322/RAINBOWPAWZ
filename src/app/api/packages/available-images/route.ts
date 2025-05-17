@@ -10,7 +10,6 @@ export async function GET(request: NextRequest) {
   try {
     // Get package ID from query parameters
     const packageId = request.nextUrl.searchParams.get('id');
-    console.log('Fetching available images for package ID:', packageId);
     
     // Create a map to store package images by package ID
     const imageMap: Record<string, string[]> = {};
@@ -20,13 +19,11 @@ export async function GET(request: NextRequest) {
     
     // Check if the base directory exists
     if (!fs.existsSync(packagesBasePath)) {
-      console.log('Packages directory does not exist:', packagesBasePath);
       
       // If there's a specific package ID, return an array of fallback images
       if (packageId) {
         // Use an image that definitely exists in the public folder
         const fallbackImage = `/bg_4.png`;
-        console.log(`Directory not found, using fallback image:`, fallbackImage);
         return NextResponse.json({
           success: true,
           message: 'Using fallback image',
@@ -72,7 +69,6 @@ export async function GET(request: NextRequest) {
             imageMap[dirPackageId] = imagePaths;
           }
         } catch (error) {
-          console.error(`Error reading package directory ${dirPackageId}:`, error);
         }
       } else if (entry.isFile()) {
         // This is a file directly in the packages folder (old structure)
@@ -112,11 +108,9 @@ export async function GET(request: NextRequest) {
       
       // If no images found, provide fallback
       if (packageImages.length === 0) {
-        console.log(`No images found for package ID ${packageId}, using fallback`);
         
         // Use an image that definitely exists in the public folder
         const fallbackImage = `/bg_4.png`;
-        console.log(`Using fallback image:`, fallbackImage);
         
         return NextResponse.json({
           success: true,
@@ -125,7 +119,6 @@ export async function GET(request: NextRequest) {
         });
       }
       
-      console.log(`Found ${packageImages.length} images for package ID ${packageId}:`, packageImages);
       return NextResponse.json({
         success: true,
         message: 'Images found for requested package',
@@ -140,14 +133,12 @@ export async function GET(request: NextRequest) {
       images: imageMap
     });
   } catch (error) {
-    console.error('Error retrieving available package images:', error);
     
     // If specific package ID was requested, provide a fallback
     const packageId = request.nextUrl.searchParams.get('id');
     if (packageId) {
       // Use an image that definitely exists in the public folder
       const fallbackImage = `/bg_4.png`;
-      console.log(`Error occurred, using fallback image:`, fallbackImage);
       
       return NextResponse.json({
         success: true,

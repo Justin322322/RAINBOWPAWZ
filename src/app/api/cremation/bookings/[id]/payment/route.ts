@@ -25,7 +25,6 @@ export async function PUT(
       }, { status: 400 });
     }
 
-    console.log(`Updating payment status for booking ${bookingId} to ${paymentStatus}`);
 
     // Check if service_bookings table exists
     const tableCheckQuery = `
@@ -56,7 +55,6 @@ export async function PUT(
     const hasPaymentStatusColumn = columnResult[0].count > 0;
 
     if (!hasPaymentStatusColumn) {
-      console.log('Payment status column not found, but continuing with client-side tracking');
 
       // Instead of returning an error, return a success response with a note
       // This allows the client to continue tracking payment status locally
@@ -96,7 +94,6 @@ export async function PUT(
     });
 
   } catch (error) {
-    console.error('Error updating payment status:', error);
     return NextResponse.json({
       error: 'Failed to update payment status',
       details: error instanceof Error ? error.message : String(error)

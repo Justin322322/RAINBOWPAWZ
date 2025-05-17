@@ -28,19 +28,16 @@ export default function PendingVerificationPage() {
         // Call API to check verification status
         const response = await fetch(`/api/users/${id}?t=${Date.now()}`);
         if (!response.ok) {
-          console.error('Failed to fetch user data');
           setLoading(false);
           return;
         }
         
         const userData = await response.json();
-        console.log('FULL USER DATA:', JSON.stringify(userData, null, 2));
         
         // Extract all possible status values from service provider
         const serviceProvider = userData.service_provider;
         
         if (!serviceProvider) {
-          console.log('No service provider data available');
           setLoading(false);
           return;
         }
@@ -49,11 +46,9 @@ export default function PendingVerificationPage() {
         const applicationStatus = serviceProvider.application_status ? 
                                  String(serviceProvider.application_status).toLowerCase() : null;
 
-        console.log('Application status:', applicationStatus);
         
         // DIRECTLY check if application_status === 'approved'
         if (applicationStatus === 'approved') {
-          console.log('APPLICATION STATUS IS APPROVED - REDIRECTING TO PROFILE');
           router.push('/cremation/profile');
           return;
         }
@@ -64,14 +59,12 @@ export default function PendingVerificationPage() {
                              serviceProvider.bir_certificate_path;
         
         if (hasDocuments && !applicationStatus) {
-          console.log('No status found but documents available, redirecting to profile');
           router.push('/cremation/profile');
           return;
         }
         
         setLoading(false);
       } catch (error) {
-        console.error('Error checking status:', error);
         setLoading(false);
       }
     };

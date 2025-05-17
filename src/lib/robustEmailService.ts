@@ -20,36 +20,18 @@ export async function sendRobustEmail(emailData: EmailData): Promise<{ success: 
   try {
     // Check if SMTP credentials are set
     if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
-      console.error('SMTP credentials are not properly configured');
       return { success: false, error: 'Email service not properly configured' };
     }
 
-    // Log the email attempt
-    console.log('Attempting to send robust email:', {
-      to: emailData.to,
-      subject: emailData.subject
-    });
-    
     // Extract domain from recipient email
     const recipientDomain = emailData.to.split('@')[1]?.toLowerCase();
-    console.log(`Recipient domain: ${recipientDomain}`);
-    
+
     // Create a transporter with configuration optimized for the recipient's domain
     const transporter = createOptimizedTransporter(recipientDomain);
-    
-    // If in development mode and DISABLE_EMAILS is set, just log the email
-    if (process.env.NODE_ENV === 'development' && process.env.DISABLE_EMAILS === 'true') {
-      console.log('Email sending disabled in development. Email details:', {
-        to: emailData.to,
-        subject: emailData.subject,
-        html: emailData.html.substring(0, 100) + '...'
-      });
-      return { success: true, messageId: 'dev-mode-disabled' };
-    }
 
     // Add additional headers for better deliverability
     const headers: Record<string, string> = {};
-    
+
     // Add domain-specific headers
     if (recipientDomain === 'mail.com' || recipientDomain === 'gmx.com') {
       // These domains may require specific headers
@@ -57,7 +39,7 @@ export async function sendRobustEmail(emailData: EmailData): Promise<{ success: 
       headers['Importance'] = 'high';
       headers['X-MSMail-Priority'] = 'High';
     }
-    
+
     // Send the email with optimized settings
     const info = await transporter.sendMail({
       from: emailData.from || `"Rainbow Paws" <${process.env.SMTP_USER}>`,
@@ -71,43 +53,26 @@ export async function sendRobustEmail(emailData: EmailData): Promise<{ success: 
       headers
     });
 
-    console.log('Email sent successfully:', info.messageId);
-    
-    // Log additional information for troubleshooting
-    if (info.accepted && info.accepted.length > 0) {
-      console.log('Accepted recipients:', info.accepted);
-    }
-    
+    // Check for rejected recipients
     if (info.rejected && info.rejected.length > 0) {
-      console.error('Rejected recipients:', info.rejected);
-      return { 
-        success: false, 
-        error: `Email rejected for recipients: ${info.rejected.join(', ')}` 
+      return {
+        success: false,
+        error: `Email rejected for recipients: ${info.rejected.join(', ')}`
       };
     }
-    
+
     // Record the successful email in the database for tracking
     try {
       await recordEmailSent(emailData.to, emailData.subject, info.messageId);
     } catch (recordError) {
-      console.error('Error recording email in database:', recordError);
       // Continue even if recording fails
     }
-    
+
     return { success: true, messageId: info.messageId };
   } catch (error) {
-    console.error('Email sending error:', error);
-
-    // Log more detailed error information
-    if (error instanceof Error) {
-      console.error('Error name:', error.name);
-      console.error('Error message:', error.message);
-      console.error('Error stack:', error.stack);
-    }
-
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : 'Unknown error' 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
     };
   }
 }
@@ -125,7 +90,7 @@ function createOptimizedTransporter(recipientDomain?: string): nodemailer.Transp
       pass: process.env.SMTP_PASS
     }
   };
-  
+
   // Domain-specific optimizations
   if (recipientDomain === 'mail.com' || recipientDomain === 'gmx.com') {
     // These domains may have specific requirements
@@ -133,11 +98,10 @@ function createOptimizedTransporter(recipientDomain?: string): nodemailer.Transp
       ...baseConfig,
       tls: {
         rejectUnauthorized: false // Less strict TLS requirements
-      },
-      debug: true, // Enable debug output for troubleshooting
+      }
     });
   }
-  
+
   // Default transporter
   return nodemailer.createTransport(baseConfig);
 }
@@ -159,14 +123,13 @@ async function recordEmailSent(recipient: string, subject: string, messageId: st
         INDEX (sent_at)
       )
     `);
-    
+
     // Record the email
     await query(
       'INSERT INTO email_log (recipient, subject, message_id) VALUES (?, ?, ?)',
       [recipient, subject, messageId]
     );
   } catch (error) {
-    console.error('Error recording email in database:', error);
     throw error;
   }
 }

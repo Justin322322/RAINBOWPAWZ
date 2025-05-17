@@ -22,9 +22,7 @@ export const PackageCards: React.FC<PackageCardsProps> = ({
 }) => {
   // Add debug logging to check packages data
   useEffect(() => {
-    console.log('Packages data received:', packages);
     packages.forEach(pkg => {
-      console.log(`Package ${pkg.id} (${pkg.name}) has ${pkg.images?.length || 0} images:`, pkg.images);
     });
   }, [packages]);
 

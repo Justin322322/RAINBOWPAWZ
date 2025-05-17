@@ -69,7 +69,6 @@ const withAdminAuth = <P_Original extends object>(
 
       const checkAuth = async () => {
         try {
-          console.log('withAdminAuth: Checking admin authentication');
           
           // Get the auth token from cookie or sessionStorage
           const cookies = document.cookie.split(';');
@@ -86,7 +85,6 @@ const withAdminAuth = <P_Original extends object>(
                 authValue = cookieParts[1];
               }
 
-              console.log('withAdminAuth: Auth token from cookie:', authValue);
               const tokenParts = authValue.split('_');
 
               if (tokenParts.length === 2) {
@@ -105,28 +103,24 @@ const withAdminAuth = <P_Original extends object>(
             try {
               const localStorageToken = localStorage.getItem('auth_token_3000');
               if (localStorageToken) {
-                console.log('withAdminAuth: Found token in localStorage for port 3000:', localStorageToken);
                 const tokenParts = localStorageToken.split('_');
                 
                 if (tokenParts.length === 2) {
                   const [userId, accountType] = tokenParts;
                   
                   if (userId && accountType === 'admin') {
-                    console.log('withAdminAuth: Using localStorage token for port 3000');
                     await fetchAdminData(userId);
                     return;
                   }
                 }
               }
             } catch (e) {
-              console.error('withAdminAuth: Error accessing localStorage:', e);
             }
           }
           
           // Try sessionStorage as fallback
           const sessionToken = sessionStorage.getItem('auth_token');
           if (sessionToken) {
-            console.log('withAdminAuth: Auth token from sessionStorage:', sessionToken);
             const tokenParts = sessionToken.split('_');
             
             if (tokenParts.length === 2) {
@@ -140,10 +134,8 @@ const withAdminAuth = <P_Original extends object>(
           }
           
           // If we get here, no valid auth token was found
-          console.log('withAdminAuth: No valid admin auth token found');
           router.replace('/');
         } catch (error) {
-          console.error('withAdminAuth: Authentication error:', error);
           router.replace('/');
         }
       };
@@ -151,18 +143,14 @@ const withAdminAuth = <P_Original extends object>(
       // Helper function to fetch admin data
       const fetchAdminData = async (userId: string) => {
         try {
-          console.log('withAdminAuth: Fetching admin data for userId:', userId);
           const response = await fetch(`/api/admins/${userId}`);
 
           if (!response.ok) {
-            console.log('withAdminAuth: Failed to fetch admin data, status:', response.status);
 
             // Try to get the error message
             try {
               const errorData = await response.json();
-              console.log('withAdminAuth: Error response:', errorData);
             } catch (parseError) {
-              console.log('withAdminAuth: Could not parse error response');
             }
 
             router.replace('/');
@@ -170,10 +158,8 @@ const withAdminAuth = <P_Original extends object>(
           }
 
           const fetchedAdminData = await response.json();
-          console.log('withAdminAuth: Received admin data:', fetchedAdminData);
 
           if (!fetchedAdminData.user_type || fetchedAdminData.user_type !== 'admin') {
-            console.log('withAdminAuth: Invalid admin data, missing or incorrect user_type');
             router.replace('/');
             return;
           }
@@ -182,9 +168,7 @@ const withAdminAuth = <P_Original extends object>(
           setIsAuthenticated(true);
           sessionStorage.setItem('admin_data', JSON.stringify(fetchedAdminData));
           globalAdminAuthState = { verified: true, adminData: fetchedAdminData };
-          console.log('withAdminAuth: Admin authentication successful');
         } catch (fetchError) {
-          console.error('withAdminAuth: Error fetching admin data:', fetchError);
           router.replace('/');
         }
       };

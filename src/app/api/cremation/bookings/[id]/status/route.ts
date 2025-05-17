@@ -17,7 +17,6 @@ export async function PUT(
     try {
       requestBody = await request.json();
     } catch (error) {
-      console.error('Error parsing request body:', error);
       return NextResponse.json({ 
         error: 'Invalid request body', 
         details: 'Could not parse JSON body' 
@@ -25,7 +24,6 @@ export async function PUT(
     }
     
     const { status } = requestBody;
-    console.log(`Attempting to update booking ${bookingId} status to ${status}`);
 
     if (!status || !['pending', 'confirmed', 'in_progress', 'completed', 'cancelled'].includes(status)) {
       return NextResponse.json({ 
@@ -44,7 +42,6 @@ export async function PUT(
     const tablesResult = await query(tablesCheckQuery) as any[];
     const tableNames = tablesResult.map((row: any) => row.TABLE_NAME.toLowerCase());
     
-    console.log('Available tables:', tableNames);
     
     const hasServiceBookings = tableNames.includes('service_bookings');
     const hasBookings = tableNames.includes('bookings');
@@ -56,15 +53,12 @@ export async function PUT(
     // Try to update in service_bookings first if available
     if (hasServiceBookings) {
       const updateQuery = `UPDATE service_bookings SET status = ? WHERE id = ?`;
-      console.log('Executing service_bookings update query:', updateQuery);
       
       try {
         const result = await query(updateQuery, [status, bookingId]) as any;
-        console.log('Service bookings update result:', result);
         
         if (result && result.affectedRows > 0) {
           updated = true;
-          console.log('Successfully updated service_bookings table');
           
           // If status is completed or cancelled, get the booking details for successful_bookings table
           if (status === 'completed' || status === 'cancelled') {
@@ -84,10 +78,8 @@ export async function PUT(
             }
           }
         } else {
-          console.log('No rows affected in service_bookings table');
         }
       } catch (error) {
-        console.error('Error updating service_bookings:', error);
         // Continue to try the other table
       }
     }
@@ -95,15 +87,12 @@ export async function PUT(
     // If not updated and bookings table exists, try there
     if (!updated && hasBookings) {
       const updateQuery = `UPDATE bookings SET status = ? WHERE id = ?`;
-      console.log('Executing bookings update query:', updateQuery);
       
       try {
         const result = await query(updateQuery, [status, bookingId]) as any;
-        console.log('Bookings update result:', result);
         
         if (result && result.affectedRows > 0) {
           updated = true;
-          console.log('Successfully updated bookings table');
           
           // If status is completed or cancelled, get the booking details for successful_bookings table
           if (status === 'completed' || status === 'cancelled') {
@@ -124,10 +113,8 @@ export async function PUT(
             }
           }
         } else {
-          console.log('No rows affected in bookings table');
         }
       } catch (error) {
-        console.error('Error updating bookings:', error);
         if (!hasServiceBookings) {
           // Only throw if this is the only table available
           throw error;
@@ -145,7 +132,6 @@ export async function PUT(
     // If status is completed or cancelled and we have the successful_bookings table, insert a record
     if ((status === 'completed' || status === 'cancelled') && hasSuccessfulBookings && bookingDetails) {
       try {
-        console.log(`Inserting ${status} booking into successful_bookings table:`, bookingDetails);
         
         const insertQuery = `
           INSERT INTO successful_bookings (
@@ -170,9 +156,7 @@ export async function PUT(
           paymentStatus
         ]) as any;
         
-        console.log('Successfully inserted into successful_bookings table, ID:', insertResult.insertId);
       } catch (error) {
-        console.error('Error inserting into successful_bookings:', error);
         // Don't fail the entire request if this part fails
       }
     }
@@ -184,7 +168,6 @@ export async function PUT(
     });
     
   } catch (error) {
-    console.error('Error updating booking status:', error);
     return NextResponse.json({ 
       error: 'Failed to update booking status',
       details: error instanceof Error ? error.message : 'Unknown error'

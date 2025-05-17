@@ -36,7 +36,6 @@ export default function VerifyOTPPage() {
   }, [router]);
   
   const handleVerificationSuccess = () => {
-    console.log('VerifyOTPPage: Verification success handler called');
     // Update user data to reflect verification
     if (userData) {
       const updatedUserData = {
@@ -59,29 +58,23 @@ export default function VerifyOTPPage() {
             globalUserAuthState.verified = true;
             // @ts-ignore
             globalUserAuthState.userData = updatedUserData;
-            console.log('VerifyOTPPage: Global state updated successfully');
           }
         } catch (e) {
-          console.error('VerifyOTPPage: Error updating global state:', e);
         }
         
         // 3. Additional localStorage backup
         localStorage.setItem('user_verified', 'true');
         
-        console.log('VerifyOTPPage: All verification states updated successfully');
         
         // Use timeout to ensure all states have been properly updated before navigating
         setTimeout(() => {
-          console.log('VerifyOTPPage: Redirecting to dashboard after verification');
           router.push('/user/furparent_dashboard');
         }, 100);
       } catch (e) {
-        console.error('VerifyOTPPage: Error during verification process:', e);
         // If there's an error, still try to redirect
         router.push('/user/furparent_dashboard');
       }
     } else {
-      console.error('VerifyOTPPage: No user data available for verification');
       router.push('/');
     }
   };

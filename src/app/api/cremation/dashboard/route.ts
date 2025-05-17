@@ -35,7 +35,6 @@ export async function GET(request: NextRequest) {
     `) as any[];
     
     const availableTables = tablesResult.map(row => row.TABLE_NAME.toLowerCase());
-    console.log('Available tables:', availableTables);
     
     const hasServiceBookings = availableTables.includes('service_bookings');
     const hasBookings = availableTables.includes('bookings');
@@ -150,7 +149,6 @@ export async function GET(request: NextRequest) {
         
         recentBookings = [...recentBookings, ...serviceRecentBookings];
       } catch (bookingError) {
-        console.error('Error fetching service_bookings:', bookingError);
       }
     }
     
@@ -176,7 +174,6 @@ export async function GET(request: NextRequest) {
         
         recentBookings = [...recentBookings, ...legacyRecentBookings];
       } catch (bookingError) {
-        console.error('Error fetching bookings:', bookingError);
       }
     }
     
@@ -224,7 +221,6 @@ export async function GET(request: NextRequest) {
           
           // Skip blob URLs - they won't work as server paths
           if (imagePath.startsWith('blob:')) {
-            console.log(`Package ${pkg.id} has blob URL that can't be served: ${imagePath}`);
             return null;
           }
           // Check if it's already a complete path
@@ -245,7 +241,6 @@ export async function GET(request: NextRequest) {
         }
         
         // Log the image paths for debugging
-        console.log(`Package ${pkg.id} has ${pkg.images.length} images. First image: ${pkg.image}`);
       } else {
         pkg.images = [];
         pkg.image = null;
@@ -319,7 +314,6 @@ export async function GET(request: NextRequest) {
       }))
     });
   } catch (error) {
-    console.error('Error fetching cremation dashboard data:', error);
     return NextResponse.json({
       error: 'Failed to fetch dashboard data',
       message: error instanceof Error ? error.message : 'Unknown error'

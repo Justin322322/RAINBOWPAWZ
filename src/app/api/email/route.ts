@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { sendEmail, queueEmail } from '@/lib/unifiedEmailService';
+import { sendEmail, queueEmail } from '@/lib/consolidatedEmailService';
 import {
   createWelcomeEmail,
   createPasswordResetEmail,
@@ -24,11 +24,7 @@ export async function POST(request: Request) {
       useQueue = false // Whether to queue the email or send immediately
     } = body;
 
-    console.log('Email request received:', {
-      type,
-      email,
-      useQueue
-    });
+
 
     let emailData;
     let emailResult;
@@ -113,27 +109,14 @@ export async function POST(request: Request) {
         }, { status: 400 });
     }
 
-    // Log the email data being sent
-    console.log('Preparing to send email:', {
-      to: emailData.to,
-      subject: emailData.subject,
-      type,
-      useQueue
-    });
-
     // Send or queue the email
     if (useQueue) {
-      console.log('Queueing email...');
       emailResult = await queueEmail(emailData);
     } else {
-      console.log('Sending email directly...');
       emailResult = await sendEmail(emailData);
     }
 
-    console.log('Email result:', emailResult);
-
     if (!emailResult.success) {
-      console.error('Email sending failed:', emailResult.error);
       throw new Error(emailResult.error || 'Failed to send email');
     }
 
@@ -158,7 +141,6 @@ export async function POST(request: Request) {
       return NextResponse.json(response);
     }
   } catch (error) {
-    console.error('Email processing error:', error);
     return NextResponse.json({
       error: 'Failed to process email request',
       message: error instanceof Error ? error.message : 'Unknown error'

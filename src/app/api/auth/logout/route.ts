@@ -62,7 +62,6 @@ export async function POST() {
       message: 'Logged out successfully'
     });
   } catch (error) {
-    console.error('Logout error:', error);
     return NextResponse.json({
       error: 'Failed to logout',
       message: error instanceof Error ? error.message : 'Unknown error'

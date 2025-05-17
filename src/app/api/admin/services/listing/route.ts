@@ -62,14 +62,12 @@ async function getPackageImages(packageId: number) {
         
         packageImages = packageFiles.map(file => `/uploads/packages/${file}`);
       } catch (err) {
-        console.error('Error reading uploads directory:', err);
       }
     }
     
     // Return empty array if no images are found
     return packageImages;
   } catch (error) {
-    console.error(`Error getting images for package ${packageId}:`, error);
     // Return empty array instead of fallback image
     return [];
   }
@@ -81,13 +79,11 @@ async function findPackageImagePaths(packageId: number) {
     const uploadsBaseDir = path.join(process.cwd(), 'public', 'uploads', 'packages');
     let packageImages: string[] = [];
     
-    console.log(`Looking for images for package ID: ${packageId}`);
     
     // First, check for the package-specific folder (new structure)
     const packageDir = path.join(uploadsBaseDir, packageId.toString());
     if (fs.existsSync(packageDir)) {
       try {
-        console.log(`Package directory exists: ${packageDir}`);
         const packageFiles = fs.readdirSync(packageDir);
         
         // Filter for image files only
@@ -97,12 +93,10 @@ async function findPackageImagePaths(packageId: number) {
         });
         
         if (imageFiles.length > 0) {
-          console.log(`Found ${imageFiles.length} images in package directory:`, imageFiles);
           packageImages = imageFiles.map(file => `/uploads/packages/${packageId}/${file}`);
           return packageImages;
         }
       } catch (err) {
-        console.error(`Error reading package directory for ID ${packageId}:`, err);
       }
     }
     
@@ -126,19 +120,16 @@ async function findPackageImagePaths(packageId: number) {
         });
         
         if (exactMatches.length > 0) {
-          console.log(`Found ${exactMatches.length} exact matches in root dir for package ${packageId}:`, exactMatches);
           packageImages = exactMatches.map(file => `/uploads/packages/${file}`);
           return packageImages;
         }
       } catch (err) {
-        console.error('Error reading uploads root directory:', err);
       }
     }
     
     // Return empty array if no images found - don't add fallback sample images
     return [];
   } catch (error) {
-    console.error(`Error finding images for package ${packageId}:`, error);
     // Return empty array instead of fallback
     return [];
   }
@@ -161,7 +152,6 @@ export async function GET(request: NextRequest) {
       }
     } else if (isDevelopment) {
       // In development, allow requests without auth for testing
-      console.log('Development mode: Bypassing authentication for testing');
       isAuthenticated = true;
     }
 
@@ -249,15 +239,12 @@ export async function GET(request: NextRequest) {
     const fullQuery = `${baseQuery} ${whereClause} ORDER BY p.created_at DESC LIMIT ? OFFSET ?`;
     queryParams.push(limit, offset);
 
-    console.log('Executing query:', fullQuery);
-    console.log('Query params:', queryParams);
 
     // Execute the query with error handling
     let servicesResult;
     try {
       servicesResult = await query(fullQuery, queryParams) as any[];
     } catch (err) {
-      console.error('Error executing service query:', err);
       // Try simplified query without joins if the first one fails
       try {
         const backupQuery = `
@@ -280,7 +267,6 @@ export async function GET(request: NextRequest) {
         `;
         servicesResult = await query(backupQuery, [limit, offset]) as any[];
       } catch (backupErr) {
-        console.error('Backup query also failed:', backupErr);
         return NextResponse.json({
           success: true,
           services: [],
@@ -301,7 +287,6 @@ export async function GET(request: NextRequest) {
       const countResult = await query(`SELECT COUNT(*) as total FROM service_packages`) as any[];
       total = countResult[0]?.total || 0;
     } catch (countErr) {
-      console.error('Error counting services:', countErr);
       total = servicesResult.length;
     }
 
@@ -321,7 +306,6 @@ export async function GET(request: NextRequest) {
       const imagePaths = await findPackageImagePaths(service.id);
       
       // Debug output for each package ID 
-      console.log(`Service ID ${service.id} has image paths:`, imagePaths);
 
       // Get package inclusions and add-ons
       let inclusions = [];
@@ -342,7 +326,6 @@ export async function GET(request: NextRequest) {
         
         addOns = addOnsResult.map((item: any) => item.description);
       } catch (err) {
-        console.error(`Error fetching inclusions/add-ons for package ${service.id}:`, err);
       }
 
       return {
@@ -380,7 +363,6 @@ export async function GET(request: NextRequest) {
       }
     });
   } catch (error) {
-    console.error('Error fetching services listing:', error);
     
     return NextResponse.json({
       success: true, // Return success:true even with errors to avoid breaking UI
@@ -397,7 +379,6 @@ async function checkTableExists(tableName: string): Promise<boolean> {
     const result = await query(`SHOW TABLES LIKE '${tableName}'`) as any[];
     return result.length > 0;
   } catch (err) {
-    console.error(`Error checking if table ${tableName} exists:`, err);
     return false;
   }
 } 

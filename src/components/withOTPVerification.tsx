@@ -196,11 +196,9 @@ const withOTPVerification = <P extends object>(
               setHasShownOTPModal(true);
             }
           } catch (fetchError) {
-            console.error('Error fetching user data:', fetchError);
             router.replace('/');
           }
         } catch (error) {
-          console.error('Authentication error:', error);
           router.replace('/');
         }
       };
@@ -209,7 +207,6 @@ const withOTPVerification = <P extends object>(
     }, [router, hasShownOTPModal]);
 
     const handleVerificationSuccess = () => {
-      console.log('HOC: Verification success handler called');
       // Update user data to reflect verification
       if (userData) {
         const updatedUserData = {
@@ -236,15 +233,12 @@ const withOTPVerification = <P extends object>(
           // 3. Additional localStorage backup
           localStorage.setItem('user_verified', 'true');
           
-          console.log('HOC: All verification states updated successfully');
         } catch (e) {
-          console.error('HOC: Error updating verification states:', e);
         }
       }
       
       // Simply hide the modal, don't navigate
       setShowOTPModal(false);
-      console.log('HOC: OTP modal hidden, user should remain on dashboard');
     };
 
     // Don't render anything while verifying - prevents flash

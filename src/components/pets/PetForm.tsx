@@ -84,7 +84,6 @@ const PetForm: React.FC<PetFormProps> = ({ pet, onSubmit, onCancel, isSubmitting
         image_path: data.filePath
       }));
     } catch (error) {
-      console.error('Error uploading image:', error);
       setUploadError(error instanceof Error ? error.message : 'Failed to upload image');
     } finally {
       setIsUploading(false);
@@ -119,7 +118,6 @@ const PetForm: React.FC<PetFormProps> = ({ pet, onSubmit, onCancel, isSubmitting
                 alt="Pet preview"
                 className="w-full h-full object-cover"
                 onError={(e) => {
-                  console.error('Failed to load image:', imagePreview);
                   const target = e.target as HTMLImageElement;
                   target.onerror = null; // Prevent infinite loop
                   target.src = '/placeholder-pet.png'; // Fallback image

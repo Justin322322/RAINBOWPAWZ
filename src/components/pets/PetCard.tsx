@@ -33,7 +33,6 @@ const PetCard: React.FC<PetCardProps> = ({ pet, onEdit, onDelete }) => {
               alt={pet.name}
               className="w-full h-full object-cover"
               onError={(e) => {
-                console.error('Failed to load pet image:', imagePath);
                 const target = e.target as HTMLImageElement;
                 target.onerror = null; // Prevent infinite loop
                 target.src = '/placeholder-pet.png'; // Fallback image

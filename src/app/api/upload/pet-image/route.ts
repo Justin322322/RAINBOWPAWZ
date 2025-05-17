@@ -7,9 +7,7 @@ import { getAuthTokenFromRequest } from '@/utils/auth';
 // Function to ensure directory exists
 async function ensureDirectoryExists(dirPath: string) {
   if (!existsSync(dirPath)) {
-    console.log(`Creating directory: ${dirPath}`);
     await mkdir(dirPath, { recursive: true });
-    console.log(`Directory created: ${dirPath}`);
   }
 }
 
@@ -80,7 +78,6 @@ export async function POST(request: NextRequest) {
       imageUrl: relativePath // Add imageUrl for backward compatibility
     });
   } catch (error) {
-    console.error('Error uploading file:', error);
     return NextResponse.json({
       error: 'Failed to upload file',
       details: error instanceof Error ? error.message : 'Unknown error'

@@ -35,7 +35,6 @@ export async function middleware(request: NextRequest) {
 
     // If no auth token exists, redirect to login page
     if (!authCookie) {
-      console.log('No auth token found in cookies, redirecting to login');
       return NextResponse.redirect(new URL('/', request.url));
     }
 
@@ -52,7 +51,6 @@ export async function middleware(request: NextRequest) {
       const parts = decodedValue.split('_');
 
       if (parts.length !== 2) {
-        console.log('Invalid auth token format, redirecting to login');
         return NextResponse.redirect(new URL('/', request.url));
       }
 

@@ -73,22 +73,18 @@ export default function AdminServicesPage() {
 
         if (data.success) {
           // Process service images to ensure they're consistent
-          console.log('API response data:', data);
           
           // Find what image files exist in the uploads directory
           try {
             fetch('/api/packages/available-images')
               .then(resp => resp.json())
               .then(imgData => {
-                console.log('Available package images:', imgData);
                 // Store available images in a cookie for the PackageImage component to use
                 if (imgData.images) {
                   document.cookie = `packageFiles=${JSON.stringify(imgData.images)}; path=/; max-age=300`;
                 }
               })
-              .catch(e => console.error('Error fetching available images:', e));
           } catch (e) {
-            console.error('Error setting up image checker:', e);
           }
           
           const servicesWithImages = data.services.map((service: any) => {
@@ -135,7 +131,6 @@ export default function AdminServicesPage() {
           });
         }
       } catch (err) {
-        console.error('Error fetching services:', err);
         const errorMsg = err instanceof Error ? err.message : 'An unknown error occurred';
         setError(errorMsg);
         setNotification({

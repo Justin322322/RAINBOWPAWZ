@@ -7,7 +7,6 @@ export async function POST(request: NextRequest) {
   try {
     // Verify admin authentication
     const authToken = getAuthTokenFromRequest(request);
-    console.log('Auth token:', authToken ? 'Present' : 'Missing');
 
     // In development mode, we'll allow requests without auth token for testing
     const isDevelopment = process.env.NODE_ENV === 'development';
@@ -23,7 +22,6 @@ export async function POST(request: NextRequest) {
       }
     } else if (isDevelopment) {
       // In development, allow requests without auth for testing
-      console.log('Development mode: Bypassing authentication for testing');
       isAuthenticated = true;
     }
 
@@ -59,16 +57,9 @@ export async function POST(request: NextRequest) {
     // For application_status, when restoring, use 'approved' (it's the new equivalent of 'verified')
     const newApplicationStatus = action === 'restrict' ? 'restricted' : 'approved';
 
-    console.log('Setting status for business ID:', businessId, 'Action:', action);
-    console.log('New status values:', {
-      newApplicationStatus,
-      newStatus,
-    });
-
     let result;
     const tableName = 'service_providers'; // Use only the service_providers table
     try {
-      console.log(`Using table: ${tableName}`);
 
       // First, check if the business profile exists
       const checkResult = await query(`
@@ -77,10 +68,8 @@ export async function POST(request: NextRequest) {
         WHERE id = ?
       `, [businessId]) as any[];
 
-      console.log('Check result:', checkResult);
 
       if (!checkResult || checkResult.length === 0) {
-        console.error('Business profile not found with ID:', businessId);
         return NextResponse.json({
           error: 'Business profile not found',
           details: `No business profile found with ID ${businessId} in ${tableName} table`,
@@ -90,18 +79,15 @@ export async function POST(request: NextRequest) {
 
       // Get the user ID from the check result
       const businessUserId = checkResult[0].user_id;
-      console.log(`Found business with user ID: ${businessUserId}`);
 
       // Check for available columns
       const columnsResult = await query(`
         SHOW COLUMNS FROM ${tableName}
       `) as any[];
 
-      console.log('Columns check result:', columnsResult);
 
       // Get all column names
       const columnNames = columnsResult.map((col: any) => col.Field);
-      console.log('Available columns:', columnNames);
 
       // Check for required columns
       const hasApplicationStatus = columnNames.includes('application_status');
@@ -149,7 +135,6 @@ export async function POST(request: NextRequest) {
 
       // If there are no columns to update, return an error
       if (updateParts.length === 0) {
-        console.error('No columns found to update');
         return NextResponse.json({
           error: 'Database schema issue',
           details: 'Could not find appropriate columns to update',
@@ -170,16 +155,12 @@ export async function POST(request: NextRequest) {
         updateParams.push(businessType);
       }
 
-      console.log('Using update query:', updateQuery);
-      console.log('Update parameters:', updateParams);
 
       try {
         result = await query(updateQuery, updateParams);
-        console.log('Update result:', result);
 
         // If no rows were affected, try without the provider_type condition
         if (hasProviderType && (result as any).affectedRows === 0) {
-          console.log('No rows affected with provider_type condition. Trying without it...');
 
           // Remove the provider_type condition and the last parameter
           if (businessType) {
@@ -188,10 +169,8 @@ export async function POST(request: NextRequest) {
           updateQuery = `UPDATE ${tableName} SET ${updateParts.join(', ')} WHERE id = ?`;
 
           result = await query(updateQuery, updateParams);
-          console.log('Update result (without provider_type):', result);
         }
       } catch (queryError) {
-        console.error('SQL error during update:', queryError);
         return NextResponse.json({
           error: 'SQL error during update',
           details: queryError instanceof Error ? queryError.message : 'Unknown database error',
@@ -216,7 +195,6 @@ export async function POST(request: NextRequest) {
             WHERE id = ?
           `, [action === 'restrict' ? 'restricted' : 'active', userId]);
 
-          console.log(`Updated user status with ID ${userId} to ${action === 'restrict' ? 'restricted' : 'active'}`);
 
           // Handle user_restrictions table if it exists
           const restrictionsTableResult = await query(`
@@ -233,7 +211,7 @@ export async function POST(request: NextRequest) {
             } else {
               // Mark existing restrictions as inactive
               await query(`
-                UPDATE user_restrictions 
+                UPDATE user_restrictions
                 SET is_active = 0, updated_at = NOW()
                 WHERE user_id = ? AND is_active = 1
               `, [userId]);
@@ -242,10 +220,8 @@ export async function POST(request: NextRequest) {
         }
       } catch (userUpdateError) {
         // Non-critical error, just log it
-        console.error('Failed to update user status:', userUpdateError);
       }
     } catch (updateError) {
-      console.error('Error during database update:', updateError);
       throw updateError;
     }
 
@@ -261,7 +237,6 @@ export async function POST(request: NextRequest) {
     // If no rows were affected, it could be because the business was already in the desired state
     // In this case, we'll still return success to avoid confusing the client
     if ((result as any).affectedRows === 0) {
-      console.log('No rows affected, but continuing with success response');
       // Check the current status to include in the response
       const currentStatusResult = await query(`
         SELECT application_status
@@ -306,11 +281,9 @@ export async function POST(request: NextRequest) {
           JSON.stringify({ action, businessId, newStatus, newApplicationStatus })
         ]);
       } else {
-        console.log('admin_logs table does not exist, skipping audit logging');
       }
     } catch (logError) {
       // Non-critical error, just log it
-      console.error('Failed to log admin action:', logError);
     }
 
     return NextResponse.json({
@@ -320,7 +293,6 @@ export async function POST(request: NextRequest) {
       newApplicationStatus
     });
   } catch (error) {
-    console.error('Error updating business status:', error);
     return NextResponse.json({
       error: 'Failed to update business status',
       details: error instanceof Error ? error.message : 'Unknown error',

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { processEmailQueue } from '@/lib/unifiedEmailService';
+import { processEmailQueue } from '@/lib/consolidatedEmailService';
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,7 +15,6 @@ export async function POST(request: NextRequest) {
       ...result
     });
   } catch (error) {
-    console.error('Error processing email queue:', error);
     return NextResponse.json({
       error: 'Failed to process email queue',
       message: error instanceof Error ? error.message : 'Unknown error'
@@ -37,7 +36,6 @@ export async function GET(request: NextRequest) {
       ...result
     });
   } catch (error) {
-    console.error('Error processing email queue:', error);
     return NextResponse.json({
       error: 'Failed to process email queue',
       message: error instanceof Error ? error.message : 'Unknown error'

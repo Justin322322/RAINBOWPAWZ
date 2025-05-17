@@ -113,7 +113,6 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
       
       // Log the file details for debugging
       if (file) {
-        console.log(`File selected for ${name}:`, file.name, file.type, file.size);
       }
       
       setFormData(prev => ({
@@ -215,14 +214,11 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
           const docData = await docResponse.json();
           
           if (!docResponse.ok) {
-            console.error('Document upload error:', docData.error);
             // We'll continue even if document upload fails
             // since the user account has been created
           } else {
-            console.log('Documents uploaded successfully');
           }
         } catch (docError) {
-          console.error('Error uploading documents:', docError);
           // Continue with registration even if document upload fails
         }
       }
@@ -238,7 +234,6 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
         window.location.href = '/cremation/dashboard';
       }, 1500);
     } catch (error) {
-      console.error('Registration error:', error);
       const errorMsg = error instanceof Error ? error.message : 'Failed to create account. Please try again.';
       showToast(errorMsg, 'error');
       setErrorMessage(errorMsg);

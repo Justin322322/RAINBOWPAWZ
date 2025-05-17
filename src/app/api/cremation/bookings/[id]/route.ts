@@ -12,18 +12,14 @@ export async function GET(
     const bookingId = await Promise.resolve(params.id);
 
     if (!bookingId) {
-      console.log('Missing booking ID in request');
       return NextResponse.json({ error: 'Booking ID is required' }, { status: 400 });
     }
 
-    console.log(`Fetching booking with ID: ${bookingId}`);
 
     // Test database connection first
     try {
       await query('SELECT 1 as connection_test');
-      console.log('Database connection successful');
     } catch (dbError) {
-      console.error('Database connection failed:', dbError);
       return NextResponse.json({
         error: 'Database connection failed',
         details: dbError instanceof Error ? dbError.message : String(dbError)
@@ -41,7 +37,6 @@ export async function GET(
       `;
       tablesResult = await query(tablesCheckQuery) as any[];
     } catch (tableError) {
-      console.error('Error checking available tables:', tableError);
       return NextResponse.json({
         error: 'Failed to check database tables',
         details: tableError instanceof Error ? tableError.message : String(tableError)
@@ -52,10 +47,8 @@ export async function GET(
     const hasServiceBookings = tableNames.includes('service_bookings');
     const hasBookings = tableNames.includes('bookings');
 
-    console.log(`Available tables - service_bookings: ${hasServiceBookings}, bookings: ${hasBookings}`);
 
     if (!hasServiceBookings && !hasBookings) {
-      console.error('Required tables not found in database');
       return NextResponse.json({
         error: 'Database schema error',
         details: 'Required booking tables not found in database'
@@ -70,22 +63,18 @@ export async function GET(
     if (hasServiceBookings) {
       try {
         // First, let's check if booking #17 exists with a direct query and log all columns
-        console.log(`Checking if booking ${bookingId} exists with direct query...`);
         const checkQuery = `DESCRIBE service_bookings`;
         const columnsResult = await query(checkQuery) as any[];
-        console.log(`Service bookings table columns:`, columnsResult.map(col => col.Field));
 
         // Now check if the booking exists
         const existsQuery = `SELECT * FROM service_bookings WHERE id = ?`;
         const existsResult = await query(existsQuery, [bookingId]) as any[];
 
         if (existsResult && existsResult.length > 0) {
-          console.log(`Booking #${bookingId} exists in service_bookings table with data:`, existsResult[0]);
 
           // Check for null or invalid foreign keys that might cause JOIN issues
           const userIdValid = existsResult[0].user_id ? true : false;
           const packageIdValid = existsResult[0].package_id ? true : false;
-          console.log(`Foreign keys - user_id valid: ${userIdValid}, package_id valid: ${packageIdValid}`);
 
           // Try to get the booking with a very simple query first
           bookingData = existsResult[0];
@@ -99,9 +88,7 @@ export async function GET(
               if (userResult && userResult.length > 0) {
                 // Merge user data into booking data
                 bookingData = { ...bookingData, ...userResult[0] };
-                console.log(`Added user data to booking from user ID: ${bookingData.user_id}`);
               } else {
-                console.log(`User with ID ${bookingData.user_id} not found`);
                 // Add placeholder user data to prevent formatting errors
                 bookingData = {
                   ...bookingData,
@@ -112,7 +99,6 @@ export async function GET(
                 };
               }
             } catch (userError) {
-              console.error(`Error fetching user data:`, userError);
               // Add placeholder user data
               bookingData = {
                 ...bookingData,
@@ -142,9 +128,7 @@ export async function GET(
               if (packageResult && packageResult.length > 0) {
                 // Merge package data into booking data
                 bookingData = { ...bookingData, ...packageResult[0] };
-                console.log(`Added package data to booking from package ID: ${bookingData.package_id}`);
               } else {
-                console.log(`Package with ID ${bookingData.package_id} not found`);
                 // Add placeholder package data
                 bookingData = {
                   ...bookingData,
@@ -153,7 +137,6 @@ export async function GET(
                 };
               }
             } catch (packageError) {
-              console.error(`Error fetching package data:`, packageError);
               // Add placeholder package data
               bookingData = {
                 ...bookingData,
@@ -170,9 +153,7 @@ export async function GET(
             };
           }
 
-          console.log(`Successfully built booking data for ID ${bookingId} with fallback approach`);
         } else {
-          console.log(`Booking #${bookingId} not found in service_bookings table with direct query`);
 
           // Try the original query as a fallback
           const serviceBookingQuery = `
@@ -191,12 +172,10 @@ export async function GET(
 
           if (serviceBookingResult && serviceBookingResult.length > 0) {
             bookingData = serviceBookingResult[0];
-            console.log(`Found booking in service_bookings table with JOIN query: ${bookingData.id}`);
           }
         }
       } catch (queryError) {
         serviceBookingError = queryError;
-        console.error('Error querying service_bookings table:', queryError);
         // Continue to try the other table instead of failing immediately
       }
     }
@@ -209,7 +188,6 @@ export async function GET(
         const directResult = await query(directQuery, [bookingId]) as any[];
 
         if (directResult && directResult.length > 0) {
-          console.log(`Found booking in bookings table with direct query: ${directResult[0].id}`);
 
           // Using traditional bookings table with a more permissive query
           const bookingsQuery = `
@@ -229,7 +207,6 @@ export async function GET(
 
           if (bookingsResult && bookingsResult.length > 0) {
             bookingData = bookingsResult[0];
-            console.log(`Found booking in bookings table with full query: ${bookingData.id}`);
           } else {
             // Try a fallback query without JOINs
             const fallbackQuery = `SELECT * FROM bookings WHERE id = ?`;
@@ -237,7 +214,6 @@ export async function GET(
 
             if (fallbackResult && fallbackResult.length > 0) {
               bookingData = fallbackResult[0];
-              console.log(`Retrieved booking with fallback query: ${bookingData.id}`);
 
               // Try to get user data separately
               if (bookingData.user_id) {
@@ -247,24 +223,20 @@ export async function GET(
                 if (userResult && userResult.length > 0) {
                   // Merge user data into booking data
                   bookingData = { ...bookingData, ...userResult[0] };
-                  console.log(`Added user data to booking`);
                 }
               }
             }
           }
         } else {
-          console.log(`Booking not found in bookings table with direct query, id: ${bookingId}`);
         }
       } catch (queryError) {
         bookingsError = queryError;
-        console.error('Error querying bookings table:', queryError);
         // If both queries failed, we'll handle it below
       }
     }
 
     // If booking is still not found in either table
     if (!bookingData) {
-      console.log(`Booking not found in any available tables, id: ${bookingId}`);
 
       // Provide detailed error information
       return NextResponse.json({
@@ -280,7 +252,6 @@ export async function GET(
 
     // Validate booking data before formatting - be more lenient
     if (!bookingData || typeof bookingData !== 'object') {
-      console.error('No booking data retrieved or invalid data type:', bookingData);
       return NextResponse.json({
         error: 'Invalid booking data',
         details: 'Retrieved booking data is missing or has an invalid format'
@@ -289,14 +260,12 @@ export async function GET(
 
     // Even if id is missing, we'll try to format with the data we have
     if (!bookingData.id) {
-      console.warn('Booking data missing ID, will attempt to format anyway:', bookingData);
       // Assign the ID from the URL parameter
       bookingData.id = parseInt(bookingId);
     }
 
     // Format the booking data for response
     try {
-      console.log('Formatting booking data with keys:', Object.keys(bookingData));
 
       // Ensure all required fields exist with fallbacks
       const safeBookingData = {
@@ -331,7 +300,6 @@ export async function GET(
         try {
           return formatDate(dateString);
         } catch (e) {
-          console.error('Error formatting date:', e);
           return 'Invalid date';
         }
       };
@@ -342,7 +310,6 @@ export async function GET(
         try {
           return formatTime(timeString);
         } catch (e) {
-          console.error('Error formatting time:', e);
           return 'Invalid time';
         }
       };
@@ -375,11 +342,8 @@ export async function GET(
         processingTime: safeBookingData.processing_time
       };
 
-      console.log('Successfully formatted booking data');
-      console.log('Pet image URL:', safeBookingData.pet_image_url);
       return NextResponse.json(formattedBooking);
     } catch (formatError) {
-      console.error('Error formatting booking data:', formatError);
 
       // Create a minimal valid response as a last resort
       try {
@@ -410,7 +374,6 @@ export async function GET(
           createdAt: 'Unknown date'
         };
 
-        console.log('Returning minimal booking data as fallback');
         return NextResponse.json(minimalBooking);
       } catch (fallbackError) {
         // If even the minimal response fails, return an error
@@ -423,7 +386,6 @@ export async function GET(
     }
 
   } catch (error) {
-    console.error('Error fetching booking details:', error);
     return NextResponse.json({
       error: 'Failed to fetch booking details',
       details: error instanceof Error ? error.message : String(error),
@@ -497,7 +459,6 @@ export async function PUT(
     });
 
   } catch (error) {
-    console.error('Error updating booking status:', error);
     return NextResponse.json({ error: 'Failed to update booking status' }, { status: 500 });
   }
 }

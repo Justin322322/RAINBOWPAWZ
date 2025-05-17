@@ -5,18 +5,15 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
   // Extract ID from params
   const id = params.id;
 
-  console.log('Fetching direct application status for ID:', id);
 
   try {
     const businessId = parseInt(id);
     if (isNaN(businessId)) {
-      console.error('Invalid business ID:', id);
       return NextResponse.json({ message: 'Invalid business ID' }, { status: 400 });
     }
 
     // We're using only the service_providers table
     const tableName = 'service_providers';
-    console.log(`Using table: ${tableName}`);
 
     // Fetch just the status fields directly from the database
     const statusResult = await query(`
@@ -32,10 +29,8 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
         id = ?
     `, [businessId]) as any[];
 
-    console.log('Status query result:', statusResult ? `Found ${statusResult.length} results` : 'No results');
 
     if (!statusResult || statusResult.length === 0) {
-      console.error('Business profile not found for ID:', businessId);
       return NextResponse.json({ message: 'Business profile not found' }, { status: 404 });
     }
 
@@ -44,18 +39,15 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     // Map the application_status to verification_status for backward compatibility
     result.verification_status = result.application_status;
     
-    console.log(`Application status: ${result.application_status}`);
 
     // Return the status values from the database
     return NextResponse.json(result);
   } catch (error) {
-    console.error('Error fetching business application status:', error);
 
     // Get more detailed error information
     let errorMessage = 'Failed to fetch business application status';
     if (error instanceof Error) {
       errorMessage = `${errorMessage}: ${error.message}`;
-      console.error('Error stack:', error.stack);
     }
 
     return NextResponse.json(

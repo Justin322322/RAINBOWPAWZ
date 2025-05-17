@@ -6,7 +6,6 @@ export async function POST(request: NextRequest) {
   try {
     // Verify admin authentication
     const authToken = getAuthTokenFromRequest(request);
-    console.log('Auth token:', authToken ? 'Present' : 'Missing');
 
     // In development mode, we'll allow requests without auth token for testing
     const isDevelopment = process.env.NODE_ENV === 'development';
@@ -21,7 +20,6 @@ export async function POST(request: NextRequest) {
       }
     } else if (isDevelopment) {
       // In development, allow requests without auth for testing
-      console.log('Development mode: Bypassing authentication for testing');
       isAuthenticated = true;
     }
 
@@ -38,7 +36,6 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { userId, userType, businessId } = body;
 
-    console.log('Received request body:', body);
 
     if (!userId || !userType) {
       return NextResponse.json({
@@ -50,7 +47,6 @@ export async function POST(request: NextRequest) {
     try {
       // Handle user based on user type
       if (userType === 'pet_parent') {
-        console.log('Restoring pet parent with ID:', userId);
 
         // First check if the user exists
         const userExists = await query('SELECT id FROM users WHERE id = ?', [userId]) as any[];
@@ -84,7 +80,6 @@ export async function POST(request: NextRequest) {
           }, { status: 400 });
         }
 
-        console.log('Restoring cremation center with business ID:', businessId);
 
         // Check which table exists: business_profiles or service_providers
         const tableCheckResult = await query(`
@@ -98,7 +93,6 @@ export async function POST(request: NextRequest) {
         const useServiceProvidersTable = tableNames.includes('service_providers');
         const tableName = useServiceProvidersTable ? 'service_providers' : 'business_profiles';
 
-        console.log(`Using ${tableName} table for restoring cremation center`);
 
         // First check if the business profile exists
         const businessExists = await query(`SELECT id, user_id FROM ${tableName} WHERE id = ?`, [businessId]) as any[];
@@ -166,7 +160,6 @@ export async function POST(request: NextRequest) {
           WHERE id = ?
         `, updateParams);
 
-        console.log(`Updated ${tableName} with ID ${businessId} to status: approved/verified`);
 
         // Verify the update was successful
         const verifyResult = await query(`
@@ -175,18 +168,15 @@ export async function POST(request: NextRequest) {
         `, [businessId]) as any[];
 
         if (verifyResult && verifyResult.length > 0) {
-          console.log(`Verified status for ${tableName} with ID ${businessId}:`, verifyResult[0]);
           
           // Check for mismatch in statuses and retry if needed
           let statusMismatch = false;
           
           if (hasVerificationStatus && verifyResult[0].verification_status !== 'verified') {
-            console.error(`Verification status mismatch! Expected: verified, Actual: ${verifyResult[0].verification_status}`);
             statusMismatch = true;
           }
           
           if (hasApplicationStatus && verifyResult[0].application_status !== 'approved') {
-            console.error(`Application status mismatch! Expected: approved, Actual: ${verifyResult[0].application_status}`);
             statusMismatch = true;
           }
           
@@ -201,14 +191,11 @@ export async function POST(request: NextRequest) {
                 WHERE id = ?`,
                 [businessId]
               );
-              console.log(`Attempted to fix status with a second update query`);
             } catch (retryError) {
-              console.error('Error during retry update:', retryError);
               // Continue even if retry fails, since the initial update might have been partially successful
             }
           }
         } else {
-          console.warn(`Could not verify update for ${tableName} with ID ${businessId}`);
         }
 
         // Also update the user's status
@@ -231,7 +218,6 @@ export async function POST(request: NextRequest) {
         }, { status: 400 });
       }
     } catch (dbError) {
-      console.error('Database error when restoring user:', dbError);
       return NextResponse.json({
         error: 'Database error when restoring user',
         details: dbError instanceof Error ? dbError.message : 'Unknown database error',
@@ -244,7 +230,6 @@ export async function POST(request: NextRequest) {
       message: 'User restored successfully'
     });
   } catch (error) {
-    console.error('Error restoring user:', error);
 
     // Provide more detailed error information
     let errorMessage = 'Failed to restore user';

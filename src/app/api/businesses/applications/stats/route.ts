@@ -15,7 +15,6 @@ export async function GET() {
 
     if (viewExists[0]?.count > 0) {
       // Use the view if it exists
-      console.log('Using business_application_stats view for statistics');
       const viewStats = await query('SELECT * FROM business_application_stats') as any[];
       
       if (!viewStats || viewStats.length === 0) {
@@ -34,7 +33,6 @@ export async function GET() {
 
     if (hasApplicationStatus.length > 0) {
       // Use the application_status field
-      console.log('Using application_status field for statistics');
       const stats = await query(`
         SELECT
           COUNT(*) AS total,
@@ -56,7 +54,6 @@ export async function GET() {
       return NextResponse.json(stats[0]);
     } else {
       // Fall back to the old schema using verification_status
-      console.log('Falling back to verification_status for statistics');
       const stats = await query(`
         SELECT
           COUNT(*) AS total,
@@ -96,7 +93,6 @@ export async function GET() {
       return NextResponse.json(result);
     }
   } catch (error) {
-    console.error('Error fetching business application statistics:', error);
     return NextResponse.json(
       { 
         error: 'Failed to fetch statistics',

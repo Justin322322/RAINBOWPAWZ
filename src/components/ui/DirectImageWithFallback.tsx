@@ -15,7 +15,7 @@ const DirectImageWithFallback = ({
   alt,
   className = "w-full h-full object-cover",
   fallbackText = 'No image available',
-  debug = false // Set to false by default for production
+  debug = false
 }: DirectImageWithFallbackProps) => {
   const [error, setError] = useState(false);
   const [imgSrc, setImgSrc] = useState('');

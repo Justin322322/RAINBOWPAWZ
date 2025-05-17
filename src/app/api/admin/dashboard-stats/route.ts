@@ -31,7 +31,6 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    console.log('Fetching admin dashboard statistics...');
 
     // Helper function to calculate percentage change
     const calculateChange = (current: number, previous: number): string => {
@@ -46,11 +45,9 @@ export async function GET(request: NextRequest) {
         // Simple query to check database connection
         const pingResult = await query('SELECT 1 as connected');
         if (!pingResult || !pingResult[0] || pingResult[0].connected !== 1) {
-          console.error('Database connection check failed');
           throw new Error('Database connection failed');
         }
       } catch (pingError) {
-        console.error('Database connection error:', pingError);
         // Return default stats when database is unreachable
         return NextResponse.json({ 
           success: true, 
@@ -88,10 +85,8 @@ export async function GET(request: NextRequest) {
           if (row.table_name === 'bookings') tables.bookings = true;
         });
       } catch (tablesError) {
-        console.error('Error checking available tables:', tablesError);
       }
       
-      console.log('Available tables:', tables);
       
       // Total users count
       let totalUserCount = 0;
@@ -100,7 +95,6 @@ export async function GET(request: NextRequest) {
           const userCountResult = await query('SELECT COUNT(*) as count FROM users');
           totalUserCount = userCountResult[0]?.count || 0;
         } catch (err) {
-          console.error('Error counting users:', err);
         }
       }
       
@@ -111,7 +105,6 @@ export async function GET(request: NextRequest) {
           const businessCountResult = await query('SELECT COUNT(*) as count FROM service_providers');
           totalBusinessCount = businessCountResult[0]?.count || 0;
         } catch (err) {
-          console.error('Error counting service providers:', err);
         }
       }
       
@@ -140,14 +133,11 @@ export async function GET(request: NextRequest) {
               
               if (activeServicesResult && activeServicesResult[0]) {
                 totalServiceCount = activeServicesResult[0].count || 0;
-                console.log('Found active services for approved cremation centers:', totalServiceCount);
               }
             } catch (joinErr) {
-              console.error('Error counting active services for approved centers:', joinErr);
             }
           }
         } catch (err) {
-          console.error('Error counting service packages:', err);
           // Try fallback query without is_active filter if that column might not exist
           try {
             const serviceCountResult = await query(`
@@ -156,7 +146,6 @@ export async function GET(request: NextRequest) {
             `);
             totalServiceCount = serviceCountResult[0]?.count || 0;
           } catch (fallbackErr) {
-            console.error('Fallback error counting service packages:', fallbackErr);
           }
         }
       }
@@ -168,7 +157,6 @@ export async function GET(request: NextRequest) {
           const revenueResult = await query('SELECT SUM(total_amount) as total FROM bookings WHERE status = "completed"');
           totalRevenue = revenueResult[0]?.total || 0;
         } catch (err) {
-          console.error('Error calculating revenue:', err);
         }
       }
       
@@ -187,7 +175,6 @@ export async function GET(request: NextRequest) {
           `) as any[];
           hasApplicationStatus = columnCheck.length > 0;
         } catch (err) {
-          console.error('Error checking application_status column:', err);
         }
         
         try {
@@ -208,7 +195,6 @@ export async function GET(request: NextRequest) {
             activeUserCounts.cremation = cremationResult[0]?.count || 0;
           }
         } catch (err) {
-          console.error('Error counting active cremation centers:', err);
         }
       }
       
@@ -221,7 +207,6 @@ export async function GET(request: NextRequest) {
           `);
           activeUserCounts.furparent = furparentResult[0]?.count || 0;
         } catch (err) {
-          console.error('Error counting active fur parents:', err);
         }
       }
       
@@ -240,7 +225,6 @@ export async function GET(request: NextRequest) {
           `) as any[];
           hasApplicationStatus = columnCheck.length > 0;
         } catch (err) {
-          console.error('Error checking application_status column:', err);
         }
         
         try {
@@ -286,7 +270,6 @@ export async function GET(request: NextRequest) {
             pendingApplications.last_month = lastMonthResult[0]?.count || 0;
           }
         } catch (err) {
-          console.error('Error counting pending applications:', err);
         }
       }
       
@@ -306,7 +289,6 @@ export async function GET(request: NextRequest) {
             `) as any[];
             hasApplicationStatus = columnCheck.length > 0;
           } catch (err) {
-            console.error('Error checking application_status column:', err);
           }
           
           if (hasApplicationStatus) {
@@ -325,7 +307,6 @@ export async function GET(request: NextRequest) {
             restrictedUsers.cremation = cremationResult[0]?.count || 0;
           }
         } catch (err) {
-          console.error('Error counting restricted cremation centers:', err);
         }
       }
       
@@ -338,7 +319,6 @@ export async function GET(request: NextRequest) {
           `);
           restrictedUsers.furparent = furparentResult[0]?.count || 0;
         } catch (err) {
-          console.error('Error counting restricted fur parents:', err);
         }
       }
       
@@ -372,7 +352,6 @@ export async function GET(request: NextRequest) {
       
       return NextResponse.json({ success: true, stats });
     } catch (dbError) {
-      console.error('Database query error:', dbError);
       
       // Return default stats with error info
       return NextResponse.json({ 
@@ -383,7 +362,6 @@ export async function GET(request: NextRequest) {
       });
     }
   } catch (error) {
-    console.error('Error fetching admin dashboard stats:', error);
     
     // Even on error, return default stats to avoid UI breakage
     return NextResponse.json({ 

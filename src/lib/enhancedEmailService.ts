@@ -50,25 +50,10 @@ export async function sendEmail(emailData: EmailData): Promise<{ success: boolea
   try {
     // Check if SMTP credentials are set
     if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
-      console.error('SMTP credentials are not properly configured');
       return { success: false, error: 'Email service not properly configured' };
     }
 
-    // Log the email attempt
-    console.log('Attempting to send email:', {
-      to: emailData.to,
-      subject: emailData.subject
-    });
 
-    // If in development mode and DISABLE_EMAILS is set, just log the email
-    if (process.env.NODE_ENV === 'development' && process.env.DISABLE_EMAILS === 'true') {
-      console.log('Email sending disabled in development. Email details:', {
-        to: emailData.to,
-        subject: emailData.subject,
-        html: emailData.html.substring(0, 100) + '...'
-      });
-      return { success: true, messageId: 'dev-mode-disabled' };
-    }
 
     // Send the email
     const info = await transporter.sendMail({
@@ -82,17 +67,8 @@ export async function sendEmail(emailData: EmailData): Promise<{ success: boolea
       attachments: emailData.attachments
     });
 
-    console.log('Email sent successfully:', info.messageId);
     return { success: true, messageId: info.messageId };
   } catch (error) {
-    console.error('Email sending error:', error);
-
-    // Log more detailed error information
-    if (error instanceof Error) {
-      console.error('Error name:', error.name);
-      console.error('Error message:', error.message);
-      console.error('Error stack:', error.stack);
-    }
 
     return {
       success: false,
@@ -126,10 +102,8 @@ export async function queueEmail(emailData: EmailData): Promise<{ success: boole
       ]
     ) as any;
 
-    console.log('Email queued successfully:', result.insertId);
     return { success: true, queueId: result.insertId };
   } catch (error) {
-    console.error('Error queueing email:', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error'
@@ -154,7 +128,7 @@ export async function processEmailQueue(limit: number = 10): Promise<{ processed
       [limit]
     ) as EmailQueueEntry[];
 
-    console.log(`Processing ${pendingEmails.length} emails from queue`);
+
 
     let success = 0;
     let failed = 0;
@@ -197,8 +171,6 @@ export async function processEmailQueue(limit: number = 10): Promise<{ processed
           failed++;
         }
       } catch (error) {
-        console.error(`Error processing email ${email.id}:`, error);
-
         // Update the email status to failed and increment attempts
         await query(
           `UPDATE email_queue
@@ -213,7 +185,6 @@ export async function processEmailQueue(limit: number = 10): Promise<{ processed
 
     return { processed: pendingEmails.length, success, failed };
   } catch (error) {
-    console.error('Error processing email queue:', error);
     return { processed: 0, success: 0, failed: 0 };
   }
 }
@@ -243,7 +214,6 @@ async function ensureEmailQueueTable(): Promise<void> {
       )
     `);
   } catch (error) {
-    console.error('Error ensuring email queue table:', error);
     throw error;
   }
 }

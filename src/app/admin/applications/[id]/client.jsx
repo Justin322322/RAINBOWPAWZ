@@ -48,12 +48,9 @@ function ApplicationDetailContent({ id }) {
       // Check if we have a stored status in sessionStorage
       try {
         const storedStatus = sessionStorage.getItem(`application_${id}_status`);
-        if (storedStatus) {
-          console.log(`Found stored status in sessionStorage for application ${id}: ${storedStatus}`);
-          // We'll use this in fetchApplicationData
-        }
+        // We'll use this in fetchApplicationData
       } catch (storageError) {
-        console.error('Error accessing sessionStorage:', storageError);
+        // Error accessing sessionStorage
       }
 
       // EMERGENCY FIX: Check if this is a declined or restricted application
@@ -65,10 +62,8 @@ function ApplicationDetailContent({ id }) {
 
           if (dbStatusResponse.ok) {
             const dbStatusData = await dbStatusResponse.json();
-            console.log('EMERGENCY STATUS CHECK:', dbStatusData);
 
             if (dbStatusData.verification_status === 'declined' || dbStatusData.verification_status === 'restricted') {
-              console.log('CRITICAL: Database shows this application is', dbStatusData.verification_status);
 
               // Force the correct status in the UI
               setApplication(prev => {
@@ -96,7 +91,6 @@ function ApplicationDetailContent({ id }) {
             }
           }
         } catch (error) {
-          console.error('Error in emergency status check:', error);
         }
       };
 
@@ -125,7 +119,7 @@ function ApplicationDetailContent({ id }) {
       });
 
       if (response.ok) {
-        const data = await response.json();
+        await response.json();
 
         // Update application status locally
         setApplication(prev => ({
@@ -154,7 +148,6 @@ function ApplicationDetailContent({ id }) {
         throw new Error(data.message || 'Failed to approve application');
       }
     } catch (error) {
-      console.error('Error approving application:', error);
       alert('Failed to approve application: ' + (error.message || 'Unknown error'));
     } finally {
       setIsProcessing(false);
@@ -165,7 +158,6 @@ function ApplicationDetailContent({ id }) {
   const handleDeclineDocument = async (note, requestDocuments) => {
     try {
       setIsProcessing(true);
-      console.log(`Declining application ${id} with note: "${note}" and requestDocuments: ${requestDocuments}`);
 
       // Show a processing message
       alert('Processing your request. Please wait...');
@@ -182,12 +174,10 @@ function ApplicationDetailContent({ id }) {
       });
 
       if (response.ok) {
-        const responseData = await response.json();
-        console.log('Decline response:', responseData);
+        await response.json();
 
         // Update application status locally
         const newStatus = requestDocuments ? 'documents_required' : 'declined';
-        console.log(`Setting local application status to: ${newStatus}`);
 
         setApplication(prev => {
           const updated = {
@@ -196,7 +186,6 @@ function ApplicationDetailContent({ id }) {
             verificationStatus: newStatus,
             verificationDate: new Date().toISOString().split('T')[0]
           };
-          console.log('Updated application state:', updated);
           return updated;
         });
 
@@ -215,17 +204,14 @@ function ApplicationDetailContent({ id }) {
           // Store the status in sessionStorage to ensure it persists across page reloads
           try {
             sessionStorage.setItem(`application_${id}_status`, newStatus);
-            console.log(`Stored status ${newStatus} in sessionStorage for application ${id}`);
 
             // EMERGENCY FIX: Also store in localStorage as a backup
             localStorage.setItem(`application_${id}_status`, newStatus);
-            console.log(`Also stored status in localStorage as backup`);
 
             // Set a cookie as another backup method
             document.cookie = `application_${id}_status=${newStatus}; path=/; max-age=3600`;
-            console.log(`Also set a cookie as another backup method`);
           } catch (storageError) {
-            console.error('Failed to store status in storage:', storageError);
+            // Failed to store status in storage
           }
 
           // Force a hard reload of the page to ensure all UI elements are updated
@@ -233,11 +219,9 @@ function ApplicationDetailContent({ id }) {
         }, 1500);
       } else {
         const errorData = await response.json();
-        console.error('API error response:', errorData);
         throw new Error(errorData.message || 'Failed to decline application');
       }
     } catch (error) {
-      console.error('Error declining application:', error);
       alert('Failed to decline application: ' + (error.message || 'Unknown error'));
     } finally {
       setIsProcessing(false);
@@ -252,27 +236,19 @@ function ApplicationDetailContent({ id }) {
     try {
       // Add a cache-busting parameter to ensure we get fresh data
       const cacheBuster = new Date().getTime();
-      console.log('Fetching application data for ID:', id, 'with cache buster:', cacheBuster);
 
       // CRITICAL: First, let's directly check the database status to ensure we get the most accurate information
       // This is the most reliable source of truth
       const dbStatusResponse = await fetch(`/api/businesses/applications/${id}/status?_=${cacheBuster}`);
       let verificationStatusFromDB = null;
-      let statusFromDB = null;
 
       if (dbStatusResponse.ok) {
         const dbStatusData = await dbStatusResponse.json();
-        console.log('Direct DB status check:', dbStatusData);
         if (dbStatusData.verification_status) {
           verificationStatusFromDB = dbStatusData.verification_status;
-          statusFromDB = dbStatusData.status || dbStatusData.verification_status;
-          console.log('Verification status from direct DB check:', verificationStatusFromDB);
-          console.log('Status from direct DB check:', statusFromDB);
 
           // EMERGENCY FIX: If the database shows declined or restricted, we'll use this regardless of what the API returns
           if (verificationStatusFromDB === 'declined' || verificationStatusFromDB === 'restricted') {
-            console.log('CRITICAL: Database shows this application is', verificationStatusFromDB);
-
             // Create a minimal application object with the correct status
             // This ensures the UI shows the correct status even if the API is returning incorrect data
             if (!application) {
@@ -289,7 +265,6 @@ function ApplicationDetailContent({ id }) {
                 businessName: 'Loading...',
                 documents: []
               };
-              console.log('Setting minimal application with correct status:', minimalApp);
               setApplication(minimalApp);
             } else {
               // Update the existing application object with the correct status
@@ -298,7 +273,6 @@ function ApplicationDetailContent({ id }) {
                 status: verificationStatusFromDB,
                 verificationStatus: verificationStatusFromDB
               }));
-              console.log('Updated application status to match database:', verificationStatusFromDB);
             }
           }
         }
@@ -309,7 +283,6 @@ function ApplicationDetailContent({ id }) {
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('API error response:', response.status, errorText);
 
         let errorMessage = 'Failed to load application data';
         try {
@@ -329,11 +302,7 @@ function ApplicationDetailContent({ id }) {
       }
 
       const data = await response.json();
-      console.log('Application data received:', data);
-      console.log('Status from API:', data.status);
-      console.log('Application status from API:', data.application_status);
-      console.log('Verification status from API:', data.verification_status);
-      
+
       // Map application_status to verificationStatus for backwards compatibility
       if (data.application_status && !data.verificationStatus) {
         data.verificationStatus = data.application_status;
@@ -348,26 +317,19 @@ function ApplicationDetailContent({ id }) {
       try {
         const urlParams = new URLSearchParams(window.location.search);
         statusFromURL = urlParams.get('status');
-        if (statusFromURL) {
-          console.log(`Found status in URL: ${statusFromURL}`);
-        }
       } catch (urlError) {
-        console.error('Error parsing URL parameters:', urlError);
+        // Error parsing URL parameters
       }
 
       // Check if we have a stored status in sessionStorage
       let storedStatus = null;
       try {
         storedStatus = sessionStorage.getItem(`application_${id}_status`);
-        if (storedStatus) {
-          console.log(`Using stored status from sessionStorage: ${storedStatus}`);
-        }
 
         // Also check localStorage as a backup
         if (!storedStatus) {
           const localStorageStatus = localStorage.getItem(`application_${id}_status`);
           if (localStorageStatus) {
-            console.log(`Found status in localStorage: ${localStorageStatus}`);
             storedStatus = localStorageStatus;
           }
         }
@@ -379,14 +341,13 @@ function ApplicationDetailContent({ id }) {
             const cookie = cookies[i].trim();
             if (cookie.startsWith(`application_${id}_status=`)) {
               const cookieStatus = cookie.substring(`application_${id}_status=`.length, cookie.length);
-              console.log(`Found status in cookie: ${cookieStatus}`);
               storedStatus = cookieStatus;
               break;
             }
           }
         }
       } catch (storageError) {
-        console.error('Error accessing storage:', storageError);
+        // Error accessing storage
       }
 
       // Priority order for status:
@@ -396,11 +357,9 @@ function ApplicationDetailContent({ id }) {
       // 4. API response (least reliable as it might have caching issues)
 
       if (statusFromURL) {
-        console.log('Overriding status with URL parameter value:', statusFromURL);
         data.verificationStatus = statusFromURL;
         data.status = statusFromURL;
       } else if (storedStatus) {
-        console.log('Overriding status with stored value:', storedStatus);
         data.verificationStatus = storedStatus;
         data.status = storedStatus;
 
@@ -409,32 +368,25 @@ function ApplicationDetailContent({ id }) {
           sessionStorage.removeItem(`application_${id}_status`);
           localStorage.removeItem(`application_${id}_status`);
           document.cookie = `application_${id}_status=; path=/; max-age=0`;
-          console.log(`Cleared stored status for application ${id} from all storage`);
         } catch (storageError) {
-          console.error('Error clearing storage:', storageError);
+          // Error clearing storage
         }
       } else if (verificationStatusFromDB) {
-        console.log('Overriding status with direct DB value:', verificationStatusFromDB);
         data.verificationStatus = verificationStatusFromDB;
         data.status = verificationStatusFromDB;
       }
 
       // Set status based on application_status
       if (data.application_status) {
-        console.log('Using application_status as the source of truth:', data.application_status);
         data.status = data.application_status;
         data.verificationStatus = data.application_status;
-      } 
+      }
       // If we still have verification_status but no status, use it (backwards compatibility)
       else if (data.verificationStatus && !data.status) {
-        console.log('Using verificationStatus as fallback:', data.verificationStatus);
         data.status = data.verificationStatus;
       }
-
-      console.log('Final application status after fixes:', data.status);
       setApplication(data);
     } catch (error) {
-      console.error('Error fetching application:', error);
       setError(error.message || 'An error occurred while loading the application');
     } finally {
       setIsLoading(false);
@@ -621,7 +573,6 @@ function ApplicationDetailContent({ id }) {
                 {(() => {
                   // Get the actual status from verification_status if available, otherwise use status
                   const actualStatus = application.verificationStatus || application.status;
-                  console.log('Rendering status display with actualStatus:', actualStatus);
 
                   // Determine the correct display status
                   let displayStatus = 'Pending';

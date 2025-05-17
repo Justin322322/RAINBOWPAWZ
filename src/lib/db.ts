@@ -1,8 +1,5 @@
 import mysql from 'mysql2/promise';
 
-// Only for conditional operations in development mode
-const isDev = process.env.NODE_ENV === 'development';
-
 // IMPORTANT: Always use 3306 for MySQL, regardless of the web server port
 const MYSQL_PORT = 3306;
 
@@ -20,8 +17,6 @@ const dbConfig = {
   socketPath: undefined,
   insecureAuth: true,
 };
-
-
 
 // Create a connection pool with error handling
 let pool;
@@ -56,27 +51,20 @@ try {
       const connection = await pool.getConnection();
       connection.release();
     } catch (testError) {
-      console.error('Failed to get a test connection from the pool:', testError);
     }
   })();
 
 } catch (error) {
-  console.error('Error creating MySQL connection pool:', error);
-  console.error('Error details:', error.message);
 
   if (error.code === 'ECONNREFUSED') {
-    console.error('Connection refused. Make sure MySQL is running on port 3306.');
   } else if (error.code === 'ER_ACCESS_DENIED_ERROR') {
-    console.error('Access denied. Check your MySQL username and password.');
   } else if (error.code === 'ER_BAD_DB_ERROR') {
-    console.error('Database does not exist. Make sure the database name is correct.');
   }
 
   // Create a fallback pool with default values
   try {
     pool = mysql.createPool(productionConfig);
   } catch (fallbackError) {
-    console.error('Failed to create fallback pool:', fallbackError);
     // Create a minimal pool as last resort
     pool = mysql.createPool({
       host: 'localhost',
@@ -103,31 +91,20 @@ export async function query(sql: string, params: any[] = []) {
       connection.release();
     }
   } catch (error) {
-    console.error('Database query error:', error);
-    console.error('Failed query:', sql);
-    console.error('Query parameters:', params);
 
     // Check if it's a connection error
     if (error.code === 'ECONNREFUSED') {
-      console.error('Database connection refused. Make sure MySQL is running and accessible.');
-      console.error('Current connection settings:', {
-        host: dbConfig.host,
-        port: dbConfig.port,
-        user: dbConfig.user,
-        database: dbConfig.database
-      });
+      // Connection refused error
     } else if (error.code === 'ER_ACCESS_DENIED_ERROR') {
-      console.error('Access denied. Check your username and password.');
+      // Access denied error
     } else if (error.code === 'ER_BAD_DB_ERROR') {
-      console.error('Database does not exist. Make sure the database name is correct.');
+      // Database does not exist
     } else if (error.code === 'PROTOCOL_CONNECTION_LOST') {
-      console.error('Database connection was closed. Trying to reconnect...');
       // The connection was lost, try to reconnect
       try {
         pool = mysql.createPool(finalConfig);
-        console.log('Reconnected to MySQL successfully');
       } catch (reconnectError) {
-        console.error('Failed to reconnect to MySQL:', reconnectError);
+        // Failed to reconnect
       }
     }
 
@@ -139,18 +116,8 @@ export async function query(sql: string, params: any[] = []) {
 export async function testConnection() {
   try {
     const result = await query('SELECT 1 as test');
-
-    // Check if users table exists
-    try {
-      const users = await query('SELECT COUNT(*) as count FROM users');
-    } catch (tableError) {
-      console.error('Error checking users table:', tableError.message);
-    }
-
     return true;
   } catch (error) {
-    console.error('Database connection test failed:', error);
-
     // Try to connect directly without using the pool
     try {
       const connection = await mysql.createConnection({
@@ -168,7 +135,6 @@ export async function testConnection() {
 
       return true;
     } catch (directError) {
-      console.error('Direct connection failed:', directError);
       return false;
     }
   }
@@ -245,7 +211,6 @@ export async function ensureAvailabilityTablesExist(): Promise<boolean> {
 
     return true;
   } catch (error) {
-    console.error('[DB] Error ensuring availability tables exist:', error);
     return false;
   }
 }

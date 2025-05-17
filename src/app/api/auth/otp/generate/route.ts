@@ -35,7 +35,6 @@ export async function POST(request: Request) {
     }
 
   } catch (error) {
-    console.error('OTP generation error:', error);
     return NextResponse.json({
       error: 'Failed to generate OTP',
       message: error instanceof Error ? error.message : 'Unknown error'

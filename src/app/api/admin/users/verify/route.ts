@@ -6,7 +6,6 @@ export async function POST(request: NextRequest) {
   try {
     // Verify admin authentication
     const authToken = getAuthTokenFromRequest(request);
-    console.log('Auth token:', authToken ? 'Present' : 'Missing');
 
     // In development mode, we'll allow requests without auth token for testing
     const isDevelopment = process.env.NODE_ENV === 'development';
@@ -21,7 +20,6 @@ export async function POST(request: NextRequest) {
       }
     } else if (isDevelopment) {
       // In development, allow requests without auth for testing
-      console.log('Development mode: Bypassing authentication for testing');
       isAuthenticated = true;
     }
 
@@ -38,7 +36,6 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { userId, userType, action, notes, businessId } = body;
 
-    console.log('Received request body:', body);
 
     if (!userId || !userType || !action) {
       return NextResponse.json({
@@ -57,7 +54,6 @@ export async function POST(request: NextRequest) {
     try {
       // Verify user based on user type
       if (userType === 'pet_parent') {
-        console.log('Verifying pet parent with ID:', userId);
 
         // First check if the user exists
         const userExists = await query('SELECT id FROM users WHERE id = ?', [userId]) as any[];
@@ -84,15 +80,12 @@ export async function POST(request: NextRequest) {
           }, { status: 400 });
         }
 
-        console.log('Verifying cremation center with business ID:', businessId);
 
         // First check if the business profile exists
         // Use a more robust query that checks the table structure first
-        console.log('Checking if business profile exists with ID:', businessId);
 
         try {
           // Check which table exists: business_profiles or service_providers
-          console.log('Checking available tables...');
           const tableCheckResult = await query(`
             SELECT table_name
             FROM information_schema.tables
@@ -102,13 +95,11 @@ export async function POST(request: NextRequest) {
 
           // Determine which table to use
           const tableNames = tableCheckResult.map(row => row.table_name);
-          console.log('Available tables:', tableNames);
 
           const useServiceProvidersTable = tableNames.includes('service_providers');
           const useBusinessProfilesTable = tableNames.includes('business_profiles');
 
           if (!useServiceProvidersTable && !useBusinessProfilesTable) {
-            console.error('Neither business_profiles nor service_providers table exists in the database');
             return NextResponse.json({
               error: 'Database schema error: Required tables do not exist',
               success: false
@@ -117,7 +108,6 @@ export async function POST(request: NextRequest) {
 
           // Use the appropriate table name
           const tableName = useServiceProvidersTable ? 'service_providers' : 'business_profiles';
-          console.log(`Using table: ${tableName}`);
 
           // Check if the business exists
           const businessExists = await query(`SELECT id, verification_status, application_status, user_id FROM ${tableName} WHERE id = ?`, [businessId]) as any[];
@@ -132,12 +122,10 @@ export async function POST(request: NextRequest) {
           const currentStatus = businessExists[0]?.application_status || businessExists[0]?.verification_status;
           const businessUserId = businessExists[0]?.user_id;
 
-          console.log('Current status:', currentStatus, 'User ID:', businessUserId);
 
           // Only update verification_status if it's not restricted
           let updatedStatus = 'approved';
           if (currentStatus === 'restricted') {
-            console.log('Business is restricted, keeping restricted status');
             updatedStatus = 'restricted';
           }
 
@@ -147,7 +135,6 @@ export async function POST(request: NextRequest) {
           `) as any[];
           
           const hasApplicationStatus = columnsResult.length > 0;
-          console.log(`Table ${tableName} has application_status column: ${hasApplicationStatus}`);
 
           // Update the business profile
           if (hasApplicationStatus) {
@@ -182,7 +169,6 @@ export async function POST(request: NextRequest) {
             ]);
           }
 
-          console.log('Business profile updated successfully');
 
           // Update the user's verification status
           if (businessUserId) {
@@ -193,12 +179,9 @@ export async function POST(request: NextRequest) {
               WHERE id = ?
             `, [businessUserId]);
 
-            console.log('User verification status updated for user ID:', businessUserId);
           } else {
-            console.log('No user_id found for business profile, skipping user update');
           }
         } catch (error) {
-          console.error('Error during business verification:', error);
           throw error;
         }
       } else {
@@ -208,7 +191,6 @@ export async function POST(request: NextRequest) {
         }, { status: 400 });
       }
     } catch (dbError) {
-      console.error('Database error when verifying user:', dbError);
       return NextResponse.json({
         error: 'Database error when verifying user',
         details: dbError instanceof Error ? dbError.message : 'Unknown database error',
@@ -221,7 +203,6 @@ export async function POST(request: NextRequest) {
       message: 'User verified successfully'
     });
   } catch (error) {
-    console.error('Error verifying user:', error);
 
     // Provide more detailed error information
     let errorMessage = 'Failed to verify user';

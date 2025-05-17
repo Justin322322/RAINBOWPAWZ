@@ -41,14 +41,9 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onShowSignup }
     setErrorMessage('');
     setIsLoading(true);
 
-    console.log('Login attempt for:', email);
-    console.log('Current hostname:', window.location.hostname);
-    console.log('Current port:', window.location.port);
-    console.log('Current URL:', window.location.href);
 
     try {
       // Use Next.js API route
-      console.log('Sending login request to /api/auth/login');
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
@@ -105,7 +100,6 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onShowSignup }
         throw new Error('User ID missing from login response');
       }
 
-      console.log('Login successful:', { userId, accountType });
 
       // Set the auth token cookie with a 30-day expiration
       setAuthToken(userId.toString(), accountType, 30);
@@ -120,7 +114,6 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onShowSignup }
       // Redirect to the appropriate dashboard after a delay for the animation
       setTimeout(() => {
         const dashboardUrl = redirectToDashboard(accountType);
-        console.log('Redirecting to:', dashboardUrl);
 
         // Use window.location.replace for a cleaner redirect
         window.location.replace(dashboardUrl);

@@ -30,13 +30,11 @@ export async function ensureAdminLogsTable(): Promise<boolean> {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
       `);
       
-      console.log('Created admin_logs table');
       return true;
     }
     
     return true;
   } catch (error) {
-    console.error('Error ensuring admin_logs table:', error);
     return false;
   }
 }

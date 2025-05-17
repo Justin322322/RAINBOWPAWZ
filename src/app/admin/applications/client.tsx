@@ -48,13 +48,11 @@ function AdminApplicationsContent() {
         const data = await appResponse.json();
 
         if (data.error) {
-          console.error('API returned an error:', data.error);
           setError(data.error);
           setApplications([]);
           return;
         }
 
-        console.log('Applications data:', data);
 
         // If no applications found, don't throw an error, just show empty state
         if (!data.applications || data.applications.length === 0) {
@@ -73,7 +71,6 @@ function AdminApplicationsContent() {
 
         setApplications(processedApplications);
       } catch (error) {
-        console.error('Error fetching applications data:', error);
         // Provide a more user-friendly error message
         let errorMessage = 'Failed to load application data';
         if (error instanceof Error) {

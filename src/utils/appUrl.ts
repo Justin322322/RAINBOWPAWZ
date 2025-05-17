@@ -42,7 +42,6 @@ export function getAppBaseUrl(): string {
     }
   } catch (e) {
     // If URL parsing fails, return the default
-    console.error('Failed to parse NEXT_PUBLIC_APP_URL:', e);
   }
 
   return envUrl;

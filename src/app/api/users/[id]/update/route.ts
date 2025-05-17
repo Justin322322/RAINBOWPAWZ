@@ -99,7 +99,6 @@ export async function PUT(request: NextRequest) {
       user
     });
   } catch (error) {
-    console.error('Error updating user profile:', error);
     return NextResponse.json({
       error: 'Failed to update profile',
       message: error instanceof Error ? error.message : 'Unknown error'

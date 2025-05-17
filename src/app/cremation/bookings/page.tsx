@@ -41,7 +41,6 @@ function CremationBookingsPage({ userData }: { userData: any }) {
   useEffect(() => {
     const fetchBookings = async () => {
       if (!userData?.business_id) {
-        console.log('No business ID found in user data', userData);
         setLoading(false);
         return;
       }
@@ -59,12 +58,10 @@ function CremationBookingsPage({ userData }: { userData: any }) {
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
-          console.error('API response not OK:', response.status, errorData);
           throw new Error(`Failed to fetch bookings data: ${response.status} ${errorData.error || ''}`);
         }
 
         const data = await response.json();
-        console.log('Bookings data fetched successfully', data);
 
         setBookings(data.bookings || []);
         setStats(data.stats || {
@@ -77,7 +74,6 @@ function CremationBookingsPage({ userData }: { userData: any }) {
           totalRevenue: 0
         });
       } catch (error) {
-        console.error('Error fetching bookings data:', error);
         showToast('Failed to load bookings data. Please try again later.', 'error');
         setBookings([]);
       } finally {

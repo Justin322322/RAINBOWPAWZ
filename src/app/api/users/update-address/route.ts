@@ -77,7 +77,6 @@ export async function POST(request: NextRequest) {
       message: 'Address updated successfully'
     });
   } catch (error) {
-    console.error('Error updating user address:', error);
     return NextResponse.json({
       error: 'Failed to update address',
       message: error instanceof Error ? error.message : 'Unknown error'

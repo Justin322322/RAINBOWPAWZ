@@ -6,13 +6,10 @@ import bcrypt from 'bcrypt';
 // GET endpoint to fetch cremation business profile
 export async function GET(request: NextRequest) {
   try {
-    console.log('Fetching cremation profile data...');
-    console.log('Request cookies:', request.headers.get('cookie'));
     
     // Get auth token and validate
     const authToken = getAuthTokenFromRequest(request);
     if (!authToken) {
-      console.log('Unauthorized: No auth token provided in request cookies');
       return NextResponse.json({ error: 'Unauthorized', message: 'Authentication token not found' }, { 
         status: 401,
         headers: {
@@ -24,16 +21,13 @@ export async function GET(request: NextRequest) {
 
     const parts = authToken.split('_');
     if (parts.length !== 2) {
-      console.log(`Invalid token format: ${authToken}`);
       return NextResponse.json({ error: 'Unauthorized', message: 'Invalid authentication token format' }, { status: 401 });
     }
 
     const [userId, accountType] = parts;
-    console.log(`User ID: ${userId}, Account Type: ${accountType}`);
     
     // Only cremation businesses should have access
     if (accountType !== 'business') {
-      console.log(`Unauthorized access: account type ${accountType} is not business`);
       return NextResponse.json({ error: 'Unauthorized access', message: 'Only business accounts can access this resource' }, { 
         status: 403,
         headers: {
@@ -45,7 +39,6 @@ export async function GET(request: NextRequest) {
     
     // Get business information
     try {
-      console.log('Querying database for business profile...');
       const businessInfo = await query(`
         SELECT 
           sp.id, 
@@ -74,7 +67,6 @@ export async function GET(request: NextRequest) {
       `, [userId]) as any[];
       
       if (!businessInfo || businessInfo.length === 0) {
-        console.log(`Business profile not found for user ID: ${userId}`);
         return NextResponse.json({ error: 'Business profile not found', message: 'No cremation business profile associated with this account' }, { 
           status: 404,
           headers: {
@@ -85,7 +77,6 @@ export async function GET(request: NextRequest) {
       }
       
       const businessData = businessInfo[0];
-      console.log(`Found business profile for: ${businessData.name}`);
       
       // Format response
       return NextResponse.json({
@@ -120,7 +111,6 @@ export async function GET(request: NextRequest) {
         }
       });
     } catch (dbError) {
-      console.error('Database error when fetching business profile:', dbError);
       
       // Check for specific database errors
       let errorMessage = 'Database error occurred';
@@ -145,7 +135,6 @@ export async function GET(request: NextRequest) {
       });
     }
   } catch (error) {
-    console.error('Error fetching cremation profile:', error);
     return NextResponse.json({
       error: 'Failed to fetch profile data',
       message: error instanceof Error ? error.message : 'Unknown error'
@@ -283,7 +272,6 @@ export async function PATCH(request: NextRequest) {
     
     return NextResponse.json({ error: 'No valid update data provided' }, { status: 400 });
   } catch (error) {
-    console.error('Error updating cremation profile:', error);
     return NextResponse.json({
       error: 'Failed to update profile data',
       message: error instanceof Error ? error.message : 'Unknown error'

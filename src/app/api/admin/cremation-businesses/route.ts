@@ -8,7 +8,6 @@ async function checkDatabaseSetup() {
     // First check connection
     const connected = await testConnection();
     if (!connected) {
-      console.error('Database connection test failed');
       return false;
     }
 
@@ -23,12 +22,10 @@ async function checkDatabaseSetup() {
     `, [process.env.DB_NAME || 'rainbow_paws']);
 
     if (!Array.isArray(tables)) {
-      console.error('Could not retrieve table list');
       return false;
     }
 
     // Log all available tables for debugging
-    console.log('Available tables:', tables.map((row: any) => row.table_name || row.TABLE_NAME));
 
     // Get table names, handling different case formats
     const tableNames = tables.map((row: any) => {
@@ -36,7 +33,6 @@ async function checkDatabaseSetup() {
       return name ? name.toLowerCase() : null;
     }).filter(Boolean);
 
-    console.log('Normalized table names:', tableNames);
 
     // Check for required tables with more flexible matching
     // Only require the businesses table for basic functionality
@@ -54,13 +50,11 @@ async function checkDatabaseSetup() {
         // This is an array of alternatives - we need at least one of them
         const hasAnyAlternative = tableOption.some(table => tableNames.includes(table));
         if (!hasAnyAlternative) {
-          console.error(`None of the alternative tables ${tableOption.join(' or ')} are present`);
           missingCriticalTables.push(tableOption.join('|'));
         }
       } else {
         // This is a single required table
         if (!tableNames.includes(tableOption)) {
-          console.error(`Critical table '${tableOption}' is missing`);
           missingCriticalTables.push(tableOption);
         }
       }
@@ -69,19 +63,15 @@ async function checkDatabaseSetup() {
     // Check warning tables (not critical but may affect some features)
     for (const table of warningTables) {
       if (!tableNames.includes(table)) {
-        console.warn(`Warning: Table '${table}' is missing - some features may not work`);
         missingWarningTables.push(table);
       }
     }
 
     // Log all missing tables
     if (missingCriticalTables.length > 0 || missingWarningTables.length > 0) {
-      console.error('Missing tables summary:');
       if (missingCriticalTables.length > 0) {
-        console.error('- Critical (blocking):', missingCriticalTables);
       }
       if (missingWarningTables.length > 0) {
-        console.warn('- Warning (non-blocking):', missingWarningTables);
       }
     }
 
@@ -92,29 +82,19 @@ async function checkDatabaseSetup() {
 
     return true;
   } catch (error) {
-    console.error('Error checking database setup:', error);
     return false;
   }
 }
 
 // Get all cremation businesses for admin panel
 export async function GET(request: NextRequest) {
-  console.log('Starting cremation businesses API request');
 
   try {
-    // Add more detailed logging
-    console.log('API Request Details:', {
-      method: 'GET',
-      url: '/api/admin/cremation-businesses',
-      headers: Object.fromEntries(request.headers.entries()),
-      timestamp: new Date().toISOString()
-    });
+    // Process the request
 
     // First verify the database connection is working
-    console.log('Testing database connection...');
     const dbConnected = await testConnection();
     if (!dbConnected) {
-      console.error('Database connection failed - MySQL might not be running');
       return NextResponse.json({
         error: 'Database connection failed',
         details: 'Could not connect to MySQL server. Please ensure MySQL is running.',
@@ -126,12 +106,10 @@ export async function GET(request: NextRequest) {
     const dbReady = await checkDatabaseSetup();
     if (!dbReady) {
       try {
-        console.log('Database not ready, attempting to initialize it...');
         // Call our init-db endpoint
         const initResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002'}/api/init-db`);
 
         if (!initResponse.ok) {
-          console.error('Failed to initialize database:', initResponse.status, initResponse.statusText);
           return NextResponse.json({
             error: 'Database initialization failed',
             details: 'Could not auto-initialize the database. Please run database setup manually.',
@@ -140,9 +118,7 @@ export async function GET(request: NextRequest) {
         }
 
         const initResult = await initResponse.json();
-        console.log('Database initialized:', initResult);
       } catch (initError) {
-        console.error('Database initialization error:', initError);
         return NextResponse.json({
           error: 'Database initialization failed',
           details: 'Failed to initialize database automatically. You may need to run the database setup manually.',
@@ -158,7 +134,6 @@ export async function GET(request: NextRequest) {
 
     // Get auth token from request
     const authToken = getAuthTokenFromRequest(request);
-    console.log('Auth token:', authToken ? 'Present' : 'Missing');
 
     // In development mode, we'll allow requests without auth token for testing
     const isDevelopment = process.env.NODE_ENV === 'development';
@@ -173,7 +148,6 @@ export async function GET(request: NextRequest) {
       }
     } else if (isDevelopment) {
       // In development, allow requests without auth for testing
-      console.log('Development mode: Bypassing authentication for testing');
       isAuthenticated = true;
     }
 
@@ -189,7 +163,6 @@ export async function GET(request: NextRequest) {
     // Since you've migrated from business_profiles to service_providers,
     // we'll use only the service_providers table
     const tableName = 'service_providers';
-    console.log(`Using table: ${tableName}`);
 
     // Define these variables at a higher scope so they're available throughout the function
     // Since we're using service_providers table, we know the column names
@@ -199,11 +172,8 @@ export async function GET(request: NextRequest) {
 
     // First check if the businesses table exists and has the right structure
     try {
-      console.log(`Testing basic query to ${tableName} table`);
       const tableCheck = await query(`SELECT COUNT(*) as count FROM ${tableName}`);
-      console.log('Service providers table check result:', tableCheck);
     } catch (tableError) {
-      console.error(`Error checking ${tableName} table:`, tableError);
       return NextResponse.json({
         error: 'Database schema issue',
         details: tableError instanceof Error ? tableError.message : 'Unknown error',
@@ -212,7 +182,6 @@ export async function GET(request: NextRequest) {
     }
 
     // Check if the table has the provider_type column
-    console.log(`Checking ${tableName} table structure...`);
     try {
       // Check if the table has the provider_type column
       const tableStructure = await query(`
@@ -220,7 +189,6 @@ export async function GET(request: NextRequest) {
       `);
 
       if (!Array.isArray(tableStructure) || tableStructure.length === 0) {
-        console.error(`${tableName} table is missing the provider_type column`);
         return NextResponse.json({
           error: 'Database schema issue',
           details: `The ${tableName} table is missing the provider_type column. Database schema may need to be updated.`,
@@ -228,11 +196,7 @@ export async function GET(request: NextRequest) {
         }, { status: 500 });
       }
 
-      console.log(`Using provider_type column for business type`);
-      console.log(`Using ${businessTypeColumn} column for business type`);
-      console.log(`${tableName} table structure check passed`);
     } catch (structureError) {
-      console.error(`Error checking ${tableName} table structure:`, structureError);
       return NextResponse.json({
         error: 'Database schema issue',
         details: `Could not verify the ${tableName} table structure. ` +
@@ -242,7 +206,6 @@ export async function GET(request: NextRequest) {
     }
 
     // Use a simplified query first to avoid complex joins that might cause issues
-    console.log('Executing simplified query for cremation businesses');
     let businesses;
     try {
       // Use a more defensive query that handles potential missing columns
@@ -250,12 +213,10 @@ export async function GET(request: NextRequest) {
       const bpColumns = await query(`SHOW COLUMNS FROM ${tableName}`);
       const columnNames = bpColumns.map((col: any) => col.Field);
 
-      console.log('Available columns in service_providers:', columnNames);
 
       // Also check the users table structure
       const userColumns = await query(`SHOW COLUMNS FROM users`);
       const userColumnNames = userColumns.map((col: any) => col.Field);
-      console.log('Available columns in users:', userColumnNames);
 
       // Build a dynamic query based on available columns
       let selectFields = [
@@ -286,10 +247,10 @@ export async function GET(request: NextRequest) {
       if (columnNames.includes('application_status')) selectFields.push('bp.application_status');
       if (columnNames.includes('created_at')) selectFields.push('bp.created_at');
       if (columnNames.includes('updated_at')) selectFields.push('bp.updated_at');      // Check if business is verified based on application_status
-      const verifiedCondition = columnNames.includes('application_status') 
+      const verifiedCondition = columnNames.includes('application_status')
         ? `CASE WHEN bp.application_status = 'approved' THEN 1 ELSE 0 END`
         : '0';
-      
+
       selectFields.push(`${verifiedCondition} as is_verified`);
 
       if (columnNames.includes('business_permit_path')) selectFields.push('bp.business_permit_path as document_path');
@@ -313,15 +274,12 @@ export async function GET(request: NextRequest) {
         ORDER BY bp.id DESC
         LIMIT 100
       `;
-      console.log('Executing query:', queryString);
 
       businesses = await query(queryString);
     } catch (queryError) {
-      console.error('Error querying service_providers table:', queryError);
 
       // Try a more basic query if the first one fails
       try {
-        console.log('Attempting fallback query with fewer columns...');
 
         const userColumns = await query(`SHOW COLUMNS FROM users`);
         const userColumnNames = userColumns.map((col: any) => col.Field);
@@ -347,16 +305,12 @@ export async function GET(request: NextRequest) {
           ORDER BY bp.id DESC
           LIMIT 100
         `;
-        console.log('Executing fallback query:', fallbackQueryString);
 
         businesses = await query(fallbackQueryString);
 
-        console.log('Fallback query succeeded');
       } catch (fallbackError) {
-        console.error('Fallback query also failed:', fallbackError);
 
         // Return empty data instead of error
-        console.log('Returning empty dataset since all queries failed');
         return NextResponse.json({
           success: true,
           businesses: []
@@ -366,7 +320,6 @@ export async function GET(request: NextRequest) {
 
     // Handle empty result
     if (!businesses || !Array.isArray(businesses)) {
-      console.log('Businesses query returned invalid result, returning empty array');
       return NextResponse.json({
         success: true,
         businesses: []
@@ -374,7 +327,6 @@ export async function GET(request: NextRequest) {
     }
 
     // Format the results
-    console.log(`Found ${businesses.length} cremation businesses`);
     const formattedBusinesses = businesses.map((business: any) => {
       try {
         // Format date with error handling
@@ -389,7 +341,6 @@ export async function GET(request: NextRequest) {
             });
           }
         } catch (dateError) {
-          console.warn('Error formatting date:', dateError);
         }
 
         // Combine first and last name with null checks
@@ -428,7 +379,7 @@ export async function GET(request: NextRequest) {
 
         // Determine the final status value
         let statusValue = isRestricted ? 'restricted' : (isVerified ? 'active' : 'pending');
-        
+
         // Check for declined/rejected status
         if (business.application_status === 'declined' || business.application_status === 'rejected') {
           statusValue = 'declined';
@@ -461,7 +412,6 @@ export async function GET(request: NextRequest) {
           documentPath: business.document_path || ''
         };
       } catch (formatError) {
-        console.error('Error formatting business data:', formatError, business);
         // Return a simplified record if formatting fails
         return {
           id: business.id || 0,
@@ -483,7 +433,6 @@ export async function GET(request: NextRequest) {
 
     // Now try to add statistics data if it doesn't cause errors
     try {
-      console.log('Checking if statistics tables exist before fetching data');
 
       // First check if the required tables exist
       let businessServicesExists = false;
@@ -495,17 +444,9 @@ export async function GET(request: NextRequest) {
 
         const bookingsCheck = await query(`SHOW TABLES LIKE 'bookings'`);
         bookingsExists = Array.isArray(bookingsCheck) && bookingsCheck.length > 0;
-
-        console.log('Statistics tables check:', {
-          business_services: businessServicesExists ? 'exists' : 'missing',
-          bookings: bookingsExists ? 'exists' : 'missing'
-        });
       } catch (tableCheckError) {
-        console.error('Error checking statistics tables:', tableCheckError);
         // Skip statistics if we can't verify the tables, but continue with the response
-        console.log('Continuing with basic business data without statistics');
         // Return the response with the basic business data
-        console.log('Successfully processed cremation businesses data');
         return NextResponse.json({
           success: true,
           businesses: formattedBusinesses
@@ -514,22 +455,18 @@ export async function GET(request: NextRequest) {
 
       // Only proceed if the tables exist
       if (!businessServicesExists || !bookingsExists) {
-        console.log('Skipping statistics due to missing tables');
         // Return the response with the basic business data
-        console.log('Successfully processed cremation businesses data without statistics');
         return NextResponse.json({
           success: true,
           businesses: formattedBusinesses
         });
       }
 
-      console.log('Fetching service statistics');
       for (let i = 0; i < formattedBusinesses.length; i++) {
         const business = formattedBusinesses[i];
 
         // Skip if business ID is invalid
         if (!business.id) {
-          console.warn('Skipping statistics for business with invalid ID');
           continue;
         }
 
@@ -564,7 +501,6 @@ export async function GET(request: NextRequest) {
             business.activeServices = parseInt(serviceResult[0].count || '0');
           }
         } catch (serviceError) {
-          console.error(`Error fetching services for business ${business.id}:`, serviceError);
           // Continue with next business
         }
 
@@ -616,35 +552,25 @@ export async function GET(request: NextRequest) {
                 maximumFractionDigits: 2
               })}`;
             } catch (parseError) {
-              console.error(`Error parsing booking stats for business ${business.id}:`, parseError);
             }
           }
         } catch (bookingError) {
-          console.error(`Error fetching bookings for business ${business.id}:`, bookingError);
           // Continue with next business
         }
       }
     } catch (statsError) {
-      console.error('Error fetching statistics (non-critical):', statsError);
       // We continue even if statistics fail, as we have the basic business data
     }
 
-    console.log('Successfully processed cremation businesses data');
     return NextResponse.json({
       success: true,
       businesses: formattedBusinesses
     });
   } catch (error) {
-    console.error('Error fetching cremation businesses:', error);
 
-    // Add more detailed error logging
+    // Handle error
     if (error instanceof Error) {
-      console.error('Error details:', {
-        name: error.name,
-        message: error.message,
-        stack: error.stack,
-        cause: error.cause
-      });
+      // Error occurred
     }
 
     return NextResponse.json({
@@ -658,18 +584,15 @@ export async function GET(request: NextRequest) {
 // Get a specific cremation business by ID
 export async function POST(request: NextRequest) {
   try {
-    console.log('Starting specific cremation business fetch');
 
     // Verify admin authentication
     const authToken = getAuthTokenFromRequest(request);
-    console.log('Auth token:', authToken ? 'Present' : 'Missing');
 
     if (!authToken) {
       return NextResponse.json({ error: 'Unauthorized', success: false }, { status: 401 });
     }
 
     const [userId, accountType] = authToken.split('_');
-    console.log('User ID:', userId, 'Account Type:', accountType);
 
     if (accountType !== 'admin') {
       return NextResponse.json({ error: 'Unauthorized - Admin access required', success: false }, { status: 403 });
@@ -678,7 +601,6 @@ export async function POST(request: NextRequest) {
     // Get the business ID from the request body
     const body = await request.json();
     const businessId = body.businessId;
-    console.log('Requested business ID:', businessId);
 
     if (!businessId) {
       return NextResponse.json({ error: 'Business ID is required', success: false }, { status: 400 });
@@ -687,10 +609,8 @@ export async function POST(request: NextRequest) {
     // Since you've migrated from business_profiles to service_providers,
     // we'll use only the service_providers table
     const tableName = 'service_providers';
-    console.log(`Using table: ${tableName}`);
 
     // Check the table structure to determine available columns
-    console.log('Checking table structure for column names');
     const tableStructure = await query(`
       SHOW COLUMNS FROM ${tableName}
     `) as any[];
@@ -712,7 +632,6 @@ export async function POST(request: NextRequest) {
     const typeCondition = "bp.provider_type = 'cremation'";
 
     // Get the business details with a simple query
-    console.log('Fetching basic business details');
     const businessResults = await query(`
       SELECT
         bp.id,
@@ -739,12 +658,10 @@ export async function POST(request: NextRequest) {
     `, [businessId]);
 
     if (!businessResults || businessResults.length === 0) {
-      console.log('Business not found');
       return NextResponse.json({ error: 'Business not found', success: false }, { status: 404 });
     }
 
     const business = businessResults[0];
-    console.log('Found business:', business.business_name);
 
     // Get business documents
     let documents = [];
@@ -756,7 +673,6 @@ export async function POST(request: NextRequest) {
           uploadDate: new Date(business.updated_at).toLocaleDateString('en-US')
         });
       } catch (error) {
-        console.error('Error parsing documents (non-critical):', error);
       }
     }
 
@@ -801,7 +717,6 @@ export async function POST(request: NextRequest) {
 
     // Try to get additional data if it doesn't cause errors
     try {
-      console.log('Fetching business services');
 
       // First check the table structure
       const bsColumns = await query(`SHOW COLUMNS FROM business_services`);
@@ -854,12 +769,10 @@ export async function POST(request: NextRequest) {
         formattedBusiness.services = services;
       }
     } catch (servicesError) {
-      console.error('Error fetching services (non-critical):', servicesError);
       // We continue even if service fetch fails
     }
 
     try {
-      console.log('Fetching booking statistics');
 
       // First check the business_services table structure
       const bsColumns = await query(`SHOW COLUMNS FROM business_services`);
@@ -926,17 +839,14 @@ export async function POST(request: NextRequest) {
         };
       }
     } catch (statsError) {
-      console.error('Error fetching booking stats (non-critical):', statsError);
       // We continue even if statistics fail
     }
 
-    console.log('Successfully prepared business details response');
     return NextResponse.json({
       success: true,
       business: formattedBusiness
     });
   } catch (error) {
-    console.error('Error fetching cremation business details:', error);
     return NextResponse.json({
       error: 'Failed to fetch business details',
       details: error instanceof Error ? error.message : 'Unknown error',

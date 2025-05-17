@@ -48,7 +48,6 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
       try {
         return new Date(savedMonth);
       } catch (e) {
-        console.error('Failed to parse saved month', e);
         return new Date();
       }
     }
@@ -63,10 +62,8 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
       if (cachedData) {
         try {
           const parsed = JSON.parse(cachedData);
-          console.log("Loaded cached availability data:", parsed.length, "days");
           return parsed;
         } catch (e) {
-          console.error("Failed to parse cached availability data", e);
         }
       }
     }
@@ -83,6 +80,7 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
   const [serviceSelectionError, setServiceSelectionError] = useState<string | null>(null);
   const [dataInitialized, setDataInitialized] = useState<boolean>(false);
   const [showSuccessMessage, setShowSuccessMessage] = useState<boolean>(false);
+  const [successMessage, setSuccessMessage] = useState<string>('Time slot updated successfully!');
   const [packageLoadError, setPackageLoadError] = useState<string | null>(null);
   const [showConflictMessage, setShowConflictMessage] = useState<boolean>(false);
   const [conflictMessage, setConflictMessage] = useState<string>('');
@@ -95,18 +93,15 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
   }, [currentMonth]);
 
   useEffect(() => {
-    console.log('availabilityData state updated:', JSON.stringify(availabilityData, null, 2));
   }, [availabilityData]);
 
   useEffect(() => {
     if (providerId && providerId > 0) {
-      console.log("[AvailabilityCalendar] Initial fetch for providerId:", providerId);
       // Clear any existing data first to ensure we get fresh data
       setAvailabilityData([]);
       fetchAvailabilityData(true);
       fetchProviderPackages();
     } else {
-      console.log("[AvailabilityCalendar] Invalid or missing providerId:", providerId, "Skipping fetch.");
       setAvailabilityData([]);
       setAvailablePackages([]);
     }
@@ -114,7 +109,6 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
 
   useEffect(() => {
     if (providerId && providerId > 0) {
-      console.log("[AvailabilityCalendar] Month changed, fetching data for:", currentMonth.toISOString());
       fetchAvailabilityData(false); // Don't clear existing data
     }
   }, [currentMonth]);
@@ -133,7 +127,6 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
     // Set up periodic refresh for data synchronization
     const refreshInterval = setInterval(() => {
       if (providerId && providerId > 0) {
-        console.log("Periodic data refresh triggered");
         fetchAvailabilityData();
       }
     }, 60000); // Refresh every 60 seconds
@@ -144,7 +137,6 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
   // Add effect to cache data whenever it changes
   useEffect(() => {
     if (typeof window !== "undefined" && providerId && availabilityData.length > 0) {
-      console.log("Caching availability data:", availabilityData.length, "days");
       localStorage.setItem(`availabilityData_${providerId}`, JSON.stringify(availabilityData));
     }
   }, [availabilityData, providerId]);
@@ -154,13 +146,11 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
     try {
       setLoadingPackages(true);
       setPackageLoadError(null); // Reset error state
-      console.log(`Fetching packages for provider ID: ${providerId}`);
       const response = await fetch(`/api/packages?providerId=${providerId}&t=${Date.now()}`);
 
       if (!response.ok) {
         // Get detailed error information
         const errorText = await response.text();
-        console.error(`Error response from packages API: Status ${response.status}`, errorText);
         try {
           const errorJson = JSON.parse(errorText);
           const errorMessage = errorJson.error || errorJson.details || `Failed to fetch provider packages: ${response.status}`;
@@ -174,10 +164,8 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
       }
 
       const data = await response.json();
-      console.log(`Received ${data.packages?.length || 0} packages from API`);
       setAvailablePackages(data.packages || []);
     } catch (err) {
-      console.error('Error fetching provider packages:', err);
       setAvailablePackages([]);
     } finally {
       setLoadingPackages(false);
@@ -193,7 +181,6 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
     try {
       setLoading(true);
       setError(null);
-      console.log(`[AvailabilityCalendar] Provider ID for fetch: ${providerId}`);
 
       // Get the first and last day that will be displayed in the calendar
       const year = currentMonth.getFullYear();
@@ -214,20 +201,35 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
       const endDate = lastCalendarDay.toISOString().split('T')[0];
 
       const monthString = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}`;
-      console.log(`[AvailabilityCalendar] Fetching availability data for month: ${monthString}, provider: ${providerId}`);
-      console.log(`[AvailabilityCalendar] Calendar view range: ${startDate} to ${endDate}`);
 
       // Add a timestamp to force fresh data
       const timestamp = new Date().getTime();
       const url = `/api/cremation/availability?providerId=${providerId}&startDate=${startDate}&endDate=${endDate}&month=${monthString}&t=${timestamp}`;
 
-      console.log(`[AvailabilityCalendar] Fetching from URL: ${url}`);
+      console.log(`Fetching availability data from: ${url}`);
 
       const headers = new Headers({
         'Cache-Control': 'no-cache, no-store, must-revalidate',
         'Pragma': 'no-cache',
         'Expires': '0'
       });
+
+      // Also fetch the debug data to verify what's in the database
+      try {
+        const debugResponse = await fetch(`/api/cremation/availability/debug?providerId=${providerId}`, {
+          headers: {
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
+          }
+        });
+
+        if (debugResponse.ok) {
+          const debugData = await debugResponse.json();
+          console.log('Debug data from database:', debugData);
+        }
+      } catch (debugErr) {
+        console.error('Error fetching debug data:', debugErr);
+      }
 
       // Using fetch with more robust options
       const response = await fetch(url, {
@@ -238,7 +240,6 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error(`Failed to fetch availability: ${response.status}`, errorText);
         try {
           const errorData = JSON.parse(errorText);
           throw new Error(errorData.error || `Failed to fetch data: ${response.statusText}`);
@@ -248,11 +249,9 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
       }
 
       const data = await response.json();
-      console.log('[AvailabilityCalendar] Raw data from API:', JSON.stringify(data, null, 2));
 
       if (Array.isArray(data.availability)) {
         if (data.availability.length === 0) {
-          console.warn('[AvailabilityCalendar] API returned empty availability array.');
         }
 
         // Validate and clean availability data
@@ -265,10 +264,9 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
             })) :
             [];
 
-          // Log days with time slots for debugging
+          // Check for days with time slots
           if (timeSlots.length > 0) {
-            console.log(`[AvailabilityCalendar] Day ${day.date} has ${timeSlots.length} time slots:`,
-              timeSlots.map((slot: any) => `${slot.start}-${slot.end}`).join(', '));
+              // Time slots available
           }
 
           return {
@@ -278,34 +276,29 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
           };
         });
 
-        console.log('[AvailabilityCalendar] Validated data from API:', JSON.stringify(validatedData, null, 2));
 
         // Log overall availability stats
         const availableDays = validatedData.filter((day: DayAvailability) => day.isAvailable).length;
         const daysWithTimeSlots = validatedData.filter((day: DayAvailability) => day.timeSlots && day.timeSlots.length > 0).length;
         const totalTimeSlots = validatedData.reduce((total: number, day: DayAvailability) => total + (day.timeSlots ? day.timeSlots.length : 0), 0);
 
-        console.log(`[AvailabilityCalendar] Availability data from API processing: ${validatedData.length} total days, ${availableDays} available, ${daysWithTimeSlots} with time slots, ${totalTimeSlots} total time slots`);
 
         setAvailabilityData(prevData => {
           // If clearExisting is true, just use the new data
           if (clearExisting) {
-            console.log('[AvailabilityCalendar] Replacing all availability data with new data (clearExisting = true)');
             return validatedData;
           }
 
           // Otherwise, merge old and new data with new data taking precedence
-          console.log('[AvailabilityCalendar] Merging new data with existing data (clearExisting = false)');
           const finalDataMap = new Map(prevData.map((item: DayAvailability) => [item.date, item]));
 
           // Log the dates we're updating
           validatedData.forEach((item: DayAvailability) => {
             const existing = finalDataMap.get(item.date);
             if (existing) {
-              console.log(`[AvailabilityCalendar] Updating existing date ${item.date}: ` +
-                `was ${existing.timeSlots.length} slots, now ${item.timeSlots.length} slots`);
+              // Updated existing date
             } else {
-              console.log(`[AvailabilityCalendar] Adding new date ${item.date} with ${item.timeSlots.length} slots`);
+              // New date added
             }
             finalDataMap.set(item.date, item);
           });
@@ -319,12 +312,7 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
             return dateA.getTime() - dateB.getTime();
           });
 
-          console.log(`[AvailabilityCalendar] Updated availabilityData state with ${sortedData.length} items.`);
           const daysWithSlots = sortedData.filter(d => d.timeSlots.length > 0);
-          console.log(`[AvailabilityCalendar] Days with slots (${daysWithSlots.length}):`,
-            daysWithSlots.map(d => `${d.date}: ${d.timeSlots.length} slots`));
-
-          console.log('[AvailabilityCalendar] State `availabilityData` after update:', JSON.stringify(validatedData, null, 2));
 
           return sortedData;
         });
@@ -340,12 +328,10 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
 
         if (onAvailabilityChange) onAvailabilityChange(validatedData);
       } else {
-        console.warn('[AvailabilityCalendar] API did not return availability array', data);
         // Don't clear the entire state, just log the error
         setError('Unexpected response from server.');
       }
     } catch (err) {
-      console.error('[AvailabilityCalendar] Error in fetchAvailabilityData catch block:', err);
       setError(`Failed to fetch availability: ${err instanceof Error ? err.message : String(err)}`);
       // Don't clear availability data on error to preserve existing state
     } finally {
@@ -362,10 +348,6 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
     try {
       setLoading(true);
       setError(null);
-      console.log('[AvailabilityCalendar] Saving availability data:', JSON.stringify({
-        providerId,
-        availability: updatedDayAvailability
-      }, null, 2));
 
       // Update local state FIRST for immediate feedback
       setAvailabilityData(prevData => {
@@ -374,10 +356,8 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
 
         if (existingIndex >= 0) {
           newData[existingIndex] = {...updatedDayAvailability};
-          console.log(`[AvailabilityCalendar] Updated existing date ${updatedDayAvailability.date} in local state`);
         } else {
           newData.push({...updatedDayAvailability});
-          console.log(`[AvailabilityCalendar] Added new date ${updatedDayAvailability.date} to local state`);
         }
 
         return newData;
@@ -399,7 +379,6 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
         }
       };
 
-      console.log('[AvailabilityCalendar] Sending data payload to API:', JSON.stringify(payload, null, 2));
 
       const response = await fetch('/api/cremation/availability', {
         method: 'POST',
@@ -413,7 +392,6 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error(`Error response from API during save: Status ${response.status}`, errorText);
 
         try {
           const errorData = JSON.parse(errorText);
@@ -424,7 +402,6 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
       }
 
       const responseData = await response.json();
-      console.log('[AvailabilityCalendar] Availability saved successfully (API response):', responseData);
 
       // After successfully saving to the server, force a refresh to get the latest data
       // Add a slight delay to ensure database commit
@@ -436,13 +413,13 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
       forceCalendarRefresh();
 
       // Show success message
+      setSuccessMessage('Time slot updated successfully!');
       setShowSuccessMessage(true);
 
       // Call the callback
       onSaveSuccess?.();
 
     } catch (err) {
-      console.error('[AvailabilityCalendar] Error saving availability data:', err);
       setError(`Failed to save: ${err instanceof Error ? err.message : String(err)}`);
 
       // Don't refresh data on error to preserve local changes
@@ -460,8 +437,8 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
     const firstDayOfWeek = firstDay.getDay();
     const days: CalendarDay[] = [];
 
-    console.log(`[AvailabilityCalendar] Generating calendar days for ${year}-${String(month + 1).padStart(2, '0')}`);
-    console.log('[AvailabilityCalendar] Current availabilityData state items:', availabilityData.length);
+    console.log('Generating calendar for', year, month + 1);
+    console.log('Available data:', availabilityData.length, 'days');
 
     // Add empty cells for days of previous month
     for (let i = 0; i < firstDayOfWeek; i++) {
@@ -473,21 +450,33 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
       const date = new Date(year, month, i);
       const dateString = formatDateToString(date);
 
-      const availabilityInfo = availabilityData.find((day: DayAvailability) => day.date === dateString);
+      console.log(`Looking for availability data for ${dateString}`);
 
-      if (availabilityInfo) {
-        console.log(`[AvailabilityCalendar] Day ${dateString}: Found availabilityInfo. isAvailable=${availabilityInfo.isAvailable}, timeSlots=${availabilityInfo.timeSlots?.length || 0}`);
-      } else {
-        console.log(`[AvailabilityCalendar] Day ${dateString}: No availabilityInfo found in state.`);
-      }
+      // Find availability info for this date with exact string matching
+      const availabilityInfo = availabilityData.find((day: DayAvailability) => {
+        const match = day.date === dateString;
+        if (match) {
+          console.log(`Found match for ${dateString}: isAvailable=${day.isAvailable}, timeSlots=${day.timeSlots.length}`);
+        }
+        return match;
+      });
 
       // Ensure timeSlots is always an array
       const timeSlots = availabilityInfo && Array.isArray(availabilityInfo.timeSlots)
         ? [...availabilityInfo.timeSlots]
         : [];
 
+      if (timeSlots.length > 0) {
+        console.log(`Date ${dateString} has ${timeSlots.length} time slots:`,
+          timeSlots.map(slot => `${slot.id}: ${slot.start}-${slot.end}`).join(', '));
+      }
+
       // A day is available if it has time slots or is explicitly marked as available
       const isAvailable = timeSlots.length > 0 || (availabilityInfo && availabilityInfo.isAvailable);
+
+      if (isAvailable) {
+        console.log(`Date ${dateString} is marked as available`);
+      }
 
       days.push({
         type: 'day',
@@ -507,7 +496,18 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
     return days;
   };
 
-  const formatDateToString = (date: Date): string => date.toISOString().split('T')[0];
+  // Fix for date discrepancy - ensure we're using the correct date without timezone issues
+  const formatDateToString = (date: Date): string => {
+    // Create a new date object to avoid modifying the original
+    const d = new Date(date);
+    // Get year, month, and day components
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
+    const day = String(d.getDate()).padStart(2, '0');
+
+    // Format as YYYY-MM-DD
+    return `${year}-${month}-${day}`;
+  };
   const handlePreviousMonth = () => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1));
   const handleNextMonth = () => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
   const handleDayClick = (date: Date) => {
@@ -516,7 +516,6 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
     today.setHours(0, 0, 0, 0);
 
     if (date < today) {
-      console.log('Cannot select past dates');
       return;
     }
 
@@ -531,16 +530,10 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
     const currentViewMonth = currentMonth.getMonth();
 
     if (selectedMonth !== currentViewMonth) {
-      console.log(`Selected date is in a different month (${selectedMonth+1} vs current ${currentViewMonth+1})`);
       setCurrentMonth(new Date(date.getFullYear(), date.getMonth(), 1));
     }
 
-    // Log selected day data
-    if (dayData) {
-      console.log(`Selected date ${dateString} has ${dayData.timeSlots.length} time slots`, dayData);
-    } else {
-      console.log(`No data found for selected date ${dateString}`);
-    }
+    // Check if we have data for the selected day
   };
 
   const toggleDayAvailability = (date: Date) => {
@@ -566,7 +559,6 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
 
   const handleAddTimeSlot = () => {
     if (!selectedDate) {
-      console.error("[AvailabilityCalendar] Cannot add time slot: selectedDate is null");
       setShowTimeSlotModal(false);
       return;
     }
@@ -585,7 +577,6 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
 
     // If no packages are available, show a warning but still allow creating time slots
     if (availablePackages.length === 0) {
-      console.warn("[AvailabilityCalendar] No packages available, creating time slot without package selection");
       setServiceSelectionError("Warning: No packages available. Time slot will be created but won't be visible to customers until packages are added.");
 
       // Create a default package selection to allow the time slot to be saved
@@ -597,7 +588,6 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
       return;
     }
 
-    console.log("[AvailabilityCalendar] Adding time slot for date:", selectedDate);
 
     // Format the date to string for API
     const dateString = formatDateToString(selectedDate);
@@ -644,7 +634,6 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
         : [newTimeSlot]
     };
 
-    console.log(`[AvailabilityCalendar] Created updated day with ${updatedDay.timeSlots.length} time slots:`, updatedDay);
 
     // Save the availability to backend
     saveAvailability(updatedDay);
@@ -655,15 +644,140 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
     setServiceSelectionError(null);
 
     // Show success message
+    setSuccessMessage('Time slot added successfully!');
     setShowSuccessMessage(true);
   };
 
-  const handleRemoveTimeSlot = (dateString: string, timeSlotId: string) => {
-    const existingDay = availabilityData.find(day => day.date === dateString);
-    if (!existingDay) return;
-    const updatedSlots = existingDay.timeSlots.filter(slot => slot.id !== timeSlotId);
-    const updatedDay: DayAvailability = { ...existingDay, timeSlots: updatedSlots };
-    saveAvailability(updatedDay);
+  const handleRemoveTimeSlot = async (dateString: string, timeSlotId: string) => {
+    try {
+      // Show loading state
+      setLoading(true);
+      setError(null);
+
+      console.log('Removing time slot:', timeSlotId, 'from date:', dateString);
+
+      // First update local state for immediate feedback
+      const existingDay = availabilityData.find(day => day.date === dateString);
+      if (!existingDay) {
+        setError("Could not find the selected day's data.");
+        setLoading(false);
+        return;
+      }
+
+      // Find the slot to be deleted for logging
+      const slotToDelete = existingDay.timeSlots.find(slot => slot.id === timeSlotId);
+      console.log('Slot to delete:', slotToDelete);
+
+      // Update local state
+      const updatedSlots = existingDay.timeSlots.filter(slot => slot.id !== timeSlotId);
+      const updatedDay: DayAvailability = { ...existingDay, timeSlots: updatedSlots };
+
+      // Call the API to delete the time slot from the database
+      // Include the date parameter for fallback deletion
+      console.log('Calling API to delete time slot:', timeSlotId, 'for provider:', providerId, 'on date:', dateString);
+      const response = await fetch(`/api/cremation/availability/timeslot?slotId=${timeSlotId}&providerId=${providerId}&date=${dateString}`, {
+        method: 'DELETE',
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      });
+
+      const responseData = await response.json();
+      console.log('API response:', responseData);
+
+      if (!response.ok) {
+        // If the API call fails, try the debug endpoint as a fallback
+        console.log('API call failed, trying debug endpoint as fallback');
+        const debugResponse = await fetch(`/api/cremation/availability/debug?action=delete-slot&slotId=${timeSlotId}&providerId=${providerId}`, {
+          method: 'GET',
+          headers: {
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
+          }
+        });
+
+        const debugResponseData = await debugResponse.json();
+        console.log('Debug API response:', debugResponseData);
+
+        if (!debugResponse.ok) {
+          throw new Error(responseData.error || `Failed to delete time slot (HTTP ${response.status})`);
+        }
+      }
+
+      // After successfully deleting from the database, update the local state
+      setAvailabilityData(prevData => {
+        const newData = [...prevData];
+        const existingIndex = newData.findIndex(day => day.date === dateString);
+
+        if (existingIndex >= 0) {
+          newData[existingIndex] = {...updatedDay};
+        }
+
+        return newData;
+      });
+
+      // Show success message for time slot deletion
+      setSuccessMessage('Time slot deleted successfully!');
+      setShowSuccessMessage(true);
+      setTimeout(() => setShowSuccessMessage(false), 3000);
+
+      // Force calendar re-render
+      forceCalendarRefresh();
+
+      // If there are no more time slots, we should update the availability data
+      if (responseData.remaining_slots === 0) {
+        console.log('No remaining slots, updating availability data');
+        // Save the updated day with no time slots
+        saveAvailability(updatedDay);
+      }
+
+      // Always refresh the data from the server to ensure UI is in sync with database
+      // Use a longer timeout to ensure the database has time to process the deletion
+      setTimeout(() => {
+        console.log('Refreshing availability data after deletion');
+        fetchAvailabilityData(true);
+      }, 1000);
+
+    } catch (err) {
+      console.error('Error deleting time slot:', err);
+      setError(`Failed to delete time slot: ${err instanceof Error ? err.message : String(err)}`);
+
+      // Try one more approach - clear all slots for the date
+      try {
+        console.log('Attempting to clear all slots for date:', dateString);
+        const clearResponse = await fetch(`/api/cremation/availability/debug?action=clear-date&date=${dateString}&providerId=${providerId}`, {
+          method: 'GET',
+          headers: {
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
+          }
+        });
+
+        const clearResponseData = await clearResponse.json();
+        console.log('Clear date response:', clearResponseData);
+
+        if (clearResponse.ok && clearResponseData.affectedRows > 0) {
+          setSuccessMessage(`Cleared ${clearResponseData.affectedRows} time slots for ${dateString}`);
+          setShowSuccessMessage(true);
+          setTimeout(() => setShowSuccessMessage(false), 3000);
+
+          // Force refresh after clearing
+          setTimeout(() => {
+            fetchAvailabilityData(true);
+          }, 1000);
+        } else {
+          // Revert local state changes on error
+          fetchAvailabilityData(true);
+        }
+      } catch (clearErr) {
+        console.error('Error clearing date slots:', clearErr);
+        // Revert local state changes on error
+        fetchAvailabilityData(true);
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   const togglePackageSelection = (packageId: number) => {
@@ -675,7 +789,6 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
   const selectedDayData = selectedDate ? availabilityData.find(day => day.date === formatDateToString(selectedDate)) : null;
 
   const handleRefreshData = () => {
-    console.log("Manual refresh triggered");
     // Clear any stale data first
     setAvailabilityData([]);
     // Then fetch fresh data
@@ -687,12 +800,8 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
 
   useEffect(() => {
     // Add this effect to trace when availabilityData changes
-    console.log(`availabilityData updated with ${availabilityData.length} days`);
-    console.log(`Days with time slots: ${availabilityData.filter(d => d.timeSlots.length > 0).length}`);
 
     // Force re-render of the calendar data
-    const days = getDaysInMonth();
-    console.log(`Calendar contains ${days.filter(d => d.type === 'day' && d.timeSlots && d.timeSlots.length > 0).length} days with time slots`);
   }, [availabilityData]);
 
   // Add this effect to hide conflict message after a timeout
@@ -739,7 +848,6 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
 
       <div key={calendarKey} className="grid grid-cols-7 gap-1">
         {days.map((day, index) => {
-          const isToday = day.date && formatDateToString(day.date) === formatDateToString(new Date());
           const isPastDay = day.date && day.date < new Date(new Date().setHours(0, 0, 0, 0));
 
           return (
@@ -822,7 +930,7 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
         <div className="bg-green-50 border border-green-200 rounded-md p-4 mb-4 flex items-center justify-between">
           <div className="flex items-start">
             <CheckIcon className="h-5 w-5 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
-            <p className="text-green-700">Time slot added successfully!</p>
+            <p className="text-green-700">{successMessage}</p>
           </div>
           <button onClick={() => setShowSuccessMessage(false)} className="px-3 py-1 bg-green-100 hover:bg-green-200 text-green-800 rounded-md text-sm">Dismiss</button>
         </div>

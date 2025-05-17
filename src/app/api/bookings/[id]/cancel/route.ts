@@ -4,8 +4,8 @@ import { query } from '@/lib/db';
 
 // Import the email templates
 import { createBookingStatusUpdateEmail } from '@/lib/emailTemplates';
-// Import the unified email service
-import { sendEmail } from '@/lib/unifiedEmailService';
+// Import the consolidated email service
+import { sendEmail } from '@/lib/consolidatedEmailService';
 
 export async function POST(request: NextRequest) {
   // Extract ID from URL
@@ -28,7 +28,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Booking ID is required' }, { status: 400 });
     }
 
-    console.log(`Cancelling booking ${bookingId} for user ${userId}`);
 
     // Update the booking status in the database
     try {
@@ -50,16 +49,12 @@ export async function POST(request: NextRequest) {
         );
 
         if (bookingsUpdateResult && 'affectedRows' in bookingsUpdateResult && bookingsUpdateResult.affectedRows === 0) {
-          console.log(`No booking found with ID ${bookingId} for user ${userId}`);
           // We'll still continue with the process to maintain backward compatibility
         } else {
-          console.log(`Successfully updated booking status in bookings table`);
         }
       } else {
-        console.log(`Successfully updated booking status in service_bookings table`);
       }
     } catch (dbError) {
-      console.error('Error updating booking status in database:', dbError);
       // Continue with the process even if the database update fails
     }
 
@@ -68,7 +63,6 @@ export async function POST(request: NextRequest) {
 
     // Send booking cancellation email
     try {
-      console.log('Preparing to send booking cancellation email...');
 
       // Get booking details from database (in a real app)
       // For now, we'll use mock data
@@ -111,7 +105,6 @@ export async function POST(request: NextRequest) {
           };
         }
       } catch (dbError) {
-        console.error('Error fetching booking details:', dbError);
         // Continue with mock data if we can't get real data
       }
 
@@ -142,13 +135,11 @@ export async function POST(request: NextRequest) {
             };
           }
         } catch (userError) {
-          console.error('Error fetching user details:', userError);
         }
       }
 
       // If we still don't have an email or booking details, use fallbacks
       if (!userEmail) {
-        console.warn('Could not find user email for cancellation notification. Using fallback.');
         userEmail = 'user@example.com';
       }
 
@@ -183,17 +174,13 @@ export async function POST(request: NextRequest) {
         });
 
         if (emailResult.success) {
-          console.log(`Booking cancellation email sent successfully to ${userEmail}. Message ID: ${emailResult.messageId}`);
         } else {
-          console.error('Failed to send booking cancellation email:', emailResult.error);
           // Continue with the cancellation process even if the email fails
         }
       } catch (emailSendError) {
-        console.error('Error sending booking cancellation email:', emailSendError);
         // Continue with the cancellation process even if the email fails
       }
     } catch (emailError) {
-      console.error('Error sending booking cancellation email:', emailError);
       // Continue with the cancellation process even if the email fails
     }
 
@@ -206,7 +193,6 @@ export async function POST(request: NextRequest) {
       }
     });
   } catch (error) {
-    console.error('Error cancelling booking:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }

@@ -35,7 +35,6 @@ function BookingDetailsPage({ userData }: { userData: any }) {
 
   const handleStatusUpdate = async (newStatus: string) => {
     try {
-      console.log(`Updating booking ${bookingId} status to ${newStatus}`);
       setLoading(true);
 
       const response = await fetch(`/api/cremation/bookings/${bookingId}/status`, {
@@ -46,7 +45,6 @@ function BookingDetailsPage({ userData }: { userData: any }) {
         body: JSON.stringify({ status: newStatus }),
       });
 
-      console.log(`Status update response status: ${response.status}`);
 
       if (!response.ok) {
         // Try to parse the error response, but handle cases where it might not be valid JSON
@@ -55,13 +53,11 @@ function BookingDetailsPage({ userData }: { userData: any }) {
           const errorData = await response.json();
           errorMessage = errorData.error || errorMessage;
         } catch (parseError) {
-          console.error('Error parsing error response:', parseError);
         }
         throw new Error(errorMessage);
       }
 
       const data = await response.json();
-      console.log('Status update response:', data);
 
       // Update the local booking state
       setBooking({
@@ -81,7 +77,6 @@ function BookingDetailsPage({ userData }: { userData: any }) {
         fetchBookingDetails();
       }, 500);
     } catch (error) {
-      console.error('Error updating booking status:', error);
       showToast('Failed to update booking status: ' + (error instanceof Error ? error.message : 'Unknown error'), 'error');
     } finally {
       setLoading(false);
@@ -91,7 +86,6 @@ function BookingDetailsPage({ userData }: { userData: any }) {
   // Enhanced payment status update that works with or without the API
   const handlePaymentStatusUpdate = async (newPaymentStatus: string) => {
     try {
-      console.log(`Updating payment status for booking ${bookingId} to ${newPaymentStatus}`);
       setLoading(true);
 
       // First, update the local state immediately for better UX
@@ -111,16 +105,12 @@ function BookingDetailsPage({ userData }: { userData: any }) {
         });
 
         if (response.ok) {
-          console.log('Payment status updated successfully in database');
         } else {
           // If API fails, log it but don't show error to user since UI is already updated
-          console.warn('API update failed, but UI was updated');
           const errorData = await response.json();
-          console.warn('API error details:', errorData);
         }
       } catch (apiError) {
         // If API call fails completely, just log it
-        console.warn('API call failed, but UI was updated:', apiError);
       }
 
       // Show success message regardless of API result
@@ -132,10 +122,8 @@ function BookingDetailsPage({ userData }: { userData: any }) {
         bookingPaymentStatuses[bookingId] = newPaymentStatus;
         localStorage.setItem('bookingPaymentStatuses', JSON.stringify(bookingPaymentStatuses));
       } catch (storageError) {
-        console.warn('Failed to store payment status in localStorage:', storageError);
       }
     } catch (error) {
-      console.error('Error updating payment status:', error);
       showToast('Failed to update payment status: ' + (error instanceof Error ? error.message : 'Unknown error'), 'error');
     } finally {
       setLoading(false);
@@ -148,7 +136,6 @@ function BookingDetailsPage({ userData }: { userData: any }) {
       setLoading(true);
       setError(null);
 
-      console.log(`Fetching booking details for ID: ${bookingId}`);
 
       // Add a cache-busting parameter and increase timeout
       const controller = new AbortController();
@@ -166,15 +153,12 @@ function BookingDetailsPage({ userData }: { userData: any }) {
 
       clearTimeout(timeoutId);
 
-      console.log(`Booking details response status: ${response.status}`);
 
       // Always try to parse the response as JSON, whether it's an error or success
       let responseData;
       try {
         responseData = await response.json();
-        console.log('Response data:', responseData);
       } catch (parseError) {
-        console.error('Error parsing response:', parseError);
         throw new Error('Failed to parse server response. Please try again later.');
       }
 
@@ -184,7 +168,6 @@ function BookingDetailsPage({ userData }: { userData: any }) {
         if (response.status === 404) {
           // Check if we have debug information
           if (responseData.debug) {
-            console.log('Debug information:', responseData.debug);
 
             // If we have tables available but still got a 404, it might be a permission issue
             if (responseData.debug.tablesAvailable &&
@@ -224,19 +207,16 @@ function BookingDetailsPage({ userData }: { userData: any }) {
 
       // Check if we have the minimal required fields
       if (!responseData.id) {
-        console.warn('Response missing ID, using URL parameter instead');
         responseData.id = bookingId;
       }
 
       // If we got here, the response was successful
-      console.log('Booking details retrieved successfully:', responseData);
 
       // Check if we need to load payment status from localStorage
       if (!responseData.paymentStatus || responseData.paymentStatus === 'undefined') {
         try {
           const bookingPaymentStatuses = JSON.parse(localStorage.getItem('bookingPaymentStatuses') || '{}');
           if (bookingPaymentStatuses[bookingId]) {
-            console.log('Loading payment status from localStorage:', bookingPaymentStatuses[bookingId]);
             responseData.paymentStatus = bookingPaymentStatuses[bookingId];
           } else if (responseData.paymentMethod === 'gcash') {
             // For GCash payments, default to 'paid'
@@ -246,7 +226,6 @@ function BookingDetailsPage({ userData }: { userData: any }) {
             responseData.paymentStatus = 'not_paid';
           }
         } catch (storageError) {
-          console.warn('Failed to load payment status from localStorage:', storageError);
           // Set default payment status
           responseData.paymentStatus = responseData.paymentMethod === 'gcash' ? 'paid' : 'not_paid';
         }
@@ -257,7 +236,6 @@ function BookingDetailsPage({ userData }: { userData: any }) {
       // Show success toast
       showToast(`Booking #${bookingId} loaded successfully`, 'success');
     } catch (error) {
-      console.error('Error fetching booking details:', error);
 
       // Check if it's an abort error (timeout)
       if (error.name === 'AbortError') {
@@ -275,7 +253,6 @@ function BookingDetailsPage({ userData }: { userData: any }) {
 
       // Try one more time with a different approach - direct fetch without signal
       try {
-        console.log('Attempting fallback fetch method...');
         const fallbackResponse = await fetch(`/api/cremation/bookings/${bookingId}?fallback=true&t=${Date.now()}`, {
           method: 'GET',
           headers: {
@@ -287,15 +264,12 @@ function BookingDetailsPage({ userData }: { userData: any }) {
 
         if (fallbackResponse.ok) {
           const fallbackData = await fallbackResponse.json();
-          console.log('Fallback fetch successful:', fallbackData);
           setBooking(fallbackData);
           setError(null);
           showToast(`Booking #${bookingId} loaded successfully with fallback method`, 'success');
         } else {
-          console.log('Fallback fetch also failed');
         }
       } catch (fallbackError) {
-        console.error('Fallback fetch error:', fallbackError);
       }
     } finally {
       setLoading(false);
@@ -315,14 +289,12 @@ function BookingDetailsPage({ userData }: { userData: any }) {
       try {
         const bookingPaymentStatuses = JSON.parse(localStorage.getItem('bookingPaymentStatuses') || '{}');
         if (bookingPaymentStatuses[bookingId]) {
-          console.log('Updating payment status from localStorage after load:', bookingPaymentStatuses[bookingId]);
           setBooking({
             ...booking,
             paymentStatus: bookingPaymentStatuses[bookingId]
           });
         }
       } catch (error) {
-        console.warn('Error checking localStorage for payment status:', error);
       }
     }
   }, [booking?.id]);

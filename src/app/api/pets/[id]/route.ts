@@ -12,7 +12,6 @@ async function ensurePetsTableExists() {
     `);
 
     if (tableExists[0].count === 0) {
-      console.log('Creating pets table as it does not exist...');
       
       // Create the pets table
       await query(`
@@ -33,13 +32,11 @@ async function ensurePetsTableExists() {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
       `);
       
-      console.log('Pets table created successfully');
       return true;
     }
     
     return true;
   } catch (error) {
-    console.error('Error ensuring pets table exists:', error);
     return false;
   }
 }
@@ -92,7 +89,6 @@ export async function GET(
       pet: petResult[0]
     });
   } catch (error) {
-    console.error('Error fetching pet:', error);
     return NextResponse.json({
       error: 'Failed to fetch pet',
       details: error instanceof Error ? error.message : 'Unknown error'
@@ -202,7 +198,6 @@ export async function PUT(
       message: 'Pet updated successfully'
     });
   } catch (error) {
-    console.error('Error updating pet:', error);
     return NextResponse.json({
       error: 'Failed to update pet',
       details: error instanceof Error ? error.message : 'Unknown error'
@@ -250,7 +245,6 @@ export async function DELETE(
       message: 'Pet deleted successfully'
     });
   } catch (error) {
-    console.error('Error deleting pet:', error);
     return NextResponse.json({
       error: 'Failed to delete pet',
       details: error instanceof Error ? error.message : 'Unknown error'

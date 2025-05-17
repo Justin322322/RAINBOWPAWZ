@@ -4,8 +4,8 @@ import bcrypt from 'bcryptjs';
 import { generateOtp } from '@/lib/otpService';
 import { createAdminNotification } from '@/utils/adminNotificationService';
 
-// Import the simple email service
-const { sendWelcomeEmail } = require('@/lib/simpleEmailService');
+// Import the consolidated email service
+import { sendWelcomeEmail } from '@/lib/consolidatedEmailService';
 
 // Types for our request
 interface PersonalRegistrationData {
@@ -39,9 +39,6 @@ interface BusinessRegistrationData {
 type RegistrationData = PersonalRegistrationData | BusinessRegistrationData;
 
 export async function POST(request: Request) {
-  console.log('Registration API called');
-  console.log('Request method:', request.method);
-  console.log('Request headers:', Object.fromEntries([...request.headers.entries()]));
 
   // Add CORS headers
   const headers = {
@@ -60,10 +57,8 @@ export async function POST(request: Request) {
 
   try {
     // Test database connection first
-    console.log('Testing database connection...');
     const isConnected = await testConnection();
     if (!isConnected) {
-      console.error('Database connection failed during registration');
       return NextResponse.json({
         error: 'Database connection error',
         message: 'Unable to connect to the database. Please try again later.'
@@ -72,20 +67,12 @@ export async function POST(request: Request) {
         headers
       });
     }
-    console.log('Database connection successful');
 
     // Parse request body
     let data;
     try {
       data = await request.json() as RegistrationData;
-      console.log('Request body parsed successfully:', {
-        email: data.email,
-        firstName: data.firstName,
-        lastName: data.lastName,
-        account_type: data.account_type
-      });
     } catch (parseError) {
-      console.error('Error parsing request body:', parseError);
       return NextResponse.json({
         error: 'Invalid request body',
         message: 'The request body could not be parsed as JSON.'
@@ -151,27 +138,20 @@ export async function POST(request: Request) {
 
     // Function to handle the registration process with transaction
     const registerUser = async () => {
-      console.log('Starting registration process for:', data.email);
 
       // Start a transaction to ensure data consistency
-      console.log('Starting transaction...');
       await query('START TRANSACTION');
-      console.log('Transaction started successfully');
 
       try {
         // Hash the password
-        console.log('Hashing password...');
         const hashedPassword = await bcrypt.hash(data.password, 10);
-        console.log('Password hashed successfully');
 
         let userId;
 
         // Set the role based on account type
         const role = data.account_type === 'personal' ? 'fur_parent' : 'business';
-        console.log('User role set to:', role);
 
         // Register in users table
-        console.log('Inserting user into database...');
         try {
           // Insert user with simplified query
           const sql = `INSERT INTO users (email, password, first_name, last_name, phone_number, address, sex, role)
@@ -188,21 +168,15 @@ export async function POST(request: Request) {
             role
           ];
 
-          console.log('SQL Query:', sql);
-          console.log('Values:', values.map((val, i) => i === 1 ? '[REDACTED]' : val));
 
           const userResult = await query(sql, values) as any;
-          console.log('User inserted successfully, result:', userResult);
           userId = userResult.insertId;
-          console.log('User ID assigned:', userId);
         } catch (insertError) {
-          console.error('Error inserting user into database:', insertError);
           throw insertError;
         }
 
         // If it's a business account, also create an entry in the service_providers table
         if (data.account_type === 'business' && userId) {
-          console.log('Creating service provider for user ID:', userId);
 
           try {
             // Insert service provider with simplified query
@@ -238,16 +212,12 @@ export async function POST(request: Request) {
               'pending'
             ];
 
-            console.log('Service provider SQL Query:', sql);
-            console.log('Service provider values:', values);
 
             const result = await query(sql, values) as any;
-            console.log('Service provider created successfully, result:', result);
 
             // Create admin notification for cremation center registration
             if (providerType === 'cremation') {
               try {
-                console.log('Creating admin notification for new cremation center registration');
                 const serviceProviderId = result.insertId;
 
                 await createAdminNotification({
@@ -258,30 +228,23 @@ export async function POST(request: Request) {
                   entityId: serviceProviderId
                 });
 
-                console.log('Admin notification created successfully for cremation center');
               } catch (notificationError) {
-                console.error('Error creating admin notification:', notificationError);
                 // Continue with registration even if notification creation fails
               }
             }
           } catch (serviceProviderError) {
-            console.error('Error creating service provider:', serviceProviderError);
             // Continue with registration even if service provider creation fails
             // We'll handle this in the admin dashboard
           }
         }
 
         // Commit the transaction
-        console.log('Committing transaction...');
         await query('COMMIT');
-        console.log('Transaction committed successfully');
 
         return userId;
       } catch (error) {
         // Rollback the transaction in case of error
-        console.error('Error during registration transaction, rolling back:', error);
         await query('ROLLBACK');
-        console.log('Transaction rolled back');
         throw error;
       }
     };
@@ -294,26 +257,18 @@ export async function POST(request: Request) {
       try {
         const accountType = data.account_type === 'personal' ? 'personal' : 'business';
 
-        // Log email details for debugging
-        console.log('Attempting to send welcome email to:', data.email);
-
         // Send using simple email service
         const emailResult = await sendWelcomeEmail(data.email, data.firstName, accountType);
 
-        if (emailResult.success) {
-          console.log('Welcome email sent successfully to:', data.email);
-        } else {
-          console.error('Failed to send welcome email:', emailResult.error);
+        if (!emailResult.success) {
           // Continue with registration even if email fails
         }
       } catch (emailError) {
-        console.error('Failed to send welcome email:', emailError);
         // Continue with registration even if email fails
       }
 
       // Generate OTP for the new user
       try {
-        console.log('Generating OTP for newly registered user:', userId);
         const ipAddress = request.headers.get('x-forwarded-for') || 'unknown';
 
         const otpResult = await generateOtp({
@@ -322,14 +277,10 @@ export async function POST(request: Request) {
           ipAddress
         });
 
-        if (otpResult.success) {
-          console.log('OTP generated successfully for new user');
-        } else {
-          console.error('Failed to generate OTP for new user:', otpResult.error);
+        if (!otpResult.success) {
           // Continue with registration even if OTP generation fails
         }
       } catch (otpError) {
-        console.error('Error generating OTP for new user:', otpError);
         // Continue with registration even if OTP generation fails
       }
 
@@ -345,13 +296,10 @@ export async function POST(request: Request) {
       throw new Error('Failed to create user account');
     }
   } catch (error) {
-    console.error('Registration error:', error);
 
-    // Log more detailed error information
+    // Handle error
     if (error instanceof Error) {
-      console.error('Error name:', error.name);
-      console.error('Error message:', error.message);
-      console.error('Error stack:', error.stack);
+      // Process error
     }
 
     return NextResponse.json({

@@ -84,7 +84,6 @@ function EditPackagePage({ userData }: EditPackagePageProps) {
           showToast('Package not found', 'error');
         }
       } catch (error) {
-        console.error('Error fetching package data:', error);
         setErrors({ submit: 'Failed to load package data' });
         showToast(error instanceof Error ? error.message : 'Failed to load package data', 'error');
       } finally {
@@ -182,7 +181,6 @@ function EditPackagePage({ userData }: EditPackagePageProps) {
           const data = await response.json();
           return data.filePath; // Return the file path from the server
         } catch (error) {
-          console.error('Error uploading image:', error);
           showToast(`Failed to upload ${file.name}`, 'error');
           return null;
         }
@@ -276,7 +274,6 @@ function EditPackagePage({ userData }: EditPackagePageProps) {
       // Redirect back to packages list
       router.push('/cremation/packages');
     } catch (error) {
-      console.error('Error updating package:', error);
       setErrors({ submit: 'Failed to update package. Please try again.' });
       showToast(error instanceof Error ? error.message : 'Failed to update package', 'error');
     } finally {
@@ -336,7 +333,6 @@ function EditPackagePage({ userData }: EditPackagePageProps) {
                         // Handle image load error
                         const target = e.target as HTMLImageElement;
                         target.src = '/images/placeholder-image.jpg';
-                        console.error('Failed to load image:', image);
                       }}
                     />
                   </div>

@@ -40,7 +40,6 @@ export async function createNotification(
 
     return await response.json();
   } catch (error) {
-    console.error('Error creating notification:', error);
     throw error;
   }
 }
@@ -69,7 +68,6 @@ export async function markNotificationAsRead(notificationId: number) {
 
     return await response.json();
   } catch (error) {
-    console.error('Error marking notification as read:', error);
     throw error;
   }
 }
@@ -97,7 +95,6 @@ export async function markAllNotificationsAsRead() {
 
     return await response.json();
   } catch (error) {
-    console.error('Error marking all notifications as read:', error);
     throw error;
   }
 }

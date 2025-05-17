@@ -12,7 +12,6 @@ async function ensurePetsTableExists() {
     `);
 
     if (tableExists[0].count === 0) {
-      console.log('Creating pets table as it does not exist...');
 
       // Create the pets table
       await query(`
@@ -33,13 +32,11 @@ async function ensurePetsTableExists() {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
       `);
 
-      console.log('Pets table created successfully');
       return true;
     }
 
     return true;
   } catch (error) {
-    console.error('Error ensuring pets table exists:', error);
     return false;
   }
 }
@@ -88,7 +85,6 @@ export async function GET(request: NextRequest) {
         pets: petsResult
       });
     } catch (dbError) {
-      console.error('Database error fetching pets:', dbError);
 
       // Return mock pets as fallback
       return NextResponse.json({
@@ -101,7 +97,6 @@ export async function GET(request: NextRequest) {
       });
     }
   } catch (error) {
-    console.error('Error fetching pets:', error);
 
     // Return mock pets as fallback
     return NextResponse.json({
@@ -193,14 +188,12 @@ export async function POST(request: NextRequest) {
         message: 'Pet created successfully'
       });
     } catch (dbError) {
-      console.error('Database error creating pet:', dbError);
       return NextResponse.json({
         error: 'Failed to create pet',
         details: dbError instanceof Error ? dbError.message : 'Unknown error'
       }, { status: 500 });
     }
   } catch (error) {
-    console.error('Error creating pet:', error);
     return NextResponse.json({
       error: 'Failed to create pet',
       details: error instanceof Error ? error.message : 'Unknown error'

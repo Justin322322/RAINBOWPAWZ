@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import mysql from 'mysql2/promise';
 
-// Import the simple email service
-const { sendBusinessVerificationEmail } = require('@/lib/simpleEmailService');
+// Import the consolidated email service
+import { sendBusinessVerificationEmail } from '@/lib/consolidatedEmailService';
 
 export async function POST(request: NextRequest) {
   // Extract ID from URL
@@ -31,13 +31,11 @@ export async function POST(request: NextRequest) {
 
     // Determine which table to use
     const tableNames = tableCheckResult.map(row => row.table_name);
-    console.log('Available tables:', tableNames);
 
     const useServiceProvidersTable = tableNames.includes('service_providers');
     const useBusinessProfilesTable = tableNames.includes('business_profiles');
 
     if (!useServiceProvidersTable && !useBusinessProfilesTable) {
-      console.error('Neither business_profiles nor service_providers table exists in the database');
       return NextResponse.json({
         message: 'Database schema error: Required tables do not exist'
       }, { status: 500 });
@@ -45,7 +43,6 @@ export async function POST(request: NextRequest) {
 
     // Use the appropriate table name
     const tableName = useServiceProvidersTable ? 'service_providers' : 'business_profiles';
-    console.log(`Using table: ${tableName}`);    // Update business profile application status
     const updateResult = await query(
       `UPDATE ${tableName}
        SET application_status = 'approved',
@@ -125,7 +122,6 @@ export async function POST(request: NextRequest) {
       }
     } catch (notificationError) {
       // Non-critical error, just log it
-      console.error('Failed to create notification:', notificationError);
     }
 
     // Log the approval action
@@ -142,13 +138,12 @@ export async function POST(request: NextRequest) {
         }),
         1 // TODO: Replace with actual admin ID from auth
       ]
-    ).catch(err => console.error('Failed to log admin action:', err));
+    );
 
     // Send email notification to the business owner
     let emailSent = false;
     if (business && business.email) {
       try {
-        console.log(`Sending approval email to ${business.email} for business ${business.business_name || business.name}`);
 
         // Send email using simple email service
         const emailResult = await sendBusinessVerificationEmail(
@@ -162,10 +157,8 @@ export async function POST(request: NextRequest) {
         );
 
         if (emailResult.success) {
-          console.log(`Approval email sent successfully to ${business.email}. Message ID: ${emailResult.messageId}`);
           emailSent = true;
         } else {
-          console.error('Failed to send approval email:', emailResult.error);
         }
 
         // Create a notification for the user
@@ -179,10 +172,9 @@ export async function POST(request: NextRequest) {
             'success',
             '/cremation/dashboard'
           ]
-        ).catch(err => console.error('Failed to create notification:', err));
+        )
 
       } catch (emailError) {
-        console.error('Error sending approval email:', emailError);
         // Continue with the process even if email fails
       }
     }
@@ -194,7 +186,6 @@ export async function POST(request: NextRequest) {
       emailSent: emailSent
     });
   } catch (error) {
-    console.error('Error approving application:', error);
     return NextResponse.json(
       { message: 'Failed to approve application' },
       { status: 500 }

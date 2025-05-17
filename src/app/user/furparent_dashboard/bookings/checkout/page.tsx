@@ -259,7 +259,6 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
 
   // Handle date and time selection with validation
   const handleDateTimeSelected = (date: string, timeSlot: any | null) => {
-    console.log('[Checkout] Date/time selection changed:', { date, timeSlot });
 
     // Only update state if we have valid values
     if (date) {
@@ -285,7 +284,6 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
 
     // If date is selected but time slot is null, the user is in the middle of the selection process
     if (date && !timeSlot) {
-      console.log('[Checkout] Date selected but no time slot yet. Waiting for time slot selection.');
       // We don't set an error here because the user is still in the process of selecting
     }
 
@@ -350,18 +348,15 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
     // Fetch real data from API
     const fetchData = async () => {
       try {
-        console.log(`Fetching provider (ID: ${providerIdParam}) and package (ID: ${packageIdParam}) data for checkout`);
 
         // Debug section removed - no longer needed
 
         // Fetch provider data
         const providerResponse = await fetch(`/api/service-providers/${providerIdParam}`);
         if (!providerResponse.ok) {
-          console.error(`Failed to fetch provider: ${providerResponse.status} ${providerResponse.statusText}`);
 
           // Try special case for test providers
           if (providerIdParam === '1001' || providerIdParam === '1002' || providerIdParam === '1003') {
-            console.log('Attempting to use test provider data');
             const testProviders = {
               '1001': {
                 id: 1001,
@@ -494,7 +489,6 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                     }
                   }
                 } catch (petError) {
-                  console.error('Error fetching pet details:', petError);
                 }
               }
 
@@ -510,29 +504,24 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
 
         const providerData = await providerResponse.json();
         if (!providerData.provider) {
-          console.error('Provider data is empty or invalid:', providerData);
           setError('Provider information is unavailable. Please try again.');
           return;
         }
 
-        console.log('Successfully fetched provider:', providerData.provider);
 
         // Fetch package data
         const packageResponse = await fetch(`/api/packages/${packageIdParam}`);
         if (!packageResponse.ok) {
-          console.error(`Failed to fetch package: ${packageResponse.status} ${packageResponse.statusText}`);
           setError('Package not found. Please try again or contact support.');
           return;
         }
 
         const packageData = await packageResponse.json();
         if (!packageData.package) {
-          console.error('Package data is empty or invalid:', packageData);
           setError('Package information is unavailable. Please try again.');
           return;
         }
 
-        console.log('Successfully fetched package:', packageData.package);
 
         setBookingData({
           provider: providerData.provider,
@@ -565,11 +554,9 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
               }
             }
           } catch (petError) {
-            console.error('Error fetching pet details:', petError);
           }
         }
       } catch (err) {
-        console.error('Failed to load booking information:', err);
         setError('Failed to load booking information. Please try again.');
       } finally {
         setLoading(false);
@@ -605,7 +592,6 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
     if (userData && deliveryOption === 'delivery') {
       // Check if the user has an address in their profile
       if (!userData.address && !userData.city) {
-        console.warn('[Checkout] User does not have a complete address in their profile');
       }
     }
   }, [userData, deliveryOption]);
@@ -636,15 +622,6 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
     // Clear any previous errors if validation passes
     setError(null);
 
-    console.log("[Checkout] Proceeding with booking:", {
-      provider: providerId,
-      package: packageId,
-      date: selectedDate,
-      timeSlot: selectedTimeSlot,
-      petName,
-      petType
-    });
-
     if (!userData) {
       const message = 'You must be logged in to complete a booking';
       setError(message);
@@ -665,7 +642,6 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
           formData.append('userId', userData.id.toString());
           formData.append('petName', petName); // Add pet name for better filename
 
-          console.log('Uploading pet image...');
           const uploadResponse = await fetch('/api/upload/pet-image', {
             method: 'POST',
             body: formData
@@ -678,23 +654,18 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
             try {
               uploadData = JSON.parse(responseText);
             } catch (parseError) {
-              console.error('Failed to parse upload response as JSON:', responseText);
               throw new Error('Invalid response from image upload server');
             }
 
             if (uploadResponse.ok) {
               // The API returns imagePath, not imageUrl
               petImageUrl = uploadData.imagePath;
-              console.log('Pet image uploaded successfully:', petImageUrl);
             } else {
-              console.error('Failed to upload pet image:', uploadData.error || 'Unknown error');
             }
           } catch (responseError) {
-            console.error('Error processing upload response:', responseError);
             // Continue with booking even if image upload fails
           }
         } catch (uploadError) {
-          console.error('Error during image upload:', uploadError);
           // Continue with the booking process even if image upload fails
         }
       }
@@ -715,7 +686,6 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
             imagePath: petImageUrl // Changed from image_url to imagePath
           };
 
-          console.log('Saving pet data:', petData);
 
           const petResponse = await fetch('/api/pets', {
             method: 'POST',
@@ -732,12 +702,10 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
             try {
               petResult = JSON.parse(responseText);
             } catch (parseError) {
-              console.error('Failed to parse pet response as JSON:', responseText);
               throw new Error('Invalid response from pet saving server');
             }
 
             if (petResponse.ok) {
-              console.log('Pet information saved successfully:', petResult);
 
               // Check for petId in different possible response formats
               if (petResult.pet && petResult.pet.id) {
@@ -748,17 +716,13 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                 petId = petResult.id;
               }
 
-              console.log('Pet ID extracted:', petId);
             } else {
-              console.error('Failed to save pet information:', petResult.error || 'Unknown error');
               // Don't fail the booking if pet saving fails, just log the error
             }
           } catch (responseError) {
-            console.error('Error processing pet save response:', responseError);
             // Continue with booking even if pet saving fails
           }
         } catch (petError) {
-          console.error('Error saving pet information:', petError);
           // Don't fail the booking if pet saving fails, just log the error
         }
       }
@@ -788,7 +752,6 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
         price: calculateTotalPrice()
       };
 
-      console.log('Submitting booking:', bookingData);
 
       // Submit the booking
       const bookingResponse = await fetch('/api/cremation/bookings', {
@@ -807,7 +770,6 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
           responseData = JSON.parse(responseText);
         } catch (parseError) {
           // If JSON parsing fails, handle the error
-          console.error('Failed to parse response as JSON:', responseText);
           throw new Error('Invalid response from server. Please try again later.');
         }
 
@@ -816,21 +778,16 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
           throw new Error(responseData.error || 'Failed to create booking');
         }
       } catch (responseError) {
-        console.error('Error processing booking response:', responseError);
         throw responseError;
       }
-      console.log('Booking created successfully:', responseData);
 
       // Clear cart if booking was from cart
       if (searchParams.get('fromCart') === 'true') {
-        console.log('Clearing cart...');
         // Clear the cart using the clearCart function from CartContext
         try {
           removeItem(items[0]?.id); // Remove the processed item
           // If we want to clear the entire cart, we would use clearCart() instead
-          console.log('Cart cleared successfully');
         } catch (cartError) {
-          console.error('Error clearing cart:', cartError);
           // Don't fail the checkout if cart clearing fails
         }
       }
@@ -849,7 +806,6 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
       }, 3000);
 
     } catch (error) {
-      console.error('Error processing booking:', error);
       const errorMessage = error instanceof Error ? error.message : 'An error occurred while processing your booking.';
       setError(errorMessage);
       showToast(errorMessage, 'error');

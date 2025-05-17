@@ -30,7 +30,6 @@ export function usePackages({ userData }: UsePackagesProps) {
         return;
       }
 
-      console.log(`Fetching packages for provider ID: ${providerId}`);
       
       // Fetch packages from API
       const response = await fetch(`/api/packages?providerId=${providerId}&includeInactive=true`, {
@@ -46,7 +45,6 @@ export function usePackages({ userData }: UsePackagesProps) {
       
       setPackages(data.packages || []);
     } catch (error) {
-      console.error('Error fetching packages:', error);
       showToast(error instanceof Error ? error.message : 'Failed to fetch packages', 'error');
       setPackages([]);
     } finally {
@@ -85,7 +83,6 @@ export function usePackages({ userData }: UsePackagesProps) {
         // Return a resolved promise for ConfirmationModal
         return Promise.resolve();
       } catch (error) {
-        console.error('Error deleting package:', error);
         showToast(error instanceof Error ? error.message : 'Failed to delete package', 'error');
         // Re-throw the error to let the ConfirmationModal know it failed
         throw error;
@@ -121,7 +118,6 @@ export function usePackages({ userData }: UsePackagesProps) {
         'success'
       );
     } catch (error) {
-      console.error('Error toggling package status:', error);
       showToast('Failed to update package status. Please try again later.', 'error');
     } finally {
       setToggleLoading(null);

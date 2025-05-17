@@ -40,7 +40,6 @@ export async function POST(request: Request) {
           }, { status: 400 });
         }
       } catch (tableError) {
-        console.error('Error checking password_reset_tokens table:', tableError);
         return NextResponse.json({
           error: 'An error occurred while validating your token. Please try again later.'
         }, { status: 500 });
@@ -102,7 +101,6 @@ export async function POST(request: Request) {
         message: 'Password has been reset successfully'
       });
     } catch (dbError) {
-      console.error('Database error during password reset:', dbError);
 
       // In a production environment, we should not simulate success on database errors
       // Instead, return a proper error message
@@ -111,7 +109,6 @@ export async function POST(request: Request) {
       }, { status: 500 });
     }
   } catch (error) {
-    console.error('Password reset error:', error);
     return NextResponse.json({
       error: 'Failed to reset password',
       message: error instanceof Error ? error.message : 'Unknown error'

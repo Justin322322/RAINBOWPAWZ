@@ -89,7 +89,6 @@ export default function AdminCremationCentersPage() {
         setLoading(true);
         setError(null);
 
-        console.log('Fetching cremation centers from API...');
         const response = await fetch('/api/admin/cremation-businesses', {
           // Add cache: 'no-store' to prevent caching
           cache: 'no-store',
@@ -100,7 +99,6 @@ export default function AdminCremationCentersPage() {
           }
         });
 
-        console.log('API response status:', response.status, response.statusText);
 
         if (!response.ok) {
           // Try to get the error message from the response
@@ -108,23 +106,19 @@ export default function AdminCremationCentersPage() {
           try {
             const errorData = await response.json();
             errorDetails = errorData.details || errorData.error || '';
-            console.error('API error details:', errorData);
           } catch (parseError) {
-            console.error('Could not parse error response:', parseError);
           }
 
           throw new Error(`Failed to fetch cremation centers: ${response.status} ${response.statusText}${errorDetails ? ` - ${errorDetails}` : ''}`);
         }
 
         const data = await response.json();
-        console.log('API response data:', data);
 
         if (!data.success) {
           throw new Error(data.error || 'Failed to fetch cremation centers');
         }
 
         // Log the data we received for debugging
-        console.log('Received businesses:', data.businesses);
 
         // Add default rating and update active services count
         const centersWithRating = data.businesses.map((center: any) => {
@@ -140,7 +134,6 @@ export default function AdminCremationCentersPage() {
               }
               return center.activeServices || 0;
             } catch (error) {
-              console.error(`Error fetching services for center ${centerId}:`, error);
               return center.activeServices || 0;
             }
           };
@@ -162,7 +155,6 @@ export default function AdminCremationCentersPage() {
 
         setCremationCenters(centersWithRating);
       } catch (err) {
-        console.error('Error fetching cremation centers:', err);
         setError(err instanceof Error ? err.message : 'An unknown error occurred');
 
         // Show toast with error message
@@ -323,7 +315,6 @@ export default function AdminCremationCentersPage() {
       // Close the modal
       setShowRestrictModal(false);
     } catch (err) {
-      console.error('Error restricting cremation center:', err);
       showToast(err instanceof Error ? err.message : 'Failed to restrict cremation center', 'error');
     } finally {
       setIsProcessing(false);
@@ -337,7 +328,6 @@ export default function AdminCremationCentersPage() {
     try {
       setIsProcessing(true);
 
-      console.log('Verifying cremation center:', centerToAction);
 
       // Ensure we're sending the correct data format
       // The API expects numeric IDs, so convert if necessary
@@ -354,7 +344,6 @@ export default function AdminCremationCentersPage() {
         businessId = centerToAction.id;
       }
 
-      console.log('Using business ID for verification:', businessId, 'Original ID:', centerToAction.id);
 
       // Check if the center is already restricted
       const isRestricted = centerToAction.verification_status === 'restricted';
@@ -367,7 +356,6 @@ export default function AdminCremationCentersPage() {
         businessId: businessId
       };
 
-      console.log('Sending payload:', payload);
 
       const response = await fetch('/api/admin/users/verify', {
         method: 'POST',
@@ -380,9 +368,7 @@ export default function AdminCremationCentersPage() {
       let data;
       try {
         data = await response.json();
-        console.log('Response data:', data);
       } catch (jsonError) {
-        console.error('Error parsing JSON response:', jsonError);
         throw new Error('Invalid response from server');
       }
 
@@ -436,7 +422,6 @@ export default function AdminCremationCentersPage() {
       }, 100);
 
     } catch (err) {
-      console.error('Error verifying cremation center:', err);
 
       // Extract detailed error message if available
       let errorMessage = 'Failed to verify cremation center';
@@ -465,11 +450,9 @@ export default function AdminCremationCentersPage() {
 
     try {
       setIsProcessing(true);
-      console.log('Starting unrestrict operation for center:', center.id);
 
       // Try the cremation-businesses/restrict endpoint first with 'restore' action
       try {
-        console.log('Trying primary endpoint: /api/admin/cremation-businesses/restrict');
         const response = await fetch('/api/admin/cremation-businesses/restrict', {
           method: 'POST',
           headers: {
@@ -481,35 +464,28 @@ export default function AdminCremationCentersPage() {
           }),
         });
 
-        console.log('Primary endpoint response status:', response.status, response.statusText);
         
         // Try to parse the response as JSON
         let data;
         try {
           data = await response.json();
-          console.log('Primary endpoint response data:', data);
           
           // Check if the response was successful
           if (response.ok && data.success) {
             // Successfully unrestricted using the primary endpoint
-            console.log('Successfully unrestricted using primary endpoint');
             handleSuccessfulUnrestrict(center);
             return;
           }
         } catch (jsonError) {
-          console.error('Error parsing JSON from primary endpoint:', jsonError);
           // Continue to fallback if JSON parsing fails
         }
         
         // If we get here, the primary endpoint failed, so we'll try the fallback
-        console.log('Primary endpoint failed, trying fallback...');
       } catch (primaryError) {
-        console.error('Error with primary unrestrict endpoint:', primaryError);
         // Continue to fallback endpoint
       }
       
       // Try the dedicated unrestrict endpoint as fallback
-      console.log('Trying fallback endpoint: /api/admin/users/unrestrict');
       const fallbackResponse = await fetch('/api/admin/users/unrestrict', {
         method: 'POST',
         headers: {
@@ -522,15 +498,12 @@ export default function AdminCremationCentersPage() {
         }),
       });
       
-      console.log('Fallback endpoint response status:', fallbackResponse.status, fallbackResponse.statusText);
       
       // Try to parse the fallback response
       let fallbackData;
       try {
         fallbackData = await fallbackResponse.json();
-        console.log('Fallback endpoint response data:', fallbackData);
       } catch (jsonError) {
-        console.error('Error parsing JSON from fallback endpoint:', jsonError);
         throw new Error('Both unrestrict endpoints failed - unable to parse response data');
       }
       
@@ -544,11 +517,9 @@ export default function AdminCremationCentersPage() {
       }
       
       // Successfully unrestricted using fallback endpoint
-      console.log('Successfully unrestricted using fallback endpoint');
       handleSuccessfulUnrestrict(center);
       
     } catch (err) {
-      console.error('Error restoring cremation center:', err);
       showToast(err instanceof Error ? err.message : 'Failed to restore cremation center', 'error');
     } finally {
       setIsProcessing(false);
@@ -821,7 +792,6 @@ export default function AdminCremationCentersPage() {
                 // Trigger a re-fetch without page reload
                 const fetchCremationCenters = async () => {
                   try {
-                    console.log('Retrying fetch of cremation centers...');
                     const response = await fetch('/api/admin/cremation-businesses', {
                       // Add cache: 'no-store' to prevent caching
                       cache: 'no-store',
@@ -832,7 +802,6 @@ export default function AdminCremationCentersPage() {
                       }
                     });
 
-                    console.log('Retry API response status:', response.status, response.statusText);
 
                     if (!response.ok) {
                       // Try to get the error message from the response
@@ -840,16 +809,13 @@ export default function AdminCremationCentersPage() {
                       try {
                         const errorData = await response.json();
                         errorDetails = errorData.details || errorData.error || '';
-                        console.error('API error details on retry:', errorData);
                       } catch (parseError) {
-                        console.error('Could not parse error response on retry:', parseError);
                       }
 
                       throw new Error(`Failed to fetch cremation centers: ${response.status} ${response.statusText}${errorDetails ? ` - ${errorDetails}` : ''}`);
                     }
 
                     const data = await response.json();
-                    console.log('Retry API response data:', data);
 
                     if (!data.success) {
                       throw new Error(data.error || 'Failed to fetch cremation centers');
@@ -861,7 +827,6 @@ export default function AdminCremationCentersPage() {
                     }));
                     setCremationCenters(centersWithRating);
                   } catch (err) {
-                    console.error('Error fetching cremation centers:', err);
                     setError(err instanceof Error ? err.message : 'An unknown error occurred');
 
                     // Don't show toast for development mode to reduce notification spam

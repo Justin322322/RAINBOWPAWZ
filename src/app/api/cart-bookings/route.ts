@@ -216,7 +216,6 @@ export async function POST(request: NextRequest) {
             );
           }
         } catch (addOnError) {
-          console.error('Error handling add-ons:', addOnError);
           // Continue with the booking process even if add-ons fail
         }
       }
@@ -235,7 +234,6 @@ export async function POST(request: NextRequest) {
       throw error;
     }
   } catch (error) {
-    console.error('Error creating booking:', error);
     return NextResponse.json({
       error: 'Failed to create booking',
       details: error instanceof Error ? error.message : 'Unknown error'

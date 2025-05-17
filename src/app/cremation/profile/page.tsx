@@ -136,7 +136,6 @@ function CremationProfilePage({ userData }: { userData: any }) {
       
       setError(null);
     } catch (error) {
-      console.error('Error fetching profile data:', error);
       
       setError(error instanceof Error ? error.message : 'An error occurred while fetching data');
       // Show toast only once
@@ -232,7 +231,6 @@ function CremationProfilePage({ userData }: { userData: any }) {
       setNewPassword('');
       setConfirmPassword('');
     } catch (error) {
-      console.error('Error updating password:', error);
       setPasswordError(error instanceof Error ? error.message : 'Failed to update password');
     }
   };
@@ -264,7 +262,6 @@ function CremationProfilePage({ userData }: { userData: any }) {
         setAddressSuccess('');
       }, 3000);
     } catch (error) {
-      console.error('Error updating address:', error);
       showToast(error instanceof Error ? error.message : 'Failed to update address', 'error');
     }
   };
@@ -296,7 +293,6 @@ function CremationProfilePage({ userData }: { userData: any }) {
         setContactSuccess('');
       }, 3000);
     } catch (error) {
-      console.error('Error updating contact info:', error);
       showToast(error instanceof Error ? error.message : 'Failed to update contact information', 'error');
     }
   };
@@ -404,7 +400,6 @@ function CremationProfilePage({ userData }: { userData: any }) {
       fetchProfileData();
       
     } catch (error) {
-      console.error('Error uploading documents:', error);
       setUploadError(error instanceof Error ? error.message : 'Failed to upload documents');
     } finally {
       setUploading(false);

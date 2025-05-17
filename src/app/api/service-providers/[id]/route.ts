@@ -15,11 +15,9 @@ export async function GET(
       );
     }
 
-    console.log(`Fetching details for service provider ID: ${providerId} - Enhanced version with improved error handling`);
 
     // Check if this is a test provider first to avoid database errors
     if (providerId === '1001' || providerId === '1002' || providerId === '1003') {
-      console.log(`Returning test provider data for ID ${providerId}`);
       
       // Return the test provider data
       const testProviders = {
@@ -102,7 +100,6 @@ export async function GET(
         whereClause += " AND status = 'active'";
       }
       
-      console.log(`Service providers query WHERE clause: ${whereClause}`);
       
       const providerResult = await query(`
         SELECT
@@ -122,7 +119,6 @@ export async function GET(
 
       if (providerResult && providerResult.length > 0) {
         const provider = providerResult[0];
-        console.log(`Found provider in service_providers: ${provider.name} with status: ${hasSPAppStatus ? provider.application_status : hasSPVerStatus ? provider.verification_status : 'unknown'}`);
 
         // Calculate approximate distance (mock data for now, but with consistent values)
         const distanceValue = ((Number(provider.id) * 1.5) % 30).toFixed(1);
@@ -138,7 +134,6 @@ export async function GET(
           
           provider.packages = packagesCount[0]?.count || 0;
         } catch (err) {
-          console.error(`Error getting package count: ${err}`);
           provider.packages = 0;
         }
 
@@ -146,7 +141,6 @@ export async function GET(
       }
 
       // If not found in service_providers, try business_profiles
-      console.log(`Provider not found in service_providers, checking business_profiles`);
       
       // Check which columns business_profiles has
       const bpColumnsResult = await query(`
@@ -169,7 +163,6 @@ export async function GET(
         bpWhereClause += " AND bp.verification_status = 'verified'";
       }
       
-      console.log(`Business profiles query WHERE clause: ${bpWhereClause}`);
       
       try {
         const businessResult = await query(`
@@ -192,7 +185,6 @@ export async function GET(
 
         if (businessResult && businessResult.length > 0) {
           const business = businessResult[0];
-          console.log(`Found business in business_profiles: ${business.name}`);
 
           // Process the address to include postal code if needed
           const formattedAddress = business.address ? 
@@ -223,32 +215,27 @@ export async function GET(
             
             formattedBusiness.packages = packagesCount[0]?.count || 0;
           } catch (err) {
-            console.error(`Error getting package count for business: ${err}`);
           }
 
           return NextResponse.json({ provider: formattedBusiness });
         }
       } catch (businessError) {
-        console.error('Error looking up business profile:', businessError);
         // Continue to check for test providers
       }
 
       // If provider not found in either table
-      console.error(`Provider with ID ${providerId} not found in any table and is not a test provider`);
 
       return NextResponse.json(
         { error: 'Provider not found. The requested service provider may have been removed or is no longer available.' },
         { status: 404 }
       );
     } catch (dbError) {
-      console.error('Database error fetching provider:', dbError);
       
       // Check if DB error is due to specific connection issues
       if (dbError instanceof Error) {
         const errorCode = 'code' in dbError ? (dbError as any).code : '';
         
         if (errorCode === 'ECONNREFUSED') {
-          console.error('Database connection refused. Check if MySQL is running.');
           return NextResponse.json(
             { error: 'Database connection error', details: 'Could not connect to the database server' },
             { status: 503 }
@@ -256,7 +243,6 @@ export async function GET(
         }
         
         if (errorCode === 'ER_ACCESS_DENIED_ERROR') {
-          console.error('Database access denied. Check credentials.');
           return NextResponse.json(
             { error: 'Database authentication error', details: 'Invalid database credentials' },
             { status: 500 }
@@ -264,7 +250,6 @@ export async function GET(
         }
         
         if (errorCode === 'ER_BAD_DB_ERROR') {
-          console.error('Database does not exist. Check DB name.');
           return NextResponse.json(
             { error: 'Database not found', details: 'The specified database does not exist' },
             { status: 500 }
@@ -275,7 +260,6 @@ export async function GET(
       // If this is a numeric provider ID that matches a test provider, return test data
       if (!isNaN(Number(providerId)) && 
           ['1001', '1002', '1003'].includes(providerId)) {
-        console.log(`Database error but providing test data for provider ${providerId}`);
         
         // Return test provider data (same as in test providers section)
         const testProviders = {
@@ -338,7 +322,6 @@ export async function GET(
       );
     }
   } catch (error) {
-    console.error('Error fetching provider:', error);
     return NextResponse.json(
       { error: 'Failed to fetch provider' },
       { status: 500 }

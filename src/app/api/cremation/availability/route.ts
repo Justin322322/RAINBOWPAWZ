@@ -44,8 +44,18 @@ export async function GET(request: NextRequest) {
       endDate.setDate(endDate.getDate() + 30);
     }
 
-    const formattedStartDate = startDate.toISOString().split('T')[0];
-    const formattedEndDate = endDate.toISOString().split('T')[0];
+    // Helper function to format date consistently
+    const formatDateToString = (date: Date): string => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
+    const formattedStartDate = formatDateToString(startDate);
+    const formattedEndDate = formatDateToString(endDate);
+
+    console.log(`Fetching availability for provider ${providerId} from ${formattedStartDate} to ${formattedEndDate}`);
 
     // First, get all dates in the month range
     const allDatesInMonth: { date: string; isAvailable: boolean; timeSlots: any[] }[] = [];
@@ -53,13 +63,18 @@ export async function GET(request: NextRequest) {
     // Generate all dates in the month
     let currentDate = new Date(startDate);
     while (currentDate <= endDate) {
+      // Use consistent date formatting to avoid timezone issues
+      const formattedDate = formatDateToString(currentDate);
+
       allDatesInMonth.push({
-        date: currentDate.toISOString().split('T')[0],
+        date: formattedDate,
         isAvailable: false, // Default to false, will update with DB data
         timeSlots: []
       });
       currentDate.setDate(currentDate.getDate() + 1);
     }
+
+    console.log(`Generated ${allDatesInMonth.length} dates from ${formatDateToString(startDate)} to ${formatDateToString(endDate)}`)
 
     try {
       // Get time slots directly - this is simpler and more reliable
@@ -80,14 +95,20 @@ export async function GET(request: NextRequest) {
       const timeSlots = await query(directTimeSlotsQuery, [providerId, formattedStartDate, formattedEndDate]) as any[];
 
       // Process time slots and mark dates as available
+      console.log(`Found ${timeSlots.length} time slots for provider ${providerId}`);
+
       for (const slot of timeSlots) {
         // Convert MySQL date format to ISO string for consistent comparison
         const slotDate = slot.date.split('T')[0]; // Ensure we're using YYYY-MM-DD format
+        console.log(`Processing slot for date: ${slotDate}, id: ${slot.id}`);
+
         const dateIndex = allDatesInMonth.findIndex(d => d.date === slotDate);
+        console.log(`Date index in allDatesInMonth: ${dateIndex}`);
 
         if (dateIndex !== -1) {
           // If we have a time slot for a date, mark the date as available
           allDatesInMonth[dateIndex].isAvailable = true;
+          console.log(`Marked date ${slotDate} as available`);
 
           // Parse the time slot and add it to the array
           const slotData: { id: string; start: string; end: string; availableServices?: number[] } = {
@@ -139,12 +160,35 @@ export async function GET(request: NextRequest) {
       `;
 
       const availabilityResult = await query(availabilityQuery, [providerId, formattedStartDate, formattedEndDate]) as any[];
+      console.log(`Found ${availabilityResult.length} availability records for provider ${providerId}`);
 
       // Update availability based on the provider_availability table
       for (const availDay of availabilityResult) {
-        const dateIndex = allDatesInMonth.findIndex(d => d.date === availDay.date);
+        console.log(`Processing availability for date: ${availDay.date}, is_available: ${availDay.is_available}`);
+
+        // Format the date consistently
+        let formattedAvailDate = availDay.date;
+        if (availDay.date instanceof Date) {
+          const d = new Date(availDay.date);
+          formattedAvailDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        } else if (typeof availDay.date === 'string') {
+          // If it's already a string, ensure it's in YYYY-MM-DD format
+          if (availDay.date.includes('T')) {
+            formattedAvailDate = availDay.date.split('T')[0];
+          }
+        }
+
+        console.log(`Formatted availability date: ${formattedAvailDate}`);
+
+        const dateIndex = allDatesInMonth.findIndex(d => d.date === formattedAvailDate);
+        console.log(`Date index in allDatesInMonth: ${dateIndex}`);
+
         if (dateIndex !== -1) {
-          allDatesInMonth[dateIndex].isAvailable = availDay.is_available === 1 || availDay.is_available === true;
+          const isAvailable = availDay.is_available === 1 || availDay.is_available === true;
+          allDatesInMonth[dateIndex].isAvailable = isAvailable;
+          console.log(`Marked date ${formattedAvailDate} availability as ${isAvailable}`);
+        } else {
+          console.log(`Date ${formattedAvailDate} not found in allDatesInMonth`);
         }
       }
 
@@ -190,6 +234,33 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid availability data structure' }, { status: 400 });
     }
 
+    // Validate and normalize the date format to prevent timezone issues
+    let normalizedDate;
+    try {
+      // Parse the date string into a Date object
+      const dateObj = new Date(date);
+
+      // Check if the date is valid
+      if (isNaN(dateObj.getTime())) {
+        throw new Error('Invalid date');
+      }
+
+      // Format the date as YYYY-MM-DD to ensure consistency
+      const year = dateObj.getFullYear();
+      const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+      const day = String(dateObj.getDate()).padStart(2, '0');
+      normalizedDate = `${year}-${month}-${day}`;
+
+      // Log the original and normalized dates for debugging
+      console.log('Original date:', date);
+      console.log('Normalized date:', normalizedDate);
+    } catch (dateError) {
+      return NextResponse.json({
+        error: 'Invalid date format',
+        details: 'The provided date could not be parsed correctly'
+      }, { status: 400 });
+    }
+
     // Ensure tables exist
     const tablesExist = await ensureAvailabilityTablesExist();
     if (!tablesExist) {
@@ -206,10 +277,10 @@ export async function POST(request: NextRequest) {
         VALUES (?, ?, ?)
         ON DUPLICATE KEY UPDATE is_available = VALUES(is_available)
       `;
-      await query(upsertAvailabilityQuery, [providerId, date, isAvailable ? 1 : 0]);
+      await query(upsertAvailabilityQuery, [providerId, normalizedDate, isAvailable ? 1 : 0]);
 
       // Delete existing time slots for this date
-      await query('DELETE FROM provider_time_slots WHERE provider_id = ? AND date = ?', [providerId, date]);
+      await query('DELETE FROM provider_time_slots WHERE provider_id = ? AND date = ?', [providerId, normalizedDate]);
 
       // Add new time slots if available
       if (isAvailable && timeSlots && timeSlots.length > 0) {
@@ -237,7 +308,7 @@ export async function POST(request: NextRequest) {
 
           await query(insertSlotQuery, [
             providerId,
-            date,
+            normalizedDate,
             startTime,
             endTime,
             availableServicesJson
@@ -251,7 +322,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         success: true,
         message: 'Availability updated successfully',
-        date,
+        date: normalizedDate,
+        original_date: date,
         slots_count: timeSlots.length
       });
 
@@ -266,7 +338,6 @@ export async function POST(request: NextRequest) {
     }
 
   } catch (error) {
-    console.error('[API] Error updating provider availability:', error);
     return NextResponse.json({
       error: 'Failed to update availability data',
       details: error instanceof Error ? error.message : String(error)

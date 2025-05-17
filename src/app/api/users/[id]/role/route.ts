@@ -140,7 +140,6 @@ export async function PUT(request: NextRequest) {
       throw error;
     }
   } catch (error) {
-    console.error('Error updating user role:', error);
     return NextResponse.json({
       error: 'Failed to update user role',
       message: error instanceof Error ? error.message : 'Unknown error'

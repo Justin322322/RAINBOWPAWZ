@@ -11,23 +11,28 @@ import {
   ClockIcon,
   UserIcon,
   DocumentTextIcon,
+  ChartBarIcon,
+  Cog6ToothIcon,
+  ArrowLeftOnRectangleIcon,
+  XMarkIcon
 } from '@heroicons/react/24/outline';
+
 
 interface CremationSidebarProps {
   activePage?: string;
+  isMobileOpen?: boolean;
+  onCloseMobile?: () => void;
 }
 
-export default function CremationSidebar({ activePage: propActivePage }: CremationSidebarProps) {
+export default function CremationSidebar({
+  activePage: propActivePage,
+  isMobileOpen = false,
+  onCloseMobile
+}: CremationSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [activePage, setActivePage] = useState('');
   const [isNavigating, setIsNavigating] = useState(false);
-
-  // Handle navigation item click
-  const handleNavItemClick = (id: string) => {
-    // Don't set isNavigating to true here - this is causing the white screen flicker
-    // Don't set active page here, let the useEffect handle it after navigation
-  };
 
   // Navigation items
   const navigationItems = [
@@ -54,7 +59,11 @@ export default function CremationSidebar({ activePage: propActivePage }: Cremati
       href: '/cremation/history',
       icon: ClockIcon,
       id: 'history'
-    },
+    }
+  ];
+
+  // Account management items
+  const accountItems = [
     {
       name: 'Profile',
       href: '/cremation/profile',
@@ -63,68 +72,136 @@ export default function CremationSidebar({ activePage: propActivePage }: Cremati
     }
   ];
 
+  // Handle navigation item click
+  const handleNavItemClick = (id: string) => {
+    setIsNavigating(true);
+
+    // Close mobile sidebar if applicable
+    if (isMobileOpen && onCloseMobile) {
+      onCloseMobile();
+    }
+  };
+
   // Determine active page based on pathname or prop
   useEffect(() => {
     if (propActivePage) {
       setActivePage(propActivePage);
+      setIsNavigating(false);
     } else {
       const currentPath = pathname.split('/').pop() || '';
 
       if (currentPath === 'dashboard' || pathname === '/cremation') {
         setActivePage('dashboard');
-      } else if (navigationItems.some(item => item.id === currentPath)) {
-        setActivePage(currentPath);
+      } else if (currentPath === 'packages' || pathname.includes('/cremation/packages')) {
+        setActivePage('packages');
+      } else if (currentPath === 'bookings' || pathname.includes('/cremation/bookings')) {
+        setActivePage('bookings');
+      } else if (currentPath === 'history') {
+        setActivePage('history');
+      } else if (currentPath === 'profile') {
+        setActivePage('profile');
       }
+
+      setIsNavigating(false);
     }
-    // Always set isNavigating to false when pathname changes
-    setIsNavigating(false);
   }, [pathname, propActivePage]);
 
+  // Determine sidebar classes based on mobile state
+  const sidebarClasses = `h-screen w-64 bg-[var(--primary-green)] shadow-lg fixed left-0 top-0 z-40 transition-transform duration-300 ease-in-out ${
+    isMobileOpen ? 'translate-x-0' : 'lg:translate-x-0 -translate-x-full'
+  }`;
+
   return (
-    <div className="h-screen w-64 bg-[var(--primary-green)] shadow-lg fixed left-0 top-0 z-40">
-      {/* Logo and website name */}
-      <div className="h-16 flex items-center px-6 border-b border-white/20">
-        <Link href="/cremation/dashboard" className="flex items-center space-x-3">
-          <Image src="/logo.png" alt="Rainbow Paws Logo" width={40} height={40} className="h-10 w-auto" />
-          <span className="text-xl modern-heading text-white tracking-wide">RainbowPaws</span>
-        </Link>
-      </div>
+    <>
+      <div className={sidebarClasses}>
+        {/* Mobile close button */}
+        {isMobileOpen && (
+          <button
+            onClick={onCloseMobile}
+            className="lg:hidden absolute top-4 right-4 text-white p-1 rounded-full hover:bg-white/20"
+          >
+            <XMarkIcon className="h-6 w-6" />
+          </button>
+        )}
 
-      {/* Navigation items */}
-      <nav className="mt-8 px-4">
-        <div className="space-y-2">
-          {navigationItems.map((item) => {
-            const isActive = activePage === item.id;
-            return (
-              <Link
-                key={item.name}
-                href={item.href}
-                className={`flex items-center px-4 py-3 text-sm rounded-lg group transition-all duration-300 ${
-                  isActive && !isNavigating
-                    ? 'bg-white text-[var(--primary-green)]'
-                    : 'text-white hover:bg-white/20'
-                }`}
-                onClick={() => handleNavItemClick(item.id)}
-              >
-                <item.icon
-                  className={`mr-3 h-5 w-5 ${
-                    isActive && !isNavigating ? 'text-[var(--primary-green)]' : 'text-white group-hover:text-white'
+        {/* Logo and website name */}
+        <div className="h-16 flex items-center px-6 border-b border-white/20">
+          <Link href="/cremation/dashboard" className="flex items-center space-x-3">
+            <Image src="/logo.png" alt="Rainbow Paws Logo" width={40} height={40} className="h-10 w-auto" />
+            <span className="text-xl modern-heading text-white tracking-wide">RainbowPaws</span>
+          </Link>
+        </div>
+
+        {/* Navigation items */}
+        <nav className="mt-8 px-4">
+          <div className="space-y-2">
+            {navigationItems.map((item) => {
+              const isActive = activePage === item.id;
+              return (
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  className={`flex items-center px-4 py-3 text-sm rounded-lg group transition-all duration-300 ${
+                    isActive && !isNavigating
+                      ? 'bg-white text-[var(--primary-green)]'
+                      : 'text-white hover:bg-white/20'
                   }`}
-                />
-                <span className="font-medium">{item.name}</span>
-              </Link>
-            );
-          })}
-        </div>
-      </nav>
+                  onClick={() => handleNavItemClick(item.id)}
+                >
+                  <item.icon
+                    className={`mr-3 h-5 w-5 ${
+                      isActive && !isNavigating ? 'text-[var(--primary-green)]' : 'text-white group-hover:text-white'
+                    }`}
+                  />
+                  <span className="font-medium">{item.name}</span>
+                </Link>
+              );
+            })}
 
-      {/* Footer */}
-      <div className="absolute bottom-0 w-full border-t border-white/20 p-4">
-        <div className="text-xs text-white/80 text-center">
-          © {new Date().getFullYear()} RainbowPaws<br />
-          Cremation Provider Portal
+            {/* Account Management Items */}
+            {accountItems.map((item) => {
+              const isActive = activePage === item.id;
+              return (
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  className={`flex items-center px-4 py-3 text-sm rounded-lg group transition-all duration-300 ${
+                    isActive && !isNavigating
+                      ? 'bg-white text-[var(--primary-green)]'
+                      : 'text-white hover:bg-white/20'
+                  }`}
+                  onClick={() => handleNavItemClick(item.id)}
+                >
+                  <item.icon
+                    className={`mr-3 h-5 w-5 ${
+                      isActive && !isNavigating ? 'text-[var(--primary-green)]' : 'text-white group-hover:text-white'
+                    }`}
+                  />
+                  <span className="font-medium">{item.name}</span>
+                </Link>
+              );
+            })}
+          </div>
+        </nav>
+
+        {/* Footer */}
+        <div className="absolute bottom-0 w-full border-t border-white/20 p-4">
+          <div className="text-xs text-white/80 text-center">
+            © {new Date().getFullYear()} RainbowPaws<br />
+            Cremation Provider Portal
+          </div>
         </div>
       </div>
-    </div>
+
+      {/* Overlay for mobile */}
+      {isMobileOpen && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 z-30 lg:hidden"
+          onClick={onCloseMobile}
+        ></div>
+      )}
+
+
+    </>
   );
 }

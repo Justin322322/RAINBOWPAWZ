@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthTokenFromRequest } from '@/utils/auth';
 import { query } from '@/lib/db';
 
-// Import the simple email service
-const { sendBookingConfirmationEmail } = require('@/lib/simpleEmailService');
+// Import the consolidated email service
+import { sendBookingConfirmationEmail } from '@/lib/consolidatedEmailService';
 
 // Define service types with consistent naming and descriptions
 const serviceTypes: Record<number, { name: string; description: string; price: number }> = {
@@ -28,18 +28,14 @@ export async function GET(request: NextRequest) {
   try {
     // Get user ID from auth token
     const authToken = getAuthTokenFromRequest(request);
-    console.log('Auth token:', authToken ? 'Present' : 'Missing');
 
     if (!authToken) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const [userId, accountType] = authToken.split('_');
-    console.log('User ID from token:', userId);
-    console.log('Account type from token:', accountType);
 
     if (!userId || (accountType !== 'user' && accountType !== 'fur_parent')) {
-      console.log('Unauthorized: Invalid user ID or account type');
       return NextResponse.json({
         error: 'Unauthorized',
         details: `Invalid account type: ${accountType}. Expected 'user' or 'fur_parent'`
@@ -50,15 +46,10 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const status = searchParams.get('status');
 
-    console.log('Fetching bookings for user:', userId);
-
     // First, try a direct query to service_bookings table
     try {
-      console.log('Trying direct query to service_bookings table first...');
-
       // Try both string and number versions of the user ID
       const userIdNumber = Number(userId);
-      console.log('User ID as number:', userIdNumber, 'isNaN:', isNaN(userIdNumber));
 
       // Query with both string and number versions of the user ID
       const directQuery = `
@@ -66,40 +57,135 @@ export async function GET(request: NextRequest) {
         WHERE user_id = ? OR user_id = ?
       `;
       const directResult = await query(directQuery, [userIdNumber, userId.toString()]) as any[];
-      console.log('Direct service_bookings query result count:', directResult?.length || 0);
 
       if (directResult && directResult.length > 0) {
-        console.log('Found bookings in service_bookings table directly');
-        console.log('Sample booking:', directResult[0]);
 
         // Format the bookings data
-        const formattedBookings = directResult.map(booking => {
+        const formattedBookings = await Promise.all(directResult.map(async (booking) => {
           // Format dates for consistency
-          const bookingDate = booking.booking_date ? new Date(booking.booking_date) : null;
-          const formattedDate = bookingDate ? bookingDate.toISOString().split('T')[0] : null;
+          let formattedDate = null;
+
+          if (booking.booking_date) {
+            try {
+              // Log the original date for debugging
+              console.log('Original booking date:', booking.booking_date);
+
+              // Helper function to format date consistently
+              const formatDateToString = (date: Date | string): string => {
+                let d: Date;
+
+                if (typeof date === 'string') {
+                  // If it's already a string with YYYY-MM-DD format, just return it
+                  if (date.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                    return date;
+                  }
+
+                  // Try to parse the string into a Date object
+                  d = new Date(date);
+
+                  // If parsing fails, try to extract date components manually
+                  if (isNaN(d.getTime()) && date.includes('-')) {
+                    const [year, month, day] = date.split('-').map(Number);
+                    if (!isNaN(year) && !isNaN(month) && !isNaN(day)) {
+                      d = new Date(year, month - 1, day);
+                    }
+                  }
+                } else {
+                  d = date;
+                }
+
+                // Check if we have a valid date
+                if (isNaN(d.getTime())) {
+                  throw new Error('Invalid date');
+                }
+
+                // Format as YYYY-MM-DD to ensure consistency
+                const year = d.getFullYear();
+                const month = String(d.getMonth() + 1).padStart(2, '0');
+                const day = String(d.getDate()).padStart(2, '0');
+
+                return `${year}-${month}-${day}`;
+              };
+
+              // Try to format the date
+              formattedDate = formatDateToString(booking.booking_date);
+
+              // Log the formatted date for debugging
+              console.log('Formatted date:', formattedDate);
+            } catch (dateError) {
+              console.error('Error parsing booking date:', dateError);
+
+              // Use the original date string as fallback
+              // If it's already in YYYY-MM-DD format, use it directly
+              const dateStr = booking.booking_date.toString();
+              if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                formattedDate = dateStr;
+              } else {
+                // Try to extract date components if it contains dashes
+                if (dateStr.includes('-')) {
+                  const parts = dateStr.split('-');
+                  if (parts.length === 3) {
+                    formattedDate = dateStr;
+                  }
+                }
+
+                // If all else fails, use the original string
+                if (!formattedDate) {
+                  formattedDate = dateStr;
+                }
+              }
+            }
+          }
 
           // Format time if available
           const timeString = booking.booking_time ?
             booking.booking_time.toString().padStart(8, '0') : null;
 
+          // Get provider information if available
+          let providerName = 'Service Provider';
+          let providerAddress = 'Provider Address';
+
+          // If provider_id exists, try to get the actual provider name
+          if (booking.provider_id) {
+            try {
+              const providerResult = await query(`
+                SELECT name, address, city
+                FROM service_providers
+                WHERE id = ?
+                LIMIT 1
+              `, [booking.provider_id]) as any[];
+
+              if (providerResult && providerResult.length > 0) {
+                providerName = providerResult[0].name;
+                providerAddress = providerResult[0].address;
+                if (providerResult[0].city) {
+                  providerAddress += `, ${providerResult[0].city}`;
+                }
+              }
+            } catch (providerError) {
+              // If provider query fails, use default values
+              console.error('Provider fetch error:', providerError);
+            }
+          }
+
           return {
             ...booking,
             booking_date: formattedDate,
             booking_time: timeString,
-            provider_name: 'Service Provider',
-            provider_address: 'Provider Address',
+            provider_name: providerName,
+            provider_address: providerAddress,
             service_name: 'Cremation Service',
             service_description: 'Pet cremation service',
             service_price: booking.price || 0,
             pet_name: booking.pet_name || 'Unknown Pet',
             pet_type: booking.pet_type || 'Unknown Type'
           };
-        });
+        }));
 
         return NextResponse.json({ bookings: formattedBookings });
       }
     } catch (directError) {
-      console.error('Error with direct service_bookings query:', directError);
+      // Continue with the regular flow if direct query fails
     }
 
     // If direct query didn't work, proceed with the regular flow
@@ -108,13 +194,11 @@ export async function GET(request: NextRequest) {
 
     try {
       // First, check if the bookings table exists
-      console.log('Checking if bookings table exists...');
       const tableExistsCheck = await query(
         "SELECT COUNT(*) as count FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'bookings'"
       ) as any[];
 
       if (!tableExistsCheck || tableExistsCheck[0].count === 0) {
-        console.log('Bookings table does not exist, checking for service_bookings table...');
 
         // Check if service_bookings table exists
         const serviceBookingsCheck = await query(
@@ -122,7 +206,6 @@ export async function GET(request: NextRequest) {
         ) as any[];
 
         if (serviceBookingsCheck && serviceBookingsCheck[0].count > 0) {
-          console.log('Using service_bookings table');
 
           // Build query for service_bookings table
           bookingsQuery = `
@@ -149,7 +232,6 @@ export async function GET(request: NextRequest) {
         }
       } else {
         // Bookings table exists, now check which structure it has
-        console.log('Bookings table exists, checking structure...');
 
         // Check if service_provider_id column exists (from bookings_tables.sql)
         const serviceProviderCheck = await query(
@@ -158,7 +240,6 @@ export async function GET(request: NextRequest) {
 
         if (serviceProviderCheck && serviceProviderCheck.length > 0) {
           // We have the bookings_tables.sql structure
-          console.log('Using bookings_tables.sql structure');
 
           // Build query based on the bookings_tables.sql structure
           bookingsQuery = `
@@ -187,7 +268,6 @@ export async function GET(request: NextRequest) {
 
           if (businessServiceCheck && businessServiceCheck.length > 0) {
             // We have the schema.sql structure
-            console.log('Using schema.sql structure');
 
             // Check if the pets table exists
             const petsTableCheck = await query(
@@ -195,7 +275,6 @@ export async function GET(request: NextRequest) {
             ) as any[];
 
             const petsTableExists = petsTableCheck && petsTableCheck[0].count > 0;
-            console.log(`Pets table exists: ${petsTableExists}`);
 
             // Check if bookings table has pet_name and pet_type columns
             const petColumnsCheck = await query(`
@@ -215,7 +294,6 @@ export async function GET(request: NextRequest) {
             ) as any[];
 
             const businessServicesExists = businessServicesCheck && businessServicesCheck[0].count > 0;
-            console.log(`business_services table exists: ${businessServicesExists}`);
 
             // Build query based on the structure we have
             if (petsTableExists) {
@@ -278,7 +356,6 @@ export async function GET(request: NextRequest) {
             }
           } else {
             // If we can't determine the structure, just query the bookings table directly
-            console.log('Using simple bookings query without joins');
 
             bookingsQuery = `
               SELECT b.*,
@@ -303,16 +380,10 @@ export async function GET(request: NextRequest) {
       }
 
       // Execute the query
-      console.log('Executing query:', bookingsQuery);
-      console.log('With params:', bookingsParams);
-
       const bookings = await query(bookingsQuery, bookingsParams) as any[];
-
-      console.log('Bookings found:', bookings ? bookings.length : 0);
 
       // If no bookings found, return empty array
       if (!bookings || bookings.length === 0) {
-        console.log('No bookings found for user:', userId);
 
         // Check service_bookings table as a fallback
         try {
@@ -328,11 +399,9 @@ export async function GET(request: NextRequest) {
             LEFT JOIN business_profiles bp ON sb.provider_id = bp.id
             WHERE sb.user_id = ?
           `;
-          console.log('Checking service_bookings table with joins...');
           const serviceBookings = await query(serviceBookingsQuery, [userId]) as any[];
 
           if (serviceBookings && serviceBookings.length > 0) {
-            console.log(`Found ${serviceBookings.length} bookings in service_bookings table`);
 
             // Format the bookings data
             const formattedBookings = serviceBookings.map(booking => {
@@ -363,105 +432,269 @@ export async function GET(request: NextRequest) {
 
           // If the join query fails, try a simpler query
           if (!serviceBookings || serviceBookings.length === 0) {
-            console.log('Trying simple service_bookings query without joins...');
             const simpleServiceBookingsQuery = `
               SELECT * FROM service_bookings WHERE user_id = ?
             `;
             const simpleServiceBookings = await query(simpleServiceBookingsQuery, [userId]) as any[];
 
             if (simpleServiceBookings && simpleServiceBookings.length > 0) {
-              console.log(`Found ${simpleServiceBookings.length} bookings in service_bookings table (simple query)`);
 
               // Format the bookings data
-              const formattedBookings = simpleServiceBookings.map(booking => {
+              const formattedBookings = await Promise.all(simpleServiceBookings.map(async (booking) => {
                 // Format dates for consistency
-                const bookingDate = booking.booking_date ? new Date(booking.booking_date) : null;
-                const formattedDate = bookingDate ? bookingDate.toISOString().split('T')[0] : null;
+                let formattedDate = null;
+
+                if (booking.booking_date) {
+                  try {
+                    // Log the original date for debugging
+                    console.log('Original booking date:', booking.booking_date);
+
+                    // Helper function to format date consistently
+                    const formatDateToString = (date: Date | string): string => {
+                      let d: Date;
+
+                      if (typeof date === 'string') {
+                        // If it's already a string with YYYY-MM-DD format, just return it
+                        if (date.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                          return date;
+                        }
+
+                        // Try to parse the string into a Date object
+                        d = new Date(date);
+
+                        // If parsing fails, try to extract date components manually
+                        if (isNaN(d.getTime()) && date.includes('-')) {
+                          const [year, month, day] = date.split('-').map(Number);
+                          if (!isNaN(year) && !isNaN(month) && !isNaN(day)) {
+                            d = new Date(year, month - 1, day);
+                          }
+                        }
+                      } else {
+                        d = date;
+                      }
+
+                      // Check if we have a valid date
+                      if (isNaN(d.getTime())) {
+                        throw new Error('Invalid date');
+                      }
+
+                      // Format as YYYY-MM-DD to ensure consistency
+                      const year = d.getFullYear();
+                      const month = String(d.getMonth() + 1).padStart(2, '0');
+                      const day = String(d.getDate()).padStart(2, '0');
+
+                      return `${year}-${month}-${day}`;
+                    };
+
+                    // Try to format the date
+                    formattedDate = formatDateToString(booking.booking_date);
+
+                    // Log the formatted date for debugging
+                    console.log('Formatted date:', formattedDate);
+                  } catch (dateError) {
+                    console.error('Error parsing booking date:', dateError);
+
+                    // Use the original date string as fallback
+                    // If it's already in YYYY-MM-DD format, use it directly
+                    const dateStr = booking.booking_date.toString();
+                    if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                      formattedDate = dateStr;
+                    } else {
+                      // Try to extract date components if it contains dashes
+                      if (dateStr.includes('-')) {
+                        const parts = dateStr.split('-');
+                        if (parts.length === 3) {
+                          formattedDate = dateStr;
+                        }
+                      }
+
+                      // If all else fails, use the original string
+                      if (!formattedDate) {
+                        formattedDate = dateStr;
+                      }
+                    }
+                  }
+                }
 
                 // Format time if available
                 const timeString = booking.booking_time ?
                   booking.booking_time.toString().padStart(8, '0') : null;
 
+                // Get provider information if available
+                let providerName = 'Service Provider';
+                let providerAddress = 'Provider Address';
+
+                // If provider_id exists, try to get the actual provider name
+                if (booking.provider_id) {
+                  try {
+                    const providerResult = await query(`
+                      SELECT name, address, city
+                      FROM service_providers
+                      WHERE id = ?
+                      LIMIT 1
+                    `, [booking.provider_id]) as any[];
+
+                    if (providerResult && providerResult.length > 0) {
+                      providerName = providerResult[0].name;
+                      providerAddress = providerResult[0].address;
+                      if (providerResult[0].city) {
+                        providerAddress += `, ${providerResult[0].city}`;
+                      }
+                    }
+                  } catch (providerError) {
+                    // If provider query fails, use default values
+                    console.error('Provider fetch error:', providerError);
+                  }
+                }
+
                 return {
                   ...booking,
                   booking_date: formattedDate,
                   booking_time: timeString,
-                  provider_name: 'Service Provider',
-                  provider_address: 'Provider Address',
+                  provider_name: providerName,
+                  provider_address: providerAddress,
                   service_name: 'Cremation Service',
                   service_description: 'Pet cremation service',
                   service_price: booking.price || 0,
                   pet_name: booking.pet_name || 'Unknown Pet',
                   pet_type: booking.pet_type || 'Unknown Type'
                 };
-              });
+              }));
 
               return NextResponse.json({ bookings: formattedBookings });
             }
           }
         } catch (fallbackError) {
-          console.error('Error checking service_bookings table:', fallbackError);
-        }
-
-        // If we reach here, no bookings were found in either table
-        console.log('Debug info - database tables:');
-
-        try {
-          const tables = await query(
-            "SELECT table_name FROM information_schema.tables WHERE table_schema = DATABASE()"
-          ) as any[];
-          console.log('Available tables:', tables.map((t: any) => t.table_name));
-
-          // Check bookings table structure
-          const bookingsColumns = await query(
-            "SELECT column_name FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'bookings'"
-          ) as any[];
-          console.log('Bookings table columns:', bookingsColumns.map((c: any) => c.column_name));
-
-          // Try a direct simple count
-          const bookingsCount = await query(
-            "SELECT COUNT(*) as count FROM bookings"
-          ) as any[];
-          console.log('Total bookings count:', bookingsCount[0].count);
-
-        } catch (debugError) {
-          console.error('Error getting debug info:', debugError);
+          // Fallback error handling
         }
 
         return NextResponse.json({ bookings: [] });
       }
 
       // Format the bookings data
-      const formattedBookings = bookings.map(booking => {
+      const formattedBookings = await Promise.all(bookings.map(async booking => {
         // Format dates for consistency
-        const bookingDate = booking.booking_date ? new Date(booking.booking_date) : null;
-        const formattedDate = bookingDate ? bookingDate.toISOString().split('T')[0] : null;
+        let formattedDate = null;
+
+        if (booking.booking_date) {
+          try {
+            // Log the original date for debugging
+            console.log('Original booking date:', booking.booking_date);
+
+            // Helper function to format date consistently
+            const formatDateToString = (date: Date | string): string => {
+              let d: Date;
+
+              if (typeof date === 'string') {
+                // If it's already a string with YYYY-MM-DD format, just return it
+                if (date.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                  return date;
+                }
+
+                // Try to parse the string into a Date object
+                d = new Date(date);
+
+                // If parsing fails, try to extract date components manually
+                if (isNaN(d.getTime()) && date.includes('-')) {
+                  const [year, month, day] = date.split('-').map(Number);
+                  if (!isNaN(year) && !isNaN(month) && !isNaN(day)) {
+                    d = new Date(year, month - 1, day);
+                  }
+                }
+              } else {
+                d = date;
+              }
+
+              // Check if we have a valid date
+              if (isNaN(d.getTime())) {
+                throw new Error('Invalid date');
+              }
+
+              // Format as YYYY-MM-DD to ensure consistency
+              const year = d.getFullYear();
+              const month = String(d.getMonth() + 1).padStart(2, '0');
+              const day = String(d.getDate()).padStart(2, '0');
+
+              return `${year}-${month}-${day}`;
+            };
+
+            // Try to format the date
+            formattedDate = formatDateToString(booking.booking_date);
+
+            // Log the formatted date for debugging
+            console.log('Formatted date:', formattedDate);
+          } catch (dateError) {
+            console.error('Error parsing booking date:', dateError);
+
+            // Use the original date string as fallback
+            // If it's already in YYYY-MM-DD format, use it directly
+            const dateStr = booking.booking_date.toString();
+            if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+              formattedDate = dateStr;
+            } else {
+              // Try to extract date components if it contains dashes
+              if (dateStr.includes('-')) {
+                const parts = dateStr.split('-');
+                if (parts.length === 3) {
+                  formattedDate = dateStr;
+                }
+              }
+
+              // If all else fails, use the original string
+              if (!formattedDate) {
+                formattedDate = dateStr;
+              }
+            }
+          }
+        }
+
+        // Get provider information if available
+        let providerName = booking.provider_name || 'Unknown Provider';
+        let providerAddress = booking.provider_address || 'No address available';
+
+        // If provider_id exists and provider_name is not set, try to get the actual provider name
+        if (booking.provider_id && (!booking.provider_name || booking.provider_name === 'Service Provider')) {
+          try {
+            const providerResult = await query(`
+              SELECT name, address, city
+              FROM service_providers
+              WHERE id = ?
+              LIMIT 1
+            `, [booking.provider_id]) as any[];
+
+            if (providerResult && providerResult.length > 0) {
+              providerName = providerResult[0].name;
+              providerAddress = providerResult[0].address;
+              if (providerResult[0].city) {
+                providerAddress += `, ${providerResult[0].city}`;
+              }
+            }
+          } catch (providerError) {
+            // If provider query fails, use default values
+            console.error('Provider fetch error:', providerError);
+          }
+        }
 
         return {
           ...booking,
           booking_date: formattedDate,
           // Add default values for any missing fields
-          provider_name: booking.provider_name || 'Unknown Provider',
-          provider_address: booking.provider_address || 'No address available',
+          provider_name: providerName,
+          provider_address: providerAddress,
           service_name: booking.service_name || 'Unknown Service',
           service_description: booking.service_description || 'No description available',
           pet_name: booking.pet_name || 'Unknown Pet',
           pet_type: booking.pet_type || 'Unknown Type'
         };
-      });
+      }));
 
       return NextResponse.json({ bookings: formattedBookings });
     } catch (dbError) {
-      console.error('Database error:', dbError);
-
       // Check if the database connection is working
       try {
-        console.log('Testing database connection...');
         const connectionTest = await query('SELECT 1 as test');
-        console.log('Database connection test result:', connectionTest);
 
         if (!connectionTest || !Array.isArray(connectionTest) || connectionTest.length === 0) {
-          console.error('Database connection test failed');
           return NextResponse.json({
             error: 'Database connection error',
             details: 'Could not connect to the database'
@@ -469,7 +702,6 @@ export async function GET(request: NextRequest) {
         }
 
         // If connection is working but we still got an error, it's likely a query issue
-        console.log('Database connection is working, but query failed');
 
         // First check if bookings table has pet_id column for proper join
         const petIdCheck = await query(`
@@ -481,7 +713,6 @@ export async function GET(request: NextRequest) {
         `) as any[];
 
         const hasPetIdColumn = petIdCheck.length > 0;
-        console.log('Bookings table has pet_id column:', hasPetIdColumn);
 
         // Get bookings first
         const bookingsQuery = `
@@ -501,8 +732,6 @@ export async function GET(request: NextRequest) {
         const bookingsResult = await query(bookingsQuery, [userId]) as any[];
 
         if (bookingsResult && bookingsResult.length > 0) {
-          console.log('Found bookings:', bookingsResult.length);
-
           // Since we have bookings, fetch pets separately
           const petsQuery = `
             SELECT *
@@ -512,7 +741,6 @@ export async function GET(request: NextRequest) {
           `;
 
           const petsResult = await query(petsQuery, [userId]) as any[];
-          console.log('Found pets for user:', petsResult?.length || 0);
 
           // Map bookings with pet info
           const formattedBookings = bookingsResult.map(booking => {
@@ -545,7 +773,6 @@ export async function GET(request: NextRequest) {
         }
 
         // Fallback to simple query if no bookings found
-        console.log('Trying simple query...');
 
         // First check if bookings table has pet_id column for proper join
         const fallbackPetIdCheck = await query(`
@@ -557,7 +784,6 @@ export async function GET(request: NextRequest) {
         `) as any[];
 
         const fallbackHasPetIdColumn = fallbackPetIdCheck.length > 0;
-        console.log('Bookings table has pet_id column:', fallbackHasPetIdColumn);
 
         // Construct query based on available columns
         let simpleQuery = '';
@@ -601,10 +827,8 @@ export async function GET(request: NextRequest) {
 
         try {
           const simpleResult = await query(simpleQuery, simpleParams) as any[];
-          console.log('Simple query result:', simpleResult);
 
           if (simpleResult && Array.isArray(simpleResult)) {
-            console.log('Simple query succeeded, returning booking data');
 
             // Format the booking data
             const formattedBookings = simpleResult.map(booking => {
@@ -628,11 +852,8 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ bookings: formattedBookings });
           }
         } catch (simpleQueryError) {
-          console.error('Simple query failed:', simpleQueryError);
-
           // Try to join with just the pets table
           try {
-            console.log('Trying query with just pets table');
 
             let petsQuery = '';
             if (fallbackHasPetIdColumn) {
@@ -670,7 +891,6 @@ export async function GET(request: NextRequest) {
             const petsResult = await query(petsQuery, [userId]) as any[];
 
             if (petsResult && petsResult.length > 0) {
-              console.log('Found bookings with pets join:', petsResult.length);
 
               // Format with data from pets table
               const formattedBookings = petsResult.map(booking => ({
@@ -689,43 +909,13 @@ export async function GET(request: NextRequest) {
               return NextResponse.json({ bookings: formattedBookings });
             }
           } catch (petsQueryError) {
-            console.error('Pets query failed:', petsQueryError);
+            // Pets query failed
           }
-        }
-
-        // Get actual bookings directly from database for debugging
-        try {
-          console.log('Getting raw bookings data for debugging');
-          const rawBookings = await query('SELECT * FROM bookings') as any[];
-          console.log('All bookings in database:', rawBookings.length);
-          if (rawBookings.length > 0) {
-            console.log('Sample booking:', rawBookings[0]);
-          }
-
-          // Also check service_bookings table
-          console.log('Getting raw service_bookings data for debugging');
-          const rawServiceBookings = await query('SELECT * FROM service_bookings') as any[];
-          console.log('All service_bookings in database:', rawServiceBookings.length);
-          if (rawServiceBookings.length > 0) {
-            console.log('Sample service_booking:', rawServiceBookings[0]);
-            console.log('User ID in sample service_booking:', rawServiceBookings[0].user_id);
-            console.log('Current user ID:', userId);
-
-            // Check if there are any bookings for this user
-            const userServiceBookings = rawServiceBookings.filter(booking =>
-              booking.user_id.toString() === userId.toString()
-            );
-            console.log(`Service bookings for user ${userId}:`, userServiceBookings.length);
-          }
-        } catch (debugError) {
-          console.error('Debug query failed:', debugError);
         }
 
         // No fallback to mock data - if we get here, return empty array
-        console.log('No bookings found or could be retrieved');
         return NextResponse.json({ bookings: [] });
       } catch (connectionError) {
-        console.error('Database connection test error:', connectionError);
         return NextResponse.json({
           error: 'Database connection error',
           details: 'Could not connect to the database'
@@ -733,22 +923,18 @@ export async function GET(request: NextRequest) {
       }
     }
   } catch (error) {
-    console.error('Error fetching bookings:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('Creating new booking...');
-
     // Get user ID from auth token or from the request body for checkout flow
     let userId, accountType;
     const authToken = getAuthTokenFromRequest(request);
 
     if (authToken) {
       [userId, accountType] = authToken.split('_');
-      console.log(`User authenticated with token: ID ${userId}, type ${accountType}`);
 
       if (!userId || accountType !== 'user') {
         return NextResponse.json({ error: 'Unauthorized: Invalid user type' }, { status: 401 });
@@ -759,23 +945,19 @@ export async function POST(request: NextRequest) {
 
       if (bookingRequestData.userId) {
         userId = bookingRequestData.userId;
-        console.log(`Using userId from request body: ${userId}`);
       } else {
-        console.error('No authentication token or userId provided');
         return NextResponse.json({ error: 'Unauthorized: No authentication' }, { status: 401 });
       }
     }
 
     // Get booking data from request body
     const bookingData = await request.json();
-    console.log('Received booking data:', bookingData);
 
     // Validate required fields
     const requiredFields = ['date', 'time', 'petName', 'petType'];
     const missingFields = requiredFields.filter(field => !bookingData[field]);
 
     if (missingFields.length > 0) {
-      console.error(`Missing required fields: ${missingFields.join(', ')}`);
       return NextResponse.json({
         error: `Missing required fields: ${missingFields.join(', ')}`
       }, { status: 400 });
@@ -796,10 +978,8 @@ export async function POST(request: NextRequest) {
       if (bookingData.petId) {
         // Use existing pet ID from cart
         petId = bookingData.petId;
-        console.log(`Using existing pet ID from cart: ${petId}`);
       } else {
         // Create pet record
-        console.log('Creating pet record...');
         const petResult = await query(`
           INSERT INTO pets (
             user_id,
@@ -825,10 +1005,7 @@ export async function POST(request: NextRequest) {
         ]) as any;
 
         petId = petResult.insertId;
-        console.log(`Pet record created with ID: ${petId}`);
       }
-
-      console.log('Creating booking record with exact column mapping...');
 
       // Try to get column information from the bookings table
       const columnsQuery = `
@@ -839,7 +1016,6 @@ export async function POST(request: NextRequest) {
       `;
       const columnsResult = await query(columnsQuery) as any[];
       const columnNames = columnsResult.map((row: any) => row.COLUMN_NAME.toLowerCase());
-      console.log('Available columns in bookings table:', columnNames);
 
       // Build dynamic SQL based on available columns
       let insertColumns = ['user_id', 'booking_date', 'booking_time', 'status', 'total_amount', 'special_requests'];
@@ -918,12 +1094,7 @@ export async function POST(request: NextRequest) {
       // Replace NOW() with the function call since it can't be parameterized
       const finalValues = insertValues.map(val => val === 'NOW()' ? new Date() : val);
 
-      console.log('Insert SQL:', insertSQL);
-      console.log('With parameters:', finalValues);
-
       const insertResult = await query(insertSQL, finalValues) as any;
-
-      console.log('Insert result:', insertResult);
       const insertId = insertResult.insertId;
 
       // Return success response
@@ -951,7 +1122,6 @@ export async function POST(request: NextRequest) {
         }
       });
     } catch (error) {
-      console.error('Error creating booking:', error);
       return NextResponse.json({
         success: false,
         error: 'Database error',
@@ -962,7 +1132,6 @@ export async function POST(request: NextRequest) {
       }, { status: 500 });
     }
   } catch (error) {
-    console.error('Error creating booking:', error);
     return NextResponse.json({
       success: false,
       error: 'Internal Server Error',
@@ -982,8 +1151,6 @@ async function ensurePetsTableExists() {
     `);
 
     if (tableExists[0].count === 0) {
-      console.log('Creating pets table as it does not exist...');
-
       // Create the pets table
       await query(`
         CREATE TABLE pets (
@@ -1003,13 +1170,11 @@ async function ensurePetsTableExists() {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
       `);
 
-      console.log('Pets table created successfully');
       return true;
     }
 
     return true;
   } catch (error) {
-    console.error('Error ensuring pets table exists:', error);
     return false;
   }
 }

@@ -199,7 +199,6 @@ export default function MapComponent({
           if (parts.length > 1) {
             // Take the last two parts (usually city and country)
             const simplifiedAddress = parts.slice(-2).join(',').trim();
-            console.log(`Trying simplified address: ${simplifiedAddress}`);
 
             const encodedSimplifiedAddress = encodeURIComponent(simplifiedAddress);
             // Use the same improved parameters for fallback geocoding
@@ -235,7 +234,6 @@ export default function MapComponent({
           }
 
           // If we get here, both attempts failed
-          console.warn(`Geocoding failed for address: ${address}`);
           if (type === 'user') {
             setGeocodeError("Could not find your location. Using default location.");
             // Use default Balanga City center coordinates
@@ -247,7 +245,6 @@ export default function MapComponent({
           }
         }
       } catch (geocodeError) {
-        console.warn(`Geocoding error for address ${address}:`, geocodeError);
         if (type === 'user') {
           setGeocodeError("Could not find your location. Using default location.");
           // Use default Balanga City center coordinates
@@ -259,7 +256,6 @@ export default function MapComponent({
         }
       }
     } catch (error) {
-      console.warn("Geocoding API error:", error);
       if (type === 'user') {
         setGeocodeError("Error finding your location. Using default location.");
         // Use default Balanga City center coordinates
@@ -282,7 +278,6 @@ export default function MapComponent({
       // Check if container exists before initializing
       const container = document.getElementById('map-container');
       if (!container) {
-        console.error("Map container not found");
         return;
       }
 
@@ -340,7 +335,6 @@ export default function MapComponent({
       }
 
     } catch (error) {
-      console.error("Error initializing map:", error);
       setGeocodeError("Error loading map. Please refresh the page.");
     }
   };
@@ -616,7 +610,6 @@ export default function MapComponent({
     const startPoint = `${currentUserPosition.lng},${currentUserPosition.lat}`;
     const endPoint = `${providerCoords[1]},${providerCoords[0]}`;
 
-    console.log("Routing from:", startPoint, "to:", endPoint);
 
     // Using OSRM demo server with instructions
     const osrmRequestUrl = `https://router.project-osrm.org/route/v1/driving/${startPoint};${endPoint}?overview=full&geometries=geojson&steps=true&annotations=true`;
@@ -703,13 +696,11 @@ export default function MapComponent({
           }
         } else {
           alert(`Could not find a route to ${providerName}.`);
-          console.error("OSRM routing error: No routes found", data);
           setRouteInstructions(null);
         }
       })
       .catch(error => {
         alert(`Error fetching route to ${providerName}. Please try again.`);
-        console.error('OSRM API error:', error);
         setRouteInstructions(null);
       });
   };

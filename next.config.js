@@ -8,15 +8,6 @@ const port = process.env.PORT || 3001;
 // Always use 3306 for MySQL
 const dbPort = 3306;
 
-// Only log environment variables in development mode
-if (process.env.NODE_ENV === 'development') {
-  console.log('Next.js Environment Variables:');
-  console.log('NODE_ENV:', process.env.NODE_ENV);
-  console.log('PORT (Server):', port);
-  console.log('DB_PORT (MySQL):', dbPort);
-  console.log('DB_HOST:', process.env.DB_HOST);
-}
-
 const nextConfig = {
   // Pass environment variables to the client
   env: {
@@ -56,7 +47,7 @@ const nextConfig = {
     dangerouslyAllowSVG: true,
     contentDispositionType: 'attachment',
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
-    unoptimized: true, // Disable image optimization for local development
+    unoptimized: process.env.NODE_ENV === 'development' // Only disable image optimization for development
   },
   // Allow connections from any origin in development
   async headers() {
@@ -80,12 +71,12 @@ const nextConfig = {
           }
         ],
       },
-      // Add proper CORS headers for all routes
+      // Add proper CORS headers for all routes - more restrictive in production
       {
         source: '/:path*',
         headers: [
           { key: 'Access-Control-Allow-Credentials', value: 'true' },
-          { key: 'Access-Control-Allow-Origin', value: '*' },
+          { key: 'Access-Control-Allow-Origin', value: process.env.NODE_ENV === 'production' ? process.env.NEXT_PUBLIC_APP_URL || '' : '*' },
           { key: 'Access-Control-Allow-Methods', value: 'GET,DELETE,PATCH,POST,PUT,OPTIONS' },
           { key: 'Access-Control-Allow-Headers', value: 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization' },
         ],

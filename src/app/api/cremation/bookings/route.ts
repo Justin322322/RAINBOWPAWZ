@@ -28,7 +28,6 @@ export async function GET(request: NextRequest) {
     const tableNames = tablesResult.map((row: any) => row.TABLE_NAME.toLowerCase());
 
     const useServiceBookings = tableNames.includes('service_bookings');
-    console.log(`Using ${useServiceBookings ? 'service_bookings' : 'bookings'} table for cremation bookings`);
 
     // First, get the service packages for this provider
     const servicePackagesQuery = `
@@ -123,8 +122,6 @@ export async function GET(request: NextRequest) {
     queryParams.push(limit, offset);
 
     // Execute the query
-    console.log('Executing query:', sql);
-    console.log('With params:', queryParams);
     const bookings = await query(sql, queryParams) as any[];
 
     // Get booking stats - adjust queries based on the table being used
@@ -205,7 +202,6 @@ export async function GET(request: NextRequest) {
       }
     });
   } catch (error) {
-    console.error('Error fetching cremation bookings:', error);
     return NextResponse.json({
       error: 'Failed to fetch bookings data',
       message: error instanceof Error ? error.message : 'Unknown error'
@@ -248,7 +244,6 @@ export async function POST(request: NextRequest) {
     if (!bookingTime) requiredFields.push('bookingTime');
 
     // Log the userId for debugging
-    console.log('Creating booking with userId:', userId, 'type:', typeof userId);
 
     if (requiredFields.length > 0) {
       return NextResponse.json({
@@ -318,7 +313,6 @@ export async function POST(request: NextRequest) {
     let userIdValue = userId;
     if (typeof userId === 'string' && !isNaN(Number(userId))) {
       userIdValue = Number(userId);
-      console.log('Converted userId to number for database insertion:', userIdValue);
     }
 
     values.push(
@@ -428,7 +422,6 @@ export async function POST(request: NextRequest) {
       bookingId: result.insertId
     }, { status: 201 });
   } catch (error) {
-    console.error('Error creating cremation booking:', error);
 
     // Check for specific database errors
     if (error instanceof Error) {

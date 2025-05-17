@@ -62,7 +62,6 @@ export default function NotificationBell() {
       // Otherwise, show the date
       return format(date, 'MMM d, yyyy');
     } catch (error) {
-      console.error('Error formatting date:', error);
       return 'Recently';
     }
   };

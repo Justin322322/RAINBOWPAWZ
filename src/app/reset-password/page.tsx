@@ -92,7 +92,6 @@ function ResetPasswordForm() {
         router.push('/?showLogin=true');
       }, 3000);
     } catch (error) {
-      console.error('Password reset error:', error);
       setError(error instanceof Error ? error.message : 'An unexpected error occurred');
     } finally {
       setIsLoading(false);

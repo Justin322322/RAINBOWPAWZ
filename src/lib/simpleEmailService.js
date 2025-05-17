@@ -95,78 +95,17 @@ const baseEmailTemplate = (title, content) => {
 
 // Create a transporter with environment variables
 const createTransporter = () => {
-  // Check if we're in development mode with DEV_EMAIL_MODE enabled
-  if (process.env.DEV_EMAIL_MODE === 'true') {
-    console.log('🔔 DEV EMAIL MODE: Creating simulated email transporter');
-    return {
-      sendMail: async (mailOptions) => {
-        console.log('📧 DEV MODE: Email would be sent to:', mailOptions.to);
-        console.log('📑 DEV MODE: Subject:', mailOptions.subject);
 
-        // For OTP emails, extract and log the code
-        if (mailOptions.subject.includes('Verification Code')) {
-          const otpMatch = mailOptions.html.match(/(\d{6})/);
-          if (otpMatch) {
-            console.log('🔑 DEV MODE: OTP code is', otpMatch[1]);
-          }
-        }
-
-        // For password reset emails, extract and log the token
-        if (mailOptions.subject.includes('Reset Your Password')) {
-          const tokenMatch = mailOptions.html.match(/token=([a-zA-Z0-9_-]+)/);
-          if (tokenMatch) {
-            console.log('🔑 DEV MODE: Reset token is', tokenMatch[1]);
-            console.log(`🔗 DEV MODE: Reset link: ${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/reset-password?token=${tokenMatch[1]}`);
-          } else {
-            // Try a more general pattern if the specific one fails
-            const generalMatch = mailOptions.html.match(/token=([^"&'\s]+)/);
-            if (generalMatch) {
-              console.log('🔑 DEV MODE: Reset token is', generalMatch[1]);
-              console.log(`🔗 DEV MODE: Reset link: ${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/reset-password?token=${generalMatch[1]}`);
-            }
-          }
-        }
-
-        return {
-          messageId: `dev-mode-${Date.now()}`,
-          accepted: [mailOptions.to],
-          rejected: []
-        };
-      }
-    };
-  }
 
   // For production, check if SMTP credentials are set
   if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
-    console.error('❌ ERROR: SMTP credentials are not properly configured');
 
-    // In development, still return a mock transporter even if SMTP is not properly configured
-    if (process.env.NODE_ENV === 'development') {
-      console.log('🔔 FALLBACK: Using console-only email transporter');
-      return {
-        sendMail: async (mailOptions) => {
-          console.log('📧 FALLBACK: Email would be sent to:', mailOptions.to);
-          console.log('📑 FALLBACK: Subject:', mailOptions.subject);
-          console.log('📄 FALLBACK: Content preview:', mailOptions.html.substring(0, 200) + '...');
 
-          return {
-            messageId: `fallback-${Date.now()}`,
-            accepted: [mailOptions.to],
-            rejected: []
-          };
-        }
-      };
-    }
 
     throw new Error('Email service not properly configured');
   }
 
   // Create real transporter for actual email sending
-  console.log('📧 Creating real email transporter with SMTP settings:');
-  console.log(`- Host: ${process.env.SMTP_HOST || 'smtp.gmail.com'}`);
-  console.log(`- Port: ${process.env.SMTP_PORT || '587'}`);
-  console.log(`- Secure: ${process.env.SMTP_SECURE === 'true'}`);
-  console.log(`- User: ${process.env.SMTP_USER.substring(0, 3)}...`);
 
   return nodemailer.createTransport({
     host: process.env.SMTP_HOST || 'smtp.gmail.com',
@@ -194,7 +133,6 @@ const createTransporter = () => {
  */
 const sendEmail = async (options) => {
   try {
-    console.log(`Attempting to send email to ${options.to}`);
 
     // Create transporter
     const transporter = createTransporter();
@@ -211,37 +149,20 @@ const sendEmail = async (options) => {
     // Send email
     const info = await transporter.sendMail(mailOptions);
 
-    console.log(`Email sent successfully to ${options.to}. Message ID: ${info.messageId}`);
 
     return {
       success: true,
       messageId: info.messageId
     };
   } catch (error) {
-    console.error('Error sending email:', error);
 
-    // In development mode with DEV_EMAIL_MODE enabled, return success anyway
-    if (process.env.DEV_EMAIL_MODE === 'true') {
-      console.log('DEV MODE: Simulating email success despite error');
 
-      return {
-        success: true,
-        messageId: `dev-mode-error-${Date.now()}`
-      };
-    }
 
     // Log detailed error information for troubleshooting
-    console.error('Email sending failed with details:');
-    console.error('- To:', options.to);
-    console.error('- Subject:', options.subject);
-    console.error('- Error:', error.message);
 
     if (error.code === 'EAUTH') {
-      console.error('Authentication error. Check your SMTP credentials.');
     } else if (error.code === 'ESOCKET') {
-      console.error('Socket error. Check your SMTP host and port settings.');
     } else if (error.code === 'ETIMEDOUT') {
-      console.error('Connection timed out. Check your network and SMTP server settings.');
     }
 
     return {
