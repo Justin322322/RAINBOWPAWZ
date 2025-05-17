@@ -25,7 +25,7 @@ export default function CremationSidebar({ activePage: propActivePage }: Cremati
 
   // Handle navigation item click
   const handleNavItemClick = (id: string) => {
-    setIsNavigating(true);
+    // Don't set isNavigating to true here - this is causing the white screen flicker
     // Don't set active page here, let the useEffect handle it after navigation
   };
 
@@ -67,7 +67,6 @@ export default function CremationSidebar({ activePage: propActivePage }: Cremati
   useEffect(() => {
     if (propActivePage) {
       setActivePage(propActivePage);
-      setIsNavigating(false);
     } else {
       const currentPath = pathname.split('/').pop() || '';
 
@@ -76,8 +75,9 @@ export default function CremationSidebar({ activePage: propActivePage }: Cremati
       } else if (navigationItems.some(item => item.id === currentPath)) {
         setActivePage(currentPath);
       }
-      setIsNavigating(false);
     }
+    // Always set isNavigating to false when pathname changes
+    setIsNavigating(false);
   }, [pathname, propActivePage]);
 
   return (

@@ -34,7 +34,7 @@ export default function CremationNavbar({ activePage: propActivePage, userName =
 
   // Handle navigation item click
   const handleNavItemClick = (id: string) => {
-    setIsNavigating(true);
+    // Don't set isNavigating to true here - this is causing the white screen flicker
     setIsDropdownOpen(false);
     // Don't set active page here, let the useEffect handle it after navigation
   };
@@ -43,7 +43,6 @@ export default function CremationNavbar({ activePage: propActivePage, userName =
   useEffect(() => {
     if (propActivePage) {
       setActivePage(propActivePage);
-      setIsNavigating(false);
     } else {
       if (pathname === '/cremation/dashboard') {
         setActivePage('dashboard');
@@ -54,8 +53,9 @@ export default function CremationNavbar({ activePage: propActivePage, userName =
       } else if (pathname === '/cremation/history') {
         setActivePage('history');
       }
-      setIsNavigating(false);
     }
+    // Always set isNavigating to false when pathname changes
+    setIsNavigating(false);
   }, [pathname, propActivePage]);
 
   return (

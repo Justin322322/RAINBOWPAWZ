@@ -34,13 +34,13 @@ export default function CremationDashboardLayout({
         // If userData is provided via props, verify it directly
         // but always fetch fresh data to ensure we have the latest verification status
         const userId = propUserData?.id || getUserIdFromCookie();
-        
+
         if (!userId) {
           console.log('No user ID found, redirecting to home');
           router.push('/');
           return;
         }
-        
+
         // Always fetch user data to get latest verification status
         try {
           const response = await fetch(`/api/users/${userId}?t=${Date.now()}`, {
@@ -49,17 +49,17 @@ export default function CremationDashboardLayout({
               'Pragma': 'no-cache'
             }
           });
-          
+
           if (!response.ok) {
             console.error('Failed to fetch user data:', await response.text());
             setShowAccessDenied(true);
             setIsLoading(false);
             return;
           }
-          
+
           const userData = await response.json();
           console.log('Cremation user data fetched:', userData);
-          
+
           // Verify user is a business account
           if (userData.role !== 'business' && userData.user_type !== 'business') {
             console.log('User is not a business account:', userData.role);
@@ -67,25 +67,25 @@ export default function CremationDashboardLayout({
             setIsLoading(false);
             return;
           }
-          
+
           // Extract all possible status values
           console.log('Checking verification status');
           const serviceProvider = userData.service_provider;
-          
+
           if (!serviceProvider) {
             console.log('No service provider data found, redirecting to pending verification');
             router.push('/cremation/pending-verification');
             return;
           }
-          
+
           console.log('FULL USER DATA:', JSON.stringify(userData, null, 2));
-          
+
           // ONLY check application_status - ignore other fields that might not exist
-          const applicationStatus = serviceProvider.application_status ? 
+          const applicationStatus = serviceProvider.application_status ?
                                     String(serviceProvider.application_status).toLowerCase() : null;
-          
+
           console.log('Application status:', applicationStatus);
-          
+
           // DIRECTLY check if application_status === 'approved'
           if (applicationStatus === 'approved') {
             console.log('APPLICATION STATUS IS APPROVED - ALLOWING ACCESS');
@@ -94,25 +94,25 @@ export default function CremationDashboardLayout({
             setIsLoading(false);
             return;
           }
-          
+
           // If application_status is 'pending', redirect to verification page
           if (applicationStatus === 'pending') {
             console.log('Application status is pending, redirecting to verification page');
             router.push('/cremation/pending-verification');
             return;
           }
-          
+
           // Check for documents as a fallback
-          const hasDocuments = serviceProvider.business_permit_path || 
-                              serviceProvider.government_id_path || 
+          const hasDocuments = serviceProvider.business_permit_path ||
+                              serviceProvider.government_id_path ||
                               serviceProvider.bir_certificate_path;
-          
+
           if (!hasDocuments) {
             console.log('No documents uploaded, redirecting to pending verification');
             router.push('/cremation/pending-verification');
             return;
           }
-          
+
           // If we get here and there's no specific status but they have documents, allow access
           if (hasDocuments && !applicationStatus) {
             console.log('No status found but documents available, allowing access');
@@ -121,7 +121,7 @@ export default function CremationDashboardLayout({
             setIsLoading(false);
             return;
           }
-          
+
           // Any other case, redirect to pending verification
           console.log('Verification check failed, redirecting to pending verification');
           router.push('/cremation/pending-verification');
@@ -136,33 +136,33 @@ export default function CremationDashboardLayout({
         setIsLoading(false);
       }
     };
-    
+
     const getUserIdFromCookie = (): string | null => {
       try {
         const cookies = document.cookie.split(';');
         const authCookie = cookies.find(cookie => cookie.trim().startsWith('auth_token='));
-        
+
         if (!authCookie) return null;
-        
+
         // Extract user ID and account type from auth token
         const cookieParts = authCookie.split('=');
         if (cookieParts.length !== 2) return null;
-        
+
         let authValue;
         try {
           authValue = decodeURIComponent(cookieParts[1]);
         } catch (e) {
           authValue = cookieParts[1]; // Use raw value if decoding fails
         }
-        
+
         const [userId, accountType] = authValue.split('_');
-        
+
         // Validate account type
         if (accountType !== 'business') {
           console.log('Invalid account type for cremation dashboard:', accountType);
           return null;
         }
-        
+
         return userId;
       } catch (e) {
         console.error('Error parsing auth cookie:', e);
@@ -179,9 +179,10 @@ export default function CremationDashboardLayout({
   // Effect to simulate content loading with a short delay
   useEffect(() => {
     if (isAuthenticated && userData) {
+      // Reduce the delay to minimize flickering
       const timer = setTimeout(() => {
         setContentLoading(false);
-      }, 300);
+      }, 100);
 
       return () => clearTimeout(timer);
     }

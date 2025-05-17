@@ -16,16 +16,25 @@ const withBusinessVerification = <P extends object>(
 ) => {
   const WithBusinessVerification: React.FC<Omit<P, 'userData'>> = (props) => {
     const router = useRouter();
-    const [isAuthenticated, setIsAuthenticated] = useState(false);
-    const [userData, setUserData] = useState<any>(null);
-    const [isLoading, setIsLoading] = useState(true);
+    const [isAuthenticated, setIsAuthenticated] = useState(globalBusinessAuthState.verified);
+    const [userData, setUserData] = useState<any>(globalBusinessAuthState.userData);
+    const [isLoading, setIsLoading] = useState(!globalBusinessAuthState.verified);
 
     useEffect(() => {
-      // Always clear session storage verification cache on mount to force fresh check
-      sessionStorage.removeItem('verified_business');
-      
+      // Don't clear session storage on every mount - this causes flickering
+      // Only clear if we need to force a verification check
+      // sessionStorage.removeItem('verified_business');
+
       // Check if user is authenticated and get user data
       const checkAuth = async () => {
+        // If we already have verified data, skip the verification process
+        if (globalBusinessAuthState.verified && globalBusinessAuthState.userData) {
+          setIsAuthenticated(true);
+          setUserData(globalBusinessAuthState.userData);
+          setIsLoading(false);
+          return;
+        }
+
         try {
           // Get auth token from cookie
           const cookies = document.cookie.split(';');
@@ -78,7 +87,7 @@ const withBusinessVerification = <P extends object>(
               router.replace('/cremation/pending-verification');
               return;
             }
-            
+
             // Make sure business_id is set for the user
             if (!userData.business_id && userData.user_type === 'business') {
               console.log('User lacks business_id, attempting to find from service_providers');
@@ -124,70 +133,77 @@ const withBusinessVerification = <P extends object>(
     // Function to check if a business is verified
     const checkBusinessVerification = (userData: any): boolean => {
       console.log('Checking business verification status:', userData);
-      
+
       // This is a hard verification check that cannot be bypassed
       if (!userData) return false;
-      
+
       // First check: verify the user has proper verification flags
       if (userData.is_verified !== 1) {
         console.log('User verification check failed: is_verified not valid');
         return false;
       }
-      
+
       // Second check: verify the service provider exists
       if (!userData.service_provider) {
         console.log('Service provider data missing');
         return false;
       }
-      
+
       // ONLY check application_status - ignore other fields that might not exist
-      const applicationStatus = userData.service_provider.application_status ? 
+      const applicationStatus = userData.service_provider.application_status ?
                                 String(userData.service_provider.application_status).toLowerCase() : null;
-      
+
       console.log('Application status:', applicationStatus);
-      
+
       // DIRECTLY check if application_status === 'approved'
       if (applicationStatus === 'approved') {
         console.log('APPLICATION STATUS IS APPROVED - SHOULD GRANT ACCESS');
         return true;
       }
-      
+
       // If application_status is 'pending', deny access
       if (applicationStatus === 'pending') {
         console.log('Application is pending verification');
         return false;
       }
-      
+
       // Check for documents as a fallback
-      const hasDocuments = userData.service_provider.business_permit_path || 
-                          userData.service_provider.government_id_path || 
+      const hasDocuments = userData.service_provider.business_permit_path ||
+                          userData.service_provider.government_id_path ||
                           userData.service_provider.bir_certificate_path;
-      
+
       if (!hasDocuments) {
         console.log('Document verification check failed');
         return false;
       }
-      
+
       // If we get here and there's no specific status but they have documents, allow access
       if (hasDocuments && !applicationStatus) {
         console.log('No status found but documents uploaded, allowing access');
         return true;
       }
-      
+
       // Any other case, deny access
       console.log('Verification check failed, access denied');
       return false;
     };
 
-    // Import DashboardSkeleton at the top of the file
+    // If we have userData but are still loading, render the component anyway
+    // This prevents flickering during navigation
+    if (isLoading && userData) {
+      return <Component {...(props as P)} userData={userData} />;
+    }
+
+    // If we're loading and don't have userData, let the layout handle it
     if (isLoading) {
-      // We'll let the CremationDashboardLayout handle the loading state
-      return null;
+      // Return an empty div instead of null to maintain DOM structure
+      return <div style={{ display: 'none' }}></div>;
     }
 
     // Don't render anything if not authenticated
     if (!isAuthenticated || !userData) {
-      return null;
+      // Return an empty div instead of null to maintain DOM structure
+      return <div style={{ display: 'none' }}></div>;
     }
 
     // Render the wrapped component with user data
