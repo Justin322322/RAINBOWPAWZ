@@ -193,9 +193,6 @@ function ApplicationDetailContent({ id }) {
     try {
       setIsProcessing(true);
 
-      // Show a processing message
-      alert('Processing your request. Please wait...');
-
       const response = await fetch(`/api/businesses/applications/${id}/decline`, {
         method: 'POST',
         headers: {
@@ -222,9 +219,6 @@ function ApplicationDetailContent({ id }) {
           };
           return updated;
         });
-
-        // Show success message
-        alert(requestDocuments ? 'Documents requested successfully' : 'Application declined successfully');
 
         // Set success state to trigger animation
         setSuccessBusinessName(application.businessName);

@@ -11,7 +11,8 @@ import {
   UserGroupIcon,
   UserIcon,
   UsersIcon,
-  EnvelopeIcon
+  EnvelopeIcon,
+  StarIcon
 } from '@heroicons/react/24/outline';
 
 interface AdminSidebarProps {
@@ -44,6 +45,12 @@ export default function AdminSidebar({ activePage: propActivePage }: AdminSideba
       href: '/admin/services',
       icon: RectangleStackIcon,
       id: 'services'
+    },
+    {
+      name: 'Reviews',
+      href: '/admin/reviews',
+      icon: StarIcon,
+      id: 'reviews'
     }
   ];
 
@@ -83,6 +90,8 @@ export default function AdminSidebar({ activePage: propActivePage }: AdminSideba
         setActivePage('applications');
       } else if (currentPath === 'services') {
         setActivePage('services');
+      } else if (currentPath === 'reviews') {
+        setActivePage('reviews');
       } else if (pathname.includes('/admin/users')) {
         // Always set user management open when on any user management page
         setUserManagementOpen(true);

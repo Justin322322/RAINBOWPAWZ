@@ -15,13 +15,15 @@ import {
   CheckCircleIcon,
   XCircleIcon,
   ChevronLeftIcon,
-  ChevronRightIcon
+  ChevronRightIcon,
+  StarIcon
 } from '@heroicons/react/24/outline';
 import FurParentNavbar from '@/components/navigation/FurParentNavbar';
 import withOTPVerification from '@/components/withOTPVerification';
 import FurParentPageSkeleton from '@/components/ui/FurParentPageSkeleton';
 import { getPackageImageUrl, handleImageError } from '@/utils/imageUtils';
 import TimeSlotSelector from '@/components/booking/TimeSlotSelector';
+import ReviewsList from '@/components/reviews/ReviewsList';
 
 interface ServiceDetailPageProps {
   userData?: any;
@@ -294,7 +296,13 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
           <div className="bg-[var(--primary-green)] text-white">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 grid grid-cols-1 md:grid-cols-2 gap-8">
               <div>
-                <h1 className="text-3xl font-bold uppercase text-white">{provider.name}</h1>
+                <div className="flex items-center mb-2">
+                  <h1 className="text-3xl font-bold uppercase text-white">{provider.name}</h1>
+                  <div className="ml-4 flex items-center bg-white/20 px-3 py-1 rounded-full">
+                    <StarIcon className="h-5 w-5 text-yellow-300 mr-1" />
+                    <span className="text-white font-medium">{provider.rating ? provider.rating.toFixed(1) : 'New'}</span>
+                  </div>
+                </div>
                 <p className="mt-2 text-white/80 flex items-center">
                   <MapPinIcon className="h-4 w-4 mr-1 flex-shrink-0" />
                   <span>{provider.address?.replace(', Philippines', '')}</span>
@@ -356,6 +364,14 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
                     </div>
                   </div>
                 </div>
+              </div>
+
+              <div className="h-px w-full bg-gray-300 mb-8"></div>
+
+              {/* Reviews Section */}
+              <div className="mb-12">
+                <h2 className="text-2xl font-bold text-[var(--primary-green)] mb-6">Customer Reviews</h2>
+                <ReviewsList providerId={Number(providerId)} className="bg-white p-6 rounded-lg shadow-sm" />
               </div>
 
               <div className="h-px w-full bg-gray-300 mb-8"></div>

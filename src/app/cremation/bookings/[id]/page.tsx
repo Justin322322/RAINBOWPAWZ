@@ -43,7 +43,6 @@ function BookingDetailsPage({ userData }: { userData: any }) {
   const [error, setError] = useState<string | null>(null);
   const [statusSectionExpanded, setStatusSectionExpanded] = useState(false);
   const [paymentSectionExpanded, setPaymentSectionExpanded] = useState(false);
-  const [toastMessage, setToastMessage] = useState<{message: string, type: 'success' | 'error' | 'info' | 'warning'} | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [statusUpdateData, setStatusUpdateData] = useState<{
     newStatus: string;
@@ -233,24 +232,12 @@ function BookingDetailsPage({ userData }: { userData: any }) {
               // Set a more specific error message
               setError(`Booking #${bookingId} exists but could not be accessed. This may be a permissions issue.`);
 
-              // Set toast message instead of directly calling showToast
-              setToastMessage({
-                message: `Booking #${bookingId} exists but could not be accessed. Please try again or contact support.`,
-                type: 'warning'
-              });
-
               return;
             }
           }
 
           // Default not found message
           setError(`Booking #${bookingId} was not found in the system.`);
-
-          // Set toast message instead of directly calling showToast
-          setToastMessage({
-            message: `Booking #${bookingId} could not be found. Please check the booking ID.`,
-            type: 'warning'
-          });
 
           // Return early to avoid throwing an error
           return;
@@ -295,33 +282,17 @@ function BookingDetailsPage({ userData }: { userData: any }) {
       }
 
       setBooking(responseData);
-
-      // Set toast message instead of directly calling showToast
-      setToastMessage({
-        message: `Booking #${bookingId} loaded successfully`,
-        type: 'success'
-      });
     } catch (error) {
 
       // Check if it's an abort error (timeout)
       if (error.name === 'AbortError') {
         setError(`Request timed out. The server took too long to respond. Please try again.`);
-        setToastMessage({
-          message: 'Request timed out. Please try again.',
-          type: 'error'
-        });
         return;
       }
 
       // Set a more user-friendly error message
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       setError('Failed to load booking details. ' + errorMessage);
-
-      // Set toast message instead of directly calling showToast
-      setToastMessage({
-        message: 'Error loading booking details: ' + errorMessage,
-        type: 'error'
-      });
 
       // Try one more time with a different approach - direct fetch without signal
       try {
@@ -338,10 +309,6 @@ function BookingDetailsPage({ userData }: { userData: any }) {
           const fallbackData = await fallbackResponse.json();
           setBooking(fallbackData);
           setError(null);
-          setToastMessage({
-            message: `Booking #${bookingId} loaded successfully with fallback method`,
-            type: 'success'
-          });
         } else {
         }
       } catch (fallbackError) {
@@ -356,15 +323,7 @@ function BookingDetailsPage({ userData }: { userData: any }) {
     if (bookingId) {
       fetchBookingDetails();
     }
-  }, [bookingId]); // Remove showToast from the dependency array since we're using it in fetchBookingDetails
-
-  // Effect to show toast when toastMessage changes
-  useEffect(() => {
-    if (toastMessage) {
-      showToast(toastMessage.message, toastMessage.type);
-      setToastMessage(null); // Reset toast message after showing it
-    }
-  }, [toastMessage]);
+  }, [bookingId]);
 
   // Effect to check localStorage for payment status when booking is loaded
   useEffect(() => {

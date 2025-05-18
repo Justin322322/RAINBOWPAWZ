@@ -60,12 +60,12 @@ function CremationDashboardPage({ userData }: { userData: any }) {
       try {
         // Add cache busting parameter to prevent cached results
         const response = await fetch(`/api/cremation/dashboard?providerId=${userData.business_id}&t=${Date.now()}`);
-        
+
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
           throw new Error(`Failed to fetch dashboard data: ${response.status} ${errorData.error || ''}`);
         }
-        
+
         const data = await response.json();
         setDashboardData(data);
       } catch (error) {
@@ -82,10 +82,10 @@ function CremationDashboardPage({ userData }: { userData: any }) {
   useEffect(() => {
     const checkAvailabilityTables = async () => {
       if (!userData?.business_id) return;
-      
+
       try {
         const response = await fetch('/api/cremation/availability?providerId=' + userData.business_id);
-        
+
         if (response.status === 500) {
           setAvailabilitySetupNeeded(true);
           setAvailabilityError('Database tables for availability calendar need to be set up.');
@@ -98,14 +98,14 @@ function CremationDashboardPage({ userData }: { userData: any }) {
         setAvailabilityError('Could not check if availability tables exist.');
       }
     };
-    
+
     checkAvailabilityTables();
   }, [userData]);
 
   // Ensure database tables exist when the page loads
   useEffect(() => {
     let isMounted = true;
-    
+
     const initializeTables = async () => {
       try {
         // Call our setup API instead of directly calling ensureAvailabilityTablesExist
@@ -116,7 +116,7 @@ function CremationDashboardPage({ userData }: { userData: any }) {
           }
         } else {
           const data = await response.json();
-          
+
           if (data.mock) {
             if (isMounted) {
               setAvailabilityError('Calendar is in demo mode due to database connection issues.');
@@ -133,9 +133,9 @@ function CremationDashboardPage({ userData }: { userData: any }) {
         }
       }
     };
-    
+
     initializeTables();
-    
+
     return () => {
       isMounted = false;
     };
@@ -192,13 +192,13 @@ function CremationDashboardPage({ userData }: { userData: any }) {
             <p className="text-gray-600 mt-1">Manage your pet cremation services and bookings</p>
           </div>
           <div className="flex space-x-3">
-            <button 
+            <button
               onClick={() => router.push('/cremation/packages')}
               className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
             >
               Manage Packages
             </button>
-            <button 
+            <button
               onClick={() => router.push('/cremation/bookings')}
               className="px-4 py-2 bg-[var(--primary-green)] text-white rounded-lg hover:bg-opacity-90"
             >
@@ -213,7 +213,7 @@ function CremationDashboardPage({ userData }: { userData: any }) {
         {dashboardData.stats?.map((stat: any, index: number) => {
           const Icon = statIcons[index % statIcons.length];
           const colors = statColors[index % statColors.length];
-          
+
           return (
             <div key={index} className="bg-white rounded-xl shadow-sm p-6">
               <div className="flex items-center">
@@ -247,8 +247,8 @@ function CremationDashboardPage({ userData }: { userData: any }) {
         <div className="bg-white rounded-xl shadow-sm overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
             <h2 className="text-lg font-medium text-gray-800">Recent Bookings</h2>
-            <button 
-              onClick={() => router.push('/cremation/bookings')} 
+            <button
+              onClick={() => router.push('/cremation/bookings')}
               className="text-sm text-[var(--primary-green)] hover:underline"
             >
               View all
@@ -313,20 +313,63 @@ function CremationDashboardPage({ userData }: { userData: any }) {
           )}
         </div>
 
-        {/* Customer stats or availability toggle */}
+        {/* Recent Reviews */}
+        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+            <h2 className="text-lg font-medium text-gray-800">Recent Reviews</h2>
+            <button
+              onClick={() => router.push('/cremation/reviews')}
+              className="text-sm text-[var(--primary-green)] hover:underline"
+            >
+              View all
+            </button>
+          </div>
+          {loading ? (
+            <div className="flex justify-center items-center h-64">
+              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[var(--primary-green)]"></div>
+            </div>
+          ) : dashboardData.stats?.find((stat: any) => stat.name === 'Average Rating')?.value === 'No ratings' ? (
+            <div className="p-6 text-center">
+              <StarIcon className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+              <p className="text-gray-500">No reviews yet. Reviews will appear here when customers rate their experience.</p>
+            </div>
+          ) : (
+            <div className="p-6">
+              <div className="flex items-center justify-center mb-4">
+                <div className="flex items-center bg-yellow-100 px-4 py-2 rounded-full">
+                  <StarIcon className="h-6 w-6 text-yellow-500 mr-2" />
+                  <span className="text-xl font-medium">{dashboardData.stats?.find((stat: any) => stat.name === 'Average Rating')?.value}</span>
+                </div>
+              </div>
+              <p className="text-center text-gray-600 mb-4">
+                Check your reviews page to see what customers are saying about your services.
+              </p>
+              <div className="flex justify-center">
+                <button
+                  onClick={() => router.push('/cremation/reviews')}
+                  className="px-4 py-2 bg-[var(--primary-green)] text-white rounded-md hover:bg-[var(--primary-green-hover)]"
+                >
+                  View All Reviews
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Availability Calendar */}
         <div className="bg-white rounded-xl shadow-sm p-6">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-lg font-medium text-gray-800">Manage Availability</h2>
             {availabilitySetupNeeded ? (
               <button
-                onClick={toggleAvailabilitySection} 
+                onClick={toggleAvailabilitySection}
                 className="px-4 py-2 border border-[var(--primary-green)] text-[var(--primary-green)] rounded-md hover:bg-[var(--primary-green-light)]"
               >
                 {showAvailabilitySection ? 'Hide Calendar' : 'Show Calendar'}
               </button>
             ) : (
               <button
-                onClick={toggleAvailabilitySection} 
+                onClick={toggleAvailabilitySection}
                 className="px-4 py-2 border border-[var(--primary-green)] text-[var(--primary-green)] rounded-md hover:bg-[var(--primary-green-light)]"
               >
                 {showAvailabilitySection ? 'Hide Calendar' : 'Show Calendar'}
@@ -339,7 +382,7 @@ function CremationDashboardPage({ userData }: { userData: any }) {
               <ExclamationCircleIcon className="h-10 w-10 text-yellow-500 mx-auto mb-3" />
               <h3 className="text-lg font-medium text-yellow-800 mb-2">Calendar Setup Required</h3>
               <p className="text-yellow-700 mb-4">
-                The availability calendar requires database tables to be set up. 
+                The availability calendar requires database tables to be set up.
                 Click the "Set Up Calendar" button above to create the necessary tables.
               </p>
             </div>
@@ -353,8 +396,8 @@ function CremationDashboardPage({ userData }: { userData: any }) {
                   </div>
                 </div>
               ) : null}
-              <AvailabilityCalendar 
-                providerId={userData?.business_id || 0} 
+              <AvailabilityCalendar
+                providerId={userData?.business_id || 0}
                 onAvailabilityChange={handleAvailabilityChange}
                 onSaveSuccess={handleSaveSuccess}
               />
@@ -403,15 +446,15 @@ function CremationDashboardPage({ userData }: { userData: any }) {
               <div key={pkg.id} className="border border-gray-200 rounded-lg p-5 hover:shadow-md transition-shadow duration-300">
                 <div className="mb-4 h-40 relative overflow-hidden rounded-lg bg-gray-100 flex items-center justify-center">
                   {pkg.images && pkg.images.length > 0 ? (
-                    <PackageImage 
-                      images={pkg.images} 
+                    <PackageImage
+                      images={pkg.images}
                       alt={pkg.name}
                       size="large"
                       className="w-full h-full object-cover"
                     />
                   ) : pkg.image ? (
-                    <PackageImage 
-                      images={[pkg.image]} 
+                    <PackageImage
+                      images={[pkg.image]}
                       alt={pkg.name}
                       size="large"
                       className="w-full h-full object-cover"

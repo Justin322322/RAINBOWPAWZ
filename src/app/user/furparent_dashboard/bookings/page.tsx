@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Fragment } from 'react';
+import React, { useState, useEffect, Fragment } from 'react';
 import { motion } from 'framer-motion';
 import { format } from 'date-fns';
 import { Dialog, Transition } from '@headlessui/react';
@@ -20,11 +20,17 @@ import {
   ExclamationTriangleIcon,
   BanknotesIcon,
   CreditCardIcon,
-  ArrowPathIcon
+  ArrowPathIcon,
+  StarIcon,
+  TruckIcon
 } from '@heroicons/react/24/outline';
 import FurParentNavbar from '@/components/navigation/FurParentNavbar';
+import FurParentDashboardWrapper from '@/components/navigation/FurParentDashboardWrapper';
 import withOTPVerification from '@/components/withOTPVerification';
 import FurParentPageSkeleton from '@/components/ui/FurParentPageSkeleton';
+import CompletedBookingReviewPrompt from '@/components/reviews/CompletedBookingReviewPrompt';
+import ReviewModal from '@/components/reviews/ReviewModal';
+import ReviewDisplay from '@/components/reviews/ReviewDisplay';
 
 interface BookingData {
   id: number;
@@ -63,7 +69,7 @@ interface BookingsPageProps {
   userData?: any;
 }
 
-function BookingsPage({ userData }: BookingsPageProps) {
+const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
   const [bookings, setBookings] = useState<BookingData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
@@ -101,9 +107,11 @@ function BookingsPage({ userData }: BookingsPageProps) {
   const [selectedBooking, setSelectedBooking] = useState<BookingData | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
+  const [showReviewModal, setShowReviewModal] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
   const [cancelSuccess, setCancelSuccess] = useState(false);
   const [cancelledBookingIds, setCancelledBookingIds] = useState<number[]>([]);
+  const [reviewedBookingIds, setReviewedBookingIds] = useState<number[]>([]);
 
   useEffect(() => {
     async function fetchBookings() {
@@ -159,6 +167,15 @@ function BookingsPage({ userData }: BookingsPageProps) {
           setBookings(fetchedBookings);
         }
 
+        // Check which completed bookings have reviews
+        const completedBookings = fetchedBookings.filter(
+          (booking: BookingData) => booking.status === 'completed'
+        );
+
+        if (completedBookings.length > 0) {
+          checkReviewedBookings(completedBookings);
+        }
+
         setError(null);
       } catch (err) {
         if (err instanceof Error) {
@@ -190,6 +207,29 @@ function BookingsPage({ userData }: BookingsPageProps) {
       setBookings(allBookings);
     }
 
+  };
+
+  // Check which bookings have reviews
+  const checkReviewedBookings = async (bookings: BookingData[]) => {
+    try {
+      const reviewedIds: number[] = [];
+
+      // Check each booking for reviews
+      for (const booking of bookings) {
+        const response = await fetch(`/api/reviews/booking/${booking.id}`);
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.hasReview) {
+            reviewedIds.push(booking.id);
+          }
+        }
+      }
+
+      setReviewedBookingIds(reviewedIds);
+    } catch (error) {
+      console.error('Error checking reviewed bookings:', error);
+    }
   };
 
   const checkDatabaseConnection = async () => {
@@ -441,8 +481,9 @@ function BookingsPage({ userData }: BookingsPageProps) {
       {/* Navigation */}
       <FurParentNavbar activePage="bookings" userName={`${userData?.first_name || ''} ${userData?.last_name || ''}`} />
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
+      {/* Main Content wrapped with FurParentDashboardWrapper */}
+      <FurParentDashboardWrapper userData={userData}>
+        <main className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
         <motion.div
           className="mb-8"
           initial={{ opacity: 0, y: -20 }}
@@ -555,6 +596,17 @@ function BookingsPage({ userData }: BookingsPageProps) {
             </button>
           </div>
         </div>
+
+        {/* Review Prompt for Completed Bookings */}
+        {!isLoading && !error && userData && userData.id && activeFilter === 'completed' && (
+          <CompletedBookingReviewPrompt
+            userId={userData.id}
+            onReviewSubmitted={() => {
+              // Refresh the bookings list after a review is submitted
+              setActiveFilter(activeFilter);
+            }}
+          />
+        )}
 
         {/* Bookings List */}
         <div className="space-y-6">
@@ -707,6 +759,24 @@ function BookingsPage({ userData }: BookingsPageProps) {
                         {cancelledBookingIds.includes(booking.id) ? 'Cancelled' : 'Cancel Booking'}
                       </button>
                     )}
+                    {booking.status === 'completed' && !reviewedBookingIds.includes(booking.id) && (
+                      <button
+                        onClick={() => {
+                          setSelectedBooking(booking);
+                          setShowReviewModal(true);
+                        }}
+                        className="px-4 py-2 border border-blue-300 text-blue-700 rounded-md text-sm font-medium hover:bg-blue-50 flex items-center"
+                      >
+                        <StarIcon className="h-4 w-4 mr-2" />
+                        Leave Review
+                      </button>
+                    )}
+                    {booking.status === 'completed' && reviewedBookingIds.includes(booking.id) && (
+                      <div className="px-4 py-2 bg-green-50 text-green-700 rounded-md text-sm font-medium flex items-center">
+                        <CheckCircleIcon className="h-4 w-4 mr-2" />
+                        Reviewed
+                      </div>
+                    )}
                     <button
                       onClick={() => handleViewDetails(booking)}
                       className="px-4 py-2 bg-[var(--primary-green)] text-white rounded-md text-sm font-medium hover:bg-[var(--primary-green-hover)] flex items-center"
@@ -721,6 +791,7 @@ function BookingsPage({ userData }: BookingsPageProps) {
           )}
         </div>
       </main>
+      </FurParentDashboardWrapper>
 
       {/* Booking Details Modal */}
       <Transition appear show={showDetailsModal} as={Fragment}>
@@ -1076,6 +1147,32 @@ function BookingsPage({ userData }: BookingsPageProps) {
                         </div>
                       )}
 
+                      {/* Review Section - Only show for completed bookings */}
+                      {selectedBooking.status === 'completed' && (
+                        <div className="mt-6">
+                          <h4 className="text-sm font-medium text-gray-500 mb-2">Your Review</h4>
+                          {reviewedBookingIds.includes(selectedBooking.id) ? (
+                            <ReviewDisplay bookingId={selectedBooking.id} userId={userData?.id} />
+                          ) : (
+                            <div className="bg-gray-50 p-4 rounded-lg">
+                              <p className="text-sm text-gray-600 mb-3">You haven't reviewed this booking yet. Your feedback helps other pet parents make informed decisions.</p>
+                              <button
+                                onClick={() => {
+                                  setShowDetailsModal(false);
+                                  setTimeout(() => {
+                                    setShowReviewModal(true);
+                                  }, 300);
+                                }}
+                                className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 flex items-center w-fit"
+                              >
+                                <StarIcon className="h-4 w-4 mr-2" />
+                                Leave a Review
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
                       <div className="mt-6 flex justify-end">
                         {selectedBooking.status === 'pending' && !cancelledBookingIds.includes(selectedBooking.id) && (
                           <button
@@ -1199,9 +1296,30 @@ function BookingsPage({ userData }: BookingsPageProps) {
           </div>
         </Dialog>
       </Transition>
+
+      {/* Review Modal */}
+      {selectedBooking && (
+        <ReviewModal
+          isOpen={showReviewModal}
+          onClose={() => setShowReviewModal(false)}
+          bookingId={selectedBooking.id}
+          userId={userData?.id}
+          providerId={selectedBooking.provider_id || 0}
+          providerName={selectedBooking.provider_name || 'Service Provider'}
+          onSuccess={() => {
+            // Add the booking ID to the list of reviewed bookings
+            if (selectedBooking && selectedBooking.id) {
+              setReviewedBookingIds(prev => [...prev, selectedBooking.id]);
+            }
+            setShowReviewModal(false);
+            // Refresh the bookings list
+            setActiveFilter(activeFilter);
+          }}
+        />
+      )}
     </div>
   );
-}
+};
 
 // Export the component wrapped with OTP verification
 export default withOTPVerification(BookingsPage);

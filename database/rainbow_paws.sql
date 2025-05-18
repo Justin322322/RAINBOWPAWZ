@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: May 18, 2025 at 04:09 AM
+-- Generation Time: May 18, 2025 at 09:00 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -52,7 +52,10 @@ INSERT INTO `admin_notifications` (`id`, `type`, `title`, `message`, `entity_typ
 (6, 'new_cremation_center', 'New Cremation Center Registration', 'business has registered as a cremation center and is pending verification.', 'service_provider', 13, '/admin/applications/13', 0, '2025-05-16 00:04:22'),
 (7, 'new_cremation_center', 'New Cremation Center Registration', 'business has registered as a cremation center and is pending verification.', 'service_provider', 14, '/admin/applications/14', 0, '2025-05-16 00:54:30'),
 (8, 'new_cremation_center', 'New Cremation Center Registration', 'business has registered as a cremation center and is pending verification.', 'service_provider', 15, '/admin/applications/15', 0, '2025-05-17 11:54:28'),
-(9, 'new_cremation_center', 'New Cremation Center Registration', 'asddasd has registered as a cremation center and is pending verification.', 'service_provider', 16, '/admin/applications/16', 0, '2025-05-18 00:49:03');
+(9, 'new_cremation_center', 'New Cremation Center Registration', 'asddasd has registered as a cremation center and is pending verification.', 'service_provider', 16, '/admin/applications/16', 0, '2025-05-18 00:49:03'),
+(10, 'new_cremation_center', 'New Cremation Center Registration', 'business has registered as a cremation center and is pending verification.', 'service_provider', 17, '/admin/applications/17', 0, '2025-05-18 02:20:25'),
+(11, 'new_cremation_center', 'New Cremation Center Registration', 'business has registered as a cremation center and is pending verification.', 'service_provider', 18, '/admin/applications/18', 0, '2025-05-18 02:23:23'),
+(12, 'new_cremation_center', 'New Cremation Center Registration', 'business has registered as a cremation center and is pending verification.', 'service_provider', 19, '/admin/applications/19', 0, '2025-05-18 02:31:28');
 
 -- --------------------------------------------------------
 
@@ -73,6 +76,36 @@ CREATE TABLE `admin_profiles` (
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `booking_addons`
+--
+
+CREATE TABLE `booking_addons` (
+  `id` int(11) NOT NULL,
+  `booking_id` int(11) NOT NULL,
+  `addon_name` varchar(255) NOT NULL,
+  `addon_price` decimal(10,2) NOT NULL DEFAULT 0.00,
+  `is_selected` tinyint(1) NOT NULL DEFAULT 1,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Stores add-ons selected for each booking';
+
+-- --------------------------------------------------------
+
+--
+-- Stand-in structure for view `business_application_stats`
+-- (See below for the actual view)
+--
+CREATE TABLE `business_application_stats` (
+`total` bigint(21)
+,`approved` decimal(22,0)
+,`pending` decimal(22,0)
+,`reviewing` decimal(22,0)
+,`declined` decimal(22,0)
+,`documents_required` decimal(22,0)
+);
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `notifications`
 --
 
@@ -87,6 +120,14 @@ CREATE TABLE `notifications` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Stores user notifications';
+
+--
+-- Dumping data for table `notifications`
+--
+
+INSERT INTO `notifications` (`id`, `user_id`, `title`, `message`, `type`, `is_read`, `link`, `created_at`, `updated_at`) VALUES
+(99, 56, 'Application Approved', 'Your business application for business has been approved. You can now start offering services.', 'success', 0, '/login', '2025-05-18 02:33:19', '2025-05-18 02:33:19'),
+(100, 56, 'Application Approved', 'Your business application for business has been approved.', 'success', 0, '/login', '2025-05-18 02:33:22', '2025-05-18 02:33:22');
 
 -- --------------------------------------------------------
 
@@ -108,10 +149,11 @@ CREATE TABLE `otp_attempts` (
 
 INSERT INTO `otp_attempts` (`id`, `user_id`, `attempt_type`, `attempt_time`, `ip_address`) VALUES
 (76, 44, 'generate', '2025-05-14 17:32:34', '::ffff:192.168.56.1'),
-(96, 51, 'generate', '2025-05-17 11:35:51', '::1'),
-(97, 51, 'generate', '2025-05-17 11:36:05', '::1'),
-(98, 51, 'verify', '2025-05-17 11:36:20', '::1'),
-(100, 53, 'generate', '2025-05-18 00:49:06', '::1');
+(110, 58, 'generate', '2025-05-18 06:11:09', '::1'),
+(111, 58, 'generate', '2025-05-18 06:11:20', '::1'),
+(112, 58, 'verify', '2025-05-18 06:12:10', '::1'),
+(113, 58, 'generate', '2025-05-18 06:15:39', '::1'),
+(114, 58, 'verify', '2025-05-18 06:15:51', '::1');
 
 -- --------------------------------------------------------
 
@@ -133,10 +175,9 @@ CREATE TABLE `otp_codes` (
 --
 
 INSERT INTO `otp_codes` (`id`, `user_id`, `otp_code`, `expires_at`, `is_used`, `created_at`) VALUES
-(57, 44, '691270', '2025-05-15 01:42:34', 0, '2025-05-14 17:32:34'),
-(70, 51, '962258', '2025-05-17 19:45:51', 1, '2025-05-17 11:35:51'),
-(71, 51, '815169', '2025-05-17 19:46:05', 1, '2025-05-17 11:36:05'),
-(73, 53, '141074', '2025-05-18 08:59:06', 0, '2025-05-18 00:49:06');
+(80, 58, '236512', '2025-05-18 14:21:09', 1, '2025-05-18 06:11:09'),
+(81, 58, '195641', '2025-05-18 14:21:20', 1, '2025-05-18 06:11:20'),
+(82, 58, '135346', '2025-05-18 14:25:39', 1, '2025-05-18 06:15:39');
 
 -- --------------------------------------------------------
 
@@ -152,6 +193,13 @@ CREATE TABLE `package_addons` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Stores optional add-ons available for service packages';
 
+--
+-- Dumping data for table `package_addons`
+--
+
+INSERT INTO `package_addons` (`id`, `package_id`, `description`, `price`, `created_at`) VALUES
+(66, 63, 'asdsdsd', 555.00, '2025-05-18 04:09:50');
+
 -- --------------------------------------------------------
 
 --
@@ -159,13 +207,20 @@ CREATE TABLE `package_addons` (
 --
 
 CREATE TABLE `package_images` (
-  `id` int(11) NOT NULL,
+  `id` int(11) NOT NULL COMMENT 'package_image table',
   `package_id` int(11) NOT NULL,
   `image_path` varchar(255) NOT NULL,
   `image_id` varchar(100) DEFAULT NULL,
   `display_order` int(11) DEFAULT 0,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Stores images associated with service packages';
+
+--
+-- Dumping data for table `package_images`
+--
+
+INSERT INTO `package_images` (`id`, `package_id`, `image_path`, `image_id`, `display_order`, `created_at`) VALUES
+(73, 63, '/uploads/packages/63/package_20_1747541379745.png', NULL, 0, '2025-05-18 04:09:51');
 
 -- --------------------------------------------------------
 
@@ -179,6 +234,13 @@ CREATE TABLE `package_inclusions` (
   `description` varchar(255) NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Stores items included in service packages';
+
+--
+-- Dumping data for table `package_inclusions`
+--
+
+INSERT INTO `package_inclusions` (`id`, `package_id`, `description`, `created_at`) VALUES
+(109, 63, 'asdasd', '2025-05-18 04:09:50');
 
 -- --------------------------------------------------------
 
@@ -200,7 +262,9 @@ CREATE TABLE `password_reset_tokens` (
 --
 
 INSERT INTO `password_reset_tokens` (`id`, `user_id`, `token`, `created_at`, `expires_at`, `is_used`) VALUES
-(5, 49, 'e58f1fa7b3fdd970a7a35074197cc7da62a4f0c2d41996ac8952abe1f0ab64a8', '2025-05-16 17:49:14', '2025-05-17 02:49:14', 0);
+(5, 49, 'e58f1fa7b3fdd970a7a35074197cc7da62a4f0c2d41996ac8952abe1f0ab64a8', '2025-05-16 17:49:14', '2025-05-17 02:49:14', 0),
+(6, 51, '7e6050e776012699f7c37616ca4dfdd4d13e731ceb2dfe27bbe86c1230df0a8d', '2025-05-18 02:17:50', '2025-05-18 11:17:50', 0),
+(7, 56, '4a60f471eb86926bfb815b69b6b6bdd05d9118f3cff2db3626d64950ed574397', '2025-05-18 02:32:36', '2025-05-18 11:32:36', 1);
 
 -- --------------------------------------------------------
 
@@ -223,6 +287,15 @@ CREATE TABLE `pets` (
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Stores information about pets owned by fur parents';
 
+--
+-- Dumping data for table `pets`
+--
+
+INSERT INTO `pets` (`id`, `user_id`, `name`, `species`, `breed`, `gender`, `age`, `weight`, `photo_path`, `special_notes`, `created_at`, `updated_at`) VALUES
+(30, '57', 'asdasd', 'Dog', 'asdasd', 'Female', 'as223', 24234.00, '/uploads/pets/pet_asdasd_57_1747537223167.png', 'asdasd', '2025-05-18 03:00:23', '2025-05-18 03:00:23'),
+(31, '57', 'asdsdd', 'Cat', 'asdasds', 'Male', '213', 232.00, '/uploads/pets/pet_asdsdd_57_1747538684139.png', 'sadasd', '2025-05-18 03:24:44', '2025-05-18 03:24:44'),
+(32, '57', 'test', 'Cat', 'asdasds', 'Male', '424', 424.00, '/uploads/pets/pet_test_57_1747545786023.png', 'asdsd', '2025-05-18 05:23:06', '2025-05-18 05:23:06');
+
 -- --------------------------------------------------------
 
 --
@@ -237,6 +310,14 @@ CREATE TABLE `provider_availability` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Stores availability dates for service providers';
+
+--
+-- Dumping data for table `provider_availability`
+--
+
+INSERT INTO `provider_availability` (`id`, `provider_id`, `date`, `is_available`, `created_at`, `updated_at`) VALUES
+(124, 20, '2025-05-21', 1, '2025-05-18 02:59:30', '2025-05-18 02:59:30'),
+(128, 20, '2025-05-22', 1, '2025-05-18 03:44:00', '2025-05-18 03:44:00');
 
 -- --------------------------------------------------------
 
@@ -260,7 +341,8 @@ CREATE TABLE `provider_time_slots` (
 --
 
 INSERT INTO `provider_time_slots` (`id`, `provider_id`, `date`, `start_time`, `end_time`, `created_at`, `updated_at`, `available_services`) VALUES
-(91, 15, '2025-05-23', '09:00:00', '10:00:00', '2025-05-18 00:43:53', '2025-05-18 00:43:53', '[53]');
+(91, 15, '2025-05-23', '09:00:00', '10:00:00', '2025-05-18 00:43:53', '2025-05-18 00:43:53', '[53]'),
+(95, 20, '2025-05-22', '09:00:00', '10:00:00', '2025-05-18 04:11:15', '2025-05-18 04:11:15', '[63]');
 
 -- --------------------------------------------------------
 
@@ -331,6 +413,13 @@ CREATE TABLE `service_packages` (
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Stores service packages offered by service providers';
 
+--
+-- Dumping data for table `service_packages`
+--
+
+INSERT INTO `service_packages` (`id`, `service_provider_id`, `name`, `description`, `category`, `cremation_type`, `processing_time`, `price`, `delivery_fee_per_km`, `conditions`, `is_active`, `created_at`, `updated_at`) VALUES
+(63, 20, 'Basic Cremation', 'asdsd', 'Private', 'Standard', '1-2 days', 33232.00, 0.00, 'asdasdsd', 1, '2025-05-18 04:09:50', '2025-05-18 04:09:50');
+
 -- --------------------------------------------------------
 
 --
@@ -367,7 +456,7 @@ CREATE TABLE `service_providers` (
 --
 
 INSERT INTO `service_providers` (`id`, `user_id`, `name`, `provider_type`, `contact_first_name`, `contact_last_name`, `phone`, `address`, `province`, `city`, `zip`, `hours`, `service_description`, `application_status`, `verification_date`, `verification_notes`, `bir_certificate_path`, `business_permit_path`, `government_id_path`, `created_at`, `updated_at`, `active_service_count`) VALUES
-(16, 53, 'asddasd', 'cremation', 'asdsdasdasd', 'asdasdsd', 'asdasd', 'balanga bataan', 'asdsd', 'asdasd', 'asdasdsd', 'asdasd', 'asdasdsd', 'approved', '2025-05-18 01:17:50', 'Application approved', '/uploads/businesses/53/bir_certificate_1747529350275.png', '/uploads/businesses/53/business_permit_1747529350269.png', '/uploads/businesses/53/government_id_1747529350279.png', '2025-05-18 00:49:03', '2025-05-18 01:17:50', 0);
+(20, 56, 'business', 'cremation', 'Justin', 'Sibonga', 'asdsd', 'bataan peninsula state university', 'Bataan', 'Balanga City', '2100', 'asdasd', 'asdasd', 'approved', '2025-05-18 02:33:19', 'Application approved', '/uploads/businesses/56/bir_certificate_1747535490930.png', '/uploads/businesses/56/business_permit_1747535490927.png', '/uploads/businesses/56/government_id_1747535490931.png', '2025-05-18 02:31:28', '2025-05-18 02:46:25', 0);
 
 -- --------------------------------------------------------
 
@@ -417,9 +506,9 @@ CREATE TABLE `users` (
 --
 
 INSERT INTO `users` (`id`, `email`, `password`, `first_name`, `last_name`, `phone_number`, `address`, `sex`, `role`, `status`, `is_verified`, `is_otp_verified`, `created_at`, `updated_at`, `last_login`) VALUES
-(44, 'admin@rainbowpaws.com', '$2b$10$CPyPK.A9FBeSkzotK0Zt6e3UW2NOqaQ.ovwjz/wt/tDgNWXIocV.W', 'System', 'Admin', 'asdasd', 'BPSU', 'male', 'admin', 'active', 1, 1, '2025-05-14 17:32:31', '2025-05-18 01:28:40', '2025-05-18 01:28:40'),
-(51, 'justinmarlosibonga@gmail.com', '$2b$10$EDw8VfhHwWghWb71k7MTFOSpNaHz243KiNPj7ysjsP5CjM4EKtwpa', 'Justin', 'Sibonga', '1111111', 'Samal Bataan', 'male', 'fur_parent', 'active', 0, 1, '2025-05-17 11:35:48', '2025-05-18 01:33:07', '2025-05-18 01:33:07'),
-(53, 'serviceprovider@rainbowpaws.com', '$2b$10$M9mCrCX1qcUEJh0gFVspH.m4YykPu76LB2RuOqwTxz7CPPvq1g2SW', 'asdsdasdasd', 'asdasdsd', 'asdasd', 'balanga bataan', NULL, 'business', 'active', 1, 0, '2025-05-18 00:49:03', '2025-05-18 02:08:02', '2025-05-18 02:08:02');
+(44, 'admin@rainbowpaws.com', '$2b$10$CPyPK.A9FBeSkzotK0Zt6e3UW2NOqaQ.ovwjz/wt/tDgNWXIocV.W', 'System', 'Admin', 'asdasd', 'BPSU', 'male', 'admin', 'active', 1, 1, '2025-05-14 17:32:31', '2025-05-18 03:09:22', '2025-05-18 03:09:22'),
+(56, 'serviceprovider@rainbowpaws.com', '$2b$10$RM7iBs9QuOV21HvOtfb6TedtuICxjYwAf4BlKQqMsGYx.DrYK0tnu', 'Justin', 'Sibonga', 'asdsd', 'Capitol Compound, Tenejero', NULL, 'business', 'active', 1, 1, '2025-05-18 02:31:28', '2025-05-18 05:40:06', '2025-05-18 05:40:06'),
+(58, 'justinmarlosibonga@gmail.com', '$2b$10$O9f4wPQeXSdmLN0TW833yu/mT7ox6ps1bg35AuSFBTeYyzBOErVcy', 'Justin', 'Sibonga', '1111111', 'balanga, bataan', 'male', 'fur_parent', 'active', 0, 1, '2025-05-18 06:11:06', '2025-05-18 06:50:43', '2025-05-18 06:50:43');
 
 -- --------------------------------------------------------
 
@@ -439,6 +528,15 @@ CREATE TABLE `user_restrictions` (
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Stores information about user account restrictions';
 
+-- --------------------------------------------------------
+
+--
+-- Structure for view `business_application_stats`
+--
+DROP TABLE IF EXISTS `business_application_stats`;
+
+CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `business_application_stats`  AS SELECT count(0) AS `total`, sum(case when `service_providers`.`application_status` = 'approved' then 1 else 0 end) AS `approved`, sum(case when `service_providers`.`application_status` = 'pending' then 1 else 0 end) AS `pending`, sum(case when `service_providers`.`application_status` = 'reviewing' then 1 else 0 end) AS `reviewing`, sum(case when `service_providers`.`application_status` = 'declined' then 1 else 0 end) AS `declined`, sum(case when `service_providers`.`application_status` = 'documents_required' then 1 else 0 end) AS `documents_required` FROM `service_providers` ;
+
 --
 -- Indexes for dumped tables
 --
@@ -456,6 +554,13 @@ ALTER TABLE `admin_profiles`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `username` (`username`),
   ADD KEY `user_id` (`user_id`);
+
+--
+-- Indexes for table `booking_addons`
+--
+ALTER TABLE `booking_addons`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `booking_id` (`booking_id`);
 
 --
 -- Indexes for table `notifications`
@@ -594,7 +699,7 @@ ALTER TABLE `user_restrictions`
 -- AUTO_INCREMENT for table `admin_notifications`
 --
 ALTER TABLE `admin_notifications`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
 
 --
 -- AUTO_INCREMENT for table `admin_profiles`
@@ -603,64 +708,70 @@ ALTER TABLE `admin_profiles`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
+-- AUTO_INCREMENT for table `booking_addons`
+--
+ALTER TABLE `booking_addons`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
 -- AUTO_INCREMENT for table `notifications`
 --
 ALTER TABLE `notifications`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=99;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=101;
 
 --
 -- AUTO_INCREMENT for table `otp_attempts`
 --
 ALTER TABLE `otp_attempts`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=101;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=115;
 
 --
 -- AUTO_INCREMENT for table `otp_codes`
 --
 ALTER TABLE `otp_codes`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=74;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=83;
 
 --
 -- AUTO_INCREMENT for table `package_addons`
 --
 ALTER TABLE `package_addons`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=65;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=67;
 
 --
 -- AUTO_INCREMENT for table `package_images`
 --
 ALTER TABLE `package_images`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=66;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT COMMENT 'package_image table', AUTO_INCREMENT=74;
 
 --
 -- AUTO_INCREMENT for table `package_inclusions`
 --
 ALTER TABLE `package_inclusions`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=102;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=110;
 
 --
 -- AUTO_INCREMENT for table `password_reset_tokens`
 --
 ALTER TABLE `password_reset_tokens`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
 -- AUTO_INCREMENT for table `pets`
 --
 ALTER TABLE `pets`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT COMMENT 'Primary key - Unique identifier for each pet', AUTO_INCREMENT=30;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT COMMENT 'Primary key - Unique identifier for each pet', AUTO_INCREMENT=33;
 
 --
 -- AUTO_INCREMENT for table `provider_availability`
 --
 ALTER TABLE `provider_availability`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=124;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=131;
 
 --
 -- AUTO_INCREMENT for table `provider_time_slots`
 --
 ALTER TABLE `provider_time_slots`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=92;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=96;
 
 --
 -- AUTO_INCREMENT for table `reviews`
@@ -672,31 +783,31 @@ ALTER TABLE `reviews`
 -- AUTO_INCREMENT for table `service_bookings`
 --
 ALTER TABLE `service_bookings`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT COMMENT 'Primary key - Unique identifier for each booking', AUTO_INCREMENT=30;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT COMMENT 'Primary key - Unique identifier for each booking', AUTO_INCREMENT=33;
 
 --
 -- AUTO_INCREMENT for table `service_packages`
 --
 ALTER TABLE `service_packages`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT COMMENT 'Primary key - Unique identifier for each service package', AUTO_INCREMENT=56;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT COMMENT 'Primary key - Unique identifier for each service package', AUTO_INCREMENT=64;
 
 --
 -- AUTO_INCREMENT for table `service_providers`
 --
 ALTER TABLE `service_providers`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT COMMENT 'Primary key - Unique identifier for each service provider', AUTO_INCREMENT=17;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT COMMENT 'Primary key - Unique identifier for each service provider', AUTO_INCREMENT=21;
 
 --
 -- AUTO_INCREMENT for table `successful_bookings`
 --
 ALTER TABLE `successful_bookings`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
 
 --
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT COMMENT 'Primary key - Unique identifier for each user', AUTO_INCREMENT=54;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT COMMENT 'Primary key - Unique identifier for each user', AUTO_INCREMENT=59;
 
 --
 -- AUTO_INCREMENT for table `user_restrictions`
@@ -713,6 +824,12 @@ ALTER TABLE `user_restrictions`
 --
 ALTER TABLE `admin_profiles`
   ADD CONSTRAINT `admin_profiles_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `booking_addons`
+--
+ALTER TABLE `booking_addons`
+  ADD CONSTRAINT `booking_addons_ibfk_1` FOREIGN KEY (`booking_id`) REFERENCES `service_bookings` (`id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `notifications`
@@ -749,6 +866,12 @@ ALTER TABLE `package_images`
 --
 ALTER TABLE `package_inclusions`
   ADD CONSTRAINT `package_inclusions_ibfk_1` FOREIGN KEY (`package_id`) REFERENCES `service_packages` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `provider_availability`
+--
+ALTER TABLE `provider_availability`
+  ADD CONSTRAINT `provider_availability_ibfk_1` FOREIGN KEY (`provider_id`) REFERENCES `service_providers` (`id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `reviews`

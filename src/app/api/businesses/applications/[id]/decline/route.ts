@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import mysql from 'mysql2/promise';
 
-// Import the simple email service
-const { sendBusinessVerificationEmail } = require('@/lib/simpleEmailService');
+// Import the consolidated email service
+import { sendBusinessVerificationEmail } from '@/lib/consolidatedEmailService';
 
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
   // Extract ID from params
@@ -57,8 +57,9 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     `) as any[];
 
     const hasApplicationStatus = columnsResult.length > 0;
-    let updateResult;
-    updateResult = await query(
+
+    // Use the appropriate status field
+    const updateResult = await query(
       `UPDATE ${tableName}
        SET application_status = ?,
            verification_notes = ?,
@@ -68,44 +69,8 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       [applicationStatus, note.trim(), businessId]
     ) as mysql.ResultSetHeader;
 
-
-
     if (updateResult.affectedRows === 0) {
       return NextResponse.json({ message: 'Business profile not found' }, { status: 404 });
-    }
-
-    // Force a commit to ensure the transaction is completed
-    await query('COMMIT');
-
-    // Verify the status was updated correctly
-    let verifyResult;
-    if (hasApplicationStatus) {      verifyResult = await query(
-        `SELECT application_status FROM ${tableName} WHERE id = ?`,
-        [businessId]
-      ) as any[];
-
-      if (verifyResult && verifyResult.length > 0) {        const result = verifyResult[0];
-
-        if (result.application_status !== applicationStatus) {
-
-          // Try to update again with a direct query
-          await query(
-            `UPDATE ${tableName} SET application_status = ? WHERE id = ?`,
-            [applicationStatus, businessId]
-          );
-          await query('COMMIT');
-        }
-      }    } else {
-      // We should not reach here with the updated schema
-      try {
-        // Create application_status column if it doesn't exist
-        await query(`ALTER TABLE ${tableName} ADD COLUMN application_status ENUM('pending', 'approved', 'declined', 'restricted') DEFAULT 'pending'`);
-
-        // Set initial value based on declined state
-        await query(`UPDATE ${tableName} SET application_status = ? WHERE id = ?`, [applicationStatus, businessId]);
-        await query('COMMIT');
-      } catch (err) {
-      }
     }
 
     // Get business details for email notification
@@ -135,12 +100,12 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     }
 
     const business = businessResult[0];
-    let emailSent = false;
-    if (business) {
-      // Send email notification using the simple email service
-      try {
 
-        // Send email using simple email service
+    // Send email notification to the business owner
+    let emailSent = false;
+    if (business && business.email) {
+      try {
+        // Send email using consolidated email service
         const emailResult = await sendBusinessVerificationEmail(
           business.email,
           {
@@ -153,11 +118,13 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
 
         if (emailResult.success) {
           emailSent = true;
+          console.log('Email sent successfully to:', business.email);
         } else {
-          // Continue with the process even if the email fails
+          console.warn('Email sending failed:', emailResult.error);
         }
       } catch (emailError) {
-        // Continue with the process even if the email fails
+        // Log the error but continue with the process
+        console.error('Error sending verification email:', emailError);
       }
 
       // Create a notification for the business owner
@@ -229,19 +196,17 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       console.error('Error logging admin action:', logError);
     }
 
-    // Response uses application_status if available, otherwise falls back to verification_status
     return NextResponse.json({
       message: requestDocuments ? 'Documents requested successfully' : 'Application declined successfully',
       businessId,
       businessName: business?.business_name || business?.name,
-      status: applicationStatus,
       emailSent: emailSent
     });
   } catch (error) {
     console.error('Error declining application:', error);
     return NextResponse.json(
       {
-        message: 'Failed to process application',
+        message: 'Failed to decline application',
         details: error instanceof Error ? error.message : 'Unknown error'
       },
       { status: 500 }

@@ -14,57 +14,57 @@ async function getPackageImages(packageId: number) {
       WHERE package_id = ?
       ORDER BY display_order ASC
     `, [packageId]) as any[];
-    
+
     if (imagesResult && imagesResult.length > 0) {
       // Process paths to ensure they have proper format
       const processedImages = imagesResult.map((img: any) => {
         if (!img.image_path) return null;
         let path = img.image_path;
-        
+
         // If path starts with http:// or https://, it's already a full URL
         if (path.startsWith('http://') || path.startsWith('https://')) {
           return path;
         }
-        
+
         // Handle paths from package_images table that might be relative to public folder
         if (!path.startsWith('/')) {
           path = `/${path}`;
         }
-        
+
         return path;
       }).filter(Boolean);
-      
+
       if (processedImages.length > 0) {
         return processedImages;
       }
     }
-    
+
     // If no database entries, check the filesystem for common patterns
     const uploadsDir = path.join(process.cwd(), 'public', 'uploads', 'packages');
     let packageImages: string[] = [];
-    
+
     // Only try to read directory if it exists
     if (fs.existsSync(uploadsDir)) {
       try {
         const files = fs.readdirSync(uploadsDir);
-        
+
         // Look for files matching our package ID
         const packageFiles = files.filter(file => {
-          // Match different patterns: 
+          // Match different patterns:
           // - package_ID_timestamp.ext
           // - ID.ext
           return (
-            file.startsWith(`package_${packageId}_`) || 
-            file === `${packageId}.jpg` || 
+            file.startsWith(`package_${packageId}_`) ||
+            file === `${packageId}.jpg` ||
             file === `${packageId}.png`
           );
         });
-        
+
         packageImages = packageFiles.map(file => `/uploads/packages/${file}`);
       } catch (err) {
       }
     }
-    
+
     // Return empty array if no images are found
     return packageImages;
   } catch (error) {
@@ -78,20 +78,20 @@ async function findPackageImagePaths(packageId: number) {
   try {
     const uploadsBaseDir = path.join(process.cwd(), 'public', 'uploads', 'packages');
     let packageImages: string[] = [];
-    
-    
+
+
     // First, check for the package-specific folder (new structure)
     const packageDir = path.join(uploadsBaseDir, packageId.toString());
     if (fs.existsSync(packageDir)) {
       try {
         const packageFiles = fs.readdirSync(packageDir);
-        
+
         // Filter for image files only
         const imageFiles = packageFiles.filter(file => {
           const ext = path.extname(file).toLowerCase();
           return ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg'].includes(ext);
         });
-        
+
         if (imageFiles.length > 0) {
           packageImages = imageFiles.map(file => `/uploads/packages/${packageId}/${file}`);
           return packageImages;
@@ -99,26 +99,26 @@ async function findPackageImagePaths(packageId: number) {
       } catch (err) {
       }
     }
-    
+
     // If no package directory or no images in it, check the root uploads directory (old structure)
     if (fs.existsSync(uploadsBaseDir)) {
       try {
         const files = fs.readdirSync(uploadsBaseDir);
-        
+
         // Check for all package ID matches in the format of "package_[ID]_timestamp.ext"
         const exactMatches = files.filter(file => {
           // Check for common patterns:
           // - package_ID_timestamp.ext
           // - ID.ext
           return (
-            file.startsWith(`package_${packageId}_`) || 
-            file === `${packageId}.jpg` || 
+            file.startsWith(`package_${packageId}_`) ||
+            file === `${packageId}.jpg` ||
             file === `${packageId}.png` ||
             file === `${packageId}.jpeg` ||
             file === `${packageId}.webp`
           );
         });
-        
+
         if (exactMatches.length > 0) {
           packageImages = exactMatches.map(file => `/uploads/packages/${file}`);
           return packageImages;
@@ -126,7 +126,7 @@ async function findPackageImagePaths(packageId: number) {
       } catch (err) {
       }
     }
-    
+
     // Return empty array if no images found - don't add fallback sample images
     return [];
   } catch (error) {
@@ -142,7 +142,7 @@ export async function GET(request: NextRequest) {
     let isAuthenticated = false;
 
     const authToken = getAuthTokenFromRequest(request);
-    
+
     if (authToken) {
       // If we have a token, validate it
       const tokenParts = authToken.split('_');
@@ -194,7 +194,7 @@ export async function GET(request: NextRequest) {
     // Use a simpler query with hardcoded fields for stability
     // This prioritizes working code over dynamic adaptation
     const baseQuery = `
-      SELECT 
+      SELECT
         p.id,
         p.name,
         p.description,
@@ -209,17 +209,19 @@ export async function GET(request: NextRequest) {
         COALESCE(p.rating, 0) as rating,
         COALESCE(p.conditions, '') as conditions,
         sp.id as providerId,
-        COALESCE(sp.name, 'Cremation Center') as providerName
-      FROM 
+        COALESCE(sp.name, 'Cremation Center') as providerName,
+        (SELECT COUNT(*) FROM service_bookings sb WHERE sb.package_id = p.id) as actual_bookings_count,
+        (SELECT AVG(r.rating) FROM reviews r WHERE r.service_provider_id = sp.id) as provider_rating
+      FROM
         service_packages p
-      LEFT JOIN 
+      LEFT JOIN
         service_providers sp ON p.service_provider_id = sp.id OR p.provider_id = sp.id
       WHERE 1=1
     `;
 
     let whereClause = '';
     const queryParams: any[] = [];
-    
+
     if (searchTerm) {
       whereClause += ` AND (p.name LIKE ? OR sp.name LIKE ?)`;
       queryParams.push(`%${searchTerm}%`, `%${searchTerm}%`);
@@ -248,12 +250,12 @@ export async function GET(request: NextRequest) {
       // Try simplified query without joins if the first one fails
       try {
         const backupQuery = `
-          SELECT 
-            id, 
-            name, 
-            description, 
-            price, 
-            created_at, 
+          SELECT
+            id,
+            name,
+            description,
+            price,
+            created_at,
             updated_at,
             COALESCE(is_active, 1) as is_active,
             COALESCE(category, 'Private') as category,
@@ -261,7 +263,11 @@ export async function GET(request: NextRequest) {
             COALESCE(processing_time, '2-3 days') as processingTime,
             COALESCE(conditions, '') as conditions,
             'Cremation Center' as providerName,
-            0 as providerId
+            0 as providerId,
+            0 as actual_bookings_count,
+            0 as provider_rating,
+            COALESCE(bookings_count, 0) as bookings_count,
+            COALESCE(rating, 0) as rating
           FROM service_packages
           LIMIT ? OFFSET ?
         `;
@@ -297,36 +303,43 @@ export async function GET(request: NextRequest) {
 
       // Format price with PHP sign
       const priceValue = parseFloat(service.price || '0');
-      const formattedPrice = `₱${priceValue.toLocaleString('en-US', { 
+      const formattedPrice = `₱${priceValue.toLocaleString('en-US', {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2
       })}`;
 
       // Find possible image paths for this package
       const imagePaths = await findPackageImagePaths(service.id);
-      
-      // Debug output for each package ID 
+
+      // Debug output for each package ID
 
       // Get package inclusions and add-ons
       let inclusions = [];
       let addOns = [];
-      
+
       try {
         const inclusionsResult = await query(
           `SELECT description FROM package_inclusions WHERE package_id = ?`,
           [service.id]
         ) as any[];
-        
+
         inclusions = inclusionsResult.map((item: any) => item.description);
-        
+
         const addOnsResult = await query(
           `SELECT description FROM package_addons WHERE package_id = ?`,
           [service.id]
         ) as any[];
-        
+
         addOns = addOnsResult.map((item: any) => item.description);
       } catch (err) {
       }
+
+      // Calculate revenue based on price and actual bookings
+      const actualBookingsCount = service.actual_bookings_count || service.bookings_count || 0;
+      const revenue = priceValue * actualBookingsCount;
+
+      // Get the rating - use provider_rating if available, otherwise use package rating
+      const rating = service.provider_rating || service.rating || 0;
 
       return {
         id: service.id,
@@ -341,8 +354,13 @@ export async function GET(request: NextRequest) {
         status,
         cremationCenter: service.providerName || 'Cremation Center',
         providerId: service.providerId || 0,
-        rating: service.rating || 0,
-        bookings: service.bookings_count || 0,
+        rating: parseFloat(rating) || 0,
+        bookings: actualBookingsCount,
+        revenue: revenue,
+        formattedRevenue: `₱${revenue.toLocaleString('en-US', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2
+        })}`,
         image: imagePaths[0], // Use first image path
         images: imagePaths, // Include all potential paths
         inclusions: inclusions,
@@ -363,7 +381,7 @@ export async function GET(request: NextRequest) {
       }
     });
   } catch (error) {
-    
+
     return NextResponse.json({
       success: true, // Return success:true even with errors to avoid breaking UI
       error: 'Failed to fetch services',
@@ -381,4 +399,4 @@ async function checkTableExists(tableName: string): Promise<boolean> {
   } catch (err) {
     return false;
   }
-} 
+}

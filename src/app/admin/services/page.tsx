@@ -11,12 +11,14 @@ import {
   XMarkIcon,
   EyeIcon,
   ArrowTopRightOnSquareIcon,
-  ExclamationCircleIcon
+  ExclamationCircleIcon,
+  CurrencyDollarIcon
 } from '@heroicons/react/24/outline';
 import Link from 'next/link';
 import Image from 'next/image';
 import { PackageImage } from '@/components/packages/PackageImage';
 import { LoadingSpinner, EmptyState } from './client';
+import StarRating from '@/components/ui/StarRating';
 
 export default function AdminServicesPage() {
   const [userName] = useState('System Administrator');
@@ -113,8 +115,8 @@ export default function AdminServicesPage() {
           // Calculate stats
           const activeCount = data.services.filter((s: any) => s.status === 'active').length;
           const totalBookings = data.services.reduce((sum: number, s: any) => sum + (s.bookings || 0), 0);
-          const uniqueProviders = new Set(data.services.map((s: any) => s.providerId)).size;
-          const totalRevenue = data.services.reduce((sum: number, s: any) => sum + (s.priceValue || 0) * (s.bookings || 0), 0);
+          const uniqueProviders = new Set(data.services.map((s: any) => s.providerId).filter(id => id > 0)).size;
+          const totalRevenue = data.services.reduce((sum: number, s: any) => sum + (s.revenue || 0), 0);
 
           setStats({
             activeServices: activeCount,
@@ -480,19 +482,37 @@ export default function AdminServicesPage() {
                   <h3 className="font-semibold text-gray-900 text-lg">{service.name}</h3>
                   <p className="font-bold text-[var(--primary-green)]">{service.price}</p>
                 </div>
-                <p className="text-sm text-gray-600 mb-3">{service.cremationCenter}</p>
+                <p className="text-sm text-gray-600 mb-2">{service.cremationCenter}</p>
+
+                {/* Rating display */}
+                <div className="flex items-center mb-2">
+                  <StarRating rating={service.rating} size="small" />
+                  <span className="ml-2 text-xs text-gray-600">
+                    {service.rating ? service.rating.toFixed(1) : '0'} rating
+                  </span>
+                </div>
+
                 <p className="text-sm text-gray-700 line-clamp-2 mb-3">{service.description}</p>
-                <div className="flex justify-between items-center">
-                  <span className="text-xs text-gray-600">{service.bookings || 0} bookings</span>
-                  <div className="flex space-x-2">
-                    <button
-                      onClick={() => handleViewDetails(service)}
-                      className="px-3 py-1.5 bg-[var(--primary-green)] text-white text-sm rounded-lg flex items-center"
-                    >
-                      <EyeIcon className="h-4 w-4 mr-1" />
-                      View Details
-                    </button>
+
+                <div className="flex justify-between items-center mb-2">
+                  <div className="flex items-center">
+                    <QueueListIcon className="h-4 w-4 text-blue-500 mr-1" />
+                    <span className="text-xs text-gray-600">{service.bookings || 0} bookings</span>
                   </div>
+                  <div className="flex items-center">
+                    <CurrencyDollarIcon className="h-4 w-4 text-green-500 mr-1" />
+                    <span className="text-xs text-gray-600">{service.formattedRevenue || '₱0.00'}</span>
+                  </div>
+                </div>
+
+                <div className="flex justify-end">
+                  <button
+                    onClick={() => handleViewDetails(service)}
+                    className="px-3 py-1.5 bg-[var(--primary-green)] text-white text-sm rounded-lg flex items-center"
+                  >
+                    <EyeIcon className="h-4 w-4 mr-1" />
+                    View Details
+                  </button>
                 </div>
               </div>
             </div>
@@ -537,6 +557,16 @@ export default function AdminServicesPage() {
                   <div className="md:col-span-2">
                     <h3 className="text-xl font-medium text-gray-900 mb-4">{selectedService.name}</h3>
 
+                    <div className="mb-4">
+                      <div className="flex items-center">
+                        <p className="text-sm font-medium text-gray-500 mr-2">Rating:</p>
+                        <StarRating rating={selectedService.rating} size="medium" />
+                        <span className="ml-2 text-gray-700">
+                          {selectedService.rating ? selectedService.rating.toFixed(1) : '0'} out of 5
+                        </span>
+                      </div>
+                    </div>
+
                     <div className="grid grid-cols-2 gap-4 mb-4">
                       <div>
                         <p className="text-sm font-medium text-gray-500">Provider</p>
@@ -559,8 +589,16 @@ export default function AdminServicesPage() {
                         <p className="text-base text-gray-900">{selectedService.bookings || 0}</p>
                       </div>
                       <div>
+                        <p className="text-sm font-medium text-gray-500">Revenue</p>
+                        <p className="text-base text-gray-900">{selectedService.formattedRevenue || '₱0.00'}</p>
+                      </div>
+                      <div>
                         <p className="text-sm font-medium text-gray-500">Category</p>
                         <p className="text-base capitalize text-gray-900">{selectedService.category || 'Standard'}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-500">Status</p>
+                        <div className="mt-1">{getStatusBadge(selectedService.status)}</div>
                       </div>
                     </div>
 

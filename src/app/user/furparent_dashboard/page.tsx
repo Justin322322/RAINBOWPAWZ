@@ -3,6 +3,7 @@
 import Image from 'next/image';
 import { motion } from 'framer-motion';
 import FurParentNavbar from '@/components/navigation/FurParentNavbar';
+import FurParentDashboardWrapper from '@/components/navigation/FurParentDashboardWrapper';
 import withOTPVerification from '@/components/withOTPVerification';
 
 interface FurParentDashboardProps {
@@ -14,6 +15,9 @@ function FurParentDashboard({ userData }: FurParentDashboardProps) {
     <div className="min-h-screen bg-white">
       {/* Navigation */}
       <FurParentNavbar activePage="home" userName={`${userData?.first_name || ''} ${userData?.last_name || ''}`} />
+
+      {/* Review Notification Banner */}
+      <FurParentDashboardWrapper userData={userData}>
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
@@ -133,6 +137,7 @@ function FurParentDashboard({ userData }: FurParentDashboardProps) {
 
 
       </main>
+      </FurParentDashboardWrapper>
     </div>
   );
 }

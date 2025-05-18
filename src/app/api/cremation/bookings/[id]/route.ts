@@ -8,8 +8,10 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    // Properly await the params to avoid the NextJS warning
-    const bookingId = await Promise.resolve(params.id);
+    // Properly await the params object first
+    const awaitedParams = await params;
+    // Then access the id property
+    const bookingId = awaitedParams.id;
 
     if (!bookingId) {
       return NextResponse.json({ error: 'Booking ID is required' }, { status: 400 });
@@ -452,8 +454,10 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    // Properly await the params to avoid the NextJS warning
-    const bookingId = await Promise.resolve(params.id);
+    // Properly await the params object first
+    const awaitedParams = await params;
+    // Then access the id property
+    const bookingId = awaitedParams.id;
 
     const requestBody = await request.json();
     const { status } = requestBody;

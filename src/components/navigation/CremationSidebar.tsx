@@ -14,7 +14,8 @@ import {
   ChartBarIcon,
   Cog6ToothIcon,
   ArrowLeftOnRectangleIcon,
-  XMarkIcon
+  XMarkIcon,
+  StarIcon
 } from '@heroicons/react/24/outline';
 
 
@@ -59,6 +60,12 @@ export default function CremationSidebar({
       href: '/cremation/history',
       icon: ClockIcon,
       id: 'history'
+    },
+    {
+      name: 'Reviews',
+      href: '/cremation/reviews',
+      icon: StarIcon,
+      id: 'reviews'
     }
   ];
 

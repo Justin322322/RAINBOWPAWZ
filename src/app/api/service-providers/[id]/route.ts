@@ -109,6 +109,7 @@ export async function GET(
       }
 
 
+      // Get provider details
       const providerResult = await query(`
         SELECT
           id,
@@ -125,8 +126,28 @@ export async function GET(
         LIMIT 1
       `, [id]) as any[];
 
+      // Get average rating for this provider
+      let avgRating = 0;
+      try {
+        const ratingResult = await query(`
+          SELECT AVG(rating) as avg_rating, COUNT(*) as total_reviews
+          FROM reviews
+          WHERE service_provider_id = ?
+        `, [id]) as any[];
+
+        if (ratingResult && ratingResult.length > 0) {
+          avgRating = parseFloat(ratingResult[0]?.avg_rating || "0");
+        }
+      } catch (ratingError) {
+        console.error('Error fetching provider rating:', ratingError);
+        // Continue without rating data
+      }
+
       if (providerResult && providerResult.length > 0) {
         const provider = providerResult[0];
+
+        // Add rating to provider object
+        provider.rating = avgRating;
 
         // Calculate actual distance based on coordinates
         const providerCoordinates = getBataanCoordinates(provider.address || provider.city || 'Bataan');

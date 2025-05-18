@@ -292,10 +292,38 @@ function AdminDashboardPage({ adminData }: { adminData: any }) {
         )}
       </div>
 
+      {/* Database Maintenance */}
+      <div className="mb-8">
+        <h2 className="text-lg font-medium text-gray-800 mb-5">Database Maintenance</h2>
+        <div className="bg-white rounded-xl shadow-sm p-6">
+          <div className="flex flex-col space-y-4">
+            <div>
+              <h3 className="text-md font-medium text-gray-800 mb-2">Run Database Migrations</h3>
+              <div className="flex flex-wrap gap-3">
+                <button
+                  onClick={async () => {
+                    try {
+                      const response = await fetch('/api/db-migrations/add-expiration-date');
+                      const data = await response.json();
+                      alert(data.message || 'Migration completed');
+                    } catch (error) {
+                      alert('Error running migration: ' + (error instanceof Error ? error.message : 'Unknown error'));
+                    }
+                  }}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700"
+                >
+                  Add Review Expiration Date
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* User Distribution */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <h2 className="text-lg font-medium text-gray-800 col-span-full mb-0">User Distribution</h2>
-        
+
         {isLoading ? (
           // Loading skeleton for user distribution - consistent style
           Array(3).fill(0).map((_, index) => (
