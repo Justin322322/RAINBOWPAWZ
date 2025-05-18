@@ -8,6 +8,7 @@ export async function GET(request: NextRequest) {
     const providerId = url.searchParams.get('providerId');
     const statusFilter = url.searchParams.get('status') || 'all';
     const searchTerm = url.searchParams.get('search') || '';
+    const paymentStatusFilter = url.searchParams.get('paymentStatus') || 'all';
     const limit = parseInt(url.searchParams.get('limit') || '50');
     const offset = parseInt(url.searchParams.get('offset') || '0');
 
@@ -57,24 +58,45 @@ export async function GET(request: NextRequest) {
     let sql;
     const queryParams: any[] = [];
 
+    // Check if payment_status column exists in service_bookings table
+    const columnsQuery = `
+      SELECT COLUMN_NAME
+      FROM INFORMATION_SCHEMA.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'service_bookings'
+    `;
+
+    const columnsResult = await query(columnsQuery) as any[];
+    const columns = columnsResult.map((col: any) => col.COLUMN_NAME.toLowerCase());
+    const hasPaymentStatusColumn = columns.includes('payment_status');
+
     if (useServiceBookings) {
       // Using service_bookings table
+      // Create placeholders for each package ID
+      const packagePlaceholders = packageIds.map(() => '?').join(',');
+
+      // Build the SQL query based on available columns
       sql = `
         SELECT sb.id, sb.status, sb.booking_date, sb.booking_time, sb.special_requests as notes,
                sb.created_at, sb.pet_name, sb.pet_type, sb.cause_of_death,
-               sb.pet_image_url, sb.payment_method, sb.delivery_option, sb.delivery_distance,
+               sb.pet_image_url, sb.payment_method, ${hasPaymentStatusColumn ? 'sb.payment_status,' : "'not_paid' as payment_status,"} sb.delivery_option, sb.delivery_distance,
                sb.delivery_fee, sb.price,
                u.id as user_id, u.first_name, u.last_name, u.email, u.phone_number as phone,
                sp.id as package_id, sp.name as service_name, sp.processing_time
         FROM service_bookings sb
         JOIN users u ON sb.user_id = u.id
         LEFT JOIN service_packages sp ON sb.package_id = sp.id
-        WHERE (sb.package_id IN (?) OR sb.provider_id = ?)
+        WHERE (sb.package_id IN (${packagePlaceholders}) OR sb.provider_id = ?)
         AND sb.status NOT IN ('completed', 'cancelled')
       `;
-      queryParams.push(packageIds, providerId);
+
+      // Add each package ID as a separate parameter, then add providerId
+      queryParams.push(...packageIds, providerId);
     } else {
       // Using traditional bookings table
+      // Create placeholders for each package ID
+      const packagePlaceholders = packageIds.map(() => '?').join(',');
+
       sql = `
         SELECT b.id, b.status, b.booking_date, b.booking_time, b.special_requests as notes,
                b.created_at, p.name as pet_name, p.species as pet_type, p.image_url as pet_image_url,
@@ -84,17 +106,33 @@ export async function GET(request: NextRequest) {
         JOIN users u ON b.user_id = u.id
         LEFT JOIN pets p ON p.user_id = u.id AND p.created_at <= DATE_ADD(b.created_at, INTERVAL 5 SECOND)
         JOIN service_packages sp ON b.business_service_id = sp.id
-        WHERE b.business_service_id IN (?)
+        WHERE b.business_service_id IN (${packagePlaceholders})
         AND b.status NOT IN ('completed', 'cancelled')
         GROUP BY b.id
       `;
-      queryParams.push(packageIds);
+
+      // Add each package ID as a separate parameter
+      queryParams.push(...packageIds);
     }
 
     // Add status filter if not 'all'
     if (statusFilter !== 'all') {
       sql += ' AND status = ?';
       queryParams.push(statusFilter);
+    }
+
+    // Add payment status filter if not 'all'
+    if (paymentStatusFilter !== 'all') {
+      if (paymentStatusFilter === 'gcash') {
+        // Special case for GCash payments
+        sql += ' AND payment_method = ?';
+        queryParams.push('gcash');
+      } else if (hasPaymentStatusColumn) {
+        // For other payment statuses, only if the column exists
+        sql += ' AND payment_status = ?';
+        queryParams.push(paymentStatusFilter);
+      }
+      // If payment_status column doesn't exist, we skip this filter
     }
 
     // Add search term if provided
@@ -106,15 +144,17 @@ export async function GET(request: NextRequest) {
           u.last_name LIKE ? OR
           sb.id LIKE ?
         )`;
+        const searchPattern = `%${searchTerm}%`;
+        queryParams.push(searchPattern, searchPattern, searchPattern, searchPattern);
       } else {
         sql += ` AND (
           u.first_name LIKE ? OR
           u.last_name LIKE ? OR
           b.id LIKE ?
         )`;
+        const searchPattern = `%${searchTerm}%`;
+        queryParams.push(searchPattern, searchPattern, searchPattern);
       }
-      const searchPattern = `%${searchTerm}%`;
-      queryParams.push(searchPattern, searchPattern, searchPattern);
     }
 
     // Add order by and limit
@@ -127,30 +167,41 @@ export async function GET(request: NextRequest) {
     // Get booking stats - adjust queries based on the table being used
     let statsQueries;
 
+    // Create placeholders for each package ID
+    const packagePlaceholders = packageIds.map(() => '?').join(',');
+
     if (useServiceBookings) {
       statsQueries = {
-        total: `SELECT COUNT(*) as count FROM service_bookings WHERE (package_id IN (?) OR provider_id = ?)`,
-        pending: `SELECT COUNT(*) as count FROM service_bookings WHERE (package_id IN (?) OR provider_id = ?) AND status = 'pending'`,
-        confirmed: `SELECT COUNT(*) as count FROM service_bookings WHERE (package_id IN (?) OR provider_id = ?) AND status = 'confirmed'`,
-        inProgress: `SELECT COUNT(*) as count FROM service_bookings WHERE (package_id IN (?) OR provider_id = ?) AND status = 'in_progress'`,
-        completed: `SELECT COUNT(*) as count FROM service_bookings WHERE (package_id IN (?) OR provider_id = ?) AND status = 'completed'`,
-        cancelled: `SELECT COUNT(*) as count FROM service_bookings WHERE (package_id IN (?) OR provider_id = ?) AND status = 'cancelled'`
+        total: `SELECT COUNT(*) as count FROM service_bookings WHERE (package_id IN (${packagePlaceholders}) OR provider_id = ?)`,
+        pending: `SELECT COUNT(*) as count FROM service_bookings WHERE (package_id IN (${packagePlaceholders}) OR provider_id = ?) AND status = 'pending'`,
+        confirmed: `SELECT COUNT(*) as count FROM service_bookings WHERE (package_id IN (${packagePlaceholders}) OR provider_id = ?) AND status = 'confirmed'`,
+        inProgress: `SELECT COUNT(*) as count FROM service_bookings WHERE (package_id IN (${packagePlaceholders}) OR provider_id = ?) AND status = 'in_progress'`,
+        completed: `SELECT COUNT(*) as count FROM service_bookings WHERE (package_id IN (${packagePlaceholders}) OR provider_id = ?) AND status = 'completed'`,
+        cancelled: `SELECT COUNT(*) as count FROM service_bookings WHERE (package_id IN (${packagePlaceholders}) OR provider_id = ?) AND status = 'cancelled'`
       };
     } else {
       statsQueries = {
-        total: `SELECT COUNT(*) as count FROM bookings WHERE business_service_id IN (?)`,
-        pending: `SELECT COUNT(*) as count FROM bookings WHERE business_service_id IN (?) AND status = 'pending'`,
-        confirmed: `SELECT COUNT(*) as count FROM bookings WHERE business_service_id IN (?) AND status = 'confirmed'`,
-        inProgress: `SELECT COUNT(*) as count FROM bookings WHERE business_service_id IN (?) AND status = 'in_progress'`,
-        completed: `SELECT COUNT(*) as count FROM bookings WHERE business_service_id IN (?) AND status = 'completed'`,
-        cancelled: `SELECT COUNT(*) as count FROM bookings WHERE business_service_id IN (?) AND status = 'cancelled'`
+        total: `SELECT COUNT(*) as count FROM bookings WHERE business_service_id IN (${packagePlaceholders})`,
+        pending: `SELECT COUNT(*) as count FROM bookings WHERE business_service_id IN (${packagePlaceholders}) AND status = 'pending'`,
+        confirmed: `SELECT COUNT(*) as count FROM bookings WHERE business_service_id IN (${packagePlaceholders}) AND status = 'confirmed'`,
+        inProgress: `SELECT COUNT(*) as count FROM bookings WHERE business_service_id IN (${packagePlaceholders}) AND status = 'in_progress'`,
+        completed: `SELECT COUNT(*) as count FROM bookings WHERE business_service_id IN (${packagePlaceholders}) AND status = 'completed'`,
+        cancelled: `SELECT COUNT(*) as count FROM bookings WHERE business_service_id IN (${packagePlaceholders}) AND status = 'cancelled'`
       };
     }
 
     const stats: Record<string, number> = {};
 
     for (const [key, sqlQuery] of Object.entries(statsQueries)) {
-      const statsParams = useServiceBookings ? [packageIds, providerId] : [packageIds];
+      let statsParams;
+      if (useServiceBookings) {
+        // For service_bookings, we need to add each package ID and the provider ID
+        statsParams = [...packageIds, providerId];
+      } else {
+        // For regular bookings, we just need the package IDs
+        statsParams = [...packageIds];
+      }
+
       const result = await query(sqlQuery, statsParams) as any[];
       stats[key] = result[0]?.count || 0;
     }
@@ -176,26 +227,31 @@ export async function GET(request: NextRequest) {
 
         if (addonsTableCheck && addonsTableCheck[0].count > 0) {
           // Fetch add-ons for all bookings in one query
-          const addOnsQuery = `
-            SELECT booking_id, addon_name, addon_price, is_selected
-            FROM booking_addons
-            WHERE booking_id IN (?)
-            AND is_selected = 1
-          `;
+          if (bookingIds.length > 0) {
+            // Create placeholders for each booking ID
+            const bookingPlaceholders = bookingIds.map(() => '?').join(',');
 
-          const addOns = await query(addOnsQuery, [bookingIds]) as any[];
+            const addOnsQuery = `
+              SELECT booking_id, addon_name, addon_price, is_selected
+              FROM booking_addons
+              WHERE booking_id IN (${bookingPlaceholders})
+              AND is_selected = 1
+            `;
 
-          // Group add-ons by booking_id
-          bookingAddOns = addOns.reduce((acc: Record<number, any[]>, addon: any) => {
-            if (!acc[addon.booking_id]) {
-              acc[addon.booking_id] = [];
-            }
-            acc[addon.booking_id].push({
-              name: addon.addon_name,
-              price: parseFloat(addon.addon_price) || 0
-            });
-            return acc;
-          }, {});
+            const addOns = await query(addOnsQuery, bookingIds) as any[];
+
+            // Group add-ons by booking_id
+            bookingAddOns = addOns.reduce((acc: Record<number, any[]>, addon: any) => {
+              if (!acc[addon.booking_id]) {
+                acc[addon.booking_id] = [];
+              }
+              acc[addon.booking_id].push({
+                name: addon.addon_name,
+                price: parseFloat(addon.addon_price) || 0
+              });
+              return acc;
+            }, {});
+          }
         }
       } catch (error) {
         // Continue without add-ons if there's an error
@@ -231,6 +287,7 @@ export async function GET(request: NextRequest) {
         price: booking.price || 0,
         basePrice: (booking.price || 0) - addOnsTotal - (booking.delivery_fee || 0),
         paymentMethod: booking.payment_method || 'cash',
+        paymentStatus: booking.payment_method === 'gcash' ? 'paid' : (hasPaymentStatusColumn ? (booking.payment_status || 'not_paid') : 'not_paid'),
         deliveryOption: booking.delivery_option || 'pickup',
         deliveryDistance: booking.delivery_distance || 0,
         deliveryFee: booking.delivery_fee || 0,
@@ -253,9 +310,14 @@ export async function GET(request: NextRequest) {
       }
     });
   } catch (error) {
+    console.error('Error in GET /api/cremation/bookings:', error);
+
+    // Return more detailed error information for debugging
     return NextResponse.json({
       error: 'Failed to fetch bookings data',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      details: JSON.stringify(error)
     }, { status: 500 });
   }
 }

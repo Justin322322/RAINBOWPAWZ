@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import CremationDashboardLayout from '@/components/navigation/CremationDashboardLayout';
 import withBusinessVerification from '@/components/withBusinessVerification';
@@ -22,6 +22,7 @@ import {
 function CremationBookingsPage({ userData }: { userData: any }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [paymentFilter, setPaymentFilter] = useState('all');
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -35,7 +36,13 @@ function CremationBookingsPage({ userData }: { userData: any }) {
     pending: 0,
     totalRevenue: 0
   });
-  const { showToast } = useToast();
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const { showToast: showToastOriginal } = useToast();
+
+  // Memoize the showToast function to prevent it from causing infinite re-renders
+  const showToast = useCallback((message: string, type: 'success' | 'error' | 'info' | 'warning', duration?: number) => {
+    showToastOriginal(message, type, duration);
+  }, [showToastOriginal]);
 
   // Fetch bookings data when component mounts or search/filter changes
   useEffect(() => {
@@ -51,7 +58,8 @@ function CremationBookingsPage({ userData }: { userData: any }) {
         const params = new URLSearchParams({
           providerId: userData.business_id.toString(),
           status: statusFilter,
-          search: searchTerm
+          search: searchTerm,
+          paymentStatus: paymentFilter
         });
 
         const response = await fetch(`/api/cremation/bookings?${params.toString()}`);
@@ -74,7 +82,7 @@ function CremationBookingsPage({ userData }: { userData: any }) {
           totalRevenue: 0
         });
       } catch (error) {
-        showToast('Failed to load bookings data. Please try again later.', 'error');
+        setFetchError('Failed to load bookings data. Please try again later.');
         setBookings([]);
       } finally {
         setLoading(false);
@@ -82,7 +90,15 @@ function CremationBookingsPage({ userData }: { userData: any }) {
     };
 
     fetchBookings();
-  }, [userData, searchTerm, statusFilter, showToast]);
+  }, [userData, searchTerm, statusFilter, paymentFilter]);
+
+  // Show toast when fetchError changes
+  useEffect(() => {
+    if (fetchError) {
+      showToast(fetchError, 'error');
+      setFetchError(null); // Reset error after showing toast
+    }
+  }, [fetchError]);
 
   const handleViewDetails = (booking: any) => {
     setSelectedBooking(booking);
@@ -95,6 +111,10 @@ function CremationBookingsPage({ userData }: { userData: any }) {
 
   const handleStatusFilterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setStatusFilter(e.target.value);
+  };
+
+  const handlePaymentFilterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setPaymentFilter(e.target.value);
   };
 
   const getStatusBadge = (status: string) => {
@@ -174,6 +194,24 @@ function CremationBookingsPage({ userData }: { userData: any }) {
                 <option value="scheduled">Scheduled</option>
                 <option value="in_progress">In Progress</option>
                 <option value="pending">Pending</option>
+              </select>
+            </div>
+            <div className="relative w-full sm:w-auto">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <select
+                value={paymentFilter}
+                onChange={handlePaymentFilterChange}
+                className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)] sm:text-sm appearance-none"
+              >
+                <option value="all">All Payment Statuses</option>
+                <option value="paid">Paid</option>
+                <option value="partially_paid">Partially Paid</option>
+                <option value="not_paid">Not Paid</option>
+                <option value="gcash">GCash Payments</option>
               </select>
             </div>
           </div>
@@ -270,6 +308,9 @@ function CremationBookingsPage({ userData }: { userData: any }) {
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Status
                   </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Payment
+                  </th>
                   <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Actions
                   </th>
@@ -318,6 +359,25 @@ function CremationBookingsPage({ userData }: { userData: any }) {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       {getStatusBadge(booking.status)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {booking.paymentMethod === 'gcash' ? (
+                        <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 min-w-[90px] justify-center">
+                          Paid (GCash)
+                        </span>
+                      ) : booking.paymentStatus === 'paid' ? (
+                        <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 min-w-[90px] justify-center">
+                          Paid
+                        </span>
+                      ) : booking.paymentStatus === 'partially_paid' ? (
+                        <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800 min-w-[90px] justify-center">
+                          Partially Paid
+                        </span>
+                      ) : (
+                        <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800 min-w-[90px] justify-center">
+                          Not Paid
+                        </span>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex justify-end space-x-2">

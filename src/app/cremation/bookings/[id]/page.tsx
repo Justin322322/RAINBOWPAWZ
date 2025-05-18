@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import CremationDashboardLayout from '@/components/navigation/CremationDashboardLayout';
@@ -26,13 +26,19 @@ function BookingDetailsPage({ userData }: { userData: any }) {
   const params = useParams();
   const router = useRouter();
   const bookingId = params.id as string;
-  const { showToast } = useToast();
+  const { showToast: showToastOriginal } = useToast();
+
+  // Memoize the showToast function to prevent it from causing infinite re-renders
+  const showToast = useCallback((message: string, type: 'success' | 'error' | 'info' | 'warning', duration?: number) => {
+    showToastOriginal(message, type, duration);
+  }, [showToastOriginal]);
 
   const [loading, setLoading] = useState(true);
   const [booking, setBooking] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [statusSectionExpanded, setStatusSectionExpanded] = useState(false);
   const [paymentSectionExpanded, setPaymentSectionExpanded] = useState(false);
+  const [toastMessage, setToastMessage] = useState<{message: string, type: 'success' | 'error' | 'info' | 'warning'} | null>(null);
 
   const handleStatusUpdate = async (newStatus: string) => {
     try {
@@ -178,8 +184,11 @@ function BookingDetailsPage({ userData }: { userData: any }) {
               // Set a more specific error message
               setError(`Booking #${bookingId} exists but could not be accessed. This may be a permissions issue.`);
 
-              // Show a toast notification
-              showToast(`Booking #${bookingId} exists but could not be accessed. Please try again or contact support.`, 'warning');
+              // Set toast message instead of directly calling showToast
+              setToastMessage({
+                message: `Booking #${bookingId} exists but could not be accessed. Please try again or contact support.`,
+                type: 'warning'
+              });
 
               return;
             }
@@ -188,8 +197,11 @@ function BookingDetailsPage({ userData }: { userData: any }) {
           // Default not found message
           setError(`Booking #${bookingId} was not found in the system.`);
 
-          // Show a toast notification
-          showToast(`Booking #${bookingId} could not be found. Please check the booking ID.`, 'warning');
+          // Set toast message instead of directly calling showToast
+          setToastMessage({
+            message: `Booking #${bookingId} could not be found. Please check the booking ID.`,
+            type: 'warning'
+          });
 
           // Return early to avoid throwing an error
           return;
@@ -234,14 +246,20 @@ function BookingDetailsPage({ userData }: { userData: any }) {
 
       setBooking(responseData);
 
-      // Show success toast
-      showToast(`Booking #${bookingId} loaded successfully`, 'success');
+      // Set toast message instead of directly calling showToast
+      setToastMessage({
+        message: `Booking #${bookingId} loaded successfully`,
+        type: 'success'
+      });
     } catch (error) {
 
       // Check if it's an abort error (timeout)
       if (error.name === 'AbortError') {
         setError(`Request timed out. The server took too long to respond. Please try again.`);
-        showToast('Request timed out. Please try again.', 'error');
+        setToastMessage({
+          message: 'Request timed out. Please try again.',
+          type: 'error'
+        });
         return;
       }
 
@@ -249,8 +267,11 @@ function BookingDetailsPage({ userData }: { userData: any }) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       setError('Failed to load booking details. ' + errorMessage);
 
-      // Show a toast with the error
-      showToast('Error loading booking details: ' + errorMessage, 'error');
+      // Set toast message instead of directly calling showToast
+      setToastMessage({
+        message: 'Error loading booking details: ' + errorMessage,
+        type: 'error'
+      });
 
       // Try one more time with a different approach - direct fetch without signal
       try {
@@ -267,7 +288,10 @@ function BookingDetailsPage({ userData }: { userData: any }) {
           const fallbackData = await fallbackResponse.json();
           setBooking(fallbackData);
           setError(null);
-          showToast(`Booking #${bookingId} loaded successfully with fallback method`, 'success');
+          setToastMessage({
+            message: `Booking #${bookingId} loaded successfully with fallback method`,
+            type: 'success'
+          });
         } else {
         }
       } catch (fallbackError) {
@@ -283,6 +307,14 @@ function BookingDetailsPage({ userData }: { userData: any }) {
       fetchBookingDetails();
     }
   }, [bookingId]); // Remove showToast from the dependency array since we're using it in fetchBookingDetails
+
+  // Effect to show toast when toastMessage changes
+  useEffect(() => {
+    if (toastMessage) {
+      showToast(toastMessage.message, toastMessage.type);
+      setToastMessage(null); // Reset toast message after showing it
+    }
+  }, [toastMessage]);
 
   // Effect to check localStorage for payment status when booking is loaded
   useEffect(() => {
@@ -603,6 +635,11 @@ function BookingDetailsPage({ userData }: { userData: any }) {
               <div className="ml-3">
                 {getStatusBadge(booking.status)}
               </div>
+              {booking.paymentMethod === 'gcash' && (
+                <div className="ml-2 px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
+                  GCash
+                </div>
+              )}
             </div>
             <div className="flex items-center text-gray-500 text-sm space-x-3">
               <span>Created on {booking.createdAt}</span>
@@ -684,6 +721,56 @@ function BookingDetailsPage({ userData }: { userData: any }) {
             )}
           </div>
         </div>
+      </div>
+
+      {/* Booking Workflow */}
+      <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
+        <h2 className="text-lg font-medium text-gray-800 mb-4">Booking Workflow</h2>
+        <div className="relative">
+          <div className="flex items-center justify-between mb-2">
+            <div className={`flex flex-col items-center ${booking.status === 'pending' ? 'text-blue-600 font-medium' : (booking.status === 'confirmed' || booking.status === 'in_progress' || booking.status === 'completed') ? 'text-green-600 font-medium' : 'text-gray-500'}`}>
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-1 ${booking.status === 'pending' ? 'bg-blue-100 border-2 border-blue-600' : (booking.status === 'confirmed' || booking.status === 'in_progress' || booking.status === 'completed') ? 'bg-green-100 border-2 border-green-600' : 'bg-gray-100'}`}>
+                1
+              </div>
+              <span className="text-xs">Pending</span>
+            </div>
+            <div className={`flex flex-col items-center ${booking.status === 'confirmed' ? 'text-blue-600 font-medium' : booking.status === 'in_progress' || booking.status === 'completed' ? 'text-green-600 font-medium' : 'text-gray-500'}`}>
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-1 ${booking.status === 'confirmed' ? 'bg-blue-100 border-2 border-blue-600' : (booking.status === 'in_progress' || booking.status === 'completed') ? 'bg-green-100 border-2 border-green-600' : 'bg-gray-100'}`}>
+                2
+              </div>
+              <span className="text-xs">Scheduled</span>
+            </div>
+            <div className={`flex flex-col items-center ${booking.status === 'in_progress' ? 'text-blue-600 font-medium' : booking.status === 'completed' ? 'text-green-600 font-medium' : 'text-gray-500'}`}>
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-1 ${booking.status === 'in_progress' ? 'bg-blue-100 border-2 border-blue-600' : booking.status === 'completed' ? 'bg-green-100 border-2 border-green-600' : 'bg-gray-100'}`}>
+                3
+              </div>
+              <span className="text-xs">In Progress</span>
+            </div>
+            <div className={`flex flex-col items-center ${booking.status === 'completed' ? 'text-blue-600 font-medium' : 'text-gray-500'}`}>
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-1 ${booking.status === 'completed' ? 'bg-blue-100 border-2 border-blue-600' : 'bg-gray-100'}`}>
+                4
+              </div>
+              <span className="text-xs">Completed</span>
+            </div>
+          </div>
+          <div className="absolute top-5 left-10 right-10 h-1 bg-gray-200 -z-10">
+            <div
+              className="h-full bg-green-500"
+              style={{
+                width: booking.status === 'pending' ? '0%' :
+                       booking.status === 'confirmed' ? '33%' :
+                       booking.status === 'in_progress' ? '66%' :
+                       booking.status === 'completed' ? '100%' : '0%'
+              }}
+            ></div>
+          </div>
+        </div>
+
+        {booking.status === 'cancelled' && (
+          <div className="mt-4 bg-red-50 p-3 rounded-lg border border-red-100 text-center">
+            <p className="text-red-700">This booking has been cancelled</p>
+          </div>
+        )}
       </div>
 
       {/* Booking Information */}
@@ -948,9 +1035,39 @@ function BookingDetailsPage({ userData }: { userData: any }) {
         </button>
 
         <div className="bg-gray-50 p-4 rounded-lg mb-4">
-          <p className="text-sm text-gray-600 mb-2">Current Status:</p>
-          <div className="flex items-center">
-            {getStatusBadge(booking.status)}
+          <div className="flex flex-col md:flex-row md:justify-between md:items-center">
+            <div className="mb-4 md:mb-0">
+              <p className="text-sm text-gray-600 mb-2">Current Status:</p>
+              <div className="flex items-center">
+                {getStatusBadge(booking.status)}
+              </div>
+            </div>
+            <div className="flex flex-col items-start md:items-end">
+              <p className="text-sm text-gray-600 mb-2">Booking Progress:</p>
+              <div className="w-full md:w-64 bg-gray-200 rounded-full h-2.5">
+                {booking.status === 'pending' && (
+                  <div className="bg-gray-500 h-2.5 rounded-full" style={{ width: '25%' }}></div>
+                )}
+                {booking.status === 'confirmed' && (
+                  <div className="bg-yellow-500 h-2.5 rounded-full" style={{ width: '50%' }}></div>
+                )}
+                {booking.status === 'in_progress' && (
+                  <div className="bg-blue-500 h-2.5 rounded-full" style={{ width: '75%' }}></div>
+                )}
+                {booking.status === 'completed' && (
+                  <div className="bg-green-500 h-2.5 rounded-full" style={{ width: '100%' }}></div>
+                )}
+                {booking.status === 'cancelled' && (
+                  <div className="bg-red-500 h-2.5 rounded-full" style={{ width: '100%' }}></div>
+                )}
+              </div>
+              <div className="w-full md:w-64 flex justify-between text-xs text-gray-500 mt-1">
+                <span>Pending</span>
+                <span>Scheduled</span>
+                <span>In Progress</span>
+                <span>Completed</span>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -1058,9 +1175,28 @@ function BookingDetailsPage({ userData }: { userData: any }) {
           </button>
 
           <div className="bg-gray-50 p-4 rounded-lg mb-4">
-            <p className="text-sm text-gray-600 mb-2">Current Payment Status:</p>
-            <div className="flex items-center">
-              {getPaymentStatusBadge(booking.paymentStatus || 'not_paid')}
+            <div className="flex justify-between items-center">
+              <div>
+                <p className="text-sm text-gray-600 mb-2">Current Payment Status:</p>
+                <div className="flex items-center">
+                  {getPaymentStatusBadge(booking.paymentStatus || 'not_paid')}
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-sm text-gray-600 mb-2">Payment Method:</p>
+                <div className="flex items-center justify-end">
+                  {booking.paymentMethod === 'cash' ? (
+                    <BanknotesIcon className="h-5 w-5 text-gray-400 mr-2" />
+                  ) : booking.paymentMethod === 'gcash' ? (
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-green-500 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clipRule="evenodd" />
+                    </svg>
+                  ) : (
+                    <CreditCardIcon className="h-5 w-5 text-gray-400 mr-2" />
+                  )}
+                  <span className="text-base font-medium text-gray-900 capitalize">{booking.paymentMethod}</span>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -1074,6 +1210,9 @@ function BookingDetailsPage({ userData }: { userData: any }) {
                       <span className="font-medium">Payment Completed</span> - GCash payments are automatically marked as paid
                     </p>
                   </div>
+                  <p className="text-sm text-green-600 mt-2 italic">
+                    Note: The system now automatically marks GCash payments as "Paid" when the booking is created.
+                  </p>
                 </div>
               ) : (
                 <>

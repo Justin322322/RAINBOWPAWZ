@@ -12,8 +12,9 @@ export async function GET(
   { params }: { params: { path: string[] } }
 ) {
   try {
-    // Get the path from the URL
-    const imagePath = params.path.join('/');
+    // Get the path from the URL - ensure params is awaited
+    const pathParams = await Promise.resolve(params);
+    const imagePath = pathParams.path.join('/');
 
     console.log(`API Image request: ${imagePath}`);
 
