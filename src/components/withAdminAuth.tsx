@@ -69,11 +69,11 @@ const withAdminAuth = <P_Original extends object>(
 
       const checkAuth = async () => {
         try {
-          
+
           // Get the auth token from cookie or sessionStorage
           const cookies = document.cookie.split(';');
           const authCookie = cookies.find(cookie => cookie.trim().startsWith('auth_token='));
-          
+
           // First try cookies
           if (authCookie) {
             const cookieParts = authCookie.split('=');
@@ -97,17 +97,17 @@ const withAdminAuth = <P_Original extends object>(
               }
             }
           }
-          
+
           // Check for port 3000 specific token in localStorage
           if (window.location.port === '3000') {
             try {
               const localStorageToken = localStorage.getItem('auth_token_3000');
               if (localStorageToken) {
                 const tokenParts = localStorageToken.split('_');
-                
+
                 if (tokenParts.length === 2) {
                   const [userId, accountType] = tokenParts;
-                  
+
                   if (userId && accountType === 'admin') {
                     await fetchAdminData(userId);
                     return;
@@ -117,29 +117,29 @@ const withAdminAuth = <P_Original extends object>(
             } catch (e) {
             }
           }
-          
+
           // Try sessionStorage as fallback
           const sessionToken = sessionStorage.getItem('auth_token');
           if (sessionToken) {
             const tokenParts = sessionToken.split('_');
-            
+
             if (tokenParts.length === 2) {
               const [userId, accountType] = tokenParts;
-              
+
               if (userId && accountType === 'admin') {
                 await fetchAdminData(userId);
                 return;
               }
             }
           }
-          
+
           // If we get here, no valid auth token was found
           router.replace('/');
         } catch (error) {
           router.replace('/');
         }
       };
-      
+
       // Helper function to fetch admin data
       const fetchAdminData = async (userId: string) => {
         try {
@@ -179,7 +179,8 @@ const withAdminAuth = <P_Original extends object>(
       return null; // Or loading indicator
     }
 
-    return <WrappedComponent {...(props as P_Original)} adminData={retrievedAdminData} />;
+    // Pass props directly without processing
+    return <WrappedComponent {...props} adminData={retrievedAdminData} />;
   };
   return WithAdminAuthComponent;
 };

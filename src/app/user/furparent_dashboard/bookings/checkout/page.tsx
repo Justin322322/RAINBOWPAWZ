@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
@@ -16,13 +16,15 @@ import {
   UserIcon,
   PaperAirplaneIcon,
   ExclamationCircleIcon,
-  TruckIcon
+  TruckIcon,
+  PlusCircleIcon
 } from '@heroicons/react/24/outline';
 import FurParentNavbar from '@/components/navigation/FurParentNavbar';
 import withOTPVerification from '@/components/withOTPVerification';
 import FurParentPageSkeleton from '@/components/ui/FurParentPageSkeleton';
 import { useCart } from '@/contexts/CartContext';
 import TimeSlotSelector from '@/components/booking/TimeSlotSelector';
+import AddOnSelector, { AddOn } from '@/components/booking/AddOnSelector';
 
 interface CheckoutPageProps {
   userData?: any;
@@ -72,6 +74,8 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
   const [packageData, setPackageData] = useState<any>(null);
   const [providerId, setProviderId] = useState<number | null>(null);
   const [packageId, setPackageId] = useState<number | null>(null);
+  const [selectedAddOns, setSelectedAddOns] = useState<AddOn[]>([]);
+  const [addOnsTotalPrice, setAddOnsTotalPrice] = useState<number>(0);
 
   // Mock data for service providers and packages
   const serviceProviders = [
@@ -749,7 +753,11 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
           : undefined,
         deliveryDistance: deliveryOption === 'delivery' ? deliveryDistance : 0,
         deliveryFee: deliveryOption === 'delivery' ? deliveryFee : 0,
-        price: calculateTotalPrice()
+        price: calculateTotalPrice(),
+        selectedAddOns: selectedAddOns.map(addon => ({
+          name: addon.name,
+          price: addon.price
+        }))
       };
 
 
@@ -819,8 +827,9 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
 
     const basePrice = Number(bookingData.package.price);
     const delivery = deliveryOption === 'delivery' ? Number(deliveryFee) : 0;
+    const addOns = addOnsTotalPrice || 0;
 
-    return basePrice + delivery;
+    return basePrice + delivery + addOns;
   };
 
   return (
@@ -1142,6 +1151,23 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                       )}
                     </div>
 
+                    {/* Add-ons Section */}
+                    <div className="border-b pb-6">
+                      <h3 className="text-lg font-medium text-gray-900 mb-4">
+                        <PlusCircleIcon className="h-5 w-5 inline mr-2 text-[var(--primary-green)]" />
+                        Add-ons
+                      </h3>
+
+                      {packageId && (
+                        <AddOnSelector
+                          packageId={packageId}
+                          selectedAddOns={selectedAddOns}
+                          onAddOnsChange={setSelectedAddOns}
+                          onTotalPriceChange={setAddOnsTotalPrice}
+                        />
+                      )}
+                    </div>
+
                     {/* Payment Method Section */}
                     <div className="border-b pb-6">
                       <h3 className="text-lg font-medium text-gray-900 mb-4">
@@ -1377,10 +1403,17 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                       </div>
                     )}
 
+                    {selectedAddOns.length > 0 && addOnsTotalPrice > 0 && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Add-ons</span>
+                        <span className="font-medium">₱{addOnsTotalPrice.toLocaleString()}</span>
+                      </div>
+                    )}
+
                     <div className="flex justify-between pt-3 border-t border-gray-200">
                       <span className="font-medium">Total</span>
                       <span className="font-bold text-[var(--primary-green)]">
-                        ₱{(Number(bookingData.package.price) + (deliveryOption === 'delivery' ? Number(deliveryFee) : 0)).toLocaleString()}
+                        ₱{calculateTotalPrice().toLocaleString()}
                       </span>
                     </div>
                   </div>
@@ -1418,6 +1451,17 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                     <li><span className="font-medium">Provider:</span> {bookingData?.provider?.name}</li>
                     <li><span className="font-medium">Date:</span> {selectedDate ? new Date(selectedDate).toLocaleDateString() : 'Not specified'}</li>
                     <li><span className="font-medium">Time:</span> {selectedTimeSlot?.start ? selectedTimeSlot.start : 'Not specified'}</li>
+                    {selectedAddOns && selectedAddOns.length > 0 && (
+                      <li>
+                        <span className="font-medium">Add-ons:</span>{' '}
+                        {selectedAddOns.map((addon, index) => (
+                          <React.Fragment key={index}>
+                            {addon.name} (₱{typeof addon.price === 'number' ? addon.price : 0})
+                            {index < selectedAddOns.length - 1 ? ', ' : ''}
+                          </React.Fragment>
+                        ))}
+                      </li>
+                    )}
                     <li><span className="font-medium">Total:</span> ₱{calculateTotalPrice().toLocaleString()}</li>
                   </ul>
                 </div>

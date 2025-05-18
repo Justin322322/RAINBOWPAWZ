@@ -158,13 +158,15 @@ export const createWelcomeEmail = (email: string, firstName: string, accountType
       <p>Dear ${firstName},</p>
       <p>Thank you for joining Rainbow Paws! We're honored to have you as part of our community${accountTypeText}.</p>
       ${accountSpecificContent}
+      ${accountType === 'personal' ? `
       <div style='text-align: center; margin: 30px 0;'>
-        <a href='${process.env.NEXT_PUBLIC_APP_URL || ''}/login'
+        <a href='${process.env.NEXT_PUBLIC_APP_URL || ''}/?showLogin=true'
            style='background-color: #10B981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 25px; display: inline-block;'>
           Get Started
         </a>
       </div>
       <p>If you have any questions, our support team is here to help.</p>
+      ` : ''}
       <hr style='border: 1px solid #eee; margin: 30px 0;' />
       <p style='color: #666; font-size: 12px; text-align: center;'>
         Rainbow Paws - Pet Memorial Services<br>

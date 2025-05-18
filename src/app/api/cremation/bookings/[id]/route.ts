@@ -264,6 +264,45 @@ export async function GET(
       bookingData.id = parseInt(bookingId);
     }
 
+    // Check for add-ons
+    let addOns: any[] = [];
+    let addOnsTotal = 0;
+
+    try {
+      // Check if booking_addons table exists
+      const addonsTableCheck = await query(
+        "SELECT COUNT(*) as count FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'booking_addons'"
+      ) as any[];
+
+      if (addonsTableCheck && addonsTableCheck[0].count > 0) {
+        // Fetch add-ons for this booking
+        const addOnsQuery = `
+          SELECT id, addon_name, addon_price, is_selected
+          FROM booking_addons
+          WHERE booking_id = ?
+          AND is_selected = 1
+        `;
+
+        const addOnsResult = await query(addOnsQuery, [bookingId]) as any[];
+
+        if (addOnsResult && addOnsResult.length > 0) {
+          // Format add-ons
+          addOns = addOnsResult.map((addon: any) => ({
+            id: addon.id,
+            name: addon.addon_name,
+            price: parseFloat(addon.addon_price) || 0,
+            isSelected: addon.is_selected === 1
+          }));
+
+          // Calculate add-ons total price
+          addOnsTotal = addOns.reduce((total: number, addon: any) => total + addon.price, 0);
+        }
+      }
+    } catch (addOnsError) {
+      // Continue without add-ons if there's an error
+      console.error('Error fetching booking add-ons:', addOnsError);
+    }
+
     // Format the booking data for response
     try {
 
@@ -291,7 +330,9 @@ export async function GET(
         delivery_distance: bookingData.delivery_distance || 0,
         delivery_fee: bookingData.delivery_fee || 0,
         created_at: bookingData.created_at || new Date().toISOString(),
-        processing_time: bookingData.processing_time || 'Not specified'
+        processing_time: bookingData.processing_time || 'Not specified',
+        addOns: addOns,
+        addOnsTotal: addOnsTotal
       };
 
       // Format dates safely
@@ -314,6 +355,11 @@ export async function GET(
         }
       };
 
+      // Calculate base price (total price minus add-ons and delivery fee)
+      const totalPrice = parseFloat(String(safeBookingData.price));
+      const deliveryFee = parseFloat(String(safeBookingData.delivery_fee));
+      const basePrice = totalPrice - safeBookingData.addOnsTotal - deliveryFee;
+
       const formattedBooking = {
         id: safeBookingData.id,
         petName: safeBookingData.pet_name,
@@ -332,12 +378,15 @@ export async function GET(
         scheduledDate: formatDateSafely(safeBookingData.booking_date),
         scheduledTime: formatTimeSafely(safeBookingData.booking_time),
         notes: safeBookingData.notes,
-        price: parseFloat(String(safeBookingData.price)),
+        price: totalPrice,
+        basePrice: basePrice > 0 ? basePrice : totalPrice,
         paymentMethod: safeBookingData.payment_method,
         paymentStatus: safeBookingData.payment_status,
         deliveryOption: safeBookingData.delivery_option,
         deliveryDistance: parseFloat(String(safeBookingData.delivery_distance)),
-        deliveryFee: parseFloat(String(safeBookingData.delivery_fee)),
+        deliveryFee: deliveryFee,
+        addOns: safeBookingData.addOns || [],
+        addOnsTotal: safeBookingData.addOnsTotal || 0,
         createdAt: formatDateSafely(safeBookingData.created_at),
         processingTime: safeBookingData.processing_time
       };
@@ -366,11 +415,14 @@ export async function GET(
           scheduledTime: 'Not specified',
           notes: 'No special notes',
           price: 0,
+          basePrice: 0,
           paymentMethod: 'cash',
           paymentStatus: 'not_paid',
           deliveryOption: 'pickup',
           deliveryDistance: 0,
           deliveryFee: 0,
+          addOns: [],
+          addOnsTotal: 0,
           createdAt: 'Unknown date'
         };
 

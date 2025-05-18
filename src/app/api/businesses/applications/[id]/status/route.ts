@@ -3,7 +3,7 @@ import { query } from '@/lib/db';
 
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   // Extract ID from params
-  const id = params.id;
+  const { id } = await params;
 
 
   try {
@@ -35,10 +35,10 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     }
 
     const result = statusResult[0];
-    
+
     // Map the application_status to verification_status for backward compatibility
     result.verification_status = result.application_status;
-    
+
 
     // Return the status values from the database
     return NextResponse.json(result);

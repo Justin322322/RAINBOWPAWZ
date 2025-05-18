@@ -1,12 +1,14 @@
 import ApplicationDetailClient from './client.jsx';
 
-export default function ApplicationDetailPage({ params }: { params: { id: string } }) {
-  return <ApplicationDetailClient id={params.id} />;
+export default async function ApplicationDetailPage({ params }: { params: { id: string } }) {
+  const { id } = await params;
+  return <ApplicationDetailClient id={id} />;
 }
 
 export const generateMetadata = async ({ params }: { params: { id: string } }) => {
+  const { id } = await params;
   return {
-    title: `Application Details - ${params.id}`,
+    title: `Application Details - ${id}`,
   };
 };
 

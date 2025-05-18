@@ -13,14 +13,14 @@ export async function getPackageImageUrl(packageId: number | string, imageIndex:
     // Try to fetch available images from our API
     const response = await fetch(`/api/packages/available-images?id=${packageId}`);
     const data = await response.json();
-    
+
     // If we found images, return the requested one or the first one
     if (data.success && data.imagesFound && data.imagesFound.length > 0) {
       // If requested index is out of bounds, use the first image
       const index = imageIndex < data.imagesFound.length ? imageIndex : 0;
       return data.imagesFound[index];
     }
-    
+
     // Fallback to a reliable fallback image
     return `/bg_4.png`;
   } catch (error) {
@@ -39,12 +39,28 @@ export async function getAllPackageImages(packageId: number | string): Promise<s
     // Try to fetch available images from our API
     const response = await fetch(`/api/packages/available-images?id=${packageId}`);
     const data = await response.json();
-    
+
     // If we found images, return them all
     if (data.success && data.imagesFound && data.imagesFound.length > 0) {
-      return data.imagesFound;
+      // Ensure all images use the API route for better production compatibility
+      return data.imagesFound.map((img: string) => {
+        // If it's already an API path, return as is
+        if (img.startsWith('/api/image/')) {
+          return img;
+        }
+
+        // If it's an uploads path, convert to API path
+        if (img.startsWith('/uploads/')) {
+          // Extract the path after /uploads/
+          const uploadPath = img.substring('/uploads/'.length);
+          // Use the API route instead
+          return `/api/image/${uploadPath}`;
+        }
+
+        return img;
+      });
     }
-    
+
     // Fallback to a reliable fallback image
     return [`/bg_4.png`];
   } catch (error) {
@@ -66,4 +82,4 @@ export function handleImageError(event: React.SyntheticEvent<HTMLImageElement>, 
   target.classList.remove('error');
   // Add fallback styling if needed
   target.classList.add('fallback-image');
-} 
+}

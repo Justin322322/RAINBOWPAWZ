@@ -1,11 +1,58 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { join } from 'path';
+import fs from 'fs';
 
 // Middleware runs in the Edge Runtime which doesn't support direct database connections
 // We'll handle database initialization in the API routes instead
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  // Handle uploads directory in production mode
+  if (pathname.startsWith('/uploads/')) {
+    try {
+      // In production with 'standalone' output, we need to ensure the file exists
+      // Check if the file exists in the public directory
+      const filePath = join(process.cwd(), 'public', pathname);
+
+      // Log the request for debugging
+      console.log(`Image request: ${pathname}`);
+      console.log(`Checking file path: ${filePath}`);
+
+      // If the file doesn't exist, redirect to the API route
+      if (!fs.existsSync(filePath)) {
+        console.error(`File not found: ${filePath}`);
+
+        // Extract the path after /uploads/
+        const uploadPath = pathname.substring('/uploads/'.length);
+        // Use the API route instead
+        const apiPath = `/api/image/${uploadPath}`;
+
+        console.log(`Redirecting to API path: ${apiPath}`);
+
+        // Redirect to the API route
+        return NextResponse.rewrite(new URL(apiPath, request.url));
+      }
+
+      // If we're in production, always use the API route for better handling
+      if (process.env.NODE_ENV === 'production') {
+        // Extract the path after /uploads/
+        const uploadPath = pathname.substring('/uploads/'.length);
+        // Use the API route instead
+        const apiPath = `/api/image/${uploadPath}`;
+
+        console.log(`Using API path in production: ${apiPath}`);
+
+        // Redirect to the API route
+        return NextResponse.rewrite(new URL(apiPath, request.url));
+      }
+    } catch (error) {
+      console.error('Error in static file middleware:', error);
+      // Return a fallback image on error
+      return NextResponse.rewrite(new URL('/bg_4.png', request.url));
+    }
+  }
 
   // Skip middleware for API routes and static files
   if (pathname.startsWith('/api') ||
@@ -16,16 +63,16 @@ export async function middleware(request: NextRequest) {
 
   // Define protected paths
   const isAdminPath = pathname.startsWith('/admin') && pathname !== '/admin';
-  
+
   // Exclude diagnostic pages from protection
   const isDiagnosePath = pathname.includes('/cremation/packages/diagnose/');
-  
+
   // Protect cremation paths except for diagnostic pages
   const isCremationPath = pathname.startsWith('/cremation') &&
                           pathname !== '/cremation' &&
                           pathname !== '/cremation/pending-verification' &&
                           !isDiagnosePath; // Skip protection for diagnose pages
-                          
+
   const isUserPath = pathname.startsWith('/user') && pathname !== '/user';
 
   // Check if the current path is protected
@@ -96,5 +143,7 @@ export const config = {
   matcher: [
     // Match all routes except static files
     '/((?!_next/static|_next/image|favicon.ico).*)',
+    // Explicitly match uploads directory for static file handling
+    '/uploads/:path*',
   ],
 };

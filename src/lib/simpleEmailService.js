@@ -184,12 +184,14 @@ const sendWelcomeEmail = async (email, firstName, accountType) => {
     <p>Hello ${firstName},</p>
     <p>Thank you for joining Rainbow Paws. We're excited to have you as a ${accountType === 'business' ? 'business partner' : 'fur parent'}.</p>
     <p>You can now access all our features and services.</p>
+    ${accountType === 'personal' ? `
     <div class="button-container">
-      <a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}" class="button" style="color: white !important; text-decoration: none;">
-        Go to Dashboard
+      <a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/?showLogin=true" class="button" style="color: white !important; text-decoration: none;">
+        Get Started
       </a>
     </div>
     <p>If you have any questions, please don't hesitate to contact us.</p>
+    ` : ''}
   `;
 
   const html = baseEmailTemplate(title, content);
@@ -371,8 +373,8 @@ const sendBusinessVerificationEmail = async (email, businessDetails) => {
     <p>Your business <strong>${businessDetails.businessName}</strong> ${statusText} on Rainbow Paws.</p>
     ${businessDetails.notes ? `<p><strong>Notes:</strong> ${businessDetails.notes}</p>` : ''}
     <div class="button-container">
-      <a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/cremation/dashboard" class="button" style="color: white !important; text-decoration: none;">
-        Go to Dashboard
+      <a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/login" class="button" style="color: white !important; text-decoration: none;">
+        ${businessDetails.status === 'approved' ? 'Login' : 'Go to Dashboard'}
       </a>
     </div>
     <p>If you have any questions, please contact our support team.</p>

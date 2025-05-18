@@ -6,49 +6,49 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const providerId = params.id;
+    const { id } = await params;
 
-    if (!providerId) {
+    if (!id) {
       return NextResponse.json(
         { error: 'Provider ID is required' },
         { status: 400 }
       );
     }
 
-    console.log(`Fetching details for service provider ID: ${providerId} - Enhanced version`);
+    console.log(`Fetching details for service provider ID: ${id} - Enhanced version`);
 
     // Try to fetch from service_providers table
     try {
       // First check which columns exist
       const spColumnsResult = await query(`
-        SELECT COLUMN_NAME 
-        FROM INFORMATION_SCHEMA.COLUMNS 
-        WHERE TABLE_SCHEMA = DATABASE() 
+        SELECT COLUMN_NAME
+        FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE()
         AND TABLE_NAME = 'service_providers'
       `) as any[];
-      
+
       const spColumnNames = spColumnsResult.map(col => col.COLUMN_NAME);
       const hasSPAppStatus = spColumnNames.includes('application_status');
       const hasSPVerStatus = spColumnNames.includes('verification_status');
       const hasStatus = spColumnNames.includes('status');
-      
+
       // Build WHERE clause based on available columns
       let whereClause = 'id = ?';
-      
+
       // Add status condition
       if (hasSPAppStatus) {
         whereClause += " AND (application_status = 'approved' OR application_status = 'verified')";
       } else if (hasSPVerStatus) {
         whereClause += " AND verification_status = 'verified'";
       }
-      
+
       // Add active status condition if available
       if (hasStatus) {
         whereClause += " AND status = 'active'";
       }
-      
+
       console.log(`Service providers query WHERE clause: ${whereClause}`);
-      
+
       const providerResult = await query(`
         SELECT
           id,
@@ -63,7 +63,7 @@ export async function GET(
         FROM service_providers
         WHERE ${whereClause}
         LIMIT 1
-      `, [providerId]) as any[];
+      `, [id]) as any[];
 
       if (providerResult && providerResult.length > 0) {
         const provider = providerResult[0];
@@ -72,7 +72,7 @@ export async function GET(
         // Calculate approximate distance (mock data for now, but with consistent values)
         const distanceValue = ((Number(provider.id) * 1.5) % 30).toFixed(1);
         provider.distance = `${distanceValue} km away`;
-        
+
         // Get package count
         try {
           const packagesCount = await query(`
@@ -80,7 +80,7 @@ export async function GET(
             FROM service_packages
             WHERE service_provider_id = ? AND is_active = TRUE
           `, [provider.id]) as any[];
-          
+
           provider.packages = packagesCount[0]?.count || 0;
         } catch (err) {
           console.error(`Error getting package count: ${err}`);
@@ -92,30 +92,30 @@ export async function GET(
 
       // If not found in service_providers, try business_profiles
       console.log(`Provider not found in service_providers, checking business_profiles`);
-      
+
       // Check which columns business_profiles has
       const bpColumnsResult = await query(`
-        SELECT COLUMN_NAME 
-        FROM INFORMATION_SCHEMA.COLUMNS 
-        WHERE TABLE_SCHEMA = DATABASE() 
+        SELECT COLUMN_NAME
+        FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE()
         AND TABLE_NAME = 'business_profiles'
       `) as any[];
-      
+
       const bpColumnNames = bpColumnsResult.map(col => col.COLUMN_NAME);
       const hasBPAppStatus = bpColumnNames.includes('application_status');
       const hasBPVerStatus = bpColumnNames.includes('verification_status');
-      
+
       // Build WHERE clause based on available columns
       let bpWhereClause = 'bp.id = ?';
-      
+
       if (hasBPAppStatus) {
         bpWhereClause += " AND (bp.application_status = 'approved' OR bp.application_status = 'verified')";
       } else if (hasBPVerStatus) {
         bpWhereClause += " AND bp.verification_status = 'verified'";
       }
-      
+
       console.log(`Business profiles query WHERE clause: ${bpWhereClause}`);
-      
+
       const businessResult = await query(`
         SELECT
           bp.id,
@@ -132,17 +132,17 @@ export async function GET(
         JOIN users u ON bp.user_id = u.id
         WHERE ${bpWhereClause}
         LIMIT 1
-      `, [providerId]) as any[];
+      `, [id]) as any[];
 
       if (businessResult && businessResult.length > 0) {
         const business = businessResult[0];
         console.log(`Found business in business_profiles: ${business.name}`);
 
         // Process the address to include postal code if needed
-        const formattedAddress = business.address ? 
-          (business.address.includes('2100') ? business.address : business.address.replace('Philippines', '2100 Philippines')) : 
+        const formattedAddress = business.address ?
+          (business.address.includes('2100') ? business.address : business.address.replace('Philippines', '2100 Philippines')) :
           '';
-          
+
         const formattedBusiness = {
           id: business.id,
           name: business.name,
@@ -156,7 +156,7 @@ export async function GET(
           created_at: business.created_at,
           packages: 0 // Default value, will be updated if possible
         };
-        
+
         // Get package count if possible
         try {
           const packagesCount = await query(`
@@ -164,7 +164,7 @@ export async function GET(
             FROM service_packages
             WHERE business_id = ? AND is_active = TRUE
           `, [business.id]) as any[];
-          
+
           formattedBusiness.packages = packagesCount[0]?.count || 0;
         } catch (err) {
           console.error(`Error getting package count for business: ${err}`);
@@ -174,12 +174,12 @@ export async function GET(
       }
 
       // If provider not found in either table
-      console.error(`Provider with ID ${providerId} not found in any table`);
+      console.error(`Provider with ID ${id} not found in any table`);
 
       // Check if this is one of our test providers
-      if (providerId === '1001' || providerId === '1002' || providerId === '1003') {
-        console.log(`Returning test provider data for ID ${providerId}`);
-        
+      if (id === '1001' || id === '1002' || id === '1003') {
+        console.log(`Returning test provider data for ID ${id}`);
+
         // Return the test provider data
         const testProviders = {
           '1001': {
@@ -226,7 +226,7 @@ export async function GET(
           }
         };
 
-        return NextResponse.json({ provider: testProviders[providerId] });
+        return NextResponse.json({ provider: testProviders[id] });
       }
 
       // If we reach here, the provider wasn't found

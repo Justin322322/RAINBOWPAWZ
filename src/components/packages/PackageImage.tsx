@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { ProductionSafeImage } from '../ui/ProductionSafeImage';
 
 interface PackageImageProps {
   src?: string | null;
@@ -212,13 +213,12 @@ export const PackageImage: React.FC<PackageImageProps> = ({
         key={`container-${currentImageIndex}-${displaySrc}`}
       >
         <div className="absolute inset-0 bg-gray-100 w-full h-full">
-          <img
+          <ProductionSafeImage
             src={displaySrc}
             alt={`${alt}`}
             className={`object-cover ${sizeClasses[size]} ${className} transition-opacity duration-300 ease-in-out`}
-            onError={handleImageError}
             key={`image-${currentImageIndex}-${displaySrc}`}
-            style={{width: '100%', height: '100%'}}
+            fill
           />
         </div>
 

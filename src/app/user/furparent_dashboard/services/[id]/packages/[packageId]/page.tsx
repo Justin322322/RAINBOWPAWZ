@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
@@ -48,7 +48,7 @@ function PackageDetailPage({ userData }: PackageDetailPageProps) {
 
     const fetchData = async () => {
       try {
-        
+
         // Fetch provider details
         const providerResponse = await fetch(`/api/service-providers/${providerId}`);
 
@@ -60,7 +60,7 @@ function PackageDetailPage({ userData }: PackageDetailPageProps) {
         if (!providerData.provider) {
           throw new Error('Provider data is invalid or empty');
         }
-        
+
         setProvider(providerData.provider);
 
         // Fetch specific package details
@@ -74,8 +74,8 @@ function PackageDetailPage({ userData }: PackageDetailPageProps) {
         if (!packageData.package) {
           throw new Error('Package data is invalid or empty');
         }
-        
-        
+
+
         // Use our utility to get verified package images
         try {
           const verifiedImages = await getAllPackageImages(packageId);
@@ -84,7 +84,7 @@ function PackageDetailPage({ userData }: PackageDetailPageProps) {
           }
         } catch (imgErr) {
         }
-        
+
         setPackageData(packageData.package);
       } catch (err: any) {
         setError(err.message || 'Failed to load package details');
@@ -254,10 +254,13 @@ function PackageDetailPage({ userData }: PackageDetailPageProps) {
                     <div>
                       <p className="text-sm text-gray-500">Add Ons (Optional)</p>
                       <ul className="mt-1 space-y-1">
-                        {packageData.addOns.map((addon: string, index: number) => (
+                        {packageData.addOns.map((addon: any, index: number) => (
                           <li key={index} className="flex items-start">
                             <span className="text-[var(--primary-green)] mr-2">✓</span>
-                            {addon}
+                            {typeof addon === 'string'
+                              ? addon
+                              : `${addon.name}${addon.price ? ` (+₱${addon.price.toLocaleString()})` : ''}`
+                            }
                           </li>
                         ))}
                       </ul>
@@ -294,7 +297,9 @@ function PackageDetailPage({ userData }: PackageDetailPageProps) {
                               category: packageData.category,
                               cremationType: packageData.cremationType,
                               processingTime: packageData.processingTime,
-                              addOns: packageData.addOns || [],
+                              addOns: packageData.addOns ? packageData.addOns.map((addon: any) =>
+                                typeof addon === 'string' ? addon : `${addon.name}${addon.price ? ` (+₱${addon.price.toLocaleString()})` : ''}`
+                              ) : [],
                               selectedAddOns: [],
                               image: packageData.images && packageData.images.length > 0 ? packageData.images[0] : undefined
                             };
@@ -303,7 +308,7 @@ function PackageDetailPage({ userData }: PackageDetailPageProps) {
 
                             // Show toast notification
                             showToast('Item added to cart!', 'success', 3000);
-                            
+
                             // Optional: Open cart sidebar after short delay
                             setTimeout(() => setIsCartOpen(true), 1000);
                           }

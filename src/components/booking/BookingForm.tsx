@@ -12,6 +12,7 @@ import {
   CheckCircleIcon,
 } from '@heroicons/react/24/outline';
 import Image from 'next/image';
+import AddOnSelector, { AddOn } from './AddOnSelector';
 
 interface BookingFormProps {
   providerId: number;
@@ -45,6 +46,8 @@ export default function BookingForm({
   const [packageName, setPackageName] = useState('');
   const [packageDesc, setPackageDesc] = useState('');
   const [selectedPackage, setSelectedPackage] = useState<any>(null);
+  const [selectedAddOns, setSelectedAddOns] = useState<AddOn[]>([]);
+  const [addOnsTotalPrice, setAddOnsTotalPrice] = useState(0);
 
   // UI state
   const [loading, setLoading] = useState(false);
@@ -72,7 +75,7 @@ export default function BookingForm({
   // Update total price whenever relevant fields change
   useEffect(() => {
     calculateTotalPrice();
-  }, [basePrice, deliveryOption, deliveryDistance]);
+  }, [basePrice, deliveryOption, deliveryDistance, addOnsTotalPrice]);
 
   const fetchPackageDetails = async (id: number) => {
     try {
@@ -165,9 +168,9 @@ export default function BookingForm({
   };
 
   const validateForm = () => {
-    const isValid = 
-      petName.trim() !== '' && 
-      petType.trim() !== '' && 
+    const isValid =
+      petName.trim() !== '' &&
+      petType.trim() !== '' &&
       selectedPackage !== null &&
       (deliveryOption !== 'delivery' || (deliveryOption === 'delivery' && deliveryAddress.trim() !== ''));
 
@@ -176,11 +179,14 @@ export default function BookingForm({
 
   const calculateTotalPrice = () => {
     let total = basePrice;
-    
+
     // Add delivery fee if delivery is selected
     if (deliveryOption === 'delivery') {
       total += deliveryFee;
     }
+
+    // Add the total price of selected add-ons
+    total += addOnsTotalPrice;
 
     setTotalPrice(total);
   };
@@ -197,7 +203,7 @@ export default function BookingForm({
       // For now, we'll simulate with a basic calculation
       const distance = Math.floor(Math.random() * 20) + 1; // 1-20 km
       const fee = Math.max(50, distance * 15); // Base fee of 50 or 15/km, whichever is higher
-      
+
       setDeliveryDistance(distance);
       setDeliveryFee(fee);
     } catch (error) {
@@ -219,7 +225,7 @@ export default function BookingForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!formValid) {
       showToast('Please fill in all required fields', 'error');
       return;
@@ -227,7 +233,7 @@ export default function BookingForm({
 
     try {
       setLoading(true);
-      
+
       // Upload pet image if available
       let uploadedImageUrl = null;
       if (petImage) {
@@ -250,7 +256,11 @@ export default function BookingForm({
         deliveryAddress: deliveryOption === 'delivery' ? deliveryAddress : null,
         deliveryDistance: deliveryOption === 'delivery' ? deliveryDistance : 0,
         deliveryFee: deliveryOption === 'delivery' ? deliveryFee : 0,
-        price: totalPrice
+        price: totalPrice,
+        selectedAddOns: selectedAddOns.map(addon => ({
+          name: addon.name,
+          price: addon.price
+        }))
       };
 
       const response = await fetch('/api/cremation/bookings', {
@@ -268,7 +278,7 @@ export default function BookingForm({
 
       const data = await response.json();
       showToast('Booking created successfully!', 'success');
-      
+
       // Notify parent if callback provided
       if (onBookingComplete) {
         onBookingComplete(data.bookingId);
@@ -372,9 +382,9 @@ export default function BookingForm({
                     <div className="relative w-full">
                       <div className="flex justify-center">
                         <div className="relative h-48 w-48">
-                          <Image 
-                            src={petImageUrl} 
-                            alt="Pet preview" 
+                          <Image
+                            src={petImageUrl}
+                            alt="Pet preview"
                             fill
                             className="object-cover rounded-lg"
                           />
@@ -483,7 +493,7 @@ export default function BookingForm({
                       )}
                     </div>
                   </div>
-                  
+
                   <div
                     onClick={() => setDeliveryOption('delivery')}
                     className={`border rounded-lg p-4 cursor-pointer transition ${
@@ -536,6 +546,18 @@ export default function BookingForm({
                 </div>
               )}
 
+              {/* Add-ons */}
+              {selectedPackage && (
+                <div className="mb-4">
+                  <AddOnSelector
+                    packageId={selectedPackage.id}
+                    selectedAddOns={selectedAddOns}
+                    onAddOnsChange={setSelectedAddOns}
+                    onTotalPriceChange={setAddOnsTotalPrice}
+                  />
+                </div>
+              )}
+
               {/* Special Requests */}
               <div>
                 <label htmlFor="specialRequests" className="block text-sm font-medium text-gray-700 mb-1">
@@ -584,7 +606,7 @@ export default function BookingForm({
                       )}
                     </div>
                   </div>
-                  
+
                   <div
                     onClick={() => setPaymentMethod('gcash')}
                     className={`border rounded-lg p-4 cursor-pointer transition ${
@@ -605,7 +627,7 @@ export default function BookingForm({
                       )}
                     </div>
                   </div>
-                  
+
                   <div
                     onClick={() => setPaymentMethod('bank_transfer')}
                     className={`border rounded-lg p-4 cursor-pointer transition ${
@@ -641,6 +663,26 @@ export default function BookingForm({
                     <dt className="text-sm text-gray-600">Base Price</dt>
                     <dd className="text-sm font-medium text-gray-900">₱{basePrice.toLocaleString()}</dd>
                   </div>
+
+                  {/* Selected Add-ons */}
+                  {selectedAddOns.length > 0 && (
+                    <>
+                      <div className="mt-2 mb-1">
+                        <dt className="text-sm text-gray-600">Selected Add-ons:</dt>
+                      </div>
+                      {selectedAddOns.map((addon, index) => (
+                        <div key={index} className="flex justify-between pl-4">
+                          <dt className="text-sm text-gray-600">{addon.name}</dt>
+                          <dd className="text-sm font-medium text-gray-900">₱{addon.price.toLocaleString()}</dd>
+                        </div>
+                      ))}
+                      <div className="flex justify-between mt-1">
+                        <dt className="text-sm text-gray-600">Add-ons Subtotal</dt>
+                        <dd className="text-sm font-medium text-gray-900">₱{addOnsTotalPrice.toLocaleString()}</dd>
+                      </div>
+                    </>
+                  )}
+
                   {deliveryOption === 'delivery' && deliveryFee > 0 && (
                     <div className="flex justify-between">
                       <dt className="text-sm text-gray-600">Delivery Fee ({deliveryDistance} km)</dt>
@@ -682,7 +724,7 @@ export default function BookingForm({
               >
                 Back
               </button>
-              
+
               {formStep < 3 ? (
                 <button
                   type="button"
@@ -714,4 +756,4 @@ export default function BookingForm({
       </form>
     </div>
   );
-} 
+}

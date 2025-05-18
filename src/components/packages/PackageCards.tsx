@@ -31,18 +31,18 @@ export const PackageCards: React.FC<PackageCardsProps> = ({
       {packages.map((pkg) => {
         // Get image array if available
         const hasImages = pkg.images && pkg.images.length > 0;
-        
+
         return (
-          <div 
-            key={pkg.id} 
-            className={`border rounded-lg overflow-hidden transition-all duration-300 ${
+          <div
+            key={pkg.id}
+            className={`border rounded-lg overflow-hidden transition-all duration-300 shadow-sm hover:shadow-md ${
               pkg.isActive ? 'border-gray-200' : 'border-red-200 bg-red-50'
             }`}
           >
             <div className="h-40 w-full relative bg-gray-100 overflow-hidden">
               {hasImages ? (
-                <PackageImage 
-                  images={pkg.images} 
+                <PackageImage
+                  images={pkg.images}
                   alt={pkg.name}
                   size="large"
                   className="w-full h-full object-cover"
@@ -55,22 +55,70 @@ export const PackageCards: React.FC<PackageCardsProps> = ({
                   <span className="text-sm">No image available</span>
                 </div>
               )}
-              
+
               {!pkg.isActive && (
                 <div className="absolute top-2 right-2 bg-red-100 text-red-800 text-xs font-medium px-2.5 py-0.5 rounded">
                   Inactive
                 </div>
               )}
             </div>
-          
+
             <div className="p-4">
               <div className="flex justify-between mb-2">
                 <h3 className="text-lg font-medium text-gray-800">{pkg.name}</h3>
                 <span className="text-lg font-semibold text-gray-800">₱{pkg.price.toLocaleString()}</span>
               </div>
-              
-              <p className="text-sm text-gray-600 mb-4 line-clamp-2">{pkg.description}</p>
-              
+
+              {/* Category and Cremation Type */}
+              <div className="flex flex-wrap gap-2 mb-2">
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                  {pkg.category}
+                </span>
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                  {pkg.cremationType}
+                </span>
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                  {pkg.processingTime}
+                </span>
+              </div>
+
+              {/* Description */}
+              <p className="text-sm text-gray-600 mb-3 line-clamp-2">{pkg.description}</p>
+
+              {/* Inclusions */}
+              {pkg.inclusions && pkg.inclusions.length > 0 && (
+                <div className="mb-3">
+                  <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Inclusions</h4>
+                  <ul className="text-xs text-gray-600 pl-4 list-disc line-clamp-2">
+                    {pkg.inclusions.slice(0, 2).map((inclusion, idx) => (
+                      <li key={idx}>{inclusion}</li>
+                    ))}
+                    {pkg.inclusions.length > 2 && (
+                      <li className="text-gray-500">+{pkg.inclusions.length - 2} more</li>
+                    )}
+                  </ul>
+                </div>
+              )}
+
+              {/* Add-ons */}
+              {pkg.addOns && pkg.addOns.length > 0 && (
+                <div className="mb-3">
+                  <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Add-ons</h4>
+                  <ul className="text-xs text-gray-600 pl-4 list-disc line-clamp-2">
+                    {pkg.addOns.slice(0, 2).map((addon, idx) => (
+                      <li key={idx}>
+                        {typeof addon === 'string'
+                          ? addon
+                          : addon.name + (addon.price ? ` (+₱${addon.price.toLocaleString()})` : '')}
+                      </li>
+                    ))}
+                    {pkg.addOns.length > 2 && (
+                      <li className="text-gray-500">+{pkg.addOns.length - 2} more</li>
+                    )}
+                  </ul>
+                </div>
+              )}
+
               <div className="flex items-center justify-between mt-4">
                 <div className="flex space-x-2">
                   <button
@@ -80,7 +128,7 @@ export const PackageCards: React.FC<PackageCardsProps> = ({
                   >
                     <PencilIcon className="h-5 w-5" />
                   </button>
-                  
+
                   <button
                     onClick={() => onDelete(pkg.id)}
                     className="p-2 text-red-600 hover:bg-red-50 rounded-full transition-colors"
@@ -89,13 +137,13 @@ export const PackageCards: React.FC<PackageCardsProps> = ({
                     <TrashIcon className="h-5 w-5" />
                   </button>
                 </div>
-                
+
                 <button
                   onClick={() => onToggleActive(pkg.id, pkg.isActive)}
                   disabled={toggleLoading === pkg.id}
                   className={`flex items-center px-3 py-1.5 rounded-md text-sm transition-colors ${
-                    pkg.isActive 
-                      ? 'bg-red-50 text-red-700 hover:bg-red-100' 
+                    pkg.isActive
+                      ? 'bg-red-50 text-red-700 hover:bg-red-100'
                       : 'bg-green-50 text-green-700 hover:bg-green-100'
                   }`}
                   title={pkg.isActive ? "Deactivate Package" : "Activate Package"}

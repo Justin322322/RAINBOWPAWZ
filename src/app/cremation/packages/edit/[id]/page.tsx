@@ -13,6 +13,12 @@ import {
   CheckIcon,
   ExclamationCircleIcon
 } from '@heroicons/react/24/outline';
+import { ProductionSafeImage } from '@/components/ui/ProductionSafeImage';
+
+interface AddOn {
+  name: string;
+  price: number | null;
+}
 
 interface PackageFormData {
   id: number;
@@ -24,7 +30,7 @@ interface PackageFormData {
   price: number;
   deliveryFeePerKm: number;
   inclusions: string[];
-  addOns: string[];
+  addOns: AddOn[];
   conditions: string;
   images: string[];
 }
@@ -45,6 +51,7 @@ function EditPackagePage({ userData }: EditPackagePageProps) {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [newInclusion, setNewInclusion] = useState('');
   const [newAddOn, setNewAddOn] = useState('');
+  const [newAddOnPrice, setNewAddOnPrice] = useState<string>('');
   const [formData, setFormData] = useState<PackageFormData>({
     id: parseInt(packageId),
     name: '',
@@ -68,7 +75,7 @@ function EditPackagePage({ userData }: EditPackagePageProps) {
       setIsLoading(true);
       try {
         // Fetch package data from API
-        const response = await fetch(`/api/packages?packageId=${packageId}`);
+        const response = await fetch(`/api/packages/${packageId}`);
 
         if (!response.ok) {
           const errorData = await response.json();
@@ -76,14 +83,63 @@ function EditPackagePage({ userData }: EditPackagePageProps) {
         }
 
         const data = await response.json();
+        console.log('Fetched package data:', JSON.stringify(data, null, 2));
 
         if (data.package) {
-          setFormData(data.package);
+          // Process add-ons from the API response
+          let processedAddOns = [];
+
+          // Check if addOns is an array of strings (legacy format) or objects
+          if (Array.isArray(data.package.addOns)) {
+            processedAddOns = data.package.addOns.map((addon: any) => {
+              // If it's a string (legacy format)
+              if (typeof addon === 'string') {
+                // Parse price from string if it exists
+                const priceMatch = addon.match(/\(\+₱([\d,]+)\)/);
+                let price = null;
+                let name = addon;
+
+                if (priceMatch) {
+                  price = parseFloat(priceMatch[1].replace(/,/g, ''));
+                  name = addon.replace(/\s*\(\+₱[\d,]+\)/, '').trim();
+                }
+
+                return { name, price };
+              }
+              // If it's already an object
+              else if (typeof addon === 'object' && addon !== null) {
+                return {
+                  name: addon.name || '',
+                  price: addon.price !== null && addon.price !== undefined ?
+                    (typeof addon.price === 'string' ? parseFloat(addon.price) : addon.price) :
+                    null
+                };
+              }
+              // Fallback for any other format
+              return { name: String(addon), price: null };
+            });
+          }
+
+          console.log('Processed add-ons:', processedAddOns);
+
+          // Ensure all data is properly formatted
+          const formattedData = {
+            ...data.package,
+            // Ensure price is a number
+            price: typeof data.package.price === 'string' ?
+              parseFloat(data.package.price) : data.package.price,
+            // Use the processed add-ons
+            addOns: processedAddOns
+          };
+
+          console.log('Formatted package data for form:', JSON.stringify(formattedData, null, 2));
+          setFormData(formattedData);
         } else {
           setErrors({ submit: 'Package not found' });
           showToast('Package not found', 'error');
         }
       } catch (error) {
+        console.error('Error fetching package data:', error);
         setErrors({ submit: 'Failed to load package data' });
         showToast(error instanceof Error ? error.message : 'Failed to load package data', 'error');
       } finally {
@@ -135,11 +191,36 @@ function EditPackagePage({ userData }: EditPackagePageProps) {
   // Handle adding a new add-on
   const handleAddAddOn = () => {
     if (newAddOn.trim()) {
-      setFormData(prev => ({
-        ...prev,
-        addOns: [...prev.addOns, newAddOn.trim()]
-      }));
+      // Parse the price, ensuring it's a valid number or null
+      let price = null;
+      if (newAddOnPrice && newAddOnPrice.trim() !== '') {
+        const parsedPrice = parseFloat(newAddOnPrice);
+        price = !isNaN(parsedPrice) ? parsedPrice : null;
+      }
+
+      console.log(`Adding new add-on: "${newAddOn.trim()}" with price: ${price}`);
+
+      // Create the new add-on object
+      const newAddOnObj = {
+        name: newAddOn.trim(),
+        price: price
+      };
+
+      console.log('New add-on object:', newAddOnObj);
+
+      // Update the form data with the new add-on
+      setFormData(prev => {
+        const updatedAddOns = [...prev.addOns, newAddOnObj];
+        console.log('Updated add-ons array:', updatedAddOns);
+        return {
+          ...prev,
+          addOns: updatedAddOns
+        };
+      });
+
+      // Reset input fields
       setNewAddOn('');
+      setNewAddOnPrice('');
     }
   };
 
@@ -156,28 +237,28 @@ function EditPackagePage({ userData }: EditPackagePageProps) {
     if (e.target.files && e.target.files.length > 0) {
       // Show loading indicator
       showToast('Uploading images...', 'info');
-      
+
       // Upload each file to the server
       const uploadPromises = Array.from(e.target.files).map(async (file) => {
         const formData = new FormData();
         formData.append('file', file);
-        
+
         // Always include the package ID for proper storage in the correct folder
         if (packageId) {
           formData.append('packageId', packageId.toString());
         }
-        
+
         try {
           const response = await fetch('/api/upload/package-image', {
             method: 'POST',
             body: formData,
           });
-          
+
           if (!response.ok) {
             const errorData = await response.json();
             throw new Error(errorData.error || 'Failed to upload image');
           }
-          
+
           const data = await response.json();
           return data.filePath; // Return the file path from the server
         } catch (error) {
@@ -185,19 +266,19 @@ function EditPackagePage({ userData }: EditPackagePageProps) {
           return null;
         }
       });
-      
+
       // Wait for all uploads to complete
       const uploadedPaths = await Promise.all(uploadPromises);
-      
+
       // Filter out any failed uploads
       const validPaths = uploadedPaths.filter(path => path !== null);
-      
+
       // Update form data with the new image paths
       setFormData(prev => ({
         ...prev,
         images: [...prev.images, ...validPaths]
       }));
-      
+
       // Show success toast
       if (validPaths.length > 0) {
         showToast(`${validPaths.length} images uploaded successfully`, 'success');
@@ -252,21 +333,45 @@ function EditPackagePage({ userData }: EditPackagePageProps) {
     setIsSubmitting(true);
 
     try {
+      // Log the current form data for debugging
+      console.log('Current form data before submission:', formData);
+
+      // Prepare the data to send - ensure all fields are properly formatted
+      const dataToSend = {
+        ...formData,
+        // Ensure price is a number
+        price: typeof formData.price === 'string' ? parseFloat(formData.price) : formData.price,
+        // Ensure addOns are properly formatted
+        addOns: formData.addOns.map(addon => {
+          console.log('Processing addon for submission:', addon);
+          return {
+            name: addon.name,
+            price: addon.price !== null && addon.price !== undefined ?
+              (typeof addon.price === 'string' ? parseFloat(addon.price) : addon.price) :
+              null
+          };
+        })
+      };
+
+      console.log('Submitting package update with data:', JSON.stringify(dataToSend, null, 2));
+
       // Update package via API
       const response = await fetch(`/api/packages/${packageId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(dataToSend),
       });
 
+      const responseData = await response.json();
+
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to update package');
+        console.error('API error response:', responseData);
+        throw new Error(responseData.error || responseData.details || 'Failed to update package');
       }
 
-      await response.json(); // Get the result but we don't need to use it
+      console.log('Package update response:', responseData);
 
       // Show success toast
       showToast('Package updated successfully!', 'success');
@@ -274,6 +379,7 @@ function EditPackagePage({ userData }: EditPackagePageProps) {
       // Redirect back to packages list
       router.push('/cremation/packages');
     } catch (error) {
+      console.error('Error updating package:', error);
       setErrors({ submit: 'Failed to update package. Please try again.' });
       showToast(error instanceof Error ? error.message : 'Failed to update package', 'error');
     } finally {
@@ -325,15 +431,12 @@ function EditPackagePage({ userData }: EditPackagePageProps) {
                   className="aspect-square bg-gray-100 rounded-md relative overflow-hidden"
                 >
                   <div className="h-full w-full relative">
-                    <img
+                    <ProductionSafeImage
                       src={image}
                       alt={`Package image ${index + 1}`}
                       className="h-full w-full object-cover"
-                      onError={(e) => {
-                        // Handle image load error
-                        const target = e.target as HTMLImageElement;
-                        target.src = '/images/placeholder-image.jpg';
-                      }}
+                      fallbackSrc="/images/placeholder-image.jpg"
+                      fill
                     />
                   </div>
                   <button
@@ -530,34 +633,57 @@ function EditPackagePage({ userData }: EditPackagePageProps) {
           {/* Add-ons */}
           <div className="mb-8">
             <h2 className="text-lg font-medium text-gray-800 mb-4">Add-ons (Optional)</h2>
-            <div className="flex mb-2">
-              <input
-                type="text"
-                value={newAddOn}
-                onChange={(e) => setNewAddOn(e.target.value)}
-                className="flex-grow px-3 py-2 border border-gray-300 rounded-l-md shadow-sm focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)] sm:text-sm"
-                placeholder="e.g., Personalized nameplate (+₱500)"
-                onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddAddOn())}
-              />
+            <div className="flex mb-2 gap-2">
+              <div className="flex-grow">
+                <input
+                  type="text"
+                  value={newAddOn}
+                  onChange={(e) => setNewAddOn(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)] sm:text-sm"
+                  placeholder="e.g., Personalized nameplate"
+                  onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddAddOn())}
+                />
+              </div>
+              <div className="w-32">
+                <div className="flex items-center border border-gray-300 rounded-md shadow-sm px-3 py-2">
+                  <span className="text-gray-500 mr-1">₱</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={newAddOnPrice}
+                    onChange={(e) => setNewAddOnPrice(e.target.value)}
+                    placeholder="Price"
+                    className="w-full focus:outline-none sm:text-sm"
+                  />
+                </div>
+              </div>
               <button
                 type="button"
                 onClick={handleAddAddOn}
-                className="px-4 py-2 border border-transparent rounded-r-md shadow-sm text-sm font-medium text-white bg-[var(--primary-green)] hover:bg-[var(--primary-green-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--primary-green)]"
+                className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[var(--primary-green)] hover:bg-[var(--primary-green-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--primary-green)]"
               >
                 <PlusIcon className="h-5 w-5" />
               </button>
             </div>
             <div className="space-y-2 mt-3">
               {formData.addOns.map((addOn, index) => (
-                <div key={index} className="flex items-center bg-gray-50 px-3 py-2 rounded-md">
-                  <span className="flex-grow text-sm break-words">{addOn}</span>
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveAddOn(index)}
-                    className="text-gray-400 hover:text-red-500 flex-shrink-0 ml-2"
-                  >
-                    <XMarkIcon className="h-5 w-5" />
-                  </button>
+                <div key={index} className="flex items-center justify-between bg-gray-50 px-3 py-2 rounded-md">
+                  <span className="text-sm break-words">{addOn.name}</span>
+                  <div className="flex items-center">
+                    {addOn.price !== null && (
+                      <span className="text-[var(--primary-green)] font-medium mr-3">
+                        +₱{addOn.price.toLocaleString()}
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveAddOn(index)}
+                      className="text-gray-400 hover:text-red-500 flex-shrink-0"
+                    >
+                      <XMarkIcon className="h-5 w-5" />
+                    </button>
+                  </div>
                 </div>
               ))}
               {formData.addOns.length === 0 && (

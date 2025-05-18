@@ -3,7 +3,7 @@ import { query } from '@/lib/db';
 
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   // Extract ID from params
-  const id = params.id;
+  const { id } = await params;
 
 
   try {
@@ -20,7 +20,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     const columnsResult = await query(`
       SHOW COLUMNS FROM ${tableName} LIKE 'application_status'
     `) as any[];
-    
+
     const hasApplicationStatus = columnsResult.length > 0;
 
     // Fetch business profile data with all fields

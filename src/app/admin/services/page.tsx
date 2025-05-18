@@ -73,7 +73,7 @@ export default function AdminServicesPage() {
 
         if (data.success) {
           // Process service images to ensure they're consistent
-          
+
           // Find what image files exist in the uploads directory
           try {
             fetch('/api/packages/available-images')
@@ -86,27 +86,27 @@ export default function AdminServicesPage() {
               })
           } catch (e) {
           }
-          
+
           const servicesWithImages = data.services.map((service: any) => {
             // Reset error state for all services
             setImageError(prev => ({ ...prev, [service.id]: false }));
-            
+
             // Ensure that images is always an array
             const images = service.images && Array.isArray(service.images) && service.images.length > 0
-              ? service.images 
+              ? service.images
               : service.image && typeof service.image === 'string'
                 ? [service.image]
                 : [];
 
             // Remove default sample image fallback — show placeholder when no images provided
-            
+
             return {
               ...service,
               image: images.length > 0 ? images[0] : null, // Set primary image or null
               images: images    // Set images array (empty if none)
             };
           });
-          
+
           setServices(servicesWithImages || []);
           setPagination(data.pagination || pagination);
 
@@ -239,28 +239,28 @@ export default function AdminServicesPage() {
   const renderServiceImage = (service: any, large: boolean = false) => {
     // Create a proper images array for the PackageImage component
     let images: string[] = [];
-    
+
     // Add images from service.images array if it exists
     if (service.images && service.images.length > 0) {
       images = [...service.images];
     }
-    
+
     // Add the main image if it exists and isn't already in the images array
     if (service.image) {
       // Process the path correctly
-      const imagePath = service.image.startsWith('http') 
+      const imagePath = service.image.startsWith('http')
         ? service.image
-        : service.image.startsWith('/') 
+        : service.image.startsWith('/')
           ? service.image
           : `/uploads/${service.image}`;
-          
+
       if (!images.includes(imagePath)) {
         images.push(imagePath);
       }
     }
 
     // Removed automatic image path generation based on package ID
-    
+
     // Check if we have any images to display
     if (images.length === 0 || imageError[service.id]) {
       return (
@@ -478,7 +478,7 @@ export default function AdminServicesPage() {
               <div className="p-4">
                 <div className="flex justify-between items-start mb-2">
                   <h3 className="font-semibold text-gray-900 text-lg">{service.name}</h3>
-                  <p className="font-bold text-[var(--primary-green)]">₱{service.price.toLocaleString()}</p>
+                  <p className="font-bold text-[var(--primary-green)]">{service.price}</p>
                 </div>
                 <p className="text-sm text-gray-600 mb-3">{service.cremationCenter}</p>
                 <p className="text-sm text-gray-700 line-clamp-2 mb-3">{service.description}</p>
@@ -532,11 +532,11 @@ export default function AdminServicesPage() {
                       </div>
                     </div>
                   </div>
-                  
+
                   {/* Service Details */}
                   <div className="md:col-span-2">
                     <h3 className="text-xl font-medium text-gray-900 mb-4">{selectedService.name}</h3>
-                    
+
                     <div className="grid grid-cols-2 gap-4 mb-4">
                       <div>
                         <p className="text-sm font-medium text-gray-500">Provider</p>
@@ -544,7 +544,7 @@ export default function AdminServicesPage() {
                       </div>
                       <div>
                         <p className="text-sm font-medium text-gray-500">Price</p>
-                        <p className="text-base text-gray-900">₱{selectedService.price.toLocaleString()}</p>
+                        <p className="text-base text-gray-900">{selectedService.price}</p>
                       </div>
                       <div>
                         <p className="text-sm font-medium text-gray-500">Cremation Type</p>
@@ -563,12 +563,12 @@ export default function AdminServicesPage() {
                         <p className="text-base capitalize text-gray-900">{selectedService.category || 'Standard'}</p>
                       </div>
                     </div>
-                    
+
                     <div className="mb-4">
                       <p className="text-sm font-medium text-gray-500">Description</p>
                       <p className="text-base text-gray-900">{selectedService.description}</p>
                     </div>
-                    
+
                     <div className="mb-4">
                       <p className="text-sm font-medium text-gray-500 mb-2">Inclusions</p>
                       {selectedService.inclusions && selectedService.inclusions.length > 0 ? (
@@ -581,7 +581,7 @@ export default function AdminServicesPage() {
                         <p className="text-sm text-gray-500">No inclusions specified</p>
                       )}
                     </div>
-                    
+
                     <div className="mb-4">
                       <p className="text-sm font-medium text-gray-500 mb-2">Add-ons</p>
                       {selectedService.addOns && selectedService.addOns.length > 0 ? (
@@ -594,7 +594,7 @@ export default function AdminServicesPage() {
                         <p className="text-sm text-gray-500">No add-ons available</p>
                       )}
                     </div>
-                    
+
                     <div className="mb-4">
                       <p className="text-sm font-medium text-gray-500 mb-2">Conditions</p>
                       <p className="text-sm text-gray-700">{selectedService.conditions || 'No specific conditions'}</p>
@@ -631,7 +631,7 @@ export default function AdminServicesPage() {
             >
               Previous
             </button>
-            
+
             {/* Page numbers */}
             {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
               let pageNumber: number;
@@ -648,7 +648,7 @@ export default function AdminServicesPage() {
                 // Otherwise, show 2 pages before and 2 pages after the current page
                 pageNumber = pagination.page - 2 + i;
               }
-              
+
               return (
                 <button
                   key={pageNumber}
@@ -663,7 +663,7 @@ export default function AdminServicesPage() {
                 </button>
               );
             })}
-            
+
             <button
               onClick={() => setPagination(prev => ({ ...prev, page: Math.min(pagination.totalPages, prev.page + 1) }))}
               disabled={pagination.page === pagination.totalPages}

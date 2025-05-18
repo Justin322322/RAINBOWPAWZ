@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { getProductionImagePath } from '@/utils/imagePathUtils';
 import {
   CheckCircleIcon,
   XCircleIcon,
@@ -99,9 +100,42 @@ function ApplicationDetailContent({ id }) {
     }
   }, [id]);
 
-  // Function to open document modal
+  // Function to open document modal with production-ready image path
   const openDocumentModal = (url, type) => {
-    setSelectedDocument({ url, type });
+    // Process the URL to ensure it works in production
+    let processedUrl = url;
+
+    // If it's a document path, ensure it uses the API route
+    if (url && typeof url === 'string') {
+      // If it's already an API path, use it as is
+      if (!url.startsWith('/api/')) {
+        // For document paths, use the API route
+        if (url.includes('/documents/') || url.includes('/business/') || url.includes('/businesses/')) {
+          // Try to extract the relevant path
+          const parts = url.split('/');
+          const relevantIndex = parts.findIndex(part =>
+            part === 'documents' || part === 'business' || part === 'businesses'
+          );
+
+          if (relevantIndex >= 0) {
+            const relevantPath = parts.slice(relevantIndex).join('/');
+            processedUrl = `/api/image/${relevantPath}`;
+          }
+        }
+        // For uploads paths, use the API route
+        else if (url.includes('/uploads/')) {
+          // Extract the path after /uploads/
+          const uploadPath = url.substring(url.indexOf('/uploads/') + '/uploads/'.length);
+          processedUrl = `/api/image/${uploadPath}`;
+        }
+        // For other paths, use the production image path utility
+        else {
+          processedUrl = getProductionImagePath(url);
+        }
+      }
+    }
+
+    setSelectedDocument({ url: processedUrl, type });
     setIsDocumentModalOpen(true);
   };
 

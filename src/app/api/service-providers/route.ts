@@ -1,7 +1,14 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
+import { calculateDistance, getBataanCoordinates } from '@/utils/distance';
 
-export async function GET() {
+export async function GET(request: Request) {
+  // Extract user location from query parameters
+  const { searchParams } = new URL(request.url);
+  const userLocation = searchParams.get('location') || 'Balanga City, Bataan';
+
+  // Get coordinates for the user's location
+  const userCoordinates = getBataanCoordinates(userLocation);
   try {
 
     try {
@@ -126,11 +133,11 @@ export async function GET() {
 
             provider.packages = packagesResult[0]?.package_count || 0;
 
-            // Calculate approximate distance (mock data for now, but with consistent values)
-            // Using provider ID to generate consistent distances for sorting
-            const distanceValue = ((provider.id * 1.5) % 30).toFixed(1);
+            // Calculate actual distance based on coordinates
+            const providerCoordinates = getBataanCoordinates(provider.address || provider.city || 'Bataan');
+            const distanceValue = calculateDistance(userCoordinates, providerCoordinates);
             provider.distance = `${distanceValue} km away`;
-            provider.distanceValue = parseFloat(distanceValue); // Store numeric value for sorting
+            provider.distanceValue = distanceValue; // Store numeric value for sorting
           } catch (error) {
             provider.packages = 0;
             provider.distance = 'Distance unavailable';
@@ -207,7 +214,7 @@ export async function GET() {
             type: 'Pet Cremation Services',
             // Get actual package count instead of random number
             packages: 0, // Will be updated below
-            distance: `${((business.id * 1.5) % 30).toFixed(1)} km away`, // Consistent distance based on ID
+            distance: '0.0 km away', // Will be updated below with actual distance
             created_at: business.created_at
           };
         });
@@ -250,6 +257,12 @@ export async function GET() {
             }
 
             business.packages = packagesResult[0]?.package_count || 0;
+
+            // Calculate actual distance based on coordinates
+            const businessCoordinates = getBataanCoordinates(business.address || business.city || 'Bataan');
+            const distanceValue = calculateDistance(userCoordinates, businessCoordinates);
+            business.distance = `${distanceValue} km away`;
+            business.distanceValue = distanceValue; // Store numeric value for sorting
           } catch (error) {
           }
         }
@@ -271,8 +284,6 @@ export async function GET() {
           description: "Compassionate pet cremation services with personalized memorials.",
           type: "Pet Cremation Services",
           packages: 3,
-          distance: "5.5 km away",
-          distanceValue: 5.5,
           created_at: new Date().toISOString()
         },
         {
@@ -285,8 +296,6 @@ export async function GET() {
           description: "Dignified pet cremation with eco-friendly options.",
           type: "Pet Cremation Services",
           packages: 2,
-          distance: "12.3 km away",
-          distanceValue: 12.3,
           created_at: new Date().toISOString()
         },
         {
@@ -299,11 +308,17 @@ export async function GET() {
           description: "Comprehensive pet memorial services with home pickup options.",
           type: "Pet Cremation Services",
           packages: 4,
-          distance: "18.7 km away",
-          distanceValue: 18.7,
           created_at: new Date().toISOString()
         }
       ];
+
+      // Calculate actual distances for test providers
+      testProviders.forEach(provider => {
+        const providerCoordinates = getBataanCoordinates(provider.address || provider.city || 'Bataan');
+        const distanceValue = calculateDistance(userCoordinates, providerCoordinates);
+        provider.distance = `${distanceValue} km away`;
+        provider.distanceValue = distanceValue;
+      });
 
       return NextResponse.json({ providers: testProviders });
     } catch (dbError) {

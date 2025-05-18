@@ -41,9 +41,15 @@ const CartSidebar: React.FC<CartSidebarProps> = ({ isOpen, onClose }) => {
   // Handle checkout
   const handleCheckout = () => {
     if (items.length === 0) return;
-    
+
     const item = items[0];
-    router.push(`/user/furparent_dashboard/bookings/checkout?provider=${item.providerId}&package=${item.packageId}`);
+
+    // If pet is already selected, include it in the URL, otherwise just go to checkout
+    const petParams = item.petId && item.petName
+      ? `&petId=${item.petId}&petName=${encodeURIComponent(item.petName)}`
+      : '';
+
+    router.push(`/user/furparent_dashboard/bookings/checkout?provider=${item.providerId}&package=${item.packageId}&fromCart=true${petParams}`);
     handleClose();
   };
 
@@ -51,7 +57,7 @@ const CartSidebar: React.FC<CartSidebarProps> = ({ isOpen, onClose }) => {
 
   return (
     <div className="fixed inset-0 z-50 cart-overlay bg-black bg-opacity-50">
-      <div 
+      <div
         className={`fixed right-0 top-0 h-full w-full max-w-md bg-white shadow-lg transform transition-transform duration-300 ease-in-out ${
           isClosing ? 'translate-x-full' : 'translate-x-0'
         }`}
@@ -63,7 +69,7 @@ const CartSidebar: React.FC<CartSidebarProps> = ({ isOpen, onClose }) => {
               <ShoppingCartIcon className="h-6 w-6 mr-2 text-[var(--primary-green)]" />
               Your Cart ({itemCount})
             </h2>
-            <button 
+            <button
               onClick={handleClose}
               className="p-1 rounded-full hover:bg-gray-100"
             >
@@ -77,7 +83,7 @@ const CartSidebar: React.FC<CartSidebarProps> = ({ isOpen, onClose }) => {
               <div className="flex flex-col items-center justify-center h-full text-gray-500">
                 <ShoppingCartIcon className="h-16 w-16 mb-4" />
                 <p className="text-lg">Your cart is empty</p>
-                <button 
+                <button
                   onClick={handleClose}
                   className="mt-4 px-4 py-2 bg-[var(--primary-green)] text-white rounded-md hover:bg-[var(--primary-green-hover)]"
                 >
@@ -92,8 +98,8 @@ const CartSidebar: React.FC<CartSidebarProps> = ({ isOpen, onClose }) => {
                       {/* Item Image */}
                       <div className="w-20 h-20 bg-gray-100 rounded-md overflow-hidden flex-shrink-0 relative">
                         {item.image ? (
-                          <Image 
-                            src={item.image} 
+                          <Image
+                            src={item.image}
                             alt={item.packageName}
                             fill
                             className="object-cover"
@@ -140,21 +146,21 @@ const CartSidebar: React.FC<CartSidebarProps> = ({ isOpen, onClose }) => {
                     {/* Quantity Controls */}
                     <div className="flex items-center justify-between mt-3">
                       <div className="flex items-center border rounded-md">
-                        <button 
+                        <button
                           onClick={() => updateQuantity(item.id, item.quantity - 1)}
                           className="px-2 py-1 text-gray-500 hover:bg-gray-100"
                         >
                           <MinusIcon className="h-4 w-4" />
                         </button>
                         <span className="px-2 py-1">{item.quantity}</span>
-                        <button 
+                        <button
                           onClick={() => updateQuantity(item.id, item.quantity + 1)}
                           className="px-2 py-1 text-gray-500 hover:bg-gray-100"
                         >
                           <PlusIcon className="h-4 w-4" />
                         </button>
                       </div>
-                      <button 
+                      <button
                         onClick={() => removeItem(item.id)}
                         className="text-red-500 hover:text-red-700"
                       >
@@ -176,7 +182,7 @@ const CartSidebar: React.FC<CartSidebarProps> = ({ isOpen, onClose }) => {
                   ₱{totalPrice.toLocaleString()}
                 </span>
               </div>
-              <button 
+              <button
                 onClick={handleCheckout}
                 className="w-full py-3 bg-[var(--primary-green)] text-white rounded-md hover:bg-[var(--primary-green-hover)]"
               >

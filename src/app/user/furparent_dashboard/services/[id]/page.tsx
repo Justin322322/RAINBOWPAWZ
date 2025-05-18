@@ -60,6 +60,16 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
   const [currentPackageIndex, setCurrentPackageIndex] = useState(0);
   const [sortBy, setSortBy] = useState('all');
 
+  // Get user location from profile
+  const [userLocation, setUserLocation] = useState('Balanga City, Bataan');
+
+  useEffect(() => {
+    // Get user location from profile if available
+    if (userData?.address && userData.address.trim() !== '') {
+      setUserLocation(userData.address);
+    }
+  }, [userData]);
+
   // Function to sort packages based on selected criteria
   const getSortedPackages = () => {
     if (!provider || !provider.packages) return [];
@@ -82,8 +92,8 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
 
     const fetchData = async () => {
       try {
-        // Fetch provider details
-        const providerResponse = await fetch(`/api/service-providers/${providerId}`);
+        // Fetch provider details with user location for accurate distance calculation
+        const providerResponse = await fetch(`/api/service-providers/${providerId}?location=${encodeURIComponent(userLocation)}`);
 
         if (!providerResponse.ok) {
           throw new Error('Failed to fetch provider details');
@@ -99,10 +109,10 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
         }
 
         const packagesData = await packagesResponse.json();
-        
+
         // Process packages to fetch images
         const packages = packagesData.packages || [];
-        
+
         // Get images for each package
         const packagesWithImages = await Promise.all(
           packages.map(async (pkg: any) => {
@@ -110,11 +120,11 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
               // Use our imageUtils function to get the verified images
               const responseImages = await fetch(`/api/packages/available-images?id=${pkg.id}`);
               const imagesData = await responseImages.json();
-              
+
               if (imagesData.success && imagesData.imagesFound && imagesData.imagesFound.length > 0) {
                 return { ...pkg, images: imagesData.imagesFound };
               }
-              
+
               return pkg;
             } catch (error) {
               return pkg;
@@ -153,7 +163,7 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
     if (providerId) {
       fetchData();
     }
-  }, [providerId]);
+  }, [providerId, userLocation]);
 
   const handleNextPackage = () => {
     const sortedPackages = getSortedPackages();

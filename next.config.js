@@ -47,7 +47,7 @@ const nextConfig = {
     dangerouslyAllowSVG: true,
     contentDispositionType: 'attachment',
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
-    unoptimized: process.env.NODE_ENV === 'development' // Only disable image optimization for development
+    unoptimized: true // Disable image optimization for all environments to ensure consistent behavior
   },
   // Allow connections from any origin in development
   async headers() {
@@ -90,8 +90,12 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  // Disable output during builds
+  // Configure output for production builds
   output: 'standalone',
+  // Ensure public directory is included in the standalone output
+  outputFileTracingIncludes: {
+    '/**': ['./public/**/*']
+  },
   // Disable telemetry
   distDir: '.next',
   webpack: (config, { isServer }) => {

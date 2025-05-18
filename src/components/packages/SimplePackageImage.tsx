@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { ProductionSafeImage } from '../ui/ProductionSafeImage';
 
 interface SimplePackageImageProps {
   images?: string[] | null;
@@ -36,11 +37,10 @@ export const SimplePackageImage: React.FC<SimplePackageImageProps> = ({
     if (size === 'small') {
       return (
         <div className={containerClass}>
-          <img
+          <ProductionSafeImage
             src={images[0]}
             alt={alt}
             className={`${sizeClasses[size]} ${className}`}
-            onError={() => setImageError(true)}
           />
         </div>
       );
@@ -48,11 +48,11 @@ export const SimplePackageImage: React.FC<SimplePackageImageProps> = ({
 
     return (
       <div className={containerClass}>
-        <img
+        <ProductionSafeImage
           src={images[0]}
           alt={alt}
           className={`${sizeClasses[size]} ${className}`}
-          onError={() => setImageError(true)}
+          fill
         />
       </div>
     );

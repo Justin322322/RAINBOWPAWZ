@@ -163,31 +163,82 @@ export async function GET(request: NextRequest) {
       return total;
     }, 0);
 
+    // Fetch add-ons for each booking
+    const bookingIds = bookings.map((booking: any) => booking.id);
+    let bookingAddOns: Record<number, any[]> = {};
+
+    if (bookingIds.length > 0) {
+      try {
+        // Check if booking_addons table exists
+        const addonsTableCheck = await query(
+          "SELECT COUNT(*) as count FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'booking_addons'"
+        ) as any[];
+
+        if (addonsTableCheck && addonsTableCheck[0].count > 0) {
+          // Fetch add-ons for all bookings in one query
+          const addOnsQuery = `
+            SELECT booking_id, addon_name, addon_price, is_selected
+            FROM booking_addons
+            WHERE booking_id IN (?)
+            AND is_selected = 1
+          `;
+
+          const addOns = await query(addOnsQuery, [bookingIds]) as any[];
+
+          // Group add-ons by booking_id
+          bookingAddOns = addOns.reduce((acc: Record<number, any[]>, addon: any) => {
+            if (!acc[addon.booking_id]) {
+              acc[addon.booking_id] = [];
+            }
+            acc[addon.booking_id].push({
+              name: addon.addon_name,
+              price: parseFloat(addon.addon_price) || 0
+            });
+            return acc;
+          }, {});
+        }
+      } catch (error) {
+        // Continue without add-ons if there's an error
+        console.error('Error fetching booking add-ons:', error);
+      }
+    }
+
     // Format the bookings data for response
-    const formattedBookings = bookings.map((booking: any) => ({
-      id: booking.id,
-      petName: booking.pet_name || 'Unknown',
-      petType: booking.pet_type || 'Unknown',
-      causeOfDeath: booking.cause_of_death || 'Not specified',
-      petImageUrl: booking.pet_image_url || null,
-      owner: {
-        name: `${booking.first_name || ''} ${booking.last_name || ''}`.trim() || 'Unknown',
-        email: booking.email || 'Not provided',
-        phone: booking.phone || 'Not provided'
-      },
-      service: booking.service_name || 'Unknown Service',
-      package: booking.service_name || 'Unknown Package',
-      status: booking.status || 'pending',
-      scheduledDate: booking.booking_date ? formatDate(booking.booking_date) : 'Not scheduled',
-      scheduledTime: booking.booking_time ? formatTime(booking.booking_time) : 'Not specified',
-      notes: booking.notes || 'No special notes',
-      price: booking.price || 0,
-      paymentMethod: booking.payment_method || 'cash',
-      deliveryOption: booking.delivery_option || 'pickup',
-      deliveryDistance: booking.delivery_distance || 0,
-      deliveryFee: booking.delivery_fee || 0,
-      createdAt: formatDate(booking.created_at)
-    }));
+    const formattedBookings = bookings.map((booking: any) => {
+      // Get add-ons for this booking
+      const addOns = bookingAddOns[booking.id] || [];
+
+      // Calculate add-ons total price
+      const addOnsTotal = addOns.reduce((total: number, addon: any) => total + addon.price, 0);
+
+      return {
+        id: booking.id,
+        petName: booking.pet_name || 'Unknown',
+        petType: booking.pet_type || 'Unknown',
+        causeOfDeath: booking.cause_of_death || 'Not specified',
+        petImageUrl: booking.pet_image_url || null,
+        owner: {
+          name: `${booking.first_name || ''} ${booking.last_name || ''}`.trim() || 'Unknown',
+          email: booking.email || 'Not provided',
+          phone: booking.phone || 'Not provided'
+        },
+        service: booking.service_name || 'Unknown Service',
+        package: booking.service_name || 'Unknown Package',
+        status: booking.status || 'pending',
+        scheduledDate: booking.booking_date ? formatDate(booking.booking_date) : 'Not scheduled',
+        scheduledTime: booking.booking_time ? formatTime(booking.booking_time) : 'Not specified',
+        notes: booking.notes || 'No special notes',
+        price: booking.price || 0,
+        basePrice: (booking.price || 0) - addOnsTotal - (booking.delivery_fee || 0),
+        paymentMethod: booking.payment_method || 'cash',
+        deliveryOption: booking.delivery_option || 'pickup',
+        deliveryDistance: booking.delivery_distance || 0,
+        deliveryFee: booking.delivery_fee || 0,
+        addOns: addOns,
+        addOnsTotal: addOnsTotal,
+        createdAt: formatDate(booking.created_at)
+      };
+    });
 
     return NextResponse.json({
       bookings: formattedBookings,
@@ -229,7 +280,8 @@ export async function POST(request: NextRequest) {
       deliveryAddress,
       deliveryDistance,
       deliveryFee,
-      price
+      price,
+      selectedAddOns
     } = body;
 
     // Validate required fields
@@ -409,17 +461,72 @@ export async function POST(request: NextRequest) {
       ) VALUES (${placeholders.join(', ')})
     `;
 
+    // Start a transaction
+    await query('START TRANSACTION');
+
     const result = await query(insertQuery, values) as any;
 
     if (!result.insertId) {
+      await query('ROLLBACK');
       throw new Error('Failed to insert booking record');
     }
+
+    const bookingId = result.insertId;
+
+    // Insert selected add-ons if any
+    if (selectedAddOns && selectedAddOns.length > 0) {
+      try {
+        // Check if booking_addons table exists
+        const addonsTableCheck = await query(
+          "SELECT COUNT(*) as count FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'booking_addons'"
+        ) as any[];
+
+        if (addonsTableCheck && addonsTableCheck[0].count > 0) {
+          // booking_addons table exists, insert add-ons
+          for (const addOn of selectedAddOns) {
+            await query(`
+              INSERT INTO booking_addons (
+                booking_id,
+                addon_name,
+                addon_price,
+                is_selected
+              ) VALUES (?, ?, ?, ?)
+            `, [
+              bookingId,
+              addOn.name,
+              addOn.price,
+              1 // is_selected = true
+            ]);
+          }
+        } else {
+          // Store add-ons as a JSON string in special_requests if booking_addons table doesn't exist
+          const addOnsText = selectedAddOns.map(addon =>
+            `${addon.name} (₱${addon.price.toLocaleString()})`
+          ).join(', ');
+
+          const updatedSpecialRequests = specialRequests
+            ? `${specialRequests}\n\nSelected Add-ons: ${addOnsText}`
+            : `Selected Add-ons: ${addOnsText}`;
+
+          await query(
+            'UPDATE service_bookings SET special_requests = ? WHERE id = ?',
+            [updatedSpecialRequests, bookingId]
+          );
+        }
+      } catch (addOnError) {
+        // Continue with the booking process even if add-ons fail
+        console.error('Error inserting add-ons:', addOnError);
+      }
+    }
+
+    // Commit the transaction
+    await query('COMMIT');
 
     // Return created booking data
     return NextResponse.json({
       success: true,
       message: 'Booking created successfully',
-      bookingId: result.insertId
+      bookingId: bookingId
     }, { status: 201 });
   } catch (error) {
 

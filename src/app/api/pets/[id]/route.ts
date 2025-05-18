@@ -12,7 +12,7 @@ async function ensurePetsTableExists() {
     `);
 
     if (tableExists[0].count === 0) {
-      
+
       // Create the pets table
       await query(`
         CREATE TABLE pets (
@@ -31,10 +31,10 @@ async function ensurePetsTableExists() {
           INDEX (user_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
       `);
-      
+
       return true;
     }
-    
+
     return true;
   } catch (error) {
     return false;
@@ -47,7 +47,7 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const petId = params.id;
+    const { id } = await params;
 
     // Verify authentication
     const authToken = getAuthTokenFromRequest(request);
@@ -77,7 +77,7 @@ export async function GET(
       FROM pets
       WHERE id = ? AND user_id = ?
       LIMIT 1
-    `, [petId, userId]) as any[];
+    `, [id, userId]) as any[];
 
     if (!petResult || petResult.length === 0) {
       return NextResponse.json({
@@ -102,7 +102,7 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    const petId = params.id;
+    const { id } = await params;
 
     // Verify authentication
     const authToken = getAuthTokenFromRequest(request);
@@ -120,7 +120,7 @@ export async function PUT(
       SELECT id FROM pets
       WHERE id = ? AND user_id = ?
       LIMIT 1
-    `, [petId, userId]) as any[];
+    `, [id, userId]) as any[];
 
     if (!petOwnerResult || petOwnerResult.length === 0) {
       return NextResponse.json({
@@ -170,7 +170,7 @@ export async function PUT(
       weight || null,
       imagePath || null,
       specialNotes || null,
-      petId,
+      id,
       userId
     ]);
 
@@ -190,7 +190,7 @@ export async function PUT(
       FROM pets
       WHERE id = ?
       LIMIT 1
-    `, [petId]) as any[];
+    `, [id]) as any[];
 
     return NextResponse.json({
       success: true,
@@ -211,7 +211,7 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const petId = params.id;
+    const { id } = await params;
 
     // Verify authentication
     const authToken = getAuthTokenFromRequest(request);
@@ -229,7 +229,7 @@ export async function DELETE(
       SELECT id FROM pets
       WHERE id = ? AND user_id = ?
       LIMIT 1
-    `, [petId, userId]) as any[];
+    `, [id, userId]) as any[];
 
     if (!petOwnerResult || petOwnerResult.length === 0) {
       return NextResponse.json({
@@ -238,7 +238,7 @@ export async function DELETE(
     }
 
     // Delete pet from the database
-    await query('DELETE FROM pets WHERE id = ?', [petId]);
+    await query('DELETE FROM pets WHERE id = ?', [id]);
 
     return NextResponse.json({
       success: true,

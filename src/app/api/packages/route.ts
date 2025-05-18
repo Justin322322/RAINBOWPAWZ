@@ -3,6 +3,7 @@ import { query } from '@/lib/db';
 import { getAuthTokenFromRequest } from '@/utils/auth';
 import * as fs from 'fs';
 import { join } from 'path';
+import { getImagePath } from '@/utils/imagePathUtils';
 
 // GET endpoint to fetch packages
 export async function GET(request: NextRequest) {
@@ -160,21 +161,94 @@ export async function POST(request: NextRequest) {
 
       // Insert add-ons
       if (addOns.length > 0) {
+        console.log('Processing add-ons for new package:', JSON.stringify(addOns, null, 2));
+
         for (const addOn of addOns) {
-          // Parse price from add-on string if it contains a price
-          let addOnText = addOn;
+          // Handle both new format (object with name and price) and legacy format (string)
+          let addOnText;
           let addOnPrice = null;
 
-          const priceMatch = addOn.match(/\(\+₱([\d,]+)\)/);
-          if (priceMatch) {
-            addOnPrice = parseFloat(priceMatch[1].replace(/,/g, ''));
-            addOnText = addOn.replace(/\s*\(\+₱[\d,]+\)/, '').trim();
+          if (typeof addOn === 'string') {
+            // Legacy format: parse price from add-on string if it contains a price
+            addOnText = addOn;
+            const priceMatch = addOn.match(/\(\+₱([\d,]+)\)/);
+            if (priceMatch) {
+              addOnPrice = parseFloat(priceMatch[1].replace(/,/g, ''));
+              addOnText = addOn.replace(/\s*\(\+₱[\d,]+\)/, '').trim();
+            }
+            console.log(`Parsed string add-on: "${addOnText}" with price: ${addOnPrice}`);
+          } else if (typeof addOn === 'object' && addOn !== null) {
+            // New format: object with name and price properties
+            addOnText = addOn.name;
+
+            // Handle price conversion carefully
+            if (addOn.price !== undefined && addOn.price !== null) {
+              // Convert to number and ensure it's a valid number
+              const parsedPrice = parseFloat(String(addOn.price));
+              addOnPrice = !isNaN(parsedPrice) ? parsedPrice : null;
+            } else {
+              addOnPrice = null;
+            }
+
+            console.log(`Parsed object add-on: "${addOnText}" with price: ${addOnPrice}, original:`, addOn);
+          } else {
+            // Skip invalid add-ons
+            console.log('Skipping invalid add-on:', addOn);
+            continue;
           }
 
-          await query(
-            'INSERT INTO package_addons (package_id, description, price) VALUES (?, ?, ?)',
-            [packageId, addOnText, addOnPrice]
-          );
+          // Skip empty add-ons
+          if (!addOnText || addOnText.trim() === '') {
+            console.log('Skipping empty add-on');
+            continue;
+          }
+
+          console.log(`Inserting add-on: "${addOnText}", price: ${addOnPrice}`);
+
+          try {
+            // Check if the package_addons table has an auto-increment id column
+            const tableInfoResult = await query(`
+              SELECT COLUMN_NAME, EXTRA
+              FROM INFORMATION_SCHEMA.COLUMNS
+              WHERE TABLE_SCHEMA = DATABASE()
+              AND TABLE_NAME = 'package_addons'
+              AND COLUMN_NAME = 'id'
+            `) as any[];
+
+            const hasAutoIncrement = tableInfoResult.length > 0 &&
+                                    tableInfoResult[0].EXTRA.includes('auto_increment');
+
+            // If id is not auto_increment, we need to generate an ID
+            if (!hasAutoIncrement) {
+              // Get the max ID from the table
+              const maxIdResult = await query('SELECT MAX(id) as maxId FROM package_addons') as any[];
+              const nextId = maxIdResult[0].maxId ? maxIdResult[0].maxId + 1 : 1;
+
+              // Insert with explicit ID
+              await query(
+                'INSERT INTO package_addons (id, package_id, description, price) VALUES (?, ?, ?, ?)',
+                [nextId, packageId, addOnText, addOnPrice]
+              );
+              console.log(`Inserted add-on with explicit ID ${nextId}`);
+            } else {
+              // Insert normally with auto-increment
+              await query(
+                'INSERT INTO package_addons (package_id, description, price) VALUES (?, ?, ?)',
+                [packageId, addOnText, addOnPrice]
+              );
+              console.log('Inserted add-on with auto-increment ID');
+            }
+          } catch (insertError) {
+            console.error('Error inserting add-on:', insertError);
+            // Log more details about the error
+            console.error('Error details:', {
+              message: insertError.message,
+              code: insertError.code,
+              sqlState: insertError.sqlState,
+              sqlMessage: insertError.sqlMessage
+            });
+            throw insertError; // Re-throw to trigger transaction rollback
+          }
         }
       }
 
@@ -260,7 +334,7 @@ async function getPackageById(packageId: number, includeInactive: boolean = fals
 // Helper function to get packages by provider ID
 async function getPackagesByProviderId(providerId: number, includeInactive: boolean = false) {
   try {
-    
+
     // Check if this is one of our test providers
     if (providerId === 1001 || providerId === 1002 || providerId === 1003) {
       // Return test packages for this provider
@@ -270,26 +344,26 @@ async function getPackagesByProviderId(providerId: number, includeInactive: bool
         packages: testPackages
       });
     }
-    
+
     // Modify the query to optionally include inactive packages
     const activeClause = includeInactive ? '' : 'AND sp.is_active = TRUE';
-    
+
     // Check which columns exist in service_packages table
     const packageColumnsResult = await query(`
-      SELECT COLUMN_NAME 
-      FROM INFORMATION_SCHEMA.COLUMNS 
-      WHERE TABLE_SCHEMA = DATABASE() 
+      SELECT COLUMN_NAME
+      FROM INFORMATION_SCHEMA.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE()
       AND TABLE_NAME = 'service_packages'
     `) as any[];
-    
+
     const packageColumns = packageColumnsResult.map(col => col.COLUMN_NAME.toLowerCase());
     const hasServiceProviderId = packageColumns.includes('service_provider_id');
     const hasProviderId = packageColumns.includes('provider_id');
     const hasBusinessId = packageColumns.includes('business_id');
-    
-    
+
+
     let packagesResult = [] as any[];
-    
+
     // Try to get packages using service_provider_id first
     if (hasServiceProviderId) {
       packagesResult = await query(`
@@ -310,7 +384,7 @@ async function getPackagesByProviderId(providerId: number, includeInactive: bool
         WHERE sp.service_provider_id = ? ${activeClause}
         ORDER BY sp.created_at DESC
       `, [providerId]) as any[];
-    } 
+    }
     // If no packages found or no service_provider_id column, try provider_id
     else if (hasProviderId) {
       packagesResult = await query(`
@@ -353,7 +427,7 @@ async function getPackagesByProviderId(providerId: number, includeInactive: bool
         ORDER BY sp.created_at DESC
       `, [providerId]) as any[];
     }
-    
+
 
     // Enhance packages with inclusions, add-ons, and images
     const enhancedPackages = await enhancePackagesWithDetails(packagesResult);
@@ -582,54 +656,20 @@ async function enhancePackagesWithDetails(packages: any[]) {
     // Process images to ensure they have proper paths
     const processedImages = pkgImages.map((img: any) => {
       if (!img.image_path) return null;
-      let path = img.image_path;
-      
-      
+      const path = img.image_path;
+
       // Skip blob URLs
       if (path.startsWith('blob:')) {
         return null;
       }
-      
+
       // If path starts with http:// or https://, it's already a full URL
       if (path.startsWith('http://') || path.startsWith('https://')) {
         return path;
       }
-      
-      // Handle paths from package_images table that might be relative to public folder
-      if (path.startsWith('/')) {
-        // Remove leading slash for consistency
-        path = path.substring(1);
-      }
-      
-      // For files in uploads/packages/ directory - most reliable approach
-      if (path.includes('uploads/packages/package_')) {
-        // Use the filename directly with the correct path prefix
-        const filename = path.split('/').pop();
-        if (filename) {
-          const fullPath = `/uploads/packages/${filename}`;
-          return fullPath;
-        }
-      }
-      
-      // For paths in uploads/packages/ directory but without the common format
-      if (path.includes('uploads/packages/')) {
-        const fullPath = `/${path.replace(/^\//, '')}`;
-        return fullPath;
-      }
-      
-      // For sample data that has paths like bg_2.png
-      if (path.match(/^bg_\d+\.png$/)) {
-        return `/${path}`;
-      }
-      
-      // For paths in uploads directory
-      if (path.includes('uploads/')) {
-        const fullPath = `/${path.replace(/^\//, '')}`;
-        return fullPath;
-      }
-      
-      // Default approach for images stored in public directory
-      return `/${path}`;
+
+      // Use our utility function to get a consistent image path
+      return getImagePath(path);
     }).filter(Boolean);
 
     // If no valid images found and this is a production package, add sample images
@@ -665,12 +705,12 @@ function groupBy(array: any[], key: string) {
 async function moveImagesToPackageFolder(images: string[], packageId: number): Promise<string[]> {
   // If no images or invalid package ID, return as is
   if (!images.length || !packageId) return images;
-  
-  
+
+
   // Create package directory if it doesn't exist
   const baseDir = join(process.cwd(), 'public', 'uploads', 'packages');
   const packageDir = join(baseDir, packageId.toString());
-  
+
   if (!fs.existsSync(packageDir)) {
     try {
       fs.mkdirSync(packageDir, { recursive: true });
@@ -678,41 +718,41 @@ async function moveImagesToPackageFolder(images: string[], packageId: number): P
       return images; // Return original paths if directory creation fails
     }
   }
-  
+
   // Process each image
   const updatedPaths = await Promise.all(images.map(async (imagePath) => {
     // Skip images that are already in the correct folder
     if (imagePath.includes(`/uploads/packages/${packageId}/`)) {
       return imagePath;
     }
-    
+
     try {
       // Get source and destination paths
       const filename = imagePath.split('/').pop() as string;
       const sourcePath = join(process.cwd(), 'public', imagePath);
       const newRelativePath = `/uploads/packages/${packageId}/${filename}`;
       const destPath = join(process.cwd(), 'public', newRelativePath);
-      
+
       // Check if source file exists
       if (!fs.existsSync(sourcePath)) {
         return imagePath; // Return original path if file doesn't exist
       }
-      
+
       // Copy file to new location
       fs.copyFileSync(sourcePath, destPath);
-      
+
       // Delete the original file
       try {
         fs.unlinkSync(sourcePath);
       } catch (deleteErr) {
         // Continue even if delete fails
       }
-      
+
       return newRelativePath;
     } catch (error) {
       return imagePath; // Return original path on error
     }
   }));
-  
+
   return updatedPaths;
 }

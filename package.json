@@ -4,8 +4,13 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
-    "start": "next start"
+    "build": "next build && node scripts/copy-uploads.js",
+    "start": "next start",
+    "production": "next build && node scripts/copy-uploads.js && next start",
+    "start:any-port": "node -e \"const port = process.argv[2] || 3001; console.log('Starting on port ' + port); require('child_process').spawn('npx', ['next', 'start', '-p', port], {stdio: 'inherit'});\"",
+    "verify-images": "node scripts/verify-image-paths.js",
+    "diagnose-images": "next dev -p 3002",
+    "fix-images": "node scripts/fix-image-paths.js"
   },
   "dependencies": {
     "@headlessui/react": "^2.2.2",

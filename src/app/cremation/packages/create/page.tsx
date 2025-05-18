@@ -17,6 +17,11 @@ import {
 } from '@heroicons/react/24/outline';
 
 // Types
+interface AddOn {
+  name: string;
+  price: number | null;
+}
+
 interface PackageFormData {
   name: string;
   description: string;
@@ -26,7 +31,7 @@ interface PackageFormData {
   price: number;
   deliveryFeePerKm: number;
   inclusions: string[];
-  addOns: string[];
+  addOns: AddOn[];
   conditions: string;
   images: string[];
   packageId?: number;
@@ -99,17 +104,21 @@ interface ImageUploaderProps {
   onUpload: (e: ChangeEvent<HTMLInputElement>) => Promise<void>;
   onRemove: (index: number) => void;
 }
+// Import ProductionSafeImage at the top of your file
+import { ProductionSafeImage } from '@/components/ui/ProductionSafeImage';
+
 const ImageUploader: React.FC<ImageUploaderProps> = ({ images, fileInputRef, onUpload, onRemove }) => (
   <div className="mb-8">
     <h2 className="text-lg font-medium text-gray-800 mb-4">Images</h2>
     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
       {images.map((img, i) => (
         <div key={i} className="aspect-square bg-gray-100 rounded-md relative overflow-hidden">
-          <img
+          <ProductionSafeImage
             src={img}
             alt={`Package image ${i + 1}`}
             className="h-full w-full object-cover"
-            onError={e => { (e.target as HTMLImageElement).src = '/images/placeholder-image.jpg'; }}
+            fallbackSrc="/images/placeholder-image.jpg"
+            fill
           />
           <button
             type="button"
@@ -153,6 +162,7 @@ function usePackageForm(router: AppRouterInstance, showToast: {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [newInclusion, setNewInclusion] = useState('');
   const [newAddOn, setNewAddOn] = useState('');
+  const [newAddOnPrice, setNewAddOnPrice] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleInputChange = useCallback((e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -177,10 +187,21 @@ function usePackageForm(router: AppRouterInstance, showToast: {
 
   const handleAddAddOn = useCallback(() => {
     if (newAddOn.trim()) {
-      setFormData(prev => ({ ...prev, addOns: [...prev.addOns, newAddOn.trim()] }));
+      const price = newAddOnPrice ? parseFloat(newAddOnPrice) : null;
+
+      setFormData(prev => ({
+        ...prev,
+        addOns: [...prev.addOns, {
+          name: newAddOn.trim(),
+          price: price
+        }]
+      }));
+
+      // Reset input fields
       setNewAddOn('');
+      setNewAddOnPrice('');
     }
-  }, [newAddOn]);
+  }, [newAddOn, newAddOnPrice]);
 
   const handleRemoveAddOn = useCallback((idx: number) => {
     setFormData(prev => ({ ...prev, addOns: prev.addOns.filter((_, i) => i !== idx) }));
@@ -194,12 +215,12 @@ function usePackageForm(router: AppRouterInstance, showToast: {
     const uploadPromises = files.map(async file => {
       const payload = new FormData();
       payload.append('file', file);
-      
+
       // If editing an existing package, add the package ID to ensure proper storage
       if (formData.packageId) {
         payload.append('packageId', formData.packageId.toString());
       }
-      
+
       try {
         const res = await fetch('/api/upload/package-image', { method: 'POST', body: payload });
         if (!res.ok) {
@@ -260,7 +281,8 @@ function usePackageForm(router: AppRouterInstance, showToast: {
 
   return {
     formData, errors, newInclusion, setNewInclusion,
-    newAddOn, setNewAddOn, isSubmitting, fileInputRef,
+    newAddOn, setNewAddOn, newAddOnPrice, setNewAddOnPrice,
+    isSubmitting, fileInputRef,
     handleInputChange, handleAddInclusion, handleRemoveInclusion,
     handleAddAddOn, handleRemoveAddOn, handleImageUpload,
     handleRemoveImage, handleSubmit
@@ -274,7 +296,8 @@ const CreatePackagePage: React.FC<{ userData?: any }> = ({ userData }) => {
 
   const {
     formData, errors, newInclusion, setNewInclusion,
-    newAddOn, setNewAddOn, isSubmitting, fileInputRef,
+    newAddOn, setNewAddOn, newAddOnPrice, setNewAddOnPrice,
+    isSubmitting, fileInputRef,
     handleInputChange, handleAddInclusion, handleRemoveInclusion,
     handleAddAddOn, handleRemoveAddOn, handleImageUpload,
     handleRemoveImage, handleSubmit
@@ -374,15 +397,67 @@ const CreatePackagePage: React.FC<{ userData?: any }> = ({ userData }) => {
             placeholder="e.g., Standard clay urn"
           />
 
-          <MultiEntryField
-            label="Add-ons (Optional)"
-            items={formData.addOns}
-            newItem={newAddOn}
-            onNewItemChange={setNewAddOn}
-            onAdd={handleAddAddOn}
-            onRemove={handleRemoveAddOn}
-            placeholder="e.g., Personalized nameplate (+₱500)"
-          />
+          {/* Add-ons */}
+          <div className="mb-8">
+            <h2 className="text-lg font-medium text-gray-800 mb-4">Add-ons (Optional)</h2>
+            <div className="flex mb-2 gap-2">
+              <div className="flex-grow">
+                <input
+                  type="text"
+                  value={newAddOn}
+                  onChange={(e) => setNewAddOn(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)] sm:text-sm"
+                  placeholder="e.g., Personalized nameplate"
+                  onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddAddOn())}
+                />
+              </div>
+              <div className="w-32">
+                <div className="flex items-center border border-gray-300 rounded-md shadow-sm px-3 py-2">
+                  <span className="text-gray-500 mr-1">₱</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={newAddOnPrice}
+                    onChange={(e) => setNewAddOnPrice(e.target.value)}
+                    placeholder="Price"
+                    className="w-full focus:outline-none sm:text-sm"
+                  />
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleAddAddOn}
+                className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[var(--primary-green)] hover:bg-[var(--primary-green-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--primary-green)]"
+              >
+                <PlusIcon className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="space-y-2 mt-3">
+              {formData.addOns.map((addOn, index) => (
+                <div key={index} className="flex items-center justify-between bg-gray-50 px-3 py-2 rounded-md">
+                  <span className="text-sm break-words">{addOn.name}</span>
+                  <div className="flex items-center">
+                    {addOn.price !== null && (
+                      <span className="text-[var(--primary-green)] font-medium mr-3">
+                        +₱{addOn.price.toLocaleString()}
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveAddOn(index)}
+                      className="text-gray-400 hover:text-red-500 flex-shrink-0"
+                    >
+                      <XMarkIcon className="h-5 w-5" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+              {formData.addOns.length === 0 && (
+                <p className="text-sm text-gray-500 italic">No add-ons added yet</p>
+              )}
+            </div>
+          </div>
 
           {/* Conditions */}
           <div className="mb-8">

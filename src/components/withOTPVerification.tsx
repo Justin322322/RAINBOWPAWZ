@@ -31,7 +31,7 @@ const withOTPVerification = <P extends object>(
     const [isAuthenticated, setIsAuthenticated] = useState(globalUserAuthState.verified);
     const [userData, setUserData] = useState<UserData | null>(globalUserAuthState.userData);
     const [showOTPModal, setShowOTPModal] = useState(false);
-    
+
     // Check if we've already shown the OTP modal in this session
     const [hasShownOTPModal, setHasShownOTPModal] = useState(false);
     // Use a ref to track if we've shown the modal to prevent multiple renders from showing it again
@@ -70,7 +70,7 @@ const withOTPVerification = <P extends object>(
           setShowOTPModal(true);
           setHasShownOTPModal(true);
         }
-        
+
         setUserData(globalUserAuthState.userData);
         setIsAuthenticated(true);
         return;
@@ -213,30 +213,30 @@ const withOTPVerification = <P extends object>(
           ...userData,
           is_otp_verified: 1
         };
-        
+
         // Update component state first
         setUserData(updatedUserData);
-        
+
         // Then update all persistence mechanisms
         try {
           // 1. Session storage
           sessionStorage.setItem('user_data', JSON.stringify(updatedUserData));
           sessionStorage.setItem('otp_verified', 'true');
           sessionStorage.removeItem('needs_otp_verification');
-          
+
           // 2. Global state
           globalUserAuthState = {
             verified: true,
             userData: updatedUserData
           };
-          
+
           // 3. Additional localStorage backup
           localStorage.setItem('user_verified', 'true');
-          
+
         } catch (e) {
         }
       }
-      
+
       // Simply hide the modal, don't navigate
       setShowOTPModal(false);
     };
@@ -263,11 +263,15 @@ const withOTPVerification = <P extends object>(
         )}
 
         {/* Render the wrapped component with a blur effect if OTP verification is required */}
-        <div 
+        <div
           className={userData.is_otp_verified === 0 ? 'filter blur-sm pointer-events-none' : ''}
           style={{ position: 'relative', minHeight: '100vh' }}
         >
-          <Component {...(props as P)} userData={userData} />
+          {/* Create a safe copy of props to avoid React rendering issues with objects */}
+          <Component
+            {...props}
+            userData={userData}
+          />
         </div>
       </>
     );

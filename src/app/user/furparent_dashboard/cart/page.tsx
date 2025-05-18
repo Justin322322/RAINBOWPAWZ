@@ -30,18 +30,16 @@ function CartPage({ userData }: CartPageProps) {
   const handleCheckout = () => {
     if (items.length === 0) return;
 
-    // Check if all items have a pet selected
-    const missingPet = items.some(item => !item.petId);
-    if (missingPet) {
-      setCheckoutError('Please select a pet for all items in your cart');
-      showToast('Please select a pet for all items in your cart', 'error');
-      return;
-    }
-
     // Always redirect to the checkout page with the first item's details
     // The checkout page will handle the item from the cart context
     const item = items[0];
-    router.push(`/user/furparent_dashboard/bookings/checkout?provider=${item.providerId}&package=${item.packageId}&fromCart=true&petId=${item.petId}&petName=${encodeURIComponent(item.petName || '')}`);
+
+    // If pet is already selected, include it in the URL, otherwise just go to checkout
+    const petParams = item.petId && item.petName
+      ? `&petId=${item.petId}&petName=${encodeURIComponent(item.petName)}`
+      : '';
+
+    router.push(`/user/furparent_dashboard/bookings/checkout?provider=${item.providerId}&package=${item.packageId}&fromCart=true${petParams}`);
   };
 
   // Calculate total price for a single item including add-ons

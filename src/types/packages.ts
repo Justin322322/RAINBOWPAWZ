@@ -1,3 +1,8 @@
+export interface AddOn {
+  name: string;
+  price: number | null;
+}
+
 export interface PackageData {
   id: number;
   name: string;
@@ -7,7 +12,7 @@ export interface PackageData {
   processingTime: string;
   price: number;
   inclusions: string[];
-  addOns: string[];
+  addOns: (string | AddOn)[];
   conditions: string;
   images: string[];
   isActive: boolean;
@@ -21,7 +26,7 @@ export interface PackageFormData {
   processingTime: string;
   price: number;
   inclusions: string[];
-  addOns: string[];
+  addOns: (string | AddOn)[];
   conditions: string;
   images: string[];
 }

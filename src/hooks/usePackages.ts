@@ -19,7 +19,7 @@ export function usePackages({ userData }: UsePackagesProps) {
   const { showToast } = useToast();
   // Fetch packages function - stabilize the dependency on userData.business_id
   const providerId = userData?.business_id;
-  
+
   const fetchPackages = useCallback(async () => {
     try {
       // Use the providerId from outside the callback to prevent unnecessary re-renders
@@ -30,7 +30,7 @@ export function usePackages({ userData }: UsePackagesProps) {
         return;
       }
 
-      
+
       // Fetch packages from API
       const response = await fetch(`/api/packages?providerId=${providerId}&includeInactive=true`, {
         credentials: 'include',
@@ -42,8 +42,49 @@ export function usePackages({ userData }: UsePackagesProps) {
       }
 
       const data = await response.json();
-      
-      setPackages(data.packages || []);
+
+      // Process the packages to ensure add-ons are properly formatted
+      const processedPackages = (data.packages || []).map((pkg: any) => {
+        // Process add-ons to ensure they're in the correct format
+        let processedAddOns = [];
+
+        if (Array.isArray(pkg.addOns)) {
+          processedAddOns = pkg.addOns.map((addon: any) => {
+            // If it's a string (legacy format)
+            if (typeof addon === 'string') {
+              // Parse price from string if it exists
+              const priceMatch = addon.match(/\(\+₱([\d,]+)\)/);
+              let price = null;
+              let name = addon;
+
+              if (priceMatch) {
+                price = parseFloat(priceMatch[1].replace(/,/g, ''));
+                name = addon.replace(/\s*\(\+₱[\d,]+\)/, '').trim();
+              }
+
+              return { name, price };
+            }
+            // If it's already an object
+            else if (typeof addon === 'object' && addon !== null) {
+              return {
+                name: addon.name || '',
+                price: addon.price !== null && addon.price !== undefined ?
+                  (typeof addon.price === 'string' ? parseFloat(addon.price) : addon.price) :
+                  null
+              };
+            }
+            // Fallback for any other format
+            return { name: String(addon), price: null };
+          });
+        }
+
+        return {
+          ...pkg,
+          addOns: processedAddOns
+        };
+      });
+
+      setPackages(processedPackages);
     } catch (error) {
       showToast(error instanceof Error ? error.message : 'Failed to fetch packages', 'error');
       setPackages([]);
@@ -79,7 +120,7 @@ export function usePackages({ userData }: UsePackagesProps) {
         // Remove from local state
         setPackages(prevPackages => prevPackages.filter(pkg => pkg.id !== packageToDelete));
         setPackageToDelete(null);
-        
+
         // Return a resolved promise for ConfirmationModal
         return Promise.resolve();
       } catch (error) {
@@ -101,20 +142,20 @@ export function usePackages({ userData }: UsePackagesProps) {
         credentials: 'include',
         body: JSON.stringify({ isActive: !currentActiveState }),
       });
-      
+
       if (!response.ok) {
         throw new Error(`Failed to update package status: ${response.status}`);
       }
-      
+
       // Update local state
-      setPackages(prevPackages => 
-        prevPackages.map(pkg => 
+      setPackages(prevPackages =>
+        prevPackages.map(pkg =>
           pkg.id === packageId ? { ...pkg, isActive: !currentActiveState } : pkg
         )
       );
-      
+
       showToast(
-        `Package ${!currentActiveState ? 'activated' : 'deactivated'} successfully`, 
+        `Package ${!currentActiveState ? 'activated' : 'deactivated'} successfully`,
         'success'
       );
     } catch (error) {

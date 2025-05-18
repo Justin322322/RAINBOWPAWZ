@@ -48,6 +48,7 @@ export default function withAuth<P extends object>(
       return null;
     }
 
+    // Pass props directly without processing
     return isAuthenticated ? <Component {...props} /> : null;
   };
 }

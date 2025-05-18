@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: May 17, 2025 at 02:09 PM
+-- Generation Time: May 18, 2025 at 04:09 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -37,7 +37,7 @@ CREATE TABLE `admin_notifications` (
   `link` varchar(255) DEFAULT NULL,
   `is_read` tinyint(1) DEFAULT 0,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Stores notifications for administrators';
 
 --
 -- Dumping data for table `admin_notifications`
@@ -51,7 +51,8 @@ INSERT INTO `admin_notifications` (`id`, `type`, `title`, `message`, `entity_typ
 (5, 'new_cremation_center', 'New Cremation Center Registration', 'business has registered as a cremation center and is pending verification.', 'service_provider', 12, '/admin/applications/12', 0, '2025-05-15 23:25:47'),
 (6, 'new_cremation_center', 'New Cremation Center Registration', 'business has registered as a cremation center and is pending verification.', 'service_provider', 13, '/admin/applications/13', 0, '2025-05-16 00:04:22'),
 (7, 'new_cremation_center', 'New Cremation Center Registration', 'business has registered as a cremation center and is pending verification.', 'service_provider', 14, '/admin/applications/14', 0, '2025-05-16 00:54:30'),
-(8, 'new_cremation_center', 'New Cremation Center Registration', 'business has registered as a cremation center and is pending verification.', 'service_provider', 15, '/admin/applications/15', 0, '2025-05-17 11:54:28');
+(8, 'new_cremation_center', 'New Cremation Center Registration', 'business has registered as a cremation center and is pending verification.', 'service_provider', 15, '/admin/applications/15', 0, '2025-05-17 11:54:28'),
+(9, 'new_cremation_center', 'New Cremation Center Registration', 'asddasd has registered as a cremation center and is pending verification.', 'service_provider', 16, '/admin/applications/16', 0, '2025-05-18 00:49:03');
 
 -- --------------------------------------------------------
 
@@ -72,39 +73,6 @@ CREATE TABLE `admin_profiles` (
 -- --------------------------------------------------------
 
 --
--- Table structure for table `bookings`
---
-
-CREATE TABLE `bookings` (
-  `id` int(11) NOT NULL,
-  `user_id` int(11) NOT NULL,
-  `business_service_id` int(11) NOT NULL,
-  `booking_date` date NOT NULL,
-  `booking_time` time NOT NULL,
-  `status` enum('pending','confirmed','completed','cancelled') DEFAULT 'pending',
-  `total_amount` decimal(10,2) NOT NULL,
-  `special_requests` text DEFAULT NULL,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- --------------------------------------------------------
-
---
--- Stand-in structure for view `business_application_stats`
--- (See below for the actual view)
---
-CREATE TABLE `business_application_stats` (
-`total` bigint(21)
-,`approved` decimal(22,0)
-,`pending` decimal(22,0)
-,`declined` decimal(22,0)
-,`restricted` decimal(22,0)
-);
-
--- --------------------------------------------------------
-
---
 -- Table structure for table `notifications`
 --
 
@@ -118,19 +86,7 @@ CREATE TABLE `notifications` (
   `link` varchar(255) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `notifications`
---
-
-INSERT INTO `notifications` (`id`, `user_id`, `title`, `message`, `type`, `is_read`, `link`, `created_at`, `updated_at`) VALUES
-(78, 44, 'Application Approved', 'Your business application for business has been approved. You can now start offering services.', 'success', 1, '/business/dashboard', '2025-05-14 17:33:47', '2025-05-14 17:38:49'),
-(79, 44, 'Application Approved', 'Your business application for business has been approved.', 'success', 1, '/cremation/dashboard', '2025-05-14 17:33:49', '2025-05-14 17:38:49'),
-(80, 44, 'Application Approved', 'Your business application for business has been approved. You can now start offering services.', 'success', 1, '/business/dashboard', '2025-05-14 17:35:51', '2025-05-14 17:38:49'),
-(81, 44, 'Application Approved', 'Your business application for business has been approved.', 'success', 1, '/cremation/dashboard', '2025-05-14 17:35:54', '2025-05-14 17:38:49'),
-(90, 52, 'Application Approved', 'Your business application for business has been approved. You can now start offering services.', 'success', 0, '/business/dashboard', '2025-05-17 11:55:27', '2025-05-17 11:55:27'),
-(91, 52, 'Application Approved', 'Your business application for business has been approved.', 'success', 0, '/cremation/dashboard', '2025-05-17 11:55:30', '2025-05-17 11:55:30');
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Stores user notifications';
 
 -- --------------------------------------------------------
 
@@ -144,7 +100,7 @@ CREATE TABLE `otp_attempts` (
   `attempt_type` enum('verify','generate') NOT NULL,
   `attempt_time` timestamp NOT NULL DEFAULT current_timestamp(),
   `ip_address` varchar(45) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Tracks attempts to generate or verify OTP codes';
 
 --
 -- Dumping data for table `otp_attempts`
@@ -155,7 +111,7 @@ INSERT INTO `otp_attempts` (`id`, `user_id`, `attempt_type`, `attempt_time`, `ip
 (96, 51, 'generate', '2025-05-17 11:35:51', '::1'),
 (97, 51, 'generate', '2025-05-17 11:36:05', '::1'),
 (98, 51, 'verify', '2025-05-17 11:36:20', '::1'),
-(99, 52, 'generate', '2025-05-17 11:54:31', '::1');
+(100, 53, 'generate', '2025-05-18 00:49:06', '::1');
 
 -- --------------------------------------------------------
 
@@ -170,7 +126,7 @@ CREATE TABLE `otp_codes` (
   `expires_at` datetime NOT NULL,
   `is_used` tinyint(1) DEFAULT 0,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Stores one-time password codes for user verification';
 
 --
 -- Dumping data for table `otp_codes`
@@ -180,7 +136,7 @@ INSERT INTO `otp_codes` (`id`, `user_id`, `otp_code`, `expires_at`, `is_used`, `
 (57, 44, '691270', '2025-05-15 01:42:34', 0, '2025-05-14 17:32:34'),
 (70, 51, '962258', '2025-05-17 19:45:51', 1, '2025-05-17 11:35:51'),
 (71, 51, '815169', '2025-05-17 19:46:05', 1, '2025-05-17 11:36:05'),
-(72, 52, '458292', '2025-05-17 20:04:31', 0, '2025-05-17 11:54:31');
+(73, 53, '141074', '2025-05-18 08:59:06', 0, '2025-05-18 00:49:06');
 
 -- --------------------------------------------------------
 
@@ -194,14 +150,7 @@ CREATE TABLE `package_addons` (
   `description` varchar(255) NOT NULL,
   `price` decimal(10,2) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `package_addons`
---
-
-INSERT INTO `package_addons` (`id`, `package_id`, `description`, `price`, `created_at`) VALUES
-(63, 53, 'asd', NULL, '2025-05-17 12:05:22');
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Stores optional add-ons available for service packages';
 
 -- --------------------------------------------------------
 
@@ -216,14 +165,7 @@ CREATE TABLE `package_images` (
   `image_id` varchar(100) DEFAULT NULL,
   `display_order` int(11) DEFAULT 0,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `package_images`
---
-
-INSERT INTO `package_images` (`id`, `package_id`, `image_path`, `image_id`, `display_order`, `created_at`) VALUES
-(63, 53, '/uploads/packages/53/package_15_1747483513009.png', NULL, 0, '2025-05-17 12:05:22');
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Stores images associated with service packages';
 
 -- --------------------------------------------------------
 
@@ -236,14 +178,7 @@ CREATE TABLE `package_inclusions` (
   `package_id` int(11) NOT NULL,
   `description` varchar(255) NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `package_inclusions`
---
-
-INSERT INTO `package_inclusions` (`id`, `package_id`, `description`, `created_at`) VALUES
-(99, 53, '42323', '2025-05-17 12:05:22');
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Stores items included in service packages';
 
 -- --------------------------------------------------------
 
@@ -258,7 +193,7 @@ CREATE TABLE `password_reset_tokens` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `expires_at` datetime NOT NULL,
   `is_used` tinyint(1) DEFAULT 0
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Stores tokens for password reset requests';
 
 --
 -- Dumping data for table `password_reset_tokens`
@@ -274,8 +209,8 @@ INSERT INTO `password_reset_tokens` (`id`, `user_id`, `token`, `created_at`, `ex
 --
 
 CREATE TABLE `pets` (
-  `id` int(11) NOT NULL,
-  `user_id` varchar(255) NOT NULL,
+  `id` int(11) NOT NULL COMMENT 'Primary key - Unique identifier for each pet',
+  `user_id` varchar(255) NOT NULL COMMENT 'Foreign key - References users.id - Owner of the pet',
   `name` varchar(255) NOT NULL,
   `species` varchar(100) NOT NULL,
   `breed` varchar(255) DEFAULT NULL,
@@ -286,24 +221,7 @@ CREATE TABLE `pets` (
   `special_notes` text DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `pets`
---
-
-INSERT INTO `pets` (`id`, `user_id`, `name`, `species`, `breed`, `gender`, `age`, `weight`, `photo_path`, `special_notes`, `created_at`, `updated_at`) VALUES
-(16, '49', 'asdsd', 'Cat', 'asdsd', 'Male', '232', 2323.00, '/uploads/pets/pet_asdsd_49_1747408411330.png', 'asdad', '2025-05-16 15:13:32', '2025-05-16 15:13:32'),
-(17, '49', 'asdasd', 'Dog', 'asdsdd', 'Male', '2', 222.00, '/uploads/pets/pet_asdasd_49_1747410183760.png', 'asdasd', '2025-05-16 15:43:04', '2025-05-16 15:43:04'),
-(18, '49', 'eawesdasd', 'Dog', 'asdasd', 'Male', '2323', 232.00, '/uploads/pets/pet_eawesdasd_49_1747414174062.png', 'asdsdasd', '2025-05-16 16:49:35', '2025-05-16 16:49:35'),
-(19, '49', 'asdasd', 'Dog', 'asdasd', 'Female', '323', 231.00, '/uploads/pets/pet_asdasd_49_1747459910539.png', 'asdas', '2025-05-17 05:31:50', '2025-05-17 05:31:50'),
-(20, '49', 'asdasdasd', 'Dog', 'asdasd', 'Male', 'asdasdasd', 23.00, '/uploads/pets/pet_asdasdasd_49_1747463295515.png', 'asdasd', '2025-05-17 06:28:16', '2025-05-17 06:28:16'),
-(21, '49', 'asdasd', 'Dog', 'asdasd', NULL, '2323', 122.00, '/uploads/pets/pet_asdasd_49_1747465179936.png', 'asdasd', '2025-05-17 06:59:41', '2025-05-17 06:59:41'),
-(22, '49', 'asdsdsd', 'Dog', 'asdsdsd', 'Male', '23', 234.00, '/uploads/pets/pet_asdsdsd_49_1747473790939.png', 'asdasd', '2025-05-17 09:23:12', '2025-05-17 09:23:12'),
-(23, '49', 'asdasda', 'Dog', 'asdasd', 'Male', '3', 213.00, '/uploads/pets/pet_asdasda_49_1747477737214.png', 'asdasd', '2025-05-17 10:28:57', '2025-05-17 10:28:57'),
-(24, '49', 'asdasd', 'Dog', 'asd', 'Female', '23', 1.80, NULL, 'asd', '2025-05-17 10:55:19', '2025-05-17 10:55:19'),
-(25, '49', 'dasdas', 'Dog', 'asdsd', NULL, NULL, NULL, NULL, NULL, '2025-05-17 11:17:33', '2025-05-17 11:17:33'),
-(26, '51', 'asdasd', 'Dog', NULL, NULL, NULL, NULL, '/uploads/pets/pet_asdasd_51_1747483615346.png', NULL, '2025-05-17 12:06:55', '2025-05-17 12:06:55');
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Stores information about pets owned by fur parents';
 
 -- --------------------------------------------------------
 
@@ -318,17 +236,7 @@ CREATE TABLE `provider_availability` (
   `is_available` tinyint(1) DEFAULT 1,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `provider_availability`
---
-
-INSERT INTO `provider_availability` (`id`, `provider_id`, `date`, `is_available`, `created_at`, `updated_at`) VALUES
-(88, 14, '2025-05-20', 1, '2025-05-17 09:01:11', '2025-05-17 09:01:11'),
-(89, 14, '2025-05-21', 1, '2025-05-17 09:07:48', '2025-05-17 09:07:48'),
-(92, 14, '2025-05-22', 1, '2025-05-17 10:18:53', '2025-05-17 10:18:53'),
-(93, 15, '2025-05-21', 1, '2025-05-17 12:05:36', '2025-05-17 12:05:36');
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Stores availability dates for service providers';
 
 -- --------------------------------------------------------
 
@@ -345,15 +253,14 @@ CREATE TABLE `provider_time_slots` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `available_services` text DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Stores specific time slots when providers are available';
 
 --
 -- Dumping data for table `provider_time_slots`
 --
 
 INSERT INTO `provider_time_slots` (`id`, `provider_id`, `date`, `start_time`, `end_time`, `created_at`, `updated_at`, `available_services`) VALUES
-(75, 14, '2025-05-22', '09:00:00', '10:00:00', '2025-05-17 10:18:53', '2025-05-17 10:18:53', '[52]'),
-(76, 15, '2025-05-21', '09:00:00', '10:00:00', '2025-05-17 12:05:36', '2025-05-17 12:05:36', '[53]');
+(91, 15, '2025-05-23', '09:00:00', '10:00:00', '2025-05-18 00:43:53', '2025-05-18 00:43:53', '[53]');
 
 -- --------------------------------------------------------
 
@@ -379,11 +286,11 @@ CREATE TABLE `reviews` (
 --
 
 CREATE TABLE `service_bookings` (
-  `id` int(11) NOT NULL,
-  `user_id` int(11) NOT NULL,
-  `provider_id` int(11) NOT NULL,
-  `package_id` int(11) NOT NULL,
-  `pet_id` int(11) DEFAULT NULL,
+  `id` int(11) NOT NULL COMMENT 'Primary key - Unique identifier for each booking',
+  `user_id` int(11) NOT NULL COMMENT 'Foreign key - References users.id - User who made the booking',
+  `provider_id` int(11) NOT NULL COMMENT 'Foreign key - References service_providers.id - Provider selected for the service',
+  `package_id` int(11) NOT NULL COMMENT 'Foreign key - References service_packages.id - Package selected for the booking',
+  `pet_id` int(11) DEFAULT NULL COMMENT 'Foreign key - References pets.id - Pet for which the service is booked',
   `booking_date` date DEFAULT NULL,
   `booking_time` time DEFAULT NULL,
   `status` enum('pending','confirmed','in_progress','completed','cancelled') DEFAULT 'pending',
@@ -400,14 +307,7 @@ CREATE TABLE `service_bookings` (
   `price` decimal(10,2) NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `service_bookings`
---
-
-INSERT INTO `service_bookings` (`id`, `user_id`, `provider_id`, `package_id`, `pet_id`, `booking_date`, `booking_time`, `status`, `special_requests`, `pet_name`, `pet_type`, `pet_image_url`, `cause_of_death`, `payment_method`, `delivery_option`, `delivery_address`, `delivery_distance`, `delivery_fee`, `price`, `created_at`, `updated_at`) VALUES
-(26, 51, 15, 53, 26, '2025-05-21', '09:00:00', 'completed', NULL, 'asdasd', 'Dog', '/uploads/pets/pet_asdasd_51_1747483615346.png', NULL, 'gcash', 'pickup', NULL, 0, 0.00, 234.00, '2025-05-17 12:06:58', '2025-05-17 12:08:08');
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Stores booking information for services requested by users';
 
 -- --------------------------------------------------------
 
@@ -416,8 +316,8 @@ INSERT INTO `service_bookings` (`id`, `user_id`, `provider_id`, `package_id`, `p
 --
 
 CREATE TABLE `service_packages` (
-  `id` int(11) NOT NULL,
-  `service_provider_id` int(11) NOT NULL,
+  `id` int(11) NOT NULL COMMENT 'Primary key - Unique identifier for each service package',
+  `service_provider_id` int(11) NOT NULL COMMENT 'Foreign key - References service_providers.id - Provider offering this package',
   `name` varchar(255) NOT NULL,
   `description` text DEFAULT NULL,
   `category` enum('Private','Communal') DEFAULT 'Private',
@@ -429,14 +329,7 @@ CREATE TABLE `service_packages` (
   `is_active` tinyint(1) DEFAULT 1,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `service_packages`
---
-
-INSERT INTO `service_packages` (`id`, `service_provider_id`, `name`, `description`, `category`, `cremation_type`, `processing_time`, `price`, `delivery_fee_per_km`, `conditions`, `is_active`, `created_at`, `updated_at`) VALUES
-(53, 15, 'asdas', 'asda', 'Private', 'Standard', '1-2 days', 234.00, 0.00, 'asdasdasd', 1, '2025-05-17 12:05:22', '2025-05-17 12:05:22');
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Stores service packages offered by service providers';
 
 -- --------------------------------------------------------
 
@@ -445,8 +338,8 @@ INSERT INTO `service_packages` (`id`, `service_provider_id`, `name`, `descriptio
 --
 
 CREATE TABLE `service_providers` (
-  `id` int(11) NOT NULL,
-  `user_id` int(11) NOT NULL,
+  `id` int(11) NOT NULL COMMENT 'Primary key - Unique identifier for each service provider',
+  `user_id` int(11) NOT NULL COMMENT 'Foreign key - References users.id - User account associated with this provider',
   `name` varchar(100) NOT NULL,
   `provider_type` enum('cremation','memorial','veterinary') NOT NULL,
   `contact_first_name` varchar(50) NOT NULL,
@@ -467,14 +360,14 @@ CREATE TABLE `service_providers` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `active_service_count` int(11) DEFAULT 0
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Note: verification_status is deprecated, use application_status instead';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Stores information about businesses that provide pet services';
 
 --
 -- Dumping data for table `service_providers`
 --
 
 INSERT INTO `service_providers` (`id`, `user_id`, `name`, `provider_type`, `contact_first_name`, `contact_last_name`, `phone`, `address`, `province`, `city`, `zip`, `hours`, `service_description`, `application_status`, `verification_date`, `verification_notes`, `bir_certificate_path`, `business_permit_path`, `government_id_path`, `created_at`, `updated_at`, `active_service_count`) VALUES
-(15, 52, 'business', 'cremation', 'Justin', 'Sibonga', '1111111', 'BPSU', 'Bataan', 'Balanga City', '2100', 'business', 'asdasdasd', 'approved', '2025-05-17 11:55:27', 'Application approved', '/uploads/businesses/52/bir_certificate_1747482876383.png', '/uploads/businesses/52/business_permit_1747482875900.png', '/uploads/businesses/52/government_id_1747482876518.png', '2025-05-17 11:54:28', '2025-05-17 11:55:27', 0);
+(16, 53, 'asddasd', 'cremation', 'asdsdasdasd', 'asdasdsd', 'asdasd', 'balanga bataan', 'asdsd', 'asdasd', 'asdasdsd', 'asdasd', 'asdasdsd', 'approved', '2025-05-18 01:17:50', 'Application approved', '/uploads/businesses/53/bir_certificate_1747529350275.png', '/uploads/businesses/53/business_permit_1747529350269.png', '/uploads/businesses/53/government_id_1747529350279.png', '2025-05-18 00:49:03', '2025-05-18 01:17:50', 0);
 
 -- --------------------------------------------------------
 
@@ -493,14 +386,7 @@ CREATE TABLE `successful_bookings` (
   `payment_status` enum('completed','refunded','partial','cancelled') NOT NULL DEFAULT 'completed',
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
---
--- Dumping data for table `successful_bookings`
---
-
-INSERT INTO `successful_bookings` (`id`, `booking_id`, `service_package_id`, `user_id`, `provider_id`, `transaction_amount`, `payment_date`, `payment_status`, `created_at`, `updated_at`) VALUES
-(7, '26', 53, 51, 15, 234.00, '2025-05-17 20:08:08', 'completed', '2025-05-17 12:08:08', '2025-05-17 12:08:08');
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Stores information about completed bookings';
 
 -- --------------------------------------------------------
 
@@ -509,32 +395,31 @@ INSERT INTO `successful_bookings` (`id`, `booking_id`, `service_package_id`, `us
 --
 
 CREATE TABLE `users` (
-  `id` int(11) NOT NULL,
-  `email` varchar(100) NOT NULL,
+  `id` int(11) NOT NULL COMMENT 'Primary key - Unique identifier for each user',
+  `email` varchar(100) NOT NULL COMMENT 'User email address (unique)',
   `password` varchar(255) NOT NULL,
   `first_name` varchar(50) NOT NULL,
   `last_name` varchar(50) NOT NULL,
   `phone_number` varchar(20) DEFAULT NULL,
   `address` text DEFAULT NULL,
   `sex` varchar(20) DEFAULT NULL,
-  `role` enum('fur_parent','business','admin') NOT NULL DEFAULT 'fur_parent',
+  `role` enum('fur_parent','business','admin') NOT NULL DEFAULT 'fur_parent' COMMENT 'User role: fur_parent (pet owner), business (service provider), or admin',
   `status` enum('active','inactive','suspended','restricted') NOT NULL DEFAULT 'active',
   `is_verified` tinyint(1) NOT NULL DEFAULT 0,
   `is_otp_verified` tinyint(1) NOT NULL DEFAULT 0,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `last_login` timestamp NULL DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Stores all user accounts including fur parents, business owners, and administrators';
 
 --
 -- Dumping data for table `users`
 --
 
 INSERT INTO `users` (`id`, `email`, `password`, `first_name`, `last_name`, `phone_number`, `address`, `sex`, `role`, `status`, `is_verified`, `is_otp_verified`, `created_at`, `updated_at`, `last_login`) VALUES
-(44, 'admin@rainbowpaws.com', '$2b$10$CPyPK.A9FBeSkzotK0Zt6e3UW2NOqaQ.ovwjz/wt/tDgNWXIocV.W', 'System', 'Admin', 'asdasd', 'BPSU', 'male', 'admin', 'active', 1, 1, '2025-05-14 17:32:31', '2025-05-17 11:54:56', '2025-05-17 11:54:56'),
-(50, 'furparent@example.com', 'password123', 'Sample', 'User', NULL, NULL, NULL, '', 'active', 0, 0, '2025-05-16 02:27:43', '2025-05-16 02:27:43', NULL),
-(51, 'justinmarlosibonga@gmail.com', '$2b$10$EDw8VfhHwWghWb71k7MTFOSpNaHz243KiNPj7ysjsP5CjM4EKtwpa', 'Justin', 'Sibonga', '1111111', 'Samal Bataan', 'male', 'fur_parent', 'active', 0, 1, '2025-05-17 11:35:48', '2025-05-17 12:05:50', '2025-05-17 12:05:50'),
-(52, 'serviceprovider@rainbowpaws.com', '$2b$10$.ijgzJXjYMCLjrF89QFt3O8ONaAnoTRhbv/qIRUYSTWoOwXBNF8hG', 'Justin', 'Sibonga', '1111111', 'BPSU', NULL, 'business', 'active', 1, 0, '2025-05-17 11:54:28', '2025-05-17 12:07:25', '2025-05-17 12:07:25');
+(44, 'admin@rainbowpaws.com', '$2b$10$CPyPK.A9FBeSkzotK0Zt6e3UW2NOqaQ.ovwjz/wt/tDgNWXIocV.W', 'System', 'Admin', 'asdasd', 'BPSU', 'male', 'admin', 'active', 1, 1, '2025-05-14 17:32:31', '2025-05-18 01:28:40', '2025-05-18 01:28:40'),
+(51, 'justinmarlosibonga@gmail.com', '$2b$10$EDw8VfhHwWghWb71k7MTFOSpNaHz243KiNPj7ysjsP5CjM4EKtwpa', 'Justin', 'Sibonga', '1111111', 'Samal Bataan', 'male', 'fur_parent', 'active', 0, 1, '2025-05-17 11:35:48', '2025-05-18 01:33:07', '2025-05-18 01:33:07'),
+(53, 'serviceprovider@rainbowpaws.com', '$2b$10$M9mCrCX1qcUEJh0gFVspH.m4YykPu76LB2RuOqwTxz7CPPvq1g2SW', 'asdsdasdasd', 'asdasdsd', 'asdasd', 'balanga bataan', NULL, 'business', 'active', 1, 0, '2025-05-18 00:49:03', '2025-05-18 02:08:02', '2025-05-18 02:08:02');
 
 -- --------------------------------------------------------
 
@@ -552,16 +437,7 @@ CREATE TABLE `user_restrictions` (
   `is_active` tinyint(1) DEFAULT 1,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- --------------------------------------------------------
-
---
--- Structure for view `business_application_stats`
---
-DROP TABLE IF EXISTS `business_application_stats`;
-
-CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `business_application_stats`  AS SELECT count(0) AS `total`, sum(case when `service_providers`.`application_status` = 'approved' then 1 else 0 end) AS `approved`, sum(case when `service_providers`.`application_status` = 'pending' then 1 else 0 end) AS `pending`, sum(case when `service_providers`.`application_status` = 'declined' then 1 else 0 end) AS `declined`, sum(case when `service_providers`.`application_status` = 'restricted' then 1 else 0 end) AS `restricted` FROM `service_providers` ;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Stores information about user account restrictions';
 
 --
 -- Indexes for dumped tables
@@ -580,14 +456,6 @@ ALTER TABLE `admin_profiles`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `username` (`username`),
   ADD KEY `user_id` (`user_id`);
-
---
--- Indexes for table `bookings`
---
-ALTER TABLE `bookings`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `user_id` (`user_id`),
-  ADD KEY `business_service_id` (`business_service_id`);
 
 --
 -- Indexes for table `notifications`
@@ -726,7 +594,7 @@ ALTER TABLE `user_restrictions`
 -- AUTO_INCREMENT for table `admin_notifications`
 --
 ALTER TABLE `admin_notifications`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
 
 --
 -- AUTO_INCREMENT for table `admin_profiles`
@@ -735,46 +603,40 @@ ALTER TABLE `admin_profiles`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
--- AUTO_INCREMENT for table `bookings`
---
-ALTER TABLE `bookings`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
-
---
 -- AUTO_INCREMENT for table `notifications`
 --
 ALTER TABLE `notifications`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=92;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=99;
 
 --
 -- AUTO_INCREMENT for table `otp_attempts`
 --
 ALTER TABLE `otp_attempts`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=100;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=101;
 
 --
 -- AUTO_INCREMENT for table `otp_codes`
 --
 ALTER TABLE `otp_codes`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=73;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=74;
 
 --
 -- AUTO_INCREMENT for table `package_addons`
 --
 ALTER TABLE `package_addons`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=64;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=65;
 
 --
 -- AUTO_INCREMENT for table `package_images`
 --
 ALTER TABLE `package_images`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=64;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=66;
 
 --
 -- AUTO_INCREMENT for table `package_inclusions`
 --
 ALTER TABLE `package_inclusions`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=100;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=102;
 
 --
 -- AUTO_INCREMENT for table `password_reset_tokens`
@@ -786,19 +648,19 @@ ALTER TABLE `password_reset_tokens`
 -- AUTO_INCREMENT for table `pets`
 --
 ALTER TABLE `pets`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=27;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT COMMENT 'Primary key - Unique identifier for each pet', AUTO_INCREMENT=30;
 
 --
 -- AUTO_INCREMENT for table `provider_availability`
 --
 ALTER TABLE `provider_availability`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=94;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=124;
 
 --
 -- AUTO_INCREMENT for table `provider_time_slots`
 --
 ALTER TABLE `provider_time_slots`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=77;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=92;
 
 --
 -- AUTO_INCREMENT for table `reviews`
@@ -810,37 +672,37 @@ ALTER TABLE `reviews`
 -- AUTO_INCREMENT for table `service_bookings`
 --
 ALTER TABLE `service_bookings`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=27;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT COMMENT 'Primary key - Unique identifier for each booking', AUTO_INCREMENT=30;
 
 --
 -- AUTO_INCREMENT for table `service_packages`
 --
 ALTER TABLE `service_packages`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=54;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT COMMENT 'Primary key - Unique identifier for each service package', AUTO_INCREMENT=56;
 
 --
 -- AUTO_INCREMENT for table `service_providers`
 --
 ALTER TABLE `service_providers`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT COMMENT 'Primary key - Unique identifier for each service provider', AUTO_INCREMENT=17;
 
 --
 -- AUTO_INCREMENT for table `successful_bookings`
 --
 ALTER TABLE `successful_bookings`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
 
 --
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=53;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT COMMENT 'Primary key - Unique identifier for each user', AUTO_INCREMENT=54;
 
 --
 -- AUTO_INCREMENT for table `user_restrictions`
 --
 ALTER TABLE `user_restrictions`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
 -- Constraints for dumped tables
@@ -851,13 +713,6 @@ ALTER TABLE `user_restrictions`
 --
 ALTER TABLE `admin_profiles`
   ADD CONSTRAINT `admin_profiles_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
-
---
--- Constraints for table `bookings`
---
-ALTER TABLE `bookings`
-  ADD CONSTRAINT `bookings_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `bookings_ibfk_3` FOREIGN KEY (`business_service_id`) REFERENCES `service_packages` (`id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `notifications`
@@ -900,8 +755,7 @@ ALTER TABLE `package_inclusions`
 --
 ALTER TABLE `reviews`
   ADD CONSTRAINT `reviews_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `reviews_ibfk_2` FOREIGN KEY (`service_provider_id`) REFERENCES `service_providers` (`id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `reviews_ibfk_3` FOREIGN KEY (`booking_id`) REFERENCES `bookings` (`id`) ON DELETE CASCADE;
+  ADD CONSTRAINT `reviews_ibfk_2` FOREIGN KEY (`service_provider_id`) REFERENCES `service_providers` (`id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `service_bookings`

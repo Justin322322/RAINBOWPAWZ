@@ -109,10 +109,12 @@ export const createWelcomeEmail = (firstName: string, accountType: 'personal' | 
     <p>Dear ${firstName},</p>
     <p>Thank you for joining Rainbow Paws! We're honored to have you as part of our community.</p>
     ${accountSpecificContent}
+    ${accountType === 'personal' ? `
     <div style="text-align: center;">
-      <a href="${process.env.NEXT_PUBLIC_APP_URL || ''}/login" class="button">Get Started</a>
+      <a href="${process.env.NEXT_PUBLIC_APP_URL || ''}/?showLogin=true" class="button">Get Started</a>
     </div>
     <p>If you have any questions, our support team is here to help.</p>
+    ` : ''}
   `;
 
   return {
@@ -367,7 +369,7 @@ export const createBusinessVerificationEmail = (businessDetails: {
         <p>Congratulations! Your business <strong>${businessDetails.businessName}</strong> has been verified and approved on Rainbow Paws.</p>
         <p>You can now start managing your services and receiving bookings from pet owners.</p>
         <div style="text-align: center;">
-          <a href="${process.env.NEXT_PUBLIC_APP_URL || ''}/cremation/dashboard" class="button">Go to Dashboard</a>
+          <a href="${process.env.NEXT_PUBLIC_APP_URL || ''}/login" class="button">Login</a>
         </div>
       `;
       break;

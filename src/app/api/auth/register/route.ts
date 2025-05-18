@@ -267,18 +267,31 @@ export async function POST(request: Request) {
         // Continue with registration even if email fails
       }
 
-      // Generate OTP for the new user
+      // Generate OTP for the new user, but skip for cremation centers
       try {
-        const ipAddress = request.headers.get('x-forwarded-for') || 'unknown';
+        // Check if this is a cremation center registration
+        const isCremationCenter = data.account_type === 'business' &&
+          (data as BusinessRegistrationData).businessType === 'cremation';
 
-        const otpResult = await generateOtp({
-          userId: userId.toString(),
-          email: data.email,
-          ipAddress
-        });
+        // Skip OTP generation for cremation centers
+        if (!isCremationCenter) {
+          const ipAddress = request.headers.get('x-forwarded-for') || 'unknown';
 
-        if (!otpResult.success) {
-          // Continue with registration even if OTP generation fails
+          const otpResult = await generateOtp({
+            userId: userId.toString(),
+            email: data.email,
+            ipAddress
+          });
+
+          if (!otpResult.success) {
+            // Continue with registration even if OTP generation fails
+          }
+        } else {
+          // For cremation centers, mark them as OTP verified automatically
+          await query(
+            'UPDATE users SET is_otp_verified = 1 WHERE id = ?',
+            [userId]
+          );
         }
       } catch (otpError) {
         // Continue with registration even if OTP generation fails

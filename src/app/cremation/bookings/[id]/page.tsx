@@ -6,6 +6,7 @@ import Link from 'next/link';
 import CremationDashboardLayout from '@/components/navigation/CremationDashboardLayout';
 import withBusinessVerification from '@/components/withBusinessVerification';
 import { useToast } from '@/context/ToastContext';
+import { getProductionImagePath } from '@/utils/imagePathUtils';
 import {
   ArrowLeftIcon,
   ClockIcon,
@@ -731,7 +732,7 @@ function BookingDetailsPage({ userData }: { userData: any }) {
             {booking.petImageUrl ? (
               <div className="mb-4 sm:mb-0 sm:mr-6">
                 <img
-                  src={booking.petImageUrl}
+                  src={getProductionImagePath(booking.petImageUrl)}
                   alt={booking.petName}
                   className="h-32 w-32 rounded-lg object-cover shadow-md"
                   onError={(e) => {
@@ -739,6 +740,7 @@ function BookingDetailsPage({ userData }: { userData: any }) {
                     target.onerror = null; // Prevent infinite loop
                     target.src = '/placeholder-pet.png'; // Fallback image
                     target.className = 'h-32 w-32 rounded-lg object-contain bg-gray-100';
+                    console.error('Failed to load pet image:', booking.petImageUrl);
                   }}
                 />
               </div>
@@ -816,8 +818,28 @@ function BookingDetailsPage({ userData }: { userData: any }) {
             <div className="space-y-3">
               <div className="flex justify-between">
                 <p className="text-gray-600">Package Price</p>
-                <p className="font-medium text-gray-900">₱{parseFloat(booking.price || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+                <p className="font-medium text-gray-900">₱{parseFloat(booking.basePrice || booking.price || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
               </div>
+
+              {/* Add-ons Section */}
+              {booking.addOns && booking.addOns.length > 0 && (
+                <>
+                  <div className="pt-2">
+                    <p className="text-gray-600 font-medium">Add-ons:</p>
+                  </div>
+                  {booking.addOns.map((addon: any, index: number) => (
+                    <div key={index} className="flex justify-between pl-4">
+                      <p className="text-gray-600">{addon.name}</p>
+                      <p className="font-medium text-gray-900">₱{parseFloat(addon.price || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+                    </div>
+                  ))}
+                  <div className="flex justify-between pl-2">
+                    <p className="text-gray-600">Add-ons Subtotal</p>
+                    <p className="font-medium text-gray-900">₱{parseFloat(booking.addOnsTotal || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+                  </div>
+                </>
+              )}
+
               <div className="flex justify-between">
                 <p className="text-gray-600">Delivery Fee</p>
                 <p className="font-medium text-gray-900">₱{parseFloat(booking.deliveryFee || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
@@ -825,7 +847,7 @@ function BookingDetailsPage({ userData }: { userData: any }) {
               <div className="border-t border-gray-200 pt-3 mt-3">
                 <div className="flex justify-between">
                   <p className="font-medium text-gray-900">Total Amount</p>
-                  <p className="font-semibold text-[var(--primary-green)] text-lg">₱{(Number(booking.price || 0) + Number(booking.deliveryFee || 0)).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+                  <p className="font-semibold text-[var(--primary-green)] text-lg">₱{parseFloat(booking.price || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
                 </div>
               </div>
             </div>

@@ -124,7 +124,8 @@ function ServicesPage({ userData }: ServicesPageProps) {
     const fetchServiceProviders = async () => {
       try {
         setIsLoading(true);
-        const response = await fetch('/api/service-providers');
+        // Pass user location to the API for accurate distance calculation
+        const response = await fetch(`/api/service-providers?location=${encodeURIComponent(userLocation.address)}`);
 
         if (!response.ok) {
           throw new Error('Failed to fetch service providers');
@@ -151,7 +152,7 @@ function ServicesPage({ userData }: ServicesPageProps) {
     };
 
     fetchServiceProviders();
-  }, []);
+  }, [userLocation.address]);
 
   // Pagination
   const providersPerPage = 3;

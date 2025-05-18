@@ -5,11 +5,9 @@ import mysql from 'mysql2/promise';
 // Import the consolidated email service
 import { sendBusinessVerificationEmail } from '@/lib/consolidatedEmailService';
 
-export async function POST(request: NextRequest) {
-  // Extract ID from URL
-  const url = new URL(request.url);
-  const pathParts = url.pathname.split('/');
-  const id = pathParts[pathParts.length - 2]; // -2 because the last part is 'approve'
+export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
+  // Extract ID from params
+  const { id } = await params;
 
   try {
     const businessId = parseInt(id);
@@ -116,7 +114,7 @@ export async function POST(request: NextRequest) {
           'Application Approved',
           `Your business application for ${business.business_name || business.name} has been approved. You can now start offering services.`,
           'success',
-          '/business/dashboard',
+          '/login',
           0
         ]);
       }
@@ -124,27 +122,45 @@ export async function POST(request: NextRequest) {
       // Non-critical error, just log it
     }
 
-    // Log the approval action
-    await query(
-      `INSERT INTO admin_logs (action, entity_type, entity_id, details, admin_id)
-       VALUES (?, ?, ?, ?, ?)`,
-      [
-        'approve_business',
-        tableName, // Use the actual table name
-        businessId,
-        JSON.stringify({
-          businessName: business?.business_name || business?.name,
-          notes: notes || 'Application approved'
-        }),
-        1 // TODO: Replace with actual admin ID from auth
-      ]
-    );
+    // Log the approval action - but first check if the admin_logs table exists
+    try {
+      // Check if the admin_logs table exists
+      const tableCheck = await query(`
+        SELECT COUNT(*) as count
+        FROM information_schema.tables
+        WHERE table_schema = ? AND table_name = 'admin_logs'
+      `, [process.env.DB_NAME || 'rainbow_paws']);
+
+      const tableExists = tableCheck && Array.isArray(tableCheck) &&
+                          tableCheck[0] && tableCheck[0].count > 0;
+
+      if (tableExists) {
+        await query(
+          `INSERT INTO admin_logs (action, entity_type, entity_id, details, admin_id)
+           VALUES (?, ?, ?, ?, ?)`,
+          [
+            'approve_business',
+            tableName, // Use the actual table name
+            businessId,
+            JSON.stringify({
+              businessName: business?.business_name || business?.name,
+              notes: notes || 'Application approved'
+            }),
+            1 // TODO: Replace with actual admin ID from auth
+          ]
+        );
+      } else {
+        console.log('admin_logs table does not exist - skipping logging');
+      }
+    } catch (logError) {
+      // Non-critical error, just log it and continue
+      console.error('Error logging admin action:', logError);
+    }
 
     // Send email notification to the business owner
     let emailSent = false;
     if (business && business.email) {
       try {
-
         // Send email using simple email service
         const emailResult = await sendBusinessVerificationEmail(
           business.email,
@@ -158,10 +174,17 @@ export async function POST(request: NextRequest) {
 
         if (emailResult.success) {
           emailSent = true;
+          console.log('Email sent successfully to:', business.email);
         } else {
+          console.warn('Email sending failed:', emailResult.error);
         }
+      } catch (emailError) {
+        // Log the error but continue with the process
+        console.error('Error sending verification email:', emailError);
+      }
 
-        // Create a notification for the user
+      // Create a notification for the user (outside the try-catch for email)
+      try {
         await query(
           `INSERT INTO notifications (user_id, title, message, type, link)
            VALUES (?, ?, ?, ?, ?)`,
@@ -170,12 +193,13 @@ export async function POST(request: NextRequest) {
             'Application Approved',
             `Your business application for ${business.business_name || business.name} has been approved.`,
             'success',
-            '/cremation/dashboard'
+            '/login'
           ]
-        )
-
-      } catch (emailError) {
-        // Continue with the process even if email fails
+        );
+        console.log('Notification created for user:', business.user_id);
+      } catch (notificationError) {
+        // Log the error but continue with the process
+        console.error('Error creating notification:', notificationError);
       }
     }
 
@@ -186,8 +210,12 @@ export async function POST(request: NextRequest) {
       emailSent: emailSent
     });
   } catch (error) {
+    console.error('Error approving application:', error);
     return NextResponse.json(
-      { message: 'Failed to approve application' },
+      {
+        message: 'Failed to approve application',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     );
   }

@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { format } from 'date-fns';
 import { Dialog, Transition } from '@headlessui/react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { getProductionImagePath } from '@/utils/imagePathUtils';
 import {
   ClockIcon,
   CheckCircleIcon,
@@ -68,7 +69,6 @@ function BookingsPage({ userData }: BookingsPageProps) {
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [allBookings, setAllBookings] = useState<BookingData[]>([]);
-  const [dbCheckResult, setDbCheckResult] = useState<any>(null);
   const [isCheckingDb, setIsCheckingDb] = useState(false);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [successBookingId, setSuccessBookingId] = useState<string | null>(null);
@@ -195,14 +195,11 @@ function BookingsPage({ userData }: BookingsPageProps) {
   const checkDatabaseConnection = async () => {
     try {
       setIsCheckingDb(true);
-      setDbCheckResult(null);
 
       const response = await fetch('/api/db-check', {
         credentials: 'include' // This ensures cookies (including auth_token) are sent with the request
       });
       const data = await response.json();
-
-      setDbCheckResult(data);
 
       if (data.status === 'success') {
         // If the database check is successful, try fetching bookings again
@@ -210,14 +207,16 @@ function BookingsPage({ userData }: BookingsPageProps) {
         setIsLoading(true);
         setActiveFilter(activeFilter); // Force a re-fetch
       } else {
-        setError(`Database check failed: ${data.message}`);
+        // Just retry loading the bookings without showing error details
+        setError(null);
+        setIsLoading(true);
+        setActiveFilter(activeFilter); // Force a re-fetch
       }
     } catch (err) {
-      if (err instanceof Error) {
-        setDbCheckResult({ status: 'error', message: err.message });
-      } else {
-        setDbCheckResult({ status: 'error', message: 'An unknown error occurred during database check.' });
-      }
+      // Just retry loading the bookings without showing error details
+      setError(null);
+      setIsLoading(true);
+      setActiveFilter(activeFilter); // Force a re-fetch
     } finally {
       setIsCheckingDb(false);
     }
@@ -565,55 +564,16 @@ function BookingsPage({ userData }: BookingsPageProps) {
             <div className="bg-red-50 border border-red-200 p-4 rounded-md flex items-start">
               <XCircleIcon className="h-5 w-5 text-red-500 mr-3 mt-0.5 flex-shrink-0" />
               <div className="flex-1">
-                <p className="text-red-800 font-medium">{error}</p>
-                <p className="text-red-700 text-sm mt-1">Please try refreshing the page or check your internet connection.</p>
+                <p className="text-red-800 font-medium">Database connection error</p>
+                <p className="text-red-700 text-sm mt-1">We're having trouble connecting to our database. This is usually a temporary issue.</p>
 
-                {dbCheckResult && (
-                  <div className="mt-3 p-3 bg-white rounded-md border border-red-100">
-                    <h4 className="text-sm font-medium text-gray-900">Database Check Results:</h4>
-                    <pre className="mt-1 text-xs text-gray-700 overflow-auto max-h-40">
-                      {JSON.stringify(dbCheckResult, null, 2)}
-                    </pre>
-                  </div>
-                )}
-
-                <div className="mt-3 flex justify-end space-x-3">
+                <div className="mt-4 flex justify-end space-x-3">
                   <button
                     onClick={checkDatabaseConnection}
                     disabled={isCheckingDb}
                     className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors disabled:opacity-50"
                   >
-                    {isCheckingDb ? 'Checking...' : 'Check Database'}
-                  </button>
-                  <button
-                    onClick={async () => {
-                      try {
-                        const response = await fetch('/api/debug/auth', {
-                          credentials: 'include' // This ensures cookies (including auth_token) are sent with the request
-                        });
-                        const data = await response.json();
-                        setDbCheckResult({
-                          auth: data,
-                          timestamp: new Date().toISOString()
-                        });
-                      } catch (e) {
-                        setDbCheckResult({
-                          error: e instanceof Error ? e.message : 'Unknown error',
-                          timestamp: new Date().toISOString()
-                        });
-                      }
-                    }}
-                    className="px-4 py-2 border border-blue-300 rounded-md text-sm font-medium text-blue-700 bg-white hover:bg-blue-50 transition-colors"
-                  >
-                    Debug Auth
-                  </button>
-                  <button
-                    onClick={() => {
-                      window.location.href = '/user/furparent_dashboard/bookings/debug';
-                    }}
-                    className="px-4 py-2 border border-green-300 rounded-md text-sm font-medium text-green-700 bg-white hover:bg-green-50 transition-colors"
-                  >
-                    Advanced Debug
+                    {isCheckingDb ? 'Checking...' : 'Check Connection'}
                   </button>
                   <button
                     onClick={() => {
@@ -622,7 +582,7 @@ function BookingsPage({ userData }: BookingsPageProps) {
                       // Force a re-fetch by changing a state value
                       setActiveFilter(activeFilter);
                     }}
-                    className="px-4 py-2 bg-red-600 text-white rounded-md text-sm font-medium hover:bg-red-700 transition-colors"
+                    className="px-4 py-2 bg-[var(--primary-green)] text-white rounded-md text-sm font-medium hover:bg-[var(--primary-green-hover)] transition-colors"
                   >
                     Try Again
                   </button>
@@ -808,9 +768,32 @@ function BookingsPage({ userData }: BookingsPageProps) {
                               <div className="flex justify-between">
                                 <p className="text-sm text-gray-600">Service Price:</p>
                                 <p className="text-sm font-medium text-gray-900">
-                                  ₱{(selectedBooking.service_price || selectedBooking.price || 0).toLocaleString()}
+                                  ₱{(selectedBooking.basePrice || selectedBooking.service_price || selectedBooking.price || 0).toLocaleString()}
                                 </p>
                               </div>
+
+                              {/* Add-ons Section */}
+                              {selectedBooking.addOns && selectedBooking.addOns.length > 0 && (
+                                <>
+                                  <div className="mt-2 mb-1">
+                                    <p className="text-sm text-gray-600 font-medium">Add-ons:</p>
+                                  </div>
+                                  {selectedBooking.addOns.map((addon: any, index: number) => (
+                                    <div key={index} className="flex justify-between pl-4">
+                                      <p className="text-sm text-gray-600">{addon.name}</p>
+                                      <p className="text-sm font-medium text-gray-900">
+                                        ₱{parseFloat(addon.price).toLocaleString()}
+                                      </p>
+                                    </div>
+                                  ))}
+                                  <div className="flex justify-between pl-2 mt-1">
+                                    <p className="text-sm text-gray-600">Add-ons Subtotal:</p>
+                                    <p className="text-sm font-medium text-gray-900">
+                                      ₱{parseFloat(selectedBooking.addOnsTotal || 0).toLocaleString()}
+                                    </p>
+                                  </div>
+                                </>
+                              )}
 
                               {selectedBooking.delivery_fee > 0 && (
                                 <div className="flex justify-between">
@@ -824,8 +807,11 @@ function BookingsPage({ userData }: BookingsPageProps) {
                               <div className="flex justify-between pt-2 border-t border-gray-200 mt-1">
                                 <p className="text-sm font-medium text-gray-900">Total:</p>
                                 <p className="text-lg font-semibold text-[var(--primary-green)]">
-                                  ₱{(Number(selectedBooking.total_amount) ||
-                                     (Number(selectedBooking.price) + Number(selectedBooking.delivery_fee || 0)) ||
+                                  ₱{parseFloat(selectedBooking.price ||
+                                     selectedBooking.total_amount ||
+                                     (Number(selectedBooking.basePrice || 0) +
+                                      Number(selectedBooking.addOnsTotal || 0) +
+                                      Number(selectedBooking.delivery_fee || 0)) ||
                                      Number(selectedBooking.service_price) || 0).toLocaleString()}
                                 </p>
                               </div>
@@ -1045,7 +1031,7 @@ function BookingsPage({ userData }: BookingsPageProps) {
                               {selectedBooking.pet_image_url ? (
                                 <div className="mr-4 flex-shrink-0">
                                   <img
-                                    src={selectedBooking.pet_image_url}
+                                    src={getProductionImagePath(selectedBooking.pet_image_url)}
                                     alt={selectedBooking.pet_name || 'Pet'}
                                     className="h-20 w-20 object-cover rounded-lg shadow-sm"
                                     onError={(e) => {
@@ -1053,6 +1039,7 @@ function BookingsPage({ userData }: BookingsPageProps) {
                                       target.onerror = null; // Prevent infinite loop
                                       target.src = '/placeholder-pet.png'; // Fallback image
                                       target.className = 'h-20 w-20 object-contain rounded-lg bg-gray-100';
+                                      console.error('Failed to load pet image:', selectedBooking.pet_image_url);
                                     }}
                                   />
                                 </div>

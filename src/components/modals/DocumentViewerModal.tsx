@@ -3,6 +3,7 @@ import { Dialog, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
 import { XMarkIcon, CheckCircleIcon, XCircleIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
 import { ArrowPathIcon } from '@heroicons/react/24/solid';
+import { getProductionImagePath } from '@/utils/imagePathUtils';
 
 interface DocumentViewerModalProps {
   isOpen: boolean;
@@ -26,15 +27,65 @@ const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
 
   const handleImageError = (e: React.SyntheticEvent<HTMLImageElement | HTMLIFrameElement>) => {
     setIsLoading(false);
-    setError(`Failed to load document: ${formattedDocumentUrl}. Please check if the file exists.`);
 
-    // Log the document URL for debugging
+    // Create a more helpful error message
+    const originalUrl = documentUrl || 'Unknown';
+    const processedUrl = formattedDocumentUrl || 'Unknown';
+
+    setError(`Failed to load document. Please check if the file exists.`);
+
+    // Log the document URLs for debugging
+    console.error('Document loading error:', {
+      originalUrl,
+      processedUrl,
+      element: e.currentTarget
+    });
   };
 
-  // Ensure document URL is properly formatted with leading slash if it's a relative path
-  const formattedDocumentUrl = documentUrl && !documentUrl.startsWith('http') && !documentUrl.startsWith('/')
-    ? `/${documentUrl}`
-    : documentUrl;
+  // Process document URL to ensure it works in production
+  const processDocumentUrl = (url: string) => {
+    if (!url) return '';
+
+    // If it's already an API path, return as is
+    if (url.startsWith('/api/')) {
+      return url;
+    }
+
+    // If it's an absolute URL, return as is
+    if (url.startsWith('http')) {
+      return url;
+    }
+
+    // Ensure URL has a leading slash
+    let formattedUrl = url.startsWith('/') ? url : `/${url}`;
+
+    // If it's a document in the uploads folder, use the API route
+    if (formattedUrl.includes('/uploads/')) {
+      // Extract the path after /uploads/
+      const uploadPath = formattedUrl.substring(formattedUrl.indexOf('/uploads/') + '/uploads/'.length);
+      // Use the API route instead
+      return `/api/image/${uploadPath}`;
+    }
+
+    // For documents that might be in a different format
+    if (formattedUrl.includes('/documents/') || formattedUrl.includes('/business/')) {
+      // Try to extract the relevant path
+      const parts = formattedUrl.split('/');
+      const relevantIndex = parts.findIndex(part =>
+        part === 'documents' || part === 'business' || part === 'businesses'
+      );
+
+      if (relevantIndex >= 0) {
+        const relevantPath = parts.slice(relevantIndex).join('/');
+        return `/api/image/${relevantPath}`;
+      }
+    }
+
+    // Use the production image path utility as a fallback
+    return getProductionImagePath(formattedUrl);
+  };
+
+  const formattedDocumentUrl = processDocumentUrl(documentUrl);
 
   const isImageFile = formattedDocumentUrl?.toLowerCase().match(/\.(jpeg|jpg|gif|png)$/);
   const isPdfFile = formattedDocumentUrl?.toLowerCase().endsWith('.pdf');
@@ -129,12 +180,24 @@ const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
                   <div className="mt-4 bg-red-50 p-3 rounded-md">
                     <div className="flex flex-col items-center">
                       <p className="text-sm text-red-500 mb-2">{error}</p>
-                      <button
-                        onClick={() => window.open(formattedDocumentUrl, '_blank')}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700 transition-colors"
-                      >
-                        Open Document in New Tab
-                      </button>
+                      <div className="text-xs text-gray-500 mb-3 max-w-full overflow-hidden text-center">
+                        <p>Original URL: {documentUrl || 'Unknown'}</p>
+                        <p>Processed URL: {formattedDocumentUrl || 'Unknown'}</p>
+                      </div>
+                      <div className="flex space-x-3">
+                        <button
+                          onClick={() => window.open(formattedDocumentUrl, '_blank')}
+                          className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700 transition-colors"
+                        >
+                          Open Document in New Tab
+                        </button>
+                        <button
+                          onClick={() => window.open(`/api/image/documents/${documentUrl.split('/').pop()}`, '_blank')}
+                          className="px-4 py-2 bg-green-600 text-white rounded-md text-sm hover:bg-green-700 transition-colors"
+                        >
+                          Try Alternative Path
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )}

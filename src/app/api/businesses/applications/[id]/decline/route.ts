@@ -5,11 +5,9 @@ import mysql from 'mysql2/promise';
 // Import the simple email service
 const { sendBusinessVerificationEmail } = require('@/lib/simpleEmailService');
 
-export async function POST(request: NextRequest) {
-  // Extract ID from URL
-  const url = new URL(request.url);
-  const pathParts = url.pathname.split('/');
-  const id = pathParts[pathParts.length - 2]; // -2 because the last part is 'decline'
+export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
+  // Extract ID from params
+  const { id } = await params;
 
   try {
     const businessId = parseInt(id);
@@ -195,22 +193,41 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Log the action
-    await query(
-      `INSERT INTO admin_logs (action, entity_type, entity_id, details, admin_id)
-       VALUES (?, ?, ?, ?, ?)`,
-      [
-        requestDocuments ? 'request_documents' : 'decline_business',
-        tableName,
-        businessId,
-        JSON.stringify({
-          businessName: business?.business_name || business?.name,
-          notes: note.trim(),
-          requestDocuments: !!requestDocuments
-        }),
-        1 // TODO: Replace with actual admin ID from auth
-      ]
-    );
+    // Log the action - but first check if the admin_logs table exists
+    try {
+      // Check if the admin_logs table exists
+      const tableCheck = await query(`
+        SELECT COUNT(*) as count
+        FROM information_schema.tables
+        WHERE table_schema = ? AND table_name = 'admin_logs'
+      `, [process.env.DB_NAME || 'rainbow_paws']);
+
+      const tableExists = tableCheck && Array.isArray(tableCheck) &&
+                          tableCheck[0] && tableCheck[0].count > 0;
+
+      if (tableExists) {
+        await query(
+          `INSERT INTO admin_logs (action, entity_type, entity_id, details, admin_id)
+           VALUES (?, ?, ?, ?, ?)`,
+          [
+            requestDocuments ? 'request_documents' : 'decline_business',
+            tableName,
+            businessId,
+            JSON.stringify({
+              businessName: business?.business_name || business?.name,
+              notes: note.trim(),
+              requestDocuments: !!requestDocuments
+            }),
+            1 // TODO: Replace with actual admin ID from auth
+          ]
+        );
+      } else {
+        console.log('admin_logs table does not exist - skipping logging');
+      }
+    } catch (logError) {
+      // Non-critical error, just log it and continue
+      console.error('Error logging admin action:', logError);
+    }
 
     // Response uses application_status if available, otherwise falls back to verification_status
     return NextResponse.json({
@@ -221,8 +238,12 @@ export async function POST(request: NextRequest) {
       emailSent: emailSent
     });
   } catch (error) {
+    console.error('Error declining application:', error);
     return NextResponse.json(
-      { message: 'Failed to process application' },
+      {
+        message: 'Failed to process application',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     );
   }
