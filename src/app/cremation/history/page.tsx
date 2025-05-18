@@ -42,20 +42,20 @@ function CremationHistoryPage({ userData }: { userData: any }) {
   // Effect to filter bookings whenever search term, date filter, or status filter changes
   useEffect(() => {
     if (!bookings) return;
-    
+
     const filtered = bookings.filter(booking => {
       // Filter by search term
-      const matchesSearch = searchTerm === '' || 
+      const matchesSearch = searchTerm === '' ||
         booking.petName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         booking.owner?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         booking.id?.toString().includes(searchTerm);
-      
+
       // Filter by status
       const matchesStatus = statusFilter === 'all' || booking.status === statusFilter;
-      
+
       return matchesSearch && matchesStatus;
     });
-    
+
     setFilteredBookings(filtered);
     setCurrentPage(1); // Reset to first page when filters change
   }, [bookings, searchTerm, statusFilter]);
@@ -65,7 +65,7 @@ function CremationHistoryPage({ userData }: { userData: any }) {
     try {
       setLoading(true);
       setError(null); // Clear any previous errors
-      
+
       // Make sure we're using the correct period format based on the dateFilter value
       let periodParam = dateFilter;
       if (dateFilter === 'last7days') periodParam = 'last7days';
@@ -74,7 +74,7 @@ function CremationHistoryPage({ userData }: { userData: any }) {
       else if (dateFilter === 'last6months') periodParam = 'last6months';
       else if (dateFilter === 'thisyear') periodParam = 'thisyear';
       else periodParam = 'all';
-      
+
       const response = await fetch(`/api/cremation/history?period=${periodParam}&t=${Date.now()}`, {
         method: 'GET',
         headers: {
@@ -82,17 +82,17 @@ function CremationHistoryPage({ userData }: { userData: any }) {
           'Pragma': 'no-cache'
         }
       });
-      
+
       // Parse the JSON response regardless of status code
       const data = await response.json();
-      
+
       if (!response.ok) {
         // Use the specific error message from the API if available
         const errorMessage = data.message || data.error || 'Failed to fetch booking history';
         throw new Error(errorMessage);
       }
-      
-      
+
+
       setBookings(data.bookings || []);
       setStats(data.stats || {
         totalBookings: 0,
@@ -102,17 +102,17 @@ function CremationHistoryPage({ userData }: { userData: any }) {
         averageRevenue: 0,
         averageRating: 0
       });
-      
+
       // Reset retry count on success
       setRetryCount(0);
     } catch (error) {
       setError(error instanceof Error ? error.message : 'An error occurred while fetching data');
-      
+
       // Only show toast once per fetch attempt
       if (!retry) {
         showToast(error instanceof Error ? error.message : 'Failed to load booking history. Please try again.', 'error');
       }
-      
+
       // Auto-retry logic (max 2 retries)
       if (retry && retryCount < 2) {
         setRetryCount((prev) => prev + 1);
@@ -141,7 +141,7 @@ function CremationHistoryPage({ userData }: { userData: any }) {
       showToast('No data to export', 'info');
       return;
     }
-    
+
     try {
       // Define headers
       const headers = [
@@ -155,7 +155,7 @@ function CremationHistoryPage({ userData }: { userData: any }) {
         'Price',
         'Payment Method'
       ].join(',');
-      
+
       // Map data to CSV rows
       const rows = filteredBookings.map(booking => [
         booking.id,
@@ -168,10 +168,10 @@ function CremationHistoryPage({ userData }: { userData: any }) {
         booking.price || 0,
         `"${booking.paymentMethod || 'Not specified'}"`
       ].join(','));
-      
+
       // Combine headers and rows
       const csv = [headers, ...rows].join('\n');
-      
+
       // Create download link
       const blob = new Blob([csv], { type: 'text/csv' });
       const url = window.URL.createObjectURL(blob);
@@ -242,7 +242,7 @@ function CremationHistoryPage({ userData }: { userData: any }) {
 
   const renderPagination = () => {
     if (totalPages <= 1) return null;
-    
+
     return (
       <div className="flex items-center justify-between border-t border-gray-200 px-4 py-3 sm:px-6 mt-4">
         <div className="flex flex-1 justify-between sm:hidden">
@@ -278,7 +278,7 @@ function CremationHistoryPage({ userData }: { userData: any }) {
                 <span className="sr-only">Previous</span>
                 <ChevronLeftIcon className="h-5 w-5" aria-hidden="true" />
               </button>
-              
+
               {/* Page numbers */}
               {Array.from({length: totalPages}, (_, i) => i + 1).map(page => (
                 <button
@@ -293,7 +293,7 @@ function CremationHistoryPage({ userData }: { userData: any }) {
                   {page}
                 </button>
               ))}
-              
+
               <button
                 onClick={() => goToPage(currentPage + 1)}
                 disabled={currentPage === totalPages}
@@ -319,14 +319,14 @@ function CremationHistoryPage({ userData }: { userData: any }) {
             <p className="text-gray-600 mt-1">View and export your past cremation service bookings</p>
           </div>
           <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3">
-            <button 
+            <button
               onClick={exportAsCSV}
               className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
             >
               <ArrowDownTrayIcon className="h-5 w-5 mr-2 text-gray-500" />
               Export CSV
             </button>
-            <button 
+            <button
               onClick={handleRefresh}
               className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
               disabled={loading}
@@ -334,8 +334,8 @@ function CremationHistoryPage({ userData }: { userData: any }) {
               <ArrowPathIcon className={`h-5 w-5 mr-2 text-gray-500 ${loading ? 'animate-spin' : ''}`} />
               {loading ? 'Refreshing...' : 'Refresh'}
             </button>
-            <Link 
-              href="/cremation/reports" 
+            <Link
+              href="/cremation/reports"
               className="inline-flex items-center px-4 py-2 bg-[var(--primary-green)] text-white rounded-lg hover:bg-opacity-90"
             >
               <ChartBarIcon className="h-5 w-5 mr-2" />
@@ -426,7 +426,7 @@ function CremationHistoryPage({ userData }: { userData: any }) {
               />
             </div>
           </div>
-          
+
           {/* Date range filter */}
           <div>
             <label htmlFor="date-filter" className="block text-sm font-medium text-gray-700 mb-1">
@@ -446,7 +446,7 @@ function CremationHistoryPage({ userData }: { userData: any }) {
               <option value="thisyear">This Year</option>
             </select>
           </div>
-          
+
           {/* Status filter */}
           <div>
             <label htmlFor="status-filter" className="block text-sm font-medium text-gray-700 mb-1">
@@ -474,7 +474,7 @@ function CremationHistoryPage({ userData }: { userData: any }) {
         <div className="px-6 py-4 border-b border-gray-200">
           <h2 className="text-lg font-medium text-gray-800">Booking History</h2>
         </div>
-        
+
         {loading ? (
           <div className="flex justify-center items-center h-64">
             <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[var(--primary-green)]"></div>
@@ -501,7 +501,7 @@ function CremationHistoryPage({ userData }: { userData: any }) {
                 ? 'Try changing your search term to see more results.'
                 : dateFilter !== 'all'
                 ? 'Try changing the date filter to see more results.'
-                : statusFilter !== 'all' 
+                : statusFilter !== 'all'
                 ? 'Try changing the status filter to see more results.'
                 : 'There are no completed or cancelled bookings to display at this time.'}
             </p>
@@ -547,10 +547,10 @@ function CremationHistoryPage({ userData }: { userData: any }) {
                       <div className="flex items-center">
                         <div className="h-10 w-10 flex-shrink-0">
                           {booking.petImageUrl ? (
-                            <img 
-                              className="h-10 w-10 rounded-full object-cover" 
-                              src={booking.petImageUrl} 
-                              alt={booking.petName || 'Pet'} 
+                            <img
+                              className="h-10 w-10 rounded-full object-cover"
+                              src={booking.petImageUrl}
+                              alt={booking.petName || 'Pet'}
                               onError={(e) => {
                                 (e.target as HTMLImageElement).src = '/icons/pet-placeholder.png';
                               }}
@@ -582,12 +582,20 @@ function CremationHistoryPage({ userData }: { userData: any }) {
                       {getStatusBadge(booking.status)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">₱{booking.price?.toLocaleString() || '0'}</div>
+                      <div className="text-sm font-medium text-gray-900">
+                        {booking.amount > 0
+                          ? `₱${booking.amount.toLocaleString()}`
+                          : booking.price > 0
+                            ? `₱${booking.price.toLocaleString()}`
+                            : booking.status === 'completed' || booking.status === 'paid'
+                              ? 'Paid'
+                              : 'Not specified'}
+                      </div>
                       <div className="text-sm text-gray-500">{booking.paymentMethod || 'Not specified'}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <Link 
-                        href={`/cremation/bookings/${booking.id}`} 
+                      <Link
+                        href={`/cremation/bookings/${booking.id}`}
                         className="text-[var(--primary-green)] hover:text-[var(--primary-green-hover)] inline-flex items-center"
                       >
                         <EyeIcon className="h-4 w-4 mr-1" />
@@ -598,7 +606,7 @@ function CremationHistoryPage({ userData }: { userData: any }) {
                 ))}
               </tbody>
             </table>
-            
+
             {/* Pagination component */}
             {renderPagination()}
           </div>
@@ -608,4 +616,4 @@ function CremationHistoryPage({ userData }: { userData: any }) {
   );
 }
 
-export default withBusinessVerification(CremationHistoryPage); 
+export default withBusinessVerification(CremationHistoryPage);

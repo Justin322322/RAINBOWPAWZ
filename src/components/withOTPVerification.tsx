@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import OTPVerificationModal from './OTPVerificationModal';
+import GetStartedModal from './GetStartedModal';
 import { fastAuthCheck } from '@/utils/auth';
 
 // Define the shape of the user data
@@ -31,19 +32,44 @@ const withOTPVerification = <P extends object>(
     const [isAuthenticated, setIsAuthenticated] = useState(globalUserAuthState.verified);
     const [userData, setUserData] = useState<UserData | null>(globalUserAuthState.userData);
     const [showOTPModal, setShowOTPModal] = useState(false);
+    const [showGetStartedModal, setShowGetStartedModal] = useState(false);
 
     // Check if we've already shown the OTP modal in this session
     const [hasShownOTPModal, setHasShownOTPModal] = useState(false);
     // Use a ref to track if we've shown the modal to prevent multiple renders from showing it again
     const hasShownOTPModalRef = useRef(false);
 
+    // Track if we've shown the Get Started modal to this user
+    const hasShownGetStartedModalRef = useRef(false);
+
     useEffect(() => {
+      // Always show the Get Started modal after login for fur parents
+      const checkFirstTimeLogin = () => {
+        // Check if the user is a fur parent, regardless of OTP verification status
+        if (userData?.role === 'fur_parent' || userData?.user_type === 'fur_parent' || userData?.role === 'user') {
+          // Only check if the user has completed the tutorial
+          const hasCompletedTutorial = localStorage.getItem('has_completed_tutorial') === 'true';
+          if (!hasCompletedTutorial) {
+            // Reset the ref to ensure the modal is shown
+            hasShownGetStartedModalRef.current = false;
+            // Force show the modal
+            setShowGetStartedModal(true);
+
+            // Log for debugging
+            console.log('Showing Get Started modal for fur parent');
+          }
+        }
+      };
+
       // If already verified globally, we can skip the check
       if (globalUserAuthState.verified && globalUserAuthState.userData) {
         // Check if the user is verified in the global state
         if (globalUserAuthState.userData.is_otp_verified === 1) {
           setUserData(globalUserAuthState.userData);
           setIsAuthenticated(true);
+
+          // Check for first-time login
+          setTimeout(checkFirstTimeLogin, 10);
           return;
         }
 
@@ -61,6 +87,9 @@ const withOTPVerification = <P extends object>(
           };
           setUserData(updatedUserData);
           setIsAuthenticated(true);
+
+          // Check for first-time login
+          setTimeout(checkFirstTimeLogin, 10);
           return;
         }
 
@@ -86,7 +115,10 @@ const withOTPVerification = <P extends object>(
           userData: fastCheck.userData
         };
 
-        // Check OTP status
+        // Always check for first-time login first
+        setTimeout(checkFirstTimeLogin, 10);
+
+        // Then check OTP status
         const otpVerifiedInSession = sessionStorage.getItem('otp_verified');
         if (fastCheck.userData.is_otp_verified === 0 && !otpVerifiedInSession && !hasShownOTPModalRef.current) {
           hasShownOTPModalRef.current = true;
@@ -108,7 +140,10 @@ const withOTPVerification = <P extends object>(
             userData: parsedData
           };
 
-          // Show OTP modal if user is not verified and we haven't shown it in this session
+          // Always check for first-time login first
+          setTimeout(checkFirstTimeLogin, 10);
+
+          // Then check OTP status
           const otpVerifiedInSession = sessionStorage.getItem('otp_verified');
           if (parsedData.is_otp_verified === 0 && !otpVerifiedInSession && !hasShownOTPModalRef.current) {
             hasShownOTPModalRef.current = true;
@@ -189,7 +224,10 @@ const withOTPVerification = <P extends object>(
               userData: userData
             };
 
-            // Show OTP modal if user is not verified and we haven't shown it in this session
+            // Always check for first-time login first
+            setTimeout(checkFirstTimeLogin, 10);
+
+            // Then check OTP status
             if (userData.is_otp_verified === 0 && !otpVerifiedInSession && !hasShownOTPModalRef.current) {
               hasShownOTPModalRef.current = true;
               setShowOTPModal(true);
@@ -239,6 +277,31 @@ const withOTPVerification = <P extends object>(
 
       // Simply hide the modal, don't navigate
       setShowOTPModal(false);
+
+      // After OTP verification, we'll check if the Get Started modal should be shown
+      // But we don't need to show it here since it's already shown on login
+      // Just make sure the OTP modal is closed
+      setTimeout(() => {
+        // We'll just update the user data to reflect the OTP verification
+        // The Get Started modal will continue to be shown if it was already open
+        // or will be shown on next login if the user clicked "Not Now"
+      }, 500); // Small delay to ensure OTP modal is fully closed
+    };
+
+    // Handle closing the Get Started modal when completed
+    const handleGetStartedClose = () => {
+      setShowGetStartedModal(false);
+      // Mark that the user has completed the tutorial
+      localStorage.setItem('has_completed_tutorial', 'true');
+      // Also set the ref to true to prevent showing it again in this session
+      hasShownGetStartedModalRef.current = true;
+    };
+
+    // Handle "Not Now" button click
+    const handleGetStartedNotNow = () => {
+      setShowGetStartedModal(false);
+      // Don't mark as completed, just hide for this session
+      hasShownGetStartedModalRef.current = true;
     };
 
     // Don't render anything while verifying - prevents flash
@@ -262,9 +325,17 @@ const withOTPVerification = <P extends object>(
           />
         )}
 
+        {/* Get Started Modal - shown regardless of OTP verification status */}
+        <GetStartedModal
+          isOpen={showGetStartedModal}
+          onClose={handleGetStartedClose}
+          onNotNow={handleGetStartedNotNow}
+          userName={userData.first_name || 'there'}
+        />
+
         {/* Render the wrapped component with a blur effect if OTP verification is required */}
         <div
-          className={userData.is_otp_verified === 0 ? 'filter blur-sm pointer-events-none' : ''}
+          className={userData.is_otp_verified === 0 && showOTPModal ? 'filter blur-sm pointer-events-none' : ''}
           style={{ position: 'relative', minHeight: '100vh' }}
         >
           {/* Create a safe copy of props to avoid React rendering issues with objects */}

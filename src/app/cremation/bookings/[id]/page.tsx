@@ -3,10 +3,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { motion, AnimatePresence } from 'framer-motion';
 import CremationDashboardLayout from '@/components/navigation/CremationDashboardLayout';
 import withBusinessVerification from '@/components/withBusinessVerification';
 import { useToast } from '@/context/ToastContext';
 import { getProductionImagePath } from '@/utils/imagePathUtils';
+import ConfirmationModal from '@/components/ConfirmationModal';
 import {
   ArrowLeftIcon,
   ClockIcon,
@@ -20,6 +22,9 @@ import {
   BanknotesIcon,
   CreditCardIcon,
   ExclamationCircleIcon,
+  CalendarDaysIcon,
+  CheckCircleIcon,
+  XCircleIcon,
 } from '@heroicons/react/24/outline';
 
 function BookingDetailsPage({ userData }: { userData: any }) {
@@ -39,8 +44,50 @@ function BookingDetailsPage({ userData }: { userData: any }) {
   const [statusSectionExpanded, setStatusSectionExpanded] = useState(false);
   const [paymentSectionExpanded, setPaymentSectionExpanded] = useState(false);
   const [toastMessage, setToastMessage] = useState<{message: string, type: 'success' | 'error' | 'info' | 'warning'} | null>(null);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [statusUpdateData, setStatusUpdateData] = useState<{
+    newStatus: string;
+    title: string;
+    message: string;
+  } | null>(null);
 
   const handleStatusUpdate = async (newStatus: string) => {
+    // Prepare status update data for confirmation modal
+    let title = '';
+    let message = '';
+
+    switch(newStatus) {
+      case 'confirmed':
+        title = 'Confirm Booking';
+        message = 'Are you sure you want to confirm this booking? This will schedule the service and notify the customer.';
+        break;
+      case 'in_progress':
+        title = 'Start Service';
+        message = 'Are you sure you want to mark this booking as in progress? This indicates that the service has started.';
+        break;
+      case 'completed':
+        title = 'Complete Service';
+        message = 'Are you sure you want to mark this booking as completed? This will finalize the service.';
+        break;
+      case 'cancelled':
+        title = 'Cancel Booking';
+        message = 'Are you sure you want to cancel this booking? This action cannot be undone.';
+        break;
+      default:
+        title = 'Update Status';
+        message = `Are you sure you want to update the status to ${getStatusLabel(newStatus)}?`;
+    }
+
+    // Set the status update data and show the confirmation modal
+    setStatusUpdateData({ newStatus, title, message });
+    setShowSuccessModal(true);
+  };
+
+  // Actual status update function that gets called after confirmation
+  const performStatusUpdate = async () => {
+    if (!statusUpdateData) return;
+    const { newStatus } = statusUpdateData;
+
     try {
       setLoading(true);
 
@@ -51,7 +98,6 @@ function BookingDetailsPage({ userData }: { userData: any }) {
         },
         body: JSON.stringify({ status: newStatus }),
       });
-
 
       if (!response.ok) {
         // Try to parse the error response, but handle cases where it might not be valid JSON
@@ -77,14 +123,17 @@ function BookingDetailsPage({ userData }: { userData: any }) {
         setStatusSectionExpanded(true);
       }
 
-      showToast(`Booking status updated to ${getStatusLabel(newStatus)}`, 'success');
+      // Success message will be shown by the confirmation modal
 
       // Refresh the booking data to ensure we have the latest information
       setTimeout(() => {
         fetchBookingDetails();
-      }, 500);
+      }, 1000);
+
+      return true; // Return true to indicate success for the confirmation modal
     } catch (error) {
       showToast('Failed to update booking status: ' + (error instanceof Error ? error.message : 'Unknown error'), 'error');
+      return false; // Return false to indicate failure
     } finally {
       setLoading(false);
     }
@@ -225,22 +274,23 @@ function BookingDetailsPage({ userData }: { userData: any }) {
 
       // If we got here, the response was successful
 
-      // Check if we need to load payment status from localStorage
-      if (!responseData.paymentStatus || responseData.paymentStatus === 'undefined') {
+      // Always set GCash payments to 'paid' regardless of what's stored
+      if (responseData.paymentMethod === 'gcash') {
+        responseData.paymentStatus = 'paid';
+      }
+      // Check if we need to load payment status from localStorage for non-GCash payments
+      else if (!responseData.paymentStatus || responseData.paymentStatus === 'undefined') {
         try {
           const bookingPaymentStatuses = JSON.parse(localStorage.getItem('bookingPaymentStatuses') || '{}');
           if (bookingPaymentStatuses[bookingId]) {
             responseData.paymentStatus = bookingPaymentStatuses[bookingId];
-          } else if (responseData.paymentMethod === 'gcash') {
-            // For GCash payments, default to 'paid'
-            responseData.paymentStatus = 'paid';
           } else {
             // Default to 'not_paid' for other payment methods
             responseData.paymentStatus = 'not_paid';
           }
         } catch (storageError) {
           // Set default payment status
-          responseData.paymentStatus = responseData.paymentMethod === 'gcash' ? 'paid' : 'not_paid';
+          responseData.paymentStatus = 'not_paid';
         }
       }
 
@@ -613,6 +663,28 @@ function BookingDetailsPage({ userData }: { userData: any }) {
 
   return (
     <CremationDashboardLayout activePage="bookings" userData={userData}>
+      {/* Confirmation Modal */}
+      {statusUpdateData && (
+        <ConfirmationModal
+          isOpen={showSuccessModal}
+          onClose={() => {
+            setShowSuccessModal(false);
+            setStatusUpdateData(null);
+          }}
+          onConfirm={performStatusUpdate}
+          title={statusUpdateData.title}
+          message={statusUpdateData.message}
+          confirmText={statusUpdateData.newStatus === 'cancelled' ? 'Cancel Booking' : 'Confirm'}
+          confirmButtonClass={
+            statusUpdateData.newStatus === 'cancelled'
+              ? 'bg-red-600 hover:bg-red-700'
+              : statusUpdateData.newStatus === 'completed'
+                ? 'bg-green-600 hover:bg-green-700'
+                : 'bg-blue-600 hover:bg-blue-700'
+          }
+        />
+      )}
+
       {/* Header section with back button */}
       <div className="mb-6">
         <button
@@ -723,52 +795,127 @@ function BookingDetailsPage({ userData }: { userData: any }) {
         </div>
       </div>
 
-      {/* Booking Workflow */}
-      <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
-        <h2 className="text-lg font-medium text-gray-800 mb-4">Booking Workflow</h2>
+      {/* Booking Workflow - Modern UI */}
+      <div className="bg-white rounded-xl shadow-sm p-6 mb-6 overflow-hidden">
+        <h2 className="text-lg font-medium text-gray-800 mb-6">Booking Workflow</h2>
         <div className="relative">
-          <div className="flex items-center justify-between mb-2">
-            <div className={`flex flex-col items-center ${booking.status === 'pending' ? 'text-blue-600 font-medium' : (booking.status === 'confirmed' || booking.status === 'in_progress' || booking.status === 'completed') ? 'text-green-600 font-medium' : 'text-gray-500'}`}>
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-1 ${booking.status === 'pending' ? 'bg-blue-100 border-2 border-blue-600' : (booking.status === 'confirmed' || booking.status === 'in_progress' || booking.status === 'completed') ? 'bg-green-100 border-2 border-green-600' : 'bg-gray-100'}`}>
-                1
+          <div className="flex items-center justify-between mb-6">
+            {/* Pending Step */}
+            <div className={`flex flex-col items-center relative z-10 transition-all duration-300 ${
+              booking.status === 'pending'
+                ? 'text-blue-600 font-medium transform scale-110'
+                : (booking.status === 'confirmed' || booking.status === 'in_progress' || booking.status === 'completed')
+                  ? 'text-green-600 font-medium'
+                  : booking.status === 'cancelled'
+                    ? 'text-red-600 font-medium'
+                    : 'text-gray-500'
+            }`}>
+              <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-2 shadow-md transition-all duration-300 ${
+                booking.status === 'pending'
+                  ? 'bg-blue-100 border-2 border-blue-600 animate-pulse'
+                  : (booking.status === 'confirmed' || booking.status === 'in_progress' || booking.status === 'completed')
+                    ? 'bg-green-100 border-2 border-green-600'
+                    : booking.status === 'cancelled'
+                      ? 'bg-red-100 border-2 border-red-600'
+                      : 'bg-gray-100'
+              }`}>
+                <ClockIcon className="h-6 w-6" />
               </div>
-              <span className="text-xs">Pending</span>
+              <span className="text-sm font-medium">Pending</span>
             </div>
-            <div className={`flex flex-col items-center ${booking.status === 'confirmed' ? 'text-blue-600 font-medium' : booking.status === 'in_progress' || booking.status === 'completed' ? 'text-green-600 font-medium' : 'text-gray-500'}`}>
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-1 ${booking.status === 'confirmed' ? 'bg-blue-100 border-2 border-blue-600' : (booking.status === 'in_progress' || booking.status === 'completed') ? 'bg-green-100 border-2 border-green-600' : 'bg-gray-100'}`}>
-                2
+
+            {/* Scheduled Step */}
+            <div className={`flex flex-col items-center relative z-10 transition-all duration-300 ${
+              booking.status === 'confirmed'
+                ? 'text-blue-600 font-medium transform scale-110'
+                : (booking.status === 'in_progress' || booking.status === 'completed')
+                  ? 'text-green-600 font-medium'
+                  : booking.status === 'cancelled'
+                    ? 'text-red-600 font-medium opacity-50'
+                    : 'text-gray-500'
+            }`}>
+              <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-2 shadow-md transition-all duration-300 ${
+                booking.status === 'confirmed'
+                  ? 'bg-blue-100 border-2 border-blue-600 animate-pulse'
+                  : (booking.status === 'in_progress' || booking.status === 'completed')
+                    ? 'bg-green-100 border-2 border-green-600'
+                    : booking.status === 'cancelled'
+                      ? 'bg-gray-100 opacity-50'
+                      : 'bg-gray-100'
+              }`}>
+                <CalendarDaysIcon className="h-6 w-6" />
               </div>
-              <span className="text-xs">Scheduled</span>
+              <span className="text-sm font-medium">Scheduled</span>
             </div>
-            <div className={`flex flex-col items-center ${booking.status === 'in_progress' ? 'text-blue-600 font-medium' : booking.status === 'completed' ? 'text-green-600 font-medium' : 'text-gray-500'}`}>
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-1 ${booking.status === 'in_progress' ? 'bg-blue-100 border-2 border-blue-600' : booking.status === 'completed' ? 'bg-green-100 border-2 border-green-600' : 'bg-gray-100'}`}>
-                3
+
+            {/* In Progress Step */}
+            <div className={`flex flex-col items-center relative z-10 transition-all duration-300 ${
+              booking.status === 'in_progress'
+                ? 'text-blue-600 font-medium transform scale-110'
+                : booking.status === 'completed'
+                  ? 'text-green-600 font-medium'
+                  : booking.status === 'cancelled'
+                    ? 'text-red-600 font-medium opacity-50'
+                    : 'text-gray-500'
+            }`}>
+              <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-2 shadow-md transition-all duration-300 ${
+                booking.status === 'in_progress'
+                  ? 'bg-blue-100 border-2 border-blue-600 animate-pulse'
+                  : booking.status === 'completed'
+                    ? 'bg-green-100 border-2 border-green-600'
+                    : booking.status === 'cancelled'
+                      ? 'bg-gray-100 opacity-50'
+                      : 'bg-gray-100'
+              }`}>
+                <ArrowPathIcon className="h-6 w-6" />
               </div>
-              <span className="text-xs">In Progress</span>
+              <span className="text-sm font-medium">In Progress</span>
             </div>
-            <div className={`flex flex-col items-center ${booking.status === 'completed' ? 'text-blue-600 font-medium' : 'text-gray-500'}`}>
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-1 ${booking.status === 'completed' ? 'bg-blue-100 border-2 border-blue-600' : 'bg-gray-100'}`}>
-                4
+
+            {/* Completed Step */}
+            <div className={`flex flex-col items-center relative z-10 transition-all duration-300 ${
+              booking.status === 'completed'
+                ? 'text-green-600 font-medium transform scale-110'
+                : booking.status === 'cancelled'
+                  ? 'text-red-600 font-medium opacity-50'
+                  : 'text-gray-500'
+            }`}>
+              <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-2 shadow-md transition-all duration-300 ${
+                booking.status === 'completed'
+                  ? 'bg-green-100 border-2 border-green-600'
+                  : booking.status === 'cancelled'
+                    ? 'bg-gray-100 opacity-50'
+                    : 'bg-gray-100'
+              }`}>
+                <CheckIcon className="h-6 w-6" />
               </div>
-              <span className="text-xs">Completed</span>
+              <span className="text-sm font-medium">Completed</span>
             </div>
           </div>
-          <div className="absolute top-5 left-10 right-10 h-1 bg-gray-200 -z-10">
+
+          {/* Progress Bar */}
+          <div className="absolute top-6 left-0 right-0 h-2 bg-gray-200 rounded-full -z-0 mx-12">
             <div
-              className="h-full bg-green-500"
+              className={`h-full rounded-full transition-all duration-700 ease-in-out ${
+                booking.status === 'cancelled' ? 'bg-red-500' : 'bg-gradient-to-r from-blue-500 to-green-500'
+              }`}
               style={{
-                width: booking.status === 'pending' ? '0%' :
-                       booking.status === 'confirmed' ? '33%' :
-                       booking.status === 'in_progress' ? '66%' :
-                       booking.status === 'completed' ? '100%' : '0%'
+                width: booking.status === 'pending' ? '12%' :
+                       booking.status === 'confirmed' ? '38%' :
+                       booking.status === 'in_progress' ? '63%' :
+                       booking.status === 'completed' ? '100%' :
+                       booking.status === 'cancelled' ? '100%' : '0%'
               }}
             ></div>
           </div>
         </div>
 
         {booking.status === 'cancelled' && (
-          <div className="mt-4 bg-red-50 p-3 rounded-lg border border-red-100 text-center">
-            <p className="text-red-700">This booking has been cancelled</p>
+          <div className="mt-6 bg-red-50 p-4 rounded-lg border border-red-100 text-center shadow-sm">
+            <div className="flex items-center justify-center">
+              <XMarkIcon className="h-5 w-5 text-red-500 mr-2" />
+              <p className="text-red-700 font-medium">This booking has been cancelled</p>
+            </div>
           </div>
         )}
       </div>
@@ -1009,263 +1156,74 @@ function BookingDetailsPage({ userData }: { userData: any }) {
         </div>
       </div>
 
-      {/* Action Buttons */}
+
+
+      {/* Payment Information Section */}
       <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
-        <button
-          onClick={() => setStatusSectionExpanded(!statusSectionExpanded)}
-          className="w-full text-left focus:outline-none"
-        >
-          <h2 className="text-lg font-medium text-gray-800 mb-4 flex items-center justify-between">
-            <div className="flex items-center">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-gray-500" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
-              </svg>
-              Update Booking Status
-            </div>
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className={`h-5 w-5 transition-transform ${statusSectionExpanded ? 'rotate-180' : ''}`}
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
-          </h2>
-        </button>
+        <h2 className="text-lg font-medium text-gray-800 mb-4 flex items-center">
+          <BanknotesIcon className="h-5 w-5 mr-2 text-gray-500" />
+          Payment Information
+        </h2>
 
-        <div className="bg-gray-50 p-4 rounded-lg mb-4">
-          <div className="flex flex-col md:flex-row md:justify-between md:items-center">
-            <div className="mb-4 md:mb-0">
-              <p className="text-sm text-gray-600 mb-2">Current Status:</p>
+        <div className="bg-gray-50 p-4 rounded-lg">
+          <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
+            <div>
+              <p className="text-sm text-gray-600 mb-2">Payment Method:</p>
               <div className="flex items-center">
-                {getStatusBadge(booking.status)}
+                {booking.paymentMethod === 'cash' ? (
+                  <BanknotesIcon className="h-5 w-5 text-gray-400 mr-2" />
+                ) : booking.paymentMethod === 'gcash' ? (
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-green-500 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clipRule="evenodd" />
+                  </svg>
+                ) : (
+                  <CreditCardIcon className="h-5 w-5 text-gray-400 mr-2" />
+                )}
+                <span className="text-base font-medium text-gray-900 capitalize">{booking.paymentMethod}</span>
               </div>
             </div>
-            <div className="flex flex-col items-start md:items-end">
-              <p className="text-sm text-gray-600 mb-2">Booking Progress:</p>
-              <div className="w-full md:w-64 bg-gray-200 rounded-full h-2.5">
-                {booking.status === 'pending' && (
-                  <div className="bg-gray-500 h-2.5 rounded-full" style={{ width: '25%' }}></div>
+
+            <div>
+              <p className="text-sm text-gray-600 mb-2">Payment Status:</p>
+              <div className="flex items-center">
+                {booking.paymentMethod === 'gcash' ? (
+                  getPaymentStatusBadge('paid')
+                ) : (
+                  getPaymentStatusBadge(booking.paymentStatus || 'not_paid')
                 )}
-                {booking.status === 'confirmed' && (
-                  <div className="bg-yellow-500 h-2.5 rounded-full" style={{ width: '50%' }}></div>
-                )}
-                {booking.status === 'in_progress' && (
-                  <div className="bg-blue-500 h-2.5 rounded-full" style={{ width: '75%' }}></div>
-                )}
-                {booking.status === 'completed' && (
-                  <div className="bg-green-500 h-2.5 rounded-full" style={{ width: '100%' }}></div>
-                )}
-                {booking.status === 'cancelled' && (
-                  <div className="bg-red-500 h-2.5 rounded-full" style={{ width: '100%' }}></div>
-                )}
-              </div>
-              <div className="w-full md:w-64 flex justify-between text-xs text-gray-500 mt-1">
-                <span>Pending</span>
-                <span>Scheduled</span>
-                <span>In Progress</span>
-                <span>Completed</span>
               </div>
             </div>
           </div>
-        </div>
 
-        {statusSectionExpanded && (
-          <>
-            <p className="text-sm text-gray-500 mb-3">Change status to:</p>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-              {/* Show only the logical next status options based on current status */}
-              {booking.status === 'pending' && (
-                <>
-                  <button
-                    onClick={() => handleStatusUpdate('confirmed')}
-                    className="px-4 py-3 bg-blue-50 text-blue-800 rounded-lg hover:bg-blue-100 flex items-center justify-center transition-colors border border-blue-100 shadow-sm"
-                    disabled={loading}
-                  >
-                    <ClockIcon className="h-5 w-5 mr-2" />
-                    <span>Schedule</span>
-                  </button>
-
-                  <button
-                    onClick={() => handleStatusUpdate('cancelled')}
-                    className="px-4 py-3 bg-red-50 text-red-800 rounded-lg hover:bg-red-100 flex items-center justify-center transition-colors border border-red-100 shadow-sm"
-                    disabled={loading}
-                  >
-                    <XMarkIcon className="h-5 w-5 mr-2" />
-                    <span>Cancel</span>
-                  </button>
-                </>
-              )}
-
-              {booking.status === 'confirmed' && (
-                <>
-                  <button
-                    onClick={() => handleStatusUpdate('in_progress')}
-                    className="px-4 py-3 bg-yellow-50 text-yellow-800 rounded-lg hover:bg-yellow-100 flex items-center justify-center transition-colors border border-yellow-100 shadow-sm"
-                    disabled={loading}
-                  >
-                    <ArrowPathIcon className="h-5 w-5 mr-2" />
-                    <span>Start Service</span>
-                  </button>
-
-                  <button
-                    onClick={() => handleStatusUpdate('cancelled')}
-                    className="px-4 py-3 bg-red-50 text-red-800 rounded-lg hover:bg-red-100 flex items-center justify-center transition-colors border border-red-100 shadow-sm"
-                    disabled={loading}
-                  >
-                    <XMarkIcon className="h-5 w-5 mr-2" />
-                    <span>Cancel</span>
-                  </button>
-                </>
-              )}
-
-              {booking.status === 'in_progress' && (
-                <button
-                  onClick={() => handleStatusUpdate('completed')}
-                  className="px-4 py-3 bg-green-50 text-green-800 rounded-lg hover:bg-green-100 flex items-center justify-center transition-colors border border-green-100 shadow-sm"
-                  disabled={loading}
-                >
-                  <CheckIcon className="h-5 w-5 mr-2" />
-                  <span>Complete</span>
-                </button>
-              )}
-
-              {/* For completed or cancelled status, show no buttons */}
-              {(booking.status === 'completed' || booking.status === 'cancelled') && (
-                <div className="col-span-full text-center text-gray-500 italic">
-                  No further status changes are available for {getStatusLabel(booking.status).toLowerCase()} bookings.
-                </div>
-              )}
-            </div>
-
-            {loading && (
-              <div className="mt-4 text-center text-sm text-gray-500 flex items-center justify-center">
-                <ArrowPathIcon className="h-4 w-4 mr-2 animate-spin" />
-                Updating booking status...
-              </div>
-            )}
-          </>
-        )}
-      </div>
-
-      {/* Payment Status Section - Only show for confirmed bookings and when payment method is cash */}
-      {(booking.status === 'confirmed' || booking.status === 'in_progress' || booking.status === 'completed') && (
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <button
-            onClick={() => setPaymentSectionExpanded(!paymentSectionExpanded)}
-            className="w-full text-left focus:outline-none"
-          >
-            <h2 className="text-lg font-medium text-gray-800 mb-4 flex items-center justify-between">
+          {booking.paymentMethod === 'gcash' && (
+            <div className="mt-4 bg-green-50 p-3 rounded-lg border border-green-100">
               <div className="flex items-center">
-                <BanknotesIcon className="h-5 w-5 mr-2 text-gray-500" />
-                Payment Information
+                <CheckIcon className="h-5 w-5 text-green-500 mr-2" />
+                <p className="text-green-700">
+                  <span className="font-medium">Payment Completed</span> - GCash payments are automatically marked as paid
+                </p>
               </div>
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className={`h-5 w-5 transition-transform ${paymentSectionExpanded ? 'rotate-180' : ''}`}
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
+            </div>
+          )}
+
+          {booking.paymentMethod === 'cash' && booking.paymentStatus !== 'paid' && (
+            <div className="mt-4 flex justify-end">
+              <button
+                onClick={() => handlePaymentStatusUpdate('paid')}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center shadow-sm"
+                disabled={loading}
               >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </h2>
-          </button>
-
-          <div className="bg-gray-50 p-4 rounded-lg mb-4">
-            <div className="flex justify-between items-center">
-              <div>
-                <p className="text-sm text-gray-600 mb-2">Current Payment Status:</p>
-                <div className="flex items-center">
-                  {getPaymentStatusBadge(booking.paymentStatus || 'not_paid')}
-                </div>
-              </div>
-              <div className="text-right">
-                <p className="text-sm text-gray-600 mb-2">Payment Method:</p>
-                <div className="flex items-center justify-end">
-                  {booking.paymentMethod === 'cash' ? (
-                    <BanknotesIcon className="h-5 w-5 text-gray-400 mr-2" />
-                  ) : booking.paymentMethod === 'gcash' ? (
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-green-500 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clipRule="evenodd" />
-                    </svg>
-                  ) : (
-                    <CreditCardIcon className="h-5 w-5 text-gray-400 mr-2" />
-                  )}
-                  <span className="text-base font-medium text-gray-900 capitalize">{booking.paymentMethod}</span>
-                </div>
-              </div>
+                {loading ? (
+                  <ArrowPathIcon className="h-5 w-5 inline-block mr-1 animate-spin" />
+                ) : (
+                  <CheckIcon className="h-5 w-5 inline-block mr-1" />
+                )}
+                Mark as Paid
+              </button>
             </div>
-          </div>
-
-          {paymentSectionExpanded && (
-            <>
-              {booking.paymentMethod === 'gcash' ? (
-                <div className="bg-green-50 p-4 rounded-lg border border-green-100">
-                  <div className="flex items-center">
-                    <CheckIcon className="h-5 w-5 text-green-500 mr-2" />
-                    <p className="text-green-700">
-                      <span className="font-medium">Payment Completed</span> - GCash payments are automatically marked as paid
-                    </p>
-                  </div>
-                  <p className="text-sm text-green-600 mt-2 italic">
-                    Note: The system now automatically marks GCash payments as "Paid" when the booking is created.
-                  </p>
-                </div>
-              ) : (
-                <>
-                  <p className="text-sm text-gray-500 mb-3">Update payment status:</p>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    {/* Only show relevant buttons based on current status */}
-                    {booking.paymentStatus !== 'paid' && (
-                      <button
-                        onClick={() => handlePaymentStatusUpdate('paid')}
-                        className="px-4 py-3 bg-green-50 text-green-800 rounded-lg hover:bg-green-100 flex items-center justify-center transition-colors border border-green-100 shadow-sm"
-                        disabled={loading}
-                      >
-                        <CheckIcon className="h-5 w-5 mr-2" />
-                        <span>Mark as Paid</span>
-                      </button>
-                    )}
-
-                    {booking.paymentStatus !== 'partially_paid' && (
-                      <button
-                        onClick={() => handlePaymentStatusUpdate('partially_paid')}
-                        className="px-4 py-3 bg-yellow-50 text-yellow-800 rounded-lg hover:bg-yellow-100 flex items-center justify-center transition-colors border border-yellow-100 shadow-sm"
-                        disabled={loading}
-                      >
-                        <ArrowPathIcon className="h-5 w-5 mr-2" />
-                        <span>Mark as Partially Paid</span>
-                      </button>
-                    )}
-
-                    {booking.paymentStatus !== 'not_paid' && (
-                      <button
-                        onClick={() => handlePaymentStatusUpdate('not_paid')}
-                        className="px-4 py-3 bg-red-50 text-red-800 rounded-lg hover:bg-red-100 flex items-center justify-center transition-colors border border-red-100 shadow-sm"
-                        disabled={loading}
-                      >
-                        <ExclamationCircleIcon className="h-5 w-5 mr-2" />
-                        <span>Mark as Not Paid</span>
-                      </button>
-                    )}
-                  </div>
-                </>
-              )}
-
-              {loading && (
-                <div className="mt-4 text-center text-sm text-gray-500 flex items-center justify-center">
-                  <ArrowPathIcon className="h-4 w-4 mr-2 animate-spin" />
-                  Updating payment status...
-                </div>
-              )}
-            </>
           )}
         </div>
-      )}
+      </div>
     </CremationDashboardLayout>
   );
 }

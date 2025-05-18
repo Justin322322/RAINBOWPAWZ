@@ -8,7 +8,7 @@ type ModalProps = {
   onClose: () => void;
   title: string;
   children: ReactNode;
-  size?: 'small' | 'medium' | 'large';
+  size?: 'small' | 'medium' | 'large' | 'xlarge' | 'fullscreen';
   showCloseButton?: boolean;
   className?: string;
   onBack?: () => void;
@@ -45,14 +45,16 @@ const Modal: React.FC<ModalProps> = ({
   const sizeClasses = {
     small: 'max-w-md',
     medium: 'max-w-lg',
-    large: 'max-w-2xl'
+    large: 'max-w-2xl',
+    xlarge: 'max-w-4xl',
+    fullscreen: 'max-w-[80vw] max-h-[90vh]'
   };
 
   return (
     <AnimatePresence>
       {isOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 md:p-6"
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-4 md:p-6 mt-0"
           role="dialog"
           aria-modal="true"
           aria-labelledby="modal-title"
@@ -74,7 +76,7 @@ const Modal: React.FC<ModalProps> = ({
             className={`
               relative bg-white rounded-xl shadow-2xl w-full
               ${sizeClasses[size]} max-h-[90vh] overflow-hidden flex flex-col
-              ${className}
+              ${className} z-[9999]
             `}
           >
             <div className="bg-[var(--primary-green)] text-white px-8 py-6 flex justify-between items-center">
@@ -130,7 +132,7 @@ const Modal: React.FC<ModalProps> = ({
               )}
             </div>
 
-            <div className="px-8 py-6 overflow-y-auto">
+            <div className="px-8 py-6 overflow-y-auto max-h-[calc(90vh-120px)]">
               {children}
             </div>
           </motion.div>
