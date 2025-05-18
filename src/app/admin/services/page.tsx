@@ -65,6 +65,9 @@ export default function AdminServicesPage() {
         params.append('page', pagination.page.toString());
         params.append('limit', pagination.limit.toString());
 
+        // Add cache-busting parameter to ensure we get fresh data
+        params.append('_', new Date().getTime().toString());
+
         const response = await fetch(`/api/admin/services/listing?${params.toString()}`);
 
         if (!response.ok) {
@@ -72,6 +75,9 @@ export default function AdminServicesPage() {
         }
 
         const data = await response.json();
+
+        // Log the response for debugging
+        console.log('Services API response:', data);
 
         if (data.success) {
           // Process service images to ensure they're consistent
@@ -115,14 +121,28 @@ export default function AdminServicesPage() {
           // Calculate stats
           const activeCount = data.services.filter((s: any) => s.status === 'active').length;
           const totalBookings = data.services.reduce((sum: number, s: any) => sum + (s.bookings || 0), 0);
-          const uniqueProviders = new Set(data.services.map((s: any) => s.providerId).filter(id => id > 0)).size;
+
+          // Get service providers count from API or calculate from unique provider IDs
+          const uniqueProviders = data.serviceProvidersCount !== undefined ?
+                                 data.serviceProvidersCount :
+                                 new Set(data.services.map((s: any) => s.providerId).filter(id => id > 0)).size;
+
           const totalRevenue = data.services.reduce((sum: number, s: any) => sum + (s.revenue || 0), 0);
+
+          // Get monthly revenue directly from the API to match dashboard
+          // This ensures consistency between different admin pages
+          const monthlyRevenue = data.monthlyRevenue !== undefined ? data.monthlyRevenue :
+                                (data.totalRevenue !== undefined ? data.totalRevenue : totalRevenue);
+
+          console.log('Monthly revenue from API:', data.monthlyRevenue);
+          console.log('Total revenue from API:', data.totalRevenue);
+          console.log('Calculated total revenue:', totalRevenue);
 
           setStats({
             activeServices: activeCount,
             totalBookings,
             verifiedCenters: uniqueProviders,
-            monthlyRevenue: totalRevenue / 12 // Rough estimate for monthly revenue
+            monthlyRevenue: monthlyRevenue
           });
         } else {
           const errorMsg = data.error || 'Failed to fetch services';
@@ -152,7 +172,7 @@ export default function AdminServicesPage() {
     const matchesSearch =
       service.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       service.cremationCenter.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      service.id.toLowerCase().includes(searchTerm.toLowerCase());
+      (service.id && service.id.toString().includes(searchTerm.toLowerCase()));
 
     const matchesStatus = statusFilter === 'all' || service.status === statusFilter;
     const matchesCategory = categoryFilter === 'all' || service.category === categoryFilter;
@@ -488,20 +508,16 @@ export default function AdminServicesPage() {
                 <div className="flex items-center mb-2">
                   <StarRating rating={service.rating} size="small" />
                   <span className="ml-2 text-xs text-gray-600">
-                    {service.rating ? service.rating.toFixed(1) : '0'} rating
+                    {service.rating ? parseFloat(service.rating).toFixed(1) : '0'} rating
                   </span>
                 </div>
 
                 <p className="text-sm text-gray-700 line-clamp-2 mb-3">{service.description}</p>
 
-                <div className="flex justify-between items-center mb-2">
+                <div className="flex items-center mb-2">
                   <div className="flex items-center">
                     <QueueListIcon className="h-4 w-4 text-blue-500 mr-1" />
-                    <span className="text-xs text-gray-600">{service.bookings || 0} bookings</span>
-                  </div>
-                  <div className="flex items-center">
-                    <CurrencyDollarIcon className="h-4 w-4 text-green-500 mr-1" />
-                    <span className="text-xs text-gray-600">{service.formattedRevenue || '₱0.00'}</span>
+                    <span className="text-xs text-gray-600">{parseInt(service.bookings) || 0} bookings</span>
                   </div>
                 </div>
 
@@ -587,10 +603,6 @@ export default function AdminServicesPage() {
                       <div>
                         <p className="text-sm font-medium text-gray-500">Bookings</p>
                         <p className="text-base text-gray-900">{selectedService.bookings || 0}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-gray-500">Revenue</p>
-                        <p className="text-base text-gray-900">{selectedService.formattedRevenue || '₱0.00'}</p>
                       </div>
                       <div>
                         <p className="text-sm font-medium text-gray-500">Category</p>

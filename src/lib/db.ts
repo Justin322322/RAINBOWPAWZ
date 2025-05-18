@@ -215,4 +215,14 @@ export async function ensureAvailabilityTablesExist(): Promise<boolean> {
   }
 }
 
+// Helper function to check if a table exists
+export async function checkTableExists(tableName: string): Promise<boolean> {
+  try {
+    const result = await query(`SHOW TABLES LIKE '${tableName}'`) as any[];
+    return result.length > 0;
+  } catch (err) {
+    return false;
+  }
+}
+
 export default pool;

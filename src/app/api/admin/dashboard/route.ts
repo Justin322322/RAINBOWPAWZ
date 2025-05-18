@@ -117,7 +117,7 @@ export async function GET(request: NextRequest) {
       }));
 
     } catch (error) {
-      
+
       // Attempt fallback query with fewer joins if the main one fails
       try {
         recentApplications = await query(`
@@ -132,7 +132,7 @@ export async function GET(request: NextRequest) {
           ORDER BY created_at DESC
           LIMIT 5
         `) as any[];
-        
+
         // Format dates
         recentApplications = recentApplications.map(app => ({
           ...app,
@@ -144,7 +144,7 @@ export async function GET(request: NextRequest) {
             day: 'numeric'
           })
         }));
-        
+
       } catch (fallbackError) {
         // If all else fails, return an empty array
         recentApplications = [];
@@ -267,7 +267,7 @@ export async function GET(request: NextRequest) {
           FROM service_providers
           WHERE application_status = 'restricted'
         `) as any[];
-        
+
         restrictedCremationCenters = restrictedCentersResult[0]?.count || 0;
       } else {
         // Fallback to verification_status if available
@@ -278,14 +278,14 @@ export async function GET(request: NextRequest) {
           AND table_name = 'service_providers'
           AND column_name = 'verification_status'
         `) as any[];
-        
+
         if (verificationStatusExists[0]?.count === 1) {
           const restrictedCentersResult = await query(`
             SELECT COUNT(*) as count
             FROM service_providers
             WHERE verification_status = 'restricted'
           `) as any[];
-          
+
           restrictedCremationCenters = restrictedCentersResult[0]?.count || 0;
         }
       }
@@ -412,9 +412,9 @@ export async function GET(request: NextRequest) {
       if (applicationStatusExists[0]?.count === 1) {
         // Count previous month's pending applications
         previousMonthApplications = await query(`
-          SELECT COUNT(*) as count 
+          SELECT COUNT(*) as count
           FROM service_providers
-          WHERE application_status = 'pending' 
+          WHERE application_status = 'pending'
           AND created_at < DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH)
         `) as any[];
       } else {
@@ -435,7 +435,7 @@ export async function GET(request: NextRequest) {
             AND table_name = 'business_applications'
             AND column_name = 'created_at'
           `) as any[];
-          
+
           const appStatusExists = await query(`
             SELECT COUNT(*) as count
             FROM information_schema.columns
@@ -446,7 +446,7 @@ export async function GET(request: NextRequest) {
 
           if (appCreatedAtExists[0]?.count === 1 && appStatusExists[0]?.count === 1) {
             previousMonthApplications = await query(`
-              SELECT COUNT(*) as count 
+              SELECT COUNT(*) as count
               FROM business_applications
               WHERE status = 'pending'
               AND created_at < DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH)
@@ -454,7 +454,7 @@ export async function GET(request: NextRequest) {
           } else if (appCreatedAtExists[0]?.count === 1) {
             // If no status column, just get count by date as a fallback
             previousMonthApplications = await query(`
-              SELECT COUNT(*) as count 
+              SELECT COUNT(*) as count
               FROM business_applications
               WHERE created_at < DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH)
             `) as any[];
@@ -483,7 +483,7 @@ export async function GET(request: NextRequest) {
           FROM service_providers
           WHERE application_status = 'pending'
         `) as any[];
-        
+
         pendingApplicationsCount = pendingAppsResult[0]?.count || 0;
       }
     } catch (error) {
@@ -514,8 +514,11 @@ export async function GET(request: NextRequest) {
       },
       monthlyRevenue: {
         value: actualMonthlyRevenue > 0
-          ? `₱${Math.round(actualMonthlyRevenue).toLocaleString()}`
-          : `₱0`,
+          ? `₱${actualMonthlyRevenue.toLocaleString('en-US', {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2
+            })}`
+          : `₱0.00`,
         change: revenueChange.value,
         changeType: revenueChange.type,
         isEstimate: actualMonthlyRevenue <= 0

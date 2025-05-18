@@ -40,30 +40,90 @@ export async function GET(request: NextRequest) {
     const hasBookings = availableTables.includes('bookings');
 
     // Calculate stats
-    // 1. Get revenue, using both tables if available
+    // 1. Get revenue, using successful_bookings table first (same as admin dashboard)
     let totalRevenue = 0;
+    let monthlyRevenue = 0;
 
-    if (hasServiceBookings) {
-      const serviceBookingsRevenue = await query(
-        `SELECT COALESCE(SUM(price), 0) as total_revenue
-         FROM service_bookings
-         WHERE provider_id = ? AND status = 'completed'`,
-        [providerId]
-      ) as any[];
+    // Check if successful_bookings table exists
+    const successfulBookingsExists = await query(`
+      SELECT COUNT(*) as count
+      FROM INFORMATION_SCHEMA.TABLES
+      WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'successful_bookings'
+    `) as any[];
 
-      totalRevenue += serviceBookingsRevenue[0]?.total_revenue || 0;
+    const hasSuccessfulBookings = successfulBookingsExists[0]?.count > 0;
+
+    if (hasSuccessfulBookings) {
+      // Get total revenue from all successful bookings (same as admin dashboard)
+      const totalRevenueResult = await query(`
+        SELECT COALESCE(SUM(transaction_amount), 0) as total
+        FROM successful_bookings
+        WHERE provider_id = ? AND payment_status = 'completed'
+      `, [providerId]) as any[];
+
+      totalRevenue = parseFloat(String(totalRevenueResult[0]?.total || '0'));
+
+      // Get current month's revenue (same as admin dashboard)
+      const currentMonthRevenueResult = await query(`
+        SELECT COALESCE(SUM(transaction_amount), 0) as total
+        FROM successful_bookings
+        WHERE provider_id = ? AND payment_status = 'completed'
+        AND MONTH(payment_date) = MONTH(CURRENT_DATE())
+        AND YEAR(payment_date) = YEAR(CURRENT_DATE())
+      `, [providerId]) as any[];
+
+      monthlyRevenue = parseFloat(String(currentMonthRevenueResult[0]?.total || '0'));
     }
+    // Fallback to service_bookings and bookings tables if successful_bookings doesn't exist
+    else {
+      if (hasServiceBookings) {
+        const serviceBookingsRevenue = await query(
+          `SELECT COALESCE(SUM(price), 0) as total_revenue
+           FROM service_bookings
+           WHERE provider_id = ? AND status = 'completed'`,
+          [providerId]
+        ) as any[];
 
-    if (hasBookings) {
-      const bookingsRevenue = await query(
-        `SELECT COALESCE(SUM(b.total_amount), 0) as total_revenue
-         FROM bookings b
-         JOIN service_packages sp ON b.business_service_id = sp.id
-         WHERE sp.service_provider_id = ? AND b.status = 'completed'`,
-        [providerId]
-      ) as any[];
+        totalRevenue += serviceBookingsRevenue[0]?.total_revenue || 0;
 
-      totalRevenue += bookingsRevenue[0]?.total_revenue || 0;
+        // Get monthly revenue from service_bookings
+        const monthlyServiceBookingsRevenue = await query(
+          `SELECT COALESCE(SUM(price), 0) as total_revenue
+           FROM service_bookings
+           WHERE provider_id = ? AND status = 'completed'
+           AND MONTH(created_at) = MONTH(CURRENT_DATE())
+           AND YEAR(created_at) = YEAR(CURRENT_DATE())`,
+          [providerId]
+        ) as any[];
+
+        monthlyRevenue += monthlyServiceBookingsRevenue[0]?.total_revenue || 0;
+      }
+
+      if (hasBookings) {
+        const bookingsRevenue = await query(
+          `SELECT COALESCE(SUM(b.total_amount), 0) as total_revenue
+           FROM bookings b
+           JOIN service_packages sp ON b.business_service_id = sp.id
+           WHERE sp.service_provider_id = ? AND b.status = 'completed'`,
+          [providerId]
+        ) as any[];
+
+        totalRevenue += bookingsRevenue[0]?.total_revenue || 0;
+
+        // Get monthly revenue from bookings
+        const monthlyBookingsRevenue = await query(
+          `SELECT COALESCE(SUM(b.total_amount), 0) as total_revenue
+           FROM bookings b
+           JOIN service_packages sp ON b.business_service_id = sp.id
+           WHERE sp.service_provider_id = ? AND b.status = 'completed'
+           AND MONTH(b.created_at) = MONTH(CURRENT_DATE())
+           AND YEAR(b.created_at) = YEAR(CURRENT_DATE())`,
+          [providerId]
+        ) as any[];
+
+        monthlyRevenue += monthlyBookingsRevenue[0]?.total_revenue || 0;
+      }
     }
 
     // 2. Get new clients count (last 30 days unique users)
@@ -266,8 +326,20 @@ export async function GET(request: NextRequest) {
       providerInfo: providerInfo[0],
       stats: [
         {
-          name: 'Total Revenue',
-          value: `₱${totalRevenue.toLocaleString()}`,
+          name: 'Total Revenue (All Time)',
+          value: `₱${totalRevenue.toLocaleString('en-US', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+          })}`,
+          change: `${revenueChange > 0 ? '+' : ''}${revenueChange.toFixed(0)}%`,
+          changeType: revenueChange >= 0 ? 'increase' : 'decrease',
+        },
+        {
+          name: 'Monthly Revenue',
+          value: `₱${monthlyRevenue.toLocaleString('en-US', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+          })}`,
           change: `${revenueChange > 0 ? '+' : ''}${revenueChange.toFixed(0)}%`,
           changeType: revenueChange >= 0 ? 'increase' : 'decrease',
         },
