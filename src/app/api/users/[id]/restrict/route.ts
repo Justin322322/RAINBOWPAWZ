@@ -53,7 +53,7 @@ export async function PUT(request: NextRequest) {
     try {
       // Check if user exists
       const userResult = await query(
-        'SELECT id, role FROM users WHERE id = ? LIMIT 1',
+        'SELECT user_id, role FROM users WHERE user_id = ? LIMIT 1',
         [userId]
       ) as any[];
 
@@ -143,9 +143,9 @@ export async function PUT(request: NextRequest) {
 
       // Get updated user data to return
       const updatedUserResult = await query(
-        `SELECT id, first_name, last_name, email, phone_number, address, sex,
+        `SELECT user_id, first_name, last_name, email, phone_number, address, sex,
          created_at, updated_at, is_otp_verified, role, status, is_verified
-         FROM users WHERE id = ? LIMIT 1`,
+         FROM users WHERE user_id = ? LIMIT 1`,
         [userId]
       ) as any[];
 

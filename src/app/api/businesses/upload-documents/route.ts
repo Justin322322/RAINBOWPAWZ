@@ -51,7 +51,7 @@ export async function POST(request: Request) {
 
     // Verify user exists
     const userCheck = await query(
-      `SELECT id, first_name, last_name, email, role FROM users WHERE id = ?`,
+      `SELECT user_id, first_name, last_name, email, role FROM users WHERE user_id = ?`,
       [userIdStr]
     ) as any[];
     

@@ -72,8 +72,12 @@ export async function GET(
       if (provider) {
         const providerCoordinates = getBataanCoordinates(provider.address || provider.city || 'Bataan');
         const distanceValue = calculateDistance(userCoordinates, providerCoordinates);
-        provider.distance = `${distanceValue} km away`;
-        provider.distanceValue = distanceValue;
+        const enhancedProvider = {
+          ...provider,
+          distance: `${distanceValue} km away`,
+          distanceValue: distanceValue
+        };
+        return NextResponse.json({ provider: enhancedProvider });
       }
       return NextResponse.json({ provider });
     }
@@ -249,8 +253,8 @@ export async function GET(
             // Calculate actual distance based on coordinates
             const businessCoordinates = getBataanCoordinates(formattedBusiness.address || formattedBusiness.city || 'Bataan');
             const distanceValue = calculateDistance(userCoordinates, businessCoordinates);
-            formattedBusiness.distance = `${distanceValue} km away`;
-            formattedBusiness.distanceValue = distanceValue;
+            (formattedBusiness as any).distance = `${distanceValue} km away`;
+            (formattedBusiness as any).distanceValue = distanceValue;
           } catch (err) {
           }
 
@@ -340,13 +344,18 @@ export async function GET(
 
         // Calculate actual distance for the requested provider
         const provider = testProviders[id as keyof typeof testProviders];
+        let enhancedProvider = { ...provider };
+        
         if (provider) {
           const providerCoordinates = getBataanCoordinates(provider.address || provider.city || 'Bataan');
           const distanceValue = calculateDistance(userCoordinates, providerCoordinates);
-          provider.distance = `${distanceValue} km away`;
-          provider.distanceValue = distanceValue;
+          enhancedProvider = {
+            ...provider,
+            distance: `${distanceValue} km away`,
+            distanceValue: distanceValue
+          } as any;
         }
-        return NextResponse.json({ provider });
+        return NextResponse.json({ provider: enhancedProvider });
       }
 
       return NextResponse.json(

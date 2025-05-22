@@ -423,3 +423,34 @@ export const createBusinessVerificationEmail = (businessDetails: {
     html: baseEmailTemplate(statusContent)
   };
 };
+
+// Application decline email template
+export const createApplicationDeclineEmail = (applicationDetails: {
+  businessName: string;
+  contactName: string;
+  reason: string;
+}) => {
+  const subject = 'Application Status Update - Rainbow Paws';
+
+  const content = `
+    <h2>Application Status Update</h2>
+    <p>Dear ${applicationDetails.contactName},</p>
+    <p>Thank you for your interest in joining Rainbow Paws as a service provider.</p>
+    <p>After careful review of your application for <strong>${applicationDetails.businessName}</strong>, we regret to inform you that we are unable to approve it at this time.</p>
+
+    <div class="info-box">
+      <h3 style="margin-top: 0;">Reason for Decline</h3>
+      <p>${applicationDetails.reason}</p>
+    </div>
+
+    <p>If you believe this decision was made in error or if you would like to provide additional information, please feel free to contact our support team.</p>
+    <p>We appreciate your understanding and wish you the best in your future endeavors.</p>
+
+    <p>Sincerely,<br>The Rainbow Paws Team</p>
+  `;
+
+  return {
+    subject,
+    html: baseEmailTemplate(content)
+  };
+};

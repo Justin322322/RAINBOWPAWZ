@@ -184,6 +184,7 @@ export function usePackages({ userData }: UsePackagesProps) {
   return {
     packages,
     isLoading,
+    setIsLoading,
     searchTerm,
     setSearchTerm,
     categoryFilter,

@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
       if (!bookingDetails) {
         // Get user email from database
         try {
-          const userResult = await query('SELECT email, first_name, last_name FROM users WHERE id = ?', [userId]) as any[];
+          const userResult = await query('SELECT email, first_name, last_name FROM users WHERE user_id = ?', [userId]) as any[];
           if (userResult && userResult.length > 0) {
             userEmail = userResult[0].email;
 

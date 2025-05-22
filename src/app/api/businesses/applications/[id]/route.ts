@@ -44,9 +44,9 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
         FROM
           service_providers bp
         JOIN
-          users u ON bp.user_id = u.id
+          users u ON bp.user_id = u.user_id
         WHERE
-          bp.id = ?
+          bp.provider_id = ?
       `, [businessId]) as any[];
     } else {
       // Fallback query for schemas without application_status
@@ -67,9 +67,9 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
         FROM
           service_providers bp
         JOIN
-          users u ON bp.user_id = u.id
+          users u ON bp.user_id = u.user_id
         WHERE
-          bp.id = ?
+          bp.provider_id = ?
       `, [businessId]) as any[];
     }
 
@@ -126,8 +126,8 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 
     // Format application data with all fields
     const applicationData = {
-      id: `APP${business.id.toString().padStart(3, '0')}`,
-      businessId: business.id,
+      id: `APP${business.provider_id.toString().padStart(3, '0')}`,
+      businessId: business.provider_id,
       businessName: business.business_name,
       owner: `${business.contact_first_name} ${business.contact_last_name}`,
       email: business.email,

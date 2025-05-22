@@ -44,7 +44,7 @@ export async function PUT(request: NextRequest) {
 
     // Get current user data
     const currentUserResult = await query(
-      'SELECT role FROM users WHERE id = ? LIMIT 1',
+      'SELECT role FROM users WHERE user_id = ? LIMIT 1',
       [userId]
     ) as any[];
 
@@ -77,7 +77,7 @@ export async function PUT(request: NextRequest) {
         if (!adminProfileResult || adminProfileResult.length === 0) {
           // Get user details
           const userDetailsResult = await query(
-            'SELECT first_name, last_name FROM users WHERE id = ? LIMIT 1',
+            'SELECT first_name, last_name FROM users WHERE user_id = ? LIMIT 1',
             [userId]
           ) as any[];
 
@@ -105,9 +105,9 @@ export async function PUT(request: NextRequest) {
 
       // Get updated user data to return
       const userResult = await query(
-        `SELECT id, first_name, last_name, email, phone_number, address, sex,
+        `SELECT user_id, first_name, last_name, email, phone_number, address, sex,
          created_at, updated_at, is_otp_verified, role, status, is_verified
-         FROM users WHERE id = ? LIMIT 1`,
+         FROM users WHERE user_id = ? LIMIT 1`,
         [userId]
       ) as any[];
 

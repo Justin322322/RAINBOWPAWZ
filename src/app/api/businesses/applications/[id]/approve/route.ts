@@ -47,7 +47,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
            verification_date = NOW(),
            verification_notes = ?,
            updated_at = NOW()
-       WHERE id = ?`,
+       WHERE provider_id = ?`,
       [notes || 'Application approved', businessId]
     ) as mysql.ResultSetHeader;
 
@@ -67,15 +67,15 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
           u.last_name,
           bp.name as business_name
          FROM service_providers bp
-         JOIN users u ON bp.user_id = u.id
-         WHERE bp.id = ?`,
+         JOIN users u ON bp.user_id = u.user_id
+         WHERE bp.provider_id = ?`,
         [businessId]
       ) as any[];
     } else {
       businessResult = await query(
         `SELECT bp.*, u.email, u.first_name, u.last_name
          FROM business_profiles bp
-         JOIN users u ON bp.user_id = u.id
+         JOIN users u ON bp.user_id = u.user_id
          WHERE bp.id = ?`,
         [businessId]
       ) as any[];
@@ -86,9 +86,9 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     // Update the user's verification status as well
     await query(
       `UPDATE users u
-       JOIN ${tableName} bp ON u.id = bp.user_id
+       JOIN ${tableName} bp ON u.user_id = bp.user_id
        SET u.is_verified = 1
-       WHERE bp.id = ?`,
+       WHERE bp.provider_id = ?`,
       [businessId]
     );
 

@@ -128,11 +128,23 @@ function EditPackagePage({ userData }: EditPackagePageProps) {
             // Ensure price is a number
             price: typeof data.package.price === 'string' ?
               parseFloat(data.package.price) : data.package.price,
+            // Ensure deliveryFeePerKm is a number
+            deliveryFeePerKm: typeof data.package.deliveryFeePerKm === 'string' ?
+              parseFloat(data.package.deliveryFeePerKm) : (data.package.deliveryFeePerKm || 0),
             // Use the processed add-ons
             addOns: processedAddOns
           };
 
           console.log('Formatted package data for form:', JSON.stringify(formattedData, null, 2));
+
+          // Ensure deliveryFeePerKm is properly set
+          if (formattedData.deliveryFeePerKm === undefined) {
+            formattedData.deliveryFeePerKm = 0;
+            console.log('Setting default deliveryFeePerKm to 0');
+          } else {
+            console.log('Using deliveryFeePerKm from API:', formattedData.deliveryFeePerKm);
+          }
+
           setFormData(formattedData);
         } else {
           setErrors({ submit: 'Package not found' });
@@ -163,10 +175,21 @@ function EditPackagePage({ userData }: EditPackagePageProps) {
       });
     }
 
-    setFormData(prev => ({
-      ...prev,
-      [name]: name === 'price' || name === 'deliveryFeePerKm' ? parseFloat(value) || 0 : value
-    }));
+    // Handle numeric fields properly
+    if (name === 'price' || name === 'deliveryFeePerKm') {
+      const numValue = value === '' ? 0 : parseFloat(value);
+      console.log(`Setting ${name} to:`, numValue);
+
+      setFormData(prev => ({
+        ...prev,
+        [name]: numValue
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }
   };
 
   // Handle adding a new inclusion
@@ -335,49 +358,96 @@ function EditPackagePage({ userData }: EditPackagePageProps) {
     try {
       // Log the current form data for debugging
       console.log('Current form data before submission:', formData);
+      console.log('Form data stringified:', JSON.stringify(formData, null, 2));
 
-      // Prepare the data to send - ensure all fields are properly formatted
+      // Create a fresh object with only the fields we need
       const dataToSend = {
-        ...formData,
-        // Ensure price is a number
-        price: typeof formData.price === 'string' ? parseFloat(formData.price) : formData.price,
-        // Ensure addOns are properly formatted
-        addOns: formData.addOns.map(addon => {
-          console.log('Processing addon for submission:', addon);
-          return {
-            name: addon.name,
-            price: addon.price !== null && addon.price !== undefined ?
-              (typeof addon.price === 'string' ? parseFloat(addon.price) : addon.price) :
-              null
-          };
-        })
+        id: parseInt(packageId),
+        name: formData.name,
+        description: formData.description,
+        category: formData.category,
+        cremationType: formData.cremationType,
+        processingTime: formData.processingTime,
+        price: Number(formData.price),
+        deliveryFeePerKm: Number(formData.deliveryFeePerKm || 0),
+        conditions: formData.conditions,
+
+        // Format inclusions as an array of strings
+        inclusions: formData.inclusions.map(inc => String(inc)),
+
+        // Format add-ons properly
+        addOns: formData.addOns.map(addon => ({
+          name: String(addon.name),
+          price: addon.price !== null && addon.price !== undefined ?
+            Number(addon.price) : null
+        })),
+
+        // Ensure images are properly formatted
+        images: formData.images.map(img => String(img))
       };
 
+      console.log('Clean data to send:', JSON.stringify(dataToSend, null, 2));
+
+      // Log the data being sent for debugging
       console.log('Submitting package update with data:', JSON.stringify(dataToSend, null, 2));
+      console.log('deliveryFeePerKm value:', dataToSend.deliveryFeePerKm);
+
+      // Log the request details
+      console.log('Sending PATCH request to:', `/api/packages/${packageId}`);
+      console.log('Request payload:', JSON.stringify(dataToSend, null, 2));
 
       // Update package via API
-      const response = await fetch(`/api/packages/${packageId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(dataToSend),
-      });
+      try {
+        const response = await fetch(`/api/packages/${packageId}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include', // Ensure auth token is sent
+          body: JSON.stringify(dataToSend),
+        });
 
-      const responseData = await response.json();
+        console.log('Response status:', response.status);
+        console.log('Response headers:', Object.fromEntries(response.headers.entries()));
 
-      if (!response.ok) {
-        console.error('API error response:', responseData);
-        throw new Error(responseData.error || responseData.details || 'Failed to update package');
+        // Get the response data
+        const responseText = await response.text();
+        console.log('Raw response text:', responseText);
+
+        // Try to parse as JSON
+        let responseData;
+        try {
+          responseData = JSON.parse(responseText);
+          console.log('Parsed response data:', responseData);
+        } catch (parseError) {
+          console.error('Error parsing response as JSON:', parseError);
+          throw new Error('Invalid response format from server');
+        }
+
+        if (!response.ok) {
+          console.error('API error response:', responseData);
+          throw new Error(responseData.error || responseData.details || 'Failed to update package');
+        }
+
+        console.log('Package update response:', responseData);
+
+        // Show success toast with more details if available
+        if (responseData.success) {
+          showToast(responseData.message || 'Package updated successfully!', 'success');
+
+          // Redirect back to packages list after a short delay to ensure toast is visible
+          setTimeout(() => {
+            router.push('/cremation/packages');
+          }, 1000);
+        } else {
+          // This shouldn't happen since we already checked !response.ok above,
+          // but just in case the API returns success: false with a 200 status
+          throw new Error(responseData.error || 'Failed to update package');
+        }
+      } catch (fetchError) {
+        console.error('Error during fetch or processing:', fetchError);
+        throw fetchError;
       }
-
-      console.log('Package update response:', responseData);
-
-      // Show success toast
-      showToast('Package updated successfully!', 'success');
-
-      // Redirect back to packages list
-      router.push('/cremation/packages');
     } catch (error) {
       console.error('Error updating package:', error);
       setErrors({ submit: 'Failed to update package. Please try again.' });
@@ -488,24 +558,42 @@ function EditPackagePage({ userData }: EditPackagePageProps) {
                   <p className="mt-1 text-sm text-red-600">{errors.name}</p>
                 )}
               </div>
-              <div>
-                <label htmlFor="price" className="block text-sm font-medium text-gray-700 mb-1">
-                  Price (₱)*
-                </label>
-                <input
-                  type="number"
-                  id="price"
-                  name="price"
-                  value={formData.price || ''}
-                  onChange={handleInputChange}
-                  min="0"
-                  step="any"
-                  className={`block w-full px-3 py-2 border ${errors.price ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)] sm:text-sm`}
-                  placeholder="e.g., 3500"
-                />
-                {errors.price && (
-                  <p className="mt-1 text-sm text-red-600">{errors.price}</p>
-                )}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="price" className="block text-sm font-medium text-gray-700 mb-1">
+                    Price (₱)*
+                  </label>
+                  <input
+                    type="number"
+                    id="price"
+                    name="price"
+                    value={formData.price || ''}
+                    onChange={handleInputChange}
+                    min="0"
+                    step="any"
+                    className={`block w-full px-3 py-2 border ${errors.price ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)] sm:text-sm`}
+                    placeholder="e.g., 3500"
+                  />
+                  {errors.price && (
+                    <p className="mt-1 text-sm text-red-600">{errors.price}</p>
+                  )}
+                </div>
+                <div>
+                  <label htmlFor="deliveryFeePerKm" className="block text-sm font-medium text-gray-700 mb-1">
+                    Delivery Fee per km (₱)
+                  </label>
+                  <input
+                    type="number"
+                    id="deliveryFeePerKm"
+                    name="deliveryFeePerKm"
+                    value={formData.deliveryFeePerKm || ''}
+                    onChange={handleInputChange}
+                    min="0"
+                    step="any"
+                    className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)] sm:text-sm"
+                    placeholder="e.g., 15"
+                  />
+                </div>
               </div>
               <div>
                 <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">

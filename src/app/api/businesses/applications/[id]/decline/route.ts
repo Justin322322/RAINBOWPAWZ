@@ -3,7 +3,7 @@ import { query } from '@/lib/db';
 import mysql from 'mysql2/promise';
 
 // Import the consolidated email service
-import { sendBusinessVerificationEmail } from '@/lib/consolidatedEmailService';
+import { sendBusinessVerificationEmail, sendApplicationDeclineEmail } from '@/lib/consolidatedEmailService';
 
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
   // Extract ID from params
@@ -65,7 +65,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
            verification_notes = ?,
            verification_date = NOW(),
            updated_at = NOW()
-       WHERE id = ?`,
+       WHERE provider_id = ?`,
       [applicationStatus, note.trim(), businessId]
     ) as mysql.ResultSetHeader;
 
@@ -105,16 +105,30 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     let emailSent = false;
     if (business && business.email) {
       try {
-        // Send email using consolidated email service
-        const emailResult = await sendBusinessVerificationEmail(
-          business.email,
-          {
-            businessName: business.business_name || business.name,
-            contactName: `${business.first_name} ${business.last_name}`,
-            status: requestDocuments ? 'documents_required' : 'declined',
-            notes: note.trim()
-          }
-        );
+        let emailResult;
+
+        if (requestDocuments) {
+          // If documents are requested, use the business verification email
+          emailResult = await sendBusinessVerificationEmail(
+            business.email,
+            {
+              businessName: business.business_name || business.name,
+              contactName: `${business.first_name} ${business.last_name}`,
+              status: 'documents_required',
+              notes: note.trim()
+            }
+          );
+        } else {
+          // For declined applications, use the new dedicated template
+          emailResult = await sendApplicationDeclineEmail(
+            business.email,
+            {
+              businessName: business.business_name || business.name,
+              contactName: `${business.first_name} ${business.last_name}`,
+              reason: note.trim()
+            }
+          );
+        }
 
         if (emailResult.success) {
           emailSent = true;

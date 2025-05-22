@@ -187,7 +187,7 @@ const withBusinessVerification = <P extends object>(
     // If we have userData but are still loading, render the component anyway
     // This prevents flickering during navigation
     if (isLoading && userData) {
-      return <Component {...props} userData={userData} />;
+      return <Component {...(props as P)} userData={userData} />;
     }
 
     // If we're loading and don't have userData, let the layout handle it
@@ -203,7 +203,7 @@ const withBusinessVerification = <P extends object>(
     }
 
     // Render the wrapped component with user data
-    return <Component {...props} userData={userData} />;
+    return <Component {...(props as P)} userData={userData} />;
   };
 
   return WithBusinessVerification;

@@ -839,17 +839,17 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
                               <div className="flex justify-between">
                                 <p className="text-sm text-gray-600">Service Price:</p>
                                 <p className="text-sm font-medium text-gray-900">
-                                  ₱{(selectedBooking.basePrice || selectedBooking.service_price || selectedBooking.price || 0).toLocaleString()}
+                                  ₱{((selectedBooking.service_price || selectedBooking.price || 0) as number).toLocaleString()}
                                 </p>
                               </div>
 
                               {/* Add-ons Section */}
-                              {selectedBooking.addOns && selectedBooking.addOns.length > 0 && (
+                              {(selectedBooking as any).extras && Array.isArray((selectedBooking as any).extras) && (selectedBooking as any).extras.length > 0 && (
                                 <>
                                   <div className="mt-2 mb-1">
                                     <p className="text-sm text-gray-600 font-medium">Add-ons:</p>
                                   </div>
-                                  {selectedBooking.addOns.map((addon: any, index: number) => (
+                                  {(selectedBooking as any).extras.map((addon: any, index: number) => (
                                     <div key={index} className="flex justify-between pl-4">
                                       <p className="text-sm text-gray-600">{addon.name}</p>
                                       <p className="text-sm font-medium text-gray-900">
@@ -860,13 +860,13 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
                                   <div className="flex justify-between pl-2 mt-1">
                                     <p className="text-sm text-gray-600">Add-ons Subtotal:</p>
                                     <p className="text-sm font-medium text-gray-900">
-                                      ₱{parseFloat(selectedBooking.addOnsTotal || 0).toLocaleString()}
+                                      ₱{((selectedBooking as any).extras_total || (selectedBooking as any).extras?.reduce((sum, item) => sum + Number(item.price), 0) || 0).toLocaleString()}
                                     </p>
                                   </div>
                                 </>
                               )}
 
-                              {selectedBooking.delivery_fee > 0 && (
+                              {selectedBooking.delivery_fee && selectedBooking.delivery_fee > 0 && (
                                 <div className="flex justify-between">
                                   <p className="text-sm text-gray-600">Delivery Fee:</p>
                                   <p className="text-sm font-medium text-gray-900">
@@ -878,12 +878,12 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
                               <div className="flex justify-between pt-2 border-t border-gray-200 mt-1">
                                 <p className="text-sm font-medium text-gray-900">Total:</p>
                                 <p className="text-lg font-semibold text-[var(--primary-green)]">
-                                  ₱{parseFloat(selectedBooking.price ||
-                                     selectedBooking.total_amount ||
-                                     (Number(selectedBooking.basePrice || 0) +
-                                      Number(selectedBooking.addOnsTotal || 0) +
-                                      Number(selectedBooking.delivery_fee || 0)) ||
-                                     Number(selectedBooking.service_price) || 0).toLocaleString()}
+                                  ₱{(
+                                     Number(selectedBooking.total_amount || 0) ||
+                                     (Number(selectedBooking.service_price || selectedBooking.price || 0) +
+                                      Number((selectedBooking as any).extras_total || 0) +
+                                      Number(selectedBooking.delivery_fee || 0))
+                                  ).toLocaleString()}
                                 </p>
                               </div>
                             </div>
@@ -924,7 +924,7 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
                                         <p className="text-sm text-gray-600 mb-1">Delivery Address</p>
                                         <p className="text-sm text-gray-900">{selectedBooking.delivery_address}</p>
 
-                                        {selectedBooking.delivery_distance > 0 && (
+                                        {selectedBooking.delivery_distance && selectedBooking.delivery_distance > 0 && (
                                           <p className="text-xs text-gray-500 mt-1">
                                             Distance: {selectedBooking.delivery_distance.toFixed(1)} km
                                           </p>

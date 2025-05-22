@@ -285,7 +285,8 @@ function BookingDetailsPage({ userData }: { userData: any }) {
     } catch (error) {
 
       // Check if it's an abort error (timeout)
-      if (error.name === 'AbortError') {
+      const err = error as any;
+      if (err.name === 'AbortError') {
         setError(`Request timed out. The server took too long to respond. Please try again.`);
         return;
       }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import AdminDashboardLayout from '@/components/navigation/AdminDashboardLayout';
 import {
   MagnifyingGlassIcon,
@@ -10,327 +10,308 @@ import {
   BanknotesIcon,
   XMarkIcon,
   EyeIcon,
-  ArrowTopRightOnSquareIcon,
   ExclamationCircleIcon,
-  CurrencyDollarIcon
 } from '@heroicons/react/24/outline';
-import Link from 'next/link';
-import Image from 'next/image';
 import { PackageImage } from '@/components/packages/PackageImage';
 import { LoadingSpinner, EmptyState } from './client';
 import StarRating from '@/components/ui/StarRating';
 
-export default function AdminServicesPage() {
-  const [userName] = useState('System Administrator');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [categoryFilter, setCategoryFilter] = useState('all');
-  const [showDetailsModal, setShowDetailsModal] = useState(false);
-  const [selectedService, setSelectedService] = useState<any>(null);
-  const [imageError, setImageError] = useState<Record<string, boolean>>({});
+type Service = {
+  id: number;
+  name: string;
+  description: string;
+  category: string;
+  status: 'active' | 'inactive' | 'pending' | string;
+  price: number | string;
+  bookings: number;
+  providerId: number;
+  cremationCenter: string;
+  cremationType: string;
+  processingTime: string;
+  images: string[];
+  image: string | null;
+  rating: number;
+  inclusions: string[];
+  addOns: string[];
+  conditions: string;
+};
 
-  // Add state for real data
-  const [services, setServices] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [notification, setNotification] = useState<{message: string, type: 'success' | 'error' | null}>({
-    message: '',
-    type: null
-  });
-  const [stats, setStats] = useState({
+type Pagination = {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+};
+
+type Stats = {
+  activeServices: number;
+  totalBookings: number;
+  verifiedCenters: number;
+  monthlyRevenue: string;
+};
+
+function StatusBadge({ status }: { status: Service['status'] }) {
+  const common = 'px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full min-w-[90px] justify-center';
+  switch (status) {
+    case 'active':
+      return <span className={`${common} bg-green-100 text-green-800`}>Active</span>;
+    case 'inactive':
+      return <span className={`${common} bg-gray-100 text-gray-800`}>Inactive</span>;
+    case 'pending':
+      return <span className={`${common} bg-yellow-100 text-yellow-800`}>Pending</span>;
+    default:
+      return <span className={`${common} bg-gray-100 text-gray-800`}>{status}</span>;
+  }
+}
+
+function CategoryBadge({ category }: { category: string }) {
+  const common = 'px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full';
+  switch (category) {
+    case 'individual': return <span className={`${common} bg-blue-100 text-blue-800`}>Individual</span>;
+    case 'premium':    return <span className={`${common} bg-purple-100 text-purple-800`}>Premium</span>;
+    case 'communal':   return <span className={`${common} bg-amber-100 text-amber-800`}>Communal</span>;
+    case 'service':    return <span className={`${common} bg-emerald-100 text-emerald-800`}>Service</span>;
+    case 'memorial':   return <span className={`${common} bg-indigo-100 text-indigo-800`}>Memorial</span>;
+    default:           return <span className={`${common} bg-gray-100 text-gray-800`}>{category}</span>;
+  }
+}
+
+// Hook to fetch services + stats + pagination
+function useServices(params: {
+  search: string;
+  status: string;
+  category: string;
+  page: number;
+  limit: number;
+  onError: (msg: string) => void;
+}) {
+  const { search, status, category, page, limit } = params;
+  const [services, setServices] = useState<Service[]>([]);
+  const [pagination, setPagination] = useState<Pagination>({ total: 0, page, limit, totalPages: 0 });
+  const [stats, setStats] = useState<Stats>({
     activeServices: 0,
     totalBookings: 0,
     verifiedCenters: 0,
-    monthlyRevenue: 0
+    monthlyRevenue: '₱0.00',
   });
-  const [pagination, setPagination] = useState({
-    total: 0,
-    page: 1,
-    limit: 20,
-    totalPages: 0
-  });
+  const [loading, setLoading] = useState(true);
+  
+  // Memoize the error handler to prevent unnecessary re-renders
+  const handleError = useCallback((message: string) => {
+    params.onError(message);
+  }, [params]);
 
-  // Fetch services from API
   useEffect(() => {
-    const fetchServices = async () => {
+    let cancelled = false;
+    async function fetchAll() {
+      setLoading(true);
       try {
-        setLoading(true);
-        setError(null);
+        const qs = new URLSearchParams();
+        if (search)   qs.append('search', search);
+        if (status!=='all')   qs.append('status', status);
+        if (category!=='all') qs.append('category', category);
+        qs.append('page', `${page}`);
+        qs.append('limit', `${limit}`);
+        qs.append('_', `${Date.now()}`);
 
-        // Build query parameters
-        const params = new URLSearchParams();
-        if (searchTerm) params.append('search', searchTerm);
-        if (statusFilter !== 'all') params.append('status', statusFilter);
-        if (categoryFilter !== 'all') params.append('category', categoryFilter);
-        params.append('page', pagination.page.toString());
-        params.append('limit', pagination.limit.toString());
+        const [svcRes, imgRes] = await Promise.all([
+          fetch(`/api/admin/services/listing?${qs}`),
+          fetch(`/api/packages/available-images?${Date.now()}`),
+        ]);
 
-        // Add cache-busting parameter to ensure we get fresh data
-        params.append('_', new Date().getTime().toString());
+        if (!svcRes.ok) throw new Error(`Error ${svcRes.status}`);
+        const data = await svcRes.json();
 
-        const response = await fetch(`/api/admin/services/listing?${params.toString()}`);
-
-        if (!response.ok) {
-          throw new Error(`Failed to fetch services: ${response.status} ${response.statusText}`);
+        if (!data.success) {
+          handleError(data.error || 'Failed to fetch services');
+          return;
         }
 
-        const data = await response.json();
+        // save images list cookie
+        const imgJson = await imgRes.json();
+        if (imgJson.images) {
+          document.cookie = `packageFiles=${JSON.stringify(imgJson.images)}; path=/; max-age=300`;
+        }
 
-        // Log the response for debugging
-        console.log('Services API response:', data);
+        // normalize
+        const withImg: Service[] = data.services.map((s: any) => {
+          // Ensure we have an id field (might be package_id in the database)
+          const serviceId = s.id || s.package_id || 0;
+          
+          const imgs = Array.isArray(s.images) && s.images.length
+            ? s.images
+            : s.image ? [s.image] : [];
+          return {
+            ...s,
+            id: serviceId,
+            images: imgs,
+            image: imgs[0] ?? null,
+          };
+        });
 
-        if (data.success) {
-          // Process service images to ensure they're consistent
+        setServices(withImg);
 
-          // Find what image files exist in the uploads directory
-          try {
-            fetch('/api/packages/available-images')
-              .then(resp => resp.json())
-              .then(imgData => {
-                // Store available images in a cookie for the PackageImage component to use
-                if (imgData.images) {
-                  document.cookie = `packageFiles=${JSON.stringify(imgData.images)}; path=/; max-age=300`;
-                }
-              })
-          } catch (e) {
-          }
-
-          const servicesWithImages = data.services.map((service: any) => {
-            // Reset error state for all services
-            setImageError(prev => ({ ...prev, [service.id]: false }));
-
-            // Ensure that images is always an array
-            const images = service.images && Array.isArray(service.images) && service.images.length > 0
-              ? service.images
-              : service.image && typeof service.image === 'string'
-                ? [service.image]
-                : [];
-
-            // Remove default sample image fallback — show placeholder when no images provided
-
-            return {
-              ...service,
-              image: images.length > 0 ? images[0] : null, // Set primary image or null
-              images: images    // Set images array (empty if none)
-            };
-          });
-
-          setServices(servicesWithImages || []);
-          setPagination(data.pagination || pagination);
-
-          // Calculate stats
-          const activeCount = data.services.filter((s: any) => s.status === 'active').length;
-          const totalBookings = data.services.reduce((sum: number, s: any) => sum + (s.bookings || 0), 0);
-
-          // Get service providers count from API or calculate from unique provider IDs
-          const uniqueProviders = data.serviceProvidersCount !== undefined ?
-                                 data.serviceProvidersCount :
-                                 new Set(data.services.map((s: any) => s.providerId).filter(id => id > 0)).size;
-
-          const totalRevenue = data.services.reduce((sum: number, s: any) => sum + (s.revenue || 0), 0);
-
-          // Get monthly revenue directly from the API to match dashboard
-          // This ensures consistency between different admin pages
-          const monthlyRevenue = data.monthlyRevenue !== undefined ? data.monthlyRevenue :
-                                (data.totalRevenue !== undefined ? data.totalRevenue : totalRevenue);
-
-          console.log('Monthly revenue from API:', data.monthlyRevenue);
-          console.log('Total revenue from API:', data.totalRevenue);
-          console.log('Calculated total revenue:', totalRevenue);
-
-          setStats({
-            activeServices: activeCount,
-            totalBookings,
-            verifiedCenters: uniqueProviders,
-            monthlyRevenue: monthlyRevenue
+        // Ensure pagination data is properly set with defaults if missing
+        if (data.pagination) {
+          setPagination({
+            total: data.pagination.total || 0,
+            page: data.pagination.page || page,
+            limit: data.pagination.limit || limit,
+            totalPages: data.pagination.totalPages || Math.ceil((data.pagination.total || 0) / limit)
           });
         } else {
-          const errorMsg = data.error || 'Failed to fetch services';
-          setError(errorMsg);
-          setNotification({
-            message: errorMsg,
-            type: 'error'
+          // If pagination data is missing, calculate it from the services array
+          setPagination({
+            total: withImg.length,
+            page,
+            limit,
+            totalPages: Math.ceil(withImg.length / limit)
           });
         }
-      } catch (err) {
-        const errorMsg = err instanceof Error ? err.message : 'An unknown error occurred';
-        setError(errorMsg);
-        setNotification({
-          message: 'Failed to load services. Please try again.',
-          type: 'error'
+
+        // Fetch dashboard stats for more accurate data
+        let dashboardStats;
+        try {
+          // First try to get stats from the dedicated dashboard-stats endpoint
+          const dashboardRes = await fetch('/api/admin/dashboard-stats');
+          if (dashboardRes.ok) {
+            const dashboardData = await dashboardRes.json();
+            if (dashboardData.success && dashboardData.stats) {
+              dashboardStats = dashboardData.stats;
+            }
+          }
+
+          // If that fails, try the regular dashboard endpoint
+          if (!dashboardStats) {
+            const regularDashboardRes = await fetch('/api/admin/dashboard');
+            if (regularDashboardRes.ok) {
+              const regularData = await regularDashboardRes.json();
+              if (regularData.success && regularData.stats) {
+                dashboardStats = regularData.stats;
+              }
+            }
+          }
+        } catch (dashboardErr) {
+          console.error('Error fetching dashboard stats:', dashboardErr);
+        }
+
+        // Calculate more accurate stats
+        let activeServicesCount = 0;
+        let totalBookingsCount = 0;
+        let serviceProvidersCount = 0;
+        let monthlyRevenueAmount = 0;
+
+        // Try to get the most accurate values from various sources
+        if (dashboardStats) {
+          // Use dashboard stats if available
+          activeServicesCount = dashboardStats.services?.count || 0;
+          serviceProvidersCount = dashboardStats.activeUsers?.cremation || 0;
+          monthlyRevenueAmount = dashboardStats.revenue?.amount || 0;
+        }
+
+        // If dashboard stats are missing or zero, fall back to API data
+        if (activeServicesCount === 0 && data.activeServicesCount) {
+          activeServicesCount = data.activeServicesCount;
+        }
+
+        if (serviceProvidersCount === 0 && data.serviceProvidersCount) {
+          serviceProvidersCount = data.serviceProvidersCount;
+        }
+
+        // If we have monthly revenue from API, parse it
+        if (monthlyRevenueAmount === 0 && data.monthlyRevenue) {
+          // Try to parse the formatted string (e.g., "₱25,000.00")
+          const match = data.monthlyRevenue.match(/[0-9,.]+/);
+          if (match) {
+            monthlyRevenueAmount = parseFloat(match[0].replace(/,/g, '')) || 0;
+          }
+        }
+
+        // Last resort: calculate from the services array
+        if (activeServicesCount === 0) {
+          activeServicesCount = withImg.filter(s => s.status === 'active').length;
+        }
+
+        // Calculate total bookings from services
+        totalBookingsCount = data.totalBookings || withImg.reduce((sum, s) => sum + (s.bookings || 0), 0);
+
+        // If service providers count is still 0, calculate from unique provider IDs
+        if (serviceProvidersCount === 0) {
+          serviceProvidersCount = new Set(withImg.filter(s => s.providerId).map(s => s.providerId)).size;
+        }
+
+        // Format the monthly revenue with the Philippine Peso symbol
+        const formattedMonthlyRevenue = monthlyRevenueAmount > 0
+          ? `₱${monthlyRevenueAmount.toLocaleString('en-US', {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2
+            })}`
+          : '₱0.00';
+
+        // Set the stats with our values, using the real monthly revenue
+        setStats({
+          activeServices: activeServicesCount,
+          totalBookings: totalBookingsCount,
+          verifiedCenters: serviceProvidersCount,
+          monthlyRevenue: formattedMonthlyRevenue,
         });
+      } catch (err: any) {
+        handleError(err.message || 'Unknown error');
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
-    };
+    }
+    fetchAll();
+    return () => { cancelled = true; };
+  }, [search, status, category, page, limit, handleError]);
 
-    fetchServices();
-  }, [searchTerm, statusFilter, categoryFilter, pagination.page, pagination.limit]);
+  return { services, loading, stats, pagination, setPagination };
+}
 
-  // Filter services based on search term, status filter, and category filter
-  const filteredServices = services.filter(service => {
-    const matchesSearch =
-      service.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      service.cremationCenter.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (service.id && service.id.toString().includes(searchTerm.toLowerCase()));
+export default function AdminServicesPage() {
+  const [userName]       = useState('System Administrator');
+  const [searchTerm, setSearchTerm]       = useState('');
+  const [statusFilter, setStatusFilter]   = useState('all');
+  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [notification, setNotification]   = useState<{ message: string; type: 'error'|'success'|null }>({ message:'', type:null });
+  const [page, setPage]     = useState(1);
+  const limit = 20;
 
-    const matchesStatus = statusFilter === 'all' || service.status === statusFilter;
-    const matchesCategory = categoryFilter === 'all' || service.category === categoryFilter;
-
-    return matchesSearch && matchesStatus && matchesCategory;
+  const debouncedSearch = useDebounce(searchTerm, 300);
+  const { services, loading, stats, pagination, setPagination } = useServices({
+    search: debouncedSearch,
+    status: statusFilter,
+    category: categoryFilter,
+    page, limit,
+    onError: (msg) => setNotification({ message: msg, type: 'error' }),
   });
 
-  const handleViewDetails = (service: any) => {
-    setSelectedService(service);
-    setShowDetailsModal(true);
-  };
-
-  // Get status badge based on service status
-  const getStatusBadge = (status: string) => {
-    switch(status) {
-      case 'active':
-        return (
-          <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 min-w-[90px] justify-center">
-            Active
-          </span>
-        );
-      case 'inactive':
-        return (
-          <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800 min-w-[90px] justify-center">
-            Inactive
-          </span>
-        );
-      case 'pending':
-        return (
-          <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800 min-w-[90px] justify-center">
-            Pending
-          </span>
-        );
-      default:
-        return (
-          <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800 min-w-[90px] justify-center">
-            {status}
-          </span>
-        );
-    }
-  };
-
-  // Get category badge
-  const getCategoryBadge = (category: string) => {
-    switch(category) {
-      case 'individual':
-        return (
-          <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
-            Individual
-          </span>
-        );
-      case 'premium':
-        return (
-          <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800">
-            Premium
-          </span>
-        );
-      case 'communal':
-        return (
-          <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-amber-100 text-amber-800">
-            Communal
-          </span>
-        );
-      case 'service':
-        return (
-          <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-emerald-100 text-emerald-800">
-            Service
-          </span>
-        );
-      case 'memorial':
-        return (
-          <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-indigo-100 text-indigo-800">
-            Memorial
-          </span>
-        );
-      default:
-        return (
-          <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
-            {category}
-          </span>
-        );
-    }
-  };
-
-  // Helper function to render image or placeholder
-  const renderServiceImage = (service: any, large: boolean = false) => {
-    // Create a proper images array for the PackageImage component
-    let images: string[] = [];
-
-    // Add images from service.images array if it exists
-    if (service.images && service.images.length > 0) {
-      images = [...service.images];
-    }
-
-    // Add the main image if it exists and isn't already in the images array
-    if (service.image) {
-      // Process the path correctly
-      const imagePath = service.image.startsWith('http')
-        ? service.image
-        : service.image.startsWith('/')
-          ? service.image
-          : `/uploads/${service.image}`;
-
-      if (!images.includes(imagePath)) {
-        images.push(imagePath);
-      }
-    }
-
-    // Removed automatic image path generation based on package ID
-
-    // Check if we have any images to display
-    if (images.length === 0 || imageError[service.id]) {
-      return (
-        <div className={`w-full h-full flex items-center justify-center bg-gray-100 ${large ? 'rounded-lg' : ''}`}>
-          <div className="text-center p-4">
-            <svg
-              className="mx-auto h-12 w-12 text-gray-400"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              aria-hidden="true"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="1.5"
-                d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z"
-              />
-            </svg>
-          </div>
-        </div>
-      );
-    }
-
-    return (
-      <div className="relative w-full h-full">
-        <PackageImage
-          images={images}
-          alt={service.name || 'Service package'}
-          size={large ? 'large' : 'large'}
-          className="object-cover"
-          onError={() => {
-            setImageError(prev => ({ ...prev, [service.id]: true }));
-          }}
-        />
-      </div>
+  const filteredServices = useMemo(() => {
+    const term = debouncedSearch.toLowerCase();
+    return services.filter(s =>
+      s.name.toLowerCase().includes(term) ||
+      s.cremationCenter.toLowerCase().includes(term) ||
+      `${s.id}`.includes(term)
     );
-  };
+  }, [services, debouncedSearch]);
 
-  // Clear notification after 5 seconds
+  const [showModal, setShowModal] = useState(false);
+  const [selected, setSelected] = useState<Service | null>(null);
+  const [imageError, setImageError] = useState<Record<number, boolean>>({});
+
+  const openDetails = useCallback((svc: Service) => {
+    setSelected(svc);
+    setShowModal(true);
+  }, []);
+  const closeDetails = useCallback(() => setShowModal(false), []);
+
+  // clear notifications
   useEffect(() => {
     if (notification.type) {
-      const timer = setTimeout(() => {
-        setNotification({ message: '', type: null });
-      }, 5000);
-
-      return () => clearTimeout(timer);
+      const t = setTimeout(() => setNotification({ message:'', type:null }), 5000);
+      return () => clearTimeout(t);
     }
+    return undefined; // Explicitly return undefined when there's no cleanup needed
   }, [notification]);
 
   return (
@@ -338,396 +319,482 @@ export default function AdminServicesPage() {
       {/* Notification */}
       {notification.type && (
         <div className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg flex items-center ${
-          notification.type === 'error' ? 'bg-red-50 text-red-800 border border-red-200' :
-          'bg-green-50 text-green-800 border border-green-200'
+          notification.type==='error'
+            ? 'bg-red-50 text-red-800 border border-red-200'
+            : 'bg-green-50 text-green-800 border border-green-200'
         }`}>
-          {notification.type === 'error' ? (
-            <ExclamationCircleIcon className="h-5 w-5 mr-2 text-red-500" />
-          ) : (
-            <svg className="h-5 w-5 mr-2 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-          )}
+          {notification.type==='error'
+            ? <ExclamationCircleIcon className="h-5 w-5 mr-2 text-red-500"/>
+            : <span className="h-5 w-5 mr-2 text-green-500">✔</span>}
           <span>{notification.message}</span>
-          <button
-            onClick={() => setNotification({ message: '', type: null })}
-            className="ml-4 text-gray-500 hover:text-gray-700"
-          >
+          <button onClick={()=>setNotification({message:'',type:null})} className="ml-4 text-gray-500 hover:text-gray-700">
             <XMarkIcon className="h-4 w-4" />
           </button>
         </div>
       )}
 
-      {/* Header section */}
+      {/* Header */}
       <div className="mb-8 bg-white rounded-xl shadow-sm p-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
           <div>
             <h1 className="text-2xl font-semibold text-gray-800">Active Services</h1>
-            <p className="text-gray-600 mt-1">Monitor and manage cremation services offered by providers</p>
+            <p className="text-gray-600 mt-1">Monitor and manage cremation services</p>
           </div>
-          <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3 w-full md:w-auto">
+          <div className="flex flex-wrap gap-3">
             <div className="relative flex-grow sm:max-w-xs">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
-              </div>
+              <MagnifyingGlassIcon className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none h-5 w-5 text-gray-400" />
               <input
                 type="text"
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)] sm:text-sm"
+                onChange={e=>setSearchTerm(e.target.value)}
                 placeholder="Search services..."
+                className="block w-full pl-10 pr-3 py-2 border rounded-lg focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
               />
             </div>
-            <div className="flex space-x-3">
-              <div className="relative flex-grow">
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="block w-full pl-3 pr-10 py-2 border border-gray-300 rounded-lg leading-5 bg-white focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)] sm:text-sm appearance-none"
-                >
-                  <option value="all">All Statuses</option>
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                  <option value="pending">Pending</option>
-                </select>
-                <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-                  <svg className="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                    <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-                  </svg>
-                </div>
-              </div>
-              <div className="relative flex-grow">
-                <select
-                  value={categoryFilter}
-                  onChange={(e) => setCategoryFilter(e.target.value)}
-                  className="block w-full pl-3 pr-10 py-2 border border-gray-300 rounded-lg leading-5 bg-white focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)] sm:text-sm appearance-none"
-                >
-                  <option value="all">All Categories</option>
-                  <option value="individual">Individual</option>
-                  <option value="premium">Premium</option>
-                  <option value="communal">Communal</option>
-                  <option value="service">Service</option>
-                  <option value="memorial">Memorial</option>
-                </select>
-                <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-                  <svg className="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                    <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-                  </svg>
-                </div>
-              </div>
-            </div>
+            <Select
+              value={statusFilter}
+              onChange={e=>setStatusFilter(e.target.value)}
+              options={[
+                {label:'All Statuses',value:'all'},
+                {label:'Active',value:'active'},
+                {label:'Inactive',value:'inactive'},
+                {label:'Pending',value:'pending'},
+              ]}
+            />
+            <Select
+              value={categoryFilter}
+              onChange={e=>setCategoryFilter(e.target.value)}
+              options={[
+                {label:'All Categories',value:'all'},
+                {label:'Individual',value:'individual'},
+                {label:'Premium',value:'premium'},
+                {label:'Communal',value:'communal'},
+                {label:'Service',value:'service'},
+                {label:'Memorial',value:'memorial'},
+              ]}
+            />
           </div>
         </div>
       </div>
 
-      {/* Service Stats */}
+      {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        <div className="bg-white p-6 rounded-xl shadow-sm">
-          <div className="flex items-center">
-            <div className="p-3 rounded-full bg-green-100 text-green-800 mr-4">
-              <FireIcon className="h-6 w-6" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-600">Active Services</p>
-              <p className="text-2xl font-semibold text-gray-900">{stats.activeServices}</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white p-6 rounded-xl shadow-sm">
-          <div className="flex items-center">
-            <div className="p-3 rounded-full bg-blue-100 text-blue-800 mr-4">
-              <QueueListIcon className="h-6 w-6" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-600">Total Bookings</p>
-              <p className="text-2xl font-semibold text-gray-900">{stats.totalBookings}</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white p-6 rounded-xl shadow-sm">
-          <div className="flex items-center">
-            <div className="p-3 rounded-full bg-purple-100 text-purple-800 mr-4">
-              <ShieldCheckIcon className="h-6 w-6" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-600">Service Providers</p>
-              <p className="text-2xl font-semibold text-gray-900">{stats.verifiedCenters}</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white p-6 rounded-xl shadow-sm">
-          <div className="flex items-center">
-            <div className="p-3 rounded-full bg-amber-100 text-amber-800 mr-4">
-              <BanknotesIcon className="h-6 w-6" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-600">Monthly Revenue</p>
-              <p className="text-2xl font-semibold text-gray-900">₱{Math.round(stats.monthlyRevenue).toLocaleString()}</p>
-            </div>
-          </div>
-        </div>
+        <StatCard
+          icon={<FireIcon className="text-green-800" />}
+          label="Active Services"
+          value={typeof stats.activeServices === 'number' ? stats.activeServices : 0}
+          color="green"
+        />
+        <StatCard
+          icon={<QueueListIcon className="text-blue-800" />}
+          label="Total Bookings"
+          value={typeof stats.totalBookings === 'number' ? stats.totalBookings : 0}
+          color="blue"
+        />
+        <StatCard
+          icon={<ShieldCheckIcon className="text-purple-800" />}
+          label="Service Providers"
+          value={typeof stats.verifiedCenters === 'number' ? stats.verifiedCenters : 0}
+          color="purple"
+        />
+        <StatCard
+          icon={<BanknotesIcon className="text-amber-800" />}
+          label="Monthly Revenue"
+          value={stats.monthlyRevenue || '₱0.00'}
+          color="amber"
+        />
       </div>
 
       {/* Content */}
       {loading ? (
-        <div className="bg-white rounded-xl shadow-sm overflow-hidden mb-8">
-          <LoadingSpinner />
-        </div>
-      ) : error ? (
-        <div className="bg-white rounded-xl shadow-sm overflow-hidden mb-8 p-6 text-center">
-          <ExclamationCircleIcon className="h-12 w-12 text-red-500 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900">Error Loading Services</h3>
-          <p className="mt-2 text-gray-500">{error}</p>
-        </div>
+        <LoadingSpinner />
       ) : filteredServices.length === 0 ? (
-        <div className="bg-white rounded-xl shadow-sm overflow-hidden mb-8">
-          <EmptyState />
-        </div>
+        <EmptyState />
       ) : (
-        // Card View
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-          {filteredServices.map((service) => (
-            <div key={service.id} className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
-              <div className="w-full h-48 relative">
-                <div className="absolute top-2 right-2 z-10">
-                  {getStatusBadge(service.status)}
-                </div>
-                <div className="absolute top-2 left-2 z-10">
-                  {getCategoryBadge(service.category)}
-                </div>
-                {renderServiceImage(service)}
-              </div>
-              <div className="p-4">
-                <div className="flex justify-between items-start mb-2">
-                  <h3 className="font-semibold text-gray-900 text-lg">{service.name}</h3>
-                  <p className="font-bold text-[var(--primary-green)]">{service.price}</p>
-                </div>
-                <p className="text-sm text-gray-600 mb-2">{service.cremationCenter}</p>
-
-                {/* Rating display */}
-                <div className="flex items-center mb-2">
-                  <StarRating rating={service.rating} size="small" />
-                  <span className="ml-2 text-xs text-gray-600">
-                    {service.rating ? parseFloat(service.rating).toFixed(1) : '0'} rating
-                  </span>
-                </div>
-
-                <p className="text-sm text-gray-700 line-clamp-2 mb-3">{service.description}</p>
-
-                <div className="flex items-center mb-2">
-                  <div className="flex items-center">
-                    <QueueListIcon className="h-4 w-4 text-blue-500 mr-1" />
-                    <span className="text-xs text-gray-600">{parseInt(service.bookings) || 0} bookings</span>
-                  </div>
-                </div>
-
-                <div className="flex justify-end">
-                  <button
-                    onClick={() => handleViewDetails(service)}
-                    className="px-3 py-1.5 bg-[var(--primary-green)] text-white text-sm rounded-lg flex items-center"
-                  >
-                    <EyeIcon className="h-4 w-4 mr-1" />
-                    View Details
-                  </button>
-                </div>
-              </div>
-            </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredServices.map(svc => (
+            <ServiceCard
+              key={svc.id}
+              service={svc}
+              onViewDetails={openDetails}
+              imageError={imageError}
+              setImageError={setImageError}
+            />
           ))}
         </div>
       )}
 
-      {/* Service Details Modal */}
-      {showDetailsModal && selectedService && (
-        <div className="fixed inset-0 overflow-y-auto z-50">
-          <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true"></div>
-            <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
-              <div className="absolute top-0 right-0 pt-4 pr-4">
-                <button
-                  type="button"
-                  onClick={() => setShowDetailsModal(false)}
-                  className="bg-white rounded-md text-gray-400 hover:text-gray-500 focus:outline-none"
-                >
-                  <XMarkIcon className="h-6 w-6" />
-                </button>
-              </div>
-              <div className="bg-white p-6">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  {/* Service Image */}
-                  <div className="md:col-span-1">
-                    <div className="aspect-square w-full rounded-lg overflow-hidden mb-4">
-                      {renderServiceImage(selectedService, true)}
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <div>
-                        {getStatusBadge(selectedService.status)}
-                      </div>
-                      <div>
-                        {getCategoryBadge(selectedService.category)}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Service Details */}
-                  <div className="md:col-span-2">
-                    <h3 className="text-xl font-medium text-gray-900 mb-4">{selectedService.name}</h3>
-
-                    <div className="mb-4">
-                      <div className="flex items-center">
-                        <p className="text-sm font-medium text-gray-500 mr-2">Rating:</p>
-                        <StarRating rating={selectedService.rating} size="medium" />
-                        <span className="ml-2 text-gray-700">
-                          {selectedService.rating ? selectedService.rating.toFixed(1) : '0'} out of 5
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4 mb-4">
-                      <div>
-                        <p className="text-sm font-medium text-gray-500">Provider</p>
-                        <p className="text-base text-gray-900">{selectedService.cremationCenter}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-gray-500">Price</p>
-                        <p className="text-base text-gray-900">{selectedService.price}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-gray-500">Cremation Type</p>
-                        <p className="text-base text-gray-900">{selectedService.cremationType || 'Standard'}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-gray-500">Processing Time</p>
-                        <p className="text-base text-gray-900">{selectedService.processingTime || '2-3 days'}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-gray-500">Bookings</p>
-                        <p className="text-base text-gray-900">{selectedService.bookings || 0}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-gray-500">Category</p>
-                        <p className="text-base capitalize text-gray-900">{selectedService.category || 'Standard'}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-gray-500">Status</p>
-                        <div className="mt-1">{getStatusBadge(selectedService.status)}</div>
-                      </div>
-                    </div>
-
-                    <div className="mb-4">
-                      <p className="text-sm font-medium text-gray-500">Description</p>
-                      <p className="text-base text-gray-900">{selectedService.description}</p>
-                    </div>
-
-                    <div className="mb-4">
-                      <p className="text-sm font-medium text-gray-500 mb-2">Inclusions</p>
-                      {selectedService.inclusions && selectedService.inclusions.length > 0 ? (
-                        <ul className="list-disc pl-5 text-sm text-gray-700 space-y-1">
-                          {selectedService.inclusions.map((inclusion: string, idx: number) => (
-                            <li key={idx}>{inclusion}</li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <p className="text-sm text-gray-500">No inclusions specified</p>
-                      )}
-                    </div>
-
-                    <div className="mb-4">
-                      <p className="text-sm font-medium text-gray-500 mb-2">Add-ons</p>
-                      {selectedService.addOns && selectedService.addOns.length > 0 ? (
-                        <ul className="list-disc pl-5 text-sm text-gray-700 space-y-1">
-                          {selectedService.addOns.map((addon: string, idx: number) => (
-                            <li key={idx}>{addon}</li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <p className="text-sm text-gray-500">No add-ons available</p>
-                      )}
-                    </div>
-
-                    <div className="mb-4">
-                      <p className="text-sm font-medium text-gray-500 mb-2">Conditions</p>
-                      <p className="text-sm text-gray-700">{selectedService.conditions || 'No specific conditions'}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="bg-gray-50 px-6 py-3 flex flex-row-reverse">
-                <button
-                  type="button"
-                  onClick={() => setShowDetailsModal(false)}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--primary-green)]"
-                >
-                  Close
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+      {/* Details Modal */}
+      {showModal && selected && (
+        <ServiceDetailsModal
+          service={selected}
+          onClose={closeDetails}
+          imageError={imageError}
+          setImageError={setImageError}
+        />
       )}
 
       {/* Pagination */}
-      {pagination.totalPages > 1 && (
-        <div className="flex justify-center mt-8 mb-8">
-          <nav className="flex items-center space-x-2">
-            <button
-              onClick={() => setPagination(prev => ({ ...prev, page: Math.max(1, prev.page - 1) }))}
-              disabled={pagination.page === 1}
-              className={`px-3 py-1 rounded-md ${
-                pagination.page === 1
-                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                  : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300'
-              }`}
-            >
-              Previous
-            </button>
-
-            {/* Page numbers */}
-            {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
-              let pageNumber: number;
-              if (pagination.totalPages <= 5) {
-                // If we have 5 or fewer pages, show all page numbers
-                pageNumber = i + 1;
-              } else if (pagination.page <= 3) {
-                // If we're on pages 1-3, show pages 1-5
-                pageNumber = i + 1;
-              } else if (pagination.page >= pagination.totalPages - 2) {
-                // If we're on the last 3 pages, show the last 5 pages
-                pageNumber = pagination.totalPages - 4 + i;
-              } else {
-                // Otherwise, show 2 pages before and 2 pages after the current page
-                pageNumber = pagination.page - 2 + i;
-              }
-
-              return (
-                <button
-                  key={pageNumber}
-                  onClick={() => setPagination(prev => ({ ...prev, page: pageNumber }))}
-                  className={`px-3 py-1 rounded-md ${
-                    pagination.page === pageNumber
-                      ? 'bg-[var(--primary-green)] text-white font-medium'
-                      : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300'
-                  }`}
-                >
-                  {pageNumber}
-                </button>
-              );
-            })}
-
-            <button
-              onClick={() => setPagination(prev => ({ ...prev, page: Math.min(pagination.totalPages, prev.page + 1) }))}
-              disabled={pagination.page === pagination.totalPages}
-              className={`px-3 py-1 rounded-md ${
-                pagination.page === pagination.totalPages
-                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                  : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300'
-              }`}
-            >
-              Next
-            </button>
-          </nav>
-        </div>
+      {pagination && pagination.totalPages > 1 && (
+        <Pagination
+          page={pagination.page}
+          totalPages={pagination.totalPages}
+          onPageChange={p => { setPage(p); setPagination(prev=>({...prev,page:p})); }}
+        />
       )}
     </AdminDashboardLayout>
   );
+}
+
+
+// ——— Helper components below ———
+
+function Select({
+  value,
+  onChange,
+  options
+}: {
+  value: string;
+  onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
+  options: { label: string; value: string }[];
+}) {
+  return (
+    <div className="relative">
+      <select
+        value={value}
+        onChange={onChange}
+        className="block w-full pl-3 pr-10 py-2 border rounded-lg focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)] appearance-none"
+      >
+        {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+      </select>
+      <svg className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none h-5 w-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+        <path d="M5.293 7.293l4 4 4-4" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+    </div>
+  );
+}
+
+function StatCard({
+  icon,
+  label,
+  value,
+  color
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: number | string;
+  color: 'green' | 'blue' | 'purple' | 'amber';
+}) {
+  const bg = {
+    green: 'bg-green-100 text-green-800',
+    blue:  'bg-blue-100 text-blue-800',
+    purple:'bg-purple-100 text-purple-800',
+    amber: 'bg-amber-100 text-amber-800'
+  }[color];
+  return (
+    <div className="bg-white p-6 rounded-xl shadow-sm">
+      <div className="flex items-center">
+        <div className={`p-3 rounded-full ${bg} mr-4 flex items-center justify-center`}>
+          {/* Fixed size container for the icon */}
+          <div className="h-6 w-6">
+            {icon}
+          </div>
+        </div>
+        <div>
+          <p className="text-sm font-medium text-gray-600">{label}</p>
+          <p className="text-2xl font-semibold text-gray-900">{value}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ServiceCard({
+  service,
+  onViewDetails,
+  imageError,
+  setImageError
+}: {
+  service: Service;
+  onViewDetails: (s: Service) => void;
+  imageError: Record<number, boolean>;
+  setImageError: React.Dispatch<React.SetStateAction<Record<number, boolean>>>;
+}) {
+  // Format the service data for display
+  const formattedName = service.name || 'Unnamed Service';
+  const formattedCenter = service.cremationCenter || 'Cremation Center';
+  const formattedDescription = service.description || 'No description available';
+
+  // Use the exact rating from the database, defaulting to 0 if not available
+  const rating = typeof service.rating === 'number' && !isNaN(service.rating)
+    ? service.rating
+    : 0;
+
+  // Ensure bookings is a valid number
+  const bookings = typeof service.bookings === 'number' && !isNaN(service.bookings)
+    ? service.bookings
+    : 0;
+
+  return (
+    <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
+      <div className="relative w-full h-48">
+        <div className="absolute top-2 right-2 z-10"><StatusBadge status={service.status} /></div>
+        <div className="absolute top-2 left-2 z-10"><CategoryBadge category={service.category} /></div>
+        {service.images.length === 0 || imageError[service.id] ? (
+          <div className="w-full h-full flex items-center justify-center bg-gray-100">
+            <svg className="h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159..." />
+            </svg>
+          </div>
+        ) : (
+          <PackageImage
+            images={service.images}
+            alt={formattedName}
+            size="large"
+            className="object-cover w-full h-full"
+            onError={() => setImageError(prev=>({...prev,[service.id]:true}))}
+          />
+        )}
+      </div>
+      <div className="p-4">
+        <div className="flex justify-between items-start mb-2">
+          <h3 className="font-semibold text-gray-900 text-lg">{formattedName}</h3>
+          <p className="font-bold text-[var(--primary-green)]">{service.price}</p>
+        </div>
+        <p className="text-sm text-gray-600 mb-2">{formattedCenter}</p>
+        <div className="flex items-center mb-2">
+          <StarRating rating={rating} size="small" />
+          <span className="ml-2 text-xs text-gray-600">
+            {rating > 0 ? `${rating.toFixed(1)} rating` : 'No ratings'}
+          </span>
+        </div>
+        <p className="text-sm text-gray-700 line-clamp-2 mb-3">{formattedDescription}</p>
+        <div className="flex items-center mb-2">
+          <QueueListIcon className="h-4 w-4 text-blue-500 mr-1" />
+          <span className="text-xs text-gray-600">{bookings} bookings</span>
+        </div>
+        <div className="flex justify-end">
+          <button
+            onClick={() => onViewDetails(service)}
+            className="px-3 py-1.5 bg-[var(--primary-green)] text-white text-sm rounded-lg flex items-center"
+          >
+            <EyeIcon className="h-4 w-4 mr-1" /> View Details
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ServiceDetailsModal({
+  service,
+  onClose,
+  imageError,
+  setImageError
+}: {
+  service: Service;
+  onClose: () => void;
+  imageError: Record<number, boolean>;
+  setImageError: React.Dispatch<React.SetStateAction<Record<number, boolean>>>;
+}) {
+  // Format the service data for display
+  const formattedName = service.name || 'Unnamed Service';
+  const formattedCenter = service.cremationCenter || 'Cremation Center';
+  const formattedDescription = service.description || 'No description available';
+  const formattedConditions = service.conditions || 'No conditions specified';
+  const formattedType = service.cremationType || 'Standard';
+  const formattedTime = service.processingTime || '2-3 days';
+
+  // Use the exact rating from the database, defaulting to 0 if not available
+  const rating = typeof service.rating === 'number' && !isNaN(service.rating)
+    ? service.rating
+    : 0;
+
+  // Ensure bookings is a valid number
+  const bookings = typeof service.bookings === 'number' && !isNaN(service.bookings)
+    ? service.bookings
+    : 0;
+
+  // Ensure inclusions and addOns are arrays
+  const inclusions = Array.isArray(service.inclusions) ? service.inclusions : [];
+  const addOns = Array.isArray(service.addOns) ? service.addOns : [];
+
+  return (
+    <div className="fixed inset-0 overflow-y-auto z-50">
+      <div className="flex items-center justify-center min-h-screen p-4 text-center sm:p-0">
+        <div className="fixed inset-0 bg-gray-500 bg-opacity-75" />
+        <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+        <div className="inline-block align-bottom bg-white rounded-lg overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
+          <div className="absolute top-0 right-0 p-4">
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-500">
+              <XMarkIcon className="h-6 w-6" />
+            </button>
+          </div>
+          <div className="bg-white p-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Left Column: Image + badges */}
+              <div className="md:col-span-1">
+                <div className="aspect-square w-full rounded-lg overflow-hidden mb-4">
+                  {service.images.length===0 || imageError[service.id] ? (
+                    <div className="w-full h-full flex items-center justify-center bg-gray-100">
+                      <svg className="h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                          d="M2.25 15.75l5.159-5.159a2.25 2.25 0 ..."/>
+                      </svg>
+                    </div>
+                  ) : (
+                    <PackageImage
+                      images={service.images}
+                      alt={formattedName}
+                      size="large"
+                      className="object-cover w-full h-full"
+                      onError={()=>setImageError(prev=>({...prev,[service.id]:true}))}
+                    />
+                  )}
+                </div>
+                <div className="flex justify-between">
+                  <StatusBadge status={service.status} />
+                  <CategoryBadge category={service.category} />
+                </div>
+              </div>
+              {/* Right Column: Details */}
+              <div className="md:col-span-2">
+                <h3 className="text-xl font-medium text-gray-900 mb-4">{formattedName}</h3>
+                <div className="mb-4">
+                  <p className="text-sm font-medium text-gray-500">Rating:</p>
+                  <div className="flex items-center">
+                    <StarRating rating={rating} size="medium" />
+                    <span className="ml-2 text-gray-700">
+                      {rating > 0 ? `${rating.toFixed(1)} / 5` : 'No ratings yet'}
+                    </span>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  {[
+                    ['Provider', formattedCenter],
+                    ['Price', service.price],
+                    ['Cremation Type', formattedType],
+                    ['Processing Time', formattedTime],
+                    ['Bookings', bookings],
+                    ['Category', service.category],
+                    ['Status', service.status],
+                  ].map(([label, val]) => (
+                    <div key={label}>
+                      <p className="text-sm font-medium text-gray-500">{label}</p>
+                      <p className="text-base text-gray-900">{val}</p>
+                    </div>
+                  ))}
+                </div>
+                <DetailSection title="Description" content={formattedDescription} />
+                <DetailList title="Inclusions" items={inclusions} />
+                <DetailList title="Add-ons" items={addOns} />
+                <DetailSection title="Conditions" content={formattedConditions} />
+              </div>
+            </div>
+          </div>
+          <div className="bg-gray-50 px-6 py-3 flex justify-end">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border rounded-md hover:bg-gray-50 focus:ring-offset-2 focus:ring-[var(--primary-green)]"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DetailSection({ title, content }: { title: string; content: string }) {
+  return (
+    <div className="mb-4">
+      <p className="text-sm font-medium text-gray-500 mb-2">{title}</p>
+      <p className="text-sm text-gray-700">{content || '—'}</p>
+    </div>
+  );
+}
+
+function DetailList({ title, items }: { title: string; items: string[] }) {
+  return (
+    <div className="mb-4">
+      <p className="text-sm font-medium text-gray-500 mb-2">{title}</p>
+      {items.length > 0 ? (
+        <ul className="list-disc pl-5 space-y-1 text-sm text-gray-700">
+          {items.map((it, idx) => <li key={idx}>{it}</li>)}
+        </ul>
+      ) : (
+        <p className="text-sm text-gray-500">No {title.toLowerCase()} specified</p>
+      )}
+    </div>
+  );
+}
+
+function Pagination({
+  page,
+  totalPages,
+  onPageChange
+}: {
+  page: number;
+  totalPages: number;
+  onPageChange: (p: number) => void;
+}) {
+  // Ensure valid values for page and totalPages
+  const validPage = Math.max(1, page || 1);
+  const validTotalPages = Math.max(1, totalPages || 1);
+
+  const generatePages = useMemo(() => {
+    const pages: number[] = [];
+    // Ensure we don't have negative values in calculations
+    const start = Math.max(1, Math.min(validPage - 2, validTotalPages - 4));
+    for (let i = start; i <= Math.min(start + 4, validTotalPages); i++) {
+      pages.push(i);
+    }
+    return pages;
+  }, [validPage, validTotalPages]);
+
+  return (
+    <nav className="flex justify-center space-x-2 my-8">
+      <button
+        onClick={() => onPageChange(validPage - 1)}
+        disabled={validPage === 1}
+        className={`px-3 py-1 rounded-md ${
+          validPage === 1 ? 'bg-gray-100 text-gray-400' : 'bg-white text-gray-700 border'
+        }`}
+      >
+        Previous
+      </button>
+      {generatePages.map(p => (
+        <button
+          key={p}
+          onClick={() => onPageChange(p)}
+          className={`px-3 py-1 rounded-md ${
+            p === validPage ? 'bg-[var(--primary-green)] text-white' : 'bg-white text-gray-700 border'
+          }`}
+        >
+          {p}
+        </button>
+      ))}
+      <button
+        onClick={() => onPageChange(validPage + 1)}
+        disabled={validPage === validTotalPages}
+        className={`px-3 py-1 rounded-md ${
+          validPage === validTotalPages ? 'bg-gray-100 text-gray-400' : 'bg-white text-gray-700 border'
+        }`}
+      >
+        Next
+      </button>
+    </nav>
+  );
+}
+
+// Simple debounce hook
+function useDebounce<T>(val: T, delay: number) {
+  const [deb, setDeb] = useState(val);
+  useEffect(() => {
+    const t = setTimeout(() => setDeb(val), delay);
+    return () => clearTimeout(t);
+  }, [val, delay]);
+  return deb;
 }

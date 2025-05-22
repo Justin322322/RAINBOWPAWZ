@@ -111,21 +111,22 @@ export async function GET(request: NextRequest) {
         }
       });
     } catch (dbError) {
+      const err = dbError as any;
       
       // Check for specific database errors
       let errorMessage = 'Database error occurred';
-      if (dbError.code === 'ECONNREFUSED' || dbError.code === 'ETIMEDOUT') {
+      if (err.code === 'ECONNREFUSED' || err.code === 'ETIMEDOUT') {
         errorMessage = 'Could not connect to database - server may be unavailable';
-      } else if (dbError.code === 'ER_ACCESS_DENIED_ERROR') {
+      } else if (err.code === 'ER_ACCESS_DENIED_ERROR') {
         errorMessage = 'Database authentication failed';
-      } else if (dbError.code === 'PROTOCOL_CONNECTION_LOST') {
+      } else if (err.code === 'PROTOCOL_CONNECTION_LOST') {
         errorMessage = 'Database connection was lost during query';
       }
       
       return NextResponse.json({
         error: 'Failed to fetch profile data',
         message: errorMessage,
-        code: dbError.code || 'UNKNOWN_ERROR'
+        code: err.code || 'UNKNOWN_ERROR'
       }, { 
         status: 500,
         headers: {
@@ -192,7 +193,7 @@ export async function PATCH(request: NextRequest) {
       
       // Get current password hash
       const userResult = await query(
-        'SELECT password FROM users WHERE id = ?',
+        'SELECT password FROM users WHERE user_id = ?',
         [userId]
       ) as any[];
       

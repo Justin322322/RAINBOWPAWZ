@@ -186,3 +186,40 @@ export const sendBusinessVerificationEmail = async (
 
   return response.json();
 };
+
+/**
+ * Send an application decline email
+ */
+export const sendApplicationDeclineEmail = async (
+  email: string,
+  applicationDetails: {
+    businessName: string;
+    contactName: string;
+    reason: string;
+  },
+  useQueue = true
+) => {
+  const response = await fetch('/api/email', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      type: 'application_decline',
+      email,
+      businessDetails: {
+        businessName: applicationDetails.businessName,
+        contactName: applicationDetails.contactName,
+        notes: applicationDetails.reason
+      },
+      useQueue
+    }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.error || 'Failed to send application decline email');
+  }
+
+  return response.json();
+};

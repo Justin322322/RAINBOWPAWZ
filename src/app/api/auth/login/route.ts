@@ -63,7 +63,7 @@ export async function POST(request: Request) {
     let userResult;
     try {
       userResult = await query(
-        'SELECT id, first_name, last_name, email, password, role, is_verified, is_otp_verified, status FROM users WHERE email = ? LIMIT 1',
+        'SELECT user_id, first_name, last_name, email, password, role, is_verified, is_otp_verified, status FROM users WHERE email = ? LIMIT 1',
         [email]
       ) as any[];
     } catch (queryError) {
@@ -72,6 +72,9 @@ export async function POST(request: Request) {
 
     if (userResult && userResult.length > 0) {
       const user = userResult[0];
+      
+      // Add id field for client compatibility
+      user.id = user.user_id;
 
       // Check if user is restricted
       if (user.status === 'restricted') {
@@ -125,38 +128,49 @@ export async function POST(request: Request) {
 
           // Update last login timestamp
           await query(
-            'UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?',
-            [user.id]
+            'UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE user_id = ?',
+            [user.user_id]
           );
 
           // For admin accounts, fetch additional admin profile details
           if (user.role === 'admin') {
             try {
-              const adminResult = await query(
-                'SELECT username, full_name, admin_role FROM admin_profiles WHERE user_id = ? LIMIT 1',
-                [user.id]
+              // First, check if the admin_profiles table exists
+              const adminTableCheck = await query(
+                `SELECT COUNT(*) as count FROM information_schema.tables
+                 WHERE table_schema = DATABASE() AND table_name = 'admin_profiles'`
               ) as any[];
+              
+              const adminTableExists = adminTableCheck[0]?.count > 0;
+              
+              if (adminTableExists) {
+                const adminResult = await query(
+                  'SELECT username, full_name, admin_role FROM admin_profiles WHERE user_id = ? LIMIT 1',
+                  [user.user_id]
+                ) as any[];
 
-              if (adminResult && adminResult.length > 0) {
-                const adminProfile = adminResult[0];
+                if (adminResult && adminResult.length > 0) {
+                  const adminProfile = adminResult[0];
 
-                // Merge admin profile details with user data
-                const adminUser = {
-                  ...user,
-                  username: adminProfile.username,
-                  full_name: adminProfile.full_name,
-                  admin_role: adminProfile.admin_role,
-                  user_type: 'admin' // For backward compatibility
-                };
+                  // Merge admin profile details with user data
+                  const adminUser = {
+                    ...user,
+                    username: adminProfile.username,
+                    full_name: adminProfile.full_name,
+                    admin_role: adminProfile.admin_role,
+                    user_type: 'admin', // For backward compatibility
+                    id: user.user_id // Ensure id field is present
+                  };
 
-                return NextResponse.json({
-                  success: true,
-                  message: 'Login successful',
-                  user: adminUser,
-                  account_type: 'admin'
-                }, {
-                  headers
-                });
+                  return NextResponse.json({
+                    success: true,
+                    message: 'Login successful',
+                    user: adminUser,
+                    account_type: 'admin'
+                  }, {
+                    headers
+                  });
+                }
               }
             } catch (adminError) {
               // Continue with basic user data if admin details can't be fetched
@@ -168,10 +182,10 @@ export async function POST(request: Request) {
             try {
               // Check service_providers table first (new structure)
               let businessResult = await query(
-                `SELECT id, name as business_name, provider_type as business_type, phone as business_phone,
-                 address as business_address, province, city, zip
+                `SELECT provider_id, name as business_name, provider_type as business_type, phone as business_phone,
+                 address as business_address, province, city, zip, application_status as verification_status
                  FROM service_providers WHERE user_id = ? LIMIT 1`,
-                [user.id]
+                [user.user_id]
               ) as any[];
 
               // If no result, try the legacy business_profiles table
@@ -180,7 +194,7 @@ export async function POST(request: Request) {
                   `SELECT id, business_name, business_type, business_phone, business_address,
                    province, city, zip
                    FROM business_profiles WHERE user_id = ? LIMIT 1`,
-                  [user.id]
+                  [user.user_id]
                 ) as any[];
               }
 
@@ -197,9 +211,10 @@ export async function POST(request: Request) {
                   province: business.province,
                   city: business.city,
                   zip: business.zip,
-                  business_id: business.id,
+                  business_id: business.provider_id || business.id,
                   user_type: 'business', // For backward compatibility
-                  verification_status: 'approved' // Set a default value
+                  verification_status: business.verification_status || 'approved', // Use the status from DB or default
+                  id: user.user_id // Ensure id field is present
                 };
 
                 return NextResponse.json({

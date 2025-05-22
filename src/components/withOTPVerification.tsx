@@ -340,7 +340,7 @@ const withOTPVerification = <P extends object>(
         >
           {/* Create a safe copy of props to avoid React rendering issues with objects */}
           <Component
-            {...props}
+            {...(props as P)}
             userData={userData}
           />
         </div>

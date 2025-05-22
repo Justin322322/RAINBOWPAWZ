@@ -10,7 +10,13 @@
     "start:any-port": "node -e \"const port = process.argv[2] || 3001; console.log('Starting on port ' + port); require('child_process').spawn('npx', ['next', 'start', '-p', port], {stdio: 'inherit'});\"",
     "verify-images": "node scripts/verify-image-paths.js",
     "diagnose-images": "next dev -p 3002",
-    "fix-images": "node scripts/fix-image-paths.js"
+    "fix-images": "node scripts/fix-image-paths.js",
+    "lint": "next lint --max-warnings=0",
+    "lint:fix": "next lint --fix",
+    "type-check": "tsc --pretty --noEmit",
+    "type-check:watch": "tsc --noEmit --watch --pretty",
+    "check": "npm run type-check && npm run lint",
+    "check:fix": "npm run lint:fix && npm run type-check"
   },
   "dependencies": {
     "@headlessui/react": "^2.2.2",
@@ -28,6 +34,7 @@
     "leaflet-routing-machine": "^3.2.12",
     "mysql2": "^3.14.1",
     "next": "15.3.2",
+    "next-auth": "^4.24.11",
     "node-fetch": "^2.7.0",
     "nodemailer": "^7.0.3",
     "react": "^19",
@@ -37,12 +44,25 @@
     "readline": "^1.3.0"
   },
   "devDependencies": {
+    "@next/eslint-plugin-next": "^15.3.2",
     "@types/bcrypt": "^5.0.2",
+    "@types/jest": "^29.5.14",
     "@types/jsonwebtoken": "^9.0.9",
     "@types/leaflet": "^1.9.17",
     "@types/node": "22.15.17",
+    "@types/nodemailer": "^6.4.17",
     "@types/react": "19.1.4",
+    "@types/react-dom": "^19.1.5",
+    "@typescript-eslint/eslint-plugin": "^8.32.1",
+    "@typescript-eslint/parser": "^8.32.1",
     "autoprefixer": "^10.4.21",
+    "eslint": "^9.27.0",
+    "eslint-config-next": "^15.3.2",
+    "eslint-plugin-import": "^2.31.0",
+    "eslint-plugin-jsx-a11y": "^6.10.2",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "eslint-plugin-unused-imports": "^4.1.4",
     "postcss": "^8.5.3",
     "tailwindcss": "^3.4.17",
     "typescript": "5.8.3"

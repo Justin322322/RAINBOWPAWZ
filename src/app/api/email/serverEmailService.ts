@@ -20,6 +20,7 @@ export const sendEmail = async (to: string, subject: string, html: string) => {
     }
 
     // Log the email attempt
+    console.log('Sending email', {
       service: 'gmail',
       user: process.env.SMTP_USER ? process.env.SMTP_USER.substring(0, 3) + '...' : 'not set',
       to,

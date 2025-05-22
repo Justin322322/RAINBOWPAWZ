@@ -28,9 +28,6 @@ interface BusinessRegistrationData {
   lastName: string;
   businessPhone: string;
   businessAddress: string;
-  province?: string;
-  city?: string;
-  zip?: string;
   businessHours?: string;
   serviceDescription?: string;
   account_type: 'business';
@@ -204,9 +201,9 @@ export async function POST(request: Request) {
               data.lastName,
               businessData.businessPhone,
               businessData.businessAddress,
-              businessData.province || null,
-              businessData.city || null,
-              businessData.zip || null,
+              null, // province
+              null, // city
+              null, // zip
               businessData.businessHours || null,
               businessData.serviceDescription || null,
               'pending'

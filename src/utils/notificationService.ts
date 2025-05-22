@@ -40,13 +40,13 @@ export async function createNotification({
     // If requested, also send an email notification
     if (sendEmail) {
       // Get user email
-      const userResult = await query('SELECT email, first_name FROM users WHERE id = ?', [userId]) as any[];
+      const userResult = await query('SELECT email, first_name FROM users WHERE user_id = ?', [userId]) as any[];
 
-      if (userResult && userResult.length > 0) {
-        const { email, first_name } = userResult[0];
+      if (userResult && userResult.length > 0) {      const { email, first_name } = userResult[0];
 
         // Send the email notification
-        await sendEmail({
+        const emailSender = sendEmail as any;
+        await emailSender({
           to: email,
           subject: emailSubject || title,
           html: createEmailHtml(first_name, title, message, type, link),

@@ -1,182 +1,99 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import AdminDashboardLayout from '@/components/navigation/AdminDashboardLayout';
-import {
-  MagnifyingGlassIcon,
-  FunnelIcon,
-  XMarkIcon,
-  EyeIcon,
+import { useState, useCallback, useEffect } from 'react';
+import { 
+  MagnifyingGlassIcon, 
+  FunnelIcon, 
+  ArrowPathIcon, 
+  UserCircleIcon, 
+  EnvelopeIcon, 
+  PhoneIcon, 
   MapPinIcon,
-  PhoneIcon,
-  EnvelopeIcon,
-  UserCircleIcon,
-  ArrowPathIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  XMarkIcon,
   CheckCircleIcon,
   ExclamationTriangleIcon
 } from '@heroicons/react/24/outline';
-import Link from 'next/link';
-import { formatDistanceToNow } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
+import AdminDashboardLayout from '@/app/components/layout/AdminDashboardLayout';
 import ConfirmationModal from '@/components/ConfirmationModal';
+
+// Types and interfaces
+type UserStatus = 'active' | 'restricted' | 'suspended' | 'inactive';
 
 interface User {
   id: number;
   first_name: string;
   last_name: string;
   email: string;
-  phone_number: string;
-  address: string;
+  phone: string;
+  phone_number?: string; // Alias for phone
+  address?: string;
+  status: UserStatus;
   created_at: string;
-  updated_at: string;
-  last_login?: string;
-  status: string;
-  is_verified: number;
+  is_verified: number | boolean;
   pets?: number;
   completedBookings?: number;
+  last_login?: string;
   restriction?: {
-    id: number;
     reason: string;
-    restriction_date: string;
-    duration: string;
-    report_count: number;
+    restricted_at: string;
+    restricted_by: number;
+    restriction_date?: string; // Alias for restricted_at
+    duration?: string;
+    report_count?: number;
   };
 }
 
-interface PaginationData {
-  total: number;
+interface Pagination {
   page: number;
   limit: number;
-  totalPages: number;
+  total: number;
+  total_pages: number;
   hasNextPage: boolean;
   hasPrevPage: boolean;
 }
 
+// Main component
 export default function AdminFurParentsPage() {
-  const [userName] = useState('System Administrator');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [showDetailsModal, setShowDetailsModal] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
-
-  // State for real data
+  // State management
   const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  // Animation and modal states
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [isRestrictSuccess, setIsRestrictSuccess] = useState(false);
-  const [isUnrestrictSuccess, setIsUnrestrictSuccess] = useState(false);
-  const [successUserName, setSuccessUserName] = useState('');
-  const [showRestrictModal, setShowRestrictModal] = useState(false);
-  const [showUnrestrictModal, setShowUnrestrictModal] = useState(false);
-  const [restrictReason, setRestrictReason] = useState('');
-  const [pagination, setPagination] = useState<PaginationData>({
-    total: 0,
+  const [pagination, setPagination] = useState<Pagination>({
     page: 1,
     limit: 10,
-    totalPages: 0,
+    total: 0,
+    total_pages: 1,
     hasNextPage: false,
     hasPrevPage: false
   });
+  
+  // Form and filter states
+  const [searchTerm, setSearchTerm] = useState<string>('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  
+  // Modal states
+  const [showDetailsModal, setShowDetailsModal] = useState<boolean>(false);
+  const [showRestrictModal, setShowRestrictModal] = useState<boolean>(false);
+  const [showUnrestrictModal, setShowUnrestrictModal] = useState<boolean>(false);
+  const [isProcessing, setIsProcessing] = useState<boolean>(false);
+  const [restrictReason, setRestrictReason] = useState<string>('');
+  
+  // Selected user for actions
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
 
-  // Function to fetch users
-  const fetchUsers = async () => {
-    setLoading(true);
-    setError(null);
+  // Placeholder for fetchPackages - replace with actual implementation or import
+  const fetchPackages = useCallback(async () => {
+    // console.log('Fetching packages...');
+    // Example: const response = await fetch('/api/packages');
+    // const data = await response.json();
+    // setPackages(data);
+  }, []);
 
-    try {
-      // Build query parameters
-      const params = new URLSearchParams();
-      params.append('page', pagination.page.toString());
-      params.append('limit', pagination.limit.toString());
-
-      if (statusFilter !== 'all') {
-        params.append('status', statusFilter);
-      }
-
-      if (searchTerm) {
-        params.append('search', searchTerm);
-      }
-
-      // Only fetch fur parents
-      params.append('role', 'fur_parent');
-
-      const response = await fetch(`/api/users?${params.toString()}`);
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch users: ${response.status} ${response.statusText}`);
-      }
-
-      const data = await response.json();
-
-      // Process user data to add missing fields
-      const processedUsers = data.users.map((user: User) => {
-        return {
-          ...user,
-          pets: user.pets || 0,
-          completedBookings: user.completedBookings || 0,
-          // Format dates for display
-          created_at: new Date(user.created_at).toLocaleDateString(),
-          last_login: user.last_login
-            ? formatDistanceToNow(new Date(user.last_login), { addSuffix: true })
-            : 'Never'
-        };
-      });
-
-      setUsers(processedUsers);
-      setPagination(data.pagination);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An unknown error occurred');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Fetch users on initial load and when filters change
-  useEffect(() => {
-    fetchUsers();
-  }, [pagination.page, statusFilter]);
-
-  // Handle search with debounce
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (pagination.page === 1) {
-        fetchUsers();
-      } else {
-        // Reset to page 1 when search term changes
-        setPagination(prev => ({ ...prev, page: 1 }));
-      }
-    }, 500);
-
-    return () => clearTimeout(timer);
-  }, [searchTerm]);
-
-  const handleViewDetails = async (user: User) => {
-    try {
-      // Fetch detailed user information
-      const response = await fetch(`/api/users/${user.id}`);
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch user details');
-      }
-
-      const userData = await response.json();
-      setSelectedUser(userData);
-      setShowDetailsModal(true);
-    } catch (err) {
-      // Fall back to using the basic user data
-      setSelectedUser(user);
-      setShowDetailsModal(true);
-    }
-  };
-
-  // Get status badge based on user status - always show status regardless of verification
-  const getStatusBadge = (status: string, verified: number | boolean) => {
-    // Always show the actual status (active/restricted) regardless of verification
+  // Status badge component
+  const getStatusBadge = useCallback((status: UserStatus) => {
     switch(status) {
       case 'active':
         return (
@@ -191,57 +108,26 @@ export default function AdminFurParentsPage() {
           </span>
         );
       default:
-        // Default to active for any other status
         return (
-          <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 min-w-[90px] justify-center">
-            Active
+          <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800 min-w-[90px] justify-center">
+            {status.charAt(0).toUpperCase() + status.slice(1)}
           </span>
         );
     }
-  };
+  }, []);
 
-  // Function to handle status change
-  const handleStatusChange = async (userId: number, newStatus: string) => {
+  // Handle user restriction
+  const handleRestriction = useCallback(async (userId: number, restrict: boolean, reason: string = ''): Promise<boolean> => {
+    setIsProcessing(true);
     try {
-      const response = await fetch(`/api/users/${userId}/status`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ status: newStatus })
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to update user status');
-      }
-
-      // Refresh the user list
-      fetchUsers();
-
-      // If the modal is open and showing this user, update the selected user
-      if (selectedUser && selectedUser.id === userId) {
-        const updatedUser = { ...selectedUser, status: newStatus };
-        setSelectedUser(updatedUser);
-      }
-    } catch (err) {
-      alert('Failed to update user status. Please try again.');
-    }
-  };
-
-  // Function to handle user restriction
-  const handleRestriction = async (userId: number, restrict: boolean, reason?: string) => {
-    try {
-      setIsProcessing(true);
-
       const response = await fetch(`/api/users/${userId}/restrict`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          restricted: restrict,
-          reason: reason || 'Administrative action',
-          duration: 'indefinite'
+          restrict,
+          reason
         })
       });
 
@@ -249,84 +135,207 @@ export default function AdminFurParentsPage() {
         throw new Error('Failed to update user restriction');
       }
 
-      // Find the user to get their name
-      const user = users.find(u => u.id === userId);
-      if (user) {
-        const userName = `${user.first_name} ${user.last_name}`;
-        setSuccessUserName(userName);
-
-        // Update user status locally
-        setUsers(prevUsers =>
-          prevUsers.map(u =>
-            u.id === userId ? { ...u, status: restrict ? 'restricted' : 'active' } : u
-          )
-        );
-
-        // If the user is currently selected in the modal, update them
-        if (selectedUser && selectedUser.id === userId) {
-          setSelectedUser({ ...selectedUser, status: restrict ? 'restricted' : 'active' });
-        }
-
-        // Show success animation
-        if (restrict) {
-          setIsRestrictSuccess(true);
-
-          // Reset after animation completes
-          setTimeout(() => {
-            setIsRestrictSuccess(false);
-            setSuccessUserName('');
-            // Close the details modal if it's open
-            setShowDetailsModal(false);
-          }, 3000);
-        } else {
-          setIsUnrestrictSuccess(true);
-
-          // Reset after animation completes
-          setTimeout(() => {
-            setIsUnrestrictSuccess(false);
-            setSuccessUserName('');
-            // Close the details modal if it's open
-            setShowDetailsModal(false);
-          }, 3000);
-        }
-      }
-
-      // Close the confirmation modals
-      setShowRestrictModal(false);
-      setShowUnrestrictModal(false);
-
-      // Fetch updated data after animation completes
-      setTimeout(() => {
-        fetchUsers();
-      }, 3000);
+      const data = await response.json();
+      
+      // Update users list
+      setUsers((prevUsers: User[]) => 
+        prevUsers.map(user => 
+          user.id === userId 
+            ? { 
+                ...user, 
+                status: restrict ? 'restricted' : 'active', 
+                restriction: data.restriction 
+              } 
+            : user
+        )
+      );
+      
+      // Update selected user if it's the one being modified
+      setSelectedUser(prev => 
+        prev?.id === userId 
+          ? { 
+              ...prev, 
+              status: restrict ? 'restricted' : 'active',
+              restriction: data.restriction
+            } 
+          : prev
+      );
+      
+      return true;
     } catch (err) {
-      alert('Failed to update user restriction. Please try again.');
+      console.error('Error updating user restriction:', err);
+      return false;
     } finally {
       setIsProcessing(false);
     }
-  };
+  }, []);
 
-  // Function to open the restrict modal
-  const openRestrictModal = (user: User) => {
+  // Fetch users with filters
+  const fetchUsers = useCallback(async () => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams({
+        page: pagination.page.toString(),
+        limit: pagination.limit.toString(),
+        status: statusFilter,
+        search: searchTerm,
+        role: 'fur_parent'
+      });
+
+      const response = await fetch(`/api/users?${params.toString()}`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch users');
+      }
+      
+      const data = await response.json();
+      
+      setUsers(data.users || []);
+      setPagination(prev => ({
+        ...prev,
+        total: data.total || 0,
+        total_pages: data.total_pages || 1,
+        hasNextPage: data.page < data.total_pages,
+        hasPrevPage: data.page > 1
+      }));
+      
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
+    } finally {
+      setLoading(false);
+    }
+  }, [pagination.page, pagination.limit, statusFilter, searchTerm]);
+
+  // Debounce search and filter changes
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (searchTerm || statusFilter !== 'all') {
+        setPagination(prev => ({
+          ...prev,
+          page: 1
+        }));
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchTerm, statusFilter]);
+
+  // Initial fetch
+  useEffect(() => {
+    fetchUsers();
+    fetchPackages();
+  }, [fetchUsers, fetchPackages]);
+
+  // Open restrict modal
+  const openRestrictModal = useCallback((user: User) => {
     setSelectedUser(user);
     setRestrictReason('');
     setShowRestrictModal(true);
-  };
+  }, []);
 
-  // Function to confirm restriction with reason
-  const confirmRestriction = async () => {
+  // Open unrestrict modal
+  const openUnrestrictModal = useCallback((user: User) => {
+    setSelectedUser(user);
+    setShowUnrestrictModal(true);
+  }, []);
+
+  // Confirm restriction
+  const confirmRestriction = useCallback(async () => {
     if (!selectedUser) return;
-
-    if (!restrictReason || restrictReason.trim().length < 5) {
-      alert('Please provide a valid reason for restriction (minimum 5 characters)');
-      return;
+    
+    const success = await handleRestriction(
+      selectedUser.id, 
+      true, 
+      restrictReason || 'Restricted by admin'
+    );
+    
+    if (success) {
+      setShowRestrictModal(false);
+      setRestrictReason('');
     }
+  }, [selectedUser, restrictReason, handleRestriction]);
+  
+  // Confirm unrestriction
+  const confirmUnrestriction = useCallback(async () => {
+    if (!selectedUser) return;
+    
+    const success = await handleRestriction(selectedUser.id, false);
+    if (success) {
+      setShowUnrestrictModal(false);
+    }
+  }, [selectedUser, handleRestriction]);
+  
+  // Handle page change with proper type safety and pagination
+  const handlePageChange = useCallback((newPage: number) => {
+    setPagination(prev => {
+      const totalPages = prev.total_pages || 1;
+      const page = Math.max(1, Math.min(newPage, totalPages));
+      return {
+        ...prev,
+        page,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1
+      };
+    });
+  }, []);
 
-    await handleRestriction(selectedUser.id, true, restrictReason);
-  };
+  // View user details
+  const handleViewDetails = useCallback(async (user: User): Promise<void> => {
+    setSelectedUser(user);
+    
+    // Optional: Fetch additional user details if needed
+    try {
+      const response = await fetch(`/api/users/${user.id}`);
+      if (response.ok) {
+        const userData = await response.json();
+        setSelectedUser(prev => ({
+          ...prev,
+          ...userData,
+          id: user.id // Ensure ID remains the same
+        }));
+      }
+    } catch (err) {
+      console.error('Error fetching user details:', err);
+    }
+  }, []);
+
+  // Get the safe date value for display
+  const getSafeDate = useCallback((dateString: string | Date | undefined | null): Date | null => {
+    if (!dateString) return null;
+    try {
+      const date = dateString instanceof Date ? dateString : new Date(dateString);
+      return isNaN(date.getTime()) ? null : date;
+    } catch {
+      return null;
+    }
+  }, []);
+
+  // Format date for display with null/undefined safety
+  const formatDate = useCallback((dateString: string | Date | null | undefined): string => {
+    const date = getSafeDate(dateString);
+    if (!date) return 'N/A';
+    
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  }, [getSafeDate]);
+
+  // Format report count with fallback
+  const formatReportCount = useCallback((count?: number): string => {
+    return count !== undefined ? count.toString() : '0';
+  }, []);
+  
+  // Handle search input change with debounce
+  const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+  }, []);
 
   return (
-    <AdminDashboardLayout activePage="furparents" userName={userName}>
+    <AdminDashboardLayout activePage="furparents" userName="System Administrator">
       {/* Header section */}
       <div className="mb-8 bg-white rounded-xl shadow-sm p-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
@@ -342,7 +351,7 @@ export default function AdminFurParentsPage() {
               <input
                 type="text"
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={handleSearchChange}
                 className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)] sm:text-sm"
                 placeholder="Search fur parents..."
               />
@@ -486,17 +495,17 @@ export default function AdminFurParentsPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900">
-                        {user.pets || 0} pets
+                        {user.pets ?? 0} pets
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {user.completedBookings || 0} completed
+                      {user.completedBookings ?? 0} completed
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {user.last_login || 'Never'}
+                      {formatDate(user.last_login)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      {getStatusBadge(user.status, user.is_verified)}
+                      {getStatusBadge(user.status)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <button
@@ -515,7 +524,10 @@ export default function AdminFurParentsPage() {
                         </button>
                       ) : (
                         <button
-                          onClick={() => setShowUnrestrictModal(true) || setSelectedUser(user)}
+                          onClick={() => {
+                            setShowUnrestrictModal(true);
+                            setSelectedUser(user);
+                          }}
                           disabled={isProcessing}
                           className="text-green-600 hover:text-green-900 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
                         >
@@ -537,57 +549,89 @@ export default function AdminFurParentsPage() {
         </div>
 
         {/* Pagination */}
-        {pagination.totalPages > 1 && (
+        {pagination.total_pages > 1 && (
           <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
-            <div className="text-sm text-gray-500">
-              Showing {users.length} of {pagination.total} fur parents
-            </div>
-            <div className="flex space-x-2">
-              <button
-                onClick={() => setPagination(prev => ({ ...prev, page: prev.page - 1 }))}
-                disabled={!pagination.hasPrevPage}
-                className={`p-2 rounded-md ${
-                  pagination.hasPrevPage
-                    ? 'text-gray-700 hover:bg-gray-100'
-                    : 'text-gray-400 cursor-not-allowed'
-                }`}
-              >
-                <ChevronLeftIcon className="h-5 w-5" />
-              </button>
-              <div className="flex items-center space-x-1">
-                {Array.from({ length: pagination.totalPages }).map((_, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setPagination(prev => ({ ...prev, page: i + 1 }))}
-                    className={`px-3 py-1 rounded-md ${
-                      pagination.page === i + 1
-                        ? 'bg-[var(--primary-green)] text-white'
-                        : 'text-gray-700 hover:bg-gray-100'
-                    }`}
-                  >
-                    {i + 1}
-                  </button>
-                ))}
+            <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm text-gray-700">
+                  Showing <span className="font-medium">{(pagination.page - 1) * pagination.limit + 1}</span>
+                  {' '}to <span className="font-medium">{Math.min(pagination.page * pagination.limit, pagination.total)}</span>
+                  {' '}of <span className="font-medium">{pagination.total}</span> results
+                </p>
               </div>
-              <button
-                onClick={() => setPagination(prev => ({ ...prev, page: prev.page + 1 }))}
-                disabled={!pagination.hasNextPage}
-                className={`p-2 rounded-md ${
-                  pagination.hasNextPage
-                    ? 'text-gray-700 hover:bg-gray-100'
-                    : 'text-gray-400 cursor-not-allowed'
-                }`}
-              >
-                <ChevronRightIcon className="h-5 w-5" />
-              </button>
+              <div>
+                <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                  <button onClick={() => handlePageChange(pagination.page - 1)} disabled={!pagination.hasPrevPage} className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50">
+                    <span className="sr-only">Previous</span>
+                    <ChevronLeftIcon className="h-5 w-5" />
+                  </button>
+                  {/* Page numbers */} 
+                  {pagination.total_pages > 1 && Array.from({ length: pagination.total_pages }, (_, i) => i + 1).map((pageNumber) => {
+                    // Display first page, last page, current page, and pages around current page
+                    const showPage = pageNumber === 1 || 
+                                     pageNumber === pagination.total_pages || 
+                                     (pageNumber >= pagination.page - 1 && pageNumber <= pagination.page + 1) ||
+                                     (pagination.page < 3 && pageNumber <= 3) || // Show first 3 if current page is 1 or 2
+                                     (pagination.page > pagination.total_pages - 2 && pageNumber >= pagination.total_pages - 2); // Show last 3 if current page is near end
+
+                    const showEllipsis = (pageNumber === 2 && pagination.page > 3) || 
+                                         (pageNumber === pagination.total_pages - 1 && pagination.page < pagination.total_pages - 2);
+
+                    if (showEllipsis) {
+                      return <span key={`ellipsis-${pageNumber}`} className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">...</span>;
+                    }
+
+                    if (showPage) {
+                      return (
+                        <button
+                          key={pageNumber}
+                          onClick={() => handlePageChange(pageNumber)}
+                          aria-current={pagination.page === pageNumber ? 'page' : undefined}
+                          className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${pagination.page === pageNumber ? 'z-10 bg-indigo-50 border-indigo-500 text-indigo-600' : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'}`}
+                        >
+                          {pageNumber}
+                        </button>
+                      );
+                    }
+                    return null;
+                  })}
+                  <button onClick={() => handlePageChange(pagination.page + 1)} disabled={!pagination.hasNextPage} className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50">
+                    <span className="sr-only">Next</span>
+                    <ChevronRightIcon className="h-5 w-5" />
+                  </button>
+                </nav>
+              </div>
             </div>
+          </div>
+        )} 
+
+        {/* Mobile Pagination (Simplified) */}
+        {users.length > 0 && (
+          <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:hidden">
+            <button
+              onClick={() => handlePageChange(pagination.page - 1)}
+              disabled={!pagination.hasPrevPage}
+              className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+            >
+              Previous
+            </button>
+            <span className="text-sm text-gray-700">
+              Page {pagination.page} of {pagination.total_pages}
+            </span>
+            <button
+              onClick={() => handlePageChange(pagination.page + 1)}
+              disabled={!pagination.hasNextPage}
+              className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+            >
+              Next
+            </button>
           </div>
         )}
       </div>
 
       {/* Success Animation Overlays */}
       <AnimatePresence>
-        {isRestrictSuccess && (
+        {isProcessing && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -608,50 +652,13 @@ export default function AdminFurParentsPage() {
               >
                 <ExclamationTriangleIcon className="h-12 w-12 text-red-500" />
               </motion.div>
-              <h3 className="text-xl font-medium text-gray-900 mb-2">User Restricted</h3>
+              <h3 className="text-xl font-medium text-gray-900 mb-2">Processing...</h3>
               <p className="text-gray-600 mb-6">
-                {successUserName} has been restricted successfully. They will no longer be able to make bookings.
+                Please wait while we process your request.
               </p>
               <div className="w-full bg-gray-200 rounded-full h-2 mb-6">
                 <motion.div
                   className="bg-red-500 h-2 rounded-full"
-                  initial={{ width: 0 }}
-                  animate={{ width: "100%" }}
-                  transition={{ duration: 2.5 }}
-                />
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-
-        {isUnrestrictSuccess && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-          >
-            <motion.div
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.8, opacity: 0 }}
-              className="bg-white rounded-xl p-8 max-w-md w-full text-center"
-            >
-              <motion.div
-                className="w-20 h-20 mx-auto rounded-full bg-green-100 flex items-center justify-center mb-6"
-                initial={{ scale: 0.8 }}
-                animate={{ scale: [0.8, 1.2, 1] }}
-                transition={{ duration: 0.5 }}
-              >
-                <CheckCircleIcon className="h-12 w-12 text-green-500" />
-              </motion.div>
-              <h3 className="text-xl font-medium text-gray-900 mb-2">Restrictions Removed</h3>
-              <p className="text-gray-600 mb-6">
-                {successUserName} has been unrestricted successfully. They can now make bookings again.
-              </p>
-              <div className="w-full bg-gray-200 rounded-full h-2 mb-6">
-                <motion.div
-                  className="bg-green-500 h-2 rounded-full"
                   initial={{ width: 0 }}
                   animate={{ width: "100%" }}
                   transition={{ duration: 2.5 }}
@@ -717,7 +724,7 @@ export default function AdminFurParentsPage() {
                 <button
                   onClick={confirmRestriction}
                   disabled={isProcessing || !restrictReason.trim() || restrictReason.trim().length < 5}
-                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isProcessing ? (
                     <>
@@ -760,12 +767,12 @@ export default function AdminFurParentsPage() {
                       <div className="flex items-center space-x-2 mt-1">
                         <span className="text-gray-600">ID: {selectedUser.id}</span>
                         <span>•</span>
-                        <span className="text-gray-600">Member since {new Date(selectedUser.created_at).toLocaleDateString()}</span>
+                        <span className="text-gray-600">Member since {formatDate(selectedUser.created_at)}</span>
                       </div>
                     </div>
                   </div>
                   <div>
-                    {getStatusBadge(selectedUser.status, selectedUser.is_verified)}
+                    {getStatusBadge(selectedUser.status)}
                   </div>
                 </div>
 
@@ -807,7 +814,7 @@ export default function AdminFurParentsPage() {
                         </svg>
                         <div>
                           <p className="text-sm font-medium text-gray-700">Registration Date</p>
-                          <p className="text-gray-900">{new Date(selectedUser.created_at).toLocaleDateString()}</p>
+                          <p className="text-gray-900">{formatDate(selectedUser.created_at)}</p>
                         </div>
                       </div>
                       <div className="flex items-start">
@@ -816,7 +823,7 @@ export default function AdminFurParentsPage() {
                         </svg>
                         <div>
                           <p className="text-sm font-medium text-gray-700">Last Activity</p>
-                          <p className="text-gray-900">{selectedUser.last_login || 'Never'}</p>
+                          <p className="text-gray-900">{formatDate(selectedUser.last_login)}</p>
                         </div>
                       </div>
                     </div>
@@ -829,11 +836,11 @@ export default function AdminFurParentsPage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="bg-gray-50 p-4 rounded-lg">
                       <p className="text-sm font-medium text-gray-700">Registered Pets</p>
-                      <p className="text-2xl font-semibold text-[var(--primary-green)]">{selectedUser.pets || 0}</p>
+                      <p className="text-2xl font-semibold text-[var(--primary-green)]">{selectedUser.pets ?? 0}</p>
                     </div>
                     <div className="bg-gray-50 p-4 rounded-lg">
                       <p className="text-sm font-medium text-gray-700">Completed Bookings</p>
-                      <p className="text-2xl font-semibold text-[var(--primary-green)]">{selectedUser.completedBookings || 0}</p>
+                      <p className="text-2xl font-semibold text-[var(--primary-green)]">{selectedUser.completedBookings ?? 0}</p>
                     </div>
                   </div>
                 </div>
@@ -849,7 +856,7 @@ export default function AdminFurParentsPage() {
                         </svg>
                         <div>
                           <p className="text-sm font-medium text-red-700">Reason</p>
-                          <p className="text-red-900">{selectedUser.restriction.reason || 'Administrative action'}</p>
+                          <p className="text-red-900">{selectedUser.restriction?.reason || 'Administrative action'}</p>
                         </div>
                       </div>
                       <div className="flex items-start">
@@ -858,7 +865,7 @@ export default function AdminFurParentsPage() {
                         </svg>
                         <div>
                           <p className="text-sm font-medium text-red-700">Date</p>
-                          <p className="text-red-900">{new Date(selectedUser.restriction.restriction_date).toLocaleDateString()}</p>
+                          <p className="text-red-900">{formatDate(selectedUser.restriction?.restriction_date)}</p>
                         </div>
                       </div>
                       <div className="flex items-start">
@@ -867,17 +874,17 @@ export default function AdminFurParentsPage() {
                         </svg>
                         <div>
                           <p className="text-sm font-medium text-red-700">Duration</p>
-                          <p className="text-red-900">{selectedUser.restriction.duration}</p>
+                          <p className="text-red-900">{selectedUser.restriction?.duration}</p>
                         </div>
                       </div>
-                      {selectedUser.restriction.report_count > 0 && (
+                      {selectedUser.restriction && selectedUser.restriction.report_count > 0 && (
                         <div className="flex items-start">
                           <svg className="h-5 w-5 text-red-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                           </svg>
                           <div>
                             <p className="text-sm font-medium text-red-700">Reports</p>
-                            <p className="text-red-900">{selectedUser.restriction.report_count}</p>
+                            <p className="text-red-900">{formatReportCount(selectedUser.restriction?.report_count)}</p>
                           </div>
                         </div>
                       )}

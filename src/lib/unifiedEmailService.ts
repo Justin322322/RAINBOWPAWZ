@@ -72,6 +72,7 @@ const createTransporter = () => {
     }
   };
 
+  console.log('Creating email transporter', {
     host: config.host,
     port: config.port,
     secure: config.secure,
@@ -98,6 +99,7 @@ export async function sendEmail(emailData: EmailData): Promise<{ success: boolea
     }
 
     // Log the email attempt
+    console.log('Sending email', {
       to: emailData.to,
       subject: emailData.subject,
       from: emailData.from || `"Rainbow Paws" <${process.env.SMTP_USER}>`,

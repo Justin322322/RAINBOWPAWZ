@@ -66,7 +66,7 @@ export async function GET() {
 
     // Build a dynamic query based on available columns
     let selectFields = [
-      'sp.id',
+      'sp.provider_id',
       'sp.name AS business_name',
       'sp.user_id',
       ownerNameField,
@@ -108,7 +108,7 @@ export async function GET() {
       FROM
         service_providers sp
       JOIN
-        users u ON sp.user_id = u.id
+        users u ON sp.user_id = u.user_id
       WHERE
         ${whereClause}
       ORDER BY
@@ -127,7 +127,7 @@ export async function GET() {
       try {
         // Build a minimal set of fields that should work in most cases
         let minimalSelectFields = [
-          'sp.id',
+          'sp.provider_id',
           'sp.name AS business_name',
           'sp.user_id',
           ownerNameField,
@@ -153,7 +153,7 @@ export async function GET() {
           FROM
             service_providers sp
           JOIN
-            users u ON sp.user_id = u.id
+            users u ON sp.user_id = u.user_id
           WHERE
             ${whereClause}
           ORDER BY
@@ -221,8 +221,8 @@ export async function GET() {
 
       // Return formatted application
       return {
-        id: app.id || '0',
-        businessId: app.id || '0',
+        id: app.provider_id || '0',
+        businessId: app.provider_id || '0',
         businessName: app.business_name || 'Unnamed Business',
         owner: app.owner || 'Unknown Owner',
         email: app.email || '',

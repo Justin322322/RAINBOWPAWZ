@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
       if (userType === 'pet_parent') {
 
         // First check if the user exists
-        const userExists = await query('SELECT id FROM users WHERE id = ?', [userId]) as any[];
+        const userExists = await query('SELECT user_id FROM users WHERE user_id = ?', [userId]) as any[];
         if (!userExists || userExists.length === 0) {
           return NextResponse.json({
             error: `User with ID ${userId} not found`,
@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
         await query(`
           UPDATE users
           SET is_verified = 1, status = 'active', updated_at = NOW()
-          WHERE id = ?
+          WHERE user_id = ?
         `, [userId]);
 
       } else if (userType === 'cremation_center') {

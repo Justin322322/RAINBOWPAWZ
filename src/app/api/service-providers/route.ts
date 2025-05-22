@@ -77,7 +77,6 @@ export async function GET(request: Request) {
           SELECT
             id,
             name,
-            city,
             address,
             phone,
             service_description as description,
@@ -134,7 +133,7 @@ export async function GET(request: Request) {
             provider.packages = packagesResult[0]?.package_count || 0;
 
             // Calculate actual distance based on coordinates
-            const providerCoordinates = getBataanCoordinates(provider.address || provider.city || 'Bataan');
+            const providerCoordinates = getBataanCoordinates(provider.address || 'Bataan');
             const distanceValue = calculateDistance(userCoordinates, providerCoordinates);
             provider.distance = `${distanceValue} km away`;
             provider.distanceValue = distanceValue; // Store numeric value for sorting
@@ -178,7 +177,6 @@ export async function GET(request: Request) {
           SELECT
             bp.id,
             bp.business_name as name,
-            bp.city,
             bp.business_address as address,
             bp.business_phone as phone,
             u.email,
@@ -205,8 +203,6 @@ export async function GET(request: Request) {
           return {
             id: business.id,
             name: business.name,
-            // Extract specific location from address for display in cards
-            city: formattedAddress ? formattedAddress.split(',')[0] : (business.city || 'Bataan'),
             address: formattedAddress,
             phone: business.phone,
             email: business.email,
@@ -259,10 +255,10 @@ export async function GET(request: Request) {
             business.packages = packagesResult[0]?.package_count || 0;
 
             // Calculate actual distance based on coordinates
-            const businessCoordinates = getBataanCoordinates(business.address || business.city || 'Bataan');
+            const businessCoordinates = getBataanCoordinates(business.address || 'Bataan');
             const distanceValue = calculateDistance(userCoordinates, businessCoordinates);
-            business.distance = `${distanceValue} km away`;
-            business.distanceValue = distanceValue; // Store numeric value for sorting
+            (business as any).distance = `${distanceValue} km away`;
+            (business as any).distanceValue = distanceValue; // Store numeric value for sorting
           } catch (error) {
           }
         }
@@ -277,7 +273,6 @@ export async function GET(request: Request) {
         {
           id: 1001,
           name: "Rainbow Bridge Pet Cremation",
-          city: "Balanga City, Bataan",
           address: "Capitol Drive, Balanga City, Bataan, 2100 Philippines",
           phone: "(123) 456-7890",
           email: "info@rainbowbridge.com",
@@ -289,7 +284,6 @@ export async function GET(request: Request) {
         {
           id: 1002,
           name: "Peaceful Paws Memorial",
-          city: "Orani, Bataan",
           address: "National Road, Orani, Bataan, 2112 Philippines",
           phone: "(234) 567-8901",
           email: "care@peacefulpaws.com",
@@ -301,7 +295,6 @@ export async function GET(request: Request) {
         {
           id: 1003,
           name: "Forever Friends Pet Services",
-          city: "Dinalupihan, Bataan",
           address: "San Ramon Highway, Dinalupihan, Bataan, 2110 Philippines",
           phone: "(345) 678-9012",
           email: "service@foreverfriends.com",
@@ -314,10 +307,11 @@ export async function GET(request: Request) {
 
       // Calculate actual distances for test providers
       testProviders.forEach(provider => {
-        const providerCoordinates = getBataanCoordinates(provider.address || provider.city || 'Bataan');
+        const providerCoordinates = getBataanCoordinates(provider.address || 'Bataan');
         const distanceValue = calculateDistance(userCoordinates, providerCoordinates);
-        provider.distance = `${distanceValue} km away`;
-        provider.distanceValue = distanceValue;
+        // Using type assertion to add these properties safely
+        (provider as any).distance = `${distanceValue} km away`;
+        (provider as any).distanceValue = distanceValue;
       });
 
       return NextResponse.json({ providers: testProviders });

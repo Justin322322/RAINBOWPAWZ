@@ -221,7 +221,7 @@ export async function POST(request: NextRequest) {
       if (providerUserId) {
         // Get the user's name
         const userResult = await query(
-          'SELECT first_name, last_name FROM users WHERE id = ?',
+          'SELECT first_name, last_name FROM users WHERE user_id = ?',
           [user_id]
         ) as any[];
 

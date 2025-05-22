@@ -104,7 +104,7 @@ export async function GET(request: NextRequest) {
       }
 
       notificationsQuery += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
-      queryParams.push(limit, offset);
+      queryParams.push(String(limit), String(offset));
 
       // Execute the query
       const notifications = await query(notificationsQuery, queryParams) as any[];

@@ -25,9 +25,6 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
     businessEmail: '',
     businessDescription: '',
     businessType: 'cremation',
-    province: '',
-    city: '',
-    zip: '',
     businessHours: '',
     birCertificate: null as File | null,
     businessPermit: null as File | null,
@@ -110,11 +107,11 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
     if (type === 'file') {
       const fileInput = e.target as HTMLInputElement;
       const file = fileInput.files ? fileInput.files[0] : null;
-      
+
       // Log the file details for debugging
       if (file) {
       }
-      
+
       setFormData(prev => ({
         ...prev,
         [name]: file
@@ -152,9 +149,6 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
         businessType: 'cremation', // Set fixed business type for cremation centers
         businessPhone: formData.businessPhone,
         businessAddress: formData.businessAddress,
-        province: formData.province || null,
-        city: formData.city || null,
-        zip: formData.zip || null,
         businessHours: formData.businessHours || null,
         serviceDescription: formData.businessDescription || null,
         account_type: 'business' as const
@@ -188,31 +182,31 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
         try {
           // Create FormData for documents upload
           const docFormData = new FormData();
-          
+
           // Add the user ID from the registration response
           docFormData.append('userId', regData.userId);
-          
+
           // Add files if they exist
           if (formData.businessPermit) {
             docFormData.append('businessPermit', formData.businessPermit);
           }
-          
+
           if (formData.birCertificate) {
             docFormData.append('birCertificate', formData.birCertificate);
           }
-          
+
           if (formData.governmentId) {
             docFormData.append('governmentId', formData.governmentId);
           }
-          
+
           // Send the document upload request
           const docResponse = await fetch('/api/businesses/upload-documents', {
             method: 'POST',
             body: docFormData,
           });
-          
+
           const docData = await docResponse.json();
-          
+
           if (!docResponse.ok) {
             // We'll continue even if document upload fails
             // since the user account has been created
@@ -225,10 +219,10 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
 
       // Show success toast notification
       showToast('Registration successful!', 'success');
-      
+
       // Close the modal
       onClose();
-      
+
       // Redirect to the dashboard page
       setTimeout(() => {
         window.location.href = '/cremation/dashboard';
@@ -357,52 +351,7 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
             />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label htmlFor="province" className={labelClasses}>
-                Province
-              </label>
-              <input
-                type="text"
-                id="province"
-                name="province"
-                value={formData.province}
-                onChange={handleChange}
-                className={inputClasses}
-                placeholder="Province"
-              />
-            </div>
 
-            <div>
-              <label htmlFor="city" className={labelClasses}>
-                City
-              </label>
-              <input
-                type="text"
-                id="city"
-                name="city"
-                value={formData.city}
-                onChange={handleChange}
-                className={inputClasses}
-                placeholder="City"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="zip" className={labelClasses}>
-                ZIP Code
-              </label>
-              <input
-                type="text"
-                id="zip"
-                name="zip"
-                value={formData.zip}
-                onChange={handleChange}
-                className={inputClasses}
-                placeholder="ZIP Code"
-              />
-            </div>
-          </div>
 
           <div>
             <label htmlFor="businessHours" className={labelClasses}>

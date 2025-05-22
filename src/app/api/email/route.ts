@@ -6,7 +6,8 @@ import {
   createOTPEmail,
   createBookingConfirmationEmail,
   createBookingStatusUpdateEmail,
-  createBusinessVerificationEmail
+  createBusinessVerificationEmail,
+  createApplicationDeclineEmail
 } from '@/lib/emailTemplates';
 
 export async function POST(request: Request) {
@@ -100,6 +101,22 @@ export async function POST(request: Request) {
         emailData = {
           to: email,
           ...createBusinessVerificationEmail(businessDetails)
+        };
+        break;
+
+      case 'application_decline':
+        if (!email || !businessDetails) {
+          return NextResponse.json({
+            error: 'Missing required parameters for application decline email'
+          }, { status: 400 });
+        }
+        emailData = {
+          to: email,
+          ...createApplicationDeclineEmail({
+            businessName: businessDetails.businessName,
+            contactName: businessDetails.contactName,
+            reason: businessDetails.notes || 'Your application does not meet our current requirements.'
+          })
         };
         break;
 

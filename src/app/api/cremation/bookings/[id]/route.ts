@@ -84,7 +84,7 @@ export async function GET(
           // Now try to get user data separately if needed
           if (bookingData.user_id) {
             try {
-              const userQuery = `SELECT id, first_name, last_name, email, phone_number as phone FROM users WHERE id = ?`;
+              const userQuery = `SELECT user_id, first_name, last_name, email, phone_number as phone FROM users WHERE user_id = ?`;
               const userResult = await query(userQuery, [bookingData.user_id]) as any[];
 
               if (userResult && userResult.length > 0) {

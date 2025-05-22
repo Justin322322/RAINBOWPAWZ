@@ -76,13 +76,9 @@ export async function GET(request: NextRequest) {
 
       actualMonthlyRevenue = parseFloat(String(currentMonthRevenueResult[0]?.total || '0'));
     } else {
-      // Fallback to estimated revenue if table doesn't exist
-      revenueResult = await query(`
-        SELECT SUM(price) as total FROM service_packages
-      `) as any[];
-
-      // Estimate monthly revenue as 1/12 of total
-      actualMonthlyRevenue = parseFloat(String(revenueResult[0]?.total || '0')) / 12;
+      // If successful_bookings table doesn't exist, set revenue to 0
+      revenueResult = [{ total: 0 }];
+      actualMonthlyRevenue = 0;
     }
 
     // Get recent applications (if the table exists)
@@ -351,28 +347,8 @@ export async function GET(request: NextRequest) {
         AND YEAR(payment_date) = YEAR(DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH))
       `) as any[];
     } else {
-      try {
-        // Check if created_at column exists in service_packages table
-        const serviceCreatedAtExists = await query(`
-          SELECT COUNT(*) as count
-          FROM information_schema.columns
-          WHERE table_schema = DATABASE()
-          AND table_name = 'service_packages'
-          AND column_name = 'created_at'
-        `) as any[];
-
-        if (serviceCreatedAtExists[0]?.count === 1) {
-          previousMonthRevenue = await query(`
-            SELECT SUM(price) as total FROM service_packages
-            WHERE created_at < DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH)
-          `) as any[];
-        } else {
-          // If created_at doesn't exist, just use a percentage of total revenue as an estimate
-          const estimatedTotal = parseFloat(String(revenueResult[0]?.total || '0')) * 0.75;
-          previousMonthRevenue = [{ total: estimatedTotal }];
-        }
-      } catch (error) {
-      }
+      // If no successful_bookings table, set previous month revenue to 0
+      previousMonthRevenue = [{ total: 0 }];
     }
 
     // Calculate percentage changes

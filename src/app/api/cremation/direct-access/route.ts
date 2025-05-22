@@ -25,8 +25,8 @@ export async function GET(request: NextRequest) {
     
     // Get full user data for debugging
     const userResult = await query(
-      `SELECT id, first_name, last_name, email, role, status, is_verified
-       FROM users WHERE id = ?`,
+      `SELECT user_id, first_name, last_name, email, role, status, is_verified
+       FROM users WHERE user_id = ?`,
       [userId]
     ) as any[];
     

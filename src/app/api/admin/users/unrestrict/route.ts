@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
       if (userType === 'pet_parent') {
 
         // First check if the user exists
-        const userExists = await query('SELECT id FROM users WHERE id = ?', [userId]) as any[];
+        const userExists = await query('SELECT user_id FROM users WHERE user_id = ?', [userId]) as any[];
         if (!userExists || userExists.length === 0) {
           return NextResponse.json({
             error: `User with ID ${userId} not found`,

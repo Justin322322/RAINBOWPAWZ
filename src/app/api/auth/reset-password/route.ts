@@ -85,7 +85,7 @@ export async function POST(request: Request) {
 
       // Update the user's password
       await query(
-        'UPDATE users SET password = ? WHERE id = ?',
+        'UPDATE users SET password = ? WHERE user_id = ?',
         [hashedPassword, userId]
       );
 

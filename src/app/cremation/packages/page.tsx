@@ -32,7 +32,7 @@ function PackagesPage({ userData }: PackagesPageProps) {
   const router = useRouter();
   const [viewMode, setViewMode] = useState<ViewMode>('card');
   const [isCreatingPackage, setIsCreatingPackage] = useState(false);
-  
+
   // Use our custom hook for packages data and actions
   const {
     packages,
@@ -61,7 +61,7 @@ function PackagesPage({ userData }: PackagesPageProps) {
   const handleCreatePackage = useCallback(() => {
     setIsCreatingPackage(true);
     router.push('/cremation/packages/create');
-    
+
     // Reset the state after a short delay to ensure the navigation has started
     setTimeout(() => {
       setIsCreatingPackage(false);
@@ -178,13 +178,13 @@ function PackagesPage({ userData }: PackagesPageProps) {
 
       {/* Empty state - using our EmptyState component */}
       {!isLoading && filteredPackages.length === 0 && (
-        <EmptyState 
+        <EmptyState
           hasFilters={hasFiltersApplied}
           onCreatePackage={handleCreatePackage}
           isCreatingPackage={isCreatingPackage}
-          onRefresh={() => { 
-            setSearchTerm(''); 
-            setCategoryFilter('all'); 
+          onRefresh={() => {
+            setSearchTerm('');
+            setCategoryFilter('all');
           }}
         />
       )}
@@ -195,6 +195,8 @@ function PackagesPage({ userData }: PackagesPageProps) {
           packages={filteredPackages}
           onEdit={handleEditPackage}
           onDelete={handleDeleteClick}
+          onToggleActive={handleToggleActive}
+          toggleLoading={toggleLoading}
         />
       )}
 

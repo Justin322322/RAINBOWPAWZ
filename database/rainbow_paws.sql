@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: May 18, 2025 at 09:00 AM
+-- Generation Time: May 22, 2025 at 08:47 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -24,84 +24,28 @@ SET time_zone = "+00:00";
 -- --------------------------------------------------------
 
 --
--- Table structure for table `admin_notifications`
+-- Table structure for table `bookings`
 --
 
-CREATE TABLE `admin_notifications` (
-  `id` int(11) NOT NULL,
-  `type` varchar(50) NOT NULL,
-  `title` varchar(255) NOT NULL,
-  `message` text NOT NULL,
-  `entity_type` varchar(50) DEFAULT NULL,
-  `entity_id` int(11) DEFAULT NULL,
-  `link` varchar(255) DEFAULT NULL,
-  `is_read` tinyint(1) DEFAULT 0,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Stores notifications for administrators';
-
---
--- Dumping data for table `admin_notifications`
---
-
-INSERT INTO `admin_notifications` (`id`, `type`, `title`, `message`, `entity_type`, `entity_id`, `link`, `is_read`, `created_at`) VALUES
-(1, 'new_cremation_center', 'New Cremation Center Registration', 'business has registered as a cremation center and is pending verification.', 'service_provider', 9, '/admin/applications/9', 0, '2025-05-14 06:26:08'),
-(2, 'new_cremation_center', 'New Cremation Center Registration', 'business has registered as a cremation center and is pending verification.', 'service_provider', 10, '/admin/applications/10', 0, '2025-05-14 06:38:08'),
-(3, 'new_cremation_center', 'New Cremation Center Registration', 'business has registered as a cremation center and is pending verification.', 'service_provider', 9, '/admin/applications/9', 0, '2025-05-14 15:10:01'),
-(4, 'new_cremation_center', 'New Cremation Center Registration', 'business has registered as a cremation center and is pending verification.', 'service_provider', 10, '/admin/applications/10', 0, '2025-05-14 17:32:31'),
-(5, 'new_cremation_center', 'New Cremation Center Registration', 'business has registered as a cremation center and is pending verification.', 'service_provider', 12, '/admin/applications/12', 0, '2025-05-15 23:25:47'),
-(6, 'new_cremation_center', 'New Cremation Center Registration', 'business has registered as a cremation center and is pending verification.', 'service_provider', 13, '/admin/applications/13', 0, '2025-05-16 00:04:22'),
-(7, 'new_cremation_center', 'New Cremation Center Registration', 'business has registered as a cremation center and is pending verification.', 'service_provider', 14, '/admin/applications/14', 0, '2025-05-16 00:54:30'),
-(8, 'new_cremation_center', 'New Cremation Center Registration', 'business has registered as a cremation center and is pending verification.', 'service_provider', 15, '/admin/applications/15', 0, '2025-05-17 11:54:28'),
-(9, 'new_cremation_center', 'New Cremation Center Registration', 'asddasd has registered as a cremation center and is pending verification.', 'service_provider', 16, '/admin/applications/16', 0, '2025-05-18 00:49:03'),
-(10, 'new_cremation_center', 'New Cremation Center Registration', 'business has registered as a cremation center and is pending verification.', 'service_provider', 17, '/admin/applications/17', 0, '2025-05-18 02:20:25'),
-(11, 'new_cremation_center', 'New Cremation Center Registration', 'business has registered as a cremation center and is pending verification.', 'service_provider', 18, '/admin/applications/18', 0, '2025-05-18 02:23:23'),
-(12, 'new_cremation_center', 'New Cremation Center Registration', 'business has registered as a cremation center and is pending verification.', 'service_provider', 19, '/admin/applications/19', 0, '2025-05-18 02:31:28');
-
--- --------------------------------------------------------
-
---
--- Table structure for table `admin_profiles`
---
-
-CREATE TABLE `admin_profiles` (
-  `id` int(11) NOT NULL,
-  `user_id` int(11) NOT NULL,
-  `username` varchar(50) NOT NULL,
-  `full_name` varchar(100) NOT NULL,
-  `admin_role` enum('super_admin','admin','moderator') DEFAULT 'admin',
+CREATE TABLE `bookings` (
+  `booking_id` int(11) NOT NULL,
+  `user_id` int(11) DEFAULT NULL,
+  `provider_id` int(11) DEFAULT NULL,
+  `package_id` int(11) DEFAULT NULL,
+  `pet_id` int(11) DEFAULT NULL,
+  `booking_date` date DEFAULT NULL,
+  `booking_time` time DEFAULT NULL,
+  `status` enum('pending','confirmed','in_progress','completed','cancelled') DEFAULT 'pending',
+  `special_requests` text DEFAULT NULL,
+  `payment_method` varchar(50) DEFAULT 'cash',
+  `delivery_option` enum('pickup','delivery') DEFAULT 'pickup',
+  `delivery_address` text DEFAULT NULL,
+  `delivery_distance` float DEFAULT 0,
+  `delivery_fee` decimal(10,2) DEFAULT 0.00,
+  `total_price` decimal(10,2) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- --------------------------------------------------------
-
---
--- Table structure for table `booking_addons`
---
-
-CREATE TABLE `booking_addons` (
-  `id` int(11) NOT NULL,
-  `booking_id` int(11) NOT NULL,
-  `addon_name` varchar(255) NOT NULL,
-  `addon_price` decimal(10,2) NOT NULL DEFAULT 0.00,
-  `is_selected` tinyint(1) NOT NULL DEFAULT 1,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Stores add-ons selected for each booking';
-
--- --------------------------------------------------------
-
---
--- Stand-in structure for view `business_application_stats`
--- (See below for the actual view)
---
-CREATE TABLE `business_application_stats` (
-`total` bigint(21)
-,`approved` decimal(22,0)
-,`pending` decimal(22,0)
-,`reviewing` decimal(22,0)
-,`declined` decimal(22,0)
-,`documents_required` decimal(22,0)
-);
 
 -- --------------------------------------------------------
 
@@ -110,24 +54,15 @@ CREATE TABLE `business_application_stats` (
 --
 
 CREATE TABLE `notifications` (
-  `id` int(11) NOT NULL,
-  `user_id` int(11) NOT NULL,
-  `title` varchar(255) NOT NULL,
-  `message` text NOT NULL,
-  `type` enum('info','success','warning','error') NOT NULL DEFAULT 'info',
-  `is_read` tinyint(1) NOT NULL DEFAULT 0,
+  `notification_id` int(11) NOT NULL,
+  `user_id` int(11) DEFAULT NULL,
+  `title` varchar(255) DEFAULT NULL,
+  `message` text DEFAULT NULL,
+  `type` enum('info','success','warning','error') DEFAULT 'info',
+  `is_read` tinyint(1) DEFAULT 0,
   `link` varchar(255) DEFAULT NULL,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Stores user notifications';
-
---
--- Dumping data for table `notifications`
---
-
-INSERT INTO `notifications` (`id`, `user_id`, `title`, `message`, `type`, `is_read`, `link`, `created_at`, `updated_at`) VALUES
-(99, 56, 'Application Approved', 'Your business application for business has been approved. You can now start offering services.', 'success', 0, '/login', '2025-05-18 02:33:19', '2025-05-18 02:33:19'),
-(100, 56, 'Application Approved', 'Your business application for business has been approved.', 'success', 0, '/login', '2025-05-18 02:33:22', '2025-05-18 02:33:22');
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -138,22 +73,18 @@ INSERT INTO `notifications` (`id`, `user_id`, `title`, `message`, `type`, `is_re
 CREATE TABLE `otp_attempts` (
   `id` int(11) NOT NULL,
   `user_id` int(11) NOT NULL,
-  `attempt_type` enum('verify','generate') NOT NULL,
-  `attempt_time` timestamp NOT NULL DEFAULT current_timestamp(),
-  `ip_address` varchar(45) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Tracks attempts to generate or verify OTP codes';
+  `attempt_type` enum('generate','verify') NOT NULL,
+  `ip_address` varchar(45) DEFAULT NULL,
+  `attempt_time` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `otp_attempts`
 --
 
-INSERT INTO `otp_attempts` (`id`, `user_id`, `attempt_type`, `attempt_time`, `ip_address`) VALUES
-(76, 44, 'generate', '2025-05-14 17:32:34', '::ffff:192.168.56.1'),
-(110, 58, 'generate', '2025-05-18 06:11:09', '::1'),
-(111, 58, 'generate', '2025-05-18 06:11:20', '::1'),
-(112, 58, 'verify', '2025-05-18 06:12:10', '::1'),
-(113, 58, 'generate', '2025-05-18 06:15:39', '::1'),
-(114, 58, 'verify', '2025-05-18 06:15:51', '::1');
+INSERT INTO `otp_attempts` (`id`, `user_id`, `attempt_type`, `ip_address`, `attempt_time`) VALUES
+(1, 2, 'generate', '::1', '2025-05-20 22:15:33'),
+(2, 2, 'verify', '::1', '2025-05-20 22:15:57');
 
 -- --------------------------------------------------------
 
@@ -164,20 +95,19 @@ INSERT INTO `otp_attempts` (`id`, `user_id`, `attempt_type`, `attempt_time`, `ip
 CREATE TABLE `otp_codes` (
   `id` int(11) NOT NULL,
   `user_id` int(11) NOT NULL,
-  `otp_code` varchar(6) NOT NULL,
+  `otp_code` varchar(10) NOT NULL,
   `expires_at` datetime NOT NULL,
   `is_used` tinyint(1) DEFAULT 0,
+  `used_at` timestamp NULL DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Stores one-time password codes for user verification';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `otp_codes`
 --
 
-INSERT INTO `otp_codes` (`id`, `user_id`, `otp_code`, `expires_at`, `is_used`, `created_at`) VALUES
-(80, 58, '236512', '2025-05-18 14:21:09', 1, '2025-05-18 06:11:09'),
-(81, 58, '195641', '2025-05-18 14:21:20', 1, '2025-05-18 06:11:20'),
-(82, 58, '135346', '2025-05-18 14:25:39', 1, '2025-05-18 06:15:39');
+INSERT INTO `otp_codes` (`id`, `user_id`, `otp_code`, `expires_at`, `is_used`, `used_at`, `created_at`) VALUES
+(1, 2, '169095', '2025-05-21 06:25:33', 1, '2025-05-20 22:15:57', '2025-05-20 22:15:33');
 
 -- --------------------------------------------------------
 
@@ -186,19 +116,12 @@ INSERT INTO `otp_codes` (`id`, `user_id`, `otp_code`, `expires_at`, `is_used`, `
 --
 
 CREATE TABLE `package_addons` (
-  `id` int(11) NOT NULL,
-  `package_id` int(11) NOT NULL,
-  `description` varchar(255) NOT NULL,
+  `addon_id` int(11) NOT NULL,
+  `package_id` int(11) DEFAULT NULL,
+  `description` varchar(255) DEFAULT NULL,
   `price` decimal(10,2) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Stores optional add-ons available for service packages';
-
---
--- Dumping data for table `package_addons`
---
-
-INSERT INTO `package_addons` (`id`, `package_id`, `description`, `price`, `created_at`) VALUES
-(66, 63, 'asdsdsd', 555.00, '2025-05-18 04:09:50');
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -207,20 +130,12 @@ INSERT INTO `package_addons` (`id`, `package_id`, `description`, `price`, `creat
 --
 
 CREATE TABLE `package_images` (
-  `id` int(11) NOT NULL COMMENT 'package_image table',
-  `package_id` int(11) NOT NULL,
-  `image_path` varchar(255) NOT NULL,
-  `image_id` varchar(100) DEFAULT NULL,
+  `image_id` int(11) NOT NULL,
+  `package_id` int(11) DEFAULT NULL,
+  `image_path` varchar(255) DEFAULT NULL,
   `display_order` int(11) DEFAULT 0,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Stores images associated with service packages';
-
---
--- Dumping data for table `package_images`
---
-
-INSERT INTO `package_images` (`id`, `package_id`, `image_path`, `image_id`, `display_order`, `created_at`) VALUES
-(73, 63, '/uploads/packages/63/package_20_1747541379745.png', NULL, 0, '2025-05-18 04:09:51');
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -229,18 +144,11 @@ INSERT INTO `package_images` (`id`, `package_id`, `image_path`, `image_id`, `dis
 --
 
 CREATE TABLE `package_inclusions` (
-  `id` int(11) NOT NULL,
-  `package_id` int(11) NOT NULL,
-  `description` varchar(255) NOT NULL,
+  `inclusion_id` int(11) NOT NULL,
+  `package_id` int(11) DEFAULT NULL,
+  `description` varchar(255) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Stores items included in service packages';
-
---
--- Dumping data for table `package_inclusions`
---
-
-INSERT INTO `package_inclusions` (`id`, `package_id`, `description`, `created_at`) VALUES
-(109, 63, 'asdasd', '2025-05-18 04:09:50');
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -255,16 +163,14 @@ CREATE TABLE `password_reset_tokens` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `expires_at` datetime NOT NULL,
   `is_used` tinyint(1) DEFAULT 0
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Stores tokens for password reset requests';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `password_reset_tokens`
 --
 
 INSERT INTO `password_reset_tokens` (`id`, `user_id`, `token`, `created_at`, `expires_at`, `is_used`) VALUES
-(5, 49, 'e58f1fa7b3fdd970a7a35074197cc7da62a4f0c2d41996ac8952abe1f0ab64a8', '2025-05-16 17:49:14', '2025-05-17 02:49:14', 0),
-(6, 51, '7e6050e776012699f7c37616ca4dfdd4d13e731ceb2dfe27bbe86c1230df0a8d', '2025-05-18 02:17:50', '2025-05-18 11:17:50', 0),
-(7, 56, '4a60f471eb86926bfb815b69b6b6bdd05d9118f3cff2db3626d64950ed574397', '2025-05-18 02:32:36', '2025-05-18 11:32:36', 1);
+(1, 2, '75d65a71e886fa7ad22407001f28f982cdd8719832304d5af0c356515baaf00e', '2025-05-20 12:29:06', '2025-05-20 21:29:06', 0);
 
 -- --------------------------------------------------------
 
@@ -273,28 +179,19 @@ INSERT INTO `password_reset_tokens` (`id`, `user_id`, `token`, `created_at`, `ex
 --
 
 CREATE TABLE `pets` (
-  `id` int(11) NOT NULL COMMENT 'Primary key - Unique identifier for each pet',
-  `user_id` varchar(255) NOT NULL COMMENT 'Foreign key - References users.id - Owner of the pet',
-  `name` varchar(255) NOT NULL,
-  `species` varchar(100) NOT NULL,
+  `pet_id` int(11) NOT NULL,
+  `user_id` int(11) DEFAULT NULL,
+  `name` varchar(255) DEFAULT NULL,
+  `species` varchar(100) DEFAULT NULL,
   `breed` varchar(255) DEFAULT NULL,
-  `gender` varchar(50) DEFAULT NULL,
+  `gender` enum('Male','Female') DEFAULT NULL,
   `age` varchar(50) DEFAULT NULL,
   `weight` decimal(8,2) DEFAULT NULL,
   `photo_path` varchar(255) DEFAULT NULL,
   `special_notes` text DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Stores information about pets owned by fur parents';
-
---
--- Dumping data for table `pets`
---
-
-INSERT INTO `pets` (`id`, `user_id`, `name`, `species`, `breed`, `gender`, `age`, `weight`, `photo_path`, `special_notes`, `created_at`, `updated_at`) VALUES
-(30, '57', 'asdasd', 'Dog', 'asdasd', 'Female', 'as223', 24234.00, '/uploads/pets/pet_asdasd_57_1747537223167.png', 'asdasd', '2025-05-18 03:00:23', '2025-05-18 03:00:23'),
-(31, '57', 'asdsdd', 'Cat', 'asdasds', 'Male', '213', 232.00, '/uploads/pets/pet_asdsdd_57_1747538684139.png', 'sadasd', '2025-05-18 03:24:44', '2025-05-18 03:24:44'),
-(32, '57', 'test', 'Cat', 'asdasds', 'Male', '424', 424.00, '/uploads/pets/pet_test_57_1747545786023.png', 'asdsd', '2025-05-18 05:23:06', '2025-05-18 05:23:06');
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -309,15 +206,7 @@ CREATE TABLE `provider_availability` (
   `is_available` tinyint(1) DEFAULT 1,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Stores availability dates for service providers';
-
---
--- Dumping data for table `provider_availability`
---
-
-INSERT INTO `provider_availability` (`id`, `provider_id`, `date`, `is_available`, `created_at`, `updated_at`) VALUES
-(124, 20, '2025-05-21', 1, '2025-05-18 02:59:30', '2025-05-18 02:59:30'),
-(128, 20, '2025-05-22', 1, '2025-05-18 03:44:00', '2025-05-18 03:44:00');
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -331,18 +220,10 @@ CREATE TABLE `provider_time_slots` (
   `date` date NOT NULL,
   `start_time` time NOT NULL,
   `end_time` time NOT NULL,
+  `available_services` text DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
-  `available_services` text DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Stores specific time slots when providers are available';
-
---
--- Dumping data for table `provider_time_slots`
---
-
-INSERT INTO `provider_time_slots` (`id`, `provider_id`, `date`, `start_time`, `end_time`, `created_at`, `updated_at`, `available_services`) VALUES
-(91, 15, '2025-05-23', '09:00:00', '10:00:00', '2025-05-18 00:43:53', '2025-05-18 00:43:53', '[53]'),
-(95, 20, '2025-05-22', '09:00:00', '10:00:00', '2025-05-18 04:11:15', '2025-05-18 04:11:15', '[63]');
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -355,41 +236,12 @@ CREATE TABLE `reviews` (
   `user_id` int(11) NOT NULL,
   `service_provider_id` int(11) NOT NULL,
   `booking_id` int(11) NOT NULL,
-  `rating` int(11) NOT NULL CHECK (`rating` between 1 and 5),
+  `rating` int(11) NOT NULL,
   `comment` text DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- --------------------------------------------------------
-
---
--- Table structure for table `service_bookings`
---
-
-CREATE TABLE `service_bookings` (
-  `id` int(11) NOT NULL COMMENT 'Primary key - Unique identifier for each booking',
-  `user_id` int(11) NOT NULL COMMENT 'Foreign key - References users.id - User who made the booking',
-  `provider_id` int(11) NOT NULL COMMENT 'Foreign key - References service_providers.id - Provider selected for the service',
-  `package_id` int(11) NOT NULL COMMENT 'Foreign key - References service_packages.id - Package selected for the booking',
-  `pet_id` int(11) DEFAULT NULL COMMENT 'Foreign key - References pets.id - Pet for which the service is booked',
-  `booking_date` date DEFAULT NULL,
-  `booking_time` time DEFAULT NULL,
-  `status` enum('pending','confirmed','in_progress','completed','cancelled') DEFAULT 'pending',
-  `special_requests` text DEFAULT NULL,
-  `pet_name` varchar(255) DEFAULT NULL,
-  `pet_type` varchar(255) DEFAULT NULL,
-  `pet_image_url` varchar(255) DEFAULT NULL,
-  `cause_of_death` varchar(255) DEFAULT NULL,
-  `payment_method` varchar(50) DEFAULT 'cash',
-  `delivery_option` varchar(50) DEFAULT 'pickup',
-  `delivery_address` text DEFAULT NULL,
-  `delivery_distance` float DEFAULT 0,
-  `delivery_fee` decimal(10,2) DEFAULT 0.00,
-  `price` decimal(10,2) NOT NULL,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Stores booking information for services requested by users';
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `expiration_date` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -398,27 +250,20 @@ CREATE TABLE `service_bookings` (
 --
 
 CREATE TABLE `service_packages` (
-  `id` int(11) NOT NULL COMMENT 'Primary key - Unique identifier for each service package',
-  `service_provider_id` int(11) NOT NULL COMMENT 'Foreign key - References service_providers.id - Provider offering this package',
-  `name` varchar(255) NOT NULL,
+  `package_id` int(11) NOT NULL,
+  `provider_id` int(11) DEFAULT NULL,
+  `name` varchar(255) DEFAULT NULL,
   `description` text DEFAULT NULL,
   `category` enum('Private','Communal') DEFAULT 'Private',
   `cremation_type` enum('Standard','Premium','Deluxe') DEFAULT 'Standard',
   `processing_time` varchar(50) DEFAULT '1-2 days',
-  `price` decimal(10,2) NOT NULL,
+  `price` decimal(10,2) DEFAULT NULL,
   `delivery_fee_per_km` decimal(10,2) DEFAULT 0.00,
   `conditions` text DEFAULT NULL,
   `is_active` tinyint(1) DEFAULT 1,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Stores service packages offered by service providers';
-
---
--- Dumping data for table `service_packages`
---
-
-INSERT INTO `service_packages` (`id`, `service_provider_id`, `name`, `description`, `category`, `cremation_type`, `processing_time`, `price`, `delivery_fee_per_km`, `conditions`, `is_active`, `created_at`, `updated_at`) VALUES
-(63, 20, 'Basic Cremation', 'asdsd', 'Private', 'Standard', '1-2 days', 33232.00, 0.00, 'asdasdsd', 1, '2025-05-18 04:09:50', '2025-05-18 04:09:50');
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -427,55 +272,29 @@ INSERT INTO `service_packages` (`id`, `service_provider_id`, `name`, `descriptio
 --
 
 CREATE TABLE `service_providers` (
-  `id` int(11) NOT NULL COMMENT 'Primary key - Unique identifier for each service provider',
-  `user_id` int(11) NOT NULL COMMENT 'Foreign key - References users.id - User account associated with this provider',
+  `provider_id` int(11) NOT NULL,
+  `user_id` int(11) DEFAULT NULL,
   `name` varchar(100) NOT NULL,
-  `provider_type` enum('cremation','memorial','veterinary') NOT NULL,
-  `contact_first_name` varchar(50) NOT NULL,
-  `contact_last_name` varchar(50) NOT NULL,
-  `phone` varchar(20) NOT NULL,
-  `address` text NOT NULL,
-  `province` varchar(50) NOT NULL,
-  `city` varchar(50) NOT NULL,
-  `zip` varchar(20) NOT NULL,
+  `provider_type` enum('cremation','memorial','veterinary') DEFAULT NULL,
+  `contact_first_name` varchar(50) DEFAULT NULL,
+  `contact_last_name` varchar(50) DEFAULT NULL,
+  `phone` varchar(20) DEFAULT NULL,
+  `address` text DEFAULT NULL,
+  `province` varchar(50) DEFAULT NULL,
+  `city` varchar(50) DEFAULT NULL,
+  `zip` varchar(20) DEFAULT NULL,
   `hours` text DEFAULT NULL,
-  `service_description` text DEFAULT NULL,
-  `application_status` enum('pending','declined','approved','restricted') NOT NULL DEFAULT 'pending',
+  `description` text DEFAULT NULL,
+  `application_status` enum('pending','declined','approved','restricted') DEFAULT 'pending',
   `verification_date` timestamp NULL DEFAULT NULL,
   `verification_notes` text DEFAULT NULL,
   `bir_certificate_path` varchar(255) DEFAULT NULL,
   `business_permit_path` varchar(255) DEFAULT NULL,
   `government_id_path` varchar(255) DEFAULT NULL,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
-  `active_service_count` int(11) DEFAULT 0
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Stores information about businesses that provide pet services';
-
---
--- Dumping data for table `service_providers`
---
-
-INSERT INTO `service_providers` (`id`, `user_id`, `name`, `provider_type`, `contact_first_name`, `contact_last_name`, `phone`, `address`, `province`, `city`, `zip`, `hours`, `service_description`, `application_status`, `verification_date`, `verification_notes`, `bir_certificate_path`, `business_permit_path`, `government_id_path`, `created_at`, `updated_at`, `active_service_count`) VALUES
-(20, 56, 'business', 'cremation', 'Justin', 'Sibonga', 'asdsd', 'bataan peninsula state university', 'Bataan', 'Balanga City', '2100', 'asdasd', 'asdasd', 'approved', '2025-05-18 02:33:19', 'Application approved', '/uploads/businesses/56/bir_certificate_1747535490930.png', '/uploads/businesses/56/business_permit_1747535490927.png', '/uploads/businesses/56/government_id_1747535490931.png', '2025-05-18 02:31:28', '2025-05-18 02:46:25', 0);
-
--- --------------------------------------------------------
-
---
--- Table structure for table `successful_bookings`
---
-
-CREATE TABLE `successful_bookings` (
-  `id` int(11) NOT NULL,
-  `booking_id` varchar(50) NOT NULL,
-  `service_package_id` int(11) NOT NULL,
-  `user_id` int(11) NOT NULL,
-  `provider_id` int(11) NOT NULL,
-  `transaction_amount` decimal(10,2) NOT NULL,
-  `payment_date` datetime NOT NULL,
-  `payment_status` enum('completed','refunded','partial','cancelled') NOT NULL DEFAULT 'completed',
+  `active_service_count` int(11) DEFAULT 0,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Stores information about completed bookings';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -484,31 +303,30 @@ CREATE TABLE `successful_bookings` (
 --
 
 CREATE TABLE `users` (
-  `id` int(11) NOT NULL COMMENT 'Primary key - Unique identifier for each user',
-  `email` varchar(100) NOT NULL COMMENT 'User email address (unique)',
+  `user_id` int(11) NOT NULL,
+  `email` varchar(100) NOT NULL,
   `password` varchar(255) NOT NULL,
   `first_name` varchar(50) NOT NULL,
   `last_name` varchar(50) NOT NULL,
-  `phone_number` varchar(20) DEFAULT NULL,
+  `phone` varchar(20) DEFAULT NULL,
   `address` text DEFAULT NULL,
-  `sex` varchar(20) DEFAULT NULL,
-  `role` enum('fur_parent','business','admin') NOT NULL DEFAULT 'fur_parent' COMMENT 'User role: fur_parent (pet owner), business (service provider), or admin',
-  `status` enum('active','inactive','suspended','restricted') NOT NULL DEFAULT 'active',
-  `is_verified` tinyint(1) NOT NULL DEFAULT 0,
-  `is_otp_verified` tinyint(1) NOT NULL DEFAULT 0,
+  `gender` enum('Male','Female','Other') DEFAULT NULL,
+  `role` enum('fur_parent','business','admin') NOT NULL DEFAULT 'fur_parent',
+  `status` enum('active','inactive','suspended','restricted') DEFAULT 'active',
+  `is_verified` tinyint(1) DEFAULT 0,
+  `is_otp_verified` tinyint(1) DEFAULT 0,
+  `last_login` timestamp NULL DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
-  `last_login` timestamp NULL DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Stores all user accounts including fur parents, business owners, and administrators';
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `users`
 --
 
-INSERT INTO `users` (`id`, `email`, `password`, `first_name`, `last_name`, `phone_number`, `address`, `sex`, `role`, `status`, `is_verified`, `is_otp_verified`, `created_at`, `updated_at`, `last_login`) VALUES
-(44, 'admin@rainbowpaws.com', '$2b$10$CPyPK.A9FBeSkzotK0Zt6e3UW2NOqaQ.ovwjz/wt/tDgNWXIocV.W', 'System', 'Admin', 'asdasd', 'BPSU', 'male', 'admin', 'active', 1, 1, '2025-05-14 17:32:31', '2025-05-18 03:09:22', '2025-05-18 03:09:22'),
-(56, 'serviceprovider@rainbowpaws.com', '$2b$10$RM7iBs9QuOV21HvOtfb6TedtuICxjYwAf4BlKQqMsGYx.DrYK0tnu', 'Justin', 'Sibonga', 'asdsd', 'Capitol Compound, Tenejero', NULL, 'business', 'active', 1, 1, '2025-05-18 02:31:28', '2025-05-18 05:40:06', '2025-05-18 05:40:06'),
-(58, 'justinmarlosibonga@gmail.com', '$2b$10$O9f4wPQeXSdmLN0TW833yu/mT7ox6ps1bg35AuSFBTeYyzBOErVcy', 'Justin', 'Sibonga', '1111111', 'balanga, bataan', 'male', 'fur_parent', 'active', 0, 1, '2025-05-18 06:11:06', '2025-05-18 06:50:43', '2025-05-18 06:50:43');
+INSERT INTO `users` (`user_id`, `email`, `password`, `first_name`, `last_name`, `phone`, `address`, `gender`, `role`, `status`, `is_verified`, `is_otp_verified`, `last_login`, `created_at`, `updated_at`) VALUES
+(1, 'admin@rainbowpaws.com', '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Admin', 'User', NULL, NULL, NULL, 'admin', 'active', 1, 1, NULL, '2025-05-20 11:23:57', '2025-05-20 11:23:57'),
+(2, 'justinmarlosibonga@gmail.com', '$2b$10$aLBoOBaBKGXGDtqltkXLYe1jXjhtU9uCm9m0riha9ReX8DSWC1Y12', 'Justin', 'Sibonga', '1111111', 'Samal Bataan', NULL, 'admin', 'active', 0, 1, '2025-05-22 02:26:15', '2025-05-20 12:22:47', '2025-05-22 02:26:15');
 
 -- --------------------------------------------------------
 
@@ -517,109 +335,90 @@ INSERT INTO `users` (`id`, `email`, `password`, `first_name`, `last_name`, `phon
 --
 
 CREATE TABLE `user_restrictions` (
-  `id` int(11) NOT NULL,
-  `user_id` int(11) NOT NULL,
+  `restriction_id` int(11) NOT NULL,
+  `user_id` int(11) DEFAULT NULL,
   `reason` text DEFAULT NULL,
   `restriction_date` timestamp NOT NULL DEFAULT current_timestamp(),
   `duration` varchar(50) DEFAULT 'indefinite',
   `report_count` int(11) DEFAULT 0,
-  `is_active` tinyint(1) DEFAULT 1,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Stores information about user account restrictions';
-
--- --------------------------------------------------------
-
---
--- Structure for view `business_application_stats`
---
-DROP TABLE IF EXISTS `business_application_stats`;
-
-CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `business_application_stats`  AS SELECT count(0) AS `total`, sum(case when `service_providers`.`application_status` = 'approved' then 1 else 0 end) AS `approved`, sum(case when `service_providers`.`application_status` = 'pending' then 1 else 0 end) AS `pending`, sum(case when `service_providers`.`application_status` = 'reviewing' then 1 else 0 end) AS `reviewing`, sum(case when `service_providers`.`application_status` = 'declined' then 1 else 0 end) AS `declined`, sum(case when `service_providers`.`application_status` = 'documents_required' then 1 else 0 end) AS `documents_required` FROM `service_providers` ;
+  `is_active` tinyint(1) DEFAULT 1
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Indexes for dumped tables
 --
 
 --
--- Indexes for table `admin_notifications`
+-- Indexes for table `bookings`
 --
-ALTER TABLE `admin_notifications`
-  ADD PRIMARY KEY (`id`);
-
---
--- Indexes for table `admin_profiles`
---
-ALTER TABLE `admin_profiles`
-  ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `username` (`username`),
-  ADD KEY `user_id` (`user_id`);
-
---
--- Indexes for table `booking_addons`
---
-ALTER TABLE `booking_addons`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `booking_id` (`booking_id`);
+ALTER TABLE `bookings`
+  ADD PRIMARY KEY (`booking_id`),
+  ADD KEY `package_id` (`package_id`),
+  ADD KEY `pet_id` (`pet_id`),
+  ADD KEY `idx_bookings_user` (`user_id`),
+  ADD KEY `idx_bookings_provider` (`provider_id`),
+  ADD KEY `idx_bookings_status` (`status`);
 
 --
 -- Indexes for table `notifications`
 --
 ALTER TABLE `notifications`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `idx_user_id` (`user_id`),
-  ADD KEY `idx_is_read` (`is_read`),
-  ADD KEY `idx_created_at` (`created_at`);
+  ADD PRIMARY KEY (`notification_id`),
+  ADD KEY `user_id` (`user_id`);
 
 --
 -- Indexes for table `otp_attempts`
 --
 ALTER TABLE `otp_attempts`
   ADD PRIMARY KEY (`id`),
-  ADD KEY `user_id` (`user_id`);
+  ADD KEY `user_id` (`user_id`),
+  ADD KEY `attempt_type` (`attempt_type`),
+  ADD KEY `attempt_time` (`attempt_time`);
 
 --
 -- Indexes for table `otp_codes`
 --
 ALTER TABLE `otp_codes`
   ADD PRIMARY KEY (`id`),
-  ADD KEY `user_id` (`user_id`);
+  ADD KEY `user_id` (`user_id`),
+  ADD KEY `otp_code` (`otp_code`),
+  ADD KEY `expires_at` (`expires_at`),
+  ADD KEY `is_used` (`is_used`);
 
 --
 -- Indexes for table `package_addons`
 --
 ALTER TABLE `package_addons`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `package_addons_ibfk_1` (`package_id`),
-  ADD KEY `idx_package_addons_package` (`package_id`);
+  ADD PRIMARY KEY (`addon_id`),
+  ADD KEY `package_id` (`package_id`);
 
 --
 -- Indexes for table `package_images`
 --
 ALTER TABLE `package_images`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `package_images_ibfk_1` (`package_id`),
-  ADD KEY `idx_package_images_package` (`package_id`);
+  ADD PRIMARY KEY (`image_id`),
+  ADD KEY `package_id` (`package_id`);
 
 --
 -- Indexes for table `package_inclusions`
 --
 ALTER TABLE `package_inclusions`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `package_inclusions_ibfk_1` (`package_id`),
-  ADD KEY `idx_package_inclusions_package` (`package_id`);
+  ADD PRIMARY KEY (`inclusion_id`),
+  ADD KEY `package_id` (`package_id`);
 
 --
 -- Indexes for table `password_reset_tokens`
 --
 ALTER TABLE `password_reset_tokens`
-  ADD PRIMARY KEY (`id`);
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `unique_token` (`token`),
+  ADD KEY `user_id` (`user_id`);
 
 --
 -- Indexes for table `pets`
 --
 ALTER TABLE `pets`
-  ADD PRIMARY KEY (`id`),
+  ADD PRIMARY KEY (`pet_id`),
   ADD KEY `user_id` (`user_id`);
 
 --
@@ -641,54 +440,37 @@ ALTER TABLE `provider_time_slots`
 --
 ALTER TABLE `reviews`
   ADD PRIMARY KEY (`id`),
-  ADD KEY `user_id` (`user_id`),
-  ADD KEY `service_provider_id` (`service_provider_id`),
-  ADD KEY `booking_id` (`booking_id`);
-
---
--- Indexes for table `service_bookings`
---
-ALTER TABLE `service_bookings`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `user_id` (`user_id`),
-  ADD KEY `package_id` (`package_id`),
-  ADD KEY `fk_pet_id` (`pet_id`);
+  ADD UNIQUE KEY `unique_booking_review` (`booking_id`);
 
 --
 -- Indexes for table `service_packages`
 --
 ALTER TABLE `service_packages`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `service_provider_id` (`service_provider_id`);
+  ADD PRIMARY KEY (`package_id`),
+  ADD KEY `idx_service_packages_provider` (`provider_id`);
 
 --
 -- Indexes for table `service_providers`
 --
 ALTER TABLE `service_providers`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `user_id` (`user_id`);
-
---
--- Indexes for table `successful_bookings`
---
-ALTER TABLE `successful_bookings`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `service_package_id` (`service_package_id`),
+  ADD PRIMARY KEY (`provider_id`),
   ADD KEY `user_id` (`user_id`),
-  ADD KEY `provider_id` (`provider_id`);
+  ADD KEY `idx_service_providers_type` (`provider_type`);
 
 --
 -- Indexes for table `users`
 --
 ALTER TABLE `users`
-  ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `email` (`email`);
+  ADD PRIMARY KEY (`user_id`),
+  ADD UNIQUE KEY `email` (`email`),
+  ADD KEY `idx_users_email` (`email`),
+  ADD KEY `idx_users_role` (`role`);
 
 --
 -- Indexes for table `user_restrictions`
 --
 ALTER TABLE `user_restrictions`
-  ADD PRIMARY KEY (`id`),
+  ADD PRIMARY KEY (`restriction_id`),
   ADD KEY `user_id` (`user_id`);
 
 --
@@ -696,82 +478,70 @@ ALTER TABLE `user_restrictions`
 --
 
 --
--- AUTO_INCREMENT for table `admin_notifications`
+-- AUTO_INCREMENT for table `bookings`
 --
-ALTER TABLE `admin_notifications`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
-
---
--- AUTO_INCREMENT for table `admin_profiles`
---
-ALTER TABLE `admin_profiles`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
-
---
--- AUTO_INCREMENT for table `booking_addons`
---
-ALTER TABLE `booking_addons`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+ALTER TABLE `bookings`
+  MODIFY `booking_id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `notifications`
 --
 ALTER TABLE `notifications`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=101;
+  MODIFY `notification_id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `otp_attempts`
 --
 ALTER TABLE `otp_attempts`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=115;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT for table `otp_codes`
 --
 ALTER TABLE `otp_codes`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=83;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `package_addons`
 --
 ALTER TABLE `package_addons`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=67;
+  MODIFY `addon_id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `package_images`
 --
 ALTER TABLE `package_images`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT COMMENT 'package_image table', AUTO_INCREMENT=74;
+  MODIFY `image_id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `package_inclusions`
 --
 ALTER TABLE `package_inclusions`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=110;
+  MODIFY `inclusion_id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `password_reset_tokens`
 --
 ALTER TABLE `password_reset_tokens`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `pets`
 --
 ALTER TABLE `pets`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT COMMENT 'Primary key - Unique identifier for each pet', AUTO_INCREMENT=33;
+  MODIFY `pet_id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `provider_availability`
 --
 ALTER TABLE `provider_availability`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=131;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `provider_time_slots`
 --
 ALTER TABLE `provider_time_slots`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=96;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `reviews`
@@ -780,139 +550,107 @@ ALTER TABLE `reviews`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
--- AUTO_INCREMENT for table `service_bookings`
---
-ALTER TABLE `service_bookings`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT COMMENT 'Primary key - Unique identifier for each booking', AUTO_INCREMENT=33;
-
---
 -- AUTO_INCREMENT for table `service_packages`
 --
 ALTER TABLE `service_packages`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT COMMENT 'Primary key - Unique identifier for each service package', AUTO_INCREMENT=64;
+  MODIFY `package_id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `service_providers`
 --
 ALTER TABLE `service_providers`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT COMMENT 'Primary key - Unique identifier for each service provider', AUTO_INCREMENT=21;
-
---
--- AUTO_INCREMENT for table `successful_bookings`
---
-ALTER TABLE `successful_bookings`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
+  MODIFY `provider_id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT COMMENT 'Primary key - Unique identifier for each user', AUTO_INCREMENT=59;
+  MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT for table `user_restrictions`
 --
 ALTER TABLE `user_restrictions`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+  MODIFY `restriction_id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- Constraints for dumped tables
 --
 
 --
--- Constraints for table `admin_profiles`
+-- Constraints for table `bookings`
 --
-ALTER TABLE `admin_profiles`
-  ADD CONSTRAINT `admin_profiles_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
-
---
--- Constraints for table `booking_addons`
---
-ALTER TABLE `booking_addons`
-  ADD CONSTRAINT `booking_addons_ibfk_1` FOREIGN KEY (`booking_id`) REFERENCES `service_bookings` (`id`) ON DELETE CASCADE;
+ALTER TABLE `bookings`
+  ADD CONSTRAINT `bookings_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `bookings_ibfk_2` FOREIGN KEY (`provider_id`) REFERENCES `service_providers` (`provider_id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `bookings_ibfk_3` FOREIGN KEY (`package_id`) REFERENCES `service_packages` (`package_id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `bookings_ibfk_4` FOREIGN KEY (`pet_id`) REFERENCES `pets` (`pet_id`) ON DELETE SET NULL;
 
 --
 -- Constraints for table `notifications`
 --
 ALTER TABLE `notifications`
-  ADD CONSTRAINT `notifications_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+  ADD CONSTRAINT `notifications_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `otp_attempts`
 --
 ALTER TABLE `otp_attempts`
-  ADD CONSTRAINT `otp_attempts_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+  ADD CONSTRAINT `otp_attempts_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `otp_codes`
 --
 ALTER TABLE `otp_codes`
-  ADD CONSTRAINT `otp_codes_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+  ADD CONSTRAINT `otp_codes_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `package_addons`
 --
 ALTER TABLE `package_addons`
-  ADD CONSTRAINT `package_addons_ibfk_1` FOREIGN KEY (`package_id`) REFERENCES `service_packages` (`id`) ON DELETE CASCADE;
+  ADD CONSTRAINT `package_addons_ibfk_1` FOREIGN KEY (`package_id`) REFERENCES `service_packages` (`package_id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `package_images`
 --
 ALTER TABLE `package_images`
-  ADD CONSTRAINT `package_images_ibfk_1` FOREIGN KEY (`package_id`) REFERENCES `service_packages` (`id`) ON DELETE CASCADE;
+  ADD CONSTRAINT `package_images_ibfk_1` FOREIGN KEY (`package_id`) REFERENCES `service_packages` (`package_id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `package_inclusions`
 --
 ALTER TABLE `package_inclusions`
-  ADD CONSTRAINT `package_inclusions_ibfk_1` FOREIGN KEY (`package_id`) REFERENCES `service_packages` (`id`) ON DELETE CASCADE;
+  ADD CONSTRAINT `package_inclusions_ibfk_1` FOREIGN KEY (`package_id`) REFERENCES `service_packages` (`package_id`) ON DELETE CASCADE;
 
 --
--- Constraints for table `provider_availability`
+-- Constraints for table `password_reset_tokens`
 --
-ALTER TABLE `provider_availability`
-  ADD CONSTRAINT `provider_availability_ibfk_1` FOREIGN KEY (`provider_id`) REFERENCES `service_providers` (`id`) ON DELETE CASCADE;
+ALTER TABLE `password_reset_tokens`
+  ADD CONSTRAINT `password_reset_tokens_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE;
 
 --
--- Constraints for table `reviews`
+-- Constraints for table `pets`
 --
-ALTER TABLE `reviews`
-  ADD CONSTRAINT `reviews_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `reviews_ibfk_2` FOREIGN KEY (`service_provider_id`) REFERENCES `service_providers` (`id`) ON DELETE CASCADE;
-
---
--- Constraints for table `service_bookings`
---
-ALTER TABLE `service_bookings`
-  ADD CONSTRAINT `fk_pet_id` FOREIGN KEY (`pet_id`) REFERENCES `pets` (`id`) ON DELETE SET NULL,
-  ADD CONSTRAINT `service_bookings_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `service_bookings_ibfk_2` FOREIGN KEY (`package_id`) REFERENCES `service_packages` (`id`) ON DELETE CASCADE;
+ALTER TABLE `pets`
+  ADD CONSTRAINT `pets_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `service_packages`
 --
 ALTER TABLE `service_packages`
-  ADD CONSTRAINT `service_packages_ibfk_1` FOREIGN KEY (`service_provider_id`) REFERENCES `service_providers` (`id`) ON DELETE CASCADE;
+  ADD CONSTRAINT `service_packages_ibfk_1` FOREIGN KEY (`provider_id`) REFERENCES `service_providers` (`provider_id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `service_providers`
 --
 ALTER TABLE `service_providers`
-  ADD CONSTRAINT `service_providers_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
-
---
--- Constraints for table `successful_bookings`
---
-ALTER TABLE `successful_bookings`
-  ADD CONSTRAINT `successful_bookings_ibfk_1` FOREIGN KEY (`service_package_id`) REFERENCES `service_packages` (`id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `successful_bookings_ibfk_2` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `successful_bookings_ibfk_3` FOREIGN KEY (`provider_id`) REFERENCES `service_providers` (`id`) ON DELETE CASCADE;
+  ADD CONSTRAINT `service_providers_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `user_restrictions`
 --
 ALTER TABLE `user_restrictions`
-  ADD CONSTRAINT `user_restrictions_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+  ADD CONSTRAINT `user_restrictions_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

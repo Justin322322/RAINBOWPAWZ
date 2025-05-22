@@ -78,7 +78,7 @@ function PackageDetailPage({ userData }: PackageDetailPageProps) {
 
         // Use our utility to get verified package images
         try {
-          const verifiedImages = await getAllPackageImages(packageId);
+          const verifiedImages = await getAllPackageImages(String(packageId));
           if (verifiedImages && verifiedImages.length > 0) {
             packageData.package.images = verifiedImages;
           }

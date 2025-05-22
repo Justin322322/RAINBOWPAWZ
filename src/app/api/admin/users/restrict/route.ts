@@ -289,9 +289,12 @@ export async function POST(request: NextRequest) {
       message: `User ${action === 'restrict' ? 'restricted' : 'restored'} successfully`
     });
   } catch (error) {
+    // Get the request body
+    const bodyText = await request.text();
+    const body = bodyText ? JSON.parse(bodyText) : {};
 
     // Provide more detailed error information
-    let errorMessage = `Failed to ${request.body?.action === 'restrict' ? 'restrict' : 'restore'} user`;
+    let errorMessage = `Failed to ${body?.action === 'restrict' ? 'restrict' : 'restore'} user`;
     let errorDetails = error instanceof Error ? error.message : 'Unknown error';
     let statusCode = 500;
 

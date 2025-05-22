@@ -18,9 +18,9 @@ export async function GET(request: NextRequest) {
 
     // First, check if the user exists in the users table with role='admin'
     const userResult = await query(
-      `SELECT id, first_name, last_name, email, role
+      `SELECT user_id, first_name, last_name, email, role
        FROM users
-       WHERE id = ? AND role = 'admin'`,
+       WHERE user_id = ? AND role = 'admin'`,
       [id]
     ) as any[];
 
@@ -28,16 +28,33 @@ export async function GET(request: NextRequest) {
       const user = userResult[0];
 
       // Check if there's a corresponding entry in admin_profiles
-      const profileResult = await query(
-        `SELECT username, full_name, admin_role
-         FROM admin_profiles
-         WHERE user_id = ?`,
-        [id]
-      ) as any[];
+      let profileResult;
+      try {
+        // First check if the admin_profiles table exists
+        const tableCheckResult = await query(
+          `SELECT COUNT(*) as count FROM information_schema.tables
+           WHERE table_schema = DATABASE() AND table_name = 'admin_profiles'`
+        ) as any[];
+        
+        const tableExists = tableCheckResult[0]?.count > 0;
+        
+        if (tableExists) {
+          profileResult = await query(
+            `SELECT username, full_name, admin_role
+             FROM admin_profiles
+             WHERE user_id = ?`,
+            [id]
+          ) as any[];
+        }
+      } catch (err) {
+        // If there's an error, continue without profile data
+        console.error('Error checking admin_profiles:', err);
+        profileResult = [];
+      }
 
       // Create admin data object
-      const adminData = {
-        id: user.id,
+      const adminData: any = {
+        id: user.user_id,
         email: user.email,
         user_type: 'admin',
         role: user.role
@@ -59,19 +76,42 @@ export async function GET(request: NextRequest) {
     }
 
     // If not found in users table, try the legacy admins table
-    const adminResult = await query(
-      'SELECT id, username, email, full_name, role FROM admins WHERE id = ?',
-      [id]
-    ) as any[];
+    let adminResult;
+    try {
+      const tableCheckResult = await query(
+        `SELECT COUNT(*) as count FROM information_schema.tables
+         WHERE table_schema = DATABASE() AND table_name = 'admins'`
+      ) as any[];
+      
+      const tableExists = tableCheckResult[0]?.count > 0;
+      
+      if (tableExists) {
+        adminResult = await query(
+          'SELECT id, username, email, full_name, role FROM admins WHERE id = ?',
+          [id]
+        ) as any[];
+      } else {
+        adminResult = [];
+      }
+    } catch (err) {
+      console.error('Error checking admins table:', err);
+      adminResult = [];
+    }
 
     // Check if admin exists in legacy table
     if (!adminResult || adminResult.length === 0) {
 
       // Try to find admin by looking up the corresponding user record for email
-      const userEmailResult = await query(
-        'SELECT email FROM users WHERE id = ?',
-        [id]
-      ) as any[];
+      let userEmailResult;
+      try {
+        userEmailResult = await query(
+          'SELECT email FROM users WHERE user_id = ?',
+          [id]
+        ) as any[];
+      } catch (err) {
+        console.error('Error looking up user email:', err);
+        userEmailResult = [];
+      }
 
       if (userEmailResult && userEmailResult.length > 0) {
         const userEmail = userEmailResult[0].email;
@@ -107,8 +147,9 @@ export async function GET(request: NextRequest) {
     // Return the admin data
     return NextResponse.json(admin);
   } catch (error) {
+    console.error('Error in admin API:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch admin data' },
+      { error: 'Failed to fetch admin data', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }

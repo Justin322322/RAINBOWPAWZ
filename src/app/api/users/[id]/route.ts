@@ -17,9 +17,9 @@ export async function GET(request: NextRequest) {
     // Try to fetch user data from database
     try {
       const userResult = await query(
-        `SELECT id, first_name, last_name, email, phone_number, address, sex,
+        `SELECT user_id, first_name, last_name, email, phone_number, address, sex,
          created_at, updated_at, is_otp_verified, role, status, is_verified
-         FROM users WHERE id = ? LIMIT 1`,
+         FROM users WHERE user_id = ? LIMIT 1`,
         [userId]
       ) as any[];
 

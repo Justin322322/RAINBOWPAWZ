@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
 
     try {
       // Get the authenticated user
-      const session = await getServerSession(authOptions);
+      const session = await getServerSession();
       if (!session || !session.user) {
       } else {
         // Get the provider ID from the user session

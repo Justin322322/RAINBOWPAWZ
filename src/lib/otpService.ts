@@ -48,7 +48,7 @@ export async function verifyOtp({
   try {
     // Check if user exists
     const userResult = await query(
-      'SELECT id, is_otp_verified FROM users WHERE id = ? LIMIT 1',
+      'SELECT user_id, is_otp_verified FROM users WHERE user_id = ? LIMIT 1',
       [userId]
     ) as any[];
 
@@ -107,7 +107,7 @@ export async function verifyOtp({
 
     // Update user verification status
     await query(
-      'UPDATE users SET is_otp_verified = 1 WHERE id = ?',
+      'UPDATE users SET is_otp_verified = 1 WHERE user_id = ?',
       [userId]
     );
 
@@ -133,7 +133,7 @@ export async function generateOtp({
   try {
     // Check if user exists
     const userResult = await query(
-      'SELECT id, email, is_otp_verified FROM users WHERE id = ? LIMIT 1',
+      'SELECT user_id, email, is_otp_verified FROM users WHERE user_id = ? LIMIT 1',
       [userId]
     ) as any[];
 

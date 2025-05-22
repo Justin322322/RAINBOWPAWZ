@@ -23,7 +23,7 @@ export async function POST(request: Request) {
     try {
       // Check if the user exists
       const userResult = await query(
-        'SELECT id, email FROM users WHERE email = ?',
+        'SELECT user_id, email FROM users WHERE email = ?',
         [email]
       ) as any[];
 
@@ -35,7 +35,7 @@ export async function POST(request: Request) {
         }, { status: 404 });
       }
 
-      const userId = userResult[0].id;
+      const userId = userResult[0].user_id;
 
       // Generate a secure random token
       const resetToken = crypto.randomBytes(32).toString('hex');
@@ -67,7 +67,7 @@ export async function POST(request: Request) {
               INDEX idx_token (token),
               INDEX idx_expires_at (expires_at),
               INDEX idx_is_used (is_used),
-              FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+              FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
           `);
         }

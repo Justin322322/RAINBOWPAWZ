@@ -423,3 +423,18 @@ export const sendBusinessVerificationEmail = async (
   const { subject, html } = createBusinessVerificationEmail(businessDetails);
   return sendEmail({ to: email, subject, html });
 };
+
+export const sendApplicationDeclineEmail = async (
+  email: string,
+  applicationDetails: {
+    businessName: string;
+    contactName: string;
+    reason: string;
+  }
+) => {
+  // Import the email templates dynamically to avoid circular dependencies
+  const { createApplicationDeclineEmail } = await import('@/lib/emailTemplates');
+
+  const { subject, html } = createApplicationDeclineEmail(applicationDetails);
+  return sendEmail({ to: email, subject, html });
+};

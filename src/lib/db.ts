@@ -55,10 +55,11 @@ try {
   })();
 
 } catch (error) {
-
-  if (error.code === 'ECONNREFUSED') {
-  } else if (error.code === 'ER_ACCESS_DENIED_ERROR') {
-  } else if (error.code === 'ER_BAD_DB_ERROR') {
+  const err = error as any;
+  
+  if (err.code === 'ECONNREFUSED') {
+  } else if (err.code === 'ER_ACCESS_DENIED_ERROR') {
+  } else if (err.code === 'ER_BAD_DB_ERROR') {
   }
 
   // Create a fallback pool with default values
@@ -91,15 +92,16 @@ export async function query(sql: string, params: any[] = []) {
       connection.release();
     }
   } catch (error) {
+    const err = error as any;
 
     // Check if it's a connection error
-    if (error.code === 'ECONNREFUSED') {
+    if (err.code === 'ECONNREFUSED') {
       // Connection refused error
-    } else if (error.code === 'ER_ACCESS_DENIED_ERROR') {
+    } else if (err.code === 'ER_ACCESS_DENIED_ERROR') {
       // Access denied error
-    } else if (error.code === 'ER_BAD_DB_ERROR') {
+    } else if (err.code === 'ER_BAD_DB_ERROR') {
       // Database does not exist
-    } else if (error.code === 'PROTOCOL_CONNECTION_LOST') {
+    } else if (err.code === 'PROTOCOL_CONNECTION_LOST') {
       // The connection was lost, try to reconnect
       try {
         pool = mysql.createPool(finalConfig);
