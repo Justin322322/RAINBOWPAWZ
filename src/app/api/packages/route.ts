@@ -9,14 +9,26 @@ export async function GET(request: NextRequest) {
   try {
     const url = new URL(request.url);
     const packageIdParam = url.searchParams.get('packageId');
+    const providerId = url.searchParams.get('providerId');
     const page = +url.searchParams.get('page')! || 1;
     const limit = +url.searchParams.get('limit')! || 10;
     const offset = (page - 1) * limit;
     const includeInactive = url.searchParams.get('includeInactive') === 'true';
-    const whereClause = includeInactive ? '' : 'WHERE sp.is_active = TRUE';
+
+    // Build the WHERE clause based on providerId and includeInactive parameters
+    let whereClause = '';
+
+    if (providerId) {
+      whereClause = `WHERE sp.provider_id = ${parseInt(providerId)}`;
+      if (!includeInactive) {
+        whereClause += ' AND sp.is_active = TRUE';
+      }
+    } else if (!includeInactive) {
+      whereClause = 'WHERE sp.is_active = TRUE';
+    }
 
     if (packageIdParam) {
-      return getPackageById(+packageIdParam);
+      return getPackageById(+packageIdParam, providerId || undefined);
     }
 
     const rows = (await query(
@@ -201,10 +213,10 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function getPackageById(packageId: number) {
+async function getPackageById(packageId: number, providerId?: string) {
   try {
-    const rows = (await query(
-      `
+    // Build the query with optional providerId filter
+    let sql = `
       SELECT
         sp.*,
         svp.provider_id   AS providerId,
@@ -213,9 +225,17 @@ async function getPackageById(packageId: number) {
       JOIN service_providers svp
         ON sp.provider_id = svp.provider_id
       WHERE sp.package_id = ?
-      `,
-      [packageId]
-    )) as any[];
+    `;
+
+    const params = [packageId];
+
+    // Add providerId filter if provided
+    if (providerId) {
+      sql += ` AND sp.provider_id = ?`;
+      params.push(parseInt(providerId));
+    }
+
+    const rows = (await query(sql, params)) as any[];
     if (!rows.length) {
       return NextResponse.json({ error: 'Package not found' }, { status: 404 });
     }

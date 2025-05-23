@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
 
     // First, get the service packages for this provider
     const servicePackagesQuery = `
-      SELECT id FROM service_packages WHERE service_provider_id = ?
+      SELECT package_id FROM service_packages WHERE provider_id = ?
     `;
     const servicePackages = await query(servicePackagesQuery, [providerId]) as any[];
 
@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Extract package IDs
-    const packageIds = servicePackages.map((pkg: any) => pkg.id);
+    const packageIds = servicePackages.map((pkg: any) => pkg.package_id);
 
     // Build the SQL query with package IDs and filters
     let sql;
@@ -83,10 +83,10 @@ export async function GET(request: NextRequest) {
                sb.pet_image_url, sb.payment_method, ${hasPaymentStatusColumn ? 'sb.payment_status,' : "'not_paid' as payment_status,"} sb.delivery_option, sb.delivery_distance,
                sb.delivery_fee, sb.price,
                u.id as user_id, u.first_name, u.last_name, u.email, u.phone_number as phone,
-               sp.id as package_id, sp.name as service_name, sp.processing_time
+               sp.package_id as package_id, sp.name as service_name, sp.processing_time
         FROM service_bookings sb
         JOIN users u ON sb.user_id = u.id
-        LEFT JOIN service_packages sp ON sb.package_id = sp.id
+        LEFT JOIN service_packages sp ON sb.package_id = sp.package_id
         WHERE (sb.package_id IN (${packagePlaceholders}) OR sb.provider_id = ?)
         AND sb.status NOT IN ('completed', 'cancelled')
       `;
@@ -102,11 +102,11 @@ export async function GET(request: NextRequest) {
         SELECT b.id, b.status, b.booking_date, b.booking_time, b.special_requests as notes,
                b.created_at, p.name as pet_name, p.species as pet_type, p.image_url as pet_image_url,
                u.id as user_id, u.first_name, u.last_name, u.email, u.phone_number as phone,
-               sp.id as package_id, sp.name as service_name, sp.price, sp.processing_time
+               sp.package_id as package_id, sp.name as service_name, sp.price, sp.processing_time
         FROM bookings b
         JOIN users u ON b.user_id = u.id
         LEFT JOIN pets p ON p.user_id = u.id AND p.created_at <= DATE_ADD(b.created_at, INTERVAL 5 SECOND)
-        JOIN service_packages sp ON b.business_service_id = sp.id
+        JOIN service_packages sp ON b.business_service_id = sp.package_id
         WHERE b.business_service_id IN (${packagePlaceholders})
         AND b.status NOT IN ('completed', 'cancelled')
         GROUP BY b.id

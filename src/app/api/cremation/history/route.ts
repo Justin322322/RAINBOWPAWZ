@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
-import { getServerSession, authOptions } from '@/lib/auth';
+import { getServerSession } from '@/lib/auth';
+import fs from 'fs';
+import path from 'path';
 
 export async function GET(request: NextRequest) {
   try {
-
     // For testing/development, we'll use a hardcoded provider ID if auth fails
     let providerId;
 
@@ -58,6 +59,10 @@ export async function GET(request: NextRequest) {
       dateCondition = 'AND sb.booking_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)';
     } else if (period === 'last90days') {
       dateCondition = 'AND sb.booking_date >= DATE_SUB(CURDATE(), INTERVAL 90 DAY)';
+    } else if (period === 'last6months') {
+      dateCondition = 'AND sb.booking_date >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)';
+    } else if (period === 'thisyear') {
+      dateCondition = 'AND YEAR(sb.booking_date) = YEAR(CURDATE())';
     }
 
     // First, check if the service_bookings table exists
@@ -69,10 +74,34 @@ export async function GET(request: NextRequest) {
     `;
     const tablesResult = await query(tablesCheckQuery) as any[];
 
+    // If the service_bookings table doesn't exist, create it
     if (!tablesResult || tablesResult.length === 0) {
-      return NextResponse.json({
-        error: 'Service bookings table does not exist'
-      }, { status: 500 });
+      try {
+        // Read the SQL file content
+        const sqlFilePath = path.join(process.cwd(), 'src', 'database', 'migrations', 'create_service_bookings_table.sql');
+        const sqlContent = fs.readFileSync(sqlFilePath, 'utf8');
+
+        // Execute the SQL to create the table
+        await query(sqlContent);
+
+        // Return empty data since the table was just created
+        return NextResponse.json({
+          bookings: [],
+          stats: {
+            totalBookings: 0,
+            completedBookings: 0,
+            cancelledBookings: 0,
+            totalRevenue: 0,
+            averageRevenue: 0
+          }
+        });
+      } catch (createError) {
+        console.error('Error creating service_bookings table:', createError);
+        return NextResponse.json({
+          error: 'Failed to create service_bookings table',
+          message: createError instanceof Error ? createError.message : 'Unknown error'
+        }, { status: 500 });
+      }
     }
 
     // Query to get bookings - include ALL statuses, not just completed or cancelled

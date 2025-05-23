@@ -108,7 +108,7 @@ CREATE TABLE `otp_codes` (
 --
 
 CREATE TABLE `package_addons` (
-  `addon_id` int(11) NOT NULL,
+  `id` int(11) NOT NULL,
   `package_id` int(11) DEFAULT NULL,
   `description` varchar(255) DEFAULT NULL,
   `price` decimal(10,2) DEFAULT NULL,
@@ -374,7 +374,7 @@ ALTER TABLE `otp_codes`
 -- Indexes for table `package_addons`
 --
 ALTER TABLE `package_addons`
-  ADD PRIMARY KEY (`addon_id`),
+  ADD PRIMARY KEY (`id`),
   ADD KEY `package_id` (`package_id`);
 
 --
@@ -490,7 +490,7 @@ ALTER TABLE `otp_codes`
 -- AUTO_INCREMENT for table `package_addons`
 --
 ALTER TABLE `package_addons`
-  MODIFY `addon_id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `package_images`

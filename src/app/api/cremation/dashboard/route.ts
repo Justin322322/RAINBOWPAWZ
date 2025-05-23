@@ -581,18 +581,27 @@ export async function GET(request: NextRequest) {
 
     // We already handle the dummy provider case at the beginning of the function
 
-    // For real providers, return the actual data
+    // For real providers, return the actual data with stats matching the admin dashboard format
     return NextResponse.json({
       providerInfo: providerInfo[0],
       stats: [
         {
-          name: 'Total Revenue (All Time)',
-          value: `₱${totalRevenue.toLocaleString('en-US', {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2
-          })}`,
-          change: `${revenueChange > 0 ? '+' : ''}${revenueChange.toFixed(0)}%`,
-          changeType: revenueChange >= 0 ? 'increase' : 'decrease',
+          name: 'Total Bookings',
+          value: (activeBookings + newClients).toString(),
+          change: `${bookingsChange > 0 ? '+' : ''}${bookingsChange.toFixed(0)}%`,
+          changeType: bookingsChange >= 0 ? 'increase' : 'decrease',
+        },
+        {
+          name: 'Pending Bookings',
+          value: activeBookings.toString(),
+          change: `${bookingsChange > 0 ? '+' : ''}${bookingsChange.toFixed(0)}%`,
+          changeType: bookingsChange >= 0 ? 'increase' : 'decrease',
+        },
+        {
+          name: 'Active Packages',
+          value: servicePackages.length.toString(),
+          change: '0%',
+          changeType: 'increase',
         },
         {
           name: 'Monthly Revenue',
@@ -602,24 +611,6 @@ export async function GET(request: NextRequest) {
           })}`,
           change: `${revenueChange > 0 ? '+' : ''}${revenueChange.toFixed(0)}%`,
           changeType: revenueChange >= 0 ? 'increase' : 'decrease',
-        },
-        {
-          name: 'New Clients',
-          value: newClients.toString(),
-          change: `${clientsChange > 0 ? '+' : ''}${clientsChange.toFixed(0)}%`,
-          changeType: clientsChange >= 0 ? 'increase' : 'decrease',
-        },
-        {
-          name: 'Active Bookings',
-          value: activeBookings.toString(),
-          change: `${bookingsChange > 0 ? '+' : ''}${bookingsChange.toFixed(0)}%`,
-          changeType: bookingsChange >= 0 ? 'increase' : 'decrease',
-        },
-        {
-          name: 'Average Rating',
-          value: avgRating > 0 ? `${avgRating.toFixed(1)}/5` : 'No ratings',
-          change: `${ratingChange > 0 ? '+' : ''}${ratingChange.toFixed(1)}`,
-          changeType: ratingChange >= 0 ? 'increase' : 'decrease',
         },
       ],
       recentBookings: recentBookings.map((booking: any) => ({

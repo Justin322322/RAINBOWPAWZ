@@ -5,6 +5,7 @@ import Link from 'next/link';
 import CremationDashboardLayout from '@/components/navigation/CremationDashboardLayout';
 import withBusinessVerification from '@/components/withBusinessVerification';
 import { useToast } from '@/context/ToastContext';
+import StatCard from '@/components/ui/StatCard';
 import {
   MagnifyingGlassIcon,
   CalendarIcon,
@@ -16,7 +17,8 @@ import {
   PhoneIcon,
   EnvelopeIcon,
   FunnelIcon,
-  PencilSquareIcon
+  PencilSquareIcon,
+  BanknotesIcon
 } from '@heroicons/react/24/outline';
 
 function CremationBookingsPage({ userData }: { userData: any }) {
@@ -219,51 +221,56 @@ function CremationBookingsPage({ userData }: { userData: any }) {
       </div>
 
       {/* Stats cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <div className="flex items-center">
-            <div className="bg-blue-100 p-3 rounded-full mr-4">
-              <CalendarIcon className="h-6 w-6 text-blue-600" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+        {loading ? (
+          // Loading skeleton for stats - consistent style
+          Array(5).fill(0).map((_, index) => (
+            <div key={index} className="bg-white rounded-xl shadow-sm p-6">
+              <div className="flex items-center">
+                <div className="p-3 rounded-full bg-gray-200 mr-4 animate-pulse">
+                  <div className="h-6 w-6"></div>
+                </div>
+                <div className="w-full">
+                  <div className="h-4 bg-gray-200 rounded w-3/4 mb-2 animate-pulse"></div>
+                  <div className="h-6 bg-gray-200 rounded w-1/2 animate-pulse"></div>
+                </div>
+              </div>
             </div>
-            <div>
-              <p className="text-sm font-medium text-gray-600">Total Bookings</p>
-              <p className="text-2xl font-semibold text-gray-900">{stats.totalBookings}</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <div className="flex items-center">
-            <div className="bg-yellow-100 p-3 rounded-full mr-4">
-              <ClockIcon className="h-6 w-6 text-yellow-600" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-600">Pending</p>
-              <p className="text-2xl font-semibold text-gray-900">{stats.pending}</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <div className="flex items-center">
-            <div className="bg-green-100 p-3 rounded-full mr-4">
-              <CheckIcon className="h-6 w-6 text-green-600" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-600">Completed</p>
-              <p className="text-2xl font-semibold text-gray-900">{stats.completed}</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <div className="flex items-center">
-            <div className="bg-red-100 p-3 rounded-full mr-4">
-              <XMarkIcon className="h-6 w-6 text-red-600" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-600">Cancelled</p>
-              <p className="text-2xl font-semibold text-gray-900">{stats.cancelled}</p>
-            </div>
-          </div>
-        </div>
+          ))
+        ) : (
+          <>
+            <StatCard
+              icon={<CalendarIcon />}
+              label="Total Bookings"
+              value={stats.totalBookings}
+              color="blue"
+            />
+            <StatCard
+              icon={<ClockIcon />}
+              label="Pending"
+              value={stats.pending}
+              color="yellow"
+            />
+            <StatCard
+              icon={<CheckIcon />}
+              label="Completed"
+              value={stats.completed}
+              color="green"
+            />
+            <StatCard
+              icon={<XMarkIcon />}
+              label="Cancelled"
+              value={stats.cancelled}
+              color="amber"
+            />
+            <StatCard
+              icon={<BanknotesIcon />}
+              label="Total Revenue"
+              value={`₱${parseFloat(stats.totalRevenue || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`}
+              color="purple"
+            />
+          </>
+        )}
       </div>
 
       {/* Bookings Table */}

@@ -15,18 +15,22 @@ import {
   CheckCircleIcon,
   ClockIcon,
   UserGroupIcon,
-  ExclamationCircleIcon
+  ExclamationCircleIcon,
+  FireIcon,
+  BanknotesIcon
 } from '@heroicons/react/24/outline';
 import { useToast } from '@/context/ToastContext';
 import { PackageImage } from '@/components/packages/PackageImage';
 import AvailabilityCalendar from '@/components/booking/AvailabilityCalendar';
 import { useRouter } from 'next/navigation';
+import StatCard from '@/components/ui/StatCard';
 
 // The actual component that will be wrapped by withBusinessVerification HOC
 function CremationDashboardPage({ userData }: { userData: any }) {
   const router = useRouter();
   const [userName, setUserName] = useState('');
   const [loading, setLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
   const [dashboardError, setDashboardError] = useState<string | null>(null);
   const [availabilityError, setAvailabilityError] = useState<string | null>(null);
   const [availabilitySetupNeeded, setAvailabilitySetupNeeded] = useState(false);
@@ -54,8 +58,12 @@ function CremationDashboardPage({ userData }: { userData: any }) {
   // Fetch dashboard data
   useEffect(() => {
     const fetchDashboardData = async () => {
-      if (!userData?.business_id) {
+      // Use business_id or provider_id, with fallback to 999 for demo
+      const providerId = userData?.business_id || userData?.provider_id || 999;
+
+      if (!providerId) {
         setLoading(false);
+        setIsLoading(false);
         return;
       }
 
@@ -70,7 +78,7 @@ function CremationDashboardPage({ userData }: { userData: any }) {
 
       try {
         // Add cache busting parameter to prevent cached results
-        const response = await fetch(`/api/cremation/dashboard?providerId=${userData.business_id}&t=${now}`);
+        const response = await fetch(`/api/cremation/dashboard?providerId=${providerId}&t=${now}`);
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
@@ -80,6 +88,17 @@ function CremationDashboardPage({ userData }: { userData: any }) {
         }
 
         const data = await response.json();
+
+        // If data doesn't have the stats we need, add default ones
+        if (!data.stats || data.stats.length === 0) {
+          data.stats = [
+            { name: 'Total Bookings', value: '0', change: '0%', changeType: 'increase' },
+            { name: 'Pending Bookings', value: '0', change: '0%', changeType: 'increase' },
+            { name: 'Active Packages', value: '0', change: '0%', changeType: 'increase' },
+            { name: 'Monthly Revenue', value: '$0', change: '0%', changeType: 'increase' }
+          ];
+        }
+
         setDashboardData(data);
       } catch (error) {
         // Only show toast once
@@ -87,8 +106,21 @@ function CremationDashboardPage({ userData }: { userData: any }) {
           showToast('Failed to load dashboard data. Please try again later.', 'error');
         }
         setDashboardError(error instanceof Error ? error.message : 'Unknown error occurred');
+
+        // Set default data for development/demo purposes
+        setDashboardData({
+          stats: [
+            { name: 'Total Bookings', value: '0', change: '0%', changeType: 'increase' },
+            { name: 'Pending Bookings', value: '0', change: '0%', changeType: 'increase' },
+            { name: 'Active Packages', value: '0', change: '0%', changeType: 'increase' },
+            { name: 'Monthly Revenue', value: '$0', change: '0%', changeType: 'increase' }
+          ],
+          recentBookings: [],
+          popularPackages: []
+        });
       } finally {
         setLoading(false);
+        setIsLoading(false);
       }
     };
 
@@ -158,22 +190,32 @@ function CremationDashboardPage({ userData }: { userData: any }) {
     };
   }, []);
 
-  // Default icons for stats
-  const statIcons = [
-    CurrencyDollarIcon,
-    UsersIcon,
-    CalendarIcon,
-    StarIcon,
-    ClockIcon
-  ];
-
-  // Default colors for stats
-  const statColors = [
-    { bgColor: 'bg-green-100', textColor: 'text-green-800', iconColor: 'text-green-600' },
-    { bgColor: 'bg-blue-100', textColor: 'text-blue-800', iconColor: 'text-blue-600' },
-    { bgColor: 'bg-purple-100', textColor: 'text-purple-800', iconColor: 'text-purple-600' },
-    { bgColor: 'bg-yellow-100', textColor: 'text-yellow-800', iconColor: 'text-yellow-600' },
-    { bgColor: 'bg-gray-100', textColor: 'text-gray-800', iconColor: 'text-gray-600' }
+  // Define stats configuration to match admin dashboard
+  const statsConfig = [
+    {
+      key: 'totalBookings',
+      name: 'Total Bookings',
+      icon: CalendarIcon,
+      color: 'blue',
+    },
+    {
+      key: 'pendingBookings',
+      name: 'Pending Bookings',
+      icon: ClockIcon,
+      color: 'yellow',
+    },
+    {
+      key: 'activePackages',
+      name: 'Active Packages',
+      icon: FireIcon,
+      color: 'purple',
+    },
+    {
+      key: 'monthlyRevenue',
+      name: 'Monthly Revenue',
+      icon: BanknotesIcon,
+      color: 'amber',
+    },
   ];
 
 
@@ -255,36 +297,59 @@ function CremationDashboardPage({ userData }: { userData: any }) {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {dashboardData.stats?.map((stat: any, index: number) => {
-          const Icon = statIcons[index % statIcons.length];
-          const colors = statColors[index % statColors.length];
-
-          return (
+        {isLoading ? (
+          // Loading skeleton for stats - consistent style
+          Array(4).fill(0).map((_, index) => (
             <div key={index} className="bg-white rounded-xl shadow-sm p-6">
               <div className="flex items-center">
-                <div className={`${colors.bgColor} p-3 rounded-full mr-4`}>
-                  <Icon className={`h-6 w-6 ${colors.iconColor}`} />
+                <div className="p-3 rounded-full bg-gray-200 mr-4 animate-pulse">
+                  <div className="h-6 w-6"></div>
                 </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-600">{stat.name}</p>
-                  <div className="flex items-center mt-1">
-                    <p className="text-2xl font-semibold text-gray-800">{stat.value}</p>
-                    <div className={`flex items-center ml-2 ${
-                      stat.changeType === 'increase' ? 'text-green-600' : 'text-red-600'
-                    }`}>
-                      {stat.changeType === 'increase' ? (
-                        <ArrowUpIcon className="h-4 w-4" />
-                      ) : (
-                        <ArrowDownIcon className="h-4 w-4" />
-                      )}
-                      <span className="text-xs font-medium">{stat.change}</span>
-                    </div>
-                  </div>
+                <div className="w-full">
+                  <div className="h-4 bg-gray-200 rounded w-3/4 mb-2 animate-pulse"></div>
+                  <div className="h-6 bg-gray-200 rounded w-1/2 animate-pulse"></div>
                 </div>
               </div>
             </div>
-          );
-        })}
+          ))
+        ) : dashboardError ? (
+          // Error state
+          <div className="col-span-4 bg-white rounded-xl shadow-sm p-6">
+            <div className="flex items-center justify-center">
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-red-100 text-red-600 mb-4">
+                <ExclamationCircleIcon className="h-6 w-6" />
+              </div>
+            </div>
+            <p className="text-red-600 font-medium text-center mb-2">Error loading dashboard data</p>
+            <p className="text-gray-500 text-sm text-center">{dashboardError}</p>
+            <div className="flex justify-center mt-4">
+              <button
+                onClick={() => setLastFetchAttempt(0)} // This will trigger a refetch
+                className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg text-sm font-medium text-gray-700 transition-colors"
+              >
+                Retry
+              </button>
+            </div>
+          </div>
+        ) : (
+          // Actual stats using the StatCard component
+          statsConfig.map((stat, index) => {
+            // Find the corresponding stat from the dashboard data
+            const statData = dashboardData.stats?.find((s: any) =>
+              s.name.toLowerCase().includes(stat.key.toLowerCase().replace('total', '').replace('monthly', ''))
+            ) || { value: '0', change: '0%', changeType: 'increase' };
+
+            return (
+              <StatCard
+                key={index}
+                icon={<stat.icon />}
+                label={stat.name}
+                value={statData.value}
+                color={stat.color as 'blue' | 'yellow' | 'purple' | 'amber' | 'green'}
+              />
+            );
+          })
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">

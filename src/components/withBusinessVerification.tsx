@@ -29,6 +29,7 @@ const withBusinessVerification = <P extends object>(
         id: 999,
         user_id: 999,
         business_id: 999,
+        provider_id: 999, // Add provider_id as an alternative identifier
         business_name: 'Rainbow Paws Cremation Center',
         first_name: 'Justin',
         last_name: 'Sibonga',

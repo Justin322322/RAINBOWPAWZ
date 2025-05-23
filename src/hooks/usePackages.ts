@@ -18,18 +18,12 @@ export function usePackages({ userData }: UsePackagesProps) {
   const [toggleLoading, setToggleLoading] = useState<number | null>(null);
   const { showToast } = useToast();
   // Fetch packages function - stabilize the dependency on userData.business_id
-  const providerId = userData?.business_id;
+  const providerId = userData?.business_id || userData?.provider_id || 999; // Fallback to 999 for demo
 
   const fetchPackages = useCallback(async () => {
     try {
-      // Use the providerId from outside the callback to prevent unnecessary re-renders
-      if (!providerId) {
-        showToast('Unable to determine business ID', 'error');
-        setPackages([]);
-        setIsLoading(false);
-        return;
-      }
-
+      // Log the provider ID for debugging
+      console.log('Using provider ID:', providerId);
 
       // Fetch packages from API
       const response = await fetch(`/api/packages?providerId=${providerId}&includeInactive=true`, {

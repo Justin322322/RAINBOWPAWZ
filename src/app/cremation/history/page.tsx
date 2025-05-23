@@ -5,6 +5,7 @@ import Link from 'next/link';
 import CremationDashboardLayout from '@/components/navigation/CremationDashboardLayout';
 import withBusinessVerification from '@/components/withBusinessVerification';
 import { useToast } from '@/context/ToastContext';
+import StatCard from '@/components/ui/StatCard';
 import {
   MagnifyingGlassIcon,
   ChartBarIcon,
@@ -15,7 +16,9 @@ import {
   CurrencyDollarIcon,
   EyeIcon,
   ChevronLeftIcon,
-  ChevronRightIcon
+  ChevronRightIcon,
+  CheckCircleIcon,
+  XCircleIcon
 } from '@heroicons/react/24/outline';
 import { LoadingSpinner } from '@/app/admin/services/client';
 
@@ -347,62 +350,50 @@ function CremationHistoryPage({ userData }: { userData: any }) {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
-        <div className="bg-white p-6 rounded-xl shadow-sm">
-          <div className="flex items-center">
-            <div className="p-3 rounded-full bg-indigo-100 text-indigo-800 mr-4">
-              <CalendarDaysIcon className="h-6 w-6" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        {loading ? (
+          // Loading skeleton for stats
+          Array(4).fill(0).map((_, index) => (
+            <div key={index} className="bg-white rounded-xl shadow-sm p-6">
+              <div className="flex items-center">
+                <div className="p-3 rounded-full bg-gray-200 mr-4 animate-pulse">
+                  <div className="h-6 w-6"></div>
+                </div>
+                <div className="w-full">
+                  <div className="h-4 bg-gray-200 rounded w-3/4 mb-2 animate-pulse"></div>
+                  <div className="h-6 bg-gray-200 rounded w-1/2 animate-pulse"></div>
+                </div>
+              </div>
             </div>
-            <div>
-              <p className="text-sm font-medium text-gray-600">Total Bookings</p>
-              <p className="text-2xl font-semibold text-gray-900">{stats.totalBookings}</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white p-6 rounded-xl shadow-sm">
-          <div className="flex items-center">
-            <div className="p-3 rounded-full bg-green-100 text-green-800 mr-4">
-              <ArrowPathIcon className="h-6 w-6" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-600">Completed</p>
-              <p className="text-2xl font-semibold text-gray-900">{stats.completedBookings}</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white p-6 rounded-xl shadow-sm">
-          <div className="flex items-center">
-            <div className="p-3 rounded-full bg-red-100 text-red-800 mr-4">
-              <FunnelIcon className="h-6 w-6" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-600">Cancelled</p>
-              <p className="text-2xl font-semibold text-gray-900">{stats.cancelledBookings}</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white p-6 rounded-xl shadow-sm">
-          <div className="flex items-center">
-            <div className="p-3 rounded-full bg-yellow-100 text-yellow-800 mr-4">
-              <CurrencyDollarIcon className="h-6 w-6" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-600">Total Revenue</p>
-              <p className="text-2xl font-semibold text-gray-900">₱{stats.totalRevenue.toLocaleString()}</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white p-6 rounded-xl shadow-sm">
-          <div className="flex items-center">
-            <div className="p-3 rounded-full bg-blue-100 text-blue-800 mr-4">
-              <FunnelIcon className="h-6 w-6" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-600">Avg. Revenue</p>
-              <p className="text-2xl font-semibold text-gray-900">₱{stats.averageRevenue.toFixed(2)}</p>
-            </div>
-          </div>
-        </div>
+          ))
+        ) : (
+          <>
+            <StatCard
+              icon={<CalendarDaysIcon />}
+              label="Total Bookings"
+              value={stats.totalBookings.toString()}
+              color="blue"
+            />
+            <StatCard
+              icon={<CheckCircleIcon />}
+              label="Completed"
+              value={stats.completedBookings.toString()}
+              color="green"
+            />
+            <StatCard
+              icon={<XCircleIcon />}
+              label="Cancelled"
+              value={stats.cancelledBookings.toString()}
+              color="yellow"
+            />
+            <StatCard
+              icon={<CurrencyDollarIcon />}
+              label="Total Revenue"
+              value={`₱${stats.totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+              color="amber"
+            />
+          </>
+        )}
       </div>
 
       {/* Filter controls */}
