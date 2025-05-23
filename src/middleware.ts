@@ -42,13 +42,10 @@ export async function middleware(request: NextRequest) {
         // Use the API route instead
         const apiPath = `/api/image/${uploadPath}`;
 
-        console.log(`Using API path in production: ${apiPath}`);
-
         // Redirect to the API route
         return NextResponse.rewrite(new URL(apiPath, request.url));
       }
     } catch (error) {
-      console.error('Error in static file middleware:', error);
       // Return a fallback image on error
       return NextResponse.rewrite(new URL('/bg_4.png', request.url));
     }

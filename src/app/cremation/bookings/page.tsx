@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import CremationDashboardLayout from '@/components/navigation/CremationDashboardLayout';
 import withBusinessVerification from '@/components/withBusinessVerification';
 import { useToast } from '@/context/ToastContext';
@@ -101,7 +102,7 @@ function CremationBookingsPage({ userData }: { userData: any }) {
       showToast(fetchError, 'error');
       setFetchError(null); // Reset error after showing toast
     }
-  }, [fetchError]);
+  }, [fetchError, showToast]);
 
   const handleViewDetails = (booking: any) => {
     setSelectedBooking(booking);
@@ -321,10 +322,12 @@ function CremationBookingsPage({ userData }: { userData: any }) {
                       <div className="flex items-center">
                         <div className="flex-shrink-0 h-10 w-10">
                           {booking.petImageUrl ? (
-                            <img
+                            <Image
                               className="h-10 w-10 rounded-full object-cover"
                               src={booking.petImageUrl}
-                              alt={booking.petName}
+                              alt={booking.petName || 'Pet image'}
+                              width={40}
+                              height={40}
                             />
                           ) : (
                             <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">

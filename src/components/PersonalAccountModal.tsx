@@ -430,22 +430,12 @@ const PersonalAccountModal: React.FC<PersonalAccountModalProps> = ({ isOpen, onC
                   setIsPrivacyPolicyOpen(true);
                 }
               }}
-              label={
-                <span className="font-light text-gray-700">
-                  I agree to the{' '}
-                  <Button
-                    type="button"
-                    variant="link"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setIsPrivacyPolicyOpen(true);
-                    }}
-                    className="p-0 underline"
-                  >
-                    Privacy Policy
-                  </Button>
-                </span>
-              }
+              label="I agree to the Privacy Policy"
+              containerClassName="flex items-center"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsPrivacyPolicyOpen(true);
+              }}
               required
               labelClassName="font-light"
             />
@@ -472,9 +462,8 @@ const PersonalAccountModal: React.FC<PersonalAccountModalProps> = ({ isOpen, onC
             size="lg"
             rounded="full"
             className="font-light tracking-wide text-lg"
-            loadingText="Registering..."
           >
-            Register Fur Parent Account
+            {isLoading ? 'Registering...' : 'Register Fur Parent Account'}
           </Button>
           </form>
       </div>

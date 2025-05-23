@@ -26,7 +26,7 @@ export const LoadingSpinner = ({
 }: LoadingSpinnerProps) => {
   if (fullScreen) {
     return (
-      <PageLoader 
+      <PageLoader
         message={message}
         fullScreen={true}
         className={className}
@@ -36,7 +36,7 @@ export const LoadingSpinner = ({
       />
     );
   }
-  
+
   return (
     <SectionLoader
       message={message}
@@ -58,7 +58,7 @@ export const StatsCardSkeleton = ({ count = 4 }: { count?: number }) => {
   return (
     <>
       {Array(count).fill(0).map((_, index) => (
-        <SkeletonCard 
+        <SkeletonCard
           key={index}
           withHeader={true}
           contentLines={1}
@@ -79,10 +79,10 @@ export const TableSkeleton = ({ rows = 5 }: { rows?: number }) => {
   return (
     <div className="bg-white rounded-xl shadow-sm overflow-hidden">
       <div className="p-6">
-        <SkeletonText 
-          lines={1} 
-          height="h-6" 
-          spacing="tight" 
+        <SkeletonText
+          lines={1}
+          height="h-6"
+          spacing="tight"
           lastLineWidth="1/4"
           className="mb-6"
         />
@@ -91,9 +91,9 @@ export const TableSkeleton = ({ rows = 5 }: { rows?: number }) => {
             <div key={index} className="flex items-center space-x-4">
               <Skeleton height="h-12" width="w-12" rounded="full" />
               <div className="flex-1">
-                <SkeletonText 
-                  lines={2} 
-                  spacing="tight" 
+                <SkeletonText
+                  lines={2}
+                  spacing="tight"
                   lastLineWidth="1/2"
                 />
               </div>
@@ -109,12 +109,12 @@ export const TableSkeleton = ({ rows = 5 }: { rows?: number }) => {
 /**
  * Empty State Component for when no items are found
  */
-export const EmptyState = ({ 
+export const EmptyState = ({
   message = 'No items found',
   description = 'There are no items to display at this time.',
   icon,
   className
-}: { 
+}: {
   message?: string;
   description?: string;
   icon?: React.ReactNode;
@@ -127,9 +127,47 @@ export const EmptyState = ({
   </div>
 );
 
-export default {
+/**
+ * Error Display Component for standardized error handling
+ */
+export const ErrorDisplay = ({
+  message = 'An error occurred',
+  description = 'There was a problem loading the data. Please try again later.',
+  icon,
+  className,
+  onRetry
+}: {
+  message?: string;
+  description?: string;
+  icon?: React.ReactNode;
+  className?: string;
+  onRetry?: () => void;
+}) => (
+  <div className={cn("bg-white rounded-xl shadow-sm p-8 text-center", className)}>
+    {icon && <div className="text-red-400 mb-4">{icon}</div>}
+    <h3 className="text-lg font-medium text-red-600 mb-1">{message}</h3>
+    <p className="text-gray-600 max-w-md mx-auto mb-4">{description}</p>
+    {onRetry && (
+      <button
+        onClick={onRetry}
+        className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--primary-green)]"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-gray-500" viewBox="0 0 20 20" fill="currentColor">
+          <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
+        </svg>
+        Try Again
+      </button>
+    )}
+  </div>
+);
+
+// Create a named object for the default export
+const LoadingComponents = {
   LoadingSpinner,
   StatsCardSkeleton,
   TableSkeleton,
-  EmptyState
+  EmptyState,
+  ErrorDisplay
 };
+
+export default LoadingComponents;

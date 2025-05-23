@@ -21,7 +21,7 @@ async function initializeDatabase() {
 
     return true;
   } catch (error) {
-    console.error('Database initialization error:', error);
+    // Database initialization error
     throw error;
   }
   // Removed pool.end() to prevent closing the connection pool that might be used elsewhere

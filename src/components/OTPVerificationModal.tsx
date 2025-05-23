@@ -523,12 +523,11 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
                   onClick={verifyOTP}
                   disabled={isLoading || verificationStatus === 'loading'}
                   isLoading={verificationStatus === 'loading'}
-                  loadingText="Verifying..."
                   fullWidth
                   size="lg"
                   rounded="default"
                 >
-                  Verify Account
+                  {verificationStatus === 'loading' ? 'Verifying...' : 'Verify Account'}
                 </Button>
 
                 <Button

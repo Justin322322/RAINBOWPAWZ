@@ -761,7 +761,7 @@ export default function AdminFurParentsPage() {
         title="Restrict Fur Parent"
         message={
           <div className="space-y-4">
-            <p>Are you sure you want to restrict "{userToAction?.first_name} {userToAction?.last_name}"? This will prevent them from making new bookings.</p>
+            <p>Are you sure you want to restrict &quot;{userToAction?.first_name} {userToAction?.last_name}&quot;? This will prevent them from making new bookings.</p>
             <div>
               <label htmlFor="restrict-reason" className="block text-sm font-medium text-gray-700 mb-1">
                 Reason for restriction (optional)
@@ -788,7 +788,7 @@ export default function AdminFurParentsPage() {
         onClose={() => setShowRestoreModal(false)}
         onConfirm={handleUnrestrictUser}
         title="Unrestrict Fur Parent"
-        message={`Are you sure you want to unrestrict "${userToAction?.first_name} ${userToAction?.last_name}"? This will allow them to make bookings again.`}
+        message={`Are you sure you want to unrestrict &quot;${userToAction?.first_name} ${userToAction?.last_name}&quot;? This will allow them to make bookings again.`}
         confirmText="Unrestrict Access"
         confirmButtonClass="bg-green-600 hover:bg-green-700 focus:ring-green-500"
         icon={<CheckCircleIcon className="h-6 w-6 text-green-600" />}

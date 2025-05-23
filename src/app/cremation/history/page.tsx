@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import CremationDashboardLayout from '@/components/navigation/CremationDashboardLayout';
 import withBusinessVerification from '@/components/withBusinessVerification';
 import { useToast } from '@/context/ToastContext';
@@ -64,8 +65,8 @@ function CremationHistoryPage({ userData }: { userData: any }) {
     setCurrentPage(1); // Reset to first page when filters change
   }, [bookings, searchTerm, statusFilter]);
 
-  // Function to fetch booking history with retry logic
-  const fetchBookingHistory = async (retry = false) => {
+  // Function to fetch booking history with retry logic - wrapped in useCallback
+  const fetchBookingHistory = useCallback(async (retry = false) => {
     try {
       setLoading(true);
       setError(null); // Clear any previous errors
@@ -127,12 +128,12 @@ function CremationHistoryPage({ userData }: { userData: any }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [dateFilter, retryCount, showToast]);
 
   // Fetch booking history when component mounts or date filter changes
   useEffect(() => {
     fetchBookingHistory();
-  }, [dateFilter]);
+  }, [dateFilter, fetchBookingHistory]);
 
   // Handle manual refresh
   const handleRefresh = () => {
@@ -468,7 +469,7 @@ function CremationHistoryPage({ userData }: { userData: any }) {
         </div>
 
         {loading ? (
-          <LoadingSpinner className="h-64" size="sm" />
+          <LoadingSpinner className="h-64" />
         ) : error ? (
           <div className="p-6 text-center">
             <p className="text-red-500">{error}</p>
@@ -537,11 +538,14 @@ function CremationHistoryPage({ userData }: { userData: any }) {
                       <div className="flex items-center">
                         <div className="h-10 w-10 flex-shrink-0">
                           {booking.petImageUrl ? (
-                            <img
+                            <Image
                               className="h-10 w-10 rounded-full object-cover"
                               src={booking.petImageUrl}
                               alt={booking.petName || 'Pet'}
+                              width={40}
+                              height={40}
                               onError={(e) => {
+                                // @ts-ignore - Next.js Image doesn't have src property on event target
                                 (e.target as HTMLImageElement).src = '/icons/pet-placeholder.png';
                               }}
                             />

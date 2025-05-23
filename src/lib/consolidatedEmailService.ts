@@ -125,11 +125,9 @@ export async function sendEmail(emailData: EmailData): Promise<{ success: boolea
   try {
     // Check if SMTP credentials are set
     if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
-      console.warn('Email service not properly configured: Missing SMTP credentials');
+      // Email service not properly configured: Missing SMTP credentials
       // In development, pretend the email was sent successfully
       if (process.env.NODE_ENV === 'development') {
-        console.log('DEV MODE: Simulating successful email send to:', emailData.to);
-        console.log('Subject:', emailData.subject);
         return { success: true, messageId: 'dev-mode-no-email-sent' };
       }
     }

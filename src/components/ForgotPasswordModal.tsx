@@ -130,9 +130,8 @@ const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({ isOpen, onClo
             size="lg"
             rounded="full"
             className="font-light tracking-wide text-lg"
-            loadingText="Sending..."
           >
-            Send Reset Instructions
+            {isLoading ? 'Sending...' : 'Send Reset Instructions'}
           </Button>
 
           <div className="text-center text-sm text-gray-500 dark:text-gray-400 font-light">

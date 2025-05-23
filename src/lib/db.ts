@@ -99,30 +99,19 @@ export async function query(sql: string, params: any[] = []): Promise<QueryResul
   } catch (error) {
     const err = error as any;
 
-    // Log the error details
-    console.error("Database query error:", {
-      code: err.code,
-      message: err.message,
-      sqlState: err.sqlState,
-      sqlMessage: err.sqlMessage,
-      sql: sql.substring(0, 200) // Log only first 200 chars for security
-    });
-
     // Check if it's a connection error
     if (err.code === 'ECONNREFUSED') {
-      console.error("Connection refused error - MySQL server might not be running");
+      // Connection refused error - MySQL server might not be running
     } else if (err.code === 'ER_ACCESS_DENIED_ERROR') {
-      console.error("Access denied error - Check username and password");
+      // Access denied error - Check username and password
     } else if (err.code === 'ER_BAD_DB_ERROR') {
-      console.error("Database does not exist - Check database name");
+      // Database does not exist - Check database name
     } else if (err.code === 'PROTOCOL_CONNECTION_LOST') {
-      console.error("Connection lost - Attempting to reconnect");
       // The connection was lost, try to reconnect
       try {
         pool = mysql.createPool(finalConfig);
-        console.log("Reconnection successful");
       } catch (reconnectError) {
-        console.error("Failed to reconnect:", reconnectError);
+        // Failed to reconnect
       }
     }
 

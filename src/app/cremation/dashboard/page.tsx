@@ -418,7 +418,7 @@ function CremationDashboardPage({ userData }: { userData: any }) {
               <CalendarIcon className="h-12 w-12 text-gray-400 mb-2" />
               <h3 className="text-lg font-medium text-gray-900">No recent bookings</h3>
               <p className="text-gray-500 text-center max-w-xs mt-1">
-                You don't have any bookings yet. When customers book your services, they will appear here.
+                You don&apos;t have any bookings yet. When customers book your services, they will appear here.
               </p>
             </div>
           )}
@@ -495,7 +495,7 @@ function CremationDashboardPage({ userData }: { userData: any }) {
               <h3 className="text-lg font-medium text-yellow-800 mb-2">Calendar Setup Required</h3>
               <p className="text-yellow-700 mb-4">
                 The availability calendar requires database tables to be set up.
-                Click the "Set Up Calendar" button above to create the necessary tables.
+                Click the &quot;Set Up Calendar&quot; button above to create the necessary tables.
               </p>
             </div>
           ) : showAvailabilitySection ? (
