@@ -9,6 +9,7 @@ import {
   ArrowPathIcon,
 } from '@heroicons/react/24/outline';
 import Link from 'next/link';
+import { LoadingSpinner } from '@/app/admin/services/client';
 
 // Define the interface for application type
 interface Application {
@@ -99,52 +100,61 @@ function AdminApplicationsContent() {
 
   return (
     <div className="space-y-6">
-      {/* Page Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Application Management</h1>
-          <p className="mt-1 text-sm text-gray-600">Review and manage pending business applications</p>
+      {/* Header section */}
+      <div className="mb-8 bg-white rounded-xl shadow-sm p-6">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
+          <div>
+            <h1 className="text-2xl font-semibold text-gray-800">Application Management</h1>
+            <p className="text-gray-600 mt-1">Review and manage pending business applications</p>
+          </div>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-[var(--primary-green)] text-white rounded-lg hover:bg-[var(--primary-green-hover)] transition-colors flex items-center justify-center"
+            disabled={isLoading}
+          >
+            <ArrowPathIcon className={`h-5 w-5 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+            Refresh
+          </button>
         </div>
-        <button
-          onClick={() => window.location.reload()}
-          className="mt-4 md:mt-0 px-4 py-2 bg-[var(--primary-green)] text-white rounded-md hover:bg-[var(--primary-green-hover)] transition-colors flex items-center"
-          disabled={isLoading}
-        >
-          <ArrowPathIcon className={`h-5 w-5 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-          Refresh
-        </button>
       </div>
 
-      {/* Search */}
-      <div className="bg-white p-4 shadow-sm rounded-xl">
-        <div className="flex flex-col md:flex-row gap-4">
-          <div className="relative flex-grow">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
-            </div>
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)] sm:text-sm"
-              placeholder="Search applications..."
-            />
+      {/* Search and Filter */}
+      <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3 w-full">
+        <div className="relative flex-grow sm:max-w-xs">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
           </div>
-
-          <div className="md:w-48">
-            <select
-              id="status"
-              name="status"
-              className="block w-full h-10 pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-            >
-              <option value="all">All Statuses</option>
-              <option value="pending">Pending</option>
-              <option value="approved">Approved</option>
-              <option value="declined">Declined</option>
-              <option value="restricted">Restricted</option>
-            </select>
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)] sm:text-sm"
+            placeholder="Search applications..."
+          />
+        </div>
+        <div className="relative flex-grow sm:max-w-xs">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <svg className="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L12 11.414V15a1 1 0 01-.293.707l-2 2A1 1 0 018 17v-5.586L3.293 6.707A1 1 0 013 6V3z" clipRule="evenodd" />
+            </svg>
+          </div>
+          <select
+            id="status"
+            name="status"
+            className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)] sm:text-sm appearance-none"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+          >
+            <option value="all">All Statuses</option>
+            <option value="pending">Pending</option>
+            <option value="approved">Approved</option>
+            <option value="declined">Declined</option>
+            <option value="restricted">Restricted</option>
+          </select>
+          <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+            <svg className="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+              <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+            </svg>
           </div>
         </div>
       </div>
@@ -163,32 +173,32 @@ function AdminApplicationsContent() {
         </div>
 
         {isLoading ? (
-          <div className="px-6 py-8 text-center">
-            <ArrowPathIcon className="mx-auto h-8 w-8 text-[var(--primary-green)] animate-spin" />
-            <p className="mt-2 text-gray-500">Loading applications...</p>
-          </div>
+          <LoadingSpinner message="Loading applications..." className="px-6" />
         ) : error ? (
           <div className="px-6 py-8 text-center">
-            <div className="mx-auto h-12 w-12 text-red-500 flex items-center justify-center">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-red-100 text-red-600 mb-4">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </div>
-            <h3 className="mt-2 text-sm font-medium text-gray-900">Error loading applications</h3>
-            <p className="mt-1 text-sm text-red-500">{error}</p>
-            <button
-              onClick={() => window.location.reload()}
-              className="mt-4 px-4 py-2 bg-[var(--primary-green)] text-white rounded-md hover:bg-[var(--primary-green-hover)] transition-colors"
-            >
-              Retry
-            </button>
+            <p className="text-red-600 font-medium mb-2">Error loading applications</p>
+            <p className="text-gray-500 text-sm">{error}</p>
+            <div className="flex justify-center mt-4">
+              <button
+                onClick={() => window.location.reload()}
+                className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg text-sm font-medium text-gray-700 transition-colors"
+              >
+                Retry
+              </button>
+            </div>
           </div>
         ) : filteredApplications.length === 0 ? (
           <div className="px-6 py-8 text-center">
-            <DocumentMagnifyingGlassIcon className="mx-auto h-12 w-12 text-gray-300" />
-            <h3 className="mt-2 text-sm font-medium text-gray-900">No applications found</h3>
-            <p className="mt-1 text-sm text-gray-500">
-              {searchTerm 
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gray-100 text-gray-400 mb-4">
+              <DocumentMagnifyingGlassIcon className="h-6 w-6" />
+            </div>
+            <p className="text-gray-500 text-sm">
+              {searchTerm
                 ? "Try adjusting your search term to find what you're looking for."
                 : statusFilter === 'pending'
                   ? "There are no pending business applications at this time."

@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
     const rows = (await query(
       `
       SELECT
-        sp.id,
+        sp.package_id as id,
         sp.name,
         sp.description,
         sp.category,
@@ -31,11 +31,11 @@ export async function GET(request: NextRequest) {
         sp.price,
         sp.conditions,
         sp.is_active         AS isActive,
-        svp.id               AS providerId,
+        svp.provider_id      AS providerId,
         svp.name             AS providerName
       FROM service_packages sp
       JOIN service_providers svp
-        ON sp.service_provider_id = svp.id
+        ON sp.provider_id = svp.provider_id
       ${whereClause}
       ORDER BY sp.created_at DESC
       LIMIT ? OFFSET ?
@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
     }
 
     const prov = (await query(
-      'SELECT id FROM service_providers WHERE user_id = ?',
+      'SELECT provider_id as id FROM service_providers WHERE user_id = ?',
       [userId]
     )) as any[];
     if (prov.length === 0) {
@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
       const pkgRes = (await query(
         `
         INSERT INTO service_packages
-          (service_provider_id, name, description, category, cremation_type,
+          (provider_id, name, description, category, cremation_type,
            processing_time, price, conditions, is_active)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, TRUE)
         `,
@@ -207,12 +207,12 @@ async function getPackageById(packageId: number) {
       `
       SELECT
         sp.*,
-        svp.id   AS providerId,
+        svp.provider_id   AS providerId,
         svp.name AS providerName
       FROM service_packages sp
       JOIN service_providers svp
-        ON sp.service_provider_id = svp.id
-      WHERE sp.id = ?
+        ON sp.provider_id = svp.provider_id
+      WHERE sp.package_id = ?
       `,
       [packageId]
     )) as any[];
@@ -235,8 +235,8 @@ async function enhancePackagesWithDetails(pkgs: any[]) {
   const ids = pkgs.map((p) => p.id);
   const [incs, adds, imgs] = await Promise.all([
     query(`SELECT package_id, description FROM package_inclusions WHERE package_id IN (?)`, [ids]),
-    query(`SELECT package_id, description, price      FROM package_addons     WHERE package_id IN (?)`, [ids]),
-    query(`SELECT package_id, image_path, display_order FROM package_images     WHERE package_id IN (?) ORDER BY display_order`, [ids]),
+    query(`SELECT package_id, description, price FROM package_addons WHERE package_id IN (?)`, [ids]),
+    query(`SELECT package_id, image_path, display_order FROM package_images WHERE package_id IN (?) ORDER BY display_order`, [ids]),
   ]) as any[][];
 
   const groupBy = (arr: any[], key: string) =>

@@ -4,17 +4,23 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import AdminDashboardLayout from '@/components/navigation/AdminDashboardLayout';
 import {
   MagnifyingGlassIcon,
-  FireIcon,
-  QueueListIcon,
-  ShieldCheckIcon,
-  BanknotesIcon,
   XMarkIcon,
   EyeIcon,
+  QueueListIcon,
+  FunnelIcon,
+  TagIcon,
+  FireIcon,
+  ShieldCheckIcon,
+  BanknotesIcon,
   ExclamationCircleIcon,
+  CheckCircleIcon,
 } from '@heroicons/react/24/outline';
+import { motion, AnimatePresence } from 'framer-motion';
+import Select from '@/components/ui/Select';
 import { PackageImage } from '@/components/packages/PackageImage';
 import { LoadingSpinner, EmptyState } from './client';
 import StarRating from '@/components/ui/StarRating';
+import StatCard from '@/components/ui/StatCard';
 
 type Service = {
   id: number;
@@ -84,186 +90,141 @@ function useServices(params: {
   page: number;
   limit: number;
   onError: (msg: string) => void;
+  shouldFetch?: () => boolean;
 }) {
-  const { search, status, category, page, limit } = params;
+  const { search, status, category, page, limit, onError, shouldFetch } = params;
   const [services, setServices] = useState<Service[]>([]);
-  const [pagination, setPagination] = useState<Pagination>({ total: 0, page, limit, totalPages: 0 });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [stats, setStats] = useState<Stats>({
     activeServices: 0,
     totalBookings: 0,
     verifiedCenters: 0,
     monthlyRevenue: '₱0.00',
   });
-  const [loading, setLoading] = useState(true);
-  
+  const [pagination, setPagination] = useState<Pagination>({
+    total: 0,
+    page: 1,
+    limit: 10,
+    totalPages: 1,
+  });
+
   // Memoize the error handler to prevent unnecessary re-renders
   const handleError = useCallback((message: string) => {
-    params.onError(message);
-  }, [params]);
+    onError(message);
+  }, [onError]);
 
   useEffect(() => {
-    let cancelled = false;
-    async function fetchAll() {
+    const controller = new AbortController();
+    const signal = controller.signal;
+    let isMounted = true;
+    let retryTimer: NodeJS.Timeout | null = null;
+
+    // Check if we should fetch data based on the shouldFetch callback
+    if (shouldFetch && !shouldFetch()) {
+      // Skip fetching if shouldFetch returns false
+      setLoading(false);
+      return;
+    }
+
+    const fetchData = async () => {
+      // Set loading to true at the start of the request
       setLoading(true);
+
       try {
-        const qs = new URLSearchParams();
-        if (search)   qs.append('search', search);
-        if (status!=='all')   qs.append('status', status);
-        if (category!=='all') qs.append('category', category);
-        qs.append('page', `${page}`);
-        qs.append('limit', `${limit}`);
-        qs.append('_', `${Date.now()}`);
+        const query = new URLSearchParams({
+          search: search || '',
+          status: status || 'all',
+          category: category || 'all',
+          page: page.toString(),
+          limit: limit.toString(),
+          _t: Date.now().toString(), // Prevent caching
+        });
 
-        const [svcRes, imgRes] = await Promise.all([
-          fetch(`/api/admin/services/listing?${qs}`),
-          fetch(`/api/packages/available-images?${Date.now()}`),
-        ]);
+        const res = await fetch(`/api/admin/services/listing?${query}`, {
+          signal,
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+          },
+        });
 
-        if (!svcRes.ok) throw new Error(`Error ${svcRes.status}`);
-        const data = await svcRes.json();
+        if (!res.ok) {
+          const errorData = await res.json().catch(() => ({}));
+          throw new Error(errorData.error || `HTTP error! status: ${res.status}`);
+        }
+
+        const data = await res.json();
+
+        if (!isMounted) return;
 
         if (!data.success) {
-          handleError(data.error || 'Failed to fetch services');
-          return;
+          throw new Error(data.error || 'Failed to load services');
         }
 
-        // save images list cookie
-        const imgJson = await imgRes.json();
-        if (imgJson.images) {
-          document.cookie = `packageFiles=${JSON.stringify(imgJson.images)}; path=/; max-age=300`;
-        }
+        setServices(data.services || []);
+        setPagination(data.pagination || { total: 0, page: 1, limit: 10, totalPages: 1 });
 
-        // normalize
-        const withImg: Service[] = data.services.map((s: any) => {
-          // Ensure we have an id field (might be package_id in the database)
-          const serviceId = s.id || s.package_id || 0;
-          
-          const imgs = Array.isArray(s.images) && s.images.length
-            ? s.images
-            : s.image ? [s.image] : [];
-          return {
-            ...s,
-            id: serviceId,
-            images: imgs,
-            image: imgs[0] ?? null,
-          };
-        });
-
-        setServices(withImg);
-
-        // Ensure pagination data is properly set with defaults if missing
-        if (data.pagination) {
-          setPagination({
-            total: data.pagination.total || 0,
-            page: data.pagination.page || page,
-            limit: data.pagination.limit || limit,
-            totalPages: data.pagination.totalPages || Math.ceil((data.pagination.total || 0) / limit)
+        // Update stats if available
+        if (data.stats) {
+          setStats({
+            activeServices: data.stats.activeServices || 0,
+            totalBookings: data.stats.totalBookings || 0,
+            verifiedCenters: data.stats.verifiedCenters || 0,
+            monthlyRevenue: data.stats.monthlyRevenue || '₱0.00',
           });
         } else {
-          // If pagination data is missing, calculate it from the services array
-          setPagination({
-            total: withImg.length,
-            page,
-            limit,
-            totalPages: Math.ceil(withImg.length / limit)
+          // Use data from the response directly if stats object is not present
+          setStats({
+            activeServices: data.activeServicesCount || 0,
+            totalBookings: 0,
+            verifiedCenters: data.serviceProvidersCount || 0,
+            monthlyRevenue: data.monthlyRevenue || '₱0.00',
           });
         }
 
-        // Fetch dashboard stats for more accurate data
-        let dashboardStats;
-        try {
-          // First try to get stats from the dedicated dashboard-stats endpoint
-          const dashboardRes = await fetch('/api/admin/dashboard-stats');
-          if (dashboardRes.ok) {
-            const dashboardData = await dashboardRes.json();
-            if (dashboardData.success && dashboardData.stats) {
-              dashboardStats = dashboardData.stats;
-            }
-          }
-
-          // If that fails, try the regular dashboard endpoint
-          if (!dashboardStats) {
-            const regularDashboardRes = await fetch('/api/admin/dashboard');
-            if (regularDashboardRes.ok) {
-              const regularData = await regularDashboardRes.json();
-              if (regularData.success && regularData.stats) {
-                dashboardStats = regularData.stats;
-              }
-            }
-          }
-        } catch (dashboardErr) {
-          console.error('Error fetching dashboard stats:', dashboardErr);
-        }
-
-        // Calculate more accurate stats
-        let activeServicesCount = 0;
-        let totalBookingsCount = 0;
-        let serviceProvidersCount = 0;
-        let monthlyRevenueAmount = 0;
-
-        // Try to get the most accurate values from various sources
-        if (dashboardStats) {
-          // Use dashboard stats if available
-          activeServicesCount = dashboardStats.services?.count || 0;
-          serviceProvidersCount = dashboardStats.activeUsers?.cremation || 0;
-          monthlyRevenueAmount = dashboardStats.revenue?.amount || 0;
-        }
-
-        // If dashboard stats are missing or zero, fall back to API data
-        if (activeServicesCount === 0 && data.activeServicesCount) {
-          activeServicesCount = data.activeServicesCount;
-        }
-
-        if (serviceProvidersCount === 0 && data.serviceProvidersCount) {
-          serviceProvidersCount = data.serviceProvidersCount;
-        }
-
-        // If we have monthly revenue from API, parse it
-        if (monthlyRevenueAmount === 0 && data.monthlyRevenue) {
-          // Try to parse the formatted string (e.g., "₱25,000.00")
-          const match = data.monthlyRevenue.match(/[0-9,.]+/);
-          if (match) {
-            monthlyRevenueAmount = parseFloat(match[0].replace(/,/g, '')) || 0;
-          }
-        }
-
-        // Last resort: calculate from the services array
-        if (activeServicesCount === 0) {
-          activeServicesCount = withImg.filter(s => s.status === 'active').length;
-        }
-
-        // Calculate total bookings from services
-        totalBookingsCount = data.totalBookings || withImg.reduce((sum, s) => sum + (s.bookings || 0), 0);
-
-        // If service providers count is still 0, calculate from unique provider IDs
-        if (serviceProvidersCount === 0) {
-          serviceProvidersCount = new Set(withImg.filter(s => s.providerId).map(s => s.providerId)).size;
-        }
-
-        // Format the monthly revenue with the Philippine Peso symbol
-        const formattedMonthlyRevenue = monthlyRevenueAmount > 0
-          ? `₱${monthlyRevenueAmount.toLocaleString('en-US', {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2
-            })}`
-          : '₱0.00';
-
-        // Set the stats with our values, using the real monthly revenue
-        setStats({
-          activeServices: activeServicesCount,
-          totalBookings: totalBookingsCount,
-          verifiedCenters: serviceProvidersCount,
-          monthlyRevenue: formattedMonthlyRevenue,
-        });
+        setError(null);
+        setRetryCount(0); // Reset retry count on success
       } catch (err: any) {
-        handleError(err.message || 'Unknown error');
+        if (!isMounted) return;
+
+        console.error('Error fetching services:', err);
+        const errorMessage = err.message || 'Failed to load services. Please try again.';
+        setError(errorMessage);
+        onError(errorMessage);
+
+        // Auto-retry logic - limit to 1 retry to prevent infinite loops
+        if (retryCount < 1) {
+          console.log(`Retrying... Attempt ${retryCount + 1}/2`);
+          retryTimer = setTimeout(() => {
+            if (isMounted) {
+              setRetryCount(prev => prev + 1);
+            }
+          }, 3000); // Longer delay between retries
+        } else {
+          // After retry limit, set empty data to prevent infinite loading
+          setServices([]);
+          setPagination({ total: 0, page: 1, limit: 10, totalPages: 1 });
+        }
       } finally {
-        if (!cancelled) setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+          setIsInitialLoad(false);
+        }
       }
-    }
-    fetchAll();
-    return () => { cancelled = true; };
-  }, [search, status, category, page, limit, handleError]);
+    };
+
+    fetchData();
+
+    return () => {
+      isMounted = false;
+      controller.abort();
+      if (retryTimer) clearTimeout(retryTimer);
+    };
+  }, [search, status, category, page, limit, onError, retryCount, shouldFetch]);
 
   return { services, loading, stats, pagination, setPagination };
 }
@@ -274,17 +235,42 @@ export default function AdminServicesPage() {
   const [statusFilter, setStatusFilter]   = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [notification, setNotification]   = useState<{ message: string; type: 'error'|'success'|null }>({ message:'', type:null });
-  const [page, setPage]     = useState(1);
+  const [page, setPage] = useState(1);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [lastFetchTime, setLastFetchTime] = useState(0); // Track last fetch time for cache
   const limit = 20;
 
   const debouncedSearch = useDebounce(searchTerm, 300);
+
+  // Create a cache key based on the current filters
+  const cacheKey = `${debouncedSearch}_${statusFilter}_${categoryFilter}_${page}_${limit}`;
+
+  // Only fetch new data if filters change or if it's been more than 30 seconds
+  const shouldFetch = useCallback(() => {
+    const now = Date.now();
+    if (now - lastFetchTime > 30000) { // 30 seconds cache
+      setLastFetchTime(now);
+      return true;
+    }
+    return false;
+  }, [lastFetchTime]);
+
   const { services, loading, stats, pagination, setPagination } = useServices({
     search: debouncedSearch,
     status: statusFilter,
     category: categoryFilter,
-    page, limit,
+    page,
+    limit,
     onError: (msg) => setNotification({ message: msg, type: 'error' }),
+    shouldFetch: shouldFetch
   });
+
+  // Track initial load state
+  useEffect(() => {
+    if (!loading && isInitialLoad) {
+      setIsInitialLoad(false);
+    }
+  }, [loading, isInitialLoad]);
 
   const filteredServices = useMemo(() => {
     const term = debouncedSearch.toLowerCase();
@@ -314,65 +300,141 @@ export default function AdminServicesPage() {
     return undefined; // Explicitly return undefined when there's no cleanup needed
   }, [notification]);
 
+  // Reset loading state when filters change
+  useEffect(() => {
+    setPage(1); // Reset to first page when filters change
+    setLastFetchTime(0); // Reset cache when filters change
+  }, [searchTerm, statusFilter, categoryFilter]);
+
+  if (loading && isInitialLoad) {
+    return (
+      <AdminDashboardLayout activePage="services" userName={userName}>
+        <LoadingSpinner message="Loading services..." fullScreen={false} />
+      </AdminDashboardLayout>
+    );
+  }
+
   return (
     <AdminDashboardLayout activePage="services" userName={userName}>
-      {/* Notification */}
-      {notification.type && (
-        <div className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg flex items-center ${
-          notification.type==='error'
-            ? 'bg-red-50 text-red-800 border border-red-200'
-            : 'bg-green-50 text-green-800 border border-green-200'
-        }`}>
-          {notification.type==='error'
-            ? <ExclamationCircleIcon className="h-5 w-5 mr-2 text-red-500"/>
-            : <span className="h-5 w-5 mr-2 text-green-500">✔</span>}
-          <span>{notification.message}</span>
-          <button onClick={()=>setNotification({message:'',type:null})} className="ml-4 text-gray-500 hover:text-gray-700">
-            <XMarkIcon className="h-4 w-4" />
-          </button>
-        </div>
-      )}
+      {/* Notification Overlays */}
+      <AnimatePresence>
+        {notification.type === 'error' && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[200]"
+          >
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.8, opacity: 0 }}
+              className="bg-white rounded-xl p-8 max-w-md w-full text-center"
+            >
+              <motion.div
+                className="w-20 h-20 mx-auto rounded-full bg-red-100 flex items-center justify-center mb-6"
+                initial={{ scale: 0.8 }}
+                animate={{ scale: [0.8, 1.2, 1] }}
+                transition={{ duration: 0.5 }}
+              >
+                <ExclamationCircleIcon className="h-12 w-12 text-red-500" />
+              </motion.div>
+              <h3 className="text-xl font-medium text-gray-900 mb-2">Error</h3>
+              <p className="text-gray-600 mb-6">
+                {notification.message}
+              </p>
+              <button
+                onClick={() => setNotification({ message: '', type: null })}
+                className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg text-sm font-medium text-gray-700 transition-colors"
+              >
+                Dismiss
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
 
-      {/* Header */}
+        {notification.type === 'success' && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[200]"
+          >
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.8, opacity: 0 }}
+              className="bg-white rounded-xl p-8 max-w-md w-full text-center"
+            >
+              <motion.div
+                className="w-20 h-20 mx-auto rounded-full bg-green-100 flex items-center justify-center mb-6"
+                initial={{ scale: 0.8 }}
+                animate={{ scale: [0.8, 1.2, 1] }}
+                transition={{ duration: 0.5 }}
+              >
+                <CheckCircleIcon className="h-12 w-12 text-green-500" />
+              </motion.div>
+              <h3 className="text-xl font-medium text-gray-900 mb-2">Success</h3>
+              <p className="text-gray-600 mb-6">
+                {notification.message}
+              </p>
+              <button
+                onClick={() => setNotification({ message: '', type: null })}
+                className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg text-sm font-medium text-gray-700 transition-colors"
+              >
+                Dismiss
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Header section */}
       <div className="mb-8 bg-white rounded-xl shadow-sm p-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
           <div>
             <h1 className="text-2xl font-semibold text-gray-800">Active Services</h1>
             <p className="text-gray-600 mt-1">Monitor and manage cremation services</p>
           </div>
-          <div className="flex flex-wrap gap-3">
-            <div className="relative flex-grow sm:max-w-xs">
-              <MagnifyingGlassIcon className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none h-5 w-5 text-gray-400" />
+          <div className="flex flex-wrap gap-4 w-full md:w-auto">
+            <div className="relative w-full sm:w-auto">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
+              </div>
               <input
                 type="text"
                 value={searchTerm}
-                onChange={e=>setSearchTerm(e.target.value)}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-xl leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)] sm:text-sm"
                 placeholder="Search services..."
-                className="block w-full pl-10 pr-3 py-2 border rounded-lg focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
               />
             </div>
-            <Select
-              value={statusFilter}
-              onChange={e=>setStatusFilter(e.target.value)}
-              options={[
-                {label:'All Statuses',value:'all'},
-                {label:'Active',value:'active'},
-                {label:'Inactive',value:'inactive'},
-                {label:'Pending',value:'pending'},
-              ]}
-            />
-            <Select
-              value={categoryFilter}
-              onChange={e=>setCategoryFilter(e.target.value)}
-              options={[
-                {label:'All Categories',value:'all'},
-                {label:'Individual',value:'individual'},
-                {label:'Premium',value:'premium'},
-                {label:'Communal',value:'communal'},
-                {label:'Service',value:'service'},
-                {label:'Memorial',value:'memorial'},
-              ]}
-            />
+            <div className="w-full sm:w-auto">
+              <Select
+                value={statusFilter}
+                onChange={(value) => setStatusFilter(value as string)}
+                options={[
+                  { value: 'all', label: 'All Statuses' },
+                  { value: 'active', label: 'Active' },
+                  { value: 'inactive', label: 'Inactive' },
+                  { value: 'pending', label: 'Pending' },
+                ]}
+                className="w-full"
+              />
+            </div>
+            <div className="w-full sm:w-auto">
+              <Select
+                value={categoryFilter}
+                onChange={(value) => setCategoryFilter(value as string)}
+                options={[
+                  { value: 'all', label: 'All Categories' },
+                  { value: 'cremation', label: 'Cremation Services' },
+                  { value: 'memorial', label: 'Memorial Services' },
+                  { value: 'funeral', label: 'Funeral Services' },
+                ]}
+                className="w-full"
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -406,23 +468,35 @@ export default function AdminServicesPage() {
       </div>
 
       {/* Content */}
-      {loading ? (
-        <LoadingSpinner />
-      ) : filteredServices.length === 0 ? (
-        <EmptyState />
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredServices.map(svc => (
-            <ServiceCard
-              key={svc.id}
-              service={svc}
-              onViewDetails={openDetails}
-              imageError={imageError}
-              setImageError={setImageError}
-            />
-          ))}
+      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-200">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-medium text-gray-800">Service Packages</h2>
+          </div>
         </div>
-      )}
+
+        {loading && !isInitialLoad ? (
+          <LoadingSpinner message="Loading services..." className="px-6" />
+        ) : filteredServices.length === 0 ? (
+          <div className="px-6 py-8 text-center">
+            <p className="text-gray-500 text-sm">No services match your search criteria.</p>
+          </div>
+        ) : (
+          <div className="p-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredServices.map(svc => (
+                <ServiceCard
+                  key={svc.id}
+                  service={svc}
+                  onViewDetails={openDetails}
+                  imageError={imageError}
+                  setImageError={setImageError}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Details Modal */}
       {showModal && selected && (
@@ -448,66 +522,6 @@ export default function AdminServicesPage() {
 
 
 // ——— Helper components below ———
-
-function Select({
-  value,
-  onChange,
-  options
-}: {
-  value: string;
-  onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
-  options: { label: string; value: string }[];
-}) {
-  return (
-    <div className="relative">
-      <select
-        value={value}
-        onChange={onChange}
-        className="block w-full pl-3 pr-10 py-2 border rounded-lg focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)] appearance-none"
-      >
-        {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-      </select>
-      <svg className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none h-5 w-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-        <path d="M5.293 7.293l4 4 4-4" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"/>
-      </svg>
-    </div>
-  );
-}
-
-function StatCard({
-  icon,
-  label,
-  value,
-  color
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: number | string;
-  color: 'green' | 'blue' | 'purple' | 'amber';
-}) {
-  const bg = {
-    green: 'bg-green-100 text-green-800',
-    blue:  'bg-blue-100 text-blue-800',
-    purple:'bg-purple-100 text-purple-800',
-    amber: 'bg-amber-100 text-amber-800'
-  }[color];
-  return (
-    <div className="bg-white p-6 rounded-xl shadow-sm">
-      <div className="flex items-center">
-        <div className={`p-3 rounded-full ${bg} mr-4 flex items-center justify-center`}>
-          {/* Fixed size container for the icon */}
-          <div className="h-6 w-6">
-            {icon}
-          </div>
-        </div>
-        <div>
-          <p className="text-sm font-medium text-gray-600">{label}</p>
-          <p className="text-2xl font-semibold text-gray-900">{value}</p>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function ServiceCard({
   service,
@@ -535,17 +549,29 @@ function ServiceCard({
     ? service.bookings
     : 0;
 
+  // Format price with currency
+  const formattedPrice = typeof service.price === 'number'
+    ? new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(service.price)
+    : service.price;
+
   return (
-    <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
-      <div className="relative w-full h-48">
-        <div className="absolute top-2 right-2 z-10"><StatusBadge status={service.status} /></div>
-        <div className="absolute top-2 left-2 z-10"><CategoryBadge category={service.category} /></div>
+    <div className="flex flex-col h-full bg-white rounded-xl shadow-sm overflow-hidden border border-gray-200 hover:shadow-md transition-shadow duration-200">
+      {/* Image Section */}
+      <div className="relative w-full h-48 bg-gray-50">
+        <div className="absolute top-2 right-2 z-10">
+          <StatusBadge status={service.status} />
+        </div>
+        <div className="absolute top-2 left-2 z-10">
+          <CategoryBadge category={service.category} />
+        </div>
+
         {service.images.length === 0 || imageError[service.id] ? (
-          <div className="w-full h-full flex items-center justify-center bg-gray-100">
-            <svg className="h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div className="w-full h-full flex flex-col items-center justify-center bg-gray-100 p-4 text-center">
+            <svg className="h-12 w-12 text-gray-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159..." />
+                d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
+            <span className="text-xs text-gray-500">No image available</span>
           </div>
         ) : (
           <PackageImage
@@ -553,33 +579,40 @@ function ServiceCard({
             alt={formattedName}
             size="large"
             className="object-cover w-full h-full"
-            onError={() => setImageError(prev=>({...prev,[service.id]:true}))}
+            onError={() => setImageError(prev => ({ ...prev, [service.id]: true }))}
           />
         )}
       </div>
-      <div className="p-4">
+
+      {/* Content Section */}
+      <div className="flex flex-col flex-grow p-4">
         <div className="flex justify-between items-start mb-2">
-          <h3 className="font-semibold text-gray-900 text-lg">{formattedName}</h3>
-          <p className="font-bold text-[var(--primary-green)]">{service.price}</p>
+          <h3 className="font-semibold text-gray-900 text-base line-clamp-1">{formattedName}</h3>
+          <p className="font-bold text-[var(--primary-green)] whitespace-nowrap ml-2">
+            {formattedPrice}
+          </p>
         </div>
-        <p className="text-sm text-gray-600 mb-2">{formattedCenter}</p>
+
+        <p className="text-sm text-gray-600 mb-2 line-clamp-1">{formattedCenter}</p>
+
         <div className="flex items-center mb-2">
           <StarRating rating={rating} size="small" />
           <span className="ml-2 text-xs text-gray-600">
-            {rating > 0 ? `${rating.toFixed(1)} rating` : 'No ratings'}
+            {rating > 0 ? `${rating.toFixed(1)} (${bookings} ${bookings === 1 ? 'review' : 'reviews'})` : 'No reviews yet'}
           </span>
         </div>
-        <p className="text-sm text-gray-700 line-clamp-2 mb-3">{formattedDescription}</p>
-        <div className="flex items-center mb-2">
-          <QueueListIcon className="h-4 w-4 text-blue-500 mr-1" />
-          <span className="text-xs text-gray-600">{bookings} bookings</span>
-        </div>
-        <div className="flex justify-end">
+
+        <p className="text-sm text-gray-700 line-clamp-2 mb-3 flex-grow">
+          {formattedDescription}
+        </p>
+
+        <div className="mt-auto pt-2 border-t border-gray-100">
           <button
             onClick={() => onViewDetails(service)}
-            className="px-3 py-1.5 bg-[var(--primary-green)] text-white text-sm rounded-lg flex items-center"
+            className="w-full px-4 py-2 bg-[var(--primary-green)] hover:bg-[var(--primary-green-hover)] text-white text-sm font-medium rounded-lg flex items-center justify-center transition-colors duration-200"
           >
-            <EyeIcon className="h-4 w-4 mr-1" /> View Details
+            <EyeIcon className="h-4 w-4 mr-2" />
+            <span>View Details</span>
           </button>
         </div>
       </div>
@@ -620,86 +653,189 @@ function ServiceDetailsModal({
   const inclusions = Array.isArray(service.inclusions) ? service.inclusions : [];
   const addOns = Array.isArray(service.addOns) ? service.addOns : [];
 
+  // Format price with currency
+  const formattedPrice = typeof service.price === 'number'
+    ? new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(service.price)
+    : service.price;
+
   return (
-    <div className="fixed inset-0 overflow-y-auto z-50">
-      <div className="flex items-center justify-center min-h-screen p-4 text-center sm:p-0">
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-75" />
-        <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-        <div className="inline-block align-bottom bg-white rounded-lg overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
-          <div className="absolute top-0 right-0 p-4">
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-500">
-              <XMarkIcon className="h-6 w-6" />
-            </button>
-          </div>
-          <div className="bg-white p-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {/* Left Column: Image + badges */}
-              <div className="md:col-span-1">
-                <div className="aspect-square w-full rounded-lg overflow-hidden mb-4">
-                  {service.images.length===0 || imageError[service.id] ? (
-                    <div className="w-full h-full flex items-center justify-center bg-gray-100">
-                      <svg className="h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                          d="M2.25 15.75l5.159-5.159a2.25 2.25 0 ..."/>
-                      </svg>
-                    </div>
-                  ) : (
-                    <PackageImage
-                      images={service.images}
-                      alt={formattedName}
-                      size="large"
-                      className="object-cover w-full h-full"
-                      onError={()=>setImageError(prev=>({...prev,[service.id]:true}))}
-                    />
-                  )}
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[90] p-4">
+      <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+          <h2 className="text-xl font-semibold text-gray-800">Service Details</h2>
+          <button
+            onClick={onClose}
+            className="text-gray-500 hover:text-gray-700"
+          >
+            <XMarkIcon className="h-6 w-6" />
+          </button>
+        </div>
+        <div className="p-6">
+          <div className="flex flex-col space-y-6">
+            {/* Header */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <div className="h-16 w-16 bg-[var(--primary-green)] text-white rounded-full flex items-center justify-center mr-4">
+                  <FireIcon className="h-10 w-10" />
                 </div>
-                <div className="flex justify-between">
-                  <StatusBadge status={service.status} />
-                  <CategoryBadge category={service.category} />
-                </div>
-              </div>
-              {/* Right Column: Details */}
-              <div className="md:col-span-2">
-                <h3 className="text-xl font-medium text-gray-900 mb-4">{formattedName}</h3>
-                <div className="mb-4">
-                  <p className="text-sm font-medium text-gray-500">Rating:</p>
-                  <div className="flex items-center">
-                    <StarRating rating={rating} size="medium" />
-                    <span className="ml-2 text-gray-700">
-                      {rating > 0 ? `${rating.toFixed(1)} / 5` : 'No ratings yet'}
+                <div>
+                  <h3 className="text-2xl font-semibold text-gray-900">{formattedName}</h3>
+                  <div className="flex items-center space-x-2 mt-1">
+                    <span className="text-gray-600">Provider: {formattedCenter}</span>
+                    <span>•</span>
+                    <span className="flex items-center">
+                      <StatusBadge status={service.status} />
                     </span>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4 mb-4">
-                  {[
-                    ['Provider', formattedCenter],
-                    ['Price', service.price],
-                    ['Cremation Type', formattedType],
-                    ['Processing Time', formattedTime],
-                    ['Bookings', bookings],
-                    ['Category', service.category],
-                    ['Status', service.status],
-                  ].map(([label, val]) => (
-                    <div key={label}>
-                      <p className="text-sm font-medium text-gray-500">{label}</p>
-                      <p className="text-base text-gray-900">{val}</p>
-                    </div>
-                  ))}
-                </div>
-                <DetailSection title="Description" content={formattedDescription} />
-                <DetailList title="Inclusions" items={inclusions} />
-                <DetailList title="Add-ons" items={addOns} />
-                <DetailSection title="Conditions" content={formattedConditions} />
+              </div>
+              <div>
+                <span className="text-2xl font-bold text-[var(--primary-green)]">{formattedPrice}</span>
               </div>
             </div>
-          </div>
-          <div className="bg-gray-50 px-6 py-3 flex justify-end">
-            <button
-              onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border rounded-md hover:bg-gray-50 focus:ring-offset-2 focus:ring-[var(--primary-green)]"
-            >
-              Close
-            </button>
+
+            {/* Image */}
+            <div className="bg-gray-50 p-4 rounded-lg overflow-hidden h-64 relative">
+              {service.images.length === 0 || imageError[service.id] ? (
+                <div className="w-full h-full flex flex-col items-center justify-center bg-gray-100 p-4 text-center">
+                  <svg className="h-16 w-16 text-gray-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                      d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  <span className="text-sm text-gray-500">No image available</span>
+                </div>
+              ) : (
+                <PackageImage
+                  images={service.images}
+                  alt={formattedName}
+                  size="large"
+                  className="object-cover w-full h-full rounded-lg"
+                  onError={() => setImageError(prev => ({ ...prev, [service.id]: true }))}
+                />
+              )}
+              <div className="absolute top-2 right-2">
+                <CategoryBadge category={service.category} />
+              </div>
+            </div>
+
+            {/* Service Details */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <h4 className="text-lg font-medium text-gray-900 mb-3">Service Information</h4>
+                <div className="bg-gray-50 p-4 rounded-lg space-y-3">
+                  <div className="flex items-start">
+                    <div className="h-5 w-5 text-gray-500 mr-2 mt-0.5 flex items-center justify-center">
+                      <span className="text-xs font-bold">✓</span>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-700">Cremation Type</p>
+                      <p className="text-gray-900">{formattedType}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start">
+                    <div className="h-5 w-5 text-gray-500 mr-2 mt-0.5 flex items-center justify-center">
+                      <span className="text-xs font-bold">⏱</span>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-700">Processing Time</p>
+                      <p className="text-gray-900">{formattedTime}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start">
+                    <div className="h-5 w-5 text-gray-500 mr-2 mt-0.5 flex items-center justify-center">
+                      <span className="text-xs font-bold">★</span>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-700">Rating</p>
+                      <div className="flex items-center">
+                        <StarRating rating={rating} size="small" />
+                        <span className="ml-2 text-gray-700">
+                          {rating > 0 ? `${rating.toFixed(1)} / 5` : 'No ratings yet'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h4 className="text-lg font-medium text-gray-900 mb-3">Booking Information</h4>
+                <div className="bg-gray-50 p-4 rounded-lg space-y-3">
+                  <div className="flex items-start">
+                    <div className="h-5 w-5 text-gray-500 mr-2 mt-0.5 flex items-center justify-center">
+                      <span className="text-xs font-bold">📊</span>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-700">Total Bookings</p>
+                      <p className="text-gray-900">{bookings}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start">
+                    <div className="h-5 w-5 text-gray-500 mr-2 mt-0.5 flex items-center justify-center">
+                      <span className="text-xs font-bold">🏷️</span>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-700">Category</p>
+                      <p className="text-gray-900">{service.category}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Description */}
+            <div>
+              <h4 className="text-lg font-medium text-gray-900 mb-3">Description</h4>
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <p className="text-gray-700">{formattedDescription}</p>
+              </div>
+            </div>
+
+            {/* Lists */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <h4 className="text-lg font-medium text-gray-900 mb-3">Inclusions</h4>
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  {inclusions.length > 0 ? (
+                    <ul className="list-disc pl-5 space-y-1 text-sm text-gray-700">
+                      {inclusions.map((item, idx) => <li key={idx}>{item}</li>)}
+                    </ul>
+                  ) : (
+                    <p className="text-sm text-gray-500">No inclusions specified</p>
+                  )}
+                </div>
+              </div>
+              <div>
+                <h4 className="text-lg font-medium text-gray-900 mb-3">Add-ons</h4>
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  {addOns.length > 0 ? (
+                    <ul className="list-disc pl-5 space-y-1 text-sm text-gray-700">
+                      {addOns.map((item, idx) => <li key={idx}>{item}</li>)}
+                    </ul>
+                  ) : (
+                    <p className="text-sm text-gray-500">No add-ons specified</p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Conditions */}
+            <div>
+              <h4 className="text-lg font-medium text-gray-900 mb-3">Conditions</h4>
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <p className="text-gray-700">{formattedConditions}</p>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex justify-end space-x-3 mt-8 border-t pt-6">
+              <button
+                onClick={onClose}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       </div>

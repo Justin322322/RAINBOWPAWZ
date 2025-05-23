@@ -28,7 +28,7 @@ export async function GET(
 
     // Check if the provider exists in service_providers table
     const providerCheck = await query(
-      `SELECT id, name FROM service_providers WHERE id = ?`,
+      `SELECT provider_id as id, name FROM service_providers WHERE provider_id = ?`,
       [providerId]
     ) as any[];
 

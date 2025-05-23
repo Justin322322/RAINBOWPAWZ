@@ -72,16 +72,14 @@ export async function PUT(request: NextRequest) {
       if (!tablesResult || tablesResult.length === 0) {
         await query(`
           CREATE TABLE user_restrictions (
-            id INT AUTO_INCREMENT PRIMARY KEY,
+            restriction_id INT AUTO_INCREMENT PRIMARY KEY,
             user_id INT NOT NULL,
             reason TEXT,
             restriction_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             duration VARCHAR(50) DEFAULT 'indefinite',
             report_count INT DEFAULT 0,
             is_active BOOLEAN DEFAULT 1,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
           )
         `);
       }
@@ -89,7 +87,7 @@ export async function PUT(request: NextRequest) {
       if (restricted) {
         // Check if user is already restricted
         const restrictionResult = await query(
-          'SELECT id FROM user_restrictions WHERE user_id = ? AND is_active = 1 LIMIT 1',
+          'SELECT restriction_id FROM user_restrictions WHERE user_id = ? AND is_active = 1 LIMIT 1',
           [userId]
         ) as any[];
 
@@ -100,7 +98,7 @@ export async function PUT(request: NextRequest) {
              SET reason = ?,
                  duration = ?,
                  report_count = ?,
-                 updated_at = NOW()
+                 restriction_date = NOW()
              WHERE user_id = ? AND is_active = 1`,
             [reason, duration, reportCount, userId]
           );
@@ -118,13 +116,13 @@ export async function PUT(request: NextRequest) {
           `UPDATE users
            SET status = 'restricted',
                updated_at = NOW()
-           WHERE id = ?`,
+           WHERE user_id = ?`,
           [userId]
         );
       } else {
         // Remove restriction
         await query(
-          'UPDATE user_restrictions SET is_active = 0, updated_at = NOW() WHERE user_id = ? AND is_active = 1',
+          'UPDATE user_restrictions SET is_active = 0 WHERE user_id = ? AND is_active = 1',
           [userId]
         );
 
@@ -133,7 +131,7 @@ export async function PUT(request: NextRequest) {
           `UPDATE users
            SET status = 'active',
                updated_at = NOW()
-           WHERE id = ?`,
+           WHERE user_id = ?`,
           [userId]
         );
       }
@@ -143,7 +141,7 @@ export async function PUT(request: NextRequest) {
 
       // Get updated user data to return
       const updatedUserResult = await query(
-        `SELECT user_id, first_name, last_name, email, phone_number, address, sex,
+        `SELECT user_id, first_name, last_name, email, phone, address, gender,
          created_at, updated_at, is_otp_verified, role, status, is_verified
          FROM users WHERE user_id = ? LIMIT 1`,
         [userId]
@@ -167,7 +165,7 @@ export async function PUT(request: NextRequest) {
       // Get restriction details if user is restricted
       if (restricted) {
         const restrictionResult = await query(
-          `SELECT id, reason, restriction_date, duration, report_count
+          `SELECT restriction_id, reason, restriction_date, duration, report_count, is_active
            FROM user_restrictions
            WHERE user_id = ? AND is_active = 1
            LIMIT 1`,

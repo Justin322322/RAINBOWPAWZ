@@ -4,8 +4,8 @@ import { useState, useEffect, useRef } from 'react';
 import CremationDashboardLayout from '@/components/navigation/CremationDashboardLayout';
 import withBusinessVerification from '@/components/withBusinessVerification';
 import { useToast } from '@/context/ToastContext';
-import { 
-  KeyIcon, 
+import {
+  KeyIcon,
   HomeIcon,
   CheckCircleIcon,
   XCircleIcon,
@@ -20,6 +20,7 @@ import {
   ExclamationTriangleIcon
 } from '@heroicons/react/24/outline';
 import { getAuthToken, isBusiness } from '@/utils/auth';
+import { LoadingSpinner } from '@/app/admin/services/client';
 
 function CremationProfilePage({ userData }: { userData: any }) {
   // Password states
@@ -28,7 +29,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const [passwordSuccess, setPasswordSuccess] = useState('');
-  
+
   // Address states
   const [address, setAddress] = useState({
     street: '',
@@ -38,7 +39,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
     country: ''
   });
   const [addressSuccess, setAddressSuccess] = useState('');
-  
+
   // Contact info states
   const [contactInfo, setContactInfo] = useState({
     firstName: '',
@@ -52,7 +53,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
   const [profileData, setProfileData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Document upload states
   const [showDocumentModal, setShowDocumentModal] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -62,13 +63,13 @@ function CremationProfilePage({ userData }: { userData: any }) {
     birCertificate: { file: null as File | null, preview: null as string | null },
     governmentId: { file: null as File | null, preview: null as string | null }
   });
-  
+
   const fileInputRefs = {
     businessPermit: useRef<HTMLInputElement>(null),
     birCertificate: useRef<HTMLInputElement>(null),
     governmentId: useRef<HTMLInputElement>(null),
   };
-  
+
   const { showToast } = useToast();
 
   // Define fetchProfileData function outside useEffect so it can be called elsewhere
@@ -79,10 +80,10 @@ function CremationProfilePage({ userData }: { userData: any }) {
       if (!authToken || !isBusiness()) {
         throw new Error('You are not authorized to access this page. Please log in as a business account.');
       }
-      
+
       setLoading(true);
       setError(null); // Clear any previous errors
-      
+
       // Add cache-busting query parameter and no-cache headers
       const response = await fetch(`/api/cremation/profile?t=${Date.now()}`, {
         method: 'GET',
@@ -92,7 +93,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
         },
         credentials: 'include' // Important: Include credentials with the request
       });
-      
+
       // Parse response data first
       let data;
       try {
@@ -100,7 +101,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
       } catch (jsonError) {
         throw new Error('Failed to parse server response');
       }
-      
+
       // Check response status after parsing data
       if (!response.ok) {
         if (response.status === 401) {
@@ -111,9 +112,9 @@ function CremationProfilePage({ userData }: { userData: any }) {
           throw new Error(data.error || data.message || 'Failed to fetch profile data');
         }
       }
-      
+
       setProfileData(data.profile);
-      
+
       // Update form states with fetched data
       if (data.profile) {
         setAddress({
@@ -123,7 +124,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
           zipCode: data.profile.address.zipCode || '',
           country: data.profile.address.country || 'Philippines'
         });
-        
+
         // Set contact info from profile data
         const nameParts = data.profile.contactPerson.split(' ');
         setContactInfo({
@@ -133,17 +134,17 @@ function CremationProfilePage({ userData }: { userData: any }) {
           phone: data.profile.phone || ''
         });
       }
-      
+
       setError(null);
     } catch (error) {
-      
+
       setError(error instanceof Error ? error.message : 'An error occurred while fetching data');
       // Show toast only once
       showToast(error instanceof Error ? error.message : 'Failed to load profile data. Please try again.', 'error');
-      
+
       // If authentication error, redirect to login after a short delay
-      if (error instanceof Error && 
-          (error.message.includes('Authentication failed') || 
+      if (error instanceof Error &&
+          (error.message.includes('Authentication failed') ||
             error.message.includes('not authorized'))) {
         setTimeout(() => {
           window.location.href = '/api/auth/logout';
@@ -159,7 +160,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
     const params = new URLSearchParams(window.location.search);
     if (params.get('showDocuments') === 'true') {
       showDocumentsModal();
-      
+
       // Clear the URL parameter after showing the modal
       window.history.replaceState({}, document.title, window.location.pathname);
     }
@@ -168,7 +169,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
   // Fetch profile data
   useEffect(() => {
     let isMounted = true; // Track if component is mounted
-    
+
     const fetchData = async () => {
       // Only proceed if component is still mounted
       if (isMounted) {
@@ -177,7 +178,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
     };
 
     fetchData();
-    
+
     // Cleanup function to prevent state updates on unmounted component
     return () => {
       isMounted = false;
@@ -219,13 +220,13 @@ function CremationProfilePage({ userData }: { userData: any }) {
           }
         }),
       });
-      
+
       const data = await response.json();
-      
+
       if (!response.ok) {
         throw new Error(data.error || 'Failed to update password');
       }
-      
+
       setPasswordSuccess('Password changed successfully');
       setCurrentPassword('');
       setNewPassword('');
@@ -237,7 +238,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
 
   const handleAddressUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     try {
       const response = await fetch('/api/cremation/profile', {
         method: 'PATCH',
@@ -247,16 +248,16 @@ function CremationProfilePage({ userData }: { userData: any }) {
         credentials: 'include', // Include credentials with the request
         body: JSON.stringify({ address }),
       });
-      
+
       const data = await response.json();
-      
+
       if (!response.ok) {
         throw new Error(data.error || 'Failed to update address');
       }
-      
+
       setAddressSuccess('Address updated successfully');
       showToast('Address updated successfully', 'success');
-      
+
       // Clear success message after 3 seconds
       setTimeout(() => {
         setAddressSuccess('');
@@ -268,7 +269,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
 
   const handleContactUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     try {
       const response = await fetch('/api/cremation/profile', {
         method: 'PATCH',
@@ -278,16 +279,16 @@ function CremationProfilePage({ userData }: { userData: any }) {
         credentials: 'include', // Include credentials with the request
         body: JSON.stringify({ contactInfo }),
       });
-      
+
       const data = await response.json();
-      
+
       if (!response.ok) {
         throw new Error(data.error || 'Failed to update contact information');
       }
-      
+
       setContactSuccess('Contact information updated successfully');
       showToast('Contact information updated successfully', 'success');
-      
+
       // Clear success message after 3 seconds
       setTimeout(() => {
         setContactSuccess('');
@@ -317,7 +318,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       const reader = new FileReader();
-      
+
       reader.onload = (event) => {
         setDocuments(prev => ({
           ...prev,
@@ -327,7 +328,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
           }
         }));
       };
-      
+
       reader.readAsDataURL(file);
     }
   };
@@ -360,45 +361,45 @@ function CremationProfilePage({ userData }: { userData: any }) {
       setUploadError('Please select at least one document to upload');
       return;
     }
-    
+
     setUploading(true);
     setUploadError('');
-    
+
     try {
       const formData = new FormData();
       formData.append('userId', userData.id);
-      
+
       // Append files that exist
       if (documents.businessPermit.file) {
         formData.append('businessPermit', documents.businessPermit.file);
       }
-      
+
       if (documents.birCertificate.file) {
         formData.append('birCertificate', documents.birCertificate.file);
       }
-      
+
       if (documents.governmentId.file) {
         formData.append('governmentId', documents.governmentId.file);
       }
-      
+
       const response = await fetch('/api/businesses/upload-documents', {
         method: 'POST',
         credentials: 'include',
         body: formData,
       });
-      
+
       const data = await response.json();
-      
+
       if (!response.ok) {
         throw new Error(data.error || 'Failed to upload documents');
       }
-      
+
       showToast('Documents uploaded successfully!', 'success');
       hideDocumentsModal();
-      
+
       // Refresh profile data to show new documents
       fetchProfileData();
-      
+
     } catch (error) {
       setUploadError(error instanceof Error ? error.message : 'Failed to upload documents');
     } finally {
@@ -422,9 +423,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
       </div>
 
       {loading ? (
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[var(--primary-green)]"></div>
-        </div>
+        <LoadingSpinner className="h-64" />
       ) : error ? (
         <div className="bg-white rounded-xl shadow-sm p-8 text-center">
           <div className="text-red-500 mb-4">
@@ -434,7 +433,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
           </div>
           <h3 className="text-lg font-medium text-gray-900 mb-1">Error Loading Profile</h3>
           <p className="text-gray-500 mb-4">{error}</p>
-          <button 
+          <button
             onClick={() => window.location.reload()}
             className="px-4 py-2 bg-[var(--primary-green)] text-white rounded-md hover:bg-opacity-90"
           >
@@ -444,9 +443,9 @@ function CremationProfilePage({ userData }: { userData: any }) {
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Document Upload Reminder */}
-          {profileData && 
-            (!profileData.documents.businessPermitPath && 
-             !profileData.documents.birCertificatePath && 
+          {profileData &&
+            (!profileData.documents.businessPermitPath &&
+             !profileData.documents.birCertificatePath &&
              !profileData.documents.governmentIdPath) && (
             <div className="lg:col-span-3 bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-lg mb-4">
               <div className="flex">
@@ -458,7 +457,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
                     Your business documents are missing
                   </p>
                   <p className="text-sm text-yellow-700 mt-1">
-                    Please upload your business documents to complete your registration. 
+                    Please upload your business documents to complete your registration.
                     Your account will be verified by our admin team after you submit your documents.
                   </p>
                   <div className="mt-3">
@@ -520,7 +519,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
                     <p className="text-sm">{contactSuccess}</p>
                   </div>
                 )}
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-1">
@@ -547,7 +546,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
                     />
                   </div>
                 </div>
-                
+
                 <div>
                   <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
                     Email Address
@@ -560,7 +559,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
                     className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
                   />
                 </div>
-                
+
                 <div>
                   <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
                     Phone Number
@@ -573,9 +572,9 @@ function CremationProfilePage({ userData }: { userData: any }) {
                     className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
                   />
                 </div>
-                
+
                 <div className="pt-2">
-                  <button 
+                  <button
                     type="submit"
                     className="px-4 py-2 bg-[var(--primary-green)] text-white rounded-lg hover:bg-opacity-90 transition-all duration-300"
                   >
@@ -600,14 +599,14 @@ function CremationProfilePage({ userData }: { userData: any }) {
                     <p className="text-sm">{passwordError}</p>
                   </div>
                 )}
-                
+
                 {passwordSuccess && (
                   <div className="bg-green-50 text-green-800 p-3 rounded-lg flex items-start">
                     <CheckCircleIcon className="h-5 w-5 text-green-500 mr-2 mt-0.5" />
                     <p className="text-sm">{passwordSuccess}</p>
                   </div>
                 )}
-                
+
                 <div>
                   <label htmlFor="current-password" className="block text-sm font-medium text-gray-700 mb-1">
                     Current Password
@@ -621,7 +620,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
                     placeholder="Enter your current password"
                   />
                 </div>
-                
+
                 <div>
                   <label htmlFor="new-password" className="block text-sm font-medium text-gray-700 mb-1">
                     New Password
@@ -638,7 +637,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
                     Password must be at least 8 characters long and include a mix of letters, numbers, and symbols.
                   </p>
                 </div>
-                
+
                 <div>
                   <label htmlFor="confirm-password" className="block text-sm font-medium text-gray-700 mb-1">
                     Confirm New Password
@@ -652,9 +651,9 @@ function CremationProfilePage({ userData }: { userData: any }) {
                     placeholder="Confirm new password"
                   />
                 </div>
-                
+
                 <div className="pt-2">
-                  <button 
+                  <button
                     type="submit"
                     className="px-4 py-2 bg-[var(--primary-green)] text-white rounded-lg hover:bg-opacity-90 transition-all duration-300"
                   >
@@ -679,7 +678,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
                     <p className="text-sm">{addressSuccess}</p>
                   </div>
                 )}
-                
+
                 <div>
                   <label htmlFor="street" className="block text-sm font-medium text-gray-700 mb-1">
                     Street Address
@@ -692,7 +691,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
                     className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
                   />
                 </div>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label htmlFor="city" className="block text-sm font-medium text-gray-700 mb-1">
@@ -706,7 +705,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
                       className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
                     />
                   </div>
-                  
+
                   <div>
                     <label htmlFor="state" className="block text-sm font-medium text-gray-700 mb-1">
                       State / Province
@@ -720,7 +719,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
                     />
                   </div>
                 </div>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label htmlFor="zipCode" className="block text-sm font-medium text-gray-700 mb-1">
@@ -734,7 +733,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
                       className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
                     />
                   </div>
-                  
+
                   <div>
                     <label htmlFor="country" className="block text-sm font-medium text-gray-700 mb-1">
                       Country
@@ -748,9 +747,9 @@ function CremationProfilePage({ userData }: { userData: any }) {
                     />
                   </div>
                 </div>
-                
+
                 <div className="pt-2">
-                  <button 
+                  <button
                     type="submit"
                     className="px-4 py-2 bg-[var(--primary-green)] text-white rounded-lg hover:bg-opacity-90 transition-all duration-300"
                   >
@@ -771,7 +770,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
           </div>
           <h2 className="text-xl font-semibold text-gray-800">Business Documents</h2>
         </div>
-        
+
         <div className="flex items-center mb-6 p-4 bg-blue-50 rounded-lg border border-blue-100">
           <InformationCircleIcon className="h-6 w-6 text-blue-500 mr-3 flex-shrink-0" />
           <p className="text-sm text-blue-700">
@@ -789,10 +788,10 @@ function CremationProfilePage({ userData }: { userData: any }) {
                 {profileData.documents.businessPermitPath ? (
                   <div className="aspect-w-16 aspect-h-9 bg-gray-100 rounded-md overflow-hidden">
                     {profileData.documents.businessPermitPath.match(/\.(jpg|jpeg|png|gif)$/i) ? (
-                      <img 
-                        src={profileData.documents.businessPermitPath} 
-                        alt="Business Permit" 
-                        className="object-cover w-full h-full" 
+                      <img
+                        src={profileData.documents.businessPermitPath}
+                        alt="Business Permit"
+                        className="object-cover w-full h-full"
                       />
                     ) : (
                       <div className="flex flex-col items-center justify-center h-full">
@@ -808,11 +807,11 @@ function CremationProfilePage({ userData }: { userData: any }) {
                   </div>
                 )}
               </div>
-              <a 
-                href={profileData.documents.businessPermitPath || '#'} 
+              <a
+                href={profileData.documents.businessPermitPath || '#'}
                 className={`w-full py-2 px-4 rounded-md text-center text-sm ${
-                  profileData.documents.businessPermitPath 
-                    ? 'bg-blue-100 text-blue-700 hover:bg-blue-200' 
+                  profileData.documents.businessPermitPath
+                    ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
                     : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                 }`}
                 target="_blank"
@@ -830,10 +829,10 @@ function CremationProfilePage({ userData }: { userData: any }) {
                 {profileData.documents.birCertificatePath ? (
                   <div className="aspect-w-16 aspect-h-9 bg-gray-100 rounded-md overflow-hidden">
                     {profileData.documents.birCertificatePath.match(/\.(jpg|jpeg|png|gif)$/i) ? (
-                      <img 
-                        src={profileData.documents.birCertificatePath} 
-                        alt="BIR Certificate" 
-                        className="object-cover w-full h-full" 
+                      <img
+                        src={profileData.documents.birCertificatePath}
+                        alt="BIR Certificate"
+                        className="object-cover w-full h-full"
                       />
                     ) : (
                       <div className="flex flex-col items-center justify-center h-full">
@@ -849,11 +848,11 @@ function CremationProfilePage({ userData }: { userData: any }) {
                   </div>
                 )}
               </div>
-              <a 
-                href={profileData.documents.birCertificatePath || '#'} 
+              <a
+                href={profileData.documents.birCertificatePath || '#'}
                 className={`w-full py-2 px-4 rounded-md text-center text-sm ${
-                  profileData.documents.birCertificatePath 
-                    ? 'bg-blue-100 text-blue-700 hover:bg-blue-200' 
+                  profileData.documents.birCertificatePath
+                    ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
                     : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                 }`}
                 target="_blank"
@@ -871,10 +870,10 @@ function CremationProfilePage({ userData }: { userData: any }) {
                 {profileData.documents.governmentIdPath ? (
                   <div className="aspect-w-16 aspect-h-9 bg-gray-100 rounded-md overflow-hidden">
                     {profileData.documents.governmentIdPath.match(/\.(jpg|jpeg|png|gif)$/i) ? (
-                      <img 
-                        src={profileData.documents.governmentIdPath} 
-                        alt="Government ID" 
-                        className="object-cover w-full h-full" 
+                      <img
+                        src={profileData.documents.governmentIdPath}
+                        alt="Government ID"
+                        className="object-cover w-full h-full"
                       />
                     ) : (
                       <div className="flex flex-col items-center justify-center h-full">
@@ -890,11 +889,11 @@ function CremationProfilePage({ userData }: { userData: any }) {
                   </div>
                 )}
               </div>
-              <a 
-                href={profileData.documents.governmentIdPath || '#'} 
+              <a
+                href={profileData.documents.governmentIdPath || '#'}
                 className={`w-full py-2 px-4 rounded-md text-center text-sm ${
-                  profileData.documents.governmentIdPath 
-                    ? 'bg-blue-100 text-blue-700 hover:bg-blue-200' 
+                  profileData.documents.governmentIdPath
+                    ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
                     : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                 }`}
                 target="_blank"
@@ -925,15 +924,15 @@ function CremationProfilePage({ userData }: { userData: any }) {
             <div className="p-6 border-b">
               <div className="flex justify-between items-center">
                 <h2 className="text-xl font-semibold text-gray-800">Upload Business Documents</h2>
-                <button 
-                  onClick={hideDocumentsModal} 
+                <button
+                  onClick={hideDocumentsModal}
                   className="text-gray-500 hover:text-gray-700"
                 >
                   <XMarkIcon className="h-6 w-6" />
                 </button>
               </div>
             </div>
-            
+
             <div className="p-6">
               <div className="flex items-center mb-6 p-4 bg-blue-50 rounded-lg border border-blue-100">
                 <InformationCircleIcon className="h-6 w-6 text-blue-500 mr-3 flex-shrink-0" />
@@ -942,7 +941,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
                   Please upload clear, readable images or PDFs of your documents.
                 </p>
               </div>
-              
+
               {uploadError && (
                 <div className="mb-6 p-4 bg-red-50 rounded-lg border border-red-100">
                   <div className="flex items-center">
@@ -951,20 +950,20 @@ function CremationProfilePage({ userData }: { userData: any }) {
                   </div>
                 </div>
               )}
-              
+
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {/* Business Permit Upload */}
                 <div className="border-2 rounded-lg p-4 border-gray-200">
                   <h3 className="font-medium text-gray-800 mb-2">Business Permit</h3>
-                  
-                  <input 
-                    type="file" 
+
+                  <input
+                    type="file"
                     ref={fileInputRefs.businessPermit}
-                    onChange={(e) => handleFileChange(e, 'businessPermit')} 
-                    className="hidden" 
+                    onChange={(e) => handleFileChange(e, 'businessPermit')}
+                    className="hidden"
                     accept=".pdf,.jpg,.jpeg,.png"
                   />
-                  
+
                   {documents.businessPermit.preview ? (
                     <div className="relative mb-3">
                       <div className="aspect-w-16 aspect-h-9 bg-gray-100 rounded-md overflow-hidden">
@@ -976,7 +975,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
                           </div>
                         )}
                       </div>
-                      <button 
+                      <button
                         onClick={() => handleRemoveFile('businessPermit')}
                         className="absolute top-2 right-2 bg-white rounded-full p-1 shadow-md"
                       >
@@ -984,7 +983,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
                       </button>
                     </div>
                   ) : (
-                    <div 
+                    <div
                       onClick={() => triggerFileInput(fileInputRefs.businessPermit)}
                       className="border-2 border-dashed border-gray-300 rounded-md p-4 text-center cursor-pointer mb-3 hover:bg-gray-50 transition-colors"
                     >
@@ -994,19 +993,19 @@ function CremationProfilePage({ userData }: { userData: any }) {
                     </div>
                   )}
                 </div>
-                
+
                 {/* BIR Certificate Upload */}
                 <div className="border-2 rounded-lg p-4 border-gray-200">
                   <h3 className="font-medium text-gray-800 mb-2">BIR Certificate</h3>
-                  
-                  <input 
-                    type="file" 
+
+                  <input
+                    type="file"
                     ref={fileInputRefs.birCertificate}
-                    onChange={(e) => handleFileChange(e, 'birCertificate')} 
-                    className="hidden" 
+                    onChange={(e) => handleFileChange(e, 'birCertificate')}
+                    className="hidden"
                     accept=".pdf,.jpg,.jpeg,.png"
                   />
-                  
+
                   {documents.birCertificate.preview ? (
                     <div className="relative mb-3">
                       <div className="aspect-w-16 aspect-h-9 bg-gray-100 rounded-md overflow-hidden">
@@ -1018,7 +1017,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
                           </div>
                         )}
                       </div>
-                      <button 
+                      <button
                         onClick={() => handleRemoveFile('birCertificate')}
                         className="absolute top-2 right-2 bg-white rounded-full p-1 shadow-md"
                       >
@@ -1026,7 +1025,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
                       </button>
                     </div>
                   ) : (
-                    <div 
+                    <div
                       onClick={() => triggerFileInput(fileInputRefs.birCertificate)}
                       className="border-2 border-dashed border-gray-300 rounded-md p-4 text-center cursor-pointer mb-3 hover:bg-gray-50 transition-colors"
                     >
@@ -1036,19 +1035,19 @@ function CremationProfilePage({ userData }: { userData: any }) {
                     </div>
                   )}
                 </div>
-                
+
                 {/* Government ID Upload */}
                 <div className="border-2 rounded-lg p-4 border-gray-200">
                   <h3 className="font-medium text-gray-800 mb-2">Government ID</h3>
-                  
-                  <input 
-                    type="file" 
+
+                  <input
+                    type="file"
                     ref={fileInputRefs.governmentId}
-                    onChange={(e) => handleFileChange(e, 'governmentId')} 
-                    className="hidden" 
+                    onChange={(e) => handleFileChange(e, 'governmentId')}
+                    className="hidden"
                     accept=".pdf,.jpg,.jpeg,.png"
                   />
-                  
+
                   {documents.governmentId.preview ? (
                     <div className="relative mb-3">
                       <div className="aspect-w-16 aspect-h-9 bg-gray-100 rounded-md overflow-hidden">
@@ -1060,7 +1059,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
                           </div>
                         )}
                       </div>
-                      <button 
+                      <button
                         onClick={() => handleRemoveFile('governmentId')}
                         className="absolute top-2 right-2 bg-white rounded-full p-1 shadow-md"
                       >
@@ -1068,7 +1067,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
                       </button>
                     </div>
                   ) : (
-                    <div 
+                    <div
                       onClick={() => triggerFileInput(fileInputRefs.governmentId)}
                       className="border-2 border-dashed border-gray-300 rounded-md p-4 text-center cursor-pointer mb-3 hover:bg-gray-50 transition-colors"
                     >
@@ -1080,7 +1079,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
                 </div>
               </div>
             </div>
-            
+
             <div className="p-6 border-t bg-gray-50">
               <div className="flex justify-end gap-3">
                 <button
@@ -1114,4 +1113,4 @@ function CremationProfilePage({ userData }: { userData: any }) {
   );
 }
 
-export default withBusinessVerification(CremationProfilePage); 
+export default withBusinessVerification(CremationProfilePage);

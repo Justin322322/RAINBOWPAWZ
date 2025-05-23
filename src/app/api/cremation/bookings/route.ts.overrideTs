@@ -1,3 +1,0 @@
-// This file tells TypeScript to treat all .ts and .tsx files in the project as "any" type
-// It's a temporary solution until the type issues are fixed properly
-// @ts-nocheck

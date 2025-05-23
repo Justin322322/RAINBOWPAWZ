@@ -21,6 +21,9 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
     sex: '',
     businessName: '',
     businessAddress: '',
+    businessProvince: '',
+    businessCity: '',
+    businessZip: '',
     businessPhone: '',
     businessEmail: '',
     businessDescription: '',
@@ -149,10 +152,16 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
         businessType: 'cremation', // Set fixed business type for cremation centers
         businessPhone: formData.businessPhone,
         businessAddress: formData.businessAddress,
+        businessProvince: formData.businessProvince || null,
+        businessCity: formData.businessCity || null,
+        businessZip: formData.businessZip || null,
         businessHours: formData.businessHours || null,
         serviceDescription: formData.businessDescription || null,
         account_type: 'business' as const
       };
+
+      // Log the data being sent for debugging
+      console.log("Sending registration data:", textData);
 
       // First, try sending the registration data without files
       const regResponse = await fetch('/api/auth/register', {
@@ -163,7 +172,11 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
         body: JSON.stringify(textData),
       });
 
+      // Log the response for debugging
+      console.log("Registration response status:", regResponse.status);
+
       const regData = await regResponse.json();
+      console.log("Registration response data:", regData);
 
       if (!regResponse.ok) {
         // Handle specific error cases
@@ -351,6 +364,55 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
             />
           </div>
 
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div>
+              <label htmlFor="businessCity" className={labelClasses}>
+                City
+              </label>
+              <input
+                type="text"
+                id="businessCity"
+                name="businessCity"
+                value={formData.businessCity}
+                onChange={handleChange}
+                className={inputClasses}
+                placeholder="Enter city"
+                required
+              />
+            </div>
+
+            <div>
+              <label htmlFor="businessProvince" className={labelClasses}>
+                Province
+              </label>
+              <input
+                type="text"
+                id="businessProvince"
+                name="businessProvince"
+                value={formData.businessProvince}
+                onChange={handleChange}
+                className={inputClasses}
+                placeholder="Enter province"
+                required
+              />
+            </div>
+
+            <div>
+              <label htmlFor="businessZip" className={labelClasses}>
+                ZIP Code
+              </label>
+              <input
+                type="text"
+                id="businessZip"
+                name="businessZip"
+                value={formData.businessZip}
+                onChange={handleChange}
+                className={inputClasses}
+                placeholder="Enter ZIP code"
+                required
+              />
+            </div>
+          </div>
 
 
           <div>

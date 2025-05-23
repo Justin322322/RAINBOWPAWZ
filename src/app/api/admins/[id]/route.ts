@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // First, check if the user exists in the users table with role='admin'
+    // Check if the user exists in the users table with role='admin'
     const userResult = await query(
       `SELECT user_id, first_name, last_name, email, role
        FROM users
@@ -27,125 +27,24 @@ export async function GET(request: NextRequest) {
     if (userResult && userResult.length > 0) {
       const user = userResult[0];
 
-      // Check if there's a corresponding entry in admin_profiles
-      let profileResult;
-      try {
-        // First check if the admin_profiles table exists
-        const tableCheckResult = await query(
-          `SELECT COUNT(*) as count FROM information_schema.tables
-           WHERE table_schema = DATABASE() AND table_name = 'admin_profiles'`
-        ) as any[];
-        
-        const tableExists = tableCheckResult[0]?.count > 0;
-        
-        if (tableExists) {
-          profileResult = await query(
-            `SELECT username, full_name, admin_role
-             FROM admin_profiles
-             WHERE user_id = ?`,
-            [id]
-          ) as any[];
-        }
-      } catch (err) {
-        // If there's an error, continue without profile data
-        console.error('Error checking admin_profiles:', err);
-        profileResult = [];
-      }
-
       // Create admin data object
       const adminData: any = {
         id: user.user_id,
         email: user.email,
         user_type: 'admin',
-        role: user.role
+        role: user.role,
+        username: user.first_name.toLowerCase(),
+        full_name: `${user.first_name} ${user.last_name}`
       };
-
-      // Add profile data if available
-      if (profileResult && profileResult.length > 0) {
-        const profile = profileResult[0];
-        adminData.username = profile.username;
-        adminData.full_name = profile.full_name;
-        adminData.admin_role = profile.admin_role;
-      } else {
-        // Use user data if profile not available
-        adminData.username = user.first_name.toLowerCase();
-        adminData.full_name = `${user.first_name} ${user.last_name}`;
-      }
 
       return NextResponse.json(adminData);
     }
 
-    // If not found in users table, try the legacy admins table
-    let adminResult;
-    try {
-      const tableCheckResult = await query(
-        `SELECT COUNT(*) as count FROM information_schema.tables
-         WHERE table_schema = DATABASE() AND table_name = 'admins'`
-      ) as any[];
-      
-      const tableExists = tableCheckResult[0]?.count > 0;
-      
-      if (tableExists) {
-        adminResult = await query(
-          'SELECT id, username, email, full_name, role FROM admins WHERE id = ?',
-          [id]
-        ) as any[];
-      } else {
-        adminResult = [];
-      }
-    } catch (err) {
-      console.error('Error checking admins table:', err);
-      adminResult = [];
-    }
-
-    // Check if admin exists in legacy table
-    if (!adminResult || adminResult.length === 0) {
-
-      // Try to find admin by looking up the corresponding user record for email
-      let userEmailResult;
-      try {
-        userEmailResult = await query(
-          'SELECT email FROM users WHERE user_id = ?',
-          [id]
-        ) as any[];
-      } catch (err) {
-        console.error('Error looking up user email:', err);
-        userEmailResult = [];
-      }
-
-      if (userEmailResult && userEmailResult.length > 0) {
-        const userEmail = userEmailResult[0].email;
-
-        const adminByEmailResult = await query(
-          'SELECT id, username, email, full_name, role FROM admins WHERE email = ?',
-          [userEmail]
-        ) as any[];
-
-        if (adminByEmailResult && adminByEmailResult.length > 0) {
-          const admin = adminByEmailResult[0];
-
-          // Add user_type field to ensure dashboard access works
-          admin.user_type = 'admin';
-
-          // Return the admin data
-          return NextResponse.json(admin);
-        }
-      }
-
-      return NextResponse.json(
-        { error: 'Admin not found' },
-        { status: 404 }
-      );
-    }
-
-    // Get the admin data from legacy table
-    const admin = adminResult[0];
-
-    // Add user_type field to ensure dashboard access works
-    admin.user_type = 'admin';
-
-    // Return the admin data
-    return NextResponse.json(admin);
+    // Admin not found
+    return NextResponse.json(
+      { error: 'Admin not found' },
+      { status: 404 }
+    );
   } catch (error) {
     console.error('Error in admin API:', error);
     return NextResponse.json(

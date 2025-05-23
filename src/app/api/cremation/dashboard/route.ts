@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
     // Get business information
     const providerInfo = await query(
       `SELECT name, provider_type, contact_first_name, contact_last_name
-       FROM service_providers WHERE id = ? LIMIT 1`,
+       FROM service_providers WHERE provider_id = ? LIMIT 1`,
       [providerId]
     ) as any[];
 
@@ -245,9 +245,9 @@ export async function GET(request: NextRequest) {
 
     // Get service packages
     const servicePackages = await query(
-      `SELECT id, name, description, price, processing_time, is_active
+      `SELECT package_id as id, name, description, price, processing_time, is_active
        FROM service_packages
-       WHERE service_provider_id = ? AND is_active = 1
+       WHERE provider_id = ? AND is_active = 1
        LIMIT 3`,
       [providerId]
     ) as any[];

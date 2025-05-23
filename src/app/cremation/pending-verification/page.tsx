@@ -4,12 +4,13 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Cookies from 'js-cookie';
+import { LoadingSpinner } from '@/app/admin/services/client';
 
 export default function PendingVerificationPage() {
   const router = useRouter();
   const [userId, setUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  
+
   // Check verification status
   useEffect(() => {
     const checkStatus = async () => {
@@ -21,54 +22,54 @@ export default function PendingVerificationPage() {
           router.push('/');
           return;
         }
-        
+
         const [id] = authCookie.split('_');
         setUserId(id);
-        
+
         // Call API to check verification status
         const response = await fetch(`/api/users/${id}?t=${Date.now()}`);
         if (!response.ok) {
           setLoading(false);
           return;
         }
-        
+
         const userData = await response.json();
-        
+
         // Extract all possible status values from service provider
         const serviceProvider = userData.service_provider;
-        
+
         if (!serviceProvider) {
           setLoading(false);
           return;
         }
-        
-        // ONLY check application_status - ignore other non-existent fields 
-        const applicationStatus = serviceProvider.application_status ? 
+
+        // ONLY check application_status - ignore other non-existent fields
+        const applicationStatus = serviceProvider.application_status ?
                                  String(serviceProvider.application_status).toLowerCase() : null;
 
-        
+
         // DIRECTLY check if application_status === 'approved'
         if (applicationStatus === 'approved') {
           router.push('/cremation/profile');
           return;
         }
-        
+
         // If application_status is not 'approved', check for documents
-        const hasDocuments = serviceProvider.business_permit_path || 
-                             serviceProvider.government_id_path || 
+        const hasDocuments = serviceProvider.business_permit_path ||
+                             serviceProvider.government_id_path ||
                              serviceProvider.bir_certificate_path;
-        
+
         if (hasDocuments && !applicationStatus) {
           router.push('/cremation/profile');
           return;
         }
-        
+
         setLoading(false);
       } catch (error) {
         setLoading(false);
       }
     };
-    
+
     checkStatus();
   }, [router]);
 
@@ -89,9 +90,7 @@ export default function PendingVerificationPage() {
         <div className="px-8 pb-8">
 
         {loading ? (
-          <div className="flex justify-center items-center py-8">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-t-2 border-[var(--primary-green)]"></div>
-          </div>
+          <LoadingSpinner className="py-8" />
         ) : (
           <div className="mb-6 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
             <div className="flex items-center justify-center mb-4">

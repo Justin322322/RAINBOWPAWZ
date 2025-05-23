@@ -62,39 +62,42 @@ async function listImagePaths(packageId: number): Promise<string[]> {
 }
 
 async function gatherRevenueStats(): Promise<{ total: number; monthly: number }> {
-  const hasSuccess = await checkTableExists('successful_bookings');
-  const hasService = await checkTableExists('service_bookings');
   let total = 0, monthly = 0;
 
-  if (hasSuccess) {
-    const [[{ total: tot }]] = await Promise.all([
-      query(`SELECT COALESCE(SUM(transaction_amount),0) AS total FROM successful_bookings WHERE payment_status='completed'`),
-      query(`SELECT COALESCE(SUM(transaction_amount),0) AS total FROM successful_bookings WHERE payment_status='completed' AND MONTH(payment_date)=MONTH(CURRENT_DATE()) AND YEAR(payment_date)=YEAR(CURRENT_DATE())`)
-    ]);
-    total = +tot;
-    monthly = +((await query(
-      `SELECT COALESCE(SUM(transaction_amount),0) AS total
-       FROM successful_bookings
-       WHERE payment_status='completed'
-         AND MONTH(payment_date)=MONTH(CURRENT_DATE())
-         AND YEAR(payment_date)=YEAR(CURRENT_DATE())`
-    ))[0].total);
-  } else if (hasService) {
-    total = +((await query(
-      `SELECT COALESCE(SUM(price),0) AS total FROM service_bookings WHERE status='completed'`
-    ))[0].total_revenue);
-    monthly = +((await query(
-      `SELECT COALESCE(SUM(price),0) AS total FROM service_bookings WHERE status='completed' AND MONTH(created_at)=MONTH(CURRENT_DATE()) AND YEAR(created_at)=YEAR(CURRENT_DATE())`
-    ))[0].total_revenue);
-  } else {
-    total = +((await query(
-      `SELECT COALESCE(SUM(price),0) AS total_price FROM service_packages`
-    ))[0].total_price);
-    monthly = total / 12;
-  }
+  try {
+    // Check if bookings table exists
+    const hasBookings = await checkTableExists('bookings');
 
-  // If there's no real revenue data, keep it as 0
-  // This will show as ₱0.00 in the UI, accurately reflecting that there's no revenue yet
+    if (hasBookings) {
+      // Get total revenue from completed bookings
+      const totalResult = await query(
+        `SELECT COALESCE(SUM(total_price),0) AS total FROM bookings WHERE status='completed'`
+      );
+      total = +(totalResult[0]?.total || 0);
+
+      // Get monthly revenue
+      const monthlyResult = await query(
+        `SELECT COALESCE(SUM(total_price),0) AS total
+         FROM bookings
+         WHERE status='completed'
+         AND MONTH(created_at)=MONTH(CURRENT_DATE())
+         AND YEAR(created_at)=YEAR(CURRENT_DATE())`
+      );
+      monthly = +(monthlyResult[0]?.total || 0);
+    } else {
+      // Fallback to service_packages if no bookings table
+      const packagesResult = await query(
+        `SELECT COALESCE(SUM(price),0) AS total_price FROM service_packages`
+      );
+      total = +(packagesResult[0]?.total_price || 0);
+      monthly = total / 12; // Estimate monthly as 1/12 of total
+    }
+  } catch (error) {
+    console.error('Error gathering revenue stats:', error);
+    // If there's an error, return zeros
+    total = 0;
+    monthly = 0;
+  }
 
   return { total, monthly };
 }
@@ -166,17 +169,49 @@ export async function GET(request: NextRequest) {
   params.push(limit, offset);
 
   // --- Execute main query with fallback ---
-  let rows: RawServiceRow[];
+  let rows: RawServiceRow[] = [];
   try {
-    rows = (await query(sql, params)) as RawServiceRow[];
+    console.log('Executing query:', sql, params);
+    const result = await query(sql, params);
+    if (Array.isArray(result)) {
+      rows = result as RawServiceRow[];
+    } else {
+      console.error('Unexpected query result format:', result);
+      throw new Error('Unexpected query result format');
+    }
   } catch (err) {
     console.error('Primary query failed:', err);
-    // fallback simple query
-    rows = (await query(
-      `SELECT package_id,name,description,0 AS price,1 AS is_active,'standard' AS category,'' AS cremationType,'2-3 days' AS processingTime,'' AS conditions,'Cremation Center' AS providerName,0 AS providerId
-       FROM service_packages LIMIT ? OFFSET ?`,
-      [limit, offset]
-    )) as RawServiceRow[];
+    try {
+      // Fallback to simple query
+      const fallbackQuery = `
+        SELECT
+          package_id as id,
+          name,
+          description,
+          0 AS price,
+          1 AS is_active,
+          'standard' AS category,
+          '' AS cremationType,
+          '2-3 days' AS processingTime,
+          '' AS conditions,
+          'Cremation Center' AS providerName,
+          0 AS providerId
+        FROM service_packages
+        LIMIT ? OFFSET ?
+      `;
+      console.log('Falling back to simple query');
+      const fallbackResult = await query(fallbackQuery, [limit, offset]);
+      rows = Array.isArray(fallbackResult) ? fallbackResult as RawServiceRow[] : [];
+    } catch (fallbackError: any) {
+      console.error('Fallback query also failed:', fallbackError);
+      return NextResponse.json({
+        success: false,
+        error: 'Failed to fetch services',
+        details: process.env.NODE_ENV === 'development' ?
+          (fallbackError.message || String(fallbackError)) :
+          undefined
+      }, { status: 500 });
+    }
   }
 
   // --- Total count ---
@@ -192,45 +227,81 @@ export async function GET(request: NextRequest) {
   const monthlyRev = `₱${monthly.toLocaleString('en-US',{ minimumFractionDigits:2, maximumFractionDigits:2 })}`;
 
   // --- Format each service ---
+  // First, check if tables exist to avoid repeated queries for each service
+  const inclusionsTableExists = await checkTableExists('package_inclusions');
+  const addonsTableExists = await checkTableExists('package_addons');
+  const bookingsTableExists = await checkTableExists('bookings');
+  const reviewsTableExists = await checkTableExists('reviews');
+
+  // Batch fetch inclusions and addons for all packages
+  let allInclusions: Record<number, string[]> = {};
+  let allAddons: Record<number, string[]> = {};
+
+  if (inclusionsTableExists) {
+    try {
+      const packageIds = rows.map(r => r.package_id);
+      if (packageIds.length > 0) {
+        // Create a comma-separated list of IDs for the query
+        const idList = packageIds.join(',');
+        // Add a safeguard for empty list
+        const inclusionsResult = await query(
+          `SELECT package_id, description FROM package_inclusions WHERE package_id IN (${idList || 0})`
+        ) as any[];
+
+        // Group inclusions by package_id
+        inclusionsResult.forEach(inc => {
+          if (!allInclusions[inc.package_id]) {
+            allInclusions[inc.package_id] = [];
+          }
+          allInclusions[inc.package_id].push(inc.description);
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching inclusions:', error);
+    }
+  }
+
+  if (addonsTableExists) {
+    try {
+      const packageIds = rows.map(r => r.package_id);
+      if (packageIds.length > 0) {
+        // Create a comma-separated list of IDs for the query
+        const idList = packageIds.join(',');
+        // Add a safeguard for empty list
+        const addonsResult = await query(
+          `SELECT package_id, description FROM package_addons WHERE package_id IN (${idList || 0})`
+        ) as any[];
+
+        // Group addons by package_id
+        addonsResult.forEach(addon => {
+          if (!allAddons[addon.package_id]) {
+            allAddons[addon.package_id] = [];
+          }
+          allAddons[addon.package_id].push(addon.description);
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching addons:', error);
+    }
+  }
+
+  // Process services in parallel but with reduced database queries
   const services: PackageResponse[] = await Promise.all(
     rows.map(async r => {
       const status = r.is_active ? 'active' : 'inactive';
       const priceVal = +r.price;
       const priceFmt = `₱${priceVal.toLocaleString('en-US',{ minimumFractionDigits:2, maximumFractionDigits:2 })}`;
 
+      // Get images (this is file system based, not database)
       const images = await listImagePaths(r.package_id);
       const [image] = images;
 
-      // inclusions & add-ons
-      const incs = ((await query(
-        `SELECT description FROM package_inclusions WHERE package_id=?`, [r.package_id]
-      )) as any[]).map(x => x.description);
-      const adds = ((await query(
-        `SELECT description FROM package_addons WHERE package_id=?`, [r.package_id]
-      )) as any[]).map(x => x.description);
+      // Get inclusions and addons from pre-fetched data
+      const incs = allInclusions[r.package_id] || [];
+      const adds = allAddons[r.package_id] || [];
 
-      // bookings & rating
+      // Default values for bookings and rating
       let bookings = 0, rating = 0;
-      try {
-        const cb = await checkTableExists('service_bookings');
-        if (cb) {
-          bookings = +((await query(`SELECT COUNT(*) AS c FROM service_bookings WHERE package_id=?`, [r.package_id]))[0].c || 0);
-        }
-      } catch {}
-      try {
-        const cr = await checkTableExists('reviews');
-        if (cr) {
-          rating = +(await query(
-            `SELECT COALESCE(AVG(rating),0) AS avg FROM reviews WHERE service_provider_id=?`,
-            [r.providerId]
-          ))[0].avg || 0;
-        }
-      } catch {}
-      // If no rating is available from the database, keep it as 0
-      // This will show as "No ratings" or "0.0" in the UI
-
-      const revenue = 0; // hide per-service revenue as per original
-      const formattedRevenue = `₱0.00`;
 
       // Map package_id to id for frontend compatibility
       return {
@@ -248,8 +319,8 @@ export async function GET(request: NextRequest) {
         providerId: r.providerId,
         rating,
         bookings,
-        revenue,
-        formattedRevenue,
+        revenue: 0,
+        formattedRevenue: `₱0.00`,
         image: image || null,
         images,
         inclusions: incs,

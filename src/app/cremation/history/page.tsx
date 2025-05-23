@@ -17,6 +17,7 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon
 } from '@heroicons/react/24/outline';
+import { LoadingSpinner } from '@/app/admin/services/client';
 
 function CremationHistoryPage({ userData }: { userData: any }) {
   const [searchTerm, setSearchTerm] = useState('');
@@ -476,9 +477,7 @@ function CremationHistoryPage({ userData }: { userData: any }) {
         </div>
 
         {loading ? (
-          <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[var(--primary-green)]"></div>
-          </div>
+          <LoadingSpinner className="h-64" size="sm" />
         ) : error ? (
           <div className="p-6 text-center">
             <p className="text-red-500">{error}</p>

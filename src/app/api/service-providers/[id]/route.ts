@@ -98,7 +98,7 @@ export async function GET(
       const hasStatus = spColumnNames.includes('status');
 
       // Build WHERE clause based on available columns
-      let whereClause = 'id = ?';
+      let whereClause = 'provider_id = ?';
 
       // Add status condition
       if (hasSPAppStatus) {
@@ -116,12 +116,12 @@ export async function GET(
       // Get provider details
       const providerResult = await query(`
         SELECT
-          id,
+          provider_id as id,
           name,
           city,
           address,
           phone,
-          service_description as description,
+          description,
           provider_type as type,
           created_at,
           ${hasSPAppStatus ? 'application_status' : hasSPVerStatus ? 'verification_status' : "'unknown' as status"}
@@ -164,7 +164,7 @@ export async function GET(
           const packagesCount = await query(`
             SELECT COUNT(*) as count
             FROM service_packages
-            WHERE service_provider_id = ? AND is_active = TRUE
+            WHERE provider_id = ? AND is_active = TRUE
           `, [provider.id]) as any[];
 
           provider.packages = packagesCount[0]?.count || 0;
@@ -345,7 +345,7 @@ export async function GET(
         // Calculate actual distance for the requested provider
         const provider = testProviders[id as keyof typeof testProviders];
         let enhancedProvider = { ...provider };
-        
+
         if (provider) {
           const providerCoordinates = getBataanCoordinates(provider.address || provider.city || 'Bataan');
           const distanceValue = calculateDistance(userCoordinates, providerCoordinates);

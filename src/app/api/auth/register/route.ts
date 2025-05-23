@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { query, testConnection } from '@/lib/db';
+import { query, testConnection, checkTableExists } from '@/lib/db';
 import bcrypt from 'bcryptjs';
 import { generateOtp } from '@/lib/otpService';
 import { createAdminNotification } from '@/utils/adminNotificationService';
@@ -28,6 +28,9 @@ interface BusinessRegistrationData {
   lastName: string;
   businessPhone: string;
   businessAddress: string;
+  businessProvince?: string;
+  businessCity?: string;
+  businessZip?: string;
   businessHours?: string;
   serviceDescription?: string;
   account_type: 'business';
@@ -36,6 +39,9 @@ interface BusinessRegistrationData {
 type RegistrationData = PersonalRegistrationData | BusinessRegistrationData;
 
 export async function POST(request: Request) {
+  // Test database connection first
+  const dbConnected = await testConnection();
+  console.log("Database connection test result:", dbConnected);
 
   // Add CORS headers
   const headers = {
@@ -120,7 +126,7 @@ export async function POST(request: Request) {
 
     // Check if email already exists in users table (for all account types)
     const emailCheckResult = await query(
-      `SELECT id FROM users WHERE email = ? LIMIT 1`,
+      `SELECT user_id FROM users WHERE email = ? LIMIT 1`,
       [data.email]
     ) as any[];
 
@@ -150,9 +156,32 @@ export async function POST(request: Request) {
 
         // Register in users table
         try {
+          // Check users table structure
+          const usersTableColumns = await query(`
+            SELECT COLUMN_NAME
+            FROM INFORMATION_SCHEMA.COLUMNS
+            WHERE TABLE_SCHEMA = DATABASE()
+            AND TABLE_NAME = 'users'
+          `) as any[];
+
+          console.log("Users table columns:", usersTableColumns.map(col => col.COLUMN_NAME));
+
           // Insert user with simplified query
-          const sql = `INSERT INTO users (email, password, first_name, last_name, phone_number, address, sex, role)
+          const sql = `INSERT INTO users (email, password, first_name, last_name, phone, address, gender, role)
                       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
+
+          // Format gender value to match enum ('Male', 'Female', 'Other')
+          let genderValue = null;
+          if (data.account_type === 'personal' && (data as PersonalRegistrationData).sex) {
+            const sex = (data as PersonalRegistrationData).sex;
+            if (sex.toLowerCase() === 'male') {
+              genderValue = 'Male';
+            } else if (sex.toLowerCase() === 'female') {
+              genderValue = 'Female';
+            } else {
+              genderValue = 'Other';
+            }
+          }
 
           const values = [
             data.email,
@@ -161,9 +190,20 @@ export async function POST(request: Request) {
             data.lastName,
             data.account_type === 'personal' ? data.phoneNumber || null : (data as BusinessRegistrationData).businessPhone,
             data.account_type === 'personal' ? data.address || null : (data as BusinessRegistrationData).businessAddress,
-            data.account_type === 'personal' ? (data as PersonalRegistrationData).sex || null : null,
+            genderValue,
             role
           ];
+
+          console.log("Inserting user with values:", {
+            email: data.email,
+            password: "REDACTED",
+            firstName: data.firstName,
+            lastName: data.lastName,
+            phone: data.account_type === 'personal' ? data.phoneNumber || null : (data as BusinessRegistrationData).businessPhone,
+            address: data.account_type === 'personal' ? data.address || null : (data as BusinessRegistrationData).businessAddress,
+            gender: genderValue,
+            role
+          });
 
 
           const userResult = await query(sql, values) as any;
@@ -187,11 +227,54 @@ export async function POST(request: Request) {
               providerType = 'veterinary';
             }
 
+            // Log the SQL query for debugging
+            console.log("Attempting to insert into service_providers table");
+
+            // Check if the service_providers table exists and get its columns
+            const tableCheckResult = await query(`
+              SELECT COLUMN_NAME
+              FROM INFORMATION_SCHEMA.COLUMNS
+              WHERE TABLE_SCHEMA = DATABASE()
+              AND TABLE_NAME = 'service_providers'
+            `) as any[];
+
+            console.log("service_providers table columns:", tableCheckResult.map(col => col.COLUMN_NAME));
+
+            // Use a more explicit approach with column names
+            // First, check if the service_providers table exists
+            const tableExists = await checkTableExists('service_providers');
+            console.log("service_providers table exists:", tableExists);
+
             const sql = `INSERT INTO service_providers
-                        (user_id, name, provider_type, contact_first_name, contact_last_name,
-                         phone, address, province, city, zip,
-                         hours, service_description, application_status)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+                        SET user_id = ?,
+                            name = ?,
+                            provider_type = ?,
+                            contact_first_name = ?,
+                            contact_last_name = ?,
+                            phone = ?,
+                            address = ?,
+                            province = ?,
+                            city = ?,
+                            zip = ?,
+                            hours = ?,
+                            description = ?,
+                            application_status = ?`;
+
+            // Log the values for debugging
+            console.log("Service provider values:", {
+              userId,
+              businessName: businessData.businessName,
+              providerType,
+              firstName: data.firstName,
+              lastName: data.lastName,
+              phone: businessData.businessPhone,
+              address: businessData.businessAddress,
+              province: businessData.businessProvince || null,
+              city: businessData.businessCity || null,
+              zip: businessData.businessZip || null,
+              hours: businessData.businessHours || null,
+              description: businessData.serviceDescription || null
+            });
 
             const values = [
               userId,
@@ -201,21 +284,29 @@ export async function POST(request: Request) {
               data.lastName,
               businessData.businessPhone,
               businessData.businessAddress,
-              null, // province
-              null, // city
-              null, // zip
+              businessData.businessProvince || null, // province
+              businessData.businessCity || null, // city
+              businessData.businessZip || null, // zip
               businessData.businessHours || null,
               businessData.serviceDescription || null,
               'pending'
             ];
 
 
-            const result = await query(sql, values) as any;
+            let result;
+            try {
+              result = await query(sql, values) as any;
+              console.log("Service provider insertion successful, result:", result);
+            } catch (queryError) {
+              console.error("Error executing service provider insertion query:", queryError);
+              throw queryError;
+            }
 
             // Create admin notification for cremation center registration
             if (providerType === 'cremation') {
               try {
                 const serviceProviderId = result.insertId;
+                console.log("Creating admin notification for service provider ID:", serviceProviderId);
 
                 await createAdminNotification({
                   type: 'new_cremation_center',
@@ -225,11 +316,16 @@ export async function POST(request: Request) {
                   entityId: serviceProviderId
                 });
 
+                console.log("Admin notification created successfully");
               } catch (notificationError) {
+                console.error("Error creating admin notification:", notificationError);
                 // Continue with registration even if notification creation fails
               }
             }
           } catch (serviceProviderError) {
+            // Log the error for debugging
+            console.error("Error creating service provider:", serviceProviderError);
+
             // Continue with registration even if service provider creation fails
             // We'll handle this in the admin dashboard
           }
@@ -247,20 +343,33 @@ export async function POST(request: Request) {
     };
 
     // Execute the registration process
-    const userId = await registerUser();
+    console.log("Starting registration process...");
+    let userId;
+    try {
+      userId = await registerUser();
+      console.log("Registration successful, userId:", userId);
+    } catch (regError) {
+      console.error("Registration process failed:", regError);
+      throw regError;
+    }
 
     if (userId) {
       // Send welcome email
       try {
         const accountType = data.account_type === 'personal' ? 'personal' : 'business';
+        console.log("Sending welcome email to:", data.email);
 
         // Send using simple email service
         const emailResult = await sendWelcomeEmail(data.email, data.firstName, accountType);
 
         if (!emailResult.success) {
+          console.warn("Failed to send welcome email:", emailResult);
           // Continue with registration even if email fails
+        } else {
+          console.log("Welcome email sent successfully");
         }
       } catch (emailError) {
+        console.error("Error sending welcome email:", emailError);
         // Continue with registration even if email fails
       }
 
@@ -270,8 +379,11 @@ export async function POST(request: Request) {
         const isCremationCenter = data.account_type === 'business' &&
           (data as BusinessRegistrationData).businessType === 'cremation';
 
+        console.log("Is cremation center registration:", isCremationCenter);
+
         // Skip OTP generation for cremation centers
         if (!isCremationCenter) {
+          console.log("Generating OTP for user:", userId);
           const ipAddress = request.headers.get('x-forwarded-for') || 'unknown';
 
           const otpResult = await generateOtp({
@@ -281,16 +393,39 @@ export async function POST(request: Request) {
           });
 
           if (!otpResult.success) {
+            console.warn("Failed to generate OTP:", otpResult);
             // Continue with registration even if OTP generation fails
+          } else {
+            console.log("OTP generated successfully");
+
+            // For fur parents, auto-approve is_verified
+            try {
+              const updateResult = await query(
+                'UPDATE users SET is_verified = 1 WHERE user_id = ?',
+                [userId]
+              );
+              console.log("Fur parent verification update result:", updateResult);
+            } catch (updateError) {
+              console.error("Error updating fur parent verification status:", updateError);
+              // Continue with registration even if verification update fails
+            }
           }
         } else {
-          // For cremation centers, mark them as OTP verified automatically
-          await query(
-            'UPDATE users SET is_otp_verified = 1 WHERE id = ?',
-            [userId]
-          );
+          console.log("Skipping OTP generation for cremation center, marking as verified");
+          // For cremation centers, mark them as OTP verified AND is_verified automatically
+          try {
+            const updateResult = await query(
+              'UPDATE users SET is_otp_verified = 1, is_verified = 1 WHERE user_id = ?',
+              [userId]
+            );
+            console.log("Verification update result:", updateResult);
+          } catch (updateError) {
+            console.error("Error updating verification status:", updateError);
+            throw updateError;
+          }
         }
       } catch (otpError) {
+        console.error("Error in OTP generation/verification process:", otpError);
         // Continue with registration even if OTP generation fails
       }
 
@@ -306,10 +441,13 @@ export async function POST(request: Request) {
       throw new Error('Failed to create user account');
     }
   } catch (error) {
+    // Log the detailed error for debugging
+    console.error("Registration failed with error:", error);
 
     // Handle error
     if (error instanceof Error) {
-      // Process error
+      console.error("Error message:", error.message);
+      console.error("Error stack:", error.stack);
     }
 
     return NextResponse.json({

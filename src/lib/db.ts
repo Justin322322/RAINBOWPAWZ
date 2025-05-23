@@ -5,17 +5,21 @@ const MYSQL_PORT = 3306;
 
 // Database connection configuration
 const dbConfig = {
-  host: process.env.DB_HOST || 'localhost',
+  host: process.env.DB_HOST || 'localhost', // Use localhost for XAMPP
   user: process.env.DB_USER || 'root',
   password: process.env.DB_PASSWORD || '',
   database: process.env.DB_NAME || 'rainbow_paws',
-  port: MYSQL_PORT, // Always use 3306 for MySQL
+  port: MYSQL_PORT,
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
-  // Use hostname rather than socket for all connections
   socketPath: undefined,
   insecureAuth: true,
+  // Add connection timeout and better error handling
+  connectTimeout: 10000,
+  debug: process.env.NODE_ENV === 'development',
+  multipleStatements: false,
+  ssl: false
 };
 
 // Create a connection pool with error handling
@@ -56,7 +60,7 @@ try {
 
 } catch (error) {
   const err = error as any;
-  
+
   if (err.code === 'ECONNREFUSED') {
   } else if (err.code === 'ER_ACCESS_DENIED_ERROR') {
   } else if (err.code === 'ER_BAD_DB_ERROR') {
@@ -94,19 +98,30 @@ export async function query(sql: string, params: any[] = []) {
   } catch (error) {
     const err = error as any;
 
+    // Log the error details
+    console.error("Database query error:", {
+      code: err.code,
+      message: err.message,
+      sqlState: err.sqlState,
+      sqlMessage: err.sqlMessage,
+      sql: sql.substring(0, 200) // Log only first 200 chars for security
+    });
+
     // Check if it's a connection error
     if (err.code === 'ECONNREFUSED') {
-      // Connection refused error
+      console.error("Connection refused error - MySQL server might not be running");
     } else if (err.code === 'ER_ACCESS_DENIED_ERROR') {
-      // Access denied error
+      console.error("Access denied error - Check username and password");
     } else if (err.code === 'ER_BAD_DB_ERROR') {
-      // Database does not exist
+      console.error("Database does not exist - Check database name");
     } else if (err.code === 'PROTOCOL_CONNECTION_LOST') {
+      console.error("Connection lost - Attempting to reconnect");
       // The connection was lost, try to reconnect
       try {
         pool = mysql.createPool(finalConfig);
+        console.log("Reconnection successful");
       } catch (reconnectError) {
-        // Failed to reconnect
+        console.error("Failed to reconnect:", reconnectError);
       }
     }
 

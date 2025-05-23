@@ -7,7 +7,7 @@ import { query } from '@/lib/db';
 // Function to save file to disk
 async function saveFile(file: File, userId: string, documentType: string): Promise<string> {
   try {
-    
+
     // Create directories if they don't exist
     const uploadsDir = path.join(process.cwd(), 'public', 'uploads', 'businesses', userId);
     await mkdir(uploadsDir, { recursive: true });
@@ -32,14 +32,14 @@ async function saveFile(file: File, userId: string, documentType: string): Promi
 }
 
 export async function POST(request: Request) {
-  
+
   try {
     // Parse the multipart form data
     const formData = await request.formData();
-    
+
     // Get user ID from form data
     const userId = formData.get('userId');
-    
+
     if (!userId) {
       return NextResponse.json({
         error: 'No user ID provided'
@@ -54,13 +54,13 @@ export async function POST(request: Request) {
       `SELECT user_id, first_name, last_name, email, role FROM users WHERE user_id = ?`,
       [userIdStr]
     ) as any[];
-    
+
     if (!userCheck || userCheck.length === 0) {
       return NextResponse.json({
         error: 'User not found'
       }, { status: 404 });
     }
-    
+
     const user = userCheck[0];
 
     // Check if we should use service_providers table
@@ -69,7 +69,7 @@ export async function POST(request: Request) {
 
     // Check if a business profile exists for this user
     let businessCheck = await query(
-      `SELECT id, name, application_status FROM ${tableName} WHERE user_id = ?`,
+      `SELECT provider_id, name, application_status FROM ${tableName} WHERE user_id = ?`,
       [userIdStr]
     ) as any[];
 
@@ -77,38 +77,38 @@ export async function POST(request: Request) {
 
     // If no business found, create one
     if (!businessCheck || businessCheck.length === 0) {
-      
+
       try {
         // Create service provider name from user's name or default
-        const providerName = user.first_name 
-          ? `${user.first_name} ${user.last_name || ''}`.trim() 
+        const providerName = user.first_name
+          ? `${user.first_name} ${user.last_name || ''}`.trim()
           : 'New Cremation Service';
-        
+
         // Insert a new service provider record
         const insertResult = await query(
-          `INSERT INTO ${tableName} (user_id, name, provider_type, application_status, created_at, updated_at) 
-           VALUES (?, ?, 'cremation', 'pending', NOW(), NOW())`,
+          `INSERT INTO ${tableName} (user_id, name, provider_type, application_status)
+           VALUES (?, ?, 'cremation', 'pending')`,
           [userIdStr, providerName]
         ) as any;
-        
-        
+
+
         if (insertResult && insertResult.insertId) {
           businessProfileId = insertResult.insertId;
         } else {
           // Fetch the newly created record if insertId not available
           const newBusinessCheck = await query(
-            `SELECT id FROM ${tableName} WHERE user_id = ?`,
+            `SELECT provider_id FROM ${tableName} WHERE user_id = ?`,
             [userIdStr]
           ) as any[];
-          
-          
+
+
           if (!newBusinessCheck || newBusinessCheck.length === 0) {
             return NextResponse.json({
               error: 'Failed to create service provider record'
             }, { status: 500 });
           }
-          
-          businessProfileId = newBusinessCheck[0].id;
+
+          businessProfileId = newBusinessCheck[0].provider_id;
         }
       } catch (err) {
         return NextResponse.json({
@@ -117,7 +117,7 @@ export async function POST(request: Request) {
       }
     } else {
       // Use existing business profile
-      businessProfileId = businessCheck[0].id;
+      businessProfileId = businessCheck[0].provider_id;
     }
 
     // Process and save uploaded files
@@ -127,21 +127,21 @@ export async function POST(request: Request) {
     // Process Business Permit
     const businessPermit = formData.get('businessPermit') as File | null;
     if (businessPermit && businessPermit instanceof File && businessPermit.size > 0) {
-      filePaths.businessPermitPath = await saveFile(businessPermit, userIdStr, 'business_permit');
+      filePaths.business_permit_path = await saveFile(businessPermit, userIdStr, 'business_permit');
       documentsUploaded = true;
     }
 
     // Process BIR Certificate
     const birCertificate = formData.get('birCertificate') as File | null;
     if (birCertificate && birCertificate instanceof File && birCertificate.size > 0) {
-      filePaths.birCertificatePath = await saveFile(birCertificate, userIdStr, 'bir_certificate');
+      filePaths.bir_certificate_path = await saveFile(birCertificate, userIdStr, 'bir_certificate');
       documentsUploaded = true;
     }
 
     // Process Government ID
     const governmentId = formData.get('governmentId') as File | null;
     if (governmentId && governmentId instanceof File && governmentId.size > 0) {
-      filePaths.governmentIdPath = await saveFile(governmentId, userIdStr, 'government_id');
+      filePaths.government_id_path = await saveFile(governmentId, userIdStr, 'government_id');
       documentsUploaded = true;
     }
 
@@ -154,28 +154,28 @@ export async function POST(request: Request) {
     // Check columns in the target table
     const columnsResult = await query(`SHOW COLUMNS FROM ${tableName}`) as any[];
     const columns = columnsResult.map((col: any) => col.Field);
-    
+
     // Update business record with document paths
     const updateFields = [];
     const updateValues = [];
 
     // Only update fields that exist in the table and have files
-    if (filePaths.businessPermitPath && columns.includes('business_permit_path')) {
+    if (filePaths.business_permit_path && columns.includes('business_permit_path')) {
       updateFields.push('business_permit_path = ?');
-      updateValues.push(filePaths.businessPermitPath);
-    } else if (filePaths.businessPermitPath) {
+      updateValues.push(filePaths.business_permit_path);
+    } else if (filePaths.business_permit_path) {
     }
 
-    if (filePaths.birCertificatePath && columns.includes('bir_certificate_path')) {
+    if (filePaths.bir_certificate_path && columns.includes('bir_certificate_path')) {
       updateFields.push('bir_certificate_path = ?');
-      updateValues.push(filePaths.birCertificatePath);
-    } else if (filePaths.birCertificatePath) {
+      updateValues.push(filePaths.bir_certificate_path);
+    } else if (filePaths.bir_certificate_path) {
     }
 
-    if (filePaths.governmentIdPath && columns.includes('government_id_path')) {
+    if (filePaths.government_id_path && columns.includes('government_id_path')) {
       updateFields.push('government_id_path = ?');
-      updateValues.push(filePaths.governmentIdPath);
-    } else if (filePaths.governmentIdPath) {
+      updateValues.push(filePaths.government_id_path);
+    } else if (filePaths.government_id_path) {
     }
 
     // Add status update if the column exists
@@ -196,31 +196,38 @@ export async function POST(request: Request) {
     }
 
     if (updateFields.length > 0) {
-      const updateQuery = `UPDATE ${tableName} SET ${updateFields.join(', ')} WHERE id = ?`;
-      
+      // Log the update query for debugging
+      console.log("Update fields:", updateFields);
+      console.log("Update values:", updateValues);
+      console.log("Business profile ID:", businessProfileId);
+
+      const updateQuery = `UPDATE ${tableName} SET ${updateFields.join(', ')} WHERE provider_id = ?`;
+
       try {
         const updateResult = await query(
           updateQuery,
           [...updateValues, businessProfileId]
         );
-        
+
+        console.log("Update result:", updateResult);
+
         // Verify if the update was successful
         const verifyResult = await query(
-          `SELECT id, business_permit_path, bir_certificate_path, government_id_path FROM ${tableName} WHERE id = ?`,
+          `SELECT provider_id, business_permit_path, bir_certificate_path, government_id_path FROM ${tableName} WHERE provider_id = ?`,
           [businessProfileId]
         ) as any[];
-        
+
         if (verifyResult && verifyResult.length > 0) {
         } else {
         }
-        
+
       } catch (updateError) {
         return NextResponse.json({
           error: `Failed to update ${tableName} record`,
           details: updateError instanceof Error ? updateError.message : 'Unknown error'
         }, { status: 500 });
       }
-      
+
     } else {
     }
 
@@ -228,7 +235,7 @@ export async function POST(request: Request) {
     if (user.role !== 'business' && user.role !== 'admin') {
       try {
         const roleUpdateResult = await query(
-          `UPDATE users SET role = 'business', updated_at = NOW() WHERE id = ?`,
+          `UPDATE users SET role = 'business' WHERE user_id = ?`,
           [userIdStr]
         );
       } catch (roleUpdateError) {

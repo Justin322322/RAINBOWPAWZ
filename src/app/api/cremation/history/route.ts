@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
 
         // Fetch provider ID from the service_providers table for this user
         const userQuery = `
-          SELECT id FROM service_providers WHERE user_id = ?
+          SELECT provider_id as id FROM service_providers WHERE user_id = ?
         `;
         const userResult = await query(userQuery, [userId]) as any[];
 
@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
 
     if (!providerId) {
       // If we couldn't get a provider ID from the session, get the first provider ID from the database
-      const providerQuery = `SELECT id FROM service_providers LIMIT 1`;
+      const providerQuery = `SELECT provider_id as id FROM service_providers LIMIT 1`;
       const providerResult = await query(providerQuery) as any[];
 
       if (!providerResult || providerResult.length === 0) {
@@ -83,7 +83,7 @@ export async function GET(request: NextRequest) {
              p.name as package_name
       FROM service_bookings sb
       JOIN users u ON sb.user_id = u.id
-      LEFT JOIN service_packages p ON sb.package_id = p.id
+      LEFT JOIN service_packages p ON sb.package_id = p.package_id
       WHERE sb.provider_id = ?
       ${dateCondition}
       ORDER BY sb.booking_date DESC

@@ -47,56 +47,54 @@ export async function GET(request: NextRequest) {
       SELECT COUNT(*) as count FROM service_packages WHERE is_active = 1
     `) as any[];
 
-    // Check if successful_bookings table exists
+    // Calculate revenue from bookings
+    let revenueResult = [{ total: 0 }];
+    let actualMonthlyRevenue = 0;
+
+    // Check if bookings table exists and has total_price column
     const bookingsTableExists = await query(`
       SELECT COUNT(*) as count
       FROM information_schema.tables
       WHERE table_schema = DATABASE()
-      AND table_name = 'successful_bookings'
+      AND table_name = 'bookings'
     `) as any[];
 
-    // Calculate revenue from successful bookings
-    let revenueResult = [{ total: 0 }];
-    let actualMonthlyRevenue = 0;
-
     if (bookingsTableExists[0]?.count === 1) {
-      // Get total revenue from all successful bookings
+      // Get total revenue from all completed bookings
       revenueResult = await query(`
-        SELECT SUM(transaction_amount) as total FROM successful_bookings
-        WHERE payment_status = 'completed'
+        SELECT SUM(total_price) as total FROM bookings
+        WHERE status = 'completed'
       `) as any[];
 
       // Get current month's revenue
       const currentMonthRevenueResult = await query(`
-        SELECT SUM(transaction_amount) as total FROM successful_bookings
-        WHERE payment_status = 'completed'
-        AND MONTH(payment_date) = MONTH(CURRENT_DATE())
-        AND YEAR(payment_date) = YEAR(CURRENT_DATE())
+        SELECT SUM(total_price) as total FROM bookings
+        WHERE status = 'completed'
+        AND MONTH(created_at) = MONTH(CURRENT_DATE())
+        AND YEAR(created_at) = YEAR(CURRENT_DATE())
       `) as any[];
 
       actualMonthlyRevenue = parseFloat(String(currentMonthRevenueResult[0]?.total || '0'));
     } else {
-      // If successful_bookings table doesn't exist, set revenue to 0
+      // If bookings table doesn't exist, set revenue to 0
       revenueResult = [{ total: 0 }];
       actualMonthlyRevenue = 0;
     }
 
-    // Get recent applications (if the table exists)
+    // Get recent applications from service_providers table
     let recentApplications: any[] = [];
     try {
-      // Try to fetch recent applications from service_providers table
-      // since we've migrated away from the business_applications table
       recentApplications = await query(`
         SELECT
-          sp.id,
-          sp.id as businessId,
+          sp.provider_id as id,
+          sp.provider_id as businessId,
           sp.name as businessName,
           CONCAT(u.first_name, ' ', u.last_name) as owner,
           u.email,
           sp.created_at as submitDate,
           sp.application_status as status
         FROM service_providers sp
-        JOIN users u ON sp.user_id = u.id
+        JOIN users u ON sp.user_id = u.user_id
         WHERE sp.provider_type = 'cremation'
         ORDER BY sp.created_at DESC
         LIMIT 5
@@ -113,13 +111,12 @@ export async function GET(request: NextRequest) {
       }));
 
     } catch (error) {
-
       // Attempt fallback query with fewer joins if the main one fails
       try {
         recentApplications = await query(`
           SELECT
-            id,
-            id as businessId,
+            provider_id as id,
+            provider_id as businessId,
             name as businessName,
             created_at as submitDate,
             application_status as status
@@ -157,83 +154,31 @@ export async function GET(request: NextRequest) {
     let pendingApplicationsLastMonth = 0;
 
     try {
-      // Check if service_providers table exists
-      const serviceProvidersExists = await query(`
+      // Get current month's pending applications
+      const thisMonthResult = await query(`
         SELECT COUNT(*) as count
-        FROM information_schema.tables
-        WHERE table_schema = DATABASE()
-        AND table_name = 'service_providers'
+        FROM service_providers
+        WHERE application_status = 'pending'
+        AND MONTH(created_at) = MONTH(CURRENT_DATE())
+        AND YEAR(created_at) = YEAR(CURRENT_DATE())
       `) as any[];
 
-      if (serviceProvidersExists[0]?.count === 1) {
-        // Check if application_status column exists
-        const applicationStatusExists = await query(`
-          SELECT COUNT(*) as count
-          FROM information_schema.columns
-          WHERE table_schema = DATABASE()
-          AND table_name = 'service_providers'
-          AND column_name = 'application_status'
-        `) as any[];
+      pendingApplicationsThisMonth = thisMonthResult[0]?.count || 0;
 
-        if (applicationStatusExists[0]?.count === 1) {
-          // Use application_status (preferred)
-          // Get current month's pending applications
-          const thisMonthResult = await query(`
-            SELECT COUNT(*) as count
-            FROM service_providers
-            WHERE application_status = 'pending'
-            AND MONTH(created_at) = MONTH(CURRENT_DATE())
-            AND YEAR(created_at) = YEAR(CURRENT_DATE())
-          `) as any[];
+      // Get last month's pending applications
+      const lastMonthResult = await query(`
+        SELECT COUNT(*) as count
+        FROM service_providers
+        WHERE application_status = 'pending'
+        AND MONTH(created_at) = MONTH(DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH))
+        AND YEAR(created_at) = YEAR(DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH))
+      `) as any[];
 
-          pendingApplicationsThisMonth = thisMonthResult[0]?.count || 0;
-
-          // Get last month's pending applications
-          const lastMonthResult = await query(`
-            SELECT COUNT(*) as count
-            FROM service_providers
-            WHERE application_status = 'pending'
-            AND MONTH(created_at) = MONTH(DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH))
-            AND YEAR(created_at) = YEAR(DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH))
-          `) as any[];
-
-          pendingApplicationsLastMonth = lastMonthResult[0]?.count || 0;
-        } else {
-          // Fallback to verification_status if available
-          const verificationStatusExists = await query(`
-            SELECT COUNT(*) as count
-            FROM information_schema.columns
-            WHERE table_schema = DATABASE()
-            AND table_name = 'service_providers'
-            AND column_name = 'verification_status'
-          `) as any[];
-
-          if (verificationStatusExists[0]?.count === 1) {
-            // Get current month's pending applications
-            const thisMonthResult = await query(`
-              SELECT COUNT(*) as count
-              FROM service_providers
-              WHERE verification_status = 'pending'
-              AND MONTH(created_at) = MONTH(CURRENT_DATE())
-              AND YEAR(created_at) = YEAR(CURRENT_DATE())
-            `) as any[];
-
-            pendingApplicationsThisMonth = thisMonthResult[0]?.count || 0;
-
-            // Get last month's pending applications
-            const lastMonthResult = await query(`
-              SELECT COUNT(*) as count
-              FROM service_providers
-              WHERE verification_status = 'pending'
-              AND MONTH(created_at) = MONTH(DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH))
-              AND YEAR(created_at) = YEAR(DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH))
-            `) as any[];
-
-            pendingApplicationsLastMonth = lastMonthResult[0]?.count || 0;
-          }
-        }
-      }
+      pendingApplicationsLastMonth = lastMonthResult[0]?.count || 0;
     } catch (error) {
+      // If there's an error, set values to 0
+      pendingApplicationsThisMonth = 0;
+      pendingApplicationsLastMonth = 0;
     }
 
     // Get restricted users count from users table
@@ -247,107 +192,54 @@ export async function GET(request: NextRequest) {
     // Get restricted cremation centers count from service_providers table
     let restrictedCremationCenters = 0;
     try {
-      // Check if application_status column exists in service_providers
-      const applicationStatusExists = await query(`
+      // Get restricted cremation centers count
+      const restrictedCentersResult = await query(`
         SELECT COUNT(*) as count
-        FROM information_schema.columns
-        WHERE table_schema = DATABASE()
-        AND table_name = 'service_providers'
-        AND column_name = 'application_status'
+        FROM service_providers
+        WHERE application_status = 'restricted'
       `) as any[];
 
-      if (applicationStatusExists[0]?.count === 1) {
-        // Get restricted cremation centers count from application_status
-        const restrictedCentersResult = await query(`
-          SELECT COUNT(*) as count
-          FROM service_providers
-          WHERE application_status = 'restricted'
-        `) as any[];
-
-        restrictedCremationCenters = restrictedCentersResult[0]?.count || 0;
-      } else {
-        // Fallback to verification_status if available
-        const verificationStatusExists = await query(`
-          SELECT COUNT(*) as count
-          FROM information_schema.columns
-          WHERE table_schema = DATABASE()
-          AND table_name = 'service_providers'
-          AND column_name = 'verification_status'
-        `) as any[];
-
-        if (verificationStatusExists[0]?.count === 1) {
-          const restrictedCentersResult = await query(`
-            SELECT COUNT(*) as count
-            FROM service_providers
-            WHERE verification_status = 'restricted'
-          `) as any[];
-
-          restrictedCremationCenters = restrictedCentersResult[0]?.count || 0;
-        }
-      }
+      restrictedCremationCenters = restrictedCentersResult[0]?.count || 0;
     } catch (error) {
+      restrictedCremationCenters = 0;
     }
 
-    // Get previous month's data for comparison - safely handle if created_at doesn't exist
+    // Get previous month's data for comparison
     let previousMonthUsersCount = [{ count: 0 }];
     try {
-      // Check if created_at column exists in users table
-      const userCreatedAtExists = await query(`
-        SELECT COUNT(*) as count
-        FROM information_schema.columns
-        WHERE table_schema = DATABASE()
-        AND table_name = 'users'
-        AND column_name = 'created_at'
+      previousMonthUsersCount = await query(`
+        SELECT COUNT(*) as count FROM users
+        WHERE created_at < DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH)
       `) as any[];
-
-      if (userCreatedAtExists[0]?.count === 1) {
-        previousMonthUsersCount = await query(`
-          SELECT COUNT(*) as count FROM users
-          WHERE created_at < DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH)
-        `) as any[];
-      } else {
-        // If created_at doesn't exist, just use a percentage of total users as an estimate
-        previousMonthUsersCount = [{ count: Math.floor((usersCount[0]?.count || 0) * 0.8) }];
-      }
     } catch (error) {
+      // If there's an error, use a percentage of total users as an estimate
+      previousMonthUsersCount = [{ count: Math.floor((usersCount[0]?.count || 0) * 0.8) }];
     }
 
     let previousMonthServicesCount = [{ count: 0 }];
     try {
-      // Check if created_at column exists in service_packages table
-      const serviceCreatedAtExists = await query(`
-        SELECT COUNT(*) as count
-        FROM information_schema.columns
-        WHERE table_schema = DATABASE()
-        AND table_name = 'service_packages'
-        AND column_name = 'created_at'
+      previousMonthServicesCount = await query(`
+        SELECT COUNT(*) as count FROM service_packages
+        WHERE created_at < DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH) AND is_active = 1
       `) as any[];
-
-      if (serviceCreatedAtExists[0]?.count === 1) {
-        previousMonthServicesCount = await query(`
-          SELECT COUNT(*) as count FROM service_packages
-          WHERE created_at < DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH) AND is_active = 1
-        `) as any[];
-      } else {
-        // If created_at doesn't exist, just use a percentage of total services as an estimate
-        previousMonthServicesCount = [{ count: Math.floor((activeServicesCount[0]?.count || 0) * 0.7) }];
-      }
     } catch (error) {
+      // If there's an error, use a percentage of total services as an estimate
+      previousMonthServicesCount = [{ count: Math.floor((activeServicesCount[0]?.count || 0) * 0.7) }];
     }
 
     // Get previous month's revenue
     let previousMonthRevenue = [{ total: 0 }];
 
     if (bookingsTableExists[0]?.count === 1) {
-      // Get previous month's revenue from successful_bookings
+      // Get previous month's revenue from bookings
       previousMonthRevenue = await query(`
-        SELECT SUM(transaction_amount) as total FROM successful_bookings
-        WHERE payment_status = 'completed'
-        AND MONTH(payment_date) = MONTH(DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH))
-        AND YEAR(payment_date) = YEAR(DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH))
+        SELECT SUM(total_price) as total FROM bookings
+        WHERE status = 'completed'
+        AND MONTH(created_at) = MONTH(DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH))
+        AND YEAR(created_at) = YEAR(DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH))
       `) as any[];
     } else {
-      // If no successful_bookings table, set previous month revenue to 0
+      // If no bookings table, set previous month revenue to 0
       previousMonthRevenue = [{ total: 0 }];
     }
 
@@ -376,92 +268,28 @@ export async function GET(request: NextRequest) {
     // Get previous month's pending applications count
     let previousMonthApplications = [{ count: 0 }];
     try {
-      // Check if service_providers table exists with application_status column
-      const applicationStatusExists = await query(`
+      // Count previous month's pending applications
+      previousMonthApplications = await query(`
         SELECT COUNT(*) as count
-        FROM information_schema.columns
-        WHERE table_schema = DATABASE()
-        AND table_name = 'service_providers'
-        AND column_name = 'application_status'
+        FROM service_providers
+        WHERE application_status = 'pending'
+        AND created_at < DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH)
       `) as any[];
-
-      if (applicationStatusExists[0]?.count === 1) {
-        // Count previous month's pending applications
-        previousMonthApplications = await query(`
-          SELECT COUNT(*) as count
-          FROM service_providers
-          WHERE application_status = 'pending'
-          AND created_at < DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH)
-        `) as any[];
-      } else {
-        // Legacy fallback for old business_applications table
-        const applicationsTableExists = await query(`
-          SELECT COUNT(*) as count
-          FROM information_schema.tables
-          WHERE table_schema = DATABASE()
-          AND table_name = 'business_applications'
-        `) as any[];
-
-        if (applicationsTableExists[0]?.count === 1) {
-          // Check if created_at and status columns exist
-          const appCreatedAtExists = await query(`
-            SELECT COUNT(*) as count
-            FROM information_schema.columns
-            WHERE table_schema = DATABASE()
-            AND table_name = 'business_applications'
-            AND column_name = 'created_at'
-          `) as any[];
-
-          const appStatusExists = await query(`
-            SELECT COUNT(*) as count
-            FROM information_schema.columns
-            WHERE table_schema = DATABASE()
-            AND table_name = 'business_applications'
-            AND column_name = 'status'
-          `) as any[];
-
-          if (appCreatedAtExists[0]?.count === 1 && appStatusExists[0]?.count === 1) {
-            previousMonthApplications = await query(`
-              SELECT COUNT(*) as count
-              FROM business_applications
-              WHERE status = 'pending'
-              AND created_at < DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH)
-            `) as any[];
-          } else if (appCreatedAtExists[0]?.count === 1) {
-            // If no status column, just get count by date as a fallback
-            previousMonthApplications = await query(`
-              SELECT COUNT(*) as count
-              FROM business_applications
-              WHERE created_at < DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH)
-            `) as any[];
-          }
-        }
-      }
     } catch (error) {
+      previousMonthApplications = [{ count: 0 }];
     }
 
     // Get the total count of pending applications, not just the recent ones
     let pendingApplicationsCount = 0;
     try {
-      // Check if service_providers table exists with application_status column
-      const applicationStatusExists = await query(`
+      // Count all pending applications
+      const pendingAppsResult = await query(`
         SELECT COUNT(*) as count
-        FROM information_schema.columns
-        WHERE table_schema = DATABASE()
-        AND table_name = 'service_providers'
-        AND column_name = 'application_status'
+        FROM service_providers
+        WHERE application_status = 'pending'
       `) as any[];
 
-      if (applicationStatusExists[0]?.count === 1) {
-        // Count all pending applications
-        const pendingAppsResult = await query(`
-          SELECT COUNT(*) as count
-          FROM service_providers
-          WHERE application_status = 'pending'
-        `) as any[];
-
-        pendingApplicationsCount = pendingAppsResult[0]?.count || 0;
-      }
+      pendingApplicationsCount = pendingAppsResult[0]?.count || 0;
     } catch (error) {
       // Fallback to counting pending applications in the recent applications array
       pendingApplicationsCount = recentApplications.filter((app: any) => app.status === 'pending').length;
@@ -511,9 +339,6 @@ export async function GET(request: NextRequest) {
     const restrictedFurParents =
       (restrictedUsersResult.find((t: any) => t.role === 'fur_parent')?.count || 0) +
       (restrictedUsersResult.find((t: any) => t.role === 'user')?.count || 0);
-
-    // Use the directly queried restrictedCremationCenters count instead of filtering from users
-    // This ensures we count from service_providers table with proper status fields
 
     dashboardData.userDistribution = {
       activeUsers: {

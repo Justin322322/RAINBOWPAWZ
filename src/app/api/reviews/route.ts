@@ -205,7 +205,7 @@ export async function POST(request: NextRequest) {
       if (!providerUserId) {
         try {
           const providerResult = await query(
-            'SELECT user_id FROM service_providers WHERE id = ?',
+            'SELECT user_id FROM service_providers WHERE provider_id = ?',
             [service_provider_id]
           ) as any[];
 

@@ -12,11 +12,11 @@ export async function GET(request: NextRequest) {
     }
 
     const [tokenUserId, accountType] = authToken.split('_');
-    
+
     // Only allow admins to access this endpoint
     if (accountType !== 'admin') {
-      return NextResponse.json({ 
-        error: 'You are not authorized to access this resource' 
+      return NextResponse.json({
+        error: 'You are not authorized to access this resource'
       }, { status: 403 });
     }
 
@@ -37,40 +37,40 @@ export async function GET(request: NextRequest) {
     try {
       // Check if the users table exists and has the required columns
       const tablesResult = await query(
-        `SELECT COUNT(*) as count 
-         FROM information_schema.tables 
-         WHERE table_schema = DATABASE() 
+        `SELECT COUNT(*) as count
+         FROM information_schema.tables
+         WHERE table_schema = DATABASE()
          AND table_name = 'users'`
       ) as any[];
-      
+
       if (!tablesResult || tablesResult[0].count === 0) {
         return NextResponse.json({
           error: 'Database schema error',
           message: 'Users table does not exist'
         }, { status: 500 });
       }
-      
+
       // Get column information to check what fields are available
       const columnsResult = await query(
-        `SELECT COLUMN_NAME 
-         FROM information_schema.columns 
-         WHERE table_schema = DATABASE() 
+        `SELECT COLUMN_NAME
+         FROM information_schema.columns
+         WHERE table_schema = DATABASE()
          AND table_name = 'users'`
       ) as any[];
-      
+
       const columns = columnsResult.map((col: any) => col.COLUMN_NAME.toLowerCase());
-      
+
       const hasUserType = columns.includes('user_type');
       const hasRole = columns.includes('role');
       const hasLastLogin = columns.includes('last_login');
-      
+
       // Build the query dynamically based on available columns
-      let selectFields = 'id, first_name, last_name, email, phone_number, address, sex, created_at, updated_at, is_otp_verified, status, is_verified';
-      
+      let selectFields = 'user_id, first_name, last_name, email, phone, address, gender, created_at, updated_at, is_otp_verified, status, is_verified';
+
       if (hasRole) selectFields += ', role';
       if (hasUserType) selectFields += ', user_type';
       if (hasLastLogin) selectFields += ', last_login';
-      
+
       // Build the query
       let countQuery = 'SELECT COUNT(*) as total FROM users';
       let usersQuery = `
@@ -123,7 +123,7 @@ export async function GET(request: NextRequest) {
       // Add ORDER BY and LIMIT clauses to users query
       const validSortColumns = ['id', 'first_name', 'last_name', 'email', 'created_at', 'updated_at', 'status'];
       const finalSortBy = validSortColumns.includes(sortBy) ? sortBy : 'created_at';
-      
+
       usersQuery += ` ORDER BY ${finalSortBy} ${sortOrder === 'asc' ? 'ASC' : 'DESC'}`;
       usersQuery += ` LIMIT ? OFFSET ?`;
       queryParams.push(limit, offset);
@@ -143,7 +143,7 @@ export async function GET(request: NextRequest) {
           if (!hasRole) user.role = user.user_type === 'user' ? 'fur_parent' : user.user_type || 'unknown';
           if (!hasUserType) user.user_type = user.role === 'fur_parent' ? 'user' : user.role || 'unknown';
           if (!hasLastLogin) user.last_login = null;
-          
+
           // Set user_type based on role for backward compatibility
           if (user.role === 'fur_parent' || (user.role === null && user.user_type === 'user')) {
             user.user_type = 'user';

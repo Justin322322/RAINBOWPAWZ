@@ -36,10 +36,12 @@ export async function createAdminNotification({
     }
 
     // Insert the notification
+    console.log("Inserting admin notification with values:", { type, title, message, entityType, entityId, link });
+
     const result = await query(
-      `INSERT INTO admin_notifications (type, title, message, entity_type, entity_id, link)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [type, title, message, entityType, entityId, link]
+      `INSERT INTO notifications (user_id, title, message, type, link)
+       VALUES (1, ?, ?, 'info', ?)`,
+      [title, message, link]
     ) as any;
 
     return {
@@ -55,7 +57,7 @@ export async function createAdminNotification({
 }
 
 /**
- * Ensure the admin_notifications table exists
+ * Ensure the notifications table exists
  */
 async function ensureAdminNotificationsTable(): Promise<boolean> {
   try {
@@ -64,28 +66,28 @@ async function ensureAdminNotificationsTable(): Promise<boolean> {
       SELECT COUNT(*) as count
       FROM information_schema.tables
       WHERE table_schema = DATABASE()
-      AND table_name = 'admin_notifications'
+      AND table_name = 'notifications'
     `) as any[];
 
     if (tableExists[0].count === 0) {
       // Create the table if it doesn't exist
       await query(`
-        CREATE TABLE IF NOT EXISTS admin_notifications (
-          id INT AUTO_INCREMENT PRIMARY KEY,
-          type VARCHAR(50) NOT NULL,
-          title VARCHAR(255) NOT NULL,
-          message TEXT NOT NULL,
-          entity_type VARCHAR(50),
-          entity_id INT,
-          link VARCHAR(255),
-          is_read BOOLEAN DEFAULT FALSE,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        CREATE TABLE IF NOT EXISTS notifications (
+          notification_id INT AUTO_INCREMENT PRIMARY KEY,
+          user_id INT DEFAULT NULL,
+          title VARCHAR(255) DEFAULT NULL,
+          message TEXT DEFAULT NULL,
+          type ENUM('info','success','warning','error') DEFAULT 'info',
+          is_read TINYINT(1) DEFAULT 0,
+          link VARCHAR(255) DEFAULT NULL,
+          created_at TIMESTAMP NOT NULL DEFAULT current_timestamp()
         )
       `);
     }
 
     return true;
   } catch (error) {
+    console.error("Error ensuring notifications table exists:", error);
     return false;
   }
 }

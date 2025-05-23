@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: May 22, 2025 at 08:47 AM
+-- Generation Time: May 23, 2025 at 04:40 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -64,6 +64,13 @@ CREATE TABLE `notifications` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- Dumping data for table `notifications`
+--
+
+INSERT INTO `notifications` (`notification_id`, `user_id`, `title`, `message`, `type`, `is_read`, `link`, `created_at`) VALUES
+(1, 1, 'New Cremation Center Registration', 'business has registered as a cremation center and is pending verification.', 'info', 0, '/admin/applications/2', '2025-05-23 01:56:12');
+
 -- --------------------------------------------------------
 
 --
@@ -77,14 +84,6 @@ CREATE TABLE `otp_attempts` (
   `ip_address` varchar(45) DEFAULT NULL,
   `attempt_time` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `otp_attempts`
---
-
-INSERT INTO `otp_attempts` (`id`, `user_id`, `attempt_type`, `ip_address`, `attempt_time`) VALUES
-(1, 2, 'generate', '::1', '2025-05-20 22:15:33'),
-(2, 2, 'verify', '::1', '2025-05-20 22:15:57');
 
 -- --------------------------------------------------------
 
@@ -101,13 +100,6 @@ CREATE TABLE `otp_codes` (
   `used_at` timestamp NULL DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `otp_codes`
---
-
-INSERT INTO `otp_codes` (`id`, `user_id`, `otp_code`, `expires_at`, `is_used`, `used_at`, `created_at`) VALUES
-(1, 2, '169095', '2025-05-21 06:25:33', 1, '2025-05-20 22:15:57', '2025-05-20 22:15:33');
 
 -- --------------------------------------------------------
 
@@ -164,13 +156,6 @@ CREATE TABLE `password_reset_tokens` (
   `expires_at` datetime NOT NULL,
   `is_used` tinyint(1) DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `password_reset_tokens`
---
-
-INSERT INTO `password_reset_tokens` (`id`, `user_id`, `token`, `created_at`, `expires_at`, `is_used`) VALUES
-(1, 2, '75d65a71e886fa7ad22407001f28f982cdd8719832304d5af0c356515baaf00e', '2025-05-20 12:29:06', '2025-05-20 21:29:06', 0);
 
 -- --------------------------------------------------------
 
@@ -326,7 +311,7 @@ CREATE TABLE `users` (
 
 INSERT INTO `users` (`user_id`, `email`, `password`, `first_name`, `last_name`, `phone`, `address`, `gender`, `role`, `status`, `is_verified`, `is_otp_verified`, `last_login`, `created_at`, `updated_at`) VALUES
 (1, 'admin@rainbowpaws.com', '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Admin', 'User', NULL, NULL, NULL, 'admin', 'active', 1, 1, NULL, '2025-05-20 11:23:57', '2025-05-20 11:23:57'),
-(2, 'justinmarlosibonga@gmail.com', '$2b$10$aLBoOBaBKGXGDtqltkXLYe1jXjhtU9uCm9m0riha9ReX8DSWC1Y12', 'Justin', 'Sibonga', '1111111', 'Samal Bataan', NULL, 'admin', 'active', 0, 1, '2025-05-22 02:26:15', '2025-05-20 12:22:47', '2025-05-22 02:26:15');
+(3, 'justinmarlosibonga@gmail.com', '$2b$10$o5Z8B7.WqzcOecJ4Nq51DO869mMmTFAGZc5IDv6J.3Ym6zIRWiwh.', 'Justin', 'Sibonga', 'asdsd', 'Capitol Compound, Tenejero', NULL, 'business', 'active', 1, 1, '2025-05-23 02:31:59', '2025-05-23 01:56:11', '2025-05-23 02:31:59');
 
 -- --------------------------------------------------------
 
@@ -487,7 +472,7 @@ ALTER TABLE `bookings`
 -- AUTO_INCREMENT for table `notifications`
 --
 ALTER TABLE `notifications`
-  MODIFY `notification_id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `notification_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `otp_attempts`
@@ -553,19 +538,19 @@ ALTER TABLE `reviews`
 -- AUTO_INCREMENT for table `service_packages`
 --
 ALTER TABLE `service_packages`
-  MODIFY `package_id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `package_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `service_providers`
 --
 ALTER TABLE `service_providers`
-  MODIFY `provider_id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `provider_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `user_restrictions`

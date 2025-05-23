@@ -24,6 +24,7 @@ import { useToast } from '@/context/ToastContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import ConfirmationModal from '@/components/ConfirmationModal';
 import VerificationModal from '@/components/VerificationModal';
+import { LoadingSpinner } from '@/app/admin/services/client';
 
 // Define the type for cremation center data
 interface CremationCenter {
@@ -179,26 +180,26 @@ export default function AdminCremationCentersPage() {
       center.address?.toLowerCase?.()?.includes(searchTerm.toLowerCase());
 
     // Check all possible status fields
-    const isRestricted = 
-      center.application_status === 'restricted' || 
-      center.verification_status === 'restricted' || 
+    const isRestricted =
+      center.application_status === 'restricted' ||
+      center.verification_status === 'restricted' ||
       center.status === 'restricted';
-      
-    const isVerified = 
+
+    const isVerified =
       center.verified === true ||
-      center.application_status === 'approved' || 
+      center.application_status === 'approved' ||
       center.application_status === 'verified' ||
       center.verification_status === 'verified';
-    
+
     // Determine actual status for filtering
-    const actualStatus = isRestricted ? 'restricted' : 
-                        (isVerified ? 'active' : 
+    const actualStatus = isRestricted ? 'restricted' :
+                        (isVerified ? 'active' :
                          center.application_status || center.status || 'pending');
-      
-    const matchesStatus = statusFilter === 'all' 
-      ? true 
+
+    const matchesStatus = statusFilter === 'all'
+      ? true
       : (actualStatus === statusFilter ||
-         center.application_status === statusFilter || 
+         center.application_status === statusFilter ||
          center.verification_status === statusFilter);
 
     return matchesSearch && matchesStatus;
@@ -464,12 +465,12 @@ export default function AdminCremationCentersPage() {
           }),
         });
 
-        
+
         // Try to parse the response as JSON
         let data;
         try {
           data = await response.json();
-          
+
           // Check if the response was successful
           if (response.ok && data.success) {
             // Successfully unrestricted using the primary endpoint
@@ -479,12 +480,12 @@ export default function AdminCremationCentersPage() {
         } catch (jsonError) {
           // Continue to fallback if JSON parsing fails
         }
-        
+
         // If we get here, the primary endpoint failed, so we'll try the fallback
       } catch (primaryError) {
         // Continue to fallback endpoint
       }
-      
+
       // Try the dedicated unrestrict endpoint as fallback
       const fallbackResponse = await fetch('/api/admin/users/unrestrict', {
         method: 'POST',
@@ -497,8 +498,8 @@ export default function AdminCremationCentersPage() {
           businessId: center.id
         }),
       });
-      
-      
+
+
       // Try to parse the fallback response
       let fallbackData;
       try {
@@ -506,26 +507,26 @@ export default function AdminCremationCentersPage() {
       } catch (jsonError) {
         throw new Error('Both unrestrict endpoints failed - unable to parse response data');
       }
-      
+
       // Check if the fallback was successful
       if (!fallbackResponse.ok) {
         throw new Error(`Server error on fallback endpoint: ${fallbackResponse.status} ${fallbackResponse.statusText}`);
       }
-      
+
       if (!fallbackData.success) {
         throw new Error(fallbackData.error || fallbackData.details || 'Failed to restore cremation center with fallback endpoint');
       }
-      
+
       // Successfully unrestricted using fallback endpoint
       handleSuccessfulUnrestrict(center);
-      
+
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Failed to restore cremation center', 'error');
     } finally {
       setIsProcessing(false);
     }
   };
-  
+
   // Helper function to handle successful unrestrict/restore
   const handleSuccessfulUnrestrict = (center: CremationCenter) => {
     // Update the center's status in the local state to ensure it shows as active
@@ -774,10 +775,7 @@ export default function AdminCremationCentersPage() {
         </div>
 
         {loading ? (
-          <div className="px-6 py-12 text-center">
-            <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[var(--primary-green)] mb-4"></div>
-            <p className="text-gray-600">Loading cremation centers...</p>
-          </div>
+          <LoadingSpinner message="Loading cremation centers..." className="px-6" />
         ) : error ? (
           <div className="px-6 py-8 text-center">
             <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-red-100 text-red-600 mb-4">
@@ -939,8 +937,8 @@ export default function AdminCremationCentersPage() {
                         )}
 
                         {/* Restrict/Unrestrict Button */}
-                        {center.application_status !== 'restricted' && 
-                          center.verification_status !== 'restricted' && 
+                        {center.application_status !== 'restricted' &&
+                          center.verification_status !== 'restricted' &&
                           center.status !== 'restricted' ? (
                           <button
                             onClick={() => openRestrictModal(center)}

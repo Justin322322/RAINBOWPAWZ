@@ -13,9 +13,12 @@ import {
   ArrowDownIcon,
   FireIcon,
   BanknotesIcon,
+  MagnifyingGlassIcon,
 } from '@heroicons/react/24/outline';
 import Link from 'next/link';
 import withAdminAuth from '@/components/withAdminAuth';
+import { motion, AnimatePresence } from 'framer-motion';
+import StatCard from '@/components/ui/StatCard';
 
 function AdminDashboardPage({ adminData }: { adminData: any }) {
   const userName = adminData?.full_name || 'System Administrator';
@@ -42,32 +45,25 @@ function AdminDashboardPage({ adminData }: { adminData: any }) {
       key: 'totalUsers',
       name: 'Total Users',
       icon: UserGroupIcon,
-      bgColor: 'bg-blue-100',
-      textColor: 'text-blue-800',
-      iconColor: 'text-blue-800',
-    },    {
+      color: 'blue',
+    },
+    {
       key: 'applicationRequests',
       name: 'Pending Applications',
       icon: DocumentCheckIcon,
-      bgColor: 'bg-yellow-100',
-      textColor: 'text-yellow-800',
-      iconColor: 'text-yellow-800',
+      color: 'yellow',
     },
     {
       key: 'activeServices',
       name: 'Active Services',
       icon: FireIcon,
-      bgColor: 'bg-purple-100',
-      textColor: 'text-purple-800',
-      iconColor: 'text-purple-800',
+      color: 'purple',
     },
     {
       key: 'monthlyRevenue',
       name: 'Monthly Revenue',
       icon: BanknotesIcon,
-      bgColor: 'bg-green-100',
-      textColor: 'text-green-800',
-      iconColor: 'text-green-800',
+      color: 'amber',
     },
   ];
 
@@ -147,7 +143,17 @@ function AdminDashboardPage({ adminData }: { adminData: any }) {
     }
   };
   return (
-    <AdminDashboardLayout>
+    <AdminDashboardLayout activePage="dashboard" userName={userName}>
+      {/* Header section */}
+      <div className="mb-8 bg-white rounded-xl shadow-sm p-6">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
+          <div>
+            <h1 className="text-2xl font-semibold text-gray-800">Dashboard</h1>
+            <p className="text-gray-600 mt-1">Overview of your pet cremation business</p>
+          </div>
+        </div>
+      </div>
+
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {isLoading ? (
@@ -167,25 +173,35 @@ function AdminDashboardPage({ adminData }: { adminData: any }) {
           ))
         ) : error ? (
           // Error state
-          <div className="col-span-4 bg-red-50 p-4 rounded-xl border border-red-200">
-            <p className="text-red-700">Error loading dashboard data: {error}</p>
+          <div className="col-span-4 bg-white rounded-xl shadow-sm p-6">
+            <div className="flex items-center justify-center">
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-red-100 text-red-600 mb-4">
+                <XCircleIcon className="h-6 w-6" />
+              </div>
+            </div>
+            <p className="text-red-600 font-medium text-center mb-2">Error loading dashboard data</p>
+            <p className="text-gray-500 text-sm text-center">{error}</p>
+            <div className="flex justify-center mt-4">
+              <button
+                onClick={() => window.location.reload()}
+                className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg text-sm font-medium text-gray-700 transition-colors"
+              >
+                Retry
+              </button>
+            </div>
           </div>
         ) : (
           // Actual stats
           statsConfig.map((stat, index) => {
             const statData = dashboardData.stats[stat.key];
             return (
-              <div key={index} className="bg-white p-6 rounded-xl shadow-sm">
-                <div className="flex items-center">
-                  <div className={`p-3 rounded-full ${stat.bgColor} ${stat.iconColor} mr-4`}>
-                    <stat.icon className="h-6 w-6" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">{stat.name}</p>
-                    <p className="text-2xl font-semibold text-gray-900">{statData.value}</p>
-                  </div>
-                </div>
-              </div>
+              <StatCard
+                key={index}
+                icon={<stat.icon />}
+                label={stat.name}
+                value={statData.value}
+                color={stat.color as 'blue' | 'yellow' | 'purple' | 'amber' | 'green'}
+              />
             );
           })
         )}
@@ -193,7 +209,18 @@ function AdminDashboardPage({ adminData }: { adminData: any }) {
 
       {/* Recent Applications */}
       <div className="mb-8">
-        <h2 className="text-lg font-medium text-gray-800 mb-5">Recent Applications</h2>
+        <div className="flex items-center justify-between mb-5">
+          <h2 className="text-lg font-medium text-gray-800">Recent Applications</h2>
+          <Link
+            href="/admin/applications"
+            className="text-[var(--primary-green)] hover:text-[var(--primary-green-hover)] text-sm font-medium hover:underline flex items-center"
+          >
+            View All
+            <svg className="ml-1 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </Link>
+        </div>
         {isLoading ? (
           // Loading skeleton for applications table - consistent style
           <div className="bg-white rounded-xl shadow-sm overflow-hidden">
@@ -214,8 +241,22 @@ function AdminDashboardPage({ adminData }: { adminData: any }) {
             </div>
           </div>
         ) : error ? (
-          <div className="bg-white rounded-xl shadow-sm p-4">
-            <p className="text-red-600">Failed to load recent applications.</p>
+          <div className="bg-white rounded-xl shadow-sm p-6">
+            <div className="flex items-center justify-center">
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-red-100 text-red-600 mb-4">
+                <XCircleIcon className="h-6 w-6" />
+              </div>
+            </div>
+            <p className="text-red-600 font-medium text-center mb-2">Failed to load recent applications</p>
+            <p className="text-gray-500 text-sm text-center">{error}</p>
+            <div className="flex justify-center mt-4">
+              <button
+                onClick={() => window.location.reload()}
+                className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg text-sm font-medium text-gray-700 transition-colors"
+              >
+                Retry
+              </button>
+            </div>
           </div>
         ) : recentApplications.length > 0 ? (
           <div className="bg-white rounded-xl shadow-sm overflow-hidden">
@@ -286,8 +327,11 @@ function AdminDashboardPage({ adminData }: { adminData: any }) {
             </div>
           </div>
         ) : (
-          <div className="bg-white rounded-xl shadow-sm p-4 text-center">
-            <p className="text-gray-500">No recent applications found.</p>
+          <div className="bg-white rounded-xl shadow-sm p-6 text-center">
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gray-100 text-gray-400 mb-4">
+              <DocumentCheckIcon className="h-6 w-6" />
+            </div>
+            <p className="text-gray-500 text-sm">No recent applications found.</p>
           </div>
         )}
       </div>
@@ -295,8 +339,11 @@ function AdminDashboardPage({ adminData }: { adminData: any }) {
 
 
       {/* User Distribution */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <h2 className="text-lg font-medium text-gray-800 col-span-full mb-0">User Distribution</h2>
+      <div className="mb-8">
+        <div className="flex items-center justify-between mb-5">
+          <h2 className="text-lg font-medium text-gray-800">User Distribution</h2>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
 
         {isLoading ? (
           // Loading skeleton for user distribution - consistent style
@@ -327,8 +374,22 @@ function AdminDashboardPage({ adminData }: { adminData: any }) {
             </div>
           ))
         ) : error ? (
-          <div className="col-span-3 bg-white rounded-xl shadow-sm p-4">
-            <p className="text-red-600">Failed to load user distribution data.</p>
+          <div className="col-span-3 bg-white rounded-xl shadow-sm p-6">
+            <div className="flex items-center justify-center">
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-red-100 text-red-600 mb-4">
+                <XCircleIcon className="h-6 w-6" />
+              </div>
+            </div>
+            <p className="text-red-600 font-medium text-center mb-2">Failed to load user distribution data</p>
+            <p className="text-gray-500 text-sm text-center">{error}</p>
+            <div className="flex justify-center mt-4">
+              <button
+                onClick={() => window.location.reload()}
+                className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg text-sm font-medium text-gray-700 transition-colors"
+              >
+                Retry
+              </button>
+            </div>
           </div>
         ) : (
           <>
@@ -498,6 +559,7 @@ function AdminDashboardPage({ adminData }: { adminData: any }) {
             </div>
           </>
         )}
+        </div>
       </div>
     </AdminDashboardLayout>
   );

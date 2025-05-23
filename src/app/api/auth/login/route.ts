@@ -15,7 +15,7 @@ export async function POST(request: Request) {
   const origin = request.headers.get('origin') || '';
   const host = request.headers.get('host') || '';
   const isPort3000 = origin.includes(':3000') || host.includes(':3000');
-  
+
 
   // Add CORS headers
   const headers = {
@@ -62,17 +62,30 @@ export async function POST(request: Request) {
     // Check in users table - this now handles all account types
     let userResult;
     try {
+      // Test database connection first
+      const isConnected = await testConnection();
+      if (!isConnected) {
+        return NextResponse.json({
+          error: 'Database connection error',
+          message: 'Unable to connect to the database. Please try again later.'
+        }, {
+          status: 500,
+          headers
+        });
+      }
+
       userResult = await query(
         'SELECT user_id, first_name, last_name, email, password, role, is_verified, is_otp_verified, status FROM users WHERE email = ? LIMIT 1',
         [email]
       ) as any[];
     } catch (queryError) {
+      console.error('Error querying user:', queryError);
       throw queryError;
     }
 
     if (userResult && userResult.length > 0) {
       const user = userResult[0];
-      
+
       // Add id field for client compatibility
       user.id = user.user_id;
 
@@ -108,10 +121,10 @@ export async function POST(request: Request) {
 
         // Try again with a direct comparison for debugging
         let passwordMatch = await bcrypt.compare(password, user.password);
-        
+
         // Special handling for port 3000 where bcrypt might behave differently
         if (!passwordMatch && isPort3000) {
-          
+
           // For development only - if the password starts with 'Test' and we're on port 3000
           // This is a special case for development testing only
           if (password === 'Test@123' && user.email.includes('admin')) {
@@ -140,9 +153,9 @@ export async function POST(request: Request) {
                 `SELECT COUNT(*) as count FROM information_schema.tables
                  WHERE table_schema = DATABASE() AND table_name = 'admin_profiles'`
               ) as any[];
-              
+
               const adminTableExists = adminTableCheck[0]?.count > 0;
-              
+
               if (adminTableExists) {
                 const adminResult = await query(
                   'SELECT username, full_name, admin_role FROM admin_profiles WHERE user_id = ? LIMIT 1',

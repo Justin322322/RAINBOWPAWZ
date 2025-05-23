@@ -9,12 +9,15 @@ import {
   MagnifyingGlassIcon,
   TrashIcon,
   ExclamationTriangleIcon,
+  XCircleIcon,
+  CheckCircleIcon,
 } from '@heroicons/react/24/outline';
-import AdminLayout from '@/components/navigation/AdminLayout';
+import AdminDashboardLayout from '@/components/navigation/AdminDashboardLayout';
 import withAdminAuth from '@/components/withAdminAuth';
 import { useToast } from '@/context/ToastContext';
 import StarRating from '@/components/ui/StarRating';
 import Modal from '@/components/Modal';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface Review {
   id: number;
@@ -41,6 +44,7 @@ function AdminReviewsPage() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [reviewToDelete, setReviewToDelete] = useState<Review | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [userName, setUserName] = useState('Admin');
 
   useEffect(() => {
     // Flag to prevent multiple error toasts
@@ -186,100 +190,126 @@ function AdminReviewsPage() {
   };
 
   return (
-    <AdminLayout activePage="reviews">
+    <AdminDashboardLayout activePage="reviews" userName={userName}>
       <div className="space-y-6">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
-          <h1 className="text-2xl font-semibold text-gray-900">Customer Reviews</h1>
-          <div className="mt-4 md:mt-0 flex items-center">
-            <span className="text-gray-600">
-              {filteredReviews.length} {filteredReviews.length === 1 ? 'review' : 'reviews'} found
-            </span>
+        {/* Header section */}
+        <div className="mb-8 bg-white rounded-xl shadow-sm p-6">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
+            <div>
+              <h1 className="text-2xl font-semibold text-gray-800">Customer Reviews</h1>
+              <p className="text-gray-600 mt-1">
+                {filteredReviews.length} {filteredReviews.length === 1 ? 'review' : 'reviews'} found
+              </p>
+            </div>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 bg-[var(--primary-green)] text-white rounded-lg hover:bg-[var(--primary-green-hover)] transition-colors flex items-center justify-center"
+              disabled={loading}
+            >
+              <ArrowPathIcon className={`h-5 w-5 mr-2 ${loading ? 'animate-spin' : ''}`} />
+              Refresh
+            </button>
           </div>
         </div>
 
         {/* Filters and Search */}
-        <div className="bg-white rounded-lg shadow-sm p-4">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center space-y-4 md:space-y-0 md:space-x-4">
-            <div className="flex items-center space-x-2">
+        <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3 w-full mb-6">
+          <div className="relative flex-grow sm:max-w-xs">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
+            </div>
+            <input
+              type="text"
+              placeholder="Search reviews..."
+              value={searchTerm}
+              onChange={handleSearchChange}
+              className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)] sm:text-sm"
+            />
+          </div>
+
+          <div className="relative flex-grow sm:max-w-xs">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <FunnelIcon className="h-5 w-5 text-gray-400" />
-              <span className="text-sm font-medium text-gray-700">Filter by rating:</span>
-              <div className="flex space-x-2">
-                {[null, 5, 4, 3, 2, 1].map((rating) => (
-                  <button
-                    key={rating === null ? 'all' : rating}
-                    onClick={() => handleFilterRatingChange(rating)}
-                    className={`px-2 py-1 rounded-md text-sm ${
-                      filterRating === rating
-                        ? 'bg-blue-100 text-blue-800 font-medium'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
-                  >
-                    {rating === null ? 'All' : `${rating} ★`}
-                  </button>
-                ))}
-              </div>
             </div>
+            <select
+              value={filterProvider}
+              onChange={handleFilterProviderChange}
+              className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)] sm:text-sm appearance-none"
+            >
+              <option value="">All Providers</option>
+              {providers.map((provider) => (
+                <option key={provider.id} value={provider.name}>
+                  {provider.name}
+                </option>
+              ))}
+            </select>
+            <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+              <svg className="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+              </svg>
+            </div>
+          </div>
+        </div>
 
-            <div className="flex items-center space-x-2 w-full md:w-auto">
-              <span className="text-sm font-medium text-gray-700">Provider:</span>
-              <select
-                value={filterProvider}
-                onChange={handleFilterProviderChange}
-                className="border border-gray-300 rounded-md px-3 py-1 focus:outline-none focus:ring-2 focus:ring-[var(--primary-green)] focus:border-transparent"
+        {/* Rating Filter */}
+        <div className="bg-white rounded-xl shadow-sm p-4 mb-6">
+          <div className="flex items-center space-x-2 mb-2">
+            <StarIcon className="h-5 w-5 text-yellow-400" />
+            <span className="text-sm font-medium text-gray-700">Filter by rating:</span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {[null, 5, 4, 3, 2, 1].map((rating) => (
+              <button
+                key={rating === null ? 'all' : rating}
+                onClick={() => handleFilterRatingChange(rating)}
+                className={`px-3 py-1 rounded-lg text-sm ${
+                  filterRating === rating
+                    ? 'bg-[var(--primary-green)] text-white font-medium'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
               >
-                <option value="">All Providers</option>
-                {providers.map((provider) => (
-                  <option key={provider.id} value={provider.name}>
-                    {provider.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="relative w-full md:w-64">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
-              </div>
-              <input
-                type="text"
-                placeholder="Search reviews..."
-                value={searchTerm}
-                onChange={handleSearchChange}
-                className="pl-10 pr-4 py-2 border border-gray-300 rounded-md w-full focus:outline-none focus:ring-2 focus:ring-[var(--primary-green)] focus:border-transparent"
-              />
-            </div>
+                {rating === null ? 'All Ratings' : `${rating} ★`}
+              </button>
+            ))}
           </div>
         </div>
 
         {/* Reviews List */}
         {loading ? (
-          <div className="flex justify-center items-center py-12">
-            <ArrowPathIcon className="h-8 w-8 text-gray-400 animate-spin" />
+          <div className="bg-white rounded-xl shadow-sm p-6">
+            <div className="px-6 py-12 text-center">
+              <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[var(--primary-green)] mb-4"></div>
+              <p className="text-gray-600">Loading reviews...</p>
+            </div>
           </div>
         ) : error ? (
-          <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-md">
-            <div className="flex items-start">
-              <ExclamationTriangleIcon className="h-5 w-5 text-red-500 mr-2 mt-0.5" />
-              <div>
-                <p className="text-red-700 font-medium">Error loading reviews: {error}</p>
-                <p className="text-red-600 mt-2">
-                  This could be due to a database connection issue or missing tables.
-                  Please try refreshing the page or contact support if the problem persists.
-                </p>
+          <div className="bg-white rounded-xl shadow-sm p-6">
+            <div className="px-6 py-8 text-center">
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-red-100 text-red-600 mb-4">
+                <XCircleIcon className="h-6 w-6" />
+              </div>
+              <p className="text-red-600 font-medium text-center mb-2">Error loading reviews</p>
+              <p className="text-gray-500 text-sm text-center mb-4">{error}</p>
+              <p className="text-gray-500 text-sm text-center mb-4">
+                This could be due to a database connection issue or missing tables.
+                Please try refreshing the page or contact support if the problem persists.
+              </p>
+              <div className="flex justify-center mt-4">
                 <button
                   onClick={() => window.location.reload()}
-                  className="mt-3 px-4 py-2 bg-red-100 text-red-700 rounded-md hover:bg-red-200 transition-colors"
+                  className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg text-sm font-medium text-gray-700 transition-colors"
                 >
-                  Refresh Page
+                  Retry
                 </button>
               </div>
             </div>
           </div>
         ) : filteredReviews.length === 0 ? (
-          <div className="bg-white rounded-lg shadow-sm p-6 text-center">
-            <StarIcon className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-            <h3 className="text-lg font-medium text-gray-900 mb-1">No reviews found</h3>
-            <p className="text-gray-500">
+          <div className="bg-white rounded-xl shadow-sm p-6 text-center">
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gray-100 text-gray-400 mb-4">
+              <StarIcon className="h-6 w-6" />
+            </div>
+            <p className="text-gray-500 text-sm">
               {searchTerm || filterRating !== null || filterProvider
                 ? 'No reviews match your filters. Try adjusting your search criteria.'
                 : 'There are no reviews in the system yet.'}
@@ -290,7 +320,7 @@ function AdminReviewsPage() {
             {filteredReviews.map((review) => (
               <div
                 key={review.id}
-                className="bg-white rounded-lg shadow-sm p-6"
+                className="bg-white rounded-xl shadow-sm p-6"
               >
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4">
                   <div>
@@ -314,14 +344,14 @@ function AdminReviewsPage() {
                   </div>
                 </div>
                 {review.comment && (
-                  <div className="bg-gray-50 p-4 rounded-md">
+                  <div className="bg-gray-50 p-4 rounded-lg">
                     <p className="text-gray-700">{review.comment}</p>
                   </div>
                 )}
                 <div className="mt-3 text-sm">
                   <a
                     href={`/admin/bookings/${review.booking_id}`}
-                    className="text-blue-600 hover:text-blue-800 hover:underline"
+                    className="text-[var(--primary-green)] hover:text-[var(--primary-green-hover)] hover:underline"
                   >
                     View Booking #{review.booking_id}
                   </a>
@@ -339,25 +369,27 @@ function AdminReviewsPage() {
         title="Delete Review"
         size="small"
       >
-        <div className="p-4">
-          <div className="flex items-center mb-4">
-            <ExclamationTriangleIcon className="h-6 w-6 text-red-500 mr-2" />
-            <h3 className="text-lg font-medium text-gray-900">Confirm Deletion</h3>
+        <div className="p-6">
+          <div className="flex items-center justify-center mb-6">
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-red-100 text-red-600">
+              <ExclamationTriangleIcon className="h-6 w-6" />
+            </div>
           </div>
-          <p className="mb-4 text-gray-600">
+          <h3 className="text-lg font-medium text-gray-900 text-center mb-2">Confirm Deletion</h3>
+          <p className="mb-6 text-gray-600 text-center">
             Are you sure you want to delete this review? This action cannot be undone.
           </p>
-          <div className="flex justify-end space-x-3">
+          <div className="flex justify-center space-x-4">
             <button
               onClick={() => setIsDeleteModalOpen(false)}
-              className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+              className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
               disabled={isDeleting}
             >
               Cancel
             </button>
             <button
               onClick={handleDeleteConfirm}
-              className="px-4 py-2 bg-red-600 text-white rounded-md shadow-sm text-sm font-medium hover:bg-red-700"
+              className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700"
               disabled={isDeleting}
             >
               {isDeleting ? (
@@ -372,7 +404,7 @@ function AdminReviewsPage() {
           </div>
         </div>
       </Modal>
-    </AdminLayout>
+    </AdminDashboardLayout>
   );
 }
 
