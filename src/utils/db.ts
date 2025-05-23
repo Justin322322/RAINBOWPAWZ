@@ -9,8 +9,7 @@ export async function createConnection() {
     port: parseInt(process.env.DB_PORT || '3306'),
     // Allow connections from any host/port
     socketPath: undefined,
-    // Use hostname rather than socket for all connections
-    insecureAuth: true,
+    // Removed insecureAuth for security
   });
 }
 

@@ -23,6 +23,7 @@ import { useToast } from '@/context/ToastContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import ConfirmationModal from '@/components/ConfirmationModal';
 import Image from 'next/image';
+import { Badge, Button, Input } from '@/components/ui';
 
 // Types and interfaces
 type UserStatus = 'active' | 'restricted' | 'suspended' | 'inactive';
@@ -336,33 +337,33 @@ export default function AdminFurParentsPage() {
     switch (status) {
       case 'active':
         return (
-          <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+          <Badge variant="success" size="sm">
             Active
-          </span>
+          </Badge>
         );
       case 'restricted':
         return (
-          <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800">
+          <Badge variant="danger" size="sm">
             Restricted
-          </span>
+          </Badge>
         );
       case 'suspended':
         return (
-          <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+          <Badge variant="warning" size="sm">
             Suspended
-          </span>
+          </Badge>
         );
       case 'inactive':
         return (
-          <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
+          <Badge variant="default" size="sm">
             Inactive
-          </span>
+          </Badge>
         );
       default:
         return (
-          <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
+          <Badge variant="default" size="sm">
             Unknown
-          </span>
+          </Badge>
         );
     }
   };
@@ -390,15 +391,12 @@ export default function AdminFurParentsPage() {
           </div>
           <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3 w-full md:w-auto">
             <div className="relative flex-grow sm:max-w-xs">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
-              </div>
-              <input
+              <Input
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)] sm:text-sm"
                 placeholder="Search fur parents..."
+                leftIcon={<MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />}
               />
             </div>
             <div className="relative flex-grow sm:max-w-xs">
@@ -939,34 +937,39 @@ export default function AdminFurParentsPage() {
 
                 {/* Action Buttons */}
                 <div className="flex justify-end space-x-3 mt-8 border-t pt-6">
-                  <button
+                  <Button
+                    variant="secondary"
+                    size="sm"
                     onClick={() => setShowDetailsModal(false)}
-                    className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
                   >
                     Close
-                  </button>
+                  </Button>
                   {selectedUser.status === 'restricted' ? (
-                    <button
+                    <Button
+                      variant="primary"
+                      size="sm"
                       onClick={() => {
                         setShowDetailsModal(false);
                         openUnrestrictModal(selectedUser);
                       }}
                       disabled={isProcessing}
-                      className="px-4 py-2 bg-[var(--primary-green)] text-white rounded-lg hover:bg-opacity-90 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                      isLoading={isProcessing}
                     >
-                      {isProcessing ? 'Processing...' : 'Restore Access'}
-                    </button>
+                      Restore Access
+                    </Button>
                   ) : (
-                    <button
+                    <Button
+                      variant="danger"
+                      size="sm"
                       onClick={() => {
                         setShowDetailsModal(false);
                         openRestrictModal(selectedUser);
                       }}
                       disabled={isProcessing}
-                      className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-opacity-90 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                      isLoading={isProcessing}
                     >
-                      {isProcessing ? 'Processing...' : 'Restrict Access'}
-                    </button>
+                      Restrict Access
+                    </Button>
                   )}
                 </div>
               </div>

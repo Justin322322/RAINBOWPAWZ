@@ -75,7 +75,7 @@ export async function GET(
       }
 
       let joinClause = `
-        JOIN users u ON r.user_id = u.id
+        JOIN users u ON r.user_id = u.user_id
         LEFT JOIN service_bookings sb ON r.booking_id = sb.id
       `;
 

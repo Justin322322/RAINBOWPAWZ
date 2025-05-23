@@ -14,20 +14,21 @@ import FurParentNavbar from '@/components/navigation/FurParentNavbar';
 import dynamic from 'next/dynamic';
 import withOTPVerification from '@/components/withOTPVerification';
 import FurParentPageSkeleton from '@/components/ui/FurParentPageSkeleton';
+import SectionLoader from '@/components/ui/SectionLoader';
 import { getUserLocation, LocationData } from '@/utils/geolocation';
 
-// Import the map component with dynamic loading and loading indicator
+// Import the map component with dynamic loading and standardized loading indicator
 const MapComponent = dynamic(
   () => import('@/components/map/MapComponent'),
   {
     ssr: false,
     loading: () => (
-      <div className="w-full h-full flex items-center justify-center bg-gray-100 rounded-lg">
-        <div className="flex flex-col items-center">
-          <div className="spinner"></div>
-          <p className="mt-4 text-gray-600">Loading map...</p>
-        </div>
-      </div>
+      <SectionLoader
+        message="Loading map..."
+        minHeight="h-[500px]"
+        withBackground={true}
+        rounded={true}
+      />
     )
   }
 );
@@ -228,16 +229,20 @@ function ServicesPage({ userData }: ServicesPageProps) {
                       selectedProviderId={selectedProviderId}
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-gray-100 rounded-lg">
+                    <div className="w-full h-full">
                       {isLoading ? (
-                        <div className="flex flex-col items-center">
-                          <ArrowPathIcon className="h-10 w-10 text-[var(--primary-green)] animate-spin" />
-                          <p className="mt-4 text-gray-600">Loading map...</p>
-                        </div>
+                        <SectionLoader
+                          message="Loading map..."
+                          minHeight="h-full"
+                          withBackground={true}
+                          rounded={true}
+                        />
                       ) : serviceProviders.length === 0 ? (
-                        <div className="text-center p-8">
-                          <MapPinIcon className="h-12 w-12 mx-auto text-gray-300 mb-4" />
-                          <p className="text-gray-600">No service providers found to display on map</p>
+                        <div className="w-full h-full flex items-center justify-center bg-gray-100 rounded-lg text-center p-8">
+                          <div>
+                            <MapPinIcon className="h-12 w-12 mx-auto text-gray-300 mb-4" />
+                            <p className="text-gray-600">No service providers found to display on map</p>
+                          </div>
                         </div>
                       ) : (
                         <FurParentPageSkeleton type="services" />
@@ -261,12 +266,13 @@ function ServicesPage({ userData }: ServicesPageProps) {
         {/* Service Providers Grid */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           {isLoading ? (
-            <div className="flex justify-center items-center py-12">
-              <div className="flex flex-col items-center">
-                <ArrowPathIcon className="h-10 w-10 text-[var(--primary-green)] animate-spin" />
-                <p className="mt-4 text-gray-600">Loading service providers...</p>
-              </div>
-            </div>
+            <SectionLoader
+              message="Loading service providers..."
+              minHeight="min-h-[300px]"
+              withBackground={true}
+              withShadow={true}
+              rounded={true}
+            />
           ) : serviceProviders.length === 0 ? (
             <div className="bg-white rounded-lg shadow-md p-8 text-center">
               <MapPinIcon className="h-16 w-16 mx-auto text-gray-300 mb-4" />

@@ -163,11 +163,11 @@ export async function GET(
                   sb.created_at, sb.pet_name, sb.pet_type, sb.cause_of_death,
                   sb.pet_image_url, sb.payment_method, sb.payment_status, sb.delivery_option, sb.delivery_distance,
                   sb.delivery_fee, sb.price,
-                  u.id as user_id, u.first_name, u.last_name, u.email, u.phone_number as phone,
-                  p.id as package_id, p.name as service_name, p.processing_time
+                  u.user_id as user_id, u.first_name, u.last_name, u.email, u.phone as phone,
+                  p.package_id as package_id, p.name as service_name, p.processing_time
             FROM service_bookings sb
-            LEFT JOIN users u ON sb.user_id = u.id
-            LEFT JOIN service_packages p ON sb.package_id = p.id
+            LEFT JOIN users u ON sb.user_id = u.user_id
+            LEFT JOIN service_packages p ON sb.package_id = p.package_id
             WHERE sb.id = ?
           `;
           const serviceBookingResult = await query(serviceBookingQuery, [bookingId]) as any[];
@@ -195,13 +195,13 @@ export async function GET(
           const bookingsQuery = `
             SELECT b.id, b.status, b.booking_date, b.booking_time, b.special_requests as notes,
                   b.created_at, b.total_amount as price,
-                  u.id as user_id, u.first_name, u.last_name, u.email, u.phone_number as phone,
-                  sp.id as package_id, sp.name as service_name, sp.processing_time,
+                  u.user_id as user_id, u.first_name, u.last_name, u.email, u.phone as phone,
+                  sp.package_id as package_id, sp.name as service_name, sp.processing_time,
                   p.name as pet_name, p.species as pet_type, p.breed as pet_breed, p.image_url as pet_image_url
             FROM bookings b
-            LEFT JOIN users u ON b.user_id = u.id
-            LEFT JOIN service_packages sp ON b.business_service_id = sp.id
-            LEFT JOIN pets p ON p.user_id = u.id
+            LEFT JOIN users u ON b.user_id = u.user_id
+            LEFT JOIN service_packages sp ON b.business_service_id = sp.package_id
+            LEFT JOIN pets p ON p.user_id = u.user_id
             WHERE b.id = ?
             LIMIT 1
           `;

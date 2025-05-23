@@ -19,6 +19,7 @@ import withAdminAuth from '@/components/withAdminAuth';
 import ConfirmationModal from '@/components/ConfirmationModal';
 import DeclineModal from '@/components/DeclineModal';
 import DocumentViewerModal from '@/components/modals/DocumentViewerModal';
+import SectionLoader from '@/components/ui/SectionLoader';
 
 function ApplicationDetailContent({ id }) {
   const router = useRouter();
@@ -425,12 +426,13 @@ function ApplicationDetailContent({ id }) {
   const renderApplicationDetails = () => {
     if (isLoading) {
       return (
-        <div className="flex justify-center items-center py-12">
-          <div className="flex flex-col items-center">
-            <ArrowPathIcon className="h-10 w-10 text-[var(--primary-green)] animate-spin" />
-            <p className="mt-4 text-gray-600">Loading application details...</p>
-          </div>
-        </div>
+        <SectionLoader
+          message="Loading application details..."
+          minHeight="min-h-[300px]"
+          withBackground={true}
+          withShadow={false}
+          rounded={true}
+        />
       );
     }
 

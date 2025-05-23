@@ -6,6 +6,18 @@ let cachedTransporter: nodemailer.Transporter | null = null;
 let lastTransporterCreation = 0;
 const TRANSPORTER_TTL = 5 * 60 * 1000; // 5 minutes
 
+// Function to close the transporter connection
+export function closeTransporter(): void {
+  if (cachedTransporter) {
+    try {
+      cachedTransporter.close();
+      cachedTransporter = null;
+    } catch (error) {
+      console.error('Error closing email transporter:', error);
+    }
+  }
+}
+
 // Helper function to strip HTML tags for plain text version
 function stripHtml(html: string): string {
   return html.replace(/<[^>]*>?/gm, '')

@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import Modal from './Modal';
 import { motion } from 'framer-motion';
 import { sendPasswordResetEmail } from '../lib/emailService';
+import { Button, Input } from '@/components/ui';
 
 type ForgotPasswordModalProps = {
   isOpen: boolean;
@@ -108,54 +109,42 @@ const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({ isOpen, onClo
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="space-y-2">
-            <label htmlFor="email" className="block text-sm font-light text-gray-700">
-              Email Address
-            </label>
-            <input
-              type="email"
-              id="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--primary-green)] focus:border-transparent transition-all duration-200 font-light"
-              placeholder="Enter your email address"
-              required
-            />
-          </div>
+          <Input
+            type="email"
+            id="email"
+            label="Email Address"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="Enter your email address"
+            required
+            rounded="full"
+            size="lg"
+            labelClassName="font-light"
+          />
 
-          <button
+          <Button
             type="submit"
             disabled={isLoading}
-            className={`
-              w-full bg-[var(--primary-green)] text-white py-4 px-6 rounded-full
-              hover:bg-[var(--primary-green-hover)] focus:outline-none focus:ring-2
-              focus:ring-offset-2 focus:ring-[var(--primary-green)] transition-all duration-200
-              flex items-center justify-center space-x-2 font-light tracking-wide text-lg
-              ${isLoading ? 'opacity-75 cursor-not-allowed' : ''}
-            `}
+            isLoading={isLoading}
+            fullWidth
+            size="lg"
+            rounded="full"
+            className="font-light tracking-wide text-lg"
+            loadingText="Sending..."
           >
-            {isLoading ? (
-              <>
-                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                <span>Sending...</span>
-              </>
-            ) : (
-              'Send Reset Instructions'
-            )}
-          </button>
+            Send Reset Instructions
+          </Button>
 
           <div className="text-center text-sm text-gray-500 dark:text-gray-400 font-light">
             Remember your password?{' '}
-            <button
+            <Button
               type="button"
+              variant="link"
               onClick={handleLoginClick}
-              className="text-[var(--primary-green)] hover:text-[var(--primary-green-hover)] font-medium transition-colors duration-200"
+              className="font-medium p-0"
             >
               Log in
-            </button>
+            </Button>
           </div>
         </form>
       </div>

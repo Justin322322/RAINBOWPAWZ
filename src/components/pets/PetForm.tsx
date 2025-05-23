@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { XMarkIcon, CheckIcon, PhotoIcon } from '@heroicons/react/24/outline';
+import { Button, Input, Textarea, SelectInput } from '@/components/ui';
 
 interface PetFormProps {
   pet?: {
@@ -153,156 +154,115 @@ const PetForm: React.FC<PetFormProps> = ({ pet, onSubmit, onCancel, isSubmitting
         )}
 
         {/* Pet Name */}
-        <div>
-          <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
-            Pet Name <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="text"
-            id="name"
-            name="name"
-            value={petData.name}
-            onChange={handleInputChange}
-            className="w-full p-2 border border-gray-300 rounded-md focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
-            required
-          />
-        </div>
+        <Input
+          label="Pet Name"
+          id="name"
+          name="name"
+          value={petData.name}
+          onChange={handleInputChange}
+          required
+        />
 
         {/* Species */}
-        <div>
-          <label htmlFor="species" className="block text-sm font-medium text-gray-700 mb-1">
-            Species <span className="text-red-500">*</span>
-          </label>
-          <select
-            id="species"
-            name="species"
-            value={petData.species}
-            onChange={handleInputChange}
-            className="w-full p-2 border border-gray-300 rounded-md focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
-            required
-          >
-            <option value="">Select Species</option>
-            <option value="Dog">Dog</option>
-            <option value="Cat">Cat</option>
-            <option value="Bird">Bird</option>
-            <option value="Rabbit">Rabbit</option>
-            <option value="Hamster">Hamster</option>
-            <option value="Guinea Pig">Guinea Pig</option>
-            <option value="Fish">Fish</option>
-            <option value="Reptile">Reptile</option>
-            <option value="Other">Other</option>
-          </select>
-        </div>
+        <SelectInput
+          label="Species"
+          id="species"
+          name="species"
+          value={petData.species}
+          onChange={(value) => handleInputChange({ target: { name: 'species', value } } as any)}
+          options={[
+            { value: 'Dog', label: 'Dog' },
+            { value: 'Cat', label: 'Cat' },
+            { value: 'Bird', label: 'Bird' },
+            { value: 'Rabbit', label: 'Rabbit' },
+            { value: 'Hamster', label: 'Hamster' },
+            { value: 'Guinea Pig', label: 'Guinea Pig' },
+            { value: 'Fish', label: 'Fish' },
+            { value: 'Reptile', label: 'Reptile' },
+            { value: 'Other', label: 'Other' },
+          ]}
+          placeholder="Select Species"
+          required
+        />
 
         {/* Breed */}
-        <div>
-          <label htmlFor="breed" className="block text-sm font-medium text-gray-700 mb-1">
-            Breed
-          </label>
-          <input
-            type="text"
-            id="breed"
-            name="breed"
-            value={petData.breed}
-            onChange={handleInputChange}
-            className="w-full p-2 border border-gray-300 rounded-md focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
-          />
-        </div>
+        <Input
+          label="Breed"
+          id="breed"
+          name="breed"
+          value={petData.breed}
+          onChange={handleInputChange}
+        />
 
         {/* Gender */}
-        <div>
-          <label htmlFor="gender" className="block text-sm font-medium text-gray-700 mb-1">
-            Gender
-          </label>
-          <select
-            id="gender"
-            name="gender"
-            value={petData.gender}
-            onChange={handleInputChange}
-            className="w-full p-2 border border-gray-300 rounded-md focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
-          >
-            <option value="">Select Gender</option>
-            <option value="Male">Male</option>
-            <option value="Female">Female</option>
-          </select>
-        </div>
+        <SelectInput
+          label="Gender"
+          id="gender"
+          name="gender"
+          value={petData.gender}
+          onChange={(value) => handleInputChange({ target: { name: 'gender', value } } as any)}
+          options={[
+            { value: 'Male', label: 'Male' },
+            { value: 'Female', label: 'Female' },
+            { value: 'Unknown', label: 'Unknown' },
+          ]}
+          placeholder="Select Gender"
+        />
 
         {/* Age */}
-        <div>
-          <label htmlFor="age" className="block text-sm font-medium text-gray-700 mb-1">
-            Age (years)
-          </label>
-          <input
-            type="number"
-            id="age"
-            name="age"
-            value={petData.age}
-            onChange={handleInputChange}
-            min="0"
-            step="0.1"
-            className="w-full p-2 border border-gray-300 rounded-md focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
-          />
-        </div>
+        <Input
+          label="Age (years)"
+          id="age"
+          name="age"
+          type="number"
+          value={petData.age}
+          onChange={handleInputChange}
+          min="0"
+          step="0.1"
+        />
 
         {/* Weight */}
-        <div>
-          <label htmlFor="weight" className="block text-sm font-medium text-gray-700 mb-1">
-            Weight (kg)
-          </label>
-          <input
-            type="number"
-            id="weight"
-            name="weight"
-            value={petData.weight}
-            onChange={handleInputChange}
-            min="0"
-            step="0.1"
-            className="w-full p-2 border border-gray-300 rounded-md focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
-          />
-        </div>
+        <Input
+          label="Weight (kg)"
+          id="weight"
+          name="weight"
+          type="number"
+          value={petData.weight}
+          onChange={handleInputChange}
+          min="0"
+          step="0.1"
+        />
 
         {/* Special Notes */}
         <div className="md:col-span-2">
-          <label htmlFor="special_notes" className="block text-sm font-medium text-gray-700 mb-1">
-            Special Notes
-          </label>
-          <textarea
+          <Textarea
+            label="Special Notes"
             id="special_notes"
             name="special_notes"
             value={petData.special_notes || ''}
             onChange={handleInputChange}
             rows={3}
-            className="w-full p-2 border border-gray-300 rounded-md focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
-          ></textarea>
+          />
         </div>
       </div>
 
       <div className="flex justify-end space-x-3">
-        <button
+        <Button
           type="button"
+          variant="secondary"
           onClick={onCancel}
-          className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none transition-colors"
+          leftIcon={<XMarkIcon className="h-5 w-5" />}
         >
-          <XMarkIcon className="h-5 w-5 inline mr-1" />
           Cancel
-        </button>
-        <button
+        </Button>
+        <Button
           type="submit"
           disabled={isSubmitting}
-          className="px-4 py-2 border border-transparent rounded-md shadow-sm text-white bg-[var(--primary-green)] hover:bg-[var(--primary-green-hover)] focus:outline-none transition-colors disabled:opacity-70 flex items-center"
+          isLoading={isSubmitting}
+          leftIcon={!isSubmitting ? <CheckIcon className="h-5 w-5" /> : undefined}
         >
-          {isSubmitting ? (
-            <>
-              <span className="spinner-sm mr-2"></span>
-              Saving...
-            </>
-          ) : (
-            <>
-              <CheckIcon className="h-5 w-5 mr-1" />
-              Save Pet
-            </>
-          )}
-        </button>
+          {isSubmitting ? 'Saving...' : 'Save Pet'}
+        </Button>
       </div>
     </form>
   );

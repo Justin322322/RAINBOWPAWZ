@@ -19,6 +19,8 @@ import Link from 'next/link';
 import withAdminAuth from '@/components/withAdminAuth';
 import { motion, AnimatePresence } from 'framer-motion';
 import StatCard from '@/components/ui/StatCard';
+import { Skeleton, SkeletonText, SkeletonCard } from '@/components/ui/SkeletonLoader';
+import { useLoading } from '@/contexts/LoadingContext';
 
 function AdminDashboardPage({ adminData }: { adminData: any }) {
   const userName = adminData?.full_name || 'System Administrator';
@@ -67,11 +69,18 @@ function AdminDashboardPage({ adminData }: { adminData: any }) {
     },
   ];
 
+  // Get global loading context
+  const { setLoading, setLoadingMessage } = useLoading();
+
   // Fetch dashboard data
   useEffect(() => {
     const fetchDashboardData = async () => {
       setIsLoading(true);
       setError(null);
+
+      // Set global loading state for better UX
+      setLoading(true);
+      setLoadingMessage('Loading dashboard data...');
 
       try {
         const response = await fetch('/api/admin/dashboard');
@@ -92,11 +101,12 @@ function AdminDashboardPage({ adminData }: { adminData: any }) {
         setError(err instanceof Error ? err.message : 'An unknown error occurred');
       } finally {
         setIsLoading(false);
+        setLoading(false); // Clear global loading state
       }
     };
 
     fetchDashboardData();
-  }, []);
+  }, [setLoading, setLoadingMessage]);
 
   // Helper function to calculate percentage for progress bars
   const calculatePercentage = (value: number, total: number, minPercent: number = 0, maxPercent: number = 100) => {
@@ -157,19 +167,17 @@ function AdminDashboardPage({ adminData }: { adminData: any }) {
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {isLoading ? (
-          // Loading skeleton for stats - consistent style
+          // Using standardized skeleton loader
           Array(4).fill(0).map((_, index) => (
-            <div key={index} className="bg-white rounded-xl shadow-sm p-6">
-              <div className="flex items-center">
-                <div className="p-3 rounded-full bg-gray-200 mr-4 animate-pulse">
-                  <div className="h-6 w-6"></div>
-                </div>
-                <div className="w-full">
-                  <div className="h-4 bg-gray-200 rounded w-3/4 mb-2 animate-pulse"></div>
-                  <div className="h-6 bg-gray-200 rounded w-1/2 animate-pulse"></div>
-                </div>
-              </div>
-            </div>
+            <SkeletonCard
+              key={index}
+              withHeader={true}
+              contentLines={1}
+              withFooter={false}
+              withShadow={true}
+              rounded="lg"
+              animate={true}
+            />
           ))
         ) : error ? (
           // Error state
@@ -222,19 +230,28 @@ function AdminDashboardPage({ adminData }: { adminData: any }) {
           </Link>
         </div>
         {isLoading ? (
-          // Loading skeleton for applications table - consistent style
+          // Using standardized skeleton loader for table
           <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-            <div className="animate-pulse p-4 bg-white">
-              <div className="h-8 bg-gray-200 rounded mb-4 w-1/4"></div>
-              <div className="space-y-3">
+            <div className="p-6">
+              <SkeletonText
+                lines={1}
+                height="h-6"
+                spacing="tight"
+                lastLineWidth="1/4"
+                className="mb-6"
+              />
+              <div className="space-y-4">
                 {[1, 2, 3].map((i) => (
                   <div key={i} className="flex items-center space-x-4">
-                    <div className="h-12 bg-gray-200 rounded-full w-12"></div>
+                    <Skeleton height="h-12" width="w-12" rounded="full" />
                     <div className="flex-1">
-                      <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-                      <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                      <SkeletonText
+                        lines={2}
+                        spacing="tight"
+                        lastLineWidth="1/2"
+                      />
                     </div>
-                    <div className="h-8 bg-gray-200 rounded w-20"></div>
+                    <Skeleton height="h-8" width="w-20" rounded="md" />
                   </div>
                 ))}
               </div>
@@ -346,32 +363,18 @@ function AdminDashboardPage({ adminData }: { adminData: any }) {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
 
         {isLoading ? (
-          // Loading skeleton for user distribution - consistent style
+          // Using standardized skeleton loader for user distribution
           Array(3).fill(0).map((_, index) => (
-            <div key={index} className="bg-white rounded-xl shadow-sm p-6 animate-pulse">
-              <div className="flex items-center mb-4">
-                <div className="p-2 rounded-full bg-gray-200 mr-3">
-                  <div className="h-5 w-5"></div>
-                </div>
-                <div className="h-5 bg-gray-200 rounded w-1/2"></div>
-              </div>
-              <div className="space-y-4">
-                <div>
-                  <div className="flex justify-between mb-2">
-                    <div className="h-4 bg-gray-200 rounded w-1/3"></div>
-                    <div className="h-4 bg-gray-200 rounded w-8"></div>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2.5 mb-4"></div>
-                </div>
-                <div>
-                  <div className="flex justify-between mb-2">
-                    <div className="h-4 bg-gray-200 rounded w-1/3"></div>
-                    <div className="h-4 bg-gray-200 rounded w-8"></div>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2.5 mb-4"></div>
-                </div>
-              </div>
-            </div>
+            <SkeletonCard
+              key={index}
+              withHeader={true}
+              contentLines={4}
+              withFooter={false}
+              withShadow={true}
+              rounded="lg"
+              animate={true}
+              className="p-6"
+            />
           ))
         ) : error ? (
           <div className="col-span-3 bg-white rounded-xl shadow-sm p-6">

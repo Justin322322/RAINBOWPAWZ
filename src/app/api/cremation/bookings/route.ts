@@ -82,10 +82,10 @@ export async function GET(request: NextRequest) {
                sb.created_at, sb.pet_name, sb.pet_type, sb.cause_of_death,
                sb.pet_image_url, sb.payment_method, ${hasPaymentStatusColumn ? 'sb.payment_status,' : "'not_paid' as payment_status,"} sb.delivery_option, sb.delivery_distance,
                sb.delivery_fee, sb.price,
-               u.id as user_id, u.first_name, u.last_name, u.email, u.phone_number as phone,
+               u.user_id as user_id, u.first_name, u.last_name, u.email, u.phone as phone,
                sp.package_id as package_id, sp.name as service_name, sp.processing_time
         FROM service_bookings sb
-        JOIN users u ON sb.user_id = u.id
+        JOIN users u ON sb.user_id = u.user_id
         LEFT JOIN service_packages sp ON sb.package_id = sp.package_id
         WHERE (sb.package_id IN (${packagePlaceholders}) OR sb.provider_id = ?)
         AND sb.status NOT IN ('completed', 'cancelled')
@@ -101,11 +101,11 @@ export async function GET(request: NextRequest) {
       sql = `
         SELECT b.id, b.status, b.booking_date, b.booking_time, b.special_requests as notes,
                b.created_at, p.name as pet_name, p.species as pet_type, p.image_url as pet_image_url,
-               u.id as user_id, u.first_name, u.last_name, u.email, u.phone_number as phone,
+               u.user_id as user_id, u.first_name, u.last_name, u.email, u.phone as phone,
                sp.package_id as package_id, sp.name as service_name, sp.price, sp.processing_time
         FROM bookings b
-        JOIN users u ON b.user_id = u.id
-        LEFT JOIN pets p ON p.user_id = u.id AND p.created_at <= DATE_ADD(b.created_at, INTERVAL 5 SECOND)
+        JOIN users u ON b.user_id = u.user_id
+        LEFT JOIN pets p ON p.user_id = u.user_id AND p.created_at <= DATE_ADD(b.created_at, INTERVAL 5 SECOND)
         JOIN service_packages sp ON b.business_service_id = sp.package_id
         WHERE b.business_service_id IN (${packagePlaceholders})
         AND b.status NOT IN ('completed', 'cancelled')

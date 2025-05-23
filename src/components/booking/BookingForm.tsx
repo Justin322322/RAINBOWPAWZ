@@ -13,6 +13,7 @@ import {
 } from '@heroicons/react/24/outline';
 import Image from 'next/image';
 import AddOnSelector, { AddOn } from './AddOnSelector';
+import { Button, Input, Textarea, SelectInput } from '@/components/ui';
 
 interface BookingFormProps {
   providerId: number;
@@ -308,68 +309,57 @@ export default function BookingForm({
             <h2 className="text-lg font-medium text-gray-900 mb-6">Pet Information</h2>
             <div className="space-y-6">
               <div>
-                <label htmlFor="petName" className="block text-sm font-medium text-gray-700 mb-1">
-                  Pet Name <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
+                <Input
                   id="petName"
+                  label="Pet Name"
                   value={petName}
                   onChange={(e) => setPetName(e.target.value)}
-                  className="w-full p-3 border border-gray-300 rounded-md focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
                   placeholder="Enter your pet's name"
                   required
+                  size="lg"
                 />
               </div>
 
               <div>
-                <label htmlFor="petType" className="block text-sm font-medium text-gray-700 mb-1">
-                  Pet Type <span className="text-red-500">*</span>
-                </label>
-                <select
+                <SelectInput
                   id="petType"
+                  label="Pet Type"
                   value={petType}
-                  onChange={(e) => setPetType(e.target.value)}
-                  className="w-full p-3 border border-gray-300 rounded-md focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
+                  onChange={(value) => setPetType(value)}
+                  options={[
+                    { value: "", label: "Select Pet Type" },
+                    { value: "Dog", label: "Dog" },
+                    { value: "Cat", label: "Cat" },
+                    { value: "Bird", label: "Bird" },
+                    { value: "Fish", label: "Fish" },
+                    { value: "Rabbit", label: "Rabbit" },
+                    { value: "Hamster", label: "Hamster" },
+                    { value: "Guinea Pig", label: "Guinea Pig" },
+                    { value: "Other", label: "Other" }
+                  ]}
                   required
-                >
-                  <option value="">Select Pet Type</option>
-                  <option value="Dog">Dog</option>
-                  <option value="Cat">Cat</option>
-                  <option value="Bird">Bird</option>
-                  <option value="Fish">Fish</option>
-                  <option value="Rabbit">Rabbit</option>
-                  <option value="Hamster">Hamster</option>
-                  <option value="Guinea Pig">Guinea Pig</option>
-                  <option value="Other">Other</option>
-                </select>
+                />
               </div>
 
               <div>
-                <label htmlFor="petBreed" className="block text-sm font-medium text-gray-700 mb-1">
-                  Pet Breed (Optional)
-                </label>
-                <input
-                  type="text"
+                <Input
                   id="petBreed"
+                  label="Pet Breed (Optional)"
                   value={petBreed}
                   onChange={(e) => setPetBreed(e.target.value)}
-                  className="w-full p-3 border border-gray-300 rounded-md focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
                   placeholder="Enter breed (if applicable)"
+                  size="lg"
                 />
               </div>
 
               <div>
-                <label htmlFor="causeOfDeath" className="block text-sm font-medium text-gray-700 mb-1">
-                  Cause of Death (Optional)
-                </label>
-                <input
-                  type="text"
+                <Input
                   id="causeOfDeath"
+                  label="Cause of Death (Optional)"
                   value={causeOfDeath}
                   onChange={(e) => setCauseOfDeath(e.target.value)}
-                  className="w-full p-3 border border-gray-300 rounded-md focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
                   placeholder="Cause of death (if known)"
+                  size="lg"
                 />
               </div>
 
@@ -388,15 +378,17 @@ export default function BookingForm({
                             fill
                             className="object-cover rounded-lg"
                           />
-                          <button
+                          <Button
                             onClick={() => {
                               setPetImage(null);
                               setPetImageUrl(null);
                             }}
-                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                            variant="danger"
+                            size="xs"
+                            className="absolute -top-2 -right-2 rounded-full p-1"
                           >
                             <XMarkIcon className="h-4 w-4" />
-                          </button>
+                          </Button>
                         </div>
                       </div>
                     </div>
@@ -406,7 +398,7 @@ export default function BookingForm({
                       <div className="flex text-sm text-gray-600 justify-center">
                         <label htmlFor="pet-image" className="relative cursor-pointer bg-white rounded-md font-medium text-[var(--primary-green)] hover:text-[var(--primary-green-hover)]">
                           <span>Upload an image</span>
-                          <input
+                          <Input
                             id="pet-image"
                             name="pet-image"
                             type="file"
@@ -525,15 +517,12 @@ export default function BookingForm({
               {/* Delivery Address (if delivery is selected) */}
               {deliveryOption === 'delivery' && (
                 <div>
-                  <label htmlFor="deliveryAddress" className="block text-sm font-medium text-gray-700 mb-1">
-                    Delivery Address <span className="text-red-500">*</span>
-                  </label>
-                  <textarea
+                  <Textarea
                     id="deliveryAddress"
+                    label="Delivery Address"
                     value={deliveryAddress}
                     onChange={(e) => setDeliveryAddress(e.target.value)}
                     onBlur={estimateDeliveryFee}
-                    className="w-full p-3 border border-gray-300 rounded-md focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
                     placeholder="Enter your full address"
                     rows={3}
                     required
@@ -560,14 +549,11 @@ export default function BookingForm({
 
               {/* Special Requests */}
               <div>
-                <label htmlFor="specialRequests" className="block text-sm font-medium text-gray-700 mb-1">
-                  Special Requests (Optional)
-                </label>
-                <textarea
+                <Textarea
                   id="specialRequests"
+                  label="Special Requests (Optional)"
                   value={specialRequests}
                   onChange={(e) => setSpecialRequests(e.target.value)}
-                  className="w-full p-3 border border-gray-300 rounded-md focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
                   placeholder="Any special instructions or requests..."
                   rows={4}
                 />
@@ -717,38 +703,37 @@ export default function BookingForm({
 
             {/* Form navigation */}
             <div className="mt-8 flex justify-between">
-              <button
+              <Button
                 type="button"
                 onClick={handleBack}
-                className={`px-6 py-3 border border-gray-300 rounded-md text-gray-700 ${formStep === 1 ? 'invisible' : ''}`}
+                variant="secondary"
+                size="lg"
+                className={formStep === 1 ? 'invisible' : ''}
               >
                 Back
-              </button>
+              </Button>
 
               {formStep < 3 ? (
-                <button
+                <Button
                   type="button"
                   onClick={handleNext}
-                  className="px-6 py-3 bg-[var(--primary-green)] text-white rounded-md hover:bg-[var(--primary-green-hover)]"
+                  variant="primary"
+                  size="lg"
                   disabled={formStep === 1 && (!petName || !petType) || (formStep === 2 && !selectedPackage)}
                 >
                   Continue
-                </button>
+                </Button>
               ) : (
-                <button
+                <Button
                   type="submit"
-                  className="px-6 py-3 bg-[var(--primary-green)] text-white rounded-md hover:bg-[var(--primary-green-hover)] flex items-center"
+                  variant="primary"
+                  size="lg"
                   disabled={!formValid || loading || petImageUploading}
+                  isLoading={loading || petImageUploading}
+                  leftIcon={loading || petImageUploading ? <ArrowPathIcon className="h-5 w-5" /> : undefined}
                 >
-                  {loading || petImageUploading ? (
-                    <>
-                      <ArrowPathIcon className="animate-spin h-5 w-5 mr-2" />
-                      Processing...
-                    </>
-                  ) : (
-                    <>Confirm Booking</>
-                  )}
-                </button>
+                  {loading || petImageUploading ? 'Processing...' : 'Confirm Booking'}
+                </Button>
               )}
             </div>
           </>

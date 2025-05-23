@@ -5,6 +5,7 @@ import Modal from './Modal';
 import { sendWelcomeEmail } from '../lib/emailService';
 import PrivacyPolicyModal from './PrivacyPolicyModal';
 import { useToast } from '@/context/ToastContext';
+import { Button, Input, SelectInput, Checkbox } from '@/components/ui';
 
 type PersonalAccountModalProps = {
   isOpen: boolean;
@@ -229,137 +230,124 @@ const PersonalAccountModal: React.FC<PersonalAccountModalProps> = ({ isOpen, onC
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label htmlFor="firstName" className={labelClasses}>
-                First Name
-              </label>
-              <input
-                type="text"
-                id="firstName"
-                name="firstName"
-                value={formData.firstName}
-                onChange={handleChange}
-                className={inputClasses}
-                placeholder="Enter your first name"
-                required
-              />
-            </div>
-
-            <div>
-              <label htmlFor="lastName" className={labelClasses}>
-                Last Name
-              </label>
-              <input
-                type="text"
-                id="lastName"
-                name="lastName"
-                value={formData.lastName}
-                onChange={handleChange}
-                className={inputClasses}
-                placeholder="Enter your last name"
-                required
-              />
-            </div>
-          </div>
-
-          <div>
-            <label htmlFor="email" className={labelClasses}>
-              Email
-            </label>
-            <input
-              type="email"
-              id="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              className={inputClasses}
-              placeholder="Enter your email address"
-              required
-            />
-          </div>
-
-          <div>
-            <label htmlFor="sex" className={labelClasses}>
-              Sex
-            </label>
-            <select
-              id="sex"
-              name="sex"
-              value={formData.sex}
-              onChange={handleChange}
-              className={inputClasses}
-              required
-            >
-              <option value="">Select Sex</option>
-              <option value="male">Male</option>
-              <option value="female">Female</option>
-              <option value="other">Other</option>
-              <option value="prefer-not-to-say">Prefer not to say</option>
-            </select>
-          </div>
-
-          <div>
-            <label htmlFor="address" className={labelClasses}>
-              Address
-            </label>
-            <input
+            <Input
               type="text"
-              id="address"
-              name="address"
-              value={formData.address}
+              id="firstName"
+              name="firstName"
+              label="First Name"
+              value={formData.firstName}
               onChange={handleChange}
-              className={inputClasses}
-              placeholder="Enter your address"
+              placeholder="Enter your first name"
+              required
+              rounded="full"
+              size="lg"
+              labelClassName="font-light"
+            />
+
+            <Input
+              type="text"
+              id="lastName"
+              name="lastName"
+              label="Last Name"
+              value={formData.lastName}
+              onChange={handleChange}
+              placeholder="Enter your last name"
+              required
+              rounded="full"
+              size="lg"
+              labelClassName="font-light"
             />
           </div>
 
-          <div>
-            <label htmlFor="phoneNumber" className={labelClasses}>
-              Phone Number
-            </label>
-            <input
-              type="tel"
-              id="phoneNumber"
-              name="phoneNumber"
-              value={formData.phoneNumber}
-              onChange={handleChange}
-              className={inputClasses}
-              placeholder="Enter your phone number"
-            />
-          </div>
+          <Input
+            type="email"
+            id="email"
+            name="email"
+            label="Email"
+            value={formData.email}
+            onChange={handleChange}
+            placeholder="Enter your email address"
+            required
+            rounded="full"
+            size="lg"
+            labelClassName="font-light"
+          />
+
+          <SelectInput
+            id="sex"
+            name="sex"
+            label="Sex"
+            value={formData.sex}
+            onChange={(value) => setFormData({...formData, sex: value})}
+            options={[
+              { value: "", label: "Select Sex" },
+              { value: "male", label: "Male" },
+              { value: "female", label: "Female" },
+              { value: "other", label: "Other" },
+              { value: "prefer-not-to-say", label: "Prefer not to say" }
+            ]}
+            required
+            labelClassName="font-light"
+          />
+
+          <Input
+            type="text"
+            id="address"
+            name="address"
+            label="Address"
+            value={formData.address}
+            onChange={handleChange}
+            placeholder="Enter your address"
+            rounded="full"
+            size="lg"
+            labelClassName="font-light"
+          />
+
+          <Input
+            type="tel"
+            id="phoneNumber"
+            name="phoneNumber"
+            label="Phone Number"
+            value={formData.phoneNumber}
+            onChange={handleChange}
+            placeholder="Enter your phone number"
+            rounded="full"
+            size="lg"
+            labelClassName="font-light"
+          />
 
           <div>
-            <label htmlFor="password" className={labelClasses}>
-              Password
-            </label>
-            <div className="relative">
-              <input
-                type={showPassword ? "text" : "password"}
-                id="password"
-                name="password"
-                value={formData.password}
-                onChange={handleChange}
-                className={inputClasses}
-                placeholder="Create a strong password"
-                required
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
-              >
-                {showPassword ? (
-                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                  </svg>
-                ) : (
-                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-                  </svg>
-                )}
-              </button>
-            </div>
+            <Input
+              type={showPassword ? "text" : "password"}
+              id="password"
+              name="password"
+              label="Password"
+              value={formData.password}
+              onChange={handleChange}
+              placeholder="Create a strong password"
+              required
+              rounded="full"
+              size="lg"
+              labelClassName="font-light"
+              rightIcon={
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  {showPassword ? (
+                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                  ) : (
+                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                    </svg>
+                  )}
+                </button>
+              }
+            />
             {formData.password && (
               <div className="mt-2">
                 <div className="flex items-center justify-between mb-1">
@@ -398,25 +386,24 @@ const PersonalAccountModal: React.FC<PersonalAccountModalProps> = ({ isOpen, onC
             )}
           </div>
 
-          <div>
-            <label htmlFor="confirmPassword" className={labelClasses}>
-              Confirm Password
-            </label>
-            <div className="relative">
-              <input
-                type={showConfirmPassword ? "text" : "password"}
-                id="confirmPassword"
-                name="confirmPassword"
-                value={formData.confirmPassword}
-                onChange={handleChange}
-                className={inputClasses}
-                placeholder="Confirm your password"
-                required
-              />
+          <Input
+            type={showConfirmPassword ? "text" : "password"}
+            id="confirmPassword"
+            name="confirmPassword"
+            label="Confirm Password"
+            value={formData.confirmPassword}
+            onChange={handleChange}
+            placeholder="Confirm your password"
+            required
+            rounded="full"
+            size="lg"
+            labelClassName="font-light"
+            error={formData.password && formData.confirmPassword && formData.password !== formData.confirmPassword ? "Passwords do not match" : undefined}
+            rightIcon={
               <button
                 type="button"
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                className="text-gray-400 hover:text-gray-600"
               >
                 {showConfirmPassword ? (
                   <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -429,40 +416,39 @@ const PersonalAccountModal: React.FC<PersonalAccountModalProps> = ({ isOpen, onC
                   </svg>
                 )}
               </button>
-            </div>
-            {formData.password && formData.confirmPassword && formData.password !== formData.confirmPassword && (
-              <p className="mt-1 text-xs text-red-600">Passwords do not match</p>
-            )}
-          </div>
+            }
+          />
 
           <div className="flex items-center">
-            <input
-              type="checkbox"
+            <Checkbox
               id="agreeToTerms"
               name="agreeToTerms"
               checked={formData.agreeToTerms}
-              onClick={() => {
-                // Open the privacy policy modal when clicking the checkbox
-                setIsPrivacyPolicyOpen(true);
-              }}
-              onChange={handleChange}
-              className="h-4 w-4 text-[var(--primary-green)] focus:ring-[var(--primary-green)] border-gray-300 rounded cursor-pointer"
-              required
-            />
-            <label htmlFor="agreeToTerms" className="ml-2 block text-sm font-light text-gray-700 cursor-pointer" onClick={() => {
-              setIsPrivacyPolicyOpen(true);
-            }}>
-              I agree to the <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
+              onChange={(e) => {
+                handleChange(e);
+                if (!formData.agreeToTerms) {
                   setIsPrivacyPolicyOpen(true);
-                }}
-                className="text-[var(--primary-green)] hover:text-[var(--primary-green-hover)] transition-colors duration-200 underline"
-              >
-                Privacy Policy
-              </button>
-            </label>
+                }
+              }}
+              label={
+                <span className="font-light text-gray-700">
+                  I agree to the{' '}
+                  <Button
+                    type="button"
+                    variant="link"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsPrivacyPolicyOpen(true);
+                    }}
+                    className="p-0 underline"
+                  >
+                    Privacy Policy
+                  </Button>
+                </span>
+              }
+              required
+              labelClassName="font-light"
+            />
           </div>
 
           <PrivacyPolicyModal
@@ -478,29 +464,18 @@ const PersonalAccountModal: React.FC<PersonalAccountModalProps> = ({ isOpen, onC
             }}
           />
 
-          <button
-              type="submit"
-              disabled={isLoading}
-              className={`
-                w-full bg-[var(--primary-green)] text-white py-4 px-8 rounded-full
-                hover:bg-[var(--primary-green-hover)] focus:outline-none focus:ring-2
-                focus:ring-offset-2 focus:ring-[var(--primary-green)] transition-all duration-200
-                font-light tracking-wide text-lg flex items-center justify-center
-                ${isLoading ? 'opacity-75 cursor-not-allowed' : ''}
-              `}
-            >
-              {isLoading ? (
-                <>
-                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  <span>Registering...</span>
-                </>
-              ) : (
-                'Register Fur Parent Account'
-              )}
-            </button>
+          <Button
+            type="submit"
+            disabled={isLoading}
+            isLoading={isLoading}
+            fullWidth
+            size="lg"
+            rounded="full"
+            className="font-light tracking-wide text-lg"
+            loadingText="Registering..."
+          >
+            Register Fur Parent Account
+          </Button>
           </form>
       </div>
     </Modal>

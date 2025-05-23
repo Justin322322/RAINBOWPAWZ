@@ -13,6 +13,7 @@ import CremationDashboardLayout from '@/components/navigation/CremationDashboard
 import withBusinessVerification from '@/components/withBusinessVerification';
 import { useToast } from '@/context/ToastContext';
 import StarRating from '@/components/ui/StarRating';
+import { LoadingSpinner } from '@/app/cremation/components/LoadingComponents';
 
 interface ReviewsPageProps {
   userData?: any;
@@ -285,9 +286,10 @@ function ReviewsPage({ userData }: ReviewsPageProps) {
 
         {/* Reviews List */}
         {loading ? (
-          <div className="flex justify-center items-center py-12">
-            <ArrowPathIcon className="h-8 w-8 text-gray-400 animate-spin" />
-          </div>
+          <LoadingSpinner
+            message="Loading reviews..."
+            className="py-12"
+          />
         ) : error ? (
           <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-md">
             <div className="flex items-start">

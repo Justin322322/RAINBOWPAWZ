@@ -7,7 +7,7 @@ import { sendBusinessVerificationEmail, sendApplicationDeclineEmail } from '@/li
 
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
   // Extract ID from params
-  const { id } = await params;
+  const { id } = params;
 
   try {
     const businessId = parseInt(id);
@@ -67,7 +67,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
            updated_at = NOW()
        WHERE provider_id = ?`,
       [applicationStatus, note.trim(), businessId]
-    ) as mysql.ResultSetHeader;
+    ) as unknown as mysql.ResultSetHeader;
 
     if (updateResult.affectedRows === 0) {
       return NextResponse.json({ message: 'Business profile not found' }, { status: 404 });

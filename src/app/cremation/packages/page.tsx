@@ -17,6 +17,7 @@ import {
 } from '@heroicons/react/24/outline';
 import ConfirmationModal from '@/components/ConfirmationModal';
 import { toast } from 'react-hot-toast';
+import { LoadingSpinner } from '@/app/cremation/components/LoadingComponents';
 
 // Import our newly created components and hooks
 import { PackageList } from '@/components/packages/PackageList';
@@ -170,10 +171,10 @@ function PackagesPage({ userData }: PackagesPageProps) {
 
       {/* Loading state */}
       {isLoading && (
-        <div className="bg-white rounded-xl shadow-sm p-8 text-center" aria-live="polite" aria-busy="true">
-          <ArrowPathIcon className="h-12 w-12 text-gray-400 animate-spin mx-auto" />
-          <p className="mt-4 text-gray-500">Loading packages...</p>
-        </div>
+        <LoadingSpinner
+          message="Loading packages..."
+          className="py-8"
+        />
       )}
 
       {/* Empty state - using our EmptyState component */}

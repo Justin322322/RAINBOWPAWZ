@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { StarIcon, XMarkIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 import ReviewModal from './ReviewModal';
 import { useToast } from '@/context/ToastContext';
+import { LoadingSpinner } from '@/app/cremation/components/LoadingComponents';
 
 interface PendingReview {
   booking_id: number;
@@ -162,10 +163,10 @@ const CompletedBookingReviewPrompt: React.FC<CompletedBookingReviewPromptProps> 
   if (loading) {
     return (
       <div className="mb-6 bg-gray-50 border border-gray-200 p-4 rounded-md">
-        <div className="flex justify-center items-center py-4">
-          <ArrowPathIcon className="h-5 w-5 text-gray-400 animate-spin mr-2" />
-          <span className="text-gray-600">Checking for completed bookings that need reviews...</span>
-        </div>
+        <LoadingSpinner
+          message="Checking for completed bookings that need reviews..."
+          className="py-4"
+        />
       </div>
     );
   }

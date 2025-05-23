@@ -1,4 +1,5 @@
 import mysql from 'mysql2/promise';
+import { QueryResult } from '@/types/database';
 
 // IMPORTANT: Always use 3306 for MySQL, regardless of the web server port
 const MYSQL_PORT = 3306;
@@ -14,7 +15,7 @@ const dbConfig = {
   connectionLimit: 10,
   queueLimit: 0,
   socketPath: undefined,
-  insecureAuth: true,
+  // Removed insecureAuth for security
   // Add connection timeout and better error handling
   connectTimeout: 10000,
   debug: process.env.NODE_ENV === 'development',
@@ -23,20 +24,20 @@ const dbConfig = {
 };
 
 // Create a connection pool with error handling
-let pool;
+let pool: mysql.Pool;
 
-// Force specific values for production to ensure consistency
+// Use environment variables for production to ensure security
 const productionConfig = {
-  host: 'localhost',
-  user: 'root',
-  password: '',
-  database: 'rainbow_paws',
+  host: process.env.DB_HOST || 'localhost',
+  user: process.env.DB_USER || 'root',
+  password: process.env.DB_PASSWORD || '',
+  database: process.env.DB_NAME || 'rainbow_paws',
   port: MYSQL_PORT, // Always use 3306 for MySQL
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
   socketPath: undefined,
-  insecureAuth: true,
+  // Removed insecureAuth for security
 };
 
 // Use production config in production, otherwise use environment variables
@@ -70,19 +71,19 @@ try {
   try {
     pool = mysql.createPool(productionConfig);
   } catch (fallbackError) {
-    // Create a minimal pool as last resort
+    // Create a minimal pool as last resort using environment variables
     pool = mysql.createPool({
-      host: 'localhost',
-      user: 'root',
-      password: '',
-      database: 'rainbow_paws',
-      port: 3306
+      host: process.env.DB_HOST || 'localhost',
+      user: process.env.DB_USER || 'root',
+      password: process.env.DB_PASSWORD || '',
+      database: process.env.DB_NAME || 'rainbow_paws',
+      port: MYSQL_PORT
     });
   }
 }
 
 // Helper function to execute SQL queries
-export async function query(sql: string, params: any[] = []) {
+export async function query(sql: string, params: any[] = []): Promise<QueryResult> {
   try {
     // Get a connection from the pool
     const connection = await pool.getConnection();
@@ -90,7 +91,7 @@ export async function query(sql: string, params: any[] = []) {
     try {
       // Execute the query
       const [results] = await connection.query(sql, params);
-      return results;
+      return results as QueryResult;
     } finally {
       // Release the connection back to the pool
       connection.release();
@@ -132,7 +133,7 @@ export async function query(sql: string, params: any[] = []) {
 // Test the database connection
 export async function testConnection() {
   try {
-    const result = await query('SELECT 1 as test');
+    await query('SELECT 1 as test');
     return true;
   } catch (error) {
     // Try to connect directly without using the pool
@@ -168,7 +169,7 @@ export async function ensureAvailabilityTablesExist(): Promise<boolean> {
       AND TABLE_NAME IN ('provider_availability', 'provider_time_slots')
     `;
 
-    const tablesResult = await query(tablesCheckQuery) as any[];
+    const tablesResult = await query(tablesCheckQuery);
     const existingTables = tablesResult.map((row: any) => row.TABLE_NAME.toLowerCase());
 
     // Create provider_availability table if needed
@@ -213,7 +214,7 @@ export async function ensureAvailabilityTablesExist(): Promise<boolean> {
         AND COLUMN_NAME = 'available_services'
       `;
 
-      const columnResult = await query(columnCheckQuery) as any[];
+      const columnResult = await query(columnCheckQuery);
 
       // If the column doesn't exist, add it
       if (columnResult.length === 0) {
@@ -235,7 +236,8 @@ export async function ensureAvailabilityTablesExist(): Promise<boolean> {
 // Helper function to check if a table exists
 export async function checkTableExists(tableName: string): Promise<boolean> {
   try {
-    const result = await query(`SHOW TABLES LIKE '${tableName}'`) as any[];
+    // Use parameterized query to prevent SQL injection
+    const result = await query('SHOW TABLES LIKE ?', [tableName]);
     return result.length > 0;
   } catch (err) {
     return false;

@@ -4,6 +4,8 @@ import { Inter, Playfair_Display } from 'next/font/google';
 import ClientToastProvider from "@/components/providers/ClientToastProvider";
 import ToastWrapper from "@/components/providers/ToastWrapper";
 import NotificationProvider from "@/components/providers/NotificationProvider";
+import { LoadingProvider } from "@/contexts/LoadingContext";
+import LoadingOverlay from "@/components/ui/LoadingOverlay";
 import Script from 'next/script';
 
 // Load Inter font for sans-serif text
@@ -46,14 +48,14 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/logo.png" />
         <link rel="shortcut icon" href="/logo.png" />
         <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
-        
+
         {/* Force verification on all cremation pages */}
         <Script id="clear-verification-cache" strategy="beforeInteractive">
           {`
             try {
               // Clear any potential verification bypass in session storage
               sessionStorage.removeItem('verified_business');
-              
+
               // Check if we need to redirect to pending verification
               const userData = sessionStorage.getItem('user_data');
               if (userData) {
@@ -64,10 +66,10 @@ export default function RootLayout({
                     const [userId, accountType] = decodeURIComponent(authCookie.split('=')[1]).split('_');
                     if (accountType === 'business') {
                       // Force reload verification on all cremation dashboard pages
-                      if (window.location.pathname.startsWith('/cremation/') && 
+                      if (window.location.pathname.startsWith('/cremation/') &&
                           !window.location.pathname.includes('/cremation/pending-verification') &&
                           !window.location.pathname.includes('/cremation/documents')) {
-                        
+
                         // We'll keep the user_data but force a new verification check
                         sessionStorage.removeItem('verified_business');
                       }
@@ -84,7 +86,10 @@ export default function RootLayout({
       <body className={inter.className}>
         <ClientToastProvider>
           <NotificationProvider>
-            {children}
+            <LoadingProvider>
+              {children}
+              <LoadingOverlay />
+            </LoadingProvider>
           </NotificationProvider>
         </ClientToastProvider>
         <ToastWrapper />

@@ -18,6 +18,7 @@ import { useToast } from '@/context/ToastContext';
 import StarRating from '@/components/ui/StarRating';
 import Modal from '@/components/Modal';
 import { motion, AnimatePresence } from 'framer-motion';
+import SectionLoader from '@/components/ui/SectionLoader';
 
 interface Review {
   id: number;
@@ -276,12 +277,13 @@ function AdminReviewsPage() {
 
         {/* Reviews List */}
         {loading ? (
-          <div className="bg-white rounded-xl shadow-sm p-6">
-            <div className="px-6 py-12 text-center">
-              <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[var(--primary-green)] mb-4"></div>
-              <p className="text-gray-600">Loading reviews...</p>
-            </div>
-          </div>
+          <SectionLoader
+            message="Loading reviews..."
+            minHeight="min-h-[300px]"
+            withBackground={true}
+            withShadow={true}
+            rounded={true}
+          />
         ) : error ? (
           <div className="bg-white rounded-xl shadow-sm p-6">
             <div className="px-6 py-8 text-center">

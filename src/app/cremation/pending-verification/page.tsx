@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Cookies from 'js-cookie';
-import { LoadingSpinner } from '@/app/admin/services/client';
+import { LoadingSpinner } from '@/app/cremation/components/LoadingComponents';
 
 export default function PendingVerificationPage() {
   const router = useRouter();

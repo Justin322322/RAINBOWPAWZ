@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import Modal from '@/components/Modal';
 import ReviewForm from './ReviewForm';
 import { CheckCircleIcon, StarIcon } from '@heroicons/react/24/outline';
+import { LoadingSpinner } from '@/app/cremation/components/LoadingComponents';
 
 interface ReviewModalProps {
   isOpen: boolean;
@@ -70,9 +71,10 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
       size="medium"
     >
       {isLoading ? (
-        <div className="flex justify-center items-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[var(--primary-green)]"></div>
-        </div>
+        <LoadingSpinner
+          message="Checking review status..."
+          className="py-12"
+        />
       ) : hasReview ? (
         <motion.div
           key="success"

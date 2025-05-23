@@ -20,6 +20,7 @@ import {
   PencilSquareIcon,
   BanknotesIcon
 } from '@heroicons/react/24/outline';
+import { LoadingSpinner, StatsCardSkeleton, TableSkeleton } from '@/app/cremation/components/LoadingComponents';
 
 function CremationBookingsPage({ userData }: { userData: any }) {
   const [searchTerm, setSearchTerm] = useState('');
@@ -223,20 +224,9 @@ function CremationBookingsPage({ userData }: { userData: any }) {
       {/* Stats cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
         {loading ? (
-          // Loading skeleton for stats - consistent style
-          Array(5).fill(0).map((_, index) => (
-            <div key={index} className="bg-white rounded-xl shadow-sm p-6">
-              <div className="flex items-center">
-                <div className="p-3 rounded-full bg-gray-200 mr-4 animate-pulse">
-                  <div className="h-6 w-6"></div>
-                </div>
-                <div className="w-full">
-                  <div className="h-4 bg-gray-200 rounded w-3/4 mb-2 animate-pulse"></div>
-                  <div className="h-6 bg-gray-200 rounded w-1/2 animate-pulse"></div>
-                </div>
-              </div>
-            </div>
-          ))
+          // Using standardized stats card skeleton
+          <StatsCardSkeleton count={5} />
+
         ) : (
           <>
             <StatCard
@@ -266,7 +256,7 @@ function CremationBookingsPage({ userData }: { userData: any }) {
             <StatCard
               icon={<BanknotesIcon />}
               label="Total Revenue"
-              value={`₱${parseFloat(stats.totalRevenue || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`}
+              value={`₱${parseFloat(String(stats.totalRevenue || '0')).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`}
               color="purple"
             />
           </>
@@ -280,9 +270,10 @@ function CremationBookingsPage({ userData }: { userData: any }) {
         </div>
 
         {loading ? (
-          <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[var(--primary-green)]"></div>
-          </div>
+          <LoadingSpinner
+            message="Loading bookings..."
+            className="py-12"
+          />
         ) : bookings.length === 0 ? (
           <div className="flex flex-col items-center justify-center p-8 text-center">
             <div className="text-gray-400 mb-4">

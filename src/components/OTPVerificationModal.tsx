@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Button, Input } from '@/components/ui';
 
 interface OTPVerificationModalProps {
   isOpen: boolean;
@@ -210,7 +211,7 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
 
         // Mark as sent before generating to prevent race conditions
         markOtpSentGlobally();
-        
+
         // Set a short debounce before sending OTP to prevent duplicate generation
         // This allows time for other potential OTPVerificationModal instances to recognize
         // that OTP generation has already been initiated
@@ -253,7 +254,7 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
   // Success animation timeout
   useEffect(() => {
     if (verificationStatus === 'success') {
-      // We'll use a very simple approach here - just close the modal after 
+      // We'll use a very simple approach here - just close the modal after
       // a brief delay to show the success animation
       const timer = setTimeout(() => {
         // Close the modal if needed, but only after verification is fully complete
@@ -261,7 +262,7 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
           onClose();
         }
       }, 1500);
-      
+
       return () => clearTimeout(timer);
     }
   }, [verificationStatus, onClose]);
@@ -346,22 +347,22 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
         return;
       }
 
-      
+
       // CRITICAL: Complete persistence for verification status
       // 1. Session Storage - immediate updates for current session
       sessionStorage.setItem('otp_verified', 'true');
       sessionStorage.removeItem('needs_otp_verification');
-      
+
       // 2. Update user data in multiple storage locations
       try {
         const userDataStr = sessionStorage.getItem('user_data');
         if (userDataStr) {
           const userData = JSON.parse(userDataStr);
           userData.is_otp_verified = 1;
-          
+
           // Update session storage
           sessionStorage.setItem('user_data', JSON.stringify(userData));
-          
+
           // Update global state if available
           try {
             // @ts-ignore - access global variable from HOC
@@ -373,7 +374,7 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
             }
           } catch (e) {
           }
-          
+
           // Also update localStorage as an extra backup
           try {
             localStorage.setItem('user_verified', 'true');
@@ -393,12 +394,12 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
 
       // Set success state to trigger animation
       setVerificationStatus('success');
-      
-      // Call the success callback directly but with a delay to ensure 
+
+      // Call the success callback directly but with a delay to ensure
       // all state updates have propagated
       setTimeout(() => {
         onVerificationSuccess();
-        
+
         // The modal will be closed by the animation effect
       }, 1000);
     } catch (error) {
@@ -500,7 +501,7 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
                 </label>
                 <div className="flex justify-center space-x-2 md:space-x-3">
                   {otp.map((digit, index) => (
-                    <input
+                    <Input
                       key={index}
                       ref={el => { inputRefs.current[index] = el; }}
                       type="text"
@@ -509,44 +510,41 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
                       onChange={e => handleInputChange(index, e.target.value)}
                       onKeyDown={e => handleKeyDown(index, e)}
                       onPaste={index === 0 ? handlePaste : undefined}
-                      className="w-12 h-12 text-center text-xl font-semibold border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--primary-green)] focus:border-transparent"
+                      className="w-12 h-12 text-center text-xl font-semibold"
+                      rounded="default"
+                      size="lg"
                     />
                   ))}
                 </div>
               </div>
 
               <div className="flex flex-col space-y-4">
-                <button
+                <Button
                   onClick={verifyOTP}
                   disabled={isLoading || verificationStatus === 'loading'}
-                  className="w-full py-3 bg-[var(--primary-green)] text-white rounded-lg hover:bg-opacity-90 transition-all duration-300 font-medium flex items-center justify-center"
+                  isLoading={verificationStatus === 'loading'}
+                  loadingText="Verifying..."
+                  fullWidth
+                  size="lg"
+                  rounded="default"
                 >
-                  {verificationStatus === 'loading' ? (
-                    <>
-                      <svg className="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      Verifying...
-                    </>
-                  ) : 'Verify Account'}
-                </button>
+                  Verify Account
+                </Button>
 
-                <button
+                <Button
                   onClick={generateOTP}
                   disabled={isResending || resendCooldown > 0}
-                  className={`text-sm font-medium ${
-                    errorMessage && errorMessage.includes('expired')
-                      ? 'text-[var(--primary-green)] bg-green-50 px-4 py-2 rounded-lg border border-green-100 hover:bg-green-100 transition-colors'
-                      : 'text-[var(--primary-green)] hover:underline'
-                  }`}
+                  variant={errorMessage && errorMessage.includes('expired') ? "outline" : "link"}
+                  size="sm"
+                  fullWidth
+                  className={errorMessage && errorMessage.includes('expired') ? "bg-green-50 border-green-100 hover:bg-green-100" : ""}
                 >
                   {resendCooldown > 0
                     ? `Resend code in ${resendCooldown}s`
                     : isResending
                       ? 'Sending...'
                       : 'Resend verification code'}
-                </button>
+                </Button>
               </div>
             </motion.div>
           )}

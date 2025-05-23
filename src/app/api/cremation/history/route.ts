@@ -111,7 +111,7 @@ export async function GET(request: NextRequest) {
              u.first_name, u.last_name,
              p.name as package_name
       FROM service_bookings sb
-      JOIN users u ON sb.user_id = u.id
+      JOIN users u ON sb.user_id = u.user_id
       LEFT JOIN service_packages p ON sb.package_id = p.package_id
       WHERE sb.provider_id = ?
       ${dateCondition}

@@ -26,6 +26,7 @@ import {
   CheckCircleIcon,
   XCircleIcon,
 } from '@heroicons/react/24/outline';
+import { LoadingSpinner } from '@/app/cremation/components/LoadingComponents';
 
 function BookingDetailsPage({ userData }: { userData: any }) {
   const params = useParams();
@@ -457,9 +458,10 @@ function BookingDetailsPage({ userData }: { userData: any }) {
   if (loading) {
     return (
       <CremationDashboardLayout activePage="bookings" userData={userData}>
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[var(--primary-green)]"></div>
-        </div>
+        <LoadingSpinner
+          message="Loading booking details..."
+          className="py-12"
+        />
       </CremationDashboardLayout>
     );
   }
