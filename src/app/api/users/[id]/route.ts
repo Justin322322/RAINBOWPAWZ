@@ -52,21 +52,21 @@ export async function GET(request: NextRequest) {
 
             if (serviceProviderResult && serviceProviderResult.length > 0) {
               const provider = serviceProviderResult[0];
-              
+
               // Set verification status based on actual data from the database
               user.is_verified = provider.application_status === 'approved' ? 1 : 0;
-              
+
               // Add business details to the user object
               user.business_name = provider.name;
               user.business_type = provider.provider_type;
               user.business_id = provider.id;
-              
+
               // Include application_status field
               user.application_status = provider.application_status;
-              
+
               // Add the full service_provider object for complete data access
               user.service_provider = provider;
-              
+
               // Ensure user_type is set to 'business' for backward compatibility
               user.user_type = 'business';
             } else {
@@ -144,26 +144,11 @@ export async function GET(request: NextRequest) {
     } catch (adminDbError) {
     }
 
-    // Fallback: Return a mock user if database query fails or user not found
-
-    const mockUser = {
-      id: parseInt(userId),
-      first_name: 'User',
-      last_name: userId,
-      email: `user${userId}@example.com`,
-      phone_number: '',
-      address: '',
-      sex: '',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      is_otp_verified: 1,
-      role: 'fur_parent',
-      user_type: 'user', // Set to 'user' for backward compatibility
-      status: 1,
-      is_verified: 1
-    };
-
-    return NextResponse.json(mockUser);
+    // User not found
+    return NextResponse.json({
+      error: 'User not found',
+      message: 'No user found with the provided ID'
+    }, { status: 404 });
   } catch (error) {
     return NextResponse.json({
       error: 'Failed to fetch user data',

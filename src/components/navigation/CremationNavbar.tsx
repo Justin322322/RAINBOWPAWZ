@@ -12,6 +12,7 @@ import {
 import { clearAuthToken } from '@/utils/auth';
 import LogoutModal from '@/components/LogoutModal';
 import NotificationBell from '@/components/ui/NotificationBell';
+import { useSupressHydrationWarning } from '@/hooks/useSupressHydrationWarning';
 
 interface CremationNavbarProps {
   activePage?: string;
@@ -26,14 +27,23 @@ export default function CremationNavbar({
 }: CremationNavbarProps) {
   const pathname = usePathname();
   const router = useRouter();
+  const isMounted = useSupressHydrationWarning();
 
-  // Get stored username from multiple sources in order of preference
-  const sessionUserName = typeof window !== 'undefined' ? sessionStorage.getItem('user_full_name') : null;
-  const localUserName = typeof window !== 'undefined' ? localStorage.getItem('cremation_user_name') : null;
+  // Always initialize with the default value for server-side rendering to avoid hydration mismatch
+  const [userName, setUserName] = useState('Cremation Provider');
 
-  // Use the best available name source (session > local > prop)
-  const initialUserName = sessionUserName || localUserName || propUserName;
-  const [userName, setUserName] = useState(initialUserName);
+  // Use useEffect to update the username on the client side only after hydration
+  useEffect(() => {
+    if (isMounted) {
+      // Get stored username from multiple sources in order of preference
+      const sessionUserName = sessionStorage.getItem('user_full_name');
+      const localUserName = localStorage.getItem('cremation_user_name');
+
+      // Use the best available name source (session > local > prop)
+      const bestUserName = sessionUserName || localUserName || propUserName;
+      setUserName(bestUserName);
+    }
+  }, [propUserName, isMounted]);
 
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [activePage, setActivePage] = useState('');
@@ -53,27 +63,19 @@ export default function CremationNavbar({
     setShowLogoutModal(true);
   };
 
-  // Update userName when prop changes and it's a real name (not a default value)
+  // Update localStorage and sessionStorage when propUserName changes and it's a real name
   useEffect(() => {
-    // Only update if the prop is a real name and not a default placeholder
+    // Only update storage if the prop is a real name and not a default placeholder
     if (propUserName &&
         propUserName !== 'Cremation Provider' &&
         propUserName !== 'Business' &&
         propUserName.includes(' ')) { // Real names typically have a space
 
-      setUserName(propUserName);
-
       // Store in both storage types for persistence
       localStorage.setItem('cremation_user_name', propUserName);
       sessionStorage.setItem('user_full_name', propUserName);
-    } else if (sessionUserName) {
-      // If prop is default but we have a session name, use that
-      setUserName(sessionUserName);
-    } else if (localUserName) {
-      // If no session name but we have a local name, use that
-      setUserName(localUserName);
     }
-  }, [propUserName, sessionUserName, localUserName]);
+  }, [propUserName]);
 
   // Determine active page based on pathname or prop
   useEffect(() => {
@@ -135,7 +137,10 @@ export default function CremationNavbar({
                 <div className="bg-white rounded-full h-8 w-8 flex items-center justify-center mr-2">
                   <UserIcon className="h-5 w-5 text-[var(--primary-green)]" />
                 </div>
-                <span className="modern-text font-medium tracking-wide">{userName}</span>
+                {/* Only show the actual username after client-side hydration */}
+                <span className="modern-text font-medium tracking-wide">
+                  {isMounted ? userName : 'Cremation Provider'}
+                </span>
                 <ChevronDownIcon
                   className={`h-4 w-4 ml-2 transform transition-transform duration-200 ${
                     isDropdownOpen ? 'rotate-180' : ''
@@ -177,7 +182,7 @@ export default function CremationNavbar({
       <LogoutModal
         isOpen={showLogoutModal}
         onClose={() => setShowLogoutModal(false)}
-        userName={userName}
+        userName={isMounted ? userName : 'Cremation Provider'}
       />
     </header>
   );

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { getProductionImagePath } from '@/utils/imagePathUtils';
+import { getProductionImagePath } from '@/utils/imageUtils';
 
 interface ProductionSafeImageProps {
   src: string;

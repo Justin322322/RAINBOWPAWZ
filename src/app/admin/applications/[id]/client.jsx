@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { getProductionImagePath } from '@/utils/imagePathUtils';
+import { getProductionImagePath } from '@/utils/imageUtils';
 import {
   CheckCircleIcon,
   XCircleIcon,

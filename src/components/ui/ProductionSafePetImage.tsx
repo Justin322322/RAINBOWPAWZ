@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { getProductionImagePath } from '@/utils/imagePathUtils';
+import { getProductionImagePath } from '@/utils/imageUtils';
 
 interface ProductionSafePetImageProps {
   src: string;
@@ -47,16 +47,16 @@ export const ProductionSafePetImage: React.FC<ProductionSafePetImageProps> = ({
     if (imgSrc !== fallbackSrc) {
       // Log the error for debugging
       console.error('Failed to load pet image:', src);
-      
+
       // Call the onError callback if provided
       if (onError) {
         onError(new Error(`Failed to load pet image: ${src}`));
       }
-      
+
       // Set fallback image
       setImgSrc(fallbackSrc);
       setError(true);
-      
+
       // Update the image element
       const target = e.target as HTMLImageElement;
       target.onerror = null; // Prevent infinite loop

@@ -113,13 +113,7 @@ export async function POST(request: Request) {
           });
         }
 
-        try {
-          const passwordMatch = await bcrypt.compare(password, user.password);
-        } catch (bcryptCompareError) {
-          throw bcryptCompareError;
-        }
-
-        // Try again with a direct comparison for debugging
+        // Compare password with stored hash
         let passwordMatch = await bcrypt.compare(password, user.password);
 
         // Special handling for port 3000 where bcrypt might behave differently

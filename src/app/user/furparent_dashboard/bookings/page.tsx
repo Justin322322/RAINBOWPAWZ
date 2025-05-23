@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import { format } from 'date-fns';
 import { Dialog, Transition } from '@headlessui/react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { getProductionImagePath } from '@/utils/imagePathUtils';
+import { getProductionImagePath } from '@/utils/imageUtils';
 import {
   ClockIcon,
   CheckCircleIcon,

@@ -3,7 +3,7 @@ import { Dialog, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
 import { XMarkIcon, CheckCircleIcon, XCircleIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
 import { ArrowPathIcon } from '@heroicons/react/24/solid';
-import { getProductionImagePath } from '@/utils/imagePathUtils';
+import { getProductionImagePath } from '@/utils/imageUtils';
 
 interface DocumentViewerModalProps {
   isOpen: boolean;

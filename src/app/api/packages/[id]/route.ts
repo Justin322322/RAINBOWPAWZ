@@ -5,7 +5,7 @@ import { query } from '@/lib/db';
 import { getAuthTokenFromRequest } from '@/utils/auth';
 import * as fs from 'fs';
 import { join } from 'path';
-import { getImagePath } from '@/utils/imagePathUtils';
+import { getImagePath } from '@/utils/imageUtils';
 
 export const dynamic = 'force-dynamic'; // ensure requests aren’t cached
 
@@ -21,7 +21,7 @@ export async function GET(
 
   try {
     const rows = (await query(
-      `SELECT * FROM service_packages WHERE id = ? LIMIT 1`,
+      `SELECT * FROM service_packages WHERE package_id = ? LIMIT 1`,
       [packageId]
     )) as any[];
 
@@ -103,10 +103,10 @@ export async function PATCH(
 
   // confirm ownership
   const pkgOwner = (await query(
-    `SELECT service_provider_id FROM service_packages WHERE id = ?`,
+    `SELECT provider_id FROM service_packages WHERE package_id = ?`,
     [packageId]
   )) as any[];
-  if (!pkgOwner.length || Number(pkgOwner[0].service_provider_id) !== providerId) {
+  if (!pkgOwner.length || Number(pkgOwner[0].provider_id) !== providerId) {
     return NextResponse.json({ error: 'Not allowed', status: 403 });
   }
 
@@ -134,7 +134,7 @@ export async function PATCH(
       `UPDATE service_packages
        SET name=?, description=?, category=?, cremation_type=?, processing_time=?,
            price=?, delivery_fee_per_km=?, conditions=?
-       WHERE id=?`,
+       WHERE package_id=?`,
       [
         body.name,
         body.description,
@@ -212,7 +212,7 @@ export async function DELETE(
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  await query(`DELETE FROM service_packages WHERE id=?`, [packageId]);
+  await query(`DELETE FROM service_packages WHERE package_id=?`, [packageId]);
   return NextResponse.json({ success: true, message: 'Deleted' });
 }
 

@@ -27,6 +27,7 @@ function CremationDashboardPage({ userData }: { userData: any }) {
   const router = useRouter();
   const [userName, setUserName] = useState('');
   const [loading, setLoading] = useState(true);
+  const [dashboardError, setDashboardError] = useState<string | null>(null);
   const [availabilityError, setAvailabilityError] = useState<string | null>(null);
   const [availabilitySetupNeeded, setAvailabilitySetupNeeded] = useState(false);
   const [availabilitySetupInProgress, setAvailabilitySetupInProgress] = useState(false);
@@ -37,6 +38,7 @@ function CremationDashboardPage({ userData }: { userData: any }) {
   });
   const { showToast } = useToast();
   const [showAvailabilitySection, setShowAvailabilitySection] = useState(false);
+  const [lastFetchAttempt, setLastFetchAttempt] = useState<number>(0);
 
   // Update userName when userData is available
   useEffect(() => {
@@ -57,26 +59,41 @@ function CremationDashboardPage({ userData }: { userData: any }) {
         return;
       }
 
+      // Prevent multiple rapid fetch attempts
+      const now = Date.now();
+      if (now - lastFetchAttempt < 5000) { // 5 second cooldown between fetch attempts
+        return;
+      }
+
+      setLastFetchAttempt(now);
+      setDashboardError(null);
+
       try {
         // Add cache busting parameter to prevent cached results
-        const response = await fetch(`/api/cremation/dashboard?providerId=${userData.business_id}&t=${Date.now()}`);
+        const response = await fetch(`/api/cremation/dashboard?providerId=${userData.business_id}&t=${now}`);
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
-          throw new Error(`Failed to fetch dashboard data: ${response.status} ${errorData.error || ''}`);
+          const errorMessage = `Failed to fetch dashboard data: ${response.status} ${errorData.error || ''}`;
+          setDashboardError(errorMessage);
+          throw new Error(errorMessage);
         }
 
         const data = await response.json();
         setDashboardData(data);
       } catch (error) {
-        showToast('Failed to load dashboard data. Please try again later.', 'error');
+        // Only show toast once
+        if (!dashboardError) {
+          showToast('Failed to load dashboard data. Please try again later.', 'error');
+        }
+        setDashboardError(error instanceof Error ? error.message : 'Unknown error occurred');
       } finally {
         setLoading(false);
       }
     };
 
     fetchDashboardData();
-  }, [userData, showToast]);
+  }, [userData, showToast, lastFetchAttempt, dashboardError]);
 
   // Check if availability tables exist
   useEffect(() => {
@@ -208,6 +225,34 @@ function CremationDashboardPage({ userData }: { userData: any }) {
         </div>
       </div>
 
+      {/* Dashboard Error Display */}
+      {dashboardError && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-6 mb-8">
+          <div className="flex items-start">
+            <div className="flex-shrink-0">
+              <svg className="h-6 w-6 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <h3 className="text-sm font-medium text-red-800">Dashboard data could not be loaded</h3>
+              <div className="mt-2 text-sm text-red-700">
+                <p>There was an error loading your dashboard data. Please try again.</p>
+              </div>
+              <div className="mt-4">
+                <button
+                  type="button"
+                  onClick={() => setLastFetchAttempt(0)} // This will trigger a refetch
+                  className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                >
+                  Retry
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {dashboardData.stats?.map((stat: any, index: number) => {
@@ -255,8 +300,9 @@ function CremationDashboardPage({ userData }: { userData: any }) {
             </button>
           </div>
           {loading ? (
-            <div className="flex justify-center items-center h-64">
-              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[var(--primary-green)]"></div>
+            <div className="flex flex-col justify-center items-center h-64">
+              <div className="animate-spin rounded-full h-10 w-10 border-4 border-gray-200 border-t-[var(--primary-green)]"></div>
+              <p className="mt-4 text-gray-600 text-sm">Loading bookings...</p>
             </div>
           ) : dashboardData.recentBookings?.length > 0 ? (
             <ul className="divide-y divide-gray-200">
@@ -325,8 +371,9 @@ function CremationDashboardPage({ userData }: { userData: any }) {
             </button>
           </div>
           {loading ? (
-            <div className="flex justify-center items-center h-64">
-              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[var(--primary-green)]"></div>
+            <div className="flex flex-col justify-center items-center h-64">
+              <div className="animate-spin rounded-full h-10 w-10 border-4 border-gray-200 border-t-[var(--primary-green)]"></div>
+              <p className="mt-4 text-gray-600 text-sm">Loading reviews...</p>
             </div>
           ) : dashboardData.stats?.find((stat: any) => stat.name === 'Average Rating')?.value === 'No ratings' ? (
             <div className="p-6 text-center">

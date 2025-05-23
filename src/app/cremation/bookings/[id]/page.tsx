@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import CremationDashboardLayout from '@/components/navigation/CremationDashboardLayout';
 import withBusinessVerification from '@/components/withBusinessVerification';
 import { useToast } from '@/context/ToastContext';
-import { getProductionImagePath } from '@/utils/imagePathUtils';
+import { getProductionImagePath } from '@/utils/imageUtils';
 import ConfirmationModal from '@/components/ConfirmationModal';
 import {
   ArrowLeftIcon,
