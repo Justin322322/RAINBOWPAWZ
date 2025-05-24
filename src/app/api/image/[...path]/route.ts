@@ -34,7 +34,13 @@ export async function GET(
       // Try in the root directory
       join('/', 'uploads', imagePath),
 
-      // Additional paths for documents
+      // Additional paths for documents - handle full document paths
+      join(process.cwd(), 'public', 'uploads', imagePath),
+      join(process.cwd(), 'uploads', imagePath),
+      join(process.cwd(), '.next', 'server', 'public', 'uploads', imagePath),
+      join(process.cwd(), '.next', 'standalone', 'public', 'uploads', imagePath),
+
+      // Try document paths with just filename
       join(process.cwd(), 'public', 'documents', imagePath.split('/').pop() || ''),
       join(process.cwd(), 'documents', imagePath.split('/').pop() || ''),
       join(process.cwd(), '.next', 'server', 'public', 'documents', imagePath.split('/').pop() || ''),
@@ -53,6 +59,13 @@ export async function GET(
       join(process.cwd(), '.next', 'server', 'public', 'uploads', 'pets', imagePath.split('/').pop() || ''),
       join(process.cwd(), '.next', 'standalone', 'public', 'uploads', 'pets', imagePath.split('/').pop() || ''),
       join('/', 'uploads', 'pets', imagePath.split('/').pop() || ''),
+
+      // Try profile picture paths
+      join(process.cwd(), 'public', 'uploads', 'profile-pictures', imagePath.split('/').pop() || ''),
+      join(process.cwd(), 'uploads', 'profile-pictures', imagePath.split('/').pop() || ''),
+      join(process.cwd(), '.next', 'server', 'public', 'uploads', 'profile-pictures', imagePath.split('/').pop() || ''),
+      join(process.cwd(), '.next', 'standalone', 'public', 'uploads', 'profile-pictures', imagePath.split('/').pop() || ''),
+      join('/', 'uploads', 'profile-pictures', imagePath.split('/').pop() || ''),
     ];
 
     // Check all possible paths

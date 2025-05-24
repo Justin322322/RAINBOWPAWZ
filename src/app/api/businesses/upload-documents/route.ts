@@ -1,32 +1,43 @@
 import { NextResponse } from 'next/server';
-import { writeFile } from 'fs/promises';
-import path from 'path';
-import { mkdir } from 'fs/promises';
 import { query } from '@/lib/db';
+import { writeFile, mkdir } from 'fs/promises';
+import { join } from 'path';
+import { existsSync } from 'fs';
 
 // Function to save file to disk
 async function saveFile(file: File, userId: string, documentType: string): Promise<string> {
   try {
+    console.log(`Saving file: ${file.name} for user ${userId} as ${documentType}`);
 
-    // Create directories if they don't exist
-    const uploadsDir = path.join(process.cwd(), 'public', 'uploads', 'businesses', userId);
-    await mkdir(uploadsDir, { recursive: true });
+    // Create a unique filename with timestamp
+    const timestamp = Date.now();
+    const originalName = file.name.replace(/\s+/g, '_').toLowerCase();
+    const extension = originalName.split('.').pop() || 'jpg';
+    const filename = `${documentType}_${timestamp}.${extension}`;
 
-    // Get file data
+    // Create the directory path
+    const uploadsDir = join(process.cwd(), 'public', 'uploads', 'documents', userId);
+
+    // Ensure directory exists
+    if (!existsSync(uploadsDir)) {
+      await mkdir(uploadsDir, { recursive: true });
+    }
+
+    // Create file path
+    const filePath = join(uploadsDir, filename);
+
+    // Convert file to buffer and save
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
-
-    // Create file name with timestamp to avoid collisions
-    const fileExtension = file.name.split('.').pop() || 'pdf';
-    const fileName = `${documentType}_${Date.now()}.${fileExtension}`;
-    const filePath = path.join(uploadsDir, fileName);
-
-    // Write file to disk
     await writeFile(filePath, buffer);
 
-    // Return the relative path for database storage
-    return `/uploads/businesses/${userId}/${fileName}`;
+    // Return the relative path
+    const relativePath = `/uploads/documents/${userId}/${filename}`;
+    console.log(`File saved successfully at: ${relativePath}`);
+
+    return relativePath;
   } catch (error) {
+    console.error(`Failed to save ${documentType}:`, error);
     throw new Error(`Failed to save ${documentType}: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
@@ -73,7 +84,7 @@ export async function POST(request: Request) {
       [userIdStr]
     ) as any[];
 
-    let businessProfileId;
+    let businessProfileId: number;
 
     // If no business found, create one
     if (!businessCheck || businessCheck.length === 0) {
@@ -234,7 +245,7 @@ export async function POST(request: Request) {
     // Update user role to 'business' if not already set
     if (user.role !== 'business' && user.role !== 'admin') {
       try {
-        const roleUpdateResult = await query(
+        await query(
           `UPDATE users SET role = 'business' WHERE user_id = ?`,
           [userIdStr]
         );

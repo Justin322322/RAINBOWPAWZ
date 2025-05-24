@@ -4,12 +4,24 @@ import mysql from 'mysql2/promise';
 
 // Import the consolidated email service
 import { sendBusinessVerificationEmail, sendApplicationDeclineEmail } from '@/lib/consolidatedEmailService';
+// Import admin utilities
+import { getAdminIdFromRequest, logAdminAction } from '@/utils/adminUtils';
 
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
   // Extract ID from params
   const { id } = params;
 
   try {
+    // Get the admin ID from the request
+    const adminId = await getAdminIdFromRequest(request);
+
+    // If no admin ID is found, return unauthorized
+    if (!adminId) {
+      return NextResponse.json({
+        message: 'Unauthorized. Admin access required.'
+      }, { status: 401 });
+    }
+
     const businessId = parseInt(id);
     if (isNaN(businessId)) {
       return NextResponse.json({ message: 'Invalid business ID' }, { status: 400 });
@@ -174,37 +186,21 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       }
     }
 
-    // Log the action - but first check if the admin_logs table exists
+    // Log the admin action using the utility function
     try {
-      // Check if the admin_logs table exists
-      const tableCheck = await query(`
-        SELECT COUNT(*) as count
-        FROM information_schema.tables
-        WHERE table_schema = ? AND table_name = 'admin_logs'
-      `, [process.env.DB_NAME || 'rainbow_paws']);
-
-      const tableExists = tableCheck && Array.isArray(tableCheck) &&
-                          tableCheck[0] && tableCheck[0].count > 0;
-
-      if (tableExists) {
-        await query(
-          `INSERT INTO admin_logs (action, entity_type, entity_id, details, admin_id)
-           VALUES (?, ?, ?, ?, ?)`,
-          [
-            requestDocuments ? 'request_documents' : 'decline_business',
-            tableName,
-            businessId,
-            JSON.stringify({
-              businessName: business?.business_name || business?.name,
-              notes: note.trim(),
-              requestDocuments: !!requestDocuments
-            }),
-            1 // TODO: Replace with actual admin ID from auth
-          ]
-        );
-      } else {
-        console.log('admin_logs table does not exist - skipping logging');
-      }
+      const ipAddress = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip');
+      await logAdminAction(
+        adminId,
+        requestDocuments ? 'request_documents' : 'decline_business',
+        tableName,
+        businessId,
+        {
+          businessName: business?.business_name || business?.name,
+          notes: note.trim(),
+          requestDocuments: !!requestDocuments
+        },
+        ipAddress as string
+      );
     } catch (logError) {
       // Non-critical error, just log it and continue
       console.error('Error logging admin action:', logError);

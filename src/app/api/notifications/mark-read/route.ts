@@ -1,36 +1,55 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthTokenFromRequest } from '@/utils/auth';
 import { query } from '@/lib/db';
+import { RateLimiter, createRateLimitHeaders, createStandardErrorResponse, createStandardSuccessResponse } from '@/utils/rateLimitUtils';
 
 export async function POST(request: NextRequest) {
   try {
     // Get user ID from auth token
     const authToken = getAuthTokenFromRequest(request);
     if (!authToken) {
-      return NextResponse.json({ 
-        error: 'Unauthorized',
-        success: false 
-      }, { 
-        status: 401,
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache'
+      return NextResponse.json(
+        createStandardErrorResponse('Unauthorized', 401),
+        {
+          status: 401,
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache'
+          }
         }
-      });
+      );
     }
 
-    const [userId, accountType] = authToken.split('_');
+    const [userId] = authToken.split('_');
     if (!userId) {
-      return NextResponse.json({ 
-        error: 'Unauthorized',
-        success: false 
-      }, { 
-        status: 401,
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache'
+      return NextResponse.json(
+        createStandardErrorResponse('Invalid authentication token', 401),
+        {
+          status: 401,
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache'
+          }
         }
-      });
+      );
+    }
+
+    // Implement proper server-side rate limiting
+    const rateLimitResult = await RateLimiter.checkNotificationMarkReadLimit(userId);
+    const rateLimitHeaders = createRateLimitHeaders(rateLimitResult);
+
+    if (!rateLimitResult.allowed) {
+      return NextResponse.json(
+        createStandardErrorResponse(rateLimitResult.error || 'Rate limit exceeded', 429),
+        {
+          status: 429,
+          headers: {
+            ...rateLimitHeaders,
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache'
+          }
+        }
+      );
     }
 
     const body = await request.json();
@@ -38,16 +57,17 @@ export async function POST(request: NextRequest) {
 
     // Validate input
     if (!markAll && (!notificationIds || !Array.isArray(notificationIds) || notificationIds.length === 0)) {
-      return NextResponse.json({
-        error: 'Either provide notification IDs or set markAll to true',
-        success: false
-      }, { 
-        status: 400,
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache'
+      return NextResponse.json(
+        createStandardErrorResponse('Either provide notification IDs or set markAll to true', 400),
+        {
+          status: 400,
+          headers: {
+            ...rateLimitHeaders,
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache'
+          }
         }
-      });
+      );
     }
 
     let updateQuery;
@@ -69,42 +89,50 @@ export async function POST(request: NextRequest) {
       // Execute the update
       const result = await query(updateQuery, queryParams) as any;
 
-      return NextResponse.json({
-        success: true,
-        affectedRows: result.affectedRows,
-        message: markAll 
-          ? 'All notifications marked as read' 
+      return NextResponse.json(
+        createStandardSuccessResponse({
+          affectedRows: result.affectedRows
+        }, markAll
+          ? 'All notifications marked as read'
           : `${result.affectedRows} notification(s) marked as read`
-      }, {
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache'
+        ),
+        {
+          headers: {
+            ...rateLimitHeaders,
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache'
+          }
         }
-      });
+      );
     } catch (dbError) {
-      return NextResponse.json({
-        error: 'Database error while marking notifications as read',
-        details: dbError instanceof Error ? dbError.message : 'Unknown database error',
-        success: false
-      }, {
+      console.error('Database error in mark-read:', dbError);
+      return NextResponse.json(
+        createStandardErrorResponse('Database error while marking notifications as read', 500, {
+          details: dbError instanceof Error ? dbError.message : 'Unknown database error'
+        }),
+        {
+          status: 500,
+          headers: {
+            ...rateLimitHeaders,
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache'
+          }
+        }
+      );
+    }
+  } catch (error) {
+    console.error('Unexpected error in mark-read:', error);
+    return NextResponse.json(
+      createStandardErrorResponse('Failed to mark notifications as read', 500, {
+        details: error instanceof Error ? error.message : 'Unknown error'
+      }),
+      {
         status: 500,
         headers: {
           'Cache-Control': 'no-cache, no-store, must-revalidate',
           'Pragma': 'no-cache'
         }
-      });
-    }
-  } catch (error) {
-    return NextResponse.json({
-      error: 'Failed to mark notifications as read',
-      details: error instanceof Error ? error.message : 'Unknown error',
-      success: false
-    }, { 
-      status: 500,
-      headers: {
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache'
       }
-    });
+    );
   }
 }

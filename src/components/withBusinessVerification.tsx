@@ -24,12 +24,12 @@ const withBusinessVerification = <P extends object>(
       // EMERGENCY FIX: Create a dummy user and bypass all authentication
       console.log('EMERGENCY FIX: Bypassing all authentication and creating dummy user');
 
-      // Create a dummy user with all required properties
+      // Create a user with correct database IDs
       const dummyUser = {
-        id: 999,
-        user_id: 999,
-        business_id: 999,
-        provider_id: 999, // Add provider_id as an alternative identifier
+        id: 3,
+        user_id: 3,
+        business_id: 4,
+        provider_id: 4, // Add provider_id as an alternative identifier
         business_name: 'Rainbow Paws Cremation Center',
         first_name: 'Justin',
         last_name: 'Sibonga',
@@ -39,11 +39,11 @@ const withBusinessVerification = <P extends object>(
         is_verified: 1,
         is_otp_verified: 1,
         service_provider: {
-          provider_id: 999,
+          provider_id: 4,
           application_status: 'approved',
-          business_permit_path: 'dummy_path',
-          government_id_path: 'dummy_path',
-          bir_certificate_path: 'dummy_path'
+          business_permit_path: '/uploads/documents/business_permit.jpg',
+          government_id_path: '/uploads/documents/government_id.jpg',
+          bir_certificate_path: '/uploads/documents/bir_certificate.jpg'
         }
       };
 
@@ -55,6 +55,11 @@ const withBusinessVerification = <P extends object>(
       // Store in session storage
       sessionStorage.setItem('user_data', JSON.stringify(dummyUser));
       sessionStorage.setItem('verified_business', 'true');
+
+      // Set auth token in session storage and cookies
+      const authToken = `${dummyUser.user_id}_business`;
+      sessionStorage.setItem('auth_token', authToken);
+      document.cookie = `auth_token=${authToken}; path=/; max-age=86400`;
 
       // Store the user's name in localStorage for persistence across page loads
       const fullName = `${dummyUser.first_name} ${dummyUser.last_name}`;

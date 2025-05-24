@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
+import { createPaymentNotification } from '@/utils/comprehensiveNotificationService';
 
 export async function PUT(
   request: NextRequest,
@@ -85,6 +86,29 @@ export async function PUT(
     `;
     const bookingResult = await query(getBookingQuery, [bookingId]) as any[];
     const bookingDetails = bookingResult[0];
+
+    // Create payment notification
+    try {
+      let notificationType: 'payment_pending' | 'payment_confirmed' | 'payment_failed';
+
+      switch (paymentStatus) {
+        case 'paid':
+          notificationType = 'payment_confirmed';
+          break;
+        case 'partially_paid':
+          notificationType = 'payment_pending';
+          break;
+        case 'not_paid':
+        default:
+          notificationType = 'payment_pending';
+          break;
+      }
+
+      await createPaymentNotification(parseInt(bookingId), notificationType);
+    } catch (notificationError) {
+      // Log notification errors but don't fail the payment update
+      console.error('Error creating payment notification:', notificationError);
+    }
 
     return NextResponse.json({
       success: true,

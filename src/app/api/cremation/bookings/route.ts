@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
+import { createBookingNotification, scheduleBookingReminders } from '@/utils/comprehensiveNotificationService';
 
 export async function GET(request: NextRequest) {
   try {
@@ -585,6 +586,20 @@ export async function POST(request: NextRequest) {
 
     // Commit the transaction
     await query('COMMIT');
+
+    // Create booking notification and schedule reminders
+    try {
+      // Create booking created notification
+      await createBookingNotification(bookingId, 'booking_created');
+
+      // Schedule reminder notifications if booking date is in the future
+      if (bookingDate && bookingTime) {
+        await scheduleBookingReminders(bookingId);
+      }
+    } catch (notificationError) {
+      // Log notification errors but don't fail the booking creation
+      console.error('Error creating booking notifications:', notificationError);
+    }
 
     // Return created booking data
     return NextResponse.json({

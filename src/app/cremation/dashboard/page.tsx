@@ -259,7 +259,7 @@ function CremationDashboardPage({ userData }: { userData: any }) {
             </button>
             <button
               onClick={() => router.push('/cremation/bookings')}
-              className="px-4 py-2 bg-[var(--primary-green)] text-white rounded-lg hover:bg-opacity-90"
+              className="px-4 py-2 bg-[var(--primary-green)] text-white rounded-lg hover:bg-[var(--primary-green-hover)] transition-colors duration-300"
             >
               View Bookings
             </button>
@@ -475,14 +475,14 @@ function CremationDashboardPage({ userData }: { userData: any }) {
             {availabilitySetupNeeded ? (
               <button
                 onClick={toggleAvailabilitySection}
-                className="px-4 py-2 border border-[var(--primary-green)] text-[var(--primary-green)] rounded-md hover:bg-[var(--primary-green-light)]"
+                className="px-4 py-2 border border-[var(--primary-green)] text-[var(--primary-green)] rounded-md hover:bg-[var(--primary-green-bg)] transition-colors duration-300"
               >
                 {showAvailabilitySection ? 'Hide Calendar' : 'Show Calendar'}
               </button>
             ) : (
               <button
                 onClick={toggleAvailabilitySection}
-                className="px-4 py-2 border border-[var(--primary-green)] text-[var(--primary-green)] rounded-md hover:bg-[var(--primary-green-light)]"
+                className="px-4 py-2 border border-[var(--primary-green)] text-[var(--primary-green)] rounded-md hover:bg-[var(--primary-green-bg)] transition-colors duration-300"
               >
                 {showAvailabilitySection ? 'Hide Calendar' : 'Show Calendar'}
               </button>

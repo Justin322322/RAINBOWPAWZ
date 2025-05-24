@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthTokenFromRequest } from '@/utils/auth';
 import { query } from '@/lib/db';
+import { RateLimiter, createRateLimitHeaders, createStandardErrorResponse, createStandardSuccessResponse } from '@/utils/rateLimitUtils';
 
 // GET endpoint to fetch notifications for the authenticated user
 export async function GET(request: NextRequest) {
@@ -8,85 +9,86 @@ export async function GET(request: NextRequest) {
     // Get user ID from auth token
     const authToken = getAuthTokenFromRequest(request);
     if (!authToken) {
-      return NextResponse.json({
-        error: 'Unauthorized',
-        notifications: [],
-        unreadCount: 0
-      }, { 
-        status: 401,
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache'
+      return NextResponse.json(
+        createStandardErrorResponse('Unauthorized', 401, {
+          notifications: [],
+          unreadCount: 0
+        }),
+        {
+          status: 401,
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache'
+          }
         }
-      });
+      );
     }
 
     const [userId, accountType] = authToken.split('_');
     if (!userId) {
-      return NextResponse.json({
-        error: 'Unauthorized',
-        notifications: [],
-        unreadCount: 0
-      }, { 
-        status: 401,
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache'
+      return NextResponse.json(
+        createStandardErrorResponse('Invalid authentication token', 401, {
+          notifications: [],
+          unreadCount: 0
+        }),
+        {
+          status: 401,
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache'
+          }
         }
-      });
+      );
+    }
+
+    // Implement proper server-side rate limiting
+    const rateLimitResult = await RateLimiter.checkNotificationFetchLimit(userId);
+    const rateLimitHeaders = createRateLimitHeaders(rateLimitResult);
+
+    if (!rateLimitResult.allowed) {
+      return NextResponse.json(
+        createStandardErrorResponse(rateLimitResult.error || 'Rate limit exceeded', 429, {
+          notifications: [],
+          unreadCount: 0
+        }),
+        {
+          status: 429,
+          headers: {
+            ...rateLimitHeaders,
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache'
+          }
+        }
+      );
     }
 
     // Get query parameters
     const searchParams = request.nextUrl.searchParams;
-    const limit = parseInt(searchParams.get('limit') || '10', 10);
-    const offset = parseInt(searchParams.get('offset') || '0', 10);
+    const limit = Math.min(parseInt(searchParams.get('limit') || '10', 10), 50); // Cap at 50
+    const offset = Math.max(parseInt(searchParams.get('offset') || '0', 10), 0);
     const unreadOnly = searchParams.get('unread_only') === 'true';
-    
-    // Add simple rate limiting by checking the timestamp
-    const timestamp = searchParams.get('t');
-    const now = Date.now();
-    
-    // If request has a timestamp and it's less than 5 seconds ago, return a cached response header
-    if (timestamp && now - parseInt(timestamp) < 5000) {
-      return NextResponse.json({
-        notifications: [],
-        pagination: {
-          total: 0,
-          limit,
-          offset,
-          hasMore: false
-        },
-        unreadCount: 0,
-        cached: true
-      }, {
-        headers: {
-          'Cache-Control': 'private, max-age=5',
-          'X-Rate-Limited': 'true'
-        }
-      });
-    }
 
 
     // First, ensure the notifications table exists
     const tableExists = await ensureNotificationsTable();
 
-    // If table check failed, return empty results instead of an error
+    // If table check failed, return proper error instead of empty results
     if (!tableExists) {
-      return NextResponse.json({
-        notifications: [],
-        pagination: {
-          total: 0,
-          limit,
-          offset,
-          hasMore: false
-        },
-        unreadCount: 0
-      }, {
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache'
+      return NextResponse.json(
+        createStandardErrorResponse('Database table initialization failed', 503, {
+          notifications: [],
+          pagination: { total: 0, limit, offset, hasMore: false },
+          unreadCount: 0
+        }),
+        {
+          status: 503,
+          headers: {
+            ...rateLimitHeaders,
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache'
+          }
         }
-      });
+      );
     }
 
     try {
@@ -127,89 +129,133 @@ export async function GET(request: NextRequest) {
       ) as any[];
       const unreadCount = unreadCountResult[0].unread;
 
-      return NextResponse.json({
-        notifications,
-        pagination: {
-          total,
-          limit,
-          offset,
-          hasMore: offset + limit < total
-        },
-        unreadCount
-      }, {
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache'
+      return NextResponse.json(
+        createStandardSuccessResponse({
+          notifications,
+          pagination: {
+            total,
+            limit,
+            offset,
+            hasMore: offset + limit < total
+          },
+          unreadCount
+        }),
+        {
+          headers: {
+            ...rateLimitHeaders,
+            'Cache-Control': 'private, max-age=30', // 30 second cache for notifications
+            'Pragma': 'no-cache'
+          }
         }
-      });
+      );
     } catch (queryError) {
-      // Return empty results instead of an error
-      return NextResponse.json({
-        notifications: [],
-        pagination: {
-          total: 0,
-          limit,
-          offset,
-          hasMore: false
-        },
-        unreadCount: 0
-      }, {
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache'
+      // Return proper error instead of empty results
+      console.error('Database error in notifications fetch:', queryError);
+      return NextResponse.json(
+        createStandardErrorResponse('Database query failed', 500, {
+          notifications: [],
+          pagination: { total: 0, limit, offset, hasMore: false },
+          unreadCount: 0,
+          details: queryError instanceof Error ? queryError.message : 'Unknown database error'
+        }),
+        {
+          status: 500,
+          headers: {
+            ...rateLimitHeaders,
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache'
+          }
         }
-      });
+      );
     }
   } catch (error) {
-    // Always return a valid JSON response even on error
-    return NextResponse.json({
-      error: 'Failed to fetch notifications',
-      details: error instanceof Error ? error.message : 'Unknown error',
-      notifications: [],
-      unreadCount: 0
-    }, { 
-      status: 500,
-      headers: {
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache'
+    // Always return a standardized error response
+    console.error('Unexpected error in notifications fetch:', error);
+    return NextResponse.json(
+      createStandardErrorResponse('Failed to fetch notifications', 500, {
+        notifications: [],
+        unreadCount: 0,
+        details: error instanceof Error ? error.message : 'Unknown error'
+      }),
+      {
+        status: 500,
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        }
       }
-    });
+    );
   }
 }
 
 // POST endpoint to create a new notification
 export async function POST(request: NextRequest) {
   try {
+    // Get user ID from auth token for rate limiting (optional for POST)
+    const authToken = getAuthTokenFromRequest(request);
+    let userId: string | null = null;
+
+    if (authToken) {
+      const [tokenUserId] = authToken.split('_');
+      userId = tokenUserId;
+    }
+
     const body = await request.json();
-    const { userId, title, message, type = 'info', link = null } = body;
+    const { userId: targetUserId, title, message, type = 'info', link = null } = body;
 
     // Validate required fields
-    if (!userId || !title || !message) {
-      return NextResponse.json({
-        error: 'User ID, title, and message are required'
-      }, { status: 400 });
+    if (!targetUserId || !title || !message) {
+      return NextResponse.json(
+        createStandardErrorResponse('User ID, title, and message are required', 400),
+        { status: 400 }
+      );
+    }
+
+    // Apply rate limiting if we have a user context
+    if (userId) {
+      const rateLimitResult = await RateLimiter.checkNotificationCreateLimit(userId);
+      const rateLimitHeaders = createRateLimitHeaders(rateLimitResult);
+
+      if (!rateLimitResult.allowed) {
+        return NextResponse.json(
+          createStandardErrorResponse(rateLimitResult.error || 'Rate limit exceeded', 429),
+          {
+            status: 429,
+            headers: rateLimitHeaders
+          }
+        );
+      }
     }
 
     // Ensure the notifications table exists
-    await ensureNotificationsTable();
+    const tableExists = await ensureNotificationsTable();
+    if (!tableExists) {
+      return NextResponse.json(
+        createStandardErrorResponse('Database table initialization failed', 503),
+        { status: 503 }
+      );
+    }
 
     // Insert the notification
     const result = await query(
       `INSERT INTO notifications (user_id, title, message, type, link)
        VALUES (?, ?, ?, ?, ?)`,
-      [userId, title, message, type, link]
+      [targetUserId, title, message, type, link]
     ) as any;
 
-    return NextResponse.json({
-      success: true,
-      notificationId: result.insertId,
-      message: 'Notification created successfully'
-    });
+    return NextResponse.json(
+      createStandardSuccessResponse({
+        notificationId: result.insertId
+      }, 'Notification created successfully')
+    );
   } catch (error) {
-    return NextResponse.json({
-      error: 'Failed to create notification',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 });
+    console.error('Error creating notification:', error);
+    return NextResponse.json(
+      createStandardErrorResponse('Failed to create notification', 500, {
+        details: error instanceof Error ? error.message : 'Unknown error'
+      }),
+      { status: 500 }
+    );
   }
 }
 

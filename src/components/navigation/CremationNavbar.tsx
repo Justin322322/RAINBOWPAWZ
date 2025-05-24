@@ -13,6 +13,7 @@ import { clearAuthToken } from '@/utils/auth';
 import LogoutModal from '@/components/LogoutModal';
 import NotificationBell from '@/components/ui/NotificationBell';
 import { useSupressHydrationWarning } from '@/hooks/useSupressHydrationWarning';
+import { getImagePath } from '@/utils/imageUtils';
 
 interface CremationNavbarProps {
   activePage?: string;
@@ -31,6 +32,7 @@ export default function CremationNavbar({
 
   // Always initialize with the default value for server-side rendering to avoid hydration mismatch
   const [userName, setUserName] = useState('Cremation Provider');
+  const [profilePicture, setProfilePicture] = useState<string | null>(null);
 
   // Use useEffect to update the username on the client side only after hydration
   useEffect(() => {
@@ -42,8 +44,26 @@ export default function CremationNavbar({
       // Use the best available name source (session > local > prop)
       const bestUserName = sessionUserName || localUserName || propUserName;
       setUserName(bestUserName);
+
+      // Fetch profile picture from API
+      fetchProfilePicture();
     }
   }, [propUserName, isMounted]);
+
+  // Function to fetch profile picture
+  const fetchProfilePicture = async () => {
+    try {
+      const response = await fetch('/api/cremation/profile');
+      if (response.ok) {
+        const data = await response.json();
+        if (data.profile?.profilePicturePath) {
+          setProfilePicture(data.profile.profilePicturePath);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch profile picture:', error);
+    }
+  };
 
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [activePage, setActivePage] = useState('');
@@ -134,8 +154,21 @@ export default function CremationNavbar({
                 aria-expanded={isDropdownOpen}
                 aria-haspopup="true"
               >
-                <div className="bg-white rounded-full h-8 w-8 flex items-center justify-center mr-2">
-                  <UserIcon className="h-5 w-5 text-[var(--primary-green)]" />
+                <div className="bg-white rounded-full h-8 w-8 flex items-center justify-center mr-2 overflow-hidden">
+                  {profilePicture ? (
+                    <img
+                      src={getImagePath(profilePicture)}
+                      alt="Profile"
+                      className="h-full w-full object-cover"
+                      onError={(e) => {
+                        // Fallback to user icon if image fails to load
+                        e.currentTarget.style.display = 'none';
+                        e.currentTarget.parentElement!.innerHTML = '<svg class="h-5 w-5 text-[var(--primary-green)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>';
+                      }}
+                    />
+                  ) : (
+                    <UserIcon className="h-5 w-5 text-[var(--primary-green)]" />
+                  )}
                 </div>
                 {/* Only show the actual username after client-side hydration */}
                 <span className="modern-text font-medium tracking-wide">
