@@ -20,7 +20,6 @@ import withAdminAuth from '@/components/withAdminAuth';
 import { motion, AnimatePresence } from 'framer-motion';
 import StatCard from '@/components/ui/StatCard';
 import { Skeleton, SkeletonText, SkeletonCard } from '@/components/ui/SkeletonLoader';
-import { useLoading } from '@/contexts/LoadingContext';
 
 function AdminDashboardPage({ adminData }: { adminData: any }) {
   const userName = adminData?.full_name || 'System Administrator';
@@ -69,18 +68,13 @@ function AdminDashboardPage({ adminData }: { adminData: any }) {
     },
   ];
 
-  // Get global loading context
-  const { setLoading, setLoadingMessage } = useLoading();
+
 
   // Fetch dashboard data
   useEffect(() => {
     const fetchDashboardData = async () => {
       setIsLoading(true);
       setError(null);
-
-      // Set global loading state for better UX
-      setLoading(true);
-      setLoadingMessage('Loading dashboard data...');
 
       try {
         const response = await fetch('/api/admin/dashboard');
@@ -101,12 +95,11 @@ function AdminDashboardPage({ adminData }: { adminData: any }) {
         setError(err instanceof Error ? err.message : 'An unknown error occurred');
       } finally {
         setIsLoading(false);
-        setLoading(false); // Clear global loading state
       }
     };
 
     fetchDashboardData();
-  }, [setLoading, setLoadingMessage]);
+  }, []);
 
   // Helper function to calculate percentage for progress bars
   const calculatePercentage = (value: number, total: number, minPercent: number = 0, maxPercent: number = 100) => {

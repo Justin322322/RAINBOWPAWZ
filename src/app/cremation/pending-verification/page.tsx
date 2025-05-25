@@ -18,7 +18,7 @@ export default function PendingVerificationPage() {
         // Get user ID from cookie
         const authCookie = Cookies.get('auth_token');
         if (!authCookie) {
-          // Not logged in, redirect to login
+          // Not logged in, redirect to home
           router.push('/');
           return;
         }
@@ -26,46 +26,48 @@ export default function PendingVerificationPage() {
         const [id] = authCookie.split('_');
         setUserId(id);
 
-        // Call API to check verification status
-        const response = await fetch(`/api/users/${id}?t=${Date.now()}`);
+        // Use our new business status API endpoint
+        const response = await fetch('/api/auth/check-business-status');
         if (!response.ok) {
           setLoading(false);
           return;
         }
 
-        const userData = await response.json();
+        const result = await response.json();
 
-        // Extract all possible status values from service provider
-        const serviceProvider = userData.service_provider;
+        if (!result.success) {
+          setLoading(false);
+          return;
+        }
 
+        const serviceProvider = result.serviceProvider;
+
+        // If no service provider data exists, stay on pending page
         if (!serviceProvider) {
           setLoading(false);
           return;
         }
 
-        // ONLY check application_status - ignore other non-existent fields
+        // Check application_status
         const applicationStatus = serviceProvider.application_status ?
                                  String(serviceProvider.application_status).toLowerCase() : null;
 
-
-        // DIRECTLY check if application_status === 'approved'
+        // If approved, redirect to dashboard
         if (applicationStatus === 'approved') {
-          router.push('/cremation/profile');
+          router.push('/cremation/dashboard');
           return;
         }
 
-        // If application_status is not 'approved', check for documents
-        const hasDocuments = serviceProvider.business_permit_path ||
-                             serviceProvider.government_id_path ||
-                             serviceProvider.bir_certificate_path;
-
-        if (hasDocuments && !applicationStatus) {
-          router.push('/cremation/profile');
+        // If restricted, redirect to restricted page
+        if (applicationStatus === 'restricted') {
+          router.push('/cremation/restricted');
           return;
         }
 
+        // Otherwise, stay on this pending page
         setLoading(false);
       } catch (error) {
+        console.error('Error checking status:', error);
         setLoading(false);
       }
     };

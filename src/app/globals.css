@@ -334,6 +334,17 @@
   font-weight: 500;
 }
 
+/* Toast message z-index override to ensure they're always on top */
+.toast-container {
+  z-index: 999999 !important;
+  position: fixed !important;
+}
+
+.toast-message {
+  z-index: 999999 !important;
+  position: relative !important;
+}
+
 .modern-text {
   font-family: var(--font-sans);
   letter-spacing: -0.01em;

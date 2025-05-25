@@ -65,49 +65,18 @@ export default function CremationDashboardLayout({
     setIsMobileSidebarOpen(!isMobileSidebarOpen);
   };
 
-  // EMERGENCY FIX: Bypass all authentication checks
+  // Initialize with provided user data
   useEffect(() => {
-    console.log('EMERGENCY FIX: Bypassing all authentication in CremationDashboardLayout');
+    if (propUserData) {
+      setUserData(propUserData);
+      setIsAuthenticated(true);
+      setIsLoading(false);
 
-    // Create a dummy user with all required properties
-    const dummyUser = {
-      id: 999,
-      user_id: 999,
-      business_id: 999,
-      business_name: 'Rainbow Paws Cremation Center',
-      first_name: 'Justin',
-      last_name: 'Sibonga',
-      email: 'justinmarlosibonga@gmail.com',
-      role: 'business',
-      user_type: 'business',
-      is_verified: 1,
-      is_otp_verified: 1,
-      service_provider: {
-        provider_id: 999,
-        application_status: 'approved',
-        business_permit_path: 'dummy_path',
-        government_id_path: 'dummy_path',
-        bir_certificate_path: 'dummy_path'
-      }
-    };
-
-    // Use the provided userData if available, otherwise use the dummy user
-    const userData = propUserData || dummyUser;
-
-    // Set the user data and authentication state
-    setUserData(userData);
-    setIsAuthenticated(true);
-    setIsLoading(false);
-
-    // Store in session storage for persistence
-    sessionStorage.setItem('user_data', JSON.stringify(userData));
-    sessionStorage.setItem('verified_business', 'true');
-
-    // Store the user's name in localStorage for persistence across page loads
-    const fullName = `${userData.first_name} ${userData.last_name}`;
-    localStorage.setItem('cremation_user_name', fullName);
-    sessionStorage.setItem('user_full_name', fullName);
-
+      // Store the user's name in localStorage for persistence across page loads
+      const fullName = `${propUserData.first_name} ${propUserData.last_name}`;
+      localStorage.setItem('cremation_user_name', fullName);
+      sessionStorage.setItem('user_full_name', fullName);
+    }
   }, [propUserData]);
 
   // Effect to simulate content loading with a short delay
@@ -159,8 +128,17 @@ export default function CremationDashboardLayout({
     );
   }
 
-  // EMERGENCY FIX: Never show access denied
-  // Always render the dashboard
+  // Only render dashboard if authenticated and has user data
+  if (!isAuthenticated || !userData) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--primary-green)] mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   // Get the most up-to-date username from multiple sources in order of preference
   const sessionUserName = typeof window !== 'undefined' ? sessionStorage.getItem('user_full_name') : null;

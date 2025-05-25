@@ -34,7 +34,10 @@ export default function ToastContainer({ toasts, onClose }: ToastContainerProps)
 
   // Use createPortal to render toasts at the document body level
   return createPortal(
-    <div className="fixed top-4 left-0 right-0 mx-auto z-[9999] space-y-3 w-full flex flex-col items-center pointer-events-none">
+    <div
+      className="toast-container fixed top-4 left-0 right-0 mx-auto space-y-3 w-full flex flex-col items-center pointer-events-none"
+      style={{ zIndex: 999999 }}
+    >
       {toasts.map((toast) => (
         <div key={toast.id} className="pointer-events-auto">
           <Toast

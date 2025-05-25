@@ -95,7 +95,8 @@ export default function Toast({
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -50 }}
           transition={{ duration: 0.3 }}
-          className={`w-full shadow-lg rounded-lg ${styles.bg} border ${styles.border} p-4 mx-auto max-w-md shadow-xl`}
+          className={`toast-message w-full shadow-lg rounded-lg ${styles.bg} border ${styles.border} p-4 mx-auto max-w-md shadow-xl relative`}
+          style={{ zIndex: 999999 }}
         >
           <div className="flex items-center">
             <div className="flex-shrink-0">
