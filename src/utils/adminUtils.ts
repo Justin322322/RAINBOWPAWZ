@@ -11,29 +11,29 @@ export const getAdminIdFromRequest = async (request: NextRequest): Promise<numbe
   try {
     // Get auth token from request
     const authToken = getAuthTokenFromRequest(request);
-    
+
     if (!authToken) {
       return null;
     }
-    
+
     // Parse the token
     const [userId, accountType] = authToken.split('_');
-    
+
     // Check if this is an admin account
     if (!userId || accountType !== 'admin') {
       return null;
     }
-    
+
     // Get the admin ID from the database
     const userData = await query(
       'SELECT user_id FROM users WHERE user_id = ? AND role = ?',
       [userId, 'admin']
     ) as any[];
-    
+
     if (!userData || userData.length === 0) {
       return null;
     }
-    
+
     return parseInt(userData[0].user_id);
   } catch (error) {
     console.error('Error getting admin ID from request:', error);
@@ -49,11 +49,11 @@ export const ensureAdminLogsTable = async (): Promise<boolean> => {
   try {
     // Check if the table exists
     const tables = await query(`
-      SELECT table_name 
-      FROM information_schema.tables 
+      SELECT table_name
+      FROM information_schema.tables
       WHERE table_schema = DATABASE() AND table_name = 'admin_logs'
     `) as any[];
-    
+
     if (tables.length === 0) {
       // Create the table if it doesn't exist
       await query(`
@@ -72,7 +72,7 @@ export const ensureAdminLogsTable = async (): Promise<boolean> => {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
       `);
     }
-    
+
     return true;
   } catch (error) {
     console.error('Error ensuring admin_logs table exists:', error);
@@ -101,15 +101,15 @@ export const logAdminAction = async (
   try {
     // Ensure the admin_logs table exists
     const tableExists = await ensureAdminLogsTable();
-    
+
     if (!tableExists) {
-      console.error('Failed to ensure admin_logs table exists');
+      // Failed to ensure admin_logs table exists
       return false;
     }
-    
+
     // If adminId is null, use a default value for system actions
     const finalAdminId = adminId || 0;
-    
+
     // Log the action
     await query(
       `INSERT INTO admin_logs (admin_id, action, entity_type, entity_id, details, ip_address)
@@ -123,10 +123,10 @@ export const logAdminAction = async (
         ipAddress || null
       ]
     );
-    
+
     return true;
   } catch (error) {
-    console.error('Error logging admin action:', error);
+    // Error logging admin action
     return false;
   }
 };

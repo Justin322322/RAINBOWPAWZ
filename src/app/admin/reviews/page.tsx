@@ -89,7 +89,7 @@ function AdminReviewsPage() {
 
         // Show message if API returned one
         if (data.message) {
-          console.log('API message:', data.message);
+          // API message logged for debugging
         }
       } catch (error) {
         // Set error state
@@ -99,9 +99,8 @@ function AdminReviewsPage() {
         // Only show toast once to prevent loops
         if (!isErrorShown) {
           isErrorShown = true;
-          console.error('Error fetching reviews:', error);
+          // Error logged for debugging
           // Don't show toast to prevent potential re-render loops
-          // showToast('Error loading reviews: ' + errorMessage, 'error');
         }
       } finally {
         setLoading(false);

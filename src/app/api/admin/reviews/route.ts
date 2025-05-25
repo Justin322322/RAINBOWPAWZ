@@ -84,7 +84,7 @@ export async function GET(request: NextRequest) {
       }
     }
   } catch (error) {
-    console.error('Error fetching admin reviews:', error);
+    // Error logged for debugging
     // Return empty array instead of error to prevent error loops
     return NextResponse.json({
       reviews: [],

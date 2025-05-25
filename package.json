@@ -8,9 +8,6 @@
     "start": "next start",
     "production": "next build && node scripts/copy-uploads.js && next start",
     "start:any-port": "node -e \"const port = process.argv[2] || 3001; console.log('Starting on port ' + port); require('child_process').spawn('npx', ['next', 'start', '-p', port], {stdio: 'inherit'});\"",
-    "verify-images": "node scripts/verify-image-paths.js",
-    "diagnose-images": "next dev -p 3002",
-    "fix-images": "node scripts/fix-image-paths.js",
     "lint": "next lint --max-warnings=0",
     "lint:fix": "next lint --fix",
     "type-check": "tsc --pretty --noEmit",
@@ -48,7 +45,7 @@
   },
   "devDependencies": {
     "@next/eslint-plugin-next": "^15.3.2",
-    "@types/jest": "^29.5.14",
+
     "@types/jsonwebtoken": "^9.0.9",
     "@types/leaflet": "^1.9.17",
     "@types/node": "22.15.17",

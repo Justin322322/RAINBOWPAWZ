@@ -71,22 +71,12 @@ For testing with real emails, set `DEV_EMAIL_MODE=false` and provide valid SMTP 
 - `npm run build` - Build for production
 - `npm start` - Start the production server
 - `npm run start:custom` - Start with a custom port
-- `npm run clean-build` - Remove test files and build
+
 - `npm run setup` - Set up environment variables
 
 ## Cleanup and Maintenance
 
-The project includes a cleanup script that can be used to remove test files and unnecessary build artifacts:
-
-```
-node cleanup-repo.js --test-only
-```
-
-To clean everything except essential files:
-
-```
-node cleanup-repo.js
-```
+The project automatically handles cleanup during the build process. Build artifacts and temporary files are managed by Next.js and npm scripts.
 
 ## Running on Different Ports
 
@@ -178,17 +168,7 @@ Images for service packages are now organized in a folder structure for better m
 - Path format: `/public/uploads/packages/{packageId}/{filename}`
 - This provides better organization and makes it easier to manage images for each package
 
-The migration script `migrate-package-images.js` can be run to organize existing package images into the database:
-
-```
-node migrate-package-images.js
-```
-
-For newly uploaded images that might be orphaned (not yet in their package folder), you can run:
-
-```
-node migrate-orphaned-images.js
-```
+The migration script can be run to organize existing package images into the database if needed during maintenance.
 
 When uploading new package images, the system automatically:
 1. Creates a folder with the package ID if it doesn't exist

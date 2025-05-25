@@ -26,37 +26,7 @@ This document tracks incomplete, non-functional, or buggy modules/features that 
 - [ ] Payment verification process tested
 - [ ] Receipt generation and delivery works
 
-## 2. Admin Logging System ✅
-
-**Location:**
-- `src/app/api/businesses/applications/[id]/approve/route.ts`
-- `src/app/api/businesses/applications/[id]/decline/route.ts`
-
-**Issues:**
-- ✅ Hardcoded admin IDs (using ID 1) instead of getting actual admin ID from authentication
-- ✅ TODO comments indicating this needs to be fixed
-- ✅ Doesn't properly handle cases where the admin_logs table doesn't exist
-
-**Required to Fix:**
-- [x] Replace hardcoded admin IDs with actual admin IDs from authentication
-- [x] Ensure the admin_logs table exists and has the correct schema
-- [x] Add proper error handling for missing tables
-- [x] Implement comprehensive admin action logging
-
-**Solution:**
-- Created utility functions in `src/utils/adminUtils.ts` to handle admin ID retrieval and logging
-- Added proper authentication checks to ensure only admins can perform admin actions
-- Implemented automatic table creation if the admin_logs table doesn't exist
-- Added IP address tracking for better audit trails
-
-**Check if Finished:**
-- [x] Code changes implemented and tested
-- [x] No linting errors related to the changes
-- [x] Development server runs without errors
-- [x] Authentication check works correctly
-- [x] Admin logging works with actual admin IDs
-
-## 3. Map and Geocoding Functionality
+## 2. Map and Geocoding Functionality
 
 **Location:**
 - `src/components/map/MapComponent.tsx`
@@ -81,7 +51,7 @@ This document tracks incomplete, non-functional, or buggy modules/features that 
 - [ ] Map loads quickly and performs well
 - [ ] Location caching reduces API calls
 
-## 4. Cremation Section Loading Inconsistencies
+## 3. Cremation Section Loading Inconsistencies
 
 **Location:**
 - `src/app/cremation/components/LoadingComponents.tsx`
@@ -104,7 +74,7 @@ This document tracks incomplete, non-functional, or buggy modules/features that 
 - [ ] No custom loading implementations remain
 - [ ] Loading animations are visually consistent
 
-## 5. Database Table Structure Flexibility
+## 4. Database Table Structure Flexibility
 
 **Location:**
 - Various API routes with table existence checks
@@ -126,7 +96,7 @@ This document tracks incomplete, non-functional, or buggy modules/features that 
 - [ ] Conditional table checks are removed
 - [ ] All API routes use consistent table structure
 
-## 6. Reviews System
+## 5. Reviews System
 
 **Location:**
 - `src/app/api/reviews/pending/route.ts`
@@ -148,7 +118,7 @@ This document tracks incomplete, non-functional, or buggy modules/features that 
 - [ ] Fallback mechanisms are simplified or removed
 - [ ] Error handling is consistent and user-friendly
 
-## 7. Image Path Handling
+## 6. Image Path Handling
 
 **Location:**
 - `src/components/ui/DirectImageWithFallback.tsx`
@@ -171,7 +141,7 @@ This document tracks incomplete, non-functional, or buggy modules/features that 
 - [ ] Image components are simplified
 - [ ] Images are properly optimized for web
 
-## 8. OTP Verification System
+## 7. OTP Verification System
 
 **Location:**
 - `src/app/api/auth/otp/verify/route.ts`
@@ -194,7 +164,7 @@ This document tracks incomplete, non-functional, or buggy modules/features that 
 - [ ] User identification is reliable
 - [ ] OTP system is secure against common attacks
 
-## 9. Booking Status Updates
+## 8. Booking Status Updates
 
 **Location:**
 - `src/app/api/cremation/bookings/[id]/status/route.ts`
@@ -216,88 +186,6 @@ This document tracks incomplete, non-functional, or buggy modules/features that 
 - [ ] Booking status changes are handled consistently
 - [ ] Notifications are sent for all status changes
 
-## 10. Profile Picture System ✅
-
-**Location:**
-- `src/app/cremation/profile/page.tsx`
-- `src/app/api/cremation/upload-profile-picture/route.ts`
-- `src/components/navigation/CremationNavbar.tsx`
-- `src/app/api/image/[...path]/route.ts`
-
-**Issues:**
-- ✅ No profile picture functionality for users
-- ✅ Navigation bar only showed default user icons
-- ✅ No way for users to personalize their profiles
-- ✅ Document images were incorrectly showing as profile pictures
-
-**Required to Fix:**
-- [x] Add profile picture upload functionality to profile settings
-- [x] Display profile pictures in navigation bar across all pages
-- [x] Implement proper image validation and storage
-- [x] Create API endpoints for profile picture upload and serving
-- [x] Ensure profile pictures persist across all cremation dashboard pages
-
-**Solution:**
-- Created comprehensive profile picture upload system in cremation profile page
-- Added profile picture display in navigation bar with fallback to user icon
-- Implemented file validation (type, size) with user-friendly error messages
-- Created dedicated API endpoint for profile picture uploads with proper file handling
-- Enhanced image serving API to handle profile picture paths
-- Added preview functionality that replaces main profile circle (not separate)
-- Integrated with existing authentication and user management system
-
-**Check if Finished:**
-- [x] Profile picture upload works in profile settings
-- [x] Profile pictures display in navigation bar across all pages
-- [x] File validation prevents invalid uploads
-- [x] Image serving API handles profile pictures correctly
-- [x] Preview shows in main circle (not separate circle)
-- [x] Profile pictures persist across page navigation
-- [x] Fallback to user icon when no profile picture exists
-
-## 11. Notification System ✅
-
-**Location:**
-- `src/app/api/notifications/route.ts`
-- `src/app/api/notifications/mark-read/route.ts`
-- `src/utils/rateLimitUtils.ts`
-
-**Issues:**
-- ✅ Client-side rate limiting using timestamps
-- ✅ Complex caching logic with headers
-- ✅ Returns empty results instead of errors in some cases
-
-**Required to Fix:**
-- [x] Implement proper server-side rate limiting
-- [x] Standardize error handling
-- [x] Simplify the caching logic
-- [x] Improve notification delivery reliability
-
-**Solution:**
-- Created server-side rate limiting utility using database-backed tracking in `src/utils/rateLimitUtils.ts`
-- Implemented proper rate limiting for notification API endpoints (max 30 requests per minute per user)
-- Standardized error handling across all notification endpoints with consistent response formats
-- Simplified caching logic by removing client-side timestamp workarounds and using proper HTTP cache headers
-- Enhanced notification delivery reliability with better error handling and database connection checks
-- Added proper logging for rate limiting and error tracking
-- **COMPREHENSIVE NOTIFICATION SYSTEM IMPLEMENTED:**
-  - ✅ Comprehensive booking lifecycle notifications (created, confirmed, in-progress, completed, cancelled)
-  - ✅ Payment confirmation notifications (pending, confirmed, failed, refunded)
-  - ✅ Review request notifications (automated after booking completion)
-  - ✅ System maintenance notifications (admin-controlled system-wide announcements)
-  - ✅ Automated reminder notifications (24-hour and 1-hour booking reminders)
-  - ✅ In-app notifications for booking status updates and payment confirmations
-  - ✅ Email + in-app notification delivery for all major events
-  - ✅ Admin dashboard for notification management and reminder processing
-  - ✅ Scheduled reminder system with database-backed tracking
-  - ✅ Provider notifications for new bookings received
-
-**Check if Finished:**
-- [x] Server-side rate limiting is implemented
-- [x] Error handling is standardized
-- [x] Caching logic is simplified
-- [x] Notifications are delivered reliably
-
 ## Priority Order
 
 Based on the impact on user experience and system functionality, here's the suggested priority order for addressing these issues:
@@ -310,9 +198,6 @@ Based on the impact on user experience and system functionality, here's the sugg
 6. Database Table Structure Flexibility (Important for system stability)
 7. OTP Verification System (Important for security)
 8. Reviews System (Important for feedback)
-9. ~~Notification System~~ ✅ (Completed - Important for user engagement)
-10. ~~Admin Logging System~~ ✅ (Completed - Important for administration)
-11. ~~Profile Picture System~~ ✅ (Completed - Important for user personalization)
 
 ## Additional Notes
 
