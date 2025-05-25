@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { clearAuthToken } from '@/utils/auth';
 import { useToast } from '@/context/ToastContext';
+import { clearBusinessVerificationCache } from '@/utils/businessVerificationCache';
 import Modal from './Modal';
 
 interface LogoutModalProps {
@@ -21,7 +22,7 @@ export default function LogoutModal({ isOpen, onClose, userName = 'User' }: Logo
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
-    
+
     try {
       // Call the logout API
       const response = await fetch('/api/auth/logout', {
@@ -33,19 +34,22 @@ export default function LogoutModal({ isOpen, onClose, userName = 'User' }: Logo
 
       // Show success state
       setLogoutSuccess(true);
-      
+
       // Show toast notification
       showToast('Logged out successfully. See you soon!', 'success');
-      
+
       // Clear client-side auth data
       clearAuthToken();
-      
+
+      // Clear business verification cache
+      clearBusinessVerificationCache();
+
       // Clear session storage
       sessionStorage.removeItem('user_data');
       sessionStorage.removeItem('otp_verified');
       sessionStorage.removeItem('auth_user_id');
       sessionStorage.removeItem('auth_account_type');
-      
+
       // Redirect to home page after a short delay
       setTimeout(() => {
         router.push('/');
@@ -59,15 +63,15 @@ export default function LogoutModal({ isOpen, onClose, userName = 'User' }: Logo
   };
 
   return (
-    <Modal 
-      isOpen={isOpen} 
-      onClose={!isLoggingOut ? onClose : () => {}} 
+    <Modal
+      isOpen={isOpen}
+      onClose={!isLoggingOut ? onClose : () => {}}
       title={logoutSuccess ? "Logged Out Successfully" : "Confirm Logout"}
       size="small"
     >
       <AnimatePresence mode="wait">
         {logoutSuccess ? (
-          <motion.div 
+          <motion.div
             key="success"
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -82,7 +86,7 @@ export default function LogoutModal({ isOpen, onClose, userName = 'User' }: Logo
             <h2 className="text-2xl font-semibold text-gray-800 mb-2">Goodbye{userName ? `, ${userName}` : ''}!</h2>
             <p className="text-gray-600 mb-6">You've been successfully logged out. Redirecting to home page...</p>
             <div className="w-12 h-1.5 bg-gray-200 rounded-full overflow-hidden">
-              <motion.div 
+              <motion.div
                 className="h-full bg-green-500 rounded-full"
                 initial={{ width: 0 }}
                 animate={{ width: "100%" }}
@@ -91,7 +95,7 @@ export default function LogoutModal({ isOpen, onClose, userName = 'User' }: Logo
             </div>
           </motion.div>
         ) : (
-          <motion.div 
+          <motion.div
             key="confirm"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -107,7 +111,7 @@ export default function LogoutModal({ isOpen, onClose, userName = 'User' }: Logo
               <h3 className="text-lg font-medium text-gray-900 mb-2">Are you sure you want to log out?</h3>
               <p className="text-gray-600">You will need to log in again to access your account.</p>
             </div>
-            
+
             <div className="flex justify-center space-x-4">
               <button
                 type="button"

@@ -3,12 +3,14 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { fastAuthCheck } from '@/utils/auth';
+import {
+  getCachedBusinessVerification,
+  setCachedBusinessVerification,
+  clearBusinessVerificationCache
+} from '@/utils/businessVerificationCache';
 
-// Force reset the global state to ensure verification checks happen every time
-const globalBusinessAuthState = {
-  verified: false,
-  userData: null as any,
-};
+// Export the clear function for use in other components
+export { clearBusinessVerificationCache };
 
 // HOC to wrap components that require business verification
 const withBusinessVerification = <P extends object>(
@@ -16,14 +18,33 @@ const withBusinessVerification = <P extends object>(
 ) => {
   const WithBusinessVerification: React.FC<Omit<P, 'userData'>> = (props) => {
     const router = useRouter();
-    const [isAuthenticated, setIsAuthenticated] = useState(false);
-    const [userData, setUserData] = useState<any>(null);
-    const [isLoading, setIsLoading] = useState(true);
+
+    // Check cache immediately during initialization to prevent loading flicker
+    const cachedVerification = getCachedBusinessVerification();
+    const hasCachedData = cachedVerification && cachedVerification.verified && cachedVerification.userData;
+
+    const [isAuthenticated, setIsAuthenticated] = useState(hasCachedData);
+    const [userData, setUserData] = useState<any>(hasCachedData ? cachedVerification.userData : null);
+    const [isLoading, setIsLoading] = useState(!hasCachedData);
 
     useEffect(() => {
       const checkBusinessVerification = async () => {
         try {
+          // If we already have cached data, don't show loading
+          if (hasCachedData) {
+            return;
+          }
+
           setIsLoading(true);
+
+          // Double-check cache in case it was set between render and effect
+          const cachedVerification = getCachedBusinessVerification();
+          if (cachedVerification && cachedVerification.verified && cachedVerification.userData) {
+            setUserData(cachedVerification.userData);
+            setIsAuthenticated(true);
+            setIsLoading(false);
+            return;
+          }
 
           // Check if user is authenticated
           const authResult = fastAuthCheck();
@@ -41,7 +62,7 @@ const withBusinessVerification = <P extends object>(
             return;
           }
 
-          // Fetch business status from API
+          // Only make API call if cache is invalid or doesn't exist
           const response = await fetch('/api/auth/check-business-status');
           const result = await response.json();
 
@@ -83,13 +104,9 @@ const withBusinessVerification = <P extends object>(
             setUserData(completeUserData);
             setIsAuthenticated(true);
 
-            // Store verification status
-            sessionStorage.setItem('verified_business', 'true');
-            sessionStorage.setItem('user_data', JSON.stringify(completeUserData));
+            // Cache the verification result
+            setCachedBusinessVerification(completeUserData, true);
 
-            // Update global state
-            globalBusinessAuthState.verified = true;
-            globalBusinessAuthState.userData = completeUserData;
           } else if (applicationStatus === 'restricted') {
             // Business is restricted, redirect to restricted page
             console.log('Business is restricted');
@@ -111,7 +128,7 @@ const withBusinessVerification = <P extends object>(
       };
 
       checkBusinessVerification();
-    }, [router]);
+    }, [router, hasCachedData]);
 
     // Show loading state while checking verification
     if (isLoading) {

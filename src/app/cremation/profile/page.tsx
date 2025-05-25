@@ -52,7 +52,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
 
   // Profile data state
   const [profileData, setProfileData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true); // Only for initial page load
   const [error, setError] = useState<string | null>(null);
 
   // Document upload states
@@ -133,11 +133,11 @@ function CremationProfilePage({ userData }: { userData: any }) {
           phone: dummyProfile.phone || ''
         });
 
-        setLoading(false);
+        setInitialLoading(false);
         return;
       }
 
-      setLoading(true);
+      setInitialLoading(true);
       setError(null); // Clear any previous errors
 
       // Add cache-busting query parameter and no-cache headers
@@ -207,7 +207,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
         }, 3000);
       }
     } finally {
-      setLoading(false);
+      setInitialLoading(false);
     }
   };
 
@@ -470,10 +470,14 @@ function CremationProfilePage({ userData }: { userData: any }) {
         profilePictureInputRef.current.value = '';
       }
 
-      // Trigger a page refresh to update the navbar profile picture
-      setTimeout(() => {
-        window.location.reload();
-      }, 1000);
+      // Update the cached user data with new profile picture
+      try {
+        // Use the utility function to update all caches (this also dispatches the event)
+        const { updateCachedProfilePicture } = await import('@/utils/businessVerificationCache');
+        updateCachedProfilePicture(data.profilePicturePath);
+      } catch (error) {
+        console.error('Error updating cached user data:', error);
+      }
     } catch (error) {
       showToast(error instanceof Error ? error.message : 'Failed to upload profile picture', 'error');
     } finally {
@@ -672,7 +676,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
         </div>
       </div>
 
-      {loading ? (
+      {initialLoading ? (
         <LoadingSpinner className="h-64" />
       ) : error ? (
         <div className="bg-white rounded-xl shadow-sm p-8 text-center">

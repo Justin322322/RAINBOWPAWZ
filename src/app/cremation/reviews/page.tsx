@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { format } from 'date-fns';
 import {
   StarIcon,
@@ -47,46 +47,38 @@ function ReviewsPage({ userData }: ReviewsPageProps) {
   const [services, setServices] = useState<{id: number, name: string}[]>([]);
   const [filterService, setFilterService] = useState<string>('');
 
+  // Ref to track if we've already shown an error toast
+  const hasShownErrorRef = useRef(false);
+
   useEffect(() => {
     // Flag to prevent multiple error toasts
     let isErrorShown = false;
+    let isMounted = true;
 
     const fetchReviews = async () => {
-      if (!userData) return;
+      if (!userData || !isMounted) return;
+
+      // Add a small delay to prevent rapid re-execution
+      await new Promise(resolve => setTimeout(resolve, 100));
 
       try {
         setLoading(true);
         setError(null);
 
-        // Get the provider ID from the user data
-        const providerId = userData.provider_id || userData.id;
+        // Get the provider ID from the user data - prioritize business_id first
+        let effectiveProviderId = userData.business_id || userData.provider_id || userData.service_provider_id || userData.id;
 
-        if (!providerId) {
+        if (!effectiveProviderId) {
           throw new Error('Provider ID not found');
         }
 
-        console.log(`Fetching reviews for provider ID: ${providerId} (from userData:`, {
+        console.log(`Fetching reviews for provider ID: ${effectiveProviderId} (from userData:`, {
+          business_id: userData.business_id,
           provider_id: userData.provider_id,
+          service_provider_id: userData.service_provider_id,
           id: userData.id,
           role: userData.role
         });
-
-        // Make sure we're using the correct provider ID
-        // For service providers, we should use their ID
-        // For business users, we should use their provider_id
-        let effectiveProviderId = providerId;
-
-        // If the user is a business and has a business_id, use that instead
-        if (userData.business_id) {
-          effectiveProviderId = userData.business_id;
-          console.log(`Using business_id ${effectiveProviderId} instead of provider_id`);
-        }
-
-        // If the user is associated with a service provider, use that ID
-        if (userData.service_provider_id) {
-          effectiveProviderId = userData.service_provider_id;
-          console.log(`Using service_provider_id ${effectiveProviderId} instead of provider_id`);
-        }
 
         const response = await fetch(`/api/reviews/provider/${effectiveProviderId}`);
 
@@ -96,6 +88,9 @@ function ReviewsPage({ userData }: ReviewsPageProps) {
 
         const data = await response.json();
         console.log('Reviews API response:', data);
+
+        // Only update state if component is still mounted
+        if (!isMounted) return;
 
         // Check if we have reviews data
         if (data.reviews && Array.isArray(data.reviews)) {
@@ -142,18 +137,27 @@ function ReviewsPage({ userData }: ReviewsPageProps) {
         setAverageRating(numericRating);
         setTotalReviews(data.totalReviews || 0);
         console.log(`Set average rating: ${numericRating} (type: ${typeof numericRating}) from ${data.totalReviews} reviews`);
+
+        // Reset error flag on successful load
+        hasShownErrorRef.current = false;
       } catch (error) {
+        // Only update state and show error if component is still mounted
+        if (!isMounted) return;
+
         const errorMessage = error instanceof Error ? error.message : 'An error occurred while fetching reviews';
         setError(errorMessage);
 
         // Only show toast once to prevent loops
-        if (!isErrorShown) {
+        if (!isErrorShown && !hasShownErrorRef.current) {
           isErrorShown = true;
+          hasShownErrorRef.current = true;
           console.error('Error fetching reviews:', error);
           showToast('Error loading reviews: ' + errorMessage, 'error');
         }
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
 
@@ -161,6 +165,7 @@ function ReviewsPage({ userData }: ReviewsPageProps) {
 
     // Cleanup function
     return () => {
+      isMounted = false; // Prevent state updates after unmount
       isErrorShown = true; // Prevent showing errors if component unmounts
     };
   }, [userData, showToast]);

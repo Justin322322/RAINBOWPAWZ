@@ -48,40 +48,6 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/logo.png" />
         <link rel="shortcut icon" href="/logo.png" />
         <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
-
-        {/* Force verification on all cremation pages */}
-        <Script id="clear-verification-cache" strategy="beforeInteractive">
-          {`
-            try {
-              // Clear any potential verification bypass in session storage
-              sessionStorage.removeItem('verified_business');
-
-              // Check if we need to redirect to pending verification
-              const userData = sessionStorage.getItem('user_data');
-              if (userData) {
-                try {
-                  const data = JSON.parse(userData);
-                  const authCookie = document.cookie.split(';').find(c => c.trim().startsWith('auth_token='));
-                  if (authCookie) {
-                    const [userId, accountType] = decodeURIComponent(authCookie.split('=')[1]).split('_');
-                    if (accountType === 'business') {
-                      // Force reload verification on all cremation dashboard pages
-                      if (window.location.pathname.startsWith('/cremation/') &&
-                          !window.location.pathname.includes('/cremation/pending-verification') &&
-                          !window.location.pathname.includes('/cremation/documents')) {
-
-                        // We'll keep the user_data but force a new verification check
-                        sessionStorage.removeItem('verified_business');
-                      }
-                    }
-                  }
-                } catch (e) {
-                }
-              }
-            } catch (e) {
-            }
-          `}
-        </Script>
       </head>
       <body className={inter.className}>
         <ClientToastProvider>

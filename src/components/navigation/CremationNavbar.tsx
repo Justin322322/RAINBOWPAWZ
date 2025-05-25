@@ -32,7 +32,45 @@ export default function CremationNavbar({
 
   // Always initialize with the default value for server-side rendering to avoid hydration mismatch
   const [userName, setUserName] = useState('Cremation Provider');
+
+  // Initialize profile picture from cache immediately (client-side only)
+  const getInitialProfilePicture = () => {
+    if (typeof window === 'undefined' || typeof sessionStorage === 'undefined') return null;
+
+    try {
+      // Check business verification cache first
+      const businessCache = sessionStorage.getItem('business_verification_cache');
+      if (businessCache) {
+        const cache = JSON.parse(businessCache);
+        if (cache.userData?.profile_picture) {
+          return cache.userData.profile_picture;
+        }
+      }
+
+      // Fallback to legacy user data cache
+      const userData = sessionStorage.getItem('user_data');
+      if (userData) {
+        const user = JSON.parse(userData);
+        if (user.profile_picture) {
+          return user.profile_picture;
+        }
+      }
+    } catch (error) {
+      console.error('Error reading cached profile picture:', error);
+    }
+
+    return null;
+  };
+
   const [profilePicture, setProfilePicture] = useState<string | null>(null);
+
+  // Load cached profile picture immediately on mount (before hydration check)
+  useEffect(() => {
+    const cachedProfilePicture = getInitialProfilePicture();
+    if (cachedProfilePicture) {
+      setProfilePicture(cachedProfilePicture);
+    }
+  }, []);
 
   // Use useEffect to update the username on the client side only after hydration
   useEffect(() => {
@@ -45,19 +83,74 @@ export default function CremationNavbar({
       const bestUserName = sessionUserName || localUserName || propUserName;
       setUserName(bestUserName);
 
-      // Fetch profile picture from API
-      fetchProfilePicture();
+      // Load profile picture from cache immediately, then fetch if needed
+      const cachedProfilePicture = getInitialProfilePicture();
+      if (cachedProfilePicture) {
+        setProfilePicture(cachedProfilePicture);
+      } else {
+        // Only fetch from API if no cached profile picture
+        fetchProfilePicture();
+      }
     }
   }, [propUserName, isMounted]);
 
-  // Function to fetch profile picture
+  // Listen for profile picture updates
+  useEffect(() => {
+    const handleProfilePictureUpdate = (event: CustomEvent) => {
+      if (event.detail?.profilePicturePath) {
+        setProfilePicture(event.detail.profilePicturePath);
+      } else {
+        // Refetch from API if no path provided
+        fetchProfilePicture();
+      }
+    };
+
+    // Listen for custom event when profile picture is updated
+    window.addEventListener('profilePictureUpdated', handleProfilePictureUpdate as EventListener);
+
+    return () => {
+      window.removeEventListener('profilePictureUpdated', handleProfilePictureUpdate as EventListener);
+    };
+  }, []);
+
+  // Function to get profile picture from cache or API
   const fetchProfilePicture = async () => {
     try {
+      // First, try to get profile picture from cached business verification data
+      const businessCache = sessionStorage.getItem('business_verification_cache');
+      if (businessCache) {
+        const cache = JSON.parse(businessCache);
+        if (cache.userData?.profile_picture) {
+          setProfilePicture(cache.userData.profile_picture);
+          return; // Use cached data, no need for API call
+        }
+      }
+
+      // Fallback: check legacy user data cache
+      const userData = sessionStorage.getItem('user_data');
+      if (userData) {
+        const user = JSON.parse(userData);
+        if (user.profile_picture) {
+          setProfilePicture(user.profile_picture);
+          return; // Use cached data, no need for API call
+        }
+      }
+
+      // Only make API call if no cached profile picture found
       const response = await fetch('/api/cremation/profile');
       if (response.ok) {
         const data = await response.json();
         if (data.profile?.profilePicturePath) {
           setProfilePicture(data.profile.profilePicturePath);
+
+          // Update cache with the fetched profile picture
+          if (businessCache) {
+            const cache = JSON.parse(businessCache);
+            if (cache.userData) {
+              cache.userData.profile_picture = data.profile.profilePicturePath;
+              sessionStorage.setItem('business_verification_cache', JSON.stringify(cache));
+            }
+          }
         }
       }
     } catch (error) {
