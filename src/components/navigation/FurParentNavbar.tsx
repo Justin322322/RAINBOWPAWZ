@@ -14,6 +14,7 @@ import LogoutModal from '@/components/LogoutModal';
 import CartDropdown from '@/components/cart/CartDropdown';
 import NotificationBell from '@/components/ui/NotificationBell';
 import { useCart } from '@/contexts/CartContext';
+import { getImagePath } from '@/utils/imageUtils';
 
 interface FurParentNavbarProps {
   activePage?: string;
@@ -27,9 +28,51 @@ export default function FurParentNavbar({ activePage: propActivePage, userName =
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [activePage, setActivePage] = useState('');
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [profilePicture, setProfilePicture] = useState<string | null>(() => {
+    // Initialize immediately from session storage
+    if (typeof window !== 'undefined') {
+      const userData = sessionStorage.getItem('user_data');
+      if (userData) {
+        try {
+          const user = JSON.parse(userData);
+          return user.profile_picture || null;
+        } catch {
+          return null;
+        }
+      }
+    }
+    return null;
+  });
 
   // Get real cart item count from context
   const { itemCount } = useCart();
+
+  // Function to update profile picture from session storage
+  const updateProfilePictureFromStorage = () => {
+    const userData = sessionStorage.getItem('user_data');
+    if (userData) {
+      try {
+        const user = JSON.parse(userData);
+        setProfilePicture(user.profile_picture || null);
+      } catch (error) {
+        console.error('Failed to parse user data:', error);
+      }
+    }
+  };
+
+  // Listen for profile picture updates from other components
+  useEffect(() => {
+    const handleProfilePictureUpdate = () => {
+      updateProfilePictureFromStorage();
+    };
+
+    // Listen for custom event when profile picture is updated
+    window.addEventListener('profilePictureUpdated', handleProfilePictureUpdate);
+
+    return () => {
+      window.removeEventListener('profilePictureUpdated', handleProfilePictureUpdate);
+    };
+  }, []);
 
   // Open logout modal
   const handleLogoutClick = () => {
@@ -141,8 +184,20 @@ export default function FurParentNavbar({ activePage: propActivePage, userName =
                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                 className="flex items-center space-x-2 text-white focus:outline-none border border-white/30 rounded-full px-4 py-2 hover:bg-white/10 transition-all duration-300"
               >
-                <div className="bg-white rounded-full h-8 w-8 flex items-center justify-center mr-2">
-                  <UserIcon className="h-5 w-5 text-[var(--primary-green)]" />
+                <div className="bg-white rounded-full h-8 w-8 flex items-center justify-center mr-2 overflow-hidden">
+                  {profilePicture ? (
+                    <img
+                      src={getImagePath(profilePicture)}
+                      alt="Profile"
+                      className="h-full w-full object-cover"
+                      onError={() => {
+                        // On error, clear the profile picture to show UserIcon
+                        setProfilePicture(null);
+                      }}
+                    />
+                  ) : (
+                    <UserIcon className="h-5 w-5 text-[var(--primary-green)]" />
+                  )}
                 </div>
                 <span className="modern-text font-medium tracking-wide">{userName}</span>
                 <ChevronDownIcon className="h-4 w-4 ml-2" />

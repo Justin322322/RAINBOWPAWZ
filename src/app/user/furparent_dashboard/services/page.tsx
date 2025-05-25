@@ -15,6 +15,7 @@ import dynamic from 'next/dynamic';
 import withOTPVerification from '@/components/withOTPVerification';
 import FurParentPageSkeleton from '@/components/ui/FurParentPageSkeleton';
 import SectionLoader from '@/components/ui/SectionLoader';
+import { Skeleton } from '@/components/ui/SkeletonLoader';
 import { getUserLocation, LocationData } from '@/utils/geolocation';
 
 // Import the map component with dynamic loading and standardized loading indicator
@@ -198,58 +199,120 @@ function ServicesPage({ userData }: ServicesPageProps) {
         <div ref={mapSectionRef} className="bg-white py-8">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="bg-white rounded-lg shadow-[0_4px_16px_rgba(0,0,0,0.1)] p-8 -mt-16 relative z-20">
-              <h2 className="text-lg md:text-xl text-[var(--primary-green)] text-center mb-6 modern-heading">
-                Based on your location, we've found these nearby cremation centers:
-              </h2>
-
-              <div className="flex flex-col gap-4 items-center justify-center">
-                <div className="flex items-center justify-center w-full mb-2">
-                  <span className="modern-text text-sm text-gray-600 flex items-center">
-                    <HomeIcon className="h-4 w-4 mr-1 text-[var(--primary-green)]" />
-                    Your location: {userLocation.address}
-                    {userLocation.source === 'default' && (
-                      <span className="ml-2 text-xs px-2 py-0.5 bg-yellow-100 text-yellow-800 rounded-full">
-                        Default location (update your profile to change)
-                      </span>
-                    )}
-                  </span>
-                </div>
-
-                {/* Map Container with conditional rendering */}
-                <div className="w-full h-[500px] rounded-lg overflow-hidden shadow-inner relative">
-                  {isMapVisible && !isLoading && serviceProviders.length > 0 ? (
-                    <MapComponent
-                      userAddress={userLocation.address}
-                      userCoordinates={userLocation.coordinates}
-                      serviceProviders={serviceProviders.map(provider => ({
-                        id: provider.id,
-                        name: provider.name,
-                        address: provider.address
-                      }))}
-                      selectedProviderId={selectedProviderId}
+              {isLoading ? (
+                <>
+                  {/* Skeleton for main heading */}
+                  <div className="text-center mb-6">
+                    <Skeleton
+                      height="h-6"
+                      width="w-3/4"
+                      className="mx-auto mb-2"
+                      rounded="md"
+                      animate={true}
                     />
-                  ) : (
-                    <div className="w-full h-full">
-                      {isLoading ? (
-                        <SectionLoader
-                          message="Loading map..."
-                          minHeight="h-full"
-                          withBackground={true}
-                          rounded={true}
+                    <Skeleton
+                      height="h-6"
+                      width="w-1/2"
+                      className="mx-auto"
+                      rounded="md"
+                      animate={true}
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-4 items-center justify-center">
+                    {/* Skeleton for location text */}
+                    <div className="flex items-center justify-center w-full mb-2">
+                      <div className="flex items-center">
+                        <Skeleton
+                          height="h-4"
+                          width="w-4"
+                          className="mr-2"
+                          rounded="sm"
+                          animate={true}
                         />
-                      ) : serviceProviders.length === 0 ? (
-                        <div className="w-full h-full flex items-center justify-center bg-gray-100 rounded-lg text-center p-8">
-                          <div>
-                            <MapPinIcon className="h-12 w-12 mx-auto text-gray-300 mb-4" />
-                            <p className="text-gray-600">No service providers found to display on map</p>
-                          </div>
-                        </div>
-                      ) : (
-                        <FurParentPageSkeleton type="services" />
-                      )}
+                        <Skeleton
+                          height="h-4"
+                          width="w-64"
+                          rounded="md"
+                          animate={true}
+                        />
+                      </div>
                     </div>
-                  )}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <h2 className="text-lg md:text-xl text-[var(--primary-green)] text-center mb-6 modern-heading">
+                    Based on your location, we've found these nearby cremation centers:
+                  </h2>
+
+                  <div className="flex flex-col gap-4 items-center justify-center">
+                    <div className="flex items-center justify-center w-full mb-2">
+                      <span className="modern-text text-sm text-gray-600 flex items-center">
+                        <HomeIcon className="h-4 w-4 mr-1 text-[var(--primary-green)]" />
+                        Your location: {userLocation.address}
+                        {userLocation.source === 'default' && (
+                          <span className="ml-2 text-xs px-2 py-0.5 bg-yellow-100 text-yellow-800 rounded-full">
+                            Default location (update your profile to change)
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Map Container with conditional rendering */}
+              <div className="w-full h-[500px] rounded-lg overflow-hidden shadow-inner relative">
+                {isLoading ? (
+                  <SectionLoader
+                    message="Loading map..."
+                    minHeight="h-full"
+                    withBackground={true}
+                    rounded={true}
+                  />
+                ) : isMapVisible && serviceProviders.length > 0 ? (
+                  <MapComponent
+                    userAddress={userLocation.address}
+                    userCoordinates={userLocation.coordinates}
+                    serviceProviders={serviceProviders.map(provider => ({
+                      id: provider.id,
+                      name: provider.name,
+                      address: provider.address
+                    }))}
+                    selectedProviderId={selectedProviderId}
+                  />
+                ) : serviceProviders.length === 0 ? (
+                  <div className="w-full h-full flex items-center justify-center bg-gray-100 rounded-lg text-center p-8">
+                    <div>
+                      <MapPinIcon className="h-12 w-12 mx-auto text-gray-300 mb-4" />
+                      <p className="text-gray-600">No service providers found to display on map</p>
+                    </div>
+                  </div>
+                ) : (
+                  <FurParentPageSkeleton type="services" />
+                )}
+              </div>
+
+              {/* Footer text with skeleton loading */}
+              {isLoading ? (
+                <div className="mt-2 text-center">
+                  <Skeleton
+                    height="h-4"
+                    width="w-3/4"
+                    className="mx-auto mb-1"
+                    rounded="md"
+                    animate={true}
+                  />
+                  <Skeleton
+                    height="h-3"
+                    width="w-1/2"
+                    className="mx-auto"
+                    rounded="md"
+                    animate={true}
+                  />
                 </div>
+              ) : (
                 <p className="modern-caption mt-2 text-center">
                   Showing cremation services near your location in {userLocation.address}.
                   {userLocation.source === 'default' && (
@@ -258,7 +321,7 @@ function ServicesPage({ userData }: ServicesPageProps) {
                     </span>
                   )}
                 </p>
-              </div>
+              )}
             </div>
           </div>
         </div>

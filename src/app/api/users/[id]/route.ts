@@ -6,8 +6,12 @@ export async function GET(request: NextRequest) {
   const url = new URL(request.url);
   const pathParts = url.pathname.split('/');
   const userId = pathParts[pathParts.length - 1];
+
+  console.log(`[User API] Fetching user data for ID: ${userId}`);
+
   try {
     if (!userId) {
+      console.log('[User API] Error: No user ID provided');
       return NextResponse.json({
         error: 'User ID is required'
       }, { status: 400 });
@@ -17,7 +21,7 @@ export async function GET(request: NextRequest) {
     // Try to fetch user data from database
     try {
       const userResult = await query(
-        `SELECT user_id, first_name, last_name, email, phone_number, address, sex,
+        `SELECT user_id as id, first_name, last_name, email, phone, address, gender, profile_picture,
          created_at, updated_at, is_otp_verified, role, status, is_verified
          FROM users WHERE user_id = ? LIMIT 1`,
         [userId]
@@ -27,6 +31,7 @@ export async function GET(request: NextRequest) {
       // If user found in database, return it with defaults for missing fields
       if (userResult && userResult.length > 0) {
         const user = userResult[0];
+        console.log(`[User API] Found user in database:`, { id: user.id, role: user.role, is_otp_verified: user.is_otp_verified });
 
         // Set defaults for missing fields
         if (user.is_otp_verified === undefined || user.is_otp_verified === null) user.is_otp_verified = 1;
@@ -34,10 +39,15 @@ export async function GET(request: NextRequest) {
         if (!user.last_name) user.last_name = userId;
 
         // Set user_type based on role for backward compatibility
-        if (user.role === 'fur_parent') {
+        if (user.role === 'fur_parent' || user.role === 'user') {
           user.user_type = 'user';
         } else {
           user.user_type = user.role; // 'admin' or 'business'
+        }
+
+        // Ensure id field is set correctly
+        if (!user.id && user.user_id) {
+          user.id = user.user_id;
         }
 
         // For business accounts, fetch additional business details including verification status
@@ -79,9 +89,13 @@ export async function GET(request: NextRequest) {
         // Remove sensitive information
         delete user.password;
 
+        console.log(`[User API] Returning user data:`, { id: user.id, user_type: user.user_type, is_otp_verified: user.is_otp_verified });
         return NextResponse.json(user);
+      } else {
+        console.log(`[User API] No user found in database for ID: ${userId}`);
       }
     } catch (dbError) {
+      console.error(`[User API] Database error:`, dbError);
       // Continue to fallback instead of throwing
     }
 
@@ -145,11 +159,13 @@ export async function GET(request: NextRequest) {
     }
 
     // User not found
+    console.log(`[User API] User not found for ID: ${userId}`);
     return NextResponse.json({
       error: 'User not found',
       message: 'No user found with the provided ID'
     }, { status: 404 });
   } catch (error) {
+    console.error(`[User API] Unexpected error:`, error);
     return NextResponse.json({
       error: 'Failed to fetch user data',
       message: error instanceof Error ? error.message : 'Unknown error'

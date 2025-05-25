@@ -94,19 +94,19 @@ export async function GET(request: NextRequest) {
     try {
       // Build the query based on parameters
       let notificationsQuery = `
-        SELECT id, title, message, type, is_read, link, created_at
+        SELECT notification_id as id, title, message, type, is_read, link, created_at
         FROM notifications
         WHERE user_id = ?
       `;
 
-      const queryParams = [userId];
+      const queryParams: any[] = [userId];
 
       if (unreadOnly) {
         notificationsQuery += ' AND is_read = 0';
       }
 
       notificationsQuery += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
-      queryParams.push(String(limit), String(offset));
+      queryParams.push(limit, offset);
 
       // Execute the query
       const notifications = await query(notificationsQuery, queryParams) as any[];
@@ -306,7 +306,7 @@ async function ensureNotificationsTable() {
             INDEX idx_user_id (user_id),
             INDEX idx_is_read (is_read),
             INDEX idx_created_at (created_at),
-            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
           ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         `);
       } catch (createError) {

@@ -23,22 +23,22 @@ export async function PUT(request: NextRequest) {
     }
 
     const [tokenUserId, accountType] = authToken.split('_');
-    
+
     // Only allow users to update their own profile (or admins to update any profile)
     if (tokenUserId !== userId && accountType !== 'admin') {
-      return NextResponse.json({ 
-        error: 'You are not authorized to update this profile' 
+      return NextResponse.json({
+        error: 'You are not authorized to update this profile'
       }, { status: 403 });
     }
 
     // Get update data from request body
     const body = await request.json();
-    const { 
-      firstName, 
-      lastName, 
-      phoneNumber, 
-      address, 
-      sex 
+    const {
+      firstName,
+      lastName,
+      phoneNumber,
+      address,
+      sex
     } = body;
 
     // Validate required fields
@@ -50,14 +50,14 @@ export async function PUT(request: NextRequest) {
 
     // Update user in database
     const updateResult = await query(
-      `UPDATE users 
-       SET first_name = ?, 
-           last_name = ?, 
-           phone_number = ?, 
-           address = ?, 
-           sex = ?,
+      `UPDATE users
+       SET first_name = ?,
+           last_name = ?,
+           phone = ?,
+           address = ?,
+           gender = ?,
            updated_at = NOW()
-       WHERE id = ?`,
+       WHERE user_id = ?`,
       [firstName, lastName, phoneNumber || null, address || null, sex || null, userId]
     ) as any;
 
@@ -69,7 +69,7 @@ export async function PUT(request: NextRequest) {
 
     // Get updated user data to return
     const userResult = await query(
-      `SELECT user_id, first_name, last_name, email, phone_number, address, sex,
+      `SELECT user_id, first_name, last_name, email, phone, address, gender, profile_picture,
        created_at, updated_at, is_otp_verified, role, status, is_verified
        FROM users WHERE user_id = ? LIMIT 1`,
       [userId]
@@ -82,7 +82,7 @@ export async function PUT(request: NextRequest) {
     }
 
     const user = userResult[0];
-    
+
     // Set user_type based on role for backward compatibility
     if (user.role === 'fur_parent') {
       user.user_type = 'user';

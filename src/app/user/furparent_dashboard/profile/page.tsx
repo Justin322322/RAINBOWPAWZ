@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import {
   UserIcon,
@@ -9,10 +9,12 @@ import {
   MapPinIcon,
   PencilSquareIcon,
   CheckIcon,
-  XMarkIcon
+  XMarkIcon,
+  CameraIcon
 } from '@heroicons/react/24/outline';
 import FurParentNavbar from '@/components/navigation/FurParentNavbar';
 import withOTPVerification from '@/components/withOTPVerification';
+import { getImagePath } from '@/utils/imageUtils';
 
 interface ProfilePageProps {
   userData?: any;
@@ -24,6 +26,12 @@ function ProfilePage({ userData }: ProfilePageProps) {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
+  // Profile picture state
+  const [profilePicture, setProfilePicture] = useState<File | null>(null);
+  const [profilePicturePreview, setProfilePicturePreview] = useState<string | null>(null);
+  const [uploadingProfilePicture, setUploadingProfilePicture] = useState(false);
+  const profilePictureInputRef = useRef<HTMLInputElement>(null);
+
   // Form state
   const [formData, setFormData] = useState({
     firstName: '',
@@ -33,6 +41,9 @@ function ProfilePage({ userData }: ProfilePageProps) {
     address: '',
     sex: ''
   });
+
+  // Current user data state (for refreshing after profile picture upload)
+  const [currentUserData, setCurrentUserData] = useState(userData);
 
   // Fetch user data
   useEffect(() => {
@@ -45,6 +56,7 @@ function ProfilePage({ userData }: ProfilePageProps) {
         address: userData.address || '',
         sex: userData.sex || ''
       });
+      setCurrentUserData(userData);
     }
   }, [userData]);
 
@@ -105,6 +117,112 @@ function ProfilePage({ userData }: ProfilePageProps) {
     }
   };
 
+  // Function to refresh user data
+  const refreshUserData = async () => {
+    try {
+      const response = await fetch(`/api/users/${userData?.id}`);
+      if (response.ok) {
+        const updatedUserData = await response.json();
+        setCurrentUserData(updatedUserData);
+
+        // Update session storage with new profile picture
+        const currentUserData = sessionStorage.getItem('user_data');
+        if (currentUserData) {
+          try {
+            const user = JSON.parse(currentUserData);
+            const updatedUser = { ...user, profile_picture: updatedUserData.profile_picture };
+            sessionStorage.setItem('user_data', JSON.stringify(updatedUser));
+          } catch (error) {
+            console.error('Failed to update session storage:', error);
+          }
+        }
+
+        console.log('User data refreshed:', updatedUserData);
+      }
+    } catch (error) {
+      console.error('Failed to refresh user data:', error);
+    }
+  };
+
+  // Profile picture handling functions
+  const handleProfilePictureChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+
+      // Validate file type
+      const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+      if (!validTypes.includes(file.type)) {
+        setError('Please select a valid image file (JPEG, PNG, GIF, or WebP)');
+        return;
+      }
+
+      // Validate file size (max 5MB)
+      const maxSize = 5 * 1024 * 1024;
+      if (file.size > maxSize) {
+        setError('File size must be less than 5MB');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setProfilePicturePreview(event.target?.result as string);
+        setProfilePicture(file);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const uploadProfilePicture = async () => {
+    if (!profilePicture || !userData?.id) return;
+
+    setUploadingProfilePicture(true);
+    setError(null);
+
+    try {
+      const formData = new FormData();
+      formData.append('profilePicture', profilePicture);
+      formData.append('userId', userData.id.toString());
+
+      const response = await fetch('/api/users/upload-profile-picture', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to upload profile picture');
+      }
+
+      const data = await response.json();
+      setSuccess('Profile picture updated successfully!');
+      setProfilePicture(null);
+      setProfilePicturePreview(null);
+
+      // Reset file input
+      if (profilePictureInputRef.current) {
+        profilePictureInputRef.current.value = '';
+      }
+
+      // Refresh user data to show the new profile picture
+      await refreshUserData();
+
+      // Notify navbar to update profile picture
+      window.dispatchEvent(new CustomEvent('profilePictureUpdated'));
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Failed to upload profile picture');
+    } finally {
+      setUploadingProfilePicture(false);
+    }
+  };
+
+  const triggerProfilePictureInput = () => {
+    if (profilePictureInputRef.current) {
+      profilePictureInputRef.current.click();
+    }
+  };
+
+
+
   return (
     <div className="min-h-screen bg-white">
       {/* Navigation */}
@@ -131,6 +249,94 @@ function ProfilePage({ userData }: ProfilePageProps) {
                 Edit Profile
               </button>
             )}
+          </div>
+
+          {/* Profile Picture Section */}
+          <div className="bg-white rounded-lg shadow-md overflow-hidden mb-8">
+            <div className="bg-[var(--primary-green)] p-6">
+              <h2 className="text-xl font-semibold text-white">Profile Picture</h2>
+            </div>
+            <div className="p-6">
+              <div className="flex items-center space-x-6">
+                {/* Current/Preview Profile Picture */}
+                <div className="relative">
+                  <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-gray-200 bg-gray-100 flex items-center justify-center">
+                    {profilePicturePreview ? (
+                      <img
+                        src={profilePicturePreview}
+                        alt="Profile Picture Preview"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : currentUserData?.profile_picture ? (
+                      <img
+                        src={getImagePath(currentUserData.profile_picture)}
+                        alt="Profile Picture"
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.style.display = 'none';
+                          target.nextElementSibling?.classList.remove('hidden');
+                        }}
+                      />
+                    ) : (
+                      <UserIcon className="w-12 h-12 text-gray-400" />
+                    )}
+                  </div>
+                  {profilePicturePreview && (
+                    <div className="absolute -top-2 -right-2 bg-green-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs">
+                      ✓
+                    </div>
+                  )}
+                </div>
+
+                {/* Upload Controls */}
+                <div className="flex-1">
+                  <input
+                    type="file"
+                    ref={profilePictureInputRef}
+                    onChange={handleProfilePictureChange}
+                    className="hidden"
+                    accept="image/*"
+                  />
+
+                  <div className="space-y-3">
+                    <button
+                      type="button"
+                      onClick={triggerProfilePictureInput}
+                      className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none transition-colors"
+                    >
+                      <CameraIcon className="h-5 w-5 mr-2" />
+                      Choose Photo
+                    </button>
+
+                    {profilePicture && (
+                      <button
+                        type="button"
+                        onClick={uploadProfilePicture}
+                        disabled={uploadingProfilePicture}
+                        className="ml-3 inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[var(--primary-green)] hover:bg-[var(--primary-green-hover)] focus:outline-none transition-colors disabled:opacity-70"
+                      >
+                        {uploadingProfilePicture ? (
+                          <>
+                            <span className="spinner-sm mr-2"></span>
+                            Uploading...
+                          </>
+                        ) : (
+                          <>
+                            <CheckIcon className="h-5 w-5 mr-2" />
+                            Upload Photo
+                          </>
+                        )}
+                      </button>
+                    )}
+                  </div>
+
+                  <p className="mt-2 text-xs text-gray-500">
+                    JPG, PNG, GIF or WebP. Max size 5MB.
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Profile Information */}

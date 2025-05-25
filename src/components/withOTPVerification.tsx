@@ -43,6 +43,8 @@ const withOTPVerification = <P extends object>(
     const hasShownGetStartedModalRef = useRef(false);
 
     useEffect(() => {
+      console.log('[withOTPVerification] useEffect triggered');
+
       // Always show the Get Started modal after login for fur parents
       const checkFirstTimeLogin = () => {
         // Check if the user is a fur parent, regardless of OTP verification status
@@ -159,15 +161,19 @@ const withOTPVerification = <P extends object>(
 
       // Check if user is authenticated and get user data
       const checkAuth = async () => {
+        console.log('[withOTPVerification] Starting auth check');
         try {
           // Check if we've already verified OTP in this session
           const otpVerifiedInSession = sessionStorage.getItem('otp_verified');
+          console.log('[withOTPVerification] OTP verified in session:', otpVerifiedInSession);
 
           // Get auth token from cookie
           const cookies = document.cookie.split(';');
           const authCookie = cookies.find(cookie => cookie.trim().startsWith('auth_token='));
+          console.log('[withOTPVerification] Auth cookie found:', !!authCookie);
 
           if (!authCookie) {
+            console.log('[withOTPVerification] No auth cookie, redirecting to home');
             router.replace('/');
             return;
           }
@@ -180,35 +186,43 @@ const withOTPVerification = <P extends object>(
           }
 
           // Properly decode the token value
-          let authValue;
+          let authValue: string;
           try {
             authValue = decodeURIComponent(cookieParts[1]);
           } catch (e) {
             authValue = cookieParts[1]; // Use raw value if decoding fails
           }
 
+          console.log('[withOTPVerification] Auth value:', authValue);
+
           // Extract user ID and account type from auth token
           const [userId, accountType] = authValue.split('_');
+          console.log('[withOTPVerification] Parsed auth:', { userId, accountType });
 
           // Validate account type
           if (accountType !== 'user') {
+            console.log('[withOTPVerification] Invalid account type, redirecting to home');
             router.replace('/');
             return;
           }
 
           // Fetch user data to verify it exists in the database
           try {
+            console.log('[withOTPVerification] Fetching user data for ID:', userId);
             const response = await fetch(`/api/users/${userId}?t=${Date.now()}`);
 
             if (!response.ok) {
+              console.log('[withOTPVerification] User fetch failed:', response.status, response.statusText);
               router.replace('/');
               return;
             }
 
             const userData = await response.json();
+            console.log('[withOTPVerification] User data received:', { id: userData.id, user_type: userData.user_type, is_otp_verified: userData.is_otp_verified });
 
             // Additional validation if needed
             if (userData.user_type !== 'user' && userData.user_type !== 'fur_parent') {
+              console.log('[withOTPVerification] Invalid user type:', userData.user_type);
               router.replace('/');
               return;
             }
@@ -234,9 +248,11 @@ const withOTPVerification = <P extends object>(
               setHasShownOTPModal(true);
             }
           } catch (fetchError) {
+            console.error('[withOTPVerification] Fetch error:', fetchError);
             router.replace('/');
           }
         } catch (error) {
+          console.error('[withOTPVerification] Auth check error:', error);
           router.replace('/');
         }
       };
