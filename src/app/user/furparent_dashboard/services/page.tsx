@@ -16,6 +16,7 @@ import withOTPVerification from '@/components/withOTPVerification';
 import FurParentPageSkeleton from '@/components/ui/FurParentPageSkeleton';
 import SectionLoader from '@/components/ui/SectionLoader';
 import { Skeleton } from '@/components/ui/SkeletonLoader';
+import { motion } from 'framer-motion';
 import { getUserLocation, LocationData } from '@/utils/geolocation';
 
 // Import the map component with dynamic loading and standardized loading indicator
@@ -126,6 +127,10 @@ function ServicesPage({ userData }: ServicesPageProps) {
     const fetchServiceProviders = async () => {
       try {
         setIsLoading(true);
+
+        // Add a small delay to ensure the skeleton is visible
+        await new Promise(resolve => setTimeout(resolve, 800));
+
         // Pass user location to the API for accurate distance calculation
         const response = await fetch(`/api/service-providers?location=${encodeURIComponent(userLocation.address)}`);
 
@@ -149,7 +154,10 @@ function ServicesPage({ userData }: ServicesPageProps) {
         // Fallback to empty array if fetch fails
         setServiceProviders([]);
       } finally {
-        setIsLoading(false);
+        // Ensure loading state is shown for at least a moment
+        setTimeout(() => {
+          setIsLoading(false);
+        }, 300);
       }
     };
 
@@ -203,19 +211,30 @@ function ServicesPage({ userData }: ServicesPageProps) {
                 <>
                   {/* Skeleton for main heading */}
                   <div className="text-center mb-6">
-                    <Skeleton
-                      height="h-6"
-                      width="w-3/4"
-                      className="mx-auto mb-2"
-                      rounded="md"
-                      animate={true}
+                    <motion.div
+                      className="h-6 bg-gray-200 rounded-md w-3/4 mx-auto mb-2"
+                      initial={{ opacity: 0.6 }}
+                      animate={{
+                        opacity: [0.6, 1, 0.6],
+                        transition: {
+                          repeat: Infinity,
+                          duration: 1.5,
+                          ease: "easeInOut"
+                        }
+                      }}
                     />
-                    <Skeleton
-                      height="h-6"
-                      width="w-1/2"
-                      className="mx-auto"
-                      rounded="md"
-                      animate={true}
+                    <motion.div
+                      className="h-6 bg-gray-200 rounded-md w-1/2 mx-auto"
+                      initial={{ opacity: 0.6 }}
+                      animate={{
+                        opacity: [0.6, 1, 0.6],
+                        transition: {
+                          repeat: Infinity,
+                          duration: 1.5,
+                          ease: "easeInOut",
+                          delay: 0.2
+                        }
+                      }}
                     />
                   </div>
 
@@ -223,18 +242,31 @@ function ServicesPage({ userData }: ServicesPageProps) {
                     {/* Skeleton for location text */}
                     <div className="flex items-center justify-center w-full mb-2">
                       <div className="flex items-center">
-                        <Skeleton
-                          height="h-4"
-                          width="w-4"
-                          className="mr-2"
-                          rounded="sm"
-                          animate={true}
+                        <motion.div
+                          className="h-4 w-4 bg-gray-200 rounded-sm mr-2"
+                          initial={{ opacity: 0.6 }}
+                          animate={{
+                            opacity: [0.6, 1, 0.6],
+                            transition: {
+                              repeat: Infinity,
+                              duration: 1.5,
+                              ease: "easeInOut",
+                              delay: 0.4
+                            }
+                          }}
                         />
-                        <Skeleton
-                          height="h-4"
-                          width="w-64"
-                          rounded="md"
-                          animate={true}
+                        <motion.div
+                          className="h-4 bg-gray-200 rounded-md w-64"
+                          initial={{ opacity: 0.6 }}
+                          animate={{
+                            opacity: [0.6, 1, 0.6],
+                            transition: {
+                              repeat: Infinity,
+                              duration: 1.5,
+                              ease: "easeInOut",
+                              delay: 0.6
+                            }
+                          }}
                         />
                       </div>
                     </div>
@@ -297,19 +329,31 @@ function ServicesPage({ userData }: ServicesPageProps) {
               {/* Footer text with skeleton loading */}
               {isLoading ? (
                 <div className="mt-2 text-center">
-                  <Skeleton
-                    height="h-4"
-                    width="w-3/4"
-                    className="mx-auto mb-1"
-                    rounded="md"
-                    animate={true}
+                  <motion.div
+                    className="h-4 bg-gray-200 rounded-md w-3/4 mx-auto mb-1"
+                    initial={{ opacity: 0.6 }}
+                    animate={{
+                      opacity: [0.6, 1, 0.6],
+                      transition: {
+                        repeat: Infinity,
+                        duration: 1.5,
+                        ease: "easeInOut",
+                        delay: 0.8
+                      }
+                    }}
                   />
-                  <Skeleton
-                    height="h-3"
-                    width="w-1/2"
-                    className="mx-auto"
-                    rounded="md"
-                    animate={true}
+                  <motion.div
+                    className="h-3 bg-gray-200 rounded-md w-1/2 mx-auto"
+                    initial={{ opacity: 0.6 }}
+                    animate={{
+                      opacity: [0.6, 1, 0.6],
+                      transition: {
+                        repeat: Infinity,
+                        duration: 1.5,
+                        ease: "easeInOut",
+                        delay: 1.0
+                      }
+                    }}
                   />
                 </div>
               ) : (

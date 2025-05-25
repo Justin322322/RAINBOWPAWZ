@@ -91,6 +91,10 @@ export default function FurParentNavbar({ activePage: propActivePage, userName =
         setActivePage('services');
       } else if (pathname === '/user/furparent_dashboard/bookings') {
         setActivePage('bookings');
+      } else if (pathname === '/user/furparent_dashboard/settings') {
+        setActivePage('settings');
+      } else if (pathname === '/user/furparent_dashboard/profile') {
+        setActivePage('profile');
       }
     }
   }, [pathname, propActivePage]);
