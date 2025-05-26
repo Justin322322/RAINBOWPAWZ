@@ -73,7 +73,7 @@ async function gatherRevenueStats(): Promise<{ total: number; monthly: number }>
       const totalResult = await query(
         `SELECT COALESCE(SUM(total_price),0) AS total FROM bookings WHERE status='completed'`
       );
-      total = +(totalResult[0]?.total || 0);
+      total = parseFloat(String(totalResult[0]?.total || 0));
 
       // Get monthly revenue
       const monthlyResult = await query(
@@ -83,13 +83,13 @@ async function gatherRevenueStats(): Promise<{ total: number; monthly: number }>
          AND MONTH(created_at)=MONTH(CURRENT_DATE())
          AND YEAR(created_at)=YEAR(CURRENT_DATE())`
       );
-      monthly = +(monthlyResult[0]?.total || 0);
+      monthly = parseFloat(String(monthlyResult[0]?.total || 0));
     } else {
       // Fallback to service_packages if no bookings table
       const packagesResult = await query(
         `SELECT COALESCE(SUM(price),0) AS total_price FROM service_packages`
       );
-      total = +(packagesResult[0]?.total_price || 0);
+      total = parseFloat(String(packagesResult[0]?.total_price || 0));
       monthly = total / 12; // Estimate monthly as 1/12 of total
     }
   } catch (error) {
@@ -224,7 +224,13 @@ export async function GET(request: NextRequest) {
 
   // --- Revenue stats ---
   const { total: totalRev, monthly } = await gatherRevenueStats();
-  const monthlyRev = `₱${monthly.toLocaleString('en-US',{ minimumFractionDigits:2, maximumFractionDigits:2 })}`;
+
+  // Ensure monthly is a valid number and format properly
+  const monthlyAmount = parseFloat(String(monthly)) || 0;
+  const monthlyRev = `₱${monthlyAmount.toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  })}`;
 
   // --- Format each service ---
   // First, check if tables exist to avoid repeated queries for each service

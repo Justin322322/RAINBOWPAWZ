@@ -49,7 +49,8 @@ const DeclineModal = ({
     <AnimatePresence>
       {isOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 md:p-6"
+          className="fixed inset-0 flex items-center justify-center p-4 md:p-6"
+          style={{ zIndex: 9999 }}
           role="dialog"
           aria-modal="true"
         >

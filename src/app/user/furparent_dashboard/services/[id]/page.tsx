@@ -313,7 +313,25 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
                 </div>
               </div>
               <div className="relative h-64 md:h-auto overflow-hidden rounded-lg border border-white/20">
-                {provider.image ? (
+                {provider.profile_picture ? (
+                  <Image
+                    src={`/api/image/profile-pictures/${provider.id}/${provider.profile_picture.split('/').pop()}`}
+                    alt={`${provider.name} Profile`}
+                    fill
+                    className="object-cover"
+                    onError={(e) => {
+                      // Fallback to default background if profile picture fails to load
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = 'none';
+                      const parent = target.parentElement;
+                      if (parent) {
+                        parent.innerHTML = `
+                          <div class="absolute inset-0 bg-[url('/bg_2.png')] bg-cover bg-center"></div>
+                        `;
+                      }
+                    }}
+                  />
+                ) : provider.image ? (
                   <div className="absolute inset-0 bg-[url('/bg_2.png')] bg-cover bg-center"></div>
                 ) : (
                   <div className="absolute inset-0 flex items-center justify-center bg-white/10">
@@ -370,8 +388,13 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
 
               {/* Reviews Section */}
               <div className="mb-12">
-                <h2 className="text-2xl font-bold text-[var(--primary-green)] mb-6">Customer Reviews</h2>
-                <ReviewsList providerId={Number(providerId)} className="bg-white p-6 rounded-lg shadow-sm" />
+                <div className="text-center mb-8">
+                  <h2 className="text-3xl font-bold text-[var(--primary-green)] mb-2">What Our Customers Say</h2>
+                  <p className="text-gray-600 max-w-2xl mx-auto">
+                    Read authentic reviews from pet parents who have trusted us with their beloved companions.
+                  </p>
+                </div>
+                <ReviewsList providerId={Number(providerId)} className="" />
               </div>
 
               <div className="h-px w-full bg-gray-300 mb-8"></div>
@@ -389,8 +412,8 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full mx-4">
                     {getSortedPackages().slice(currentPackageIndex, currentPackageIndex + 3).map((pkg: any) => (
-                      <div key={pkg.id} className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-                        <div className="h-40 relative overflow-hidden bg-gray-100">
+                      <div key={pkg.id} className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
+                        <div className="h-48 relative overflow-hidden bg-gray-100">
                           {pkg.images && pkg.images.length > 0 ? (
                             <Image
                               src={pkg.images[0]}
@@ -408,15 +431,79 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
                               onError={(e) => handleImageError(e)}
                             />
                           )}
+                          {/* Price Badge */}
+                          <div className="absolute top-3 right-3 bg-white/95 backdrop-blur-sm px-3 py-1 rounded-full shadow-sm">
+                            <span className="text-[var(--primary-green)] font-bold text-lg">₱{pkg.price.toLocaleString()}</span>
+                          </div>
                         </div>
-                        <div className="p-4 text-center">
-                          <h3 className="font-medium text-lg">{pkg.name}</h3>
-                          <p className="text-[var(--primary-green)] font-semibold mt-1">₱{pkg.price.toLocaleString()}</p>
+
+                        <div className="p-5">
+                          {/* Package Name */}
+                          <h3 className="font-bold text-xl text-gray-900 mb-2 line-clamp-2">{pkg.name}</h3>
+
+                          {/* Package Tags */}
+                          <div className="flex flex-wrap gap-2 mb-3">
+                            {pkg.category && (
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                {pkg.category}
+                              </span>
+                            )}
+                            {pkg.cremationType && (
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                                {pkg.cremationType}
+                              </span>
+                            )}
+                            {pkg.processingTime && (
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                                <ClockIcon className="w-3 h-3 mr-1" />
+                                {pkg.processingTime}
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Description Preview */}
+                          {pkg.description && (
+                            <p className="text-gray-600 text-sm mb-3 line-clamp-2">
+                              {pkg.description}
+                            </p>
+                          )}
+
+                          {/* Key Inclusions */}
+                          {pkg.inclusions && pkg.inclusions.length > 0 && (
+                            <div className="mb-4">
+                              <h4 className="text-sm font-semibold text-gray-700 mb-2">Includes:</h4>
+                              <ul className="text-xs text-gray-600 space-y-1">
+                                {pkg.inclusions.slice(0, 3).map((inclusion: string, index: number) => (
+                                  <li key={index} className="flex items-center">
+                                    <CheckCircleIcon className="w-3 h-3 text-green-500 mr-2 flex-shrink-0" />
+                                    <span className="line-clamp-1">{inclusion}</span>
+                                  </li>
+                                ))}
+                                {pkg.inclusions.length > 3 && (
+                                  <li className="text-[var(--primary-green)] font-medium">
+                                    +{pkg.inclusions.length - 3} more inclusions
+                                  </li>
+                                )}
+                              </ul>
+                            </div>
+                          )}
+
+                          {/* Delivery Info */}
+                          {pkg.deliveryFeePerKm && (
+                            <div className="mb-4 p-2 bg-gray-50 rounded-lg">
+                              <div className="flex items-center text-xs text-gray-600">
+                                <MapPinIcon className="w-3 h-3 mr-1" />
+                                <span>Delivery: ₱{pkg.deliveryFeePerKm}/km</span>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Action Button */}
                           <button
                             onClick={() => handleViewPackage(pkg.id)}
-                            className="mt-3 w-full px-4 py-2 bg-[var(--primary-green)] text-white rounded-md hover:bg-[var(--primary-green-hover)] transition-colors"
+                            className="w-full px-4 py-3 bg-[var(--primary-green)] text-white rounded-lg hover:bg-[var(--primary-green-hover)] transition-colors font-semibold text-sm"
                           >
-                            View Details
+                            View Full Details
                           </button>
                         </div>
                       </div>

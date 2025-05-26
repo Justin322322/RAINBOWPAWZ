@@ -3,11 +3,11 @@ import { query } from '@/lib/db';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const packageId = params.id;
-    
+    const { id: packageId } = await params;
+
     if (!packageId) {
       return NextResponse.json({
         success: false,
@@ -17,15 +17,15 @@ export async function GET(
 
     // Check if package_addons table exists
     const tableCheckQuery = `
-      SELECT COUNT(*) as count 
-      FROM information_schema.tables 
-      WHERE table_schema = DATABASE() 
+      SELECT COUNT(*) as count
+      FROM information_schema.tables
+      WHERE table_schema = DATABASE()
       AND table_name = 'package_addons'
     `;
-    
+
     const tableCheckResult = await query(tableCheckQuery) as any[];
     const tableExists = tableCheckResult[0]?.count > 0;
-    
+
     if (!tableExists) {
       return NextResponse.json({
         success: true,
@@ -35,14 +35,14 @@ export async function GET(
 
     // Fetch add-ons for the package
     const addOnsQuery = `
-      SELECT id, description, price
+      SELECT addon_id as id, description, price
       FROM package_addons
       WHERE package_id = ?
-      ORDER BY id ASC
+      ORDER BY addon_id ASC
     `;
-    
+
     const addOns = await query(addOnsQuery, [packageId]) as any[];
-    
+
     return NextResponse.json({
       success: true,
       addOns

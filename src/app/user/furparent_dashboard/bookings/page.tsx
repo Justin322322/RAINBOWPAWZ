@@ -15,22 +15,21 @@ import {
   PlusCircleIcon,
   CalendarIcon,
   MapPinIcon,
-  PhoneIcon,
-  EnvelopeIcon,
   ExclamationTriangleIcon,
   BanknotesIcon,
   CreditCardIcon,
   ArrowPathIcon,
   StarIcon,
-  TruckIcon
+  UserIcon,
+  DocumentCheckIcon
 } from '@heroicons/react/24/outline';
 import FurParentNavbar from '@/components/navigation/FurParentNavbar';
 import FurParentDashboardWrapper from '@/components/navigation/FurParentDashboardWrapper';
 import withOTPVerification from '@/components/withOTPVerification';
 import FurParentPageSkeleton from '@/components/ui/FurParentPageSkeleton';
-import CompletedBookingReviewPrompt from '@/components/reviews/CompletedBookingReviewPrompt';
 import ReviewModal from '@/components/reviews/ReviewModal';
 import ReviewDisplay from '@/components/reviews/ReviewDisplay';
+import CremationCertificate from '@/components/certificates/CremationCertificate';
 
 interface BookingData {
   id: number;
@@ -63,6 +62,8 @@ interface BookingData {
   delivery_address?: string;
   delivery_distance?: number;
   delivery_fee?: number;
+  first_name?: string;
+  last_name?: string;
 }
 
 interface BookingsPageProps {
@@ -108,6 +109,7 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
+  const [showCertificateModal, setShowCertificateModal] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
   const [cancelSuccess, setCancelSuccess] = useState(false);
   const [cancelledBookingIds, setCancelledBookingIds] = useState<number[]>([]);
@@ -597,16 +599,7 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
           </div>
         </div>
 
-        {/* Review Prompt for Completed Bookings */}
-        {!isLoading && !error && userData && userData.id && activeFilter === 'completed' && (
-          <CompletedBookingReviewPrompt
-            userId={userData.id}
-            onReviewSubmitted={() => {
-              // Refresh the bookings list after a review is submitted
-              setActiveFilter(activeFilter);
-            }}
-          />
-        )}
+
 
         {/* Bookings List */}
         <div className="space-y-6">
@@ -819,7 +812,7 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
                 leaveFrom="opacity-100 scale-100"
                 leaveTo="opacity-0 scale-95"
               >
-                <Dialog.Panel className="w-full max-w-2xl transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
+                <Dialog.Panel className="w-full max-w-4xl transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all max-h-[90vh] overflow-y-auto">
                   {selectedBooking && (
                     <>
                       <Dialog.Title
@@ -829,7 +822,7 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
                         Booking Details
                       </Dialog.Title>
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         <div>
                           <h4 className="text-sm font-medium text-gray-500 mb-2">Service Information</h4>
                           <div className="bg-gray-50 p-4 rounded-lg">
@@ -875,9 +868,9 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
                                 </div>
                               )}
 
-                              <div className="flex justify-between pt-2 border-t border-gray-200 mt-1">
-                                <p className="text-sm font-medium text-gray-900">Total:</p>
-                                <p className="text-lg font-semibold text-[var(--primary-green)]">
+                              <div className="flex justify-between pt-3 border-t border-gray-300 mt-2">
+                                <p className="text-base font-semibold text-gray-900">Total Amount:</p>
+                                <p className="text-xl font-bold text-[var(--primary-green)]">
                                   ₱{(
                                      Number(selectedBooking.total_amount || 0) ||
                                      (Number(selectedBooking.service_price || selectedBooking.price || 0) +
@@ -1098,39 +1091,49 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
 
                           <h4 className="text-sm font-medium text-gray-500 mt-4 mb-2">Pet Information</h4>
                           <div className="bg-gray-50 p-4 rounded-lg">
-                            <div className="flex items-start">
+                            <div className="flex items-start space-x-4">
                               {selectedBooking.pet_image_url ? (
-                                <div className="mr-4 flex-shrink-0">
+                                <div className="flex-shrink-0">
                                   <img
                                     src={getProductionImagePath(selectedBooking.pet_image_url)}
                                     alt={selectedBooking.pet_name || 'Pet'}
-                                    className="h-20 w-20 object-cover rounded-lg shadow-sm"
+                                    className="h-24 w-24 object-cover rounded-lg shadow-sm border border-gray-200"
                                     onError={(e) => {
                                       const target = e.target as HTMLImageElement;
                                       target.onerror = null; // Prevent infinite loop
                                       target.src = '/placeholder-pet.png'; // Fallback image
-                                      target.className = 'h-20 w-20 object-contain rounded-lg bg-gray-100';
+                                      target.className = 'h-24 w-24 object-contain rounded-lg bg-gray-100 border border-gray-200';
                                       console.error('Failed to load pet image:', selectedBooking.pet_image_url);
                                     }}
                                   />
                                 </div>
-                              ) : null}
-                              <div className="flex-1">
+                              ) : (
+                                <div className="h-24 w-24 bg-gray-200 rounded-lg flex items-center justify-center flex-shrink-0">
+                                  <UserIcon className="h-8 w-8 text-gray-400" />
+                                </div>
+                              )}
+                              <div className="flex-1 min-w-0">
                                 {selectedBooking.pet_name && selectedBooking.pet_name !== 'Pet' && selectedBooking.pet_name !== 'Unknown' ? (
-                                  <>
-                                    <p className="text-lg font-semibold text-gray-900 mb-1">{selectedBooking.pet_name}</p>
+                                  <div className="space-y-2">
+                                    <p className="text-lg font-semibold text-gray-900">{selectedBooking.pet_name}</p>
                                     {selectedBooking.pet_type && selectedBooking.pet_type !== 'Unknown' && (
-                                      <p className="text-sm text-gray-600">{selectedBooking.pet_type}</p>
+                                      <p className="text-sm text-gray-600">
+                                        <span className="font-medium">Type:</span> {selectedBooking.pet_type}
+                                      </p>
                                     )}
                                     {selectedBooking.pet_breed && (
-                                      <p className="text-sm text-gray-600 mt-1">Breed: {selectedBooking.pet_breed}</p>
+                                      <p className="text-sm text-gray-600">
+                                        <span className="font-medium">Breed:</span> {selectedBooking.pet_breed}
+                                      </p>
                                     )}
                                     {selectedBooking.cause_of_death && (
-                                      <p className="text-sm text-gray-600 mt-1">Cause of Death: {selectedBooking.cause_of_death}</p>
+                                      <p className="text-sm text-gray-600">
+                                        <span className="font-medium">Cause of Death:</span> {selectedBooking.cause_of_death}
+                                      </p>
                                     )}
-                                  </>
+                                  </div>
                                 ) : (
-                                  <p className="text-sm text-gray-700">Pet information not available</p>
+                                  <p className="text-sm text-gray-700 italic">Pet information not available</p>
                                 )}
                               </div>
                             </div>
@@ -1173,11 +1176,38 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
                         </div>
                       )}
 
-                      <div className="mt-6 flex justify-end">
+                      {/* Certificate Section - Only show for completed bookings */}
+                      {selectedBooking.status === 'completed' && (
+                        <div className="mt-6">
+                          <h4 className="text-sm font-medium text-gray-500 mb-2">Cremation Certificate</h4>
+                          <div className="bg-gradient-to-br from-green-50 to-blue-50 p-4 rounded-lg border border-green-200">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center">
+                                <DocumentCheckIcon className="h-6 w-6 text-green-600 mr-3" />
+                                <div>
+                                  <p className="text-sm font-medium text-gray-900">Official Certificate Available</p>
+                                  <p className="text-xs text-gray-600">Download your cremation certificate as a keepsake</p>
+                                </div>
+                              </div>
+                              <button
+                                onClick={() => {
+                                  setShowCertificateModal(true);
+                                }}
+                                className="inline-flex items-center px-3 py-1.5 bg-green-600 text-white text-xs font-medium rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-200"
+                              >
+                                <DocumentCheckIcon className="h-3 w-3 mr-1" />
+                                View
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="mt-8 flex flex-col sm:flex-row sm:justify-end gap-3">
                         {selectedBooking.status === 'pending' && !cancelledBookingIds.includes(selectedBooking.id) && (
                           <button
                             type="button"
-                            className="mr-3 inline-flex justify-center rounded-md border border-red-300 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50 focus:outline-none"
+                            className="inline-flex justify-center items-center rounded-md border border-red-300 px-6 py-3 text-sm font-medium text-red-700 hover:bg-red-50 focus:outline-none transition-colors"
                             onClick={() => {
                               setShowDetailsModal(false);
                               handleCancelBooking(selectedBooking);
@@ -1188,14 +1218,14 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
                           </button>
                         )}
                         {selectedBooking.status === 'pending' && cancelledBookingIds.includes(selectedBooking.id) && (
-                          <div className="mr-3 inline-flex items-center rounded-md border border-green-300 px-4 py-2 text-sm font-medium text-green-700 bg-green-50">
+                          <div className="inline-flex items-center rounded-md border border-green-300 px-6 py-3 text-sm font-medium text-green-700 bg-green-50">
                             <CheckCircleIcon className="h-5 w-5 mr-2" />
                             Cancellation Pending
                           </div>
                         )}
                         <button
                           type="button"
-                          className="inline-flex justify-center rounded-md border border-transparent bg-[var(--primary-green)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--primary-green-hover)] focus:outline-none"
+                          className="inline-flex justify-center items-center rounded-md border border-transparent bg-[var(--primary-green)] px-6 py-3 text-sm font-medium text-white hover:bg-[var(--primary-green-hover)] focus:outline-none transition-colors"
                           onClick={() => setShowDetailsModal(false)}
                         >
                           Close
@@ -1315,6 +1345,14 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
             // Refresh the bookings list
             setActiveFilter(activeFilter);
           }}
+        />
+      )}
+
+      {/* Certificate Modal */}
+      {selectedBooking && showCertificateModal && (
+        <CremationCertificate
+          booking={selectedBooking}
+          onClose={() => setShowCertificateModal(false)}
         />
       )}
     </div>

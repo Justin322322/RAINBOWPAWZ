@@ -3,6 +3,9 @@
 import { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import { geocodingService } from '@/utils/geocoding';
+import { routingService } from '@/utils/routing';
+import { cacheManager } from '@/utils/cache';
 
 // Fix for TypeScript error with Leaflet control
 declare module 'leaflet' {
@@ -49,10 +52,12 @@ export default function MapComponent({
   const [providerCoordinates, setProviderCoordinates] = useState<Map<number, [number, number]>>(new Map());
   const [isGeocoding, setIsGeocoding] = useState(false);
   const [geocodeError, setGeocodeError] = useState<string | null>(null);
+  const [geocodeAccuracy, setGeocodeAccuracy] = useState<'high' | 'medium' | 'low' | null>(null);
   const [routeInstructions, setRouteInstructions] = useState<RouteInstructions | null>(null);
   const [selectedProviderName, setSelectedProviderName] = useState<string | null>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
   const [isMapLocked, setIsMapLocked] = useState(true); // Map is locked by default
+  const [isRouting, setIsRouting] = useState(false);
 
   // Check if we're in a browser environment before initializing Leaflet
   useEffect(() => {
@@ -67,7 +72,7 @@ export default function MapComponent({
 
         // Delayed geocoding to ensure DOM is ready
         const timer = setTimeout(() => {
-          geocodeAddress(userAddress, 'user');
+          geocodeAddressEnhanced(userAddress, 'user');
         }, 100);
 
         return () => clearTimeout(timer);
@@ -100,164 +105,51 @@ export default function MapComponent({
     }
   }, [userCoordinates, mapLoaded]);
 
-  // Geocode address to coordinates with optimized error handling
-  const geocodeAddress = async (address: string, type: 'user' | 'provider', providerId?: number) => {
+  // Enhanced geocoding function using the new geocoding service
+  const geocodeAddressEnhanced = async (address: string, type: 'user' | 'provider', providerId?: number) => {
     if (type === 'user' && mapLoaded) return; // Prevent re-geocoding if map is already loaded
 
     setIsGeocoding(true);
+    setGeocodeError(null);
+    setGeocodeAccuracy(null);
+
     try {
-      // Cache coordinates in localStorage to prevent redundant API calls
-      const cacheKey = `geo_${address.replace(/\s+/g, '_').toLowerCase()}`;
-      const cachedCoords = localStorage.getItem(cacheKey);
+      const result = await geocodingService.geocodeAddress(address);
 
-      if (cachedCoords) {
-        const [lat, lon] = JSON.parse(cachedCoords);
-        const coordinates: [number, number] = [parseFloat(lat), parseFloat(lon)];
+      // Update accuracy indicator
+      setGeocodeAccuracy(result.accuracy);
 
-        if (type === 'user') {
-          setUserCoordinates(coordinates);
-          if (mapRef.current) {
-            mapRef.current.setView(coordinates, 13);
-            // Only add user marker if it doesn't exist or coordinates have changed
-            if (!userMarkerRef.current) {
-              addUserMarker(coordinates);
-            } else {
-              // Update existing marker position if coordinates have changed
-              userMarkerRef.current.setLatLng([coordinates[0], coordinates[1]]);
-            }
-          }
-        } else if (type === 'provider' && providerId !== undefined) {
-          setProviderCoordinates(prev => {
-            const newMap = new Map(prev);
-            newMap.set(providerId, coordinates);
-            return newMap;
-          });
-        }
-        setIsGeocoding(false);
-        return;
+      // Only show error messages for low accuracy results that might be problematic
+      if (result.accuracy === 'low') {
+        setGeocodeError(`Location found with low accuracy (${result.provider}). Results may not be precise.`);
       }
+      // Remove medium accuracy messages for better UX
 
-      try {
-        // Try to clean up the address for better geocoding results
-        const cleanAddress = address
-          .replace(/\s+/g, ' ')  // Replace multiple spaces with a single space
-          .trim();
-
-        // Add Philippines to the address if it's not already there
-        const addressWithCountry = cleanAddress.toLowerCase().includes('philippines')
-          ? cleanAddress
-          : `${cleanAddress}, Philippines`;
-
-        // Ensure postal code is included for better geocoding results
-        const addressWithPostal = addressWithCountry.includes('2100') ||
-                                 addressWithCountry.includes('2105') ||
-                                 addressWithCountry.includes('2108') ||
-                                 addressWithCountry.includes('2110')
-          ? addressWithCountry
-          : addressWithCountry.replace('Philippines', '2100 Philippines');
-
-        // Using Nominatim for geocoding (OSM's geocoding service)
-        const encodedAddress = encodeURIComponent(addressWithPostal);
-        // Add country code and viewbox parameters to improve geocoding accuracy
-        const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodedAddress}&countrycodes=ph&viewbox=120.3,14.5,120.7,14.8&bounded=1&limit=1`);
-
-        if (!response.ok) {
-          throw new Error(`Geocoding API error: ${response.status} ${response.statusText}`);
-        }
-
-        const data = await response.json();
-
-        if (data && data.length > 0) {
-          const { lat, lon } = data[0];
-          const coordinates: [number, number] = [parseFloat(lat), parseFloat(lon)];
-
-          // Cache the coordinates for future use
-          localStorage.setItem(cacheKey, JSON.stringify([lat, lon]));
-
-          if (type === 'user') {
-            setUserCoordinates(coordinates);
-            if (mapRef.current) {
-              mapRef.current.setView(coordinates, 13);
-              // Only add user marker if it doesn't exist or coordinates have changed
-              if (!userMarkerRef.current) {
-                addUserMarker(coordinates);
-              } else {
-                // Update existing marker position if coordinates have changed
-                userMarkerRef.current.setLatLng([coordinates[0], coordinates[1]]);
-              }
-            }
-          } else if (type === 'provider' && providerId !== undefined) {
-            setProviderCoordinates(prev => {
-              const newMap = new Map(prev);
-              newMap.set(providerId, coordinates);
-              return newMap;
-            });
-          }
-        } else {
-          // Try a fallback with just the city/province part of the address
-          const parts = addressWithCountry.split(',');
-          if (parts.length > 1) {
-            // Take the last two parts (usually city and country)
-            const simplifiedAddress = parts.slice(-2).join(',').trim();
-
-            const encodedSimplifiedAddress = encodeURIComponent(simplifiedAddress);
-            // Use the same improved parameters for fallback geocoding
-            const fallbackResponse = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodedSimplifiedAddress}&countrycodes=ph&viewbox=120.3,14.5,120.7,14.8&bounded=1&limit=1`);
-            const fallbackData = await fallbackResponse.json();
-
-            if (fallbackData && fallbackData.length > 0) {
-              const { lat, lon } = fallbackData[0];
-              const coordinates: [number, number] = [parseFloat(lat), parseFloat(lon)];
-
-              // Cache the coordinates for future use
-              localStorage.setItem(cacheKey, JSON.stringify([lat, lon]));
-
-              if (type === 'user') {
-                setUserCoordinates(coordinates);
-                if (mapRef.current) {
-                  mapRef.current.setView(coordinates, 13);
-                  if (!userMarkerRef.current) {
-                    addUserMarker(coordinates);
-                  } else {
-                    userMarkerRef.current.setLatLng([coordinates[0], coordinates[1]]);
-                  }
-                }
-              } else if (type === 'provider' && providerId !== undefined) {
-                setProviderCoordinates(prev => {
-                  const newMap = new Map(prev);
-                  newMap.set(providerId, coordinates);
-                  return newMap;
-                });
-              }
-              return; // Successfully geocoded with simplified address
-            }
-          }
-
-          // If we get here, both attempts failed
-          if (type === 'user') {
-            setGeocodeError("Could not find your location. Using default location.");
-            // Use default Balanga City center coordinates
-            const balangaCoordinates: [number, number] = [14.6742, 120.5434];
-            setUserCoordinates(balangaCoordinates);
-            if (mapRef.current) {
-              addUserMarker(balangaCoordinates);
-            }
+      if (type === 'user') {
+        setUserCoordinates(result.coordinates);
+        if (mapRef.current) {
+          mapRef.current.setView(result.coordinates, 13);
+          // Only add user marker if it doesn't exist or coordinates have changed
+          if (!userMarkerRef.current) {
+            addUserMarker(result.coordinates);
+          } else {
+            // Update existing marker position if coordinates have changed
+            userMarkerRef.current.setLatLng([result.coordinates[0], result.coordinates[1]]);
           }
         }
-      } catch (geocodeError) {
-        if (type === 'user') {
-          setGeocodeError("Could not find your location. Using default location.");
-          // Use default Balanga City center coordinates
-          const balangaCoordinates: [number, number] = [14.6742, 120.5434];
-          setUserCoordinates(balangaCoordinates);
-          if (mapRef.current) {
-            addUserMarker(balangaCoordinates);
-          }
-        }
+      } else if (type === 'provider' && providerId !== undefined) {
+        setProviderCoordinates(prev => {
+          const newMap = new Map(prev);
+          newMap.set(providerId, result.coordinates);
+          return newMap;
+        });
       }
     } catch (error) {
+      console.error('Enhanced geocoding failed:', error);
+
       if (type === 'user') {
-        setGeocodeError("Error finding your location. Using default location.");
+        setGeocodeError("Could not find your location. Using default location in Balanga City.");
+        setGeocodeAccuracy('low');
         // Use default Balanga City center coordinates
         const balangaCoordinates: [number, number] = [14.6742, 120.5434];
         setUserCoordinates(balangaCoordinates);
@@ -350,7 +242,7 @@ export default function MapComponent({
 
           // Process batch in parallel
           await Promise.all(
-            batch.map(provider => geocodeAddress(provider.address, 'provider', provider.id))
+            batch.map(provider => geocodeAddressEnhanced(provider.address, 'provider', provider.id))
           );
 
           // Add delay between batches to avoid rate limiting
@@ -368,6 +260,8 @@ export default function MapComponent({
   useEffect(() => {
     if (mapRef.current && providerCoordinates.size > 0) {
       addProviderMarkers();
+      // Auto-adjust zoom to show all markers when providers are loaded
+      adjustMapViewToShowAllMarkers();
     }
   }, [providerCoordinates]);
 
@@ -380,7 +274,7 @@ export default function MapComponent({
         const provider = serviceProviders.find(p => p.id === selectedProviderId);
         if (provider) {
           setSelectedProviderName(provider.name);
-          displayRouteToProvider(coordinates, provider.name);
+          displayRouteToProviderEnhanced(coordinates, provider.name);
         }
       }
     }
@@ -495,7 +389,7 @@ export default function MapComponent({
 
             newRouteButton.addEventListener('click', () => {
               setSelectedProviderName(provider.name);
-              displayRouteToProvider(coordinates, provider.name);
+              displayRouteToProviderEnhanced(coordinates, provider.name);
             });
           }
 
@@ -519,6 +413,29 @@ export default function MapComponent({
 
       // Store marker reference
       providerMarkersRef.current.push(marker);
+    });
+  };
+
+  // Function to adjust map view to show all markers (user + providers)
+  const adjustMapViewToShowAllMarkers = () => {
+    if (!mapRef.current || !userCoordinates || providerCoordinates.size === 0) return;
+
+    // Create bounds that include user location and all provider locations
+    const bounds = L.latLngBounds([]);
+
+    // Add user coordinates to bounds
+    bounds.extend([userCoordinates[0], userCoordinates[1]]);
+
+    // Add all provider coordinates to bounds
+    providerCoordinates.forEach(coords => {
+      bounds.extend([coords[0], coords[1]]);
+    });
+
+    // Fit the map to show all markers with some padding
+    // Use padding to ensure markers aren't right at the edge
+    mapRef.current.fitBounds(bounds, {
+      padding: [20, 20], // 20px padding on all sides
+      maxZoom: 15 // Don't zoom in too much even if markers are close
     });
   };
 
@@ -589,8 +506,8 @@ export default function MapComponent({
     }
   };
 
-  // Function to display route on map using OSRM
-  const displayRouteToProvider = (providerCoords: [number, number], providerName: string) => {
+  // Enhanced function to display route on map using multiple routing services
+  const displayRouteToProviderEnhanced = async (providerCoords: [number, number], providerName: string) => {
     if (!mapRef.current || !userCoordinates) return;
 
     // Clear existing route
@@ -600,110 +517,59 @@ export default function MapComponent({
     }
 
     // Set loading state
+    setIsRouting(true);
     setRouteInstructions({ distance: "Calculating...", duration: "Calculating...", steps: [] });
 
-    // Ensure we're using the current user marker position, not just the state
-    const currentUserPosition = userMarkerRef.current?.getLatLng() || 
-                               { lat: userCoordinates[0], lng: userCoordinates[1] };
-    
-    // Format coordinates correctly for OSRM API (longitude,latitude format)
-    const startPoint = `${currentUserPosition.lng},${currentUserPosition.lat}`;
-    const endPoint = `${providerCoords[1]},${providerCoords[0]}`;
+    try {
+      // Ensure we're using the current user marker position, not just the state
+      const currentUserPosition = userMarkerRef.current?.getLatLng() ||
+                                 { lat: userCoordinates[0], lng: userCoordinates[1] };
 
+      const startCoords: [number, number] = [currentUserPosition.lat, currentUserPosition.lng];
 
-    // Using OSRM demo server with instructions
-    const osrmRequestUrl = `https://router.project-osrm.org/route/v1/driving/${startPoint};${endPoint}?overview=full&geometries=geojson&steps=true&annotations=true`;
+      // Get route using the enhanced routing service
+      const routeResult = await routingService.getRoute(startCoords, providerCoords, { trafficAware: true });
 
-    fetch(osrmRequestUrl)
-      .then(response => response.json())
-      .then(data => {
-        if (data.routes && data.routes.length > 0) {
-          const route = data.routes[0];
-          const routeGeometry = route.geometry.coordinates;
-          const latLngs = routeGeometry.map((coord: [number, number]) => [coord[1], coord[0]]); // OSRM is lng,lat; Leaflet is lat,lng
+      // Create route polyline
+      routeLayerRef.current = L.polyline(routeResult.route, {
+        color: '#2F7B5F',
+        weight: 5,
+        opacity: 0.8,
+        lineCap: 'round',
+        lineJoin: 'round'
+      }).addTo(mapRef.current!);
 
-          // Create route with gradient color from green to red
-          routeLayerRef.current = L.polyline(latLngs, {
-            color: '#2F7B5F',
-            weight: 5,
-            opacity: 0.8,
-            lineCap: 'round',
-            lineJoin: 'round'
-          }).addTo(mapRef.current!);
+      // Zoom to fit the route with padding
+      mapRef.current!.fitBounds(routeLayerRef.current.getBounds().pad(0.1));
 
-          mapRef.current!.fitBounds(routeLayerRef.current.getBounds().pad(0.1)); // Zoom to fit the route with padding
-
-          // Parse and format route instructions
-          if (route.legs && route.legs.length > 0) {
-            const leg = route.legs[0];
-            const totalDistance = formatDistance(leg.distance);
-
-            // Determine predominant road type for the entire route
-            let primaryRoadType = 'normal';
-
-            // Calculate simplified and realistic travel duration
-            const totalDuration = formatDuration(leg.duration, primaryRoadType, leg.distance);
-
-            const steps = leg.steps.map((step: {
-              maneuver: { instruction?: string };
-              name?: string;
-              distance: number;
-              duration: number;
-            }) => {
-              // Determine road type for this step
-              const roadType = step.name?.includes('motorway') ? 'motorway' :
-                               step.name?.includes('trunk') ? 'trunk' :
-                               step.name?.includes('primary') ? 'primary' :
-                               step.name?.includes('secondary') ? 'secondary' :
-                               step.name?.includes('residential') ? 'residential' : 'normal';
-
-              return {
-                instruction: step.maneuver.instruction || step.name || 'Continue straight',
-                distance: formatDistance(step.distance),
-                duration: formatDuration(step.duration, roadType, step.distance)
-              };
-            })
-            // Filter out steps with empty instructions or very small distances
-            .filter((step: {
-              instruction: string;
-              distance: string;
-              duration: string;
-            }) => {
-              // Check that instruction is valid
-              if (!step.instruction ||
-                  step.instruction.trim() === '' ||
-                  step.instruction.includes('undefined')) {
-                return false;
-              }
-
-              // Parse distance value correctly
-              let distanceValue = 0;
-              if (step.distance.includes('km')) {
-                distanceValue = parseFloat(step.distance) * 1000; // Convert km to meters
-              } else {
-                distanceValue = parseFloat(step.distance.replace(' m', '')); // Remove ' m' and parse
-              }
-
-              // Skip very small distances (less than 5 meters)
-              return distanceValue > 5;
-            });
-
-            setRouteInstructions({
-              distance: totalDistance,
-              duration: totalDuration,
-              steps
-            });
-          }
-        } else {
-          alert(`Could not find a route to ${providerName}.`);
-          setRouteInstructions(null);
-        }
-      })
-      .catch(error => {
-        alert(`Error fetching route to ${providerName}. Please try again.`);
-        setRouteInstructions(null);
+      // Set route instructions
+      setRouteInstructions({
+        distance: routeResult.distance,
+        duration: routeResult.duration,
+        steps: routeResult.steps
       });
+
+    } catch (error) {
+      console.error('Enhanced routing failed:', error);
+
+      // Show user-friendly error message
+      setGeocodeError(`Could not calculate route to ${providerName}. Please try again later.`);
+      setRouteInstructions(null);
+
+      // Auto-hide error after 5 seconds
+      setTimeout(() => {
+        setGeocodeError(null);
+      }, 5000);
+    } finally {
+      setIsRouting(false);
+    }
   };
+
+  // Initialize cache cleanup on component mount
+  useEffect(() => {
+    // Clean up expired cache entries on component mount
+    cacheManager.cleanupExpiredEntries();
+  }, []);
 
   // Clear route instructions and event listeners when component unmounts
   useEffect(() => {
@@ -774,13 +640,32 @@ export default function MapComponent({
           left: '50%',
           transform: 'translateX(-50%)',
           zIndex: 1000,
-          backgroundColor: '#f8d7da',
-          color: '#721c24',
+          backgroundColor: geocodeAccuracy === 'low' ? '#f8d7da' : geocodeAccuracy === 'medium' ? '#fff3cd' : '#d1ecf1',
+          color: geocodeAccuracy === 'low' ? '#721c24' : geocodeAccuracy === 'medium' ? '#856404' : '#0c5460',
           padding: '10px 15px',
           borderRadius: '4px',
-          boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+          boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+          maxWidth: '400px',
+          textAlign: 'center'
         }}>
-          {geocodeError}
+          <div className="flex items-center gap-2">
+            {geocodeAccuracy === 'high' && (
+              <svg className="w-4 h-4 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              </svg>
+            )}
+            {geocodeAccuracy === 'medium' && (
+              <svg className="w-4 h-4 text-yellow-600" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+            )}
+            {geocodeAccuracy === 'low' && (
+              <svg className="w-4 h-4 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+            )}
+            <span>{geocodeError}</span>
+          </div>
         </div>
       )}
 
@@ -797,7 +682,30 @@ export default function MapComponent({
           borderRadius: '4px',
           boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
         }}>
-          Finding locations...
+          <div className="flex items-center gap-2">
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600"></div>
+            <span>Finding locations...</span>
+          </div>
+        </div>
+      )}
+
+      {isRouting && (
+        <div style={{
+          position: 'absolute',
+          top: '50px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: 1000,
+          backgroundColor: '#d1ecf1',
+          color: '#0c5460',
+          padding: '10px 15px',
+          borderRadius: '4px',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+        }}>
+          <div className="flex items-center gap-2">
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+            <span>Calculating route...</span>
+          </div>
         </div>
       )}
 

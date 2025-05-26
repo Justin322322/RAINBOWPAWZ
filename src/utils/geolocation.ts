@@ -2,11 +2,15 @@
  * Utility functions for handling geolocation
  */
 
+import { geocodingService } from './geocoding';
+
 // Interface for location data
 export interface LocationData {
   address: string;
   coordinates?: [number, number]; // [latitude, longitude]
   source: 'geolocation' | 'profile' | 'default';
+  accuracy?: 'high' | 'medium' | 'low';
+  confidence?: number;
 }
 
 /**
@@ -64,7 +68,12 @@ export const reverseGeocode = async (coordinates: [number, number]): Promise<str
   try {
     const [latitude, longitude] = coordinates;
     const response = await fetch(
-      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1&countrycodes=ph`
+      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1&countrycodes=ph`,
+      {
+        headers: {
+          'User-Agent': 'RainbowPaws/1.0 (contact@rainbowpaws.com)'
+        }
+      }
     );
 
     if (!response.ok) {
@@ -109,6 +118,37 @@ export const reverseGeocode = async (coordinates: [number, number]): Promise<str
     return address || 'Unknown location';
   } catch (error) {
     return 'Unknown location';
+  }
+};
+
+/**
+ * Geocode an address to coordinates using the enhanced geocoding service
+ *
+ * @param address Address to geocode
+ * @returns Promise with location data including coordinates and accuracy
+ */
+export const geocodeAddress = async (address: string): Promise<LocationData> => {
+  try {
+    const result = await geocodingService.geocodeAddress(address);
+
+    return {
+      address: result.formattedAddress,
+      coordinates: result.coordinates,
+      source: 'profile',
+      accuracy: result.accuracy,
+      confidence: result.confidence
+    };
+  } catch (error) {
+    console.error('Geocoding error:', error);
+
+    // Return default location with low confidence
+    return {
+      address: 'Balanga City, Bataan, Philippines (Default Location)',
+      coordinates: [14.6742, 120.5434],
+      source: 'default',
+      accuracy: 'low',
+      confidence: 0.1
+    };
   }
 };
 

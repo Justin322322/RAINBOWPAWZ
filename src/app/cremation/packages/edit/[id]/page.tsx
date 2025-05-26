@@ -417,11 +417,23 @@ function EditPackagePage({ userData }: EditPackagePageProps) {
         // Try to parse as JSON
         let responseData;
         try {
+          // Check if response is empty
+          if (!responseText.trim()) {
+            throw new Error('Empty response from server');
+          }
+
           responseData = JSON.parse(responseText);
           console.log('Parsed response data:', responseData);
         } catch (parseError) {
           console.error('Error parsing response as JSON:', parseError);
-          throw new Error('Invalid response format from server');
+          console.error('Response text was:', responseText);
+
+          // If response is not JSON, check if it's an HTML error page
+          if (responseText.includes('<html>') || responseText.includes('<!DOCTYPE')) {
+            throw new Error('Server returned an error page instead of JSON. Please check server logs.');
+          }
+
+          throw new Error(`Invalid response format from server: ${parseError.message}`);
         }
 
         if (!response.ok) {

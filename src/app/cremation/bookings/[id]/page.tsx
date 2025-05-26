@@ -1,97 +1,107 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { motion, AnimatePresence } from 'framer-motion';
+import { format } from 'date-fns';
+import { motion } from 'framer-motion';
+import {
+  ArrowLeftIcon,
+  CalendarIcon,
+  ClockIcon,
+  PhoneIcon,
+  EnvelopeIcon,
+  CreditCardIcon,
+  TruckIcon,
+  XCircleIcon,
+  CheckCircleIcon,
+  ArrowPathIcon,
+  PlayIcon,
+  DocumentCheckIcon,
+  SparklesIcon,
+} from '@heroicons/react/24/outline';
 import CremationDashboardLayout from '@/components/navigation/CremationDashboardLayout';
 import withBusinessVerification from '@/components/withBusinessVerification';
 import { useToast } from '@/context/ToastContext';
-import { getProductionImagePath } from '@/utils/imageUtils';
-import ConfirmationModal from '@/components/ConfirmationModal';
-import {
-  ArrowLeftIcon,
-  ClockIcon,
-  CheckIcon,
-  XMarkIcon,
-  PhoneIcon,
-  EnvelopeIcon,
-  PencilIcon,
-  ArrowPathIcon,
-  ChatBubbleLeftIcon,
-  BanknotesIcon,
-  CreditCardIcon,
-  ExclamationCircleIcon,
-  CalendarDaysIcon,
-  CheckCircleIcon,
-  XCircleIcon,
-} from '@heroicons/react/24/outline';
-import { LoadingSpinner } from '@/app/cremation/components/LoadingComponents';
+import CremationCertificate from '@/components/certificates/CremationCertificate';
 
-function BookingDetailsPage({ userData }: { userData: any }) {
+interface BookingDetailsProps {
+  userData?: any;
+}
+
+interface BookingData {
+  id: number;
+  status: string;
+  booking_date: string;
+  booking_time: string;
+  notes: string;
+  created_at: string;
+  price: number;
+  payment_method: string;
+  payment_status?: string;
+  delivery_option: string;
+  delivery_address?: string;
+  delivery_distance?: number;
+  delivery_fee?: number;
+  pet_name: string;
+  pet_type: string;
+  cause_of_death?: string;
+  pet_image_url?: string;
+  user_id: number;
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone: string;
+  package_id: number;
+  service_name: string;
+  processing_time: string;
+  provider_name?: string;
+  provider_address?: string;
+}
+
+function BookingDetailsPage({ userData }: BookingDetailsProps) {
   const params = useParams();
   const router = useRouter();
-  const bookingId = params.id as string;
-  const { showToast: showToastOriginal } = useToast();
+  const { showToast } = useToast();
 
-  // Memoize the showToast function to prevent it from causing infinite re-renders
-  const showToast = useCallback((message: string, type: 'success' | 'error' | 'info' | 'warning', duration?: number) => {
-    showToastOriginal(message, type, duration);
-  }, [showToastOriginal]);
-
+  const [booking, setBooking] = useState<BookingData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [booking, setBooking] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
-  const [statusSectionExpanded, setStatusSectionExpanded] = useState(false);
-  const [paymentSectionExpanded, setPaymentSectionExpanded] = useState(false);
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [statusUpdateData, setStatusUpdateData] = useState<{
-    newStatus: string;
-    title: string;
-    message: string;
-  } | null>(null);
+  const [updating, setUpdating] = useState(false);
+  const [showCertificate, setShowCertificate] = useState(false);
 
-  const handleStatusUpdate = async (newStatus: string) => {
-    // Prepare status update data for confirmation modal
-    let title = '';
-    let message = '';
-
-    switch(newStatus) {
-      case 'confirmed':
-        title = 'Confirm Booking';
-        message = 'Are you sure you want to confirm this booking? This will schedule the service and notify the customer.';
-        break;
-      case 'in_progress':
-        title = 'Start Service';
-        message = 'Are you sure you want to mark this booking as in progress? This indicates that the service has started.';
-        break;
-      case 'completed':
-        title = 'Complete Service';
-        message = 'Are you sure you want to mark this booking as completed? This will finalize the service.';
-        break;
-      case 'cancelled':
-        title = 'Cancel Booking';
-        message = 'Are you sure you want to cancel this booking? This action cannot be undone.';
-        break;
-      default:
-        title = 'Update Status';
-        message = `Are you sure you want to update the status to ${getStatusLabel(newStatus)}?`;
-    }
-
-    // Set the status update data and show the confirmation modal
-    setStatusUpdateData({ newStatus, title, message });
-    setShowSuccessModal(true);
-  };
-
-  // Actual status update function that gets called after confirmation
-  const performStatusUpdate = async () => {
-    if (!statusUpdateData) return;
-    const { newStatus } = statusUpdateData;
-
+  const fetchBookingDetails = useCallback(async () => {
     try {
       setLoading(true);
+      setError(null);
 
-      const response = await fetch(`/api/cremation/bookings/${bookingId}/status`, {
+      const response = await fetch(`/api/cremation/bookings/${params.id}`);
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to fetch booking details');
+      }
+
+      const data = await response.json();
+      setBooking(data);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'An error occurred while fetching booking details');
+      showToast('Error loading booking details: ' + (error instanceof Error ? error.message : 'Unknown error'), 'error');
+    } finally {
+      setLoading(false);
+    }
+  }, [params.id, showToast]);
+
+  useEffect(() => {
+    if (params.id) {
+      fetchBookingDetails();
+    }
+  }, [params.id, fetchBookingDetails]);
+
+  const updateBookingStatus = async (newStatus: string) => {
+    try {
+      setUpdating(true);
+
+      const response = await fetch(`/api/cremation/bookings/${params.id}/status`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -100,350 +110,41 @@ function BookingDetailsPage({ userData }: { userData: any }) {
       });
 
       if (!response.ok) {
-        // Try to parse the error response, but handle cases where it might not be valid JSON
-        let errorMessage = 'Failed to update booking status';
-        try {
-          const errorData = await response.json();
-          errorMessage = errorData.error || errorMessage;
-        } catch (parseError) {
-        }
-        throw new Error(errorMessage);
+        throw new Error('Failed to update booking status');
       }
 
-      const data = await response.json();
-
-      // Update the local booking state
-      setBooking({
-        ...booking,
-        status: newStatus,
-      });
-
-      // Automatically expand the status section when status is updated to confirmed or in_progress
-      if (newStatus === 'confirmed' || newStatus === 'in_progress') {
-        setStatusSectionExpanded(true);
-      }
-
-      // Success message will be shown by the confirmation modal
-
-      // Refresh the booking data to ensure we have the latest information
-      setTimeout(() => {
-        fetchBookingDetails();
-      }, 1000);
-
-      return true; // Return true to indicate success for the confirmation modal
+      await fetchBookingDetails();
+      showToast(`Booking ${newStatus} successfully`, 'success');
     } catch (error) {
-      showToast('Failed to update booking status: ' + (error instanceof Error ? error.message : 'Unknown error'), 'error');
-      return false; // Return false to indicate failure
+      showToast('Failed to update booking status', 'error');
     } finally {
-      setLoading(false);
+      setUpdating(false);
     }
   };
 
-  // Enhanced payment status update that works with or without the API
-  const handlePaymentStatusUpdate = async (newPaymentStatus: string) => {
-    try {
-      setLoading(true);
-
-      // First, update the local state immediately for better UX
-      setBooking({
-        ...booking,
-        paymentStatus: newPaymentStatus,
-      });
-
-      // Try to update via API, but don't fail if it doesn't work
-      try {
-        const response = await fetch(`/api/cremation/bookings/${bookingId}/payment`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ paymentStatus: newPaymentStatus }),
-        });
-
-        if (response.ok) {
-        } else {
-          // If API fails, log it but don't show error to user since UI is already updated
-          const errorData = await response.json();
-        }
-      } catch (apiError) {
-        // If API call fails completely, just log it
-      }
-
-      // Show success message regardless of API result
-      showToast(`Payment status updated to ${getPaymentStatusLabel(newPaymentStatus)}`, 'success');
-
-      // Store in localStorage as a backup
-      try {
-        const bookingPaymentStatuses = JSON.parse(localStorage.getItem('bookingPaymentStatuses') || '{}');
-        bookingPaymentStatuses[bookingId] = newPaymentStatus;
-        localStorage.setItem('bookingPaymentStatuses', JSON.stringify(bookingPaymentStatuses));
-      } catch (storageError) {
-      }
-    } catch (error) {
-      showToast('Failed to update payment status: ' + (error instanceof Error ? error.message : 'Unknown error'), 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Extract the fetchBookingDetails function to make it reusable
-  const fetchBookingDetails = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-
-      // Add a cache-busting parameter and increase timeout
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout for slow connections
-
-      const response = await fetch(`/api/cremation/bookings/${bookingId}?t=${Date.now()}`, {
-        method: 'GET',
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache',
-          'Expires': '0'
-        },
-        signal: controller.signal
-      });
-
-      clearTimeout(timeoutId);
-
-
-      // Always try to parse the response as JSON, whether it's an error or success
-      let responseData;
-      try {
-        responseData = await response.json();
-      } catch (parseError) {
-        throw new Error('Failed to parse server response. Please try again later.');
-      }
-
-      // Check if the response was not successful
-      if (!response.ok) {
-        // Check if this is a "not found" error (404)
-        if (response.status === 404) {
-          // Check if we have debug information
-          if (responseData.debug) {
-
-            // If we have tables available but still got a 404, it might be a permission issue
-            if (responseData.debug.tablesAvailable &&
-                responseData.debug.tablesAvailable.length > 0 &&
-                (responseData.debug.serviceBookingsError || responseData.debug.bookingsError)) {
-
-              // Set a more specific error message
-              setError(`Booking #${bookingId} exists but could not be accessed. This may be a permissions issue.`);
-
-              return;
-            }
-          }
-
-          // Default not found message
-          setError(`Booking #${bookingId} was not found in the system.`);
-
-          // Return early to avoid throwing an error
-          return;
-        }
-
-        // For other errors, use the error details from the response if available
-        const errorMessage = responseData.error || 'Failed to fetch booking details';
-        const errorDetails = responseData.details ? `: ${responseData.details}` : '';
-        throw new Error(`${errorMessage}${errorDetails}`);
-      }
-
-      // Validate the response data
-      if (!responseData || typeof responseData !== 'object') {
-        throw new Error('Invalid response format from server');
-      }
-
-      // Check if we have the minimal required fields
-      if (!responseData.id) {
-        responseData.id = bookingId;
-      }
-
-      // If we got here, the response was successful
-
-      // Always set GCash payments to 'paid' regardless of what's stored
-      if (responseData.paymentMethod === 'gcash') {
-        responseData.paymentStatus = 'paid';
-      }
-      // Check if we need to load payment status from localStorage for non-GCash payments
-      else if (!responseData.paymentStatus || responseData.paymentStatus === 'undefined') {
-        try {
-          const bookingPaymentStatuses = JSON.parse(localStorage.getItem('bookingPaymentStatuses') || '{}');
-          if (bookingPaymentStatuses[bookingId]) {
-            responseData.paymentStatus = bookingPaymentStatuses[bookingId];
-          } else {
-            // Default to 'not_paid' for other payment methods
-            responseData.paymentStatus = 'not_paid';
-          }
-        } catch (storageError) {
-          // Set default payment status
-          responseData.paymentStatus = 'not_paid';
-        }
-      }
-
-      setBooking(responseData);
-    } catch (error) {
-
-      // Check if it's an abort error (timeout)
-      const err = error as any;
-      if (err.name === 'AbortError') {
-        setError(`Request timed out. The server took too long to respond. Please try again.`);
-        return;
-      }
-
-      // Set a more user-friendly error message
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      setError('Failed to load booking details. ' + errorMessage);
-
-      // Try one more time with a different approach - direct fetch without signal
-      try {
-        const fallbackResponse = await fetch(`/api/cremation/bookings/${bookingId}?fallback=true&t=${Date.now()}`, {
-          method: 'GET',
-          headers: {
-            'Cache-Control': 'no-cache, no-store, must-revalidate',
-            'Pragma': 'no-cache',
-            'Expires': '0'
-          }
-        });
-
-        if (fallbackResponse.ok) {
-          const fallbackData = await fallbackResponse.json();
-          setBooking(fallbackData);
-          setError(null);
-        } else {
-        }
-      } catch (fallbackError) {
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Effect to fetch booking details when component mounts or bookingId changes
-  useEffect(() => {
-    if (bookingId) {
-      fetchBookingDetails();
-    }
-  }, [bookingId]);
-
-  // Effect to check localStorage for payment status when booking is loaded
-  useEffect(() => {
-    if (booking && (!booking.paymentStatus || booking.paymentStatus === 'undefined')) {
-      try {
-        const bookingPaymentStatuses = JSON.parse(localStorage.getItem('bookingPaymentStatuses') || '{}');
-        if (bookingPaymentStatuses[bookingId]) {
-          setBooking({
-            ...booking,
-            paymentStatus: bookingPaymentStatuses[bookingId]
-          });
-        }
-      } catch (error) {
-      }
-    }
-  }, [booking?.id]);
-
-  // Effect to automatically expand the status section when booking is confirmed
-  useEffect(() => {
-    if (booking && (booking.status === 'confirmed' || booking.status === 'in_progress')) {
-      setStatusSectionExpanded(true);
-
-      // Also expand payment section for confirmed bookings
-      if (booking.status === 'confirmed' && booking.paymentMethod === 'cash') {
-        setPaymentSectionExpanded(true);
-      }
-    }
-  }, [booking?.status, booking?.paymentMethod]);
-
-  const getStatusBadge = (status: string) => {
-    // Get the properly formatted label
-    const label = getStatusLabel(status);
-
-    // Determine the appropriate color based on status
-    let bgColor = 'bg-gray-100';
-    let textColor = 'text-gray-800';
-
-    switch(status) {
-      case 'scheduled':
-      case 'confirmed':
-        bgColor = 'bg-yellow-100';
-        textColor = 'text-yellow-800';
-        break;
-      case 'in_progress':
-        bgColor = 'bg-blue-100';
-        textColor = 'text-blue-800';
-        break;
+  const getStatusColor = (status: string) => {
+    switch (status) {
       case 'pending':
-        bgColor = 'bg-gray-100';
-        textColor = 'text-gray-800';
-        break;
+        return 'bg-yellow-100 text-yellow-800';
+      case 'confirmed':
+        return 'bg-blue-100 text-blue-800';
+      case 'in_progress':
+        return 'bg-purple-100 text-purple-800';
       case 'completed':
-        bgColor = 'bg-green-100';
-        textColor = 'text-green-800';
-        break;
+        return 'bg-green-100 text-green-800';
       case 'cancelled':
-        bgColor = 'bg-red-100';
-        textColor = 'text-red-800';
-        break;
-    }
-
-    return (
-      <span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${bgColor} ${textColor} min-w-[90px] justify-center`}>
-        {label}
-      </span>
-    );
-  };
-
-  const getPaymentStatusBadge = (paymentStatus: string) => {
-    switch(paymentStatus) {
-      case 'paid':
-        return (
-          <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 min-w-[90px] justify-center">
-            Paid
-          </span>
-        );
-      case 'partially_paid':
-        return (
-          <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800 min-w-[90px] justify-center">
-            Partially Paid
-          </span>
-        );
-      case 'not_paid':
-        return (
-          <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800 min-w-[90px] justify-center">
-            Not Paid
-          </span>
-        );
+        return 'bg-red-100 text-red-800';
       default:
-        return (
-          <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800 min-w-[90px] justify-center">
-            {paymentStatus}
-          </span>
-        );
+        return 'bg-gray-100 text-gray-800';
     }
   };
 
-  const getPaymentStatusLabel = (paymentStatus: string) => {
-    switch(paymentStatus) {
-      case 'paid':
-        return 'Paid';
-      case 'partially_paid':
-        return 'Partially Paid';
-      case 'not_paid':
-        return 'Not Paid';
-      default:
-        return paymentStatus;
-    }
-  };
-
-  // Add a function to get properly formatted status labels
   const getStatusLabel = (status: string) => {
-    switch(status) {
+    switch (status) {
       case 'pending':
         return 'Pending';
       case 'confirmed':
-      case 'scheduled':
-        return 'Scheduled';
+        return 'Confirmed';
       case 'in_progress':
         return 'In Progress';
       case 'completed':
@@ -451,172 +152,336 @@ function BookingDetailsPage({ userData }: { userData: any }) {
       case 'cancelled':
         return 'Cancelled';
       default:
-        return status.charAt(0).toUpperCase() + status.slice(1).replace('_', ' ');
+        return 'Unknown';
     }
+  };
+
+  const formatDate = (dateString: string) => {
+    if (!dateString) return 'N/A';
+    try {
+      return format(new Date(dateString), 'MMMM d, yyyy');
+    } catch {
+      return 'Invalid Date';
+    }
+  };
+
+  const formatTime = (timeString: string) => {
+    if (!timeString) return 'N/A';
+    try {
+      const [hours, minutes] = timeString.split(':');
+      const date = new Date();
+      date.setHours(parseInt(hours, 10));
+      date.setMinutes(parseInt(minutes, 10));
+      return date.toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+      });
+    } catch {
+      return 'Invalid Time';
+    }
+  };
+
+  // Progress Timeline Component
+  const ProgressTimeline = ({ status }: { status: string }) => {
+    const stages = [
+      {
+        id: 'pending',
+        label: 'Booking Received',
+        description: 'Your booking has been submitted',
+        icon: ClockIcon,
+        color: 'yellow'
+      },
+      {
+        id: 'confirmed',
+        label: 'Booking Confirmed',
+        description: 'We have confirmed your booking',
+        icon: CheckCircleIcon,
+        color: 'blue'
+      },
+      {
+        id: 'in_progress',
+        label: 'Service in Progress',
+        description: 'Your pet is being cared for',
+        icon: SparklesIcon,
+        color: 'purple'
+      },
+      {
+        id: 'completed',
+        label: 'Service Completed',
+        description: 'Your service has been completed',
+        icon: DocumentCheckIcon,
+        color: 'green'
+      }
+    ];
+
+    const getStageStatus = (stageId: string, currentStatus: string) => {
+      const stageOrder = ['pending', 'confirmed', 'in_progress', 'completed'];
+      const currentIndex = stageOrder.indexOf(currentStatus);
+      const stageIndex = stageOrder.indexOf(stageId);
+
+      if (currentStatus === 'cancelled') {
+        return stageIndex === 0 ? 'completed' : 'inactive';
+      }
+
+      if (stageIndex < currentIndex) return 'completed';
+      if (stageIndex === currentIndex) {
+        // If the current status is 'completed', mark the completed stage as completed too
+        return currentStatus === 'completed' ? 'completed' : 'current';
+      }
+      return 'upcoming';
+    };
+
+    return (
+      <motion.div
+        className="bg-gradient-to-br from-white to-gray-50 rounded-xl shadow-lg border border-gray-100 p-8"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.2 }}
+      >
+        <div className="text-center mb-8">
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Booking Progress</h2>
+          <p className="text-gray-600">Track your service journey with us</p>
+        </div>
+
+        {/* Desktop Timeline */}
+        <div className="hidden md:block">
+          <div className="relative py-4">
+            {/* Timeline Steps Container */}
+            <div className="relative flex justify-between items-start">
+              {stages.map((stage, index) => {
+                const stageStatus = getStageStatus(stage.id, status);
+                const IconComponent = stage.icon;
+                const isLast = index === stages.length - 1;
+
+                return (
+                  <div key={stage.id} className="flex flex-col items-center relative flex-1">
+                    {/* Progress Line - only show green for completed stages */}
+                    {!isLast && stageStatus === 'completed' && (
+                      <motion.div
+                        className={`absolute top-10 left-1/2 w-full h-1 z-0 rounded-full ${
+                          status === 'cancelled' ? 'bg-gradient-to-r from-red-400 to-red-600' : 'bg-gradient-to-r from-green-400 to-green-600'
+                        }`}
+                        initial={{ width: '0%' }}
+                        animate={{ width: '100%' }}
+                        transition={{ duration: 1.5, ease: "easeInOut", delay: index * 0.3 }}
+                      ></motion.div>
+                    )}
+
+                    {/* Icon Circle */}
+                    <motion.div
+                      className={`
+                        relative z-20 w-20 h-20 rounded-full flex items-center justify-center border-4 transition-all duration-500 bg-white shadow-lg
+                        ${stageStatus === 'completed'
+                          ? 'border-green-500 bg-gradient-to-br from-green-400 to-green-600 text-white shadow-xl'
+                          : stageStatus === 'current'
+                          ? `border-green-500 text-green-600 shadow-xl ring-4 ring-green-100 animate-pulse`
+                          : 'border-gray-300 text-gray-400 shadow-md'
+                        }
+                        ${status === 'cancelled' && stage.id === 'pending'
+                          ? 'bg-gradient-to-br from-red-400 to-red-600 border-red-500 text-white shadow-xl'
+                          : ''
+                        }
+                      `}
+                      initial={{ scale: 0.8, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      transition={{ duration: 0.5, delay: index * 0.2 }}
+                      whileHover={{ scale: 1.05 }}
+                    >
+                      <IconComponent className="h-8 w-8" />
+                    </motion.div>
+
+                    {/* Stage Info */}
+                    <motion.div
+                      className="mt-6 text-center max-w-36"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.5, delay: index * 0.2 + 0.3 }}
+                    >
+                      <h3 className={`text-base font-semibold mb-2 ${
+                        stageStatus === 'completed' || stageStatus === 'current'
+                          ? 'text-gray-900'
+                          : 'text-gray-500'
+                      }`}>
+                        {stage.label}
+                      </h3>
+                      <p className={`text-sm leading-relaxed ${
+                        stageStatus === 'completed' || stageStatus === 'current'
+                          ? 'text-gray-600'
+                          : 'text-gray-400'
+                      }`}>
+                        {stage.description}
+                      </p>
+                    </motion.div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* Mobile Timeline */}
+        <div className="md:hidden">
+          <div className="space-y-4">
+            {stages.map((stage, index) => {
+              const stageStatus = getStageStatus(stage.id, status);
+              const IconComponent = stage.icon;
+              const isLast = index === stages.length - 1;
+
+              return (
+                <div key={stage.id} className="relative flex items-start">
+                  {/* Vertical Line */}
+                  {!isLast && (
+                    <div className={`absolute left-6 top-12 w-1 h-16 z-0 rounded-full shadow-sm ${
+                      stageStatus === 'completed' || (stageStatus === 'current' && index < stages.length - 1)
+                        ? 'bg-gradient-to-b from-green-400 to-green-600'
+                        : 'bg-gray-300'
+                    }`}></div>
+                  )}
+
+                  {/* Icon Circle */}
+                  <motion.div
+                    className={`
+                      relative z-20 w-14 h-14 rounded-full flex items-center justify-center border-3 transition-all duration-500 bg-white shadow-lg
+                      ${stageStatus === 'completed'
+                        ? 'border-green-500 bg-gradient-to-br from-green-400 to-green-600 text-white shadow-xl'
+                        : stageStatus === 'current'
+                        ? `border-green-500 text-green-600 shadow-xl ring-4 ring-green-100 animate-pulse`
+                        : 'border-gray-300 text-gray-400 shadow-md'
+                      }
+                      ${status === 'cancelled' && stage.id === 'pending'
+                        ? 'bg-gradient-to-br from-red-400 to-red-600 border-red-500 text-white shadow-xl'
+                        : ''
+                      }
+                    `}
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ duration: 0.5, delay: index * 0.2 }}
+                  >
+                    <IconComponent className="h-6 w-6" />
+                  </motion.div>
+
+                  {/* Stage Info */}
+                  <motion.div
+                    className="ml-4 flex-1"
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.5, delay: index * 0.2 + 0.3 }}
+                  >
+                    <h3 className={`text-base font-semibold mb-1 ${
+                      stageStatus === 'completed' || stageStatus === 'current'
+                        ? 'text-gray-900'
+                        : 'text-gray-500'
+                    }`}>
+                      {stage.label}
+                    </h3>
+                    <p className={`text-sm leading-relaxed ${
+                      stageStatus === 'completed' || stageStatus === 'current'
+                        ? 'text-gray-600'
+                        : 'text-gray-400'
+                    }`}>
+                      {stage.description}
+                    </p>
+                  </motion.div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Enhanced Status Message */}
+        <div className={`mt-6 p-6 rounded-lg border-l-4 ${
+          status === 'completed' ? 'bg-green-50 border-green-400' :
+          status === 'in_progress' ? 'bg-purple-50 border-purple-400' :
+          status === 'confirmed' ? 'bg-blue-50 border-blue-400' :
+          status === 'cancelled' ? 'bg-red-50 border-red-400' :
+          'bg-yellow-50 border-yellow-400'
+        }`}>
+          <div className="flex items-start justify-between">
+            <div className="flex items-start">
+              <div className={`w-3 h-3 rounded-full mr-4 mt-1 ${
+                status === 'completed' ? 'bg-green-500' :
+                status === 'in_progress' ? 'bg-purple-500' :
+                status === 'confirmed' ? 'bg-blue-500' :
+                status === 'cancelled' ? 'bg-red-500' :
+                'bg-yellow-500'
+              }`}></div>
+              <div>
+                <h3 className={`font-medium mb-1 ${
+                  status === 'completed' ? 'text-green-800' :
+                  status === 'in_progress' ? 'text-purple-800' :
+                  status === 'confirmed' ? 'text-blue-800' :
+                  status === 'cancelled' ? 'text-red-800' :
+                  'text-yellow-800'
+                }`}>
+                  {status === 'pending' && 'Booking Received'}
+                  {status === 'confirmed' && 'Booking Confirmed'}
+                  {status === 'in_progress' && 'Service in Progress'}
+                  {status === 'completed' && 'Service Completed'}
+                  {status === 'cancelled' && 'Booking Cancelled'}
+                </h3>
+                <p className={`text-sm ${
+                  status === 'completed' ? 'text-green-700' :
+                  status === 'in_progress' ? 'text-purple-700' :
+                  status === 'confirmed' ? 'text-blue-700' :
+                  status === 'cancelled' ? 'text-red-700' :
+                  'text-yellow-700'
+                }`}>
+                  {status === 'pending' && 'We have received your booking and will confirm it shortly. You will be notified once confirmed.'}
+                  {status === 'confirmed' && 'Your booking has been confirmed. We will start the service soon and keep you updated.'}
+                  {status === 'in_progress' && 'Your pet is currently being cared for with the utmost respect and dignity.'}
+                  {status === 'completed' && 'Your service has been completed. Thank you for trusting us during this difficult time.'}
+                  {status === 'cancelled' && 'This booking has been cancelled. If you have any questions, please contact us.'}
+                </p>
+              </div>
+            </div>
+
+            {/* Certificate Button for Completed Services */}
+            {status === 'completed' && (
+              <button
+                onClick={() => setShowCertificate(true)}
+                className="ml-4 inline-flex items-center px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-200"
+              >
+                <DocumentCheckIcon className="h-4 w-4 mr-2" />
+                View Certificate
+              </button>
+            )}
+          </div>
+        </div>
+      </motion.div>
+    );
   };
 
   if (loading) {
     return (
       <CremationDashboardLayout activePage="bookings" userData={userData}>
-        <LoadingSpinner
-          message="Loading booking details..."
-          className="py-12"
-        />
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="animate-spin rounded-full h-12 w-12 border-4 border-gray-200 border-t-[var(--primary-green)]"></div>
+        </div>
       </CremationDashboardLayout>
     );
   }
 
   if (error || !booking) {
-    // Check if the error message indicates a "not found" situation
-    const isNotFoundError = error && (
-      error.includes("not found") ||
-      error.includes("couldn't be found") ||
-      error.includes("doesn't exist")
-    );
-
-    // Check if it's a permissions or access issue
-    const isAccessError = error && (
-      error.includes("could not be accessed") ||
-      error.includes("permissions issue") ||
-      error.includes("access denied")
-    );
-
-    // Check if it's a timeout issue
-    const isTimeoutError = error && (
-      error.includes("timed out") ||
-      error.includes("took too long")
-    );
-
-    // Determine the appropriate icon and color based on error type
-    let iconColor = 'text-red-500';
-    let icon = (
-      <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-      </svg>
-    );
-
-    if (isNotFoundError) {
-      iconColor = 'text-amber-500';
-      icon = (
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-      );
-    } else if (isAccessError) {
-      iconColor = 'text-blue-500';
-      icon = (
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-        </svg>
-      );
-    } else if (isTimeoutError) {
-      iconColor = 'text-orange-500';
-      icon = (
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-      );
-    }
-
-    // Determine the appropriate title based on error type
-    let errorTitle = 'Error Loading Booking';
-    if (isNotFoundError) errorTitle = 'Booking Not Found';
-    if (isAccessError) errorTitle = 'Access Issue';
-    if (isTimeoutError) errorTitle = 'Request Timed Out';
-
     return (
       <CremationDashboardLayout activePage="bookings" userData={userData}>
         <div className="bg-white rounded-xl shadow-sm p-6">
           <div className="flex flex-col items-center justify-center py-12">
-            <div className={`${iconColor} mb-4`}>
-              {icon}
+            <div className="text-red-500 mb-4">
+              <XCircleIcon className="h-12 w-12" />
             </div>
-
             <h3 className="text-lg font-medium text-gray-900 mb-2">
-              {errorTitle}
+              {error === 'Booking not found' ? 'Booking Not Found' : 'Error Loading Booking'}
             </h3>
-
             <p className="text-gray-500 text-center mb-6">
               {error || "The booking you're looking for doesn't exist or couldn't be loaded."}
             </p>
-
-            {/* Display booking ID for troubleshooting */}
-            <div className="bg-gray-50 p-4 rounded-lg mb-6 w-full max-w-md">
-              <h4 className="text-sm font-medium text-gray-700 mb-2">Troubleshooting Information</h4>
-              <p className="text-sm text-gray-600">Booking ID: <span className="font-mono">{bookingId}</span></p>
-
-              {isNotFoundError ? (
-                <div className="mt-2 text-sm text-gray-600">
-                  <p>This booking ID may not exist in the system. Please check that you have the correct booking ID.</p>
-                </div>
-              ) : isAccessError ? (
-                <div className="mt-2 text-sm text-gray-600">
-                  <p>The booking exists but could not be accessed. This may be due to permissions or database issues.</p>
-                  <p className="mt-1">Try refreshing the page or logging out and back in.</p>
-                </div>
-              ) : isTimeoutError ? (
-                <div className="mt-2 text-sm text-gray-600">
-                  <p>The server took too long to respond. This could be due to high server load or connectivity issues.</p>
-                  <p className="mt-1">Please try again in a few moments.</p>
-                </div>
-              ) : (
-                <p className="text-sm text-gray-600 mt-2">
-                  If this issue persists, please contact support with this information.
-                </p>
-              )}
-            </div>
-
-            <div className="flex flex-wrap gap-3 justify-center">
-              {/* Always show Try Again button except for Not Found errors */}
-              {!isNotFoundError && (
-                <button
-                  onClick={() => {
-                    // Try to fetch the booking details again
-                    fetchBookingDetails();
-                  }}
-                  className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 flex items-center"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
-                  Try Again
-                </button>
-              )}
-
-              <button
-                onClick={() => router.back()}
-                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
-              >
-                Go Back
-              </button>
-
-              <Link
-                href="/cremation/bookings"
-                className="px-4 py-2 bg-[var(--primary-green)] text-white rounded-lg hover:bg-opacity-90"
-              >
-                View All Bookings
-              </Link>
-
-              {/* Show Dashboard link for Not Found and Access errors */}
-              {(isNotFoundError || isAccessError) && (
-                <Link
-                  href="/cremation/dashboard"
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                >
-                  Go to Dashboard
-                </Link>
-              )}
-
-              {/* Add a direct link to create a new booking for Not Found errors */}
-              {isNotFoundError && (
-                <Link
-                  href="/cremation/bookings/new"
-                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
-                >
-                  Create New Booking
-                </Link>
-              )}
-            </div>
+            <button
+              onClick={() => router.push('/cremation/bookings')}
+              className="px-4 py-2 bg-[var(--primary-green)] text-white rounded-lg hover:bg-green-700"
+            >
+              Back to Bookings
+            </button>
           </div>
         </div>
       </CremationDashboardLayout>
@@ -625,567 +490,238 @@ function BookingDetailsPage({ userData }: { userData: any }) {
 
   return (
     <CremationDashboardLayout activePage="bookings" userData={userData}>
-      {/* Confirmation Modal */}
-      {statusUpdateData && (
-        <ConfirmationModal
-          isOpen={showSuccessModal}
-          onClose={() => {
-            setShowSuccessModal(false);
-            setStatusUpdateData(null);
-          }}
-          onConfirm={performStatusUpdate}
-          title={statusUpdateData.title}
-          message={statusUpdateData.message}
-          confirmText={statusUpdateData.newStatus === 'cancelled' ? 'Cancel Booking' : 'Confirm'}
-          confirmButtonClass={
-            statusUpdateData.newStatus === 'cancelled'
-              ? 'bg-red-600 hover:bg-red-700'
-              : statusUpdateData.newStatus === 'completed'
-                ? 'bg-green-600 hover:bg-green-700'
-                : 'bg-blue-600 hover:bg-blue-700'
-          }
-        />
-      )}
-
-      {/* Header section with back button */}
-      <div className="mb-6">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Back Button */}
         <button
           onClick={() => router.back()}
-          className="inline-flex items-center text-gray-600 hover:text-gray-900"
+          className="inline-flex items-center text-gray-600 hover:text-gray-900 mb-6"
         >
-          <ArrowLeftIcon className="h-5 w-5 mr-1" />
-          <span>Back to Bookings</span>
+          <ArrowLeftIcon className="h-5 w-5 mr-2" />
+          Back to Bookings
         </button>
-      </div>
 
-      {/* Booking Header */}
-      <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
-        <div className="flex flex-col md:flex-row md:justify-between md:items-center">
-          <div>
-            <div className="flex items-center mb-2">
-              <h1 className="text-2xl font-semibold text-gray-800">
-                Booking #{bookingId}
-              </h1>
-              <div className="ml-3">
-                {getStatusBadge(booking.status)}
-              </div>
-              {booking.paymentMethod === 'gcash' && (
-                <div className="ml-2 px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
-                  GCash
+        {booking ? (
+          <div className="space-y-6">
+            {/* Booking Header */}
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4">
+                <div className="flex items-center space-x-4">
+                  <h1 className="text-2xl font-semibold text-gray-900">Booking #{booking.id}</h1>
+                  <div className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(booking.status)}`}>
+                    {getStatusLabel(booking.status)}
+                  </div>
                 </div>
-              )}
-            </div>
-            <div className="flex items-center text-gray-500 text-sm space-x-3">
-              <span>Created on {booking.createdAt}</span>
-              <span>•</span>
-              <span>Scheduled for {booking.scheduledDate} at {booking.scheduledTime}</span>
-            </div>
-          </div>
-          <div className="mt-4 md:mt-0 flex flex-wrap gap-2">
-            {booking.status === 'pending' && (
-              <>
-                <button
-                  onClick={() => handleStatusUpdate('confirmed')}
-                  className="px-4 py-2 bg-[var(--primary-green)] text-white rounded-lg hover:bg-[var(--primary-green-hover)] flex items-center shadow-sm transition-colors"
-                  disabled={loading}
-                >
-                  {loading ? (
-                    <ArrowPathIcon className="h-5 w-5 inline-block mr-1 animate-spin" />
-                  ) : (
-                    <CheckIcon className="h-5 w-5 inline-block mr-1" />
+
+                {/* Action Buttons - Moved to top */}
+                <div className="flex flex-col sm:flex-row gap-2 mt-4 sm:mt-0">
+                  {booking.status === 'pending' && (
+                    <>
+                      <button
+                        onClick={() => updateBookingStatus('cancelled')}
+                        className="px-4 py-2 border border-red-300 text-red-700 rounded-md text-sm font-medium hover:bg-red-50 flex items-center justify-center"
+                        disabled={updating}
+                      >
+                        {updating ? (
+                          <ArrowPathIcon className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <XCircleIcon className="h-4 w-4 mr-2" />
+                        )}
+                        {updating ? 'Cancelling...' : 'Cancel Booking'}
+                      </button>
+                      <button
+                        onClick={() => updateBookingStatus('confirmed')}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 flex items-center justify-center"
+                        disabled={updating}
+                      >
+                        {updating ? (
+                          <ArrowPathIcon className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <CheckCircleIcon className="h-4 w-4 mr-2" />
+                        )}
+                        {updating ? 'Confirming...' : 'Confirm Booking'}
+                      </button>
+                    </>
                   )}
-                  Confirm Booking
-                </button>
-                <button
-                  onClick={() => handleStatusUpdate('cancelled')}
-                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center shadow-sm transition-colors"
-                  disabled={loading}
-                >
-                  {loading ? (
-                    <ArrowPathIcon className="h-5 w-5 inline-block mr-1 animate-spin" />
-                  ) : (
-                    <XMarkIcon className="h-5 w-5 inline-block mr-1" />
+
+                  {booking.status === 'confirmed' && (
+                    <button
+                      onClick={() => updateBookingStatus('in_progress')}
+                      className="px-4 py-2 bg-purple-600 text-white rounded-md text-sm font-medium hover:bg-purple-700 flex items-center justify-center"
+                      disabled={updating}
+                    >
+                      {updating ? (
+                        <ArrowPathIcon className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <PlayIcon className="h-4 w-4 mr-2" />
+                      )}
+                      {updating ? 'Starting...' : 'Start Service'}
+                    </button>
                   )}
-                  Reject Booking
-                </button>
-              </>
-            )}
-            {booking.status === 'confirmed' && (
-              <button
-                onClick={() => handleStatusUpdate('in_progress')}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center shadow-sm transition-colors"
-                disabled={loading}
-              >
-                {loading ? (
-                  <ArrowPathIcon className="h-5 w-5 inline-block mr-1 animate-spin" />
-                ) : (
-                  <ClockIcon className="h-5 w-5 inline-block mr-1" />
+
+                  {booking.status === 'in_progress' && (
+                    <button
+                      onClick={() => updateBookingStatus('completed')}
+                      className="px-4 py-2 bg-green-600 text-white rounded-md text-sm font-medium hover:bg-green-700 flex items-center justify-center"
+                      disabled={updating}
+                    >
+                      {updating ? (
+                        <ArrowPathIcon className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <CheckCircleIcon className="h-4 w-4 mr-2" />
+                      )}
+                      {updating ? 'Completing...' : 'Mark Complete'}
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div className="border-t border-gray-200 pt-4 mt-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm text-gray-500">Booking Date</p>
+                    <p className="font-medium flex items-center mt-1">
+                      <CalendarIcon className="h-4 w-4 text-gray-400 mr-1" />
+                      {formatDate(booking.booking_date)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Booking Time</p>
+                    <p className="font-medium flex items-center mt-1">
+                      <ClockIcon className="h-4 w-4 text-gray-400 mr-1" />
+                      {formatTime(booking.booking_time)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Progress Timeline */}
+            <ProgressTimeline status={booking.status} />
+
+            {/* Service Details */}
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <h2 className="text-lg font-medium text-gray-900 mb-4">Service Details</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500">Service Package</h3>
+                  <p className="mt-1 font-medium">{booking.service_name}</p>
+                  <p className="text-sm text-gray-600 mt-1">₱{parseFloat(booking.price.toString()).toLocaleString()}</p>
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500">Processing Time</h3>
+                  <p className="mt-1 font-medium">{booking.processing_time}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Pet Information */}
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <h2 className="text-lg font-medium text-gray-900 mb-4">Pet Information</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500">Pet Name</h3>
+                  <p className="mt-1 font-medium">{booking.pet_name}</p>
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500">Pet Type</h3>
+                  <p className="mt-1 font-medium">{booking.pet_type}</p>
+                </div>
+                {booking.cause_of_death && (
+                  <div className="col-span-1 md:col-span-2">
+                    <h3 className="text-sm font-medium text-gray-500">Cause of Death</h3>
+                    <p className="mt-1 font-medium">{booking.cause_of_death}</p>
+                  </div>
                 )}
-                Start Service
-              </button>
-            )}
-            {booking.status === 'in_progress' && (
-              <button
-                onClick={() => handleStatusUpdate('completed')}
-                className="px-4 py-2 bg-[var(--primary-green)] text-white rounded-lg hover:bg-[var(--primary-green-hover)] flex items-center shadow-sm transition-colors"
-                disabled={loading}
-              >
-                {loading ? (
-                  <ArrowPathIcon className="h-5 w-5 inline-block mr-1 animate-spin" />
-                ) : (
-                  <CheckIcon className="h-5 w-5 inline-block mr-1" />
+              </div>
+            </div>
+
+            {/* Customer Information */}
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <h2 className="text-lg font-medium text-gray-900 mb-4">Customer Information</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500">Name</h3>
+                  <p className="mt-1 font-medium">{booking.first_name} {booking.last_name}</p>
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500">Email</h3>
+                  <p className="mt-1 font-medium flex items-center">
+                    <EnvelopeIcon className="h-4 w-4 text-gray-400 mr-1" />
+                    <a href={`mailto:${booking.email}`} className="text-blue-600 hover:text-blue-800">
+                      {booking.email}
+                    </a>
+                  </p>
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500">Phone</h3>
+                  <p className="mt-1 font-medium flex items-center">
+                    <PhoneIcon className="h-4 w-4 text-gray-400 mr-1" />
+                    {booking.phone ? (
+                      <a href={`tel:${booking.phone}`} className="text-blue-600 hover:text-blue-800">
+                        {booking.phone}
+                      </a>
+                    ) : (
+                      'Not provided'
+                    )}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Payment and Delivery Information */}
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <h2 className="text-lg font-medium text-gray-900 mb-4">Payment & Delivery</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500">Payment Method</h3>
+                  <p className="mt-1 font-medium flex items-center">
+                    <CreditCardIcon className="h-4 w-4 text-gray-400 mr-1" />
+                    {booking.payment_method || 'Not specified'}
+                  </p>
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500">Delivery Option</h3>
+                  <p className="mt-1 font-medium flex items-center">
+                    <TruckIcon className="h-4 w-4 text-gray-400 mr-1" />
+                    {booking.delivery_option || 'Pickup'}
+                  </p>
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500">Total Amount</h3>
+                  <p className="mt-1 font-medium">₱{parseFloat(booking.price.toString()).toLocaleString()}</p>
+                </div>
+                {booking.delivery_option === 'delivery' && booking.delivery_address && (
+                  <div className="col-span-1 md:col-span-2">
+                    <h3 className="text-sm font-medium text-gray-500">Delivery Address</h3>
+                    <p className="mt-1 font-medium">{booking.delivery_address}</p>
+                  </div>
                 )}
-                Complete Service
-              </button>
+              </div>
+            </div>
+
+            {/* Special Requests */}
+            {booking.notes && (
+              <div className="bg-white rounded-lg shadow-sm p-6">
+                <h2 className="text-lg font-medium text-gray-900 mb-4">Special Requests</h2>
+                <p className="text-gray-700">{booking.notes}</p>
+              </div>
             )}
-            {/* Add ability to cancel from any non-final state */}
-            {['pending', 'confirmed', 'in_progress'].includes(booking.status) && booking.status !== 'pending' && (
-              <button
-                onClick={() => handleStatusUpdate('cancelled')}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center shadow-sm transition-colors"
-                disabled={loading}
-              >
-                {loading ? (
-                  <ArrowPathIcon className="h-5 w-5 inline-block mr-1 animate-spin" />
-                ) : (
-                  <XMarkIcon className="h-5 w-5 inline-block mr-1" />
-                )}
-                Cancel Service
-              </button>
+
+            {/* Certificate Modal */}
+            {showCertificate && booking && (
+              <CremationCertificate
+                booking={booking}
+                onClose={() => setShowCertificate(false)}
+              />
             )}
+
           </div>
-        </div>
-      </div>
-
-      {/* Booking Workflow - Modern UI */}
-      <div className="bg-white rounded-xl shadow-sm p-6 mb-6 overflow-hidden">
-        <h2 className="text-lg font-medium text-gray-800 mb-6">Booking Workflow</h2>
-        <div className="relative">
-          <div className="flex items-center justify-between mb-6">
-            {/* Pending Step */}
-            <div className={`flex flex-col items-center relative z-10 transition-all duration-300 ${
-              booking.status === 'pending'
-                ? 'text-blue-600 font-medium transform scale-110'
-                : (booking.status === 'confirmed' || booking.status === 'in_progress' || booking.status === 'completed')
-                  ? 'text-green-600 font-medium'
-                  : booking.status === 'cancelled'
-                    ? 'text-red-600 font-medium'
-                    : 'text-gray-500'
-            }`}>
-              <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-2 shadow-md transition-all duration-300 ${
-                booking.status === 'pending'
-                  ? 'bg-blue-100 border-2 border-blue-600 animate-pulse'
-                  : (booking.status === 'confirmed' || booking.status === 'in_progress' || booking.status === 'completed')
-                    ? 'bg-green-100 border-2 border-green-600'
-                    : booking.status === 'cancelled'
-                      ? 'bg-red-100 border-2 border-red-600'
-                      : 'bg-gray-100'
-              }`}>
-                <ClockIcon className="h-6 w-6" />
-              </div>
-              <span className="text-sm font-medium">Pending</span>
-            </div>
-
-            {/* Scheduled Step */}
-            <div className={`flex flex-col items-center relative z-10 transition-all duration-300 ${
-              booking.status === 'confirmed'
-                ? 'text-blue-600 font-medium transform scale-110'
-                : (booking.status === 'in_progress' || booking.status === 'completed')
-                  ? 'text-green-600 font-medium'
-                  : booking.status === 'cancelled'
-                    ? 'text-red-600 font-medium opacity-50'
-                    : 'text-gray-500'
-            }`}>
-              <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-2 shadow-md transition-all duration-300 ${
-                booking.status === 'confirmed'
-                  ? 'bg-blue-100 border-2 border-blue-600 animate-pulse'
-                  : (booking.status === 'in_progress' || booking.status === 'completed')
-                    ? 'bg-green-100 border-2 border-green-600'
-                    : booking.status === 'cancelled'
-                      ? 'bg-gray-100 opacity-50'
-                      : 'bg-gray-100'
-              }`}>
-                <CalendarDaysIcon className="h-6 w-6" />
-              </div>
-              <span className="text-sm font-medium">Scheduled</span>
-            </div>
-
-            {/* In Progress Step */}
-            <div className={`flex flex-col items-center relative z-10 transition-all duration-300 ${
-              booking.status === 'in_progress'
-                ? 'text-blue-600 font-medium transform scale-110'
-                : booking.status === 'completed'
-                  ? 'text-green-600 font-medium'
-                  : booking.status === 'cancelled'
-                    ? 'text-red-600 font-medium opacity-50'
-                    : 'text-gray-500'
-            }`}>
-              <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-2 shadow-md transition-all duration-300 ${
-                booking.status === 'in_progress'
-                  ? 'bg-blue-100 border-2 border-blue-600 animate-pulse'
-                  : booking.status === 'completed'
-                    ? 'bg-green-100 border-2 border-green-600'
-                    : booking.status === 'cancelled'
-                      ? 'bg-gray-100 opacity-50'
-                      : 'bg-gray-100'
-              }`}>
-                <ArrowPathIcon className="h-6 w-6" />
-              </div>
-              <span className="text-sm font-medium">In Progress</span>
-            </div>
-
-            {/* Completed Step */}
-            <div className={`flex flex-col items-center relative z-10 transition-all duration-300 ${
-              booking.status === 'completed'
-                ? 'text-green-600 font-medium transform scale-110'
-                : booking.status === 'cancelled'
-                  ? 'text-red-600 font-medium opacity-50'
-                  : 'text-gray-500'
-            }`}>
-              <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-2 shadow-md transition-all duration-300 ${
-                booking.status === 'completed'
-                  ? 'bg-green-100 border-2 border-green-600'
-                  : booking.status === 'cancelled'
-                    ? 'bg-gray-100 opacity-50'
-                    : 'bg-gray-100'
-              }`}>
-                <CheckIcon className="h-6 w-6" />
-              </div>
-              <span className="text-sm font-medium">Completed</span>
-            </div>
-          </div>
-
-          {/* Progress Bar */}
-          <div className="absolute top-6 left-0 right-0 h-2 bg-gray-200 rounded-full -z-0 mx-12">
-            <div
-              className={`h-full rounded-full transition-all duration-700 ease-in-out ${
-                booking.status === 'cancelled' ? 'bg-red-500' : 'bg-gradient-to-r from-blue-500 to-green-500'
-              }`}
-              style={{
-                width: booking.status === 'pending' ? '12%' :
-                       booking.status === 'confirmed' ? '38%' :
-                       booking.status === 'in_progress' ? '63%' :
-                       booking.status === 'completed' ? '100%' :
-                       booking.status === 'cancelled' ? '100%' : '0%'
-              }}
-            ></div>
-          </div>
-        </div>
-
-        {booking.status === 'cancelled' && (
-          <div className="mt-6 bg-red-50 p-4 rounded-lg border border-red-100 text-center shadow-sm">
-            <div className="flex items-center justify-center">
-              <XMarkIcon className="h-5 w-5 text-red-500 mr-2" />
-              <p className="text-red-700 font-medium">This booking has been cancelled</p>
-            </div>
+        ) : (
+          <div className="bg-yellow-50 border-l-4 border-yellow-500 p-4 rounded-md">
+            <p className="text-yellow-700">Booking not found. Please check the booking ID and try again.</p>
           </div>
         )}
-      </div>
-
-      {/* Booking Information */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-        {/* Basic Details */}
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <h2 className="text-lg font-medium text-gray-800 mb-4 flex items-center">
-            <ClockIcon className="h-5 w-5 mr-2 text-gray-500" />
-            Booking Information
-          </h2>
-          <div className="space-y-3">
-            <div>
-              <p className="text-sm text-gray-500">Status</p>
-              <div>{getStatusBadge(booking.status)}</div>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Scheduled Date</p>
-              <p className="text-base font-medium text-gray-900">{booking.scheduledDate}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Scheduled Time</p>
-              <p className="text-base font-medium text-gray-900">{booking.scheduledTime}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Service Package</p>
-              <p className="text-base font-medium text-gray-900">{booking.package}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Created On</p>
-              <p className="text-base font-medium text-gray-900">{booking.createdAt}</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Pet Details */}
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <h2 className="text-lg font-medium text-gray-800 mb-4 flex items-center">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-gray-500" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M6.625 2.655A9 9 0 0119 11a1 1 0 11-2 0 7 7 0 00-9.625-6.492 1 1 0 11-.75-1.853zM4.662 4.959A1 1 0 014.75 6.37 6.97 6.97 0 003 11a1 1 0 11-2 0 8.97 8.97 0 012.25-5.953 1 1 0 011.412-.088z" clipRule="evenodd" />
-              <path fillRule="evenodd" d="M5 11a5 5 0 1110 0 1 1 0 11-2 0 3 3 0 10-6 0c0 1.677-.345 3.276-.968 4.729a1 1 0 11-1.838-.789A9.964 9.964 0 005 11zm8.921 2.012a1 1 0 01.831 1.145 19.86 19.86 0 01-.545 2.436 1 1 0 11-1.92-.558c.207-.713.371-1.445.49-2.192a1 1 0 011.144-.83z" clipRule="evenodd" />
-              <path fillRule="evenodd" d="M10 10a1 1 0 011 1c0 2.236-.46 4.368-1.29 6.304a1 1 0 01-1.838-.789A13.952 13.952 0 009 11a1 1 0 011-1z" clipRule="evenodd" />
-            </svg>
-            Pet Details
-          </h2>
-          <div className="flex flex-col sm:flex-row items-center mb-6">
-            {booking.petImageUrl ? (
-              <div className="mb-4 sm:mb-0 sm:mr-6">
-                <img
-                  src={getProductionImagePath(booking.petImageUrl)}
-                  alt={booking.petName}
-                  className="h-32 w-32 rounded-lg object-cover shadow-md"
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    target.onerror = null; // Prevent infinite loop
-                    target.src = '/placeholder-pet.png'; // Fallback image
-                    target.className = 'h-32 w-32 rounded-lg object-contain bg-gray-100';
-                    console.error('Failed to load pet image:', booking.petImageUrl);
-                  }}
-                />
-              </div>
-            ) : (
-              <div className="h-32 w-32 bg-gray-200 rounded-lg flex items-center justify-center mb-4 sm:mb-0 sm:mr-6 shadow-md">
-                <span className="text-gray-500 text-2xl font-semibold">{booking.petName?.charAt(0) || '?'}</span>
-              </div>
-            )}
-            <div className="text-center sm:text-left">
-              <h3 className="text-xl font-semibold text-gray-800 mb-1">{booking.petName}</h3>
-              <p className="text-gray-600 mb-2">{booking.petType}</p>
-              {booking.petBreed && booking.petBreed !== 'Not specified' && (
-                <p className="text-gray-600 text-sm">Breed: {booking.petBreed}</p>
-              )}
-            </div>
-          </div>
-
-          <div className="bg-gray-50 p-4 rounded-lg">
-            {booking.causeOfDeath && booking.causeOfDeath !== 'Not specified' ? (
-              <div>
-                <p className="text-sm text-gray-500 mb-1">Cause of Death</p>
-                <p className="text-base font-medium text-gray-900">{booking.causeOfDeath}</p>
-              </div>
-            ) : (
-              <p className="text-gray-500 text-sm italic">No cause of death specified</p>
-            )}
-          </div>
-        </div>
-
-        {/* Owner Details */}
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <h2 className="text-lg font-medium text-gray-800 mb-4">Owner Information</h2>
-          <div className="space-y-3">
-            <div>
-              <p className="text-sm text-gray-500">Name</p>
-              <p className="text-base font-medium text-gray-900">{booking.owner.name}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Email</p>
-              <div className="flex items-center">
-                <EnvelopeIcon className="h-4 w-4 text-gray-400 mr-1" />
-                <a href={`mailto:${booking.owner.email}`} className="text-base font-medium text-blue-600 hover:text-blue-800">
-                  {booking.owner.email}
-                </a>
-              </div>
-            </div>
-            {booking.owner.phone && booking.owner.phone !== 'Not provided' && (
-              <div>
-                <p className="text-sm text-gray-500">Phone</p>
-                <div className="flex items-center">
-                  <PhoneIcon className="h-4 w-4 text-gray-400 mr-1" />
-                  <a href={`tel:${booking.owner.phone}`} className="text-base font-medium text-blue-600 hover:text-blue-800">
-                    {booking.owner.phone}
-                  </a>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Payment and Additional Details */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        {/* Payment Details */}
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <h2 className="text-lg font-medium text-gray-800 mb-4 flex items-center">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-gray-500" viewBox="0 0 20 20" fill="currentColor">
-              <path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z" />
-              <path fillRule="evenodd" d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z" clipRule="evenodd" />
-            </svg>
-            Payment Details
-          </h2>
-
-          <div className="bg-gray-50 p-4 rounded-lg mb-4">
-            <div className="space-y-3">
-              <div className="flex justify-between">
-                <p className="text-gray-600">Package Price</p>
-                <p className="font-medium text-gray-900">₱{parseFloat(booking.basePrice || booking.price || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
-              </div>
-
-              {/* Add-ons Section */}
-              {booking.addOns && booking.addOns.length > 0 && (
-                <>
-                  <div className="pt-2">
-                    <p className="text-gray-600 font-medium">Add-ons:</p>
-                  </div>
-                  {booking.addOns.map((addon: any, index: number) => (
-                    <div key={index} className="flex justify-between pl-4">
-                      <p className="text-gray-600">{addon.name}</p>
-                      <p className="font-medium text-gray-900">₱{parseFloat(addon.price || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
-                    </div>
-                  ))}
-                  <div className="flex justify-between pl-2">
-                    <p className="text-gray-600">Add-ons Subtotal</p>
-                    <p className="font-medium text-gray-900">₱{parseFloat(booking.addOnsTotal || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
-                  </div>
-                </>
-              )}
-
-              <div className="flex justify-between">
-                <p className="text-gray-600">Delivery Fee</p>
-                <p className="font-medium text-gray-900">₱{parseFloat(booking.deliveryFee || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
-              </div>
-              <div className="border-t border-gray-200 pt-3 mt-3">
-                <div className="flex justify-between">
-                  <p className="font-medium text-gray-900">Total Amount</p>
-                  <p className="font-semibold text-[var(--primary-green)] text-lg">₱{parseFloat(booking.price || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <p className="text-sm text-gray-500 mb-1">Payment Method</p>
-              <div className="flex items-center">
-                {booking.paymentMethod === 'cash' ? (
-                  <BanknotesIcon className="h-5 w-5 text-gray-400 mr-2" />
-                ) : (
-                  <CreditCardIcon className="h-5 w-5 text-gray-400 mr-2" />
-                )}
-                <p className="text-base font-medium text-gray-900 capitalize">{booking.paymentMethod}</p>
-              </div>
-            </div>
-
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <p className="text-sm text-gray-500 mb-1">Payment Status</p>
-              <div className="flex items-center">
-                {getPaymentStatusBadge(booking.paymentStatus)}
-              </div>
-            </div>
-
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <p className="text-sm text-gray-500 mb-1">Delivery Option</p>
-              <div className="flex items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                  <path d="M8 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM15 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" />
-                  <path d="M3 4a1 1 0 00-1 1v10a1 1 0 001 1h1.05a2.5 2.5 0 014.9 0H10a1 1 0 001-1V5a1 1 0 00-1-1H3zM14 7a1 1 0 00-1 1v6.05A2.5 2.5 0 0115.95 16H17a1 1 0 001-1v-5a1 1 0 00-.293-.707l-2-2A1 1 0 0015 7h-1z" />
-                </svg>
-                <p className="text-base font-medium text-gray-900 capitalize">{booking.deliveryOption}</p>
-              </div>
-            </div>
-          </div>
-
-          {booking.deliveryOption === 'delivery' && (
-            <div className="mt-4 bg-gray-50 p-4 rounded-lg">
-              <p className="text-sm text-gray-500 mb-2">Delivery Information</p>
-              {booking.deliveryDistance > 0 && (
-                <div className="flex items-center mb-2">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
-                  </svg>
-                  <p className="text-sm text-gray-700">Distance: <span className="font-medium">{booking.deliveryDistance} km</span></p>
-                </div>
-              )}
-              {booking.deliveryAddress && (
-                <div className="flex items-start">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400 mr-2 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
-                  </svg>
-                  <p className="text-sm text-gray-700">{booking.deliveryAddress}</p>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Special Instructions */}
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <h2 className="text-lg font-medium text-gray-800 mb-4 flex items-center">
-            <ChatBubbleLeftIcon className="h-5 w-5 mr-2 text-gray-500" />
-            Special Instructions
-          </h2>
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <p className="text-gray-700 whitespace-pre-wrap">
-              {booking.notes !== 'No special notes' ? booking.notes : 'No special instructions provided.'}
-            </p>
-          </div>
-        </div>
-      </div>
-
-
-
-      {/* Payment Information Section */}
-      <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
-        <h2 className="text-lg font-medium text-gray-800 mb-4 flex items-center">
-          <BanknotesIcon className="h-5 w-5 mr-2 text-gray-500" />
-          Payment Information
-        </h2>
-
-        <div className="bg-gray-50 p-4 rounded-lg">
-          <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
-            <div>
-              <p className="text-sm text-gray-600 mb-2">Payment Method:</p>
-              <div className="flex items-center">
-                {booking.paymentMethod === 'cash' ? (
-                  <BanknotesIcon className="h-5 w-5 text-gray-400 mr-2" />
-                ) : booking.paymentMethod === 'gcash' ? (
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-green-500 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clipRule="evenodd" />
-                  </svg>
-                ) : (
-                  <CreditCardIcon className="h-5 w-5 text-gray-400 mr-2" />
-                )}
-                <span className="text-base font-medium text-gray-900 capitalize">{booking.paymentMethod}</span>
-              </div>
-            </div>
-
-            <div>
-              <p className="text-sm text-gray-600 mb-2">Payment Status:</p>
-              <div className="flex items-center">
-                {booking.paymentMethod === 'gcash' ? (
-                  getPaymentStatusBadge('paid')
-                ) : (
-                  getPaymentStatusBadge(booking.paymentStatus || 'not_paid')
-                )}
-              </div>
-            </div>
-          </div>
-
-          {booking.paymentMethod === 'gcash' && (
-            <div className="mt-4 bg-green-50 p-3 rounded-lg border border-green-100">
-              <div className="flex items-center">
-                <CheckIcon className="h-5 w-5 text-green-500 mr-2" />
-                <p className="text-green-700">
-                  <span className="font-medium">Payment Completed</span> - GCash payments are automatically marked as paid
-                </p>
-              </div>
-            </div>
-          )}
-
-          {booking.paymentMethod === 'cash' && booking.paymentStatus !== 'paid' && (
-            <div className="mt-4 flex justify-end">
-              <button
-                onClick={() => handlePaymentStatusUpdate('paid')}
-                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center shadow-sm"
-                disabled={loading}
-              >
-                {loading ? (
-                  <ArrowPathIcon className="h-5 w-5 inline-block mr-1 animate-spin" />
-                ) : (
-                  <CheckIcon className="h-5 w-5 inline-block mr-1" />
-                )}
-                Mark as Paid
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
+      </main>
     </CremationDashboardLayout>
   );
 }

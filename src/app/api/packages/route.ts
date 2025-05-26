@@ -255,7 +255,7 @@ async function enhancePackagesWithDetails(pkgs: any[]) {
   const ids = pkgs.map((p) => p.id);
   const [incs, adds, imgs] = await Promise.all([
     query(`SELECT package_id, description FROM package_inclusions WHERE package_id IN (?)`, [ids]),
-    query(`SELECT package_id, description, price FROM package_addons WHERE package_id IN (?)`, [ids]),
+    query(`SELECT package_id, addon_id as id, description, price FROM package_addons WHERE package_id IN (?)`, [ids]),
     query(`SELECT package_id, image_path, display_order FROM package_images WHERE package_id IN (?) ORDER BY display_order`, [ids]),
   ]) as any[][];
 
@@ -271,9 +271,12 @@ async function enhancePackagesWithDetails(pkgs: any[]) {
 
   return pkgs.map((p: any) => {
     const inclusions = (incMap[p.id] || []).map((i: any) => i.description);
-    const addOns = (addMap[p.id] || []).map((a: any) =>
-      a.price != null ? `${a.description} (+₱${(+a.price).toLocaleString()})` : a.description
-    );
+    const addOns = (addMap[p.id] || []).map((a: any) => ({
+      id: a.id,
+      name: a.description,
+      price: a.price != null ? +a.price : 0,
+      displayText: a.price != null ? `${a.description} (+₱${(+a.price).toLocaleString()})` : a.description
+    }));
     const images = (imgMap[p.id] || [])
       .map((i: any) => {
         const path = i.image_path;

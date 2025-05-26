@@ -214,22 +214,7 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
         'Expires': '0'
       });
 
-      // Also fetch the debug data to verify what's in the database
-      try {
-        const debugResponse = await fetch(`/api/cremation/availability/debug?providerId=${providerId}`, {
-          headers: {
-            'Cache-Control': 'no-cache',
-            'Pragma': 'no-cache'
-          }
-        });
 
-        if (debugResponse.ok) {
-          const debugData = await debugResponse.json();
-          console.log('Debug data from database:', debugData);
-        }
-      } catch (debugErr) {
-        console.error('Error fetching debug data:', debugErr);
-      }
 
       // Using fetch with more robust options
       const response = await fetch(url, {
@@ -437,8 +422,7 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
     const firstDayOfWeek = firstDay.getDay();
     const days: CalendarDay[] = [];
 
-    console.log('Generating calendar for', year, month + 1);
-    console.log('Available data:', availabilityData.length, 'days');
+
 
     // Add empty cells for days of previous month
     for (let i = 0; i < firstDayOfWeek; i++) {
@@ -450,15 +434,9 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
       const date = new Date(year, month, i);
       const dateString = formatDateToString(date);
 
-      console.log(`Looking for availability data for ${dateString}`);
-
       // Find availability info for this date with exact string matching
       const availabilityInfo = availabilityData.find((day: DayAvailability) => {
-        const match = day.date === dateString;
-        if (match) {
-          console.log(`Found match for ${dateString}: isAvailable=${day.isAvailable}, timeSlots=${day.timeSlots.length}`);
-        }
-        return match;
+        return day.date === dateString;
       });
 
       // Ensure timeSlots is always an array
@@ -466,17 +444,8 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
         ? [...availabilityInfo.timeSlots]
         : [];
 
-      if (timeSlots.length > 0) {
-        console.log(`Date ${dateString} has ${timeSlots.length} time slots:`,
-          timeSlots.map(slot => `${slot.id}: ${slot.start}-${slot.end}`).join(', '));
-      }
-
       // A day is available if it has time slots or is explicitly marked as available
       const isAvailable = timeSlots.length > 0 || (availabilityInfo && availabilityInfo.isAvailable);
-
-      if (isAvailable) {
-        console.log(`Date ${dateString} is marked as available`);
-      }
 
       days.push({
         type: 'day',
@@ -654,7 +623,7 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
       setLoading(true);
       setError(null);
 
-      console.log('Removing time slot:', timeSlotId, 'from date:', dateString);
+
 
       // First update local state for immediate feedback
       const existingDay = availabilityData.find(day => day.date === dateString);
@@ -664,17 +633,13 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
         return;
       }
 
-      // Find the slot to be deleted for logging
-      const slotToDelete = existingDay.timeSlots.find(slot => slot.id === timeSlotId);
-      console.log('Slot to delete:', slotToDelete);
+
 
       // Update local state
       const updatedSlots = existingDay.timeSlots.filter(slot => slot.id !== timeSlotId);
       const updatedDay: DayAvailability = { ...existingDay, timeSlots: updatedSlots };
 
       // Call the API to delete the time slot from the database
-      // Include the date parameter for fallback deletion
-      console.log('Calling API to delete time slot:', timeSlotId, 'for provider:', providerId, 'on date:', dateString);
       const response = await fetch(`/api/cremation/availability/timeslot?slotId=${timeSlotId}&providerId=${providerId}&date=${dateString}`, {
         method: 'DELETE',
         headers: {
@@ -683,26 +648,9 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
         }
       });
 
-      const responseData = await response.json();
-      console.log('API response:', responseData);
-
       if (!response.ok) {
-        // If the API call fails, try the debug endpoint as a fallback
-        console.log('API call failed, trying debug endpoint as fallback');
-        const debugResponse = await fetch(`/api/cremation/availability/debug?action=delete-slot&slotId=${timeSlotId}&providerId=${providerId}`, {
-          method: 'GET',
-          headers: {
-            'Cache-Control': 'no-cache',
-            'Pragma': 'no-cache'
-          }
-        });
-
-        const debugResponseData = await debugResponse.json();
-        console.log('Debug API response:', debugResponseData);
-
-        if (!debugResponse.ok) {
-          throw new Error(responseData.error || `Failed to delete time slot (HTTP ${response.status})`);
-        }
+        const responseData = await response.json();
+        throw new Error(responseData.error || `Failed to delete time slot (HTTP ${response.status})`);
       }
 
       // After successfully deleting from the database, update the local state

@@ -4,7 +4,7 @@ import { calculateDistance, getBataanCoordinates } from '@/utils/distance';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
@@ -113,19 +113,21 @@ export async function GET(
       }
 
 
-      // Get provider details
+      // Get provider details including user profile picture
       const providerResult = await query(`
         SELECT
-          provider_id as id,
-          name,
-          city,
-          address,
-          phone,
-          description,
-          provider_type as type,
-          created_at,
-          ${hasSPAppStatus ? 'application_status' : hasSPVerStatus ? 'verification_status' : "'unknown' as status"}
-        FROM service_providers
+          sp.provider_id as id,
+          sp.name,
+          sp.city,
+          sp.address,
+          sp.phone,
+          sp.description,
+          sp.provider_type as type,
+          sp.created_at,
+          u.profile_picture,
+          ${hasSPAppStatus ? 'sp.application_status' : hasSPVerStatus ? 'sp.verification_status' : "'unknown' as status"}
+        FROM service_providers sp
+        LEFT JOIN users u ON sp.user_id = u.user_id
         WHERE ${whereClause}
         LIMIT 1
       `, [id]) as any[];

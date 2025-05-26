@@ -393,11 +393,11 @@ async function createProviderNotification(
   try {
     if (!bookingDetails.provider_id) return;
 
-    // Get provider user ID
-    const providerResult = await query('SELECT user_id FROM business_profiles WHERE id = ?', [bookingDetails.provider_id]) as any[];
+    // Get provider user ID from service_providers table
+    const providerResult = await query('SELECT user_id FROM service_providers WHERE provider_id = ?', [bookingDetails.provider_id]) as any[];
 
     if (!providerResult || providerResult.length === 0) {
-      console.warn('Provider user ID not found for notification');
+      console.warn('Provider user ID not found for notification, provider_id:', bookingDetails.provider_id);
       return;
     }
 

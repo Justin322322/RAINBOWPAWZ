@@ -14,7 +14,7 @@ import LogoutModal from '@/components/LogoutModal';
 import CartDropdown from '@/components/cart/CartDropdown';
 import NotificationBell from '@/components/ui/NotificationBell';
 import { useCart } from '@/contexts/CartContext';
-import { getImagePath } from '@/utils/imageUtils';
+import { getProfilePictureUrl, handleImageError } from '@/utils/imageUtils';
 
 interface FurParentNavbarProps {
   activePage?: string;
@@ -191,11 +191,12 @@ export default function FurParentNavbar({ activePage: propActivePage, userName =
                 <div className="bg-white rounded-full h-8 w-8 flex items-center justify-center mr-2 overflow-hidden">
                   {profilePicture ? (
                     <img
-                      src={getImagePath(profilePicture)}
+                      src={getProfilePictureUrl(profilePicture)}
                       alt="Profile"
                       className="h-full w-full object-cover"
-                      onError={() => {
-                        // On error, clear the profile picture to show UserIcon
+                      onError={(e) => {
+                        handleImageError(e, '/bg_4.png');
+                        // Also clear the profile picture state to show UserIcon
                         setProfilePicture(null);
                       }}
                     />

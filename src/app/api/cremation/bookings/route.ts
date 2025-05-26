@@ -327,6 +327,18 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    // Test database connection first
+    try {
+      await query('SELECT 1 as connection_test');
+    } catch (dbError) {
+      console.error('Database connection failed:', dbError);
+      return NextResponse.json({
+        error: 'Database connection failed',
+        message: 'Unable to connect to the database. Please try again later.',
+        details: dbError instanceof Error ? dbError.message : String(dbError)
+      }, { status: 500 });
+    }
+
     const body = await request.json();
     const {
       userId,
@@ -422,7 +434,7 @@ export async function POST(request: NextRequest) {
     const placeholders = [];
     const values = [];
 
-    // Always include these required fields
+    // Always include these required fields - using consistent table structure
     availableColumns.push('user_id', 'provider_id', 'package_id', 'booking_date', 'booking_time', 'price');
     placeholders.push('?', '?', '?', '?', '?', '?');
 
@@ -519,6 +531,13 @@ export async function POST(request: NextRequest) {
       values.push(deliveryFee || 0);
     }
 
+    // Set default status as pending
+    if (columns.includes('status')) {
+      availableColumns.push('status');
+      placeholders.push('?');
+      values.push('pending');
+    }
+
     // Build the final query
     const insertQuery = `
       INSERT INTO service_bookings (
@@ -526,13 +545,26 @@ export async function POST(request: NextRequest) {
       ) VALUES (${placeholders.join(', ')})
     `;
 
-    // Start a transaction
-    await query('START TRANSACTION');
+    // Start a transaction with better error handling
+    try {
+      await query('START TRANSACTION');
+    } catch (transactionError) {
+      console.error('Failed to start transaction:', transactionError);
+      return NextResponse.json({
+        error: 'Database transaction failed',
+        message: 'Unable to start database transaction. Please try again.',
+        details: transactionError instanceof Error ? transactionError.message : String(transactionError)
+      }, { status: 500 });
+    }
 
     const result = await query(insertQuery, values) as any;
 
     if (!result.insertId) {
-      await query('ROLLBACK');
+      try {
+        await query('ROLLBACK');
+      } catch (rollbackError) {
+        console.error('Failed to rollback transaction:', rollbackError);
+      }
       throw new Error('Failed to insert booking record');
     }
 
@@ -608,6 +640,14 @@ export async function POST(request: NextRequest) {
       bookingId: bookingId
     }, { status: 201 });
   } catch (error) {
+    // Rollback transaction if it was started
+    try {
+      await query('ROLLBACK');
+    } catch (rollbackError) {
+      console.error('Failed to rollback transaction:', rollbackError);
+    }
+
+    console.error('Error in POST /api/cremation/bookings:', error);
 
     // Check for specific database errors
     if (error instanceof Error) {
@@ -637,6 +677,33 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({
           error: 'Database configuration issue',
           message: 'The required database tables are not set up correctly',
+          code: mysqlError.code
+        }, { status: 500 });
+      }
+
+      if (mysqlError.code === 'ECONNREFUSED') {
+        // Connection refused
+        return NextResponse.json({
+          error: 'Database connection refused',
+          message: 'Unable to connect to the database server. Please ensure MySQL is running.',
+          code: mysqlError.code
+        }, { status: 500 });
+      }
+
+      if (mysqlError.code === 'ER_ACCESS_DENIED_ERROR') {
+        // Access denied
+        return NextResponse.json({
+          error: 'Database access denied',
+          message: 'Database authentication failed. Please check credentials.',
+          code: mysqlError.code
+        }, { status: 500 });
+      }
+
+      if (mysqlError.code === 'PROTOCOL_CONNECTION_LOST') {
+        // Connection lost
+        return NextResponse.json({
+          error: 'Database connection lost',
+          message: 'The database connection was lost during the operation. Please try again.',
           code: mysqlError.code
         }, { status: 500 });
       }

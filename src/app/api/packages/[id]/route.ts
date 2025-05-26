@@ -12,9 +12,10 @@ export const dynamic = 'force-dynamic'; // ensure requests aren’t cached
 /** GET a specific package by ID */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const packageId = Number(params.id);
+  const { id } = await params;
+  const packageId = Number(id);
   if (isNaN(packageId)) {
     return NextResponse.json({ error: 'Invalid package ID' }, { status: 400 });
   }
@@ -36,7 +37,7 @@ export async function GET(
     )) as any[];
 
     const addOns = (await query(
-      `SELECT description, price FROM package_addons WHERE package_id = ?`,
+      `SELECT addon_id as id, description, price FROM package_addons WHERE package_id = ?`,
       [packageId]
     )) as any[];
 
@@ -58,7 +59,7 @@ export async function GET(
         conditions: pkg.conditions,
         isActive: Boolean(pkg.is_active),
         inclusions: inclusions.map((i) => i.description),
-        addOns: addOns.map((a) => ({ name: a.description, price: Number(a.price) })),
+        addOns: addOns.map((a) => ({ id: a.id, name: a.description, price: Number(a.price) })),
         images: images
           .map((i) => i.image_path)
           .map((p) => getImagePath(p))
@@ -75,12 +76,17 @@ export async function GET(
 /** PATCH to update a package */
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const packageId = Number(params.id);
-  if (isNaN(packageId)) {
-    return NextResponse.json({ error: 'Invalid package ID' }, { status: 400 });
-  }
+  try {
+    const { id } = await params;
+    console.log('PATCH /api/packages/[id] - Request received for package:', id);
+
+    const packageId = Number(id);
+    if (isNaN(packageId)) {
+      console.log('Invalid package ID provided:', id);
+      return NextResponse.json({ error: 'Invalid package ID' }, { status: 400 });
+    }
 
   const authToken = getAuthTokenFromRequest(request);
   if (!authToken) {
@@ -93,13 +99,13 @@ export async function PATCH(
 
   // confirm provider
   const prov = (await query(
-    `SELECT id FROM service_providers WHERE user_id = ?`,
+    `SELECT provider_id FROM service_providers WHERE user_id = ?`,
     [userId]
   )) as any[];
   if (!prov.length) {
     return NextResponse.json({ error: 'Provider not found' }, { status: 404 });
   }
-  const providerId = Number(prov[0].id);
+  const providerId = Number(prov[0].provider_id);
 
   // confirm ownership
   const pkgOwner = (await query(
@@ -120,17 +126,26 @@ export async function PATCH(
   // simple toggle active
   if (typeof body.isActive === 'boolean') {
     await query(
-      `UPDATE service_packages SET is_active = ? WHERE id = ?`,
+      `UPDATE service_packages SET is_active = ? WHERE package_id = ?`,
       [body.isActive ? 1 : 0, packageId]
     );
     return NextResponse.json({ success: true, isActive: body.isActive });
   }
 
   // full update
+  console.log('Starting full package update for package ID:', packageId);
+  console.log('Update data:', JSON.stringify(body, null, 2));
+
   await query('START TRANSACTION');
   try {
+    // Validate required fields
+    if (!body.name || !body.description || !body.price) {
+      console.error('Missing required fields:', { name: body.name, description: body.description, price: body.price });
+      throw new Error('Missing required fields: name, description, and price are required');
+    }
+
     // update core
-    await query(
+    const updateResult = await query(
       `UPDATE service_packages
        SET name=?, description=?, category=?, cremation_type=?, processing_time=?,
            price=?, delivery_fee_per_km=?, conditions=?
@@ -142,11 +157,16 @@ export async function PATCH(
         body.cremationType,
         body.processingTime,
         Number(body.price),
-        Number(body.deliveryFeePerKm),
+        Number(body.deliveryFeePerKm) || 0,
         body.conditions,
         packageId
       ]
-    );
+    ) as any;
+
+    // Check if the package was actually updated
+    if (updateResult.affectedRows === 0) {
+      throw new Error('Package not found or no changes made');
+    }
 
     // inclusions
     if (Array.isArray(body.inclusions)) {
@@ -183,11 +203,20 @@ export async function PATCH(
     }
 
     await query('COMMIT');
-    return NextResponse.json({ success: true, message: 'Updated' });
+    console.log('Package update completed successfully for package ID:', packageId);
+    return NextResponse.json({ success: true, message: 'Package updated successfully' });
   } catch (e: any) {
+    console.error('Package update failed for package ID:', packageId, 'Error:', e.message);
     await query('ROLLBACK');
     return NextResponse.json(
       { error: 'Update failed', details: e.message },
+      { status: 500 }
+    );
+  }
+  } catch (unexpectedError: any) {
+    console.error('Unexpected error in PATCH /api/packages/[id]:', unexpectedError);
+    return NextResponse.json(
+      { error: 'Internal server error', details: unexpectedError.message },
       { status: 500 }
     );
   }
@@ -196,9 +225,10 @@ export async function PATCH(
 /** DELETE a package */
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const packageId = Number(params.id);
+  const { id } = await params;
+  const packageId = Number(id);
   if (isNaN(packageId)) {
     return NextResponse.json({ error: 'Invalid package ID' }, { status: 400 });
   }

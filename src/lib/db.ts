@@ -84,9 +84,10 @@ try {
 
 // Helper function to execute SQL queries
 export async function query(sql: string, params: any[] = []): Promise<QueryResult> {
+  let connection: mysql.PoolConnection;
   try {
-    // Get a connection from the pool
-    const connection = await pool.getConnection();
+    // Get a connection from the pool with timeout
+    connection = await pool.getConnection();
 
     try {
       // Execute the query
@@ -99,20 +100,36 @@ export async function query(sql: string, params: any[] = []): Promise<QueryResul
   } catch (error) {
     const err = error as any;
 
+    // Log the error for debugging
+    console.error('Database query error:', {
+      code: err.code,
+      message: err.message,
+      sql: sql.substring(0, 100) + (sql.length > 100 ? '...' : ''),
+      params: params
+    });
+
     // Check if it's a connection error
     if (err.code === 'ECONNREFUSED') {
       // Connection refused error - MySQL server might not be running
+      console.error('MySQL server connection refused. Please ensure MySQL is running on port 3306.');
     } else if (err.code === 'ER_ACCESS_DENIED_ERROR') {
       // Access denied error - Check username and password
+      console.error('MySQL access denied. Please check database credentials.');
     } else if (err.code === 'ER_BAD_DB_ERROR') {
       // Database does not exist - Check database name
+      console.error('MySQL database does not exist. Please check database name.');
     } else if (err.code === 'PROTOCOL_CONNECTION_LOST') {
       // The connection was lost, try to reconnect
+      console.error('MySQL connection lost. Attempting to reconnect...');
       try {
         pool = mysql.createPool(finalConfig);
+        console.log('MySQL pool recreated successfully.');
       } catch (reconnectError) {
-        // Failed to reconnect
+        console.error('Failed to recreate MySQL pool:', reconnectError);
       }
+    } else if (err.code === 'ETIMEDOUT') {
+      // Connection timeout
+      console.error('MySQL connection timeout. The server may be overloaded.');
     }
 
     throw error;

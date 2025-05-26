@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: May 24, 2025 at 01:14 AM
+-- Generation Time: May 26, 2025 at 02:52 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -20,6 +20,30 @@ SET time_zone = "+00:00";
 --
 -- Database: `rainbow_paws`
 --
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `admin_logs`
+--
+
+CREATE TABLE `admin_logs` (
+  `id` int(11) NOT NULL,
+  `admin_id` int(11) NOT NULL,
+  `action` varchar(100) NOT NULL,
+  `entity_type` varchar(50) NOT NULL,
+  `entity_id` int(11) NOT NULL,
+  `details` text DEFAULT NULL,
+  `ip_address` varchar(45) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `admin_logs`
+--
+
+INSERT INTO `admin_logs` (`id`, `admin_id`, `action`, `entity_type`, `entity_id`, `details`, `ip_address`, `created_at`) VALUES
+(1, 1, 'approve_business', 'service_providers', 4, '{\"businessName\":\"Rainbow Paws Cremation Center\",\"notes\":\"Application approved\"}', '::1', '2025-05-25 08:01:18');
 
 -- --------------------------------------------------------
 
@@ -69,7 +93,9 @@ CREATE TABLE `notifications` (
 --
 
 INSERT INTO `notifications` (`notification_id`, `user_id`, `title`, `message`, `type`, `is_read`, `link`, `created_at`) VALUES
-(1, 1, 'New Cremation Center Registration', 'business has registered as a cremation center and is pending verification.', 'info', 0, '/admin/applications/2', '2025-05-23 01:56:12');
+(2, 3, 'Application Approved', 'Your business application for Rainbow Paws Cremation Center has been approved. You can now start offering services.', 'success', 1, '/login', '2025-05-25 08:01:18'),
+(3, 3, 'Application Approved', 'Your business application for Rainbow Paws Cremation Center has been approved.', 'success', 1, '/login', '2025-05-25 08:01:22'),
+(4, 3, 'New Review Received', 'Justin Sibonga left a 5-star review for your service.', 'info', 1, '/cremation/reviews', '2025-05-26 00:17:36');
 
 -- --------------------------------------------------------
 
@@ -84,6 +110,17 @@ CREATE TABLE `otp_attempts` (
   `ip_address` varchar(45) DEFAULT NULL,
   `attempt_time` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `otp_attempts`
+--
+
+INSERT INTO `otp_attempts` (`id`, `user_id`, `attempt_type`, `ip_address`, `attempt_time`) VALUES
+(3, 4, 'generate', '::1', '2025-05-24 02:36:41'),
+(4, 4, 'generate', '::1', '2025-05-24 03:38:29'),
+(5, 4, 'generate', '::1', '2025-05-24 04:40:16'),
+(6, 4, 'generate', '::1', '2025-05-24 04:49:09'),
+(7, 4, 'verify', '::1', '2025-05-24 04:49:33');
 
 -- --------------------------------------------------------
 
@@ -100,6 +137,16 @@ CREATE TABLE `otp_codes` (
   `used_at` timestamp NULL DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `otp_codes`
+--
+
+INSERT INTO `otp_codes` (`id`, `user_id`, `otp_code`, `expires_at`, `is_used`, `used_at`, `created_at`) VALUES
+(2, 4, '865507', '2025-05-24 10:46:41', 1, NULL, '2025-05-24 02:36:41'),
+(3, 4, '792691', '2025-05-24 11:48:29', 1, NULL, '2025-05-24 03:38:29'),
+(4, 4, '737931', '2025-05-24 12:50:16', 1, NULL, '2025-05-24 04:40:16'),
+(5, 4, '769440', '2025-05-24 12:59:08', 1, NULL, '2025-05-24 04:49:09');
 
 -- --------------------------------------------------------
 
@@ -134,9 +181,7 @@ CREATE TABLE `package_images` (
 --
 
 INSERT INTO `package_images` (`image_id`, `package_id`, `image_path`, `display_order`, `created_at`) VALUES
-(1, 4, '/uploads/packages/cremation_1.jpg', 1, '2025-05-23 02:43:36'),
-(2, 5, '/uploads/packages/cremation_2.jpg', 1, '2025-05-23 02:43:36'),
-(3, 6, '/uploads/packages/cremation_3.jpg', 1, '2025-05-23 02:43:36');
+(4, 8, '/uploads/packages/8/package_4_1748145898563.png', 0, '2025-05-25 04:05:11');
 
 -- --------------------------------------------------------
 
@@ -156,16 +201,7 @@ CREATE TABLE `package_inclusions` (
 --
 
 INSERT INTO `package_inclusions` (`inclusion_id`, `package_id`, `description`, `created_at`) VALUES
-(1, 4, 'Individual cremation', '2025-05-23 02:43:36'),
-(2, 4, 'Basic ceramic urn', '2025-05-23 02:43:36'),
-(3, 4, 'Certificate of cremation', '2025-05-23 02:43:36'),
-(4, 5, 'Individual cremation', '2025-05-23 02:43:36'),
-(5, 5, 'Premium wooden urn', '2025-05-23 02:43:36'),
-(6, 5, 'Paw print keepsake', '2025-05-23 02:43:36'),
-(7, 5, 'Certificate of cremation', '2025-05-23 02:43:36'),
-(8, 5, 'Memorial photo frame', '2025-05-23 02:43:36'),
-(9, 6, 'Communal cremation', '2025-05-23 02:43:36'),
-(10, 6, 'Certificate of cremation', '2025-05-23 02:43:36');
+(12, 8, 'asdas', '2025-05-25 04:05:11');
 
 -- --------------------------------------------------------
 
@@ -181,6 +217,15 @@ CREATE TABLE `password_reset_tokens` (
   `expires_at` datetime NOT NULL,
   `is_used` tinyint(1) DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `password_reset_tokens`
+--
+
+INSERT INTO `password_reset_tokens` (`id`, `user_id`, `token`, `created_at`, `expires_at`, `is_used`) VALUES
+(2, 4, '26285fe3300b5978ce701265c933b5717cf0e044d82c0e70354fafb5d1c9a651', '2025-05-24 03:11:41', '2025-05-24 12:11:41', 1),
+(3, 1, '7ee16de206502559a48f1321c362f301db28277c8934954ae9d70148b97bb8f8', '2025-05-25 06:12:31', '2025-05-25 15:12:31', 1),
+(4, 4, 'db560d9c83bd64fd202ce50e72c00207045cab3e935db1e9096a511b45540dbd', '2025-05-25 08:03:08', '2025-05-25 17:03:08', 1);
 
 -- --------------------------------------------------------
 
@@ -202,6 +247,16 @@ CREATE TABLE `pets` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `pets`
+--
+
+INSERT INTO `pets` (`pet_id`, `user_id`, `name`, `species`, `breed`, `gender`, `age`, `weight`, `photo_path`, `special_notes`, `created_at`, `updated_at`) VALUES
+(1, 4, 'sad', 'Dog', NULL, NULL, NULL, NULL, NULL, NULL, '2025-05-25 14:30:23', '2025-05-25 14:30:23'),
+(2, 4, 'ASDASD', 'Dog', NULL, NULL, NULL, NULL, NULL, NULL, '2025-05-25 14:41:18', '2025-05-25 14:41:18'),
+(3, 4, 'nhnjbhnm', 'Dog', NULL, NULL, NULL, NULL, NULL, NULL, '2025-05-25 14:53:22', '2025-05-25 14:53:22'),
+(4, 4, 'asdd', 'Dog', NULL, NULL, NULL, NULL, NULL, NULL, '2025-05-25 15:00:16', '2025-05-25 15:00:16');
 
 -- --------------------------------------------------------
 
@@ -288,7 +343,6 @@ INSERT INTO `provider_time_slots` (`id`, `provider_id`, `date`, `start_time`, `e
 (14, 4, '2025-05-24', '14:00:00', '15:00:00', 'all', '2025-05-23 02:43:36', '2025-05-23 02:43:36'),
 (15, 4, '2025-05-24', '15:00:00', '16:00:00', 'all', '2025-05-23 02:43:36', '2025-05-23 02:43:36'),
 (16, 4, '2025-05-24', '16:00:00', '17:00:00', 'all', '2025-05-23 02:43:36', '2025-05-23 02:43:36'),
-(17, 4, '2025-05-26', '09:00:00', '10:00:00', 'all', '2025-05-23 02:43:36', '2025-05-23 02:43:36'),
 (18, 4, '2025-05-26', '10:00:00', '11:00:00', 'all', '2025-05-23 02:43:36', '2025-05-23 02:43:36'),
 (19, 4, '2025-05-26', '11:00:00', '12:00:00', 'all', '2025-05-23 02:43:36', '2025-05-23 02:43:36'),
 (20, 4, '2025-05-26', '12:00:00', '13:00:00', 'all', '2025-05-23 02:43:36', '2025-05-23 02:43:36'),
@@ -484,6 +538,29 @@ INSERT INTO `provider_time_slots` (`id`, `provider_id`, `date`, `start_time`, `e
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `rate_limits`
+--
+
+CREATE TABLE `rate_limits` (
+  `id` int(11) NOT NULL,
+  `identifier` varchar(255) NOT NULL,
+  `action` varchar(100) NOT NULL,
+  `request_count` int(11) DEFAULT 1,
+  `window_start` timestamp NOT NULL DEFAULT current_timestamp(),
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `rate_limits`
+--
+
+INSERT INTO `rate_limits` (`id`, `identifier`, `action`, `request_count`, `window_start`, `created_at`, `updated_at`) VALUES
+(277, '4', 'notification_fetch', 2, '2025-05-26 00:46:31', '2025-05-26 00:46:31', '2025-05-26 00:47:06');
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `reviews`
 --
 
@@ -498,6 +575,13 @@ CREATE TABLE `reviews` (
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `expiration_date` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `reviews`
+--
+
+INSERT INTO `reviews` (`id`, `user_id`, `service_provider_id`, `booking_id`, `rating`, `comment`, `created_at`, `updated_at`, `expiration_date`) VALUES
+(1, 4, 4, 6, 5, NULL, '2025-05-26 00:17:36', '2025-05-26 00:17:36', '2025-05-30 16:17:36');
 
 -- --------------------------------------------------------
 
@@ -529,6 +613,13 @@ CREATE TABLE `service_bookings` (
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- Dumping data for table `service_bookings`
+--
+
+INSERT INTO `service_bookings` (`id`, `user_id`, `provider_id`, `package_id`, `pet_name`, `pet_type`, `cause_of_death`, `pet_image_url`, `booking_date`, `booking_time`, `status`, `special_requests`, `payment_method`, `payment_status`, `delivery_option`, `delivery_address`, `delivery_distance`, `delivery_fee`, `price`, `created_at`, `updated_at`) VALUES
+(6, 4, 4, 8, 'asdd', 'Dog', NULL, NULL, '2025-05-28', '16:00:00', 'completed', NULL, 'gcash', 'paid', 'pickup', NULL, 0, 0.00, 213.00, '2025-05-25 15:00:17', '2025-05-25 15:14:14');
+
 -- --------------------------------------------------------
 
 --
@@ -556,9 +647,7 @@ CREATE TABLE `service_packages` (
 --
 
 INSERT INTO `service_packages` (`package_id`, `provider_id`, `name`, `description`, `category`, `cremation_type`, `processing_time`, `price`, `delivery_fee_per_km`, `conditions`, `is_active`, `created_at`, `updated_at`) VALUES
-(4, 4, 'Basic Private Cremation', 'Individual cremation service with basic urn included.', 'Private', 'Standard', '1-2 days', 3500.00, 15.00, 'For pets up to 20kg. Additional fees may apply for larger pets.', 1, '2025-05-23 02:43:36', '2025-05-23 02:43:36'),
-(5, 4, 'Premium Private Cremation', 'Individual cremation service with premium wooden urn and paw print keepsake.', 'Private', 'Premium', '1-2 days', 5500.00, 15.00, 'For pets up to 30kg. Additional fees may apply for larger pets.', 1, '2025-05-23 02:43:36', '2025-05-23 02:43:36'),
-(6, 4, 'Communal Cremation', 'Shared cremation service for multiple pets.', 'Communal', 'Standard', '1-3 days', 1500.00, 15.00, 'For pets up to 20kg. Ashes are not returned with communal cremation.', 1, '2025-05-23 02:43:36', '2025-05-23 02:43:36');
+(8, 4, 'asdasd', 'asdasd', 'Private', 'Standard', '1-2 days', 213.00, 0.00, 'asdasd', 1, '2025-05-25 04:05:11', '2025-05-25 04:05:11');
 
 -- --------------------------------------------------------
 
@@ -596,7 +685,7 @@ CREATE TABLE `service_providers` (
 --
 
 INSERT INTO `service_providers` (`provider_id`, `user_id`, `name`, `provider_type`, `contact_first_name`, `contact_last_name`, `phone`, `address`, `province`, `city`, `zip`, `hours`, `description`, `application_status`, `verification_date`, `verification_notes`, `bir_certificate_path`, `business_permit_path`, `government_id_path`, `active_service_count`, `created_at`, `updated_at`) VALUES
-(4, 3, 'Rainbow Paws Cremation Center', 'cremation', 'Justin', 'Sibonga', '09123456789', 'Samal Bataan', 'Bataan', 'Samal', '2113', '8:00 AM - 5:00 PM, Monday to Saturday', 'Professional pet cremation services with care and respect.', 'approved', '2025-05-23 02:43:36', NULL, '/uploads/documents/bir_certificate.jpg', '/uploads/documents/business_permit.jpg', '/uploads/documents/government_id.jpg', 0, '2025-05-23 02:43:36', '2025-05-23 02:43:36');
+(4, 3, 'Rainbow Paws Cremation Center', 'cremation', 'Justin', 'Sibonga', '09123456789', 'Samal Bataan', 'Bataan', 'Samal', '2113', '8:00 AM - 5:00 PM, Monday to Saturday', 'Professional pet cremation services with care and respect.', 'approved', '2025-05-25 08:01:18', 'Application approved', '/uploads/documents/3/bir_certificate_1748043753558.png', '/uploads/documents/3/business_permit_1748043753551.png', '/uploads/documents/3/government_id_1748043753563.png', 0, '2025-05-23 02:43:36', '2025-05-25 08:01:18');
 
 -- --------------------------------------------------------
 
@@ -613,22 +702,26 @@ CREATE TABLE `users` (
   `phone` varchar(20) DEFAULT NULL,
   `address` text DEFAULT NULL,
   `gender` enum('Male','Female','Other') DEFAULT NULL,
+  `profile_picture` varchar(255) DEFAULT NULL,
   `role` enum('fur_parent','business','admin') NOT NULL DEFAULT 'fur_parent',
   `status` enum('active','inactive','suspended','restricted') DEFAULT 'active',
   `is_verified` tinyint(1) DEFAULT 0,
   `is_otp_verified` tinyint(1) DEFAULT 0,
   `last_login` timestamp NULL DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `sms_notifications` tinyint(1) DEFAULT 1 COMMENT 'User preference for SMS notifications',
+  `email_notifications` tinyint(1) DEFAULT 1 COMMENT 'User preference for email notifications'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `users`
 --
 
-INSERT INTO `users` (`user_id`, `email`, `password`, `first_name`, `last_name`, `phone`, `address`, `gender`, `role`, `status`, `is_verified`, `is_otp_verified`, `last_login`, `created_at`, `updated_at`) VALUES
-(1, 'admin@rainbowpaws.com', '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Admin', 'User', NULL, NULL, NULL, 'admin', 'active', 1, 1, NULL, '2025-05-20 11:23:57', '2025-05-20 11:23:57'),
-(3, 'justinmarlosibonga@gmail.com', '$2b$10$o5Z8B7.WqzcOecJ4Nq51DO869mMmTFAGZc5IDv6J.3Ym6zIRWiwh.', 'Justin', 'Sibonga', 'asdsd', 'Capitol Compound, Tenejero', NULL, 'business', 'active', 1, 1, '2025-05-23 23:09:25', '2025-05-23 01:56:11', '2025-05-23 23:09:25');
+INSERT INTO `users` (`user_id`, `email`, `password`, `first_name`, `last_name`, `phone`, `address`, `gender`, `profile_picture`, `role`, `status`, `is_verified`, `is_otp_verified`, `last_login`, `created_at`, `updated_at`, `sms_notifications`, `email_notifications`) VALUES
+(1, 'pakalucamel@gmail.com', '$2b$10$Ex1/5mmF2YtNdL1U8MDoSutO4wBM9DjKRP3vEsARbbXLWiD2x3nTa', 'Admin', 'User', NULL, NULL, NULL, NULL, 'admin', 'active', 1, 1, '2025-05-25 08:00:54', '2025-05-20 11:23:57', '2025-05-25 08:00:54', 1, 1),
+(3, 'serviceprovider@rainbowpaws.com', '$2b$10$o5Z8B7.WqzcOecJ4Nq51DO869mMmTFAGZc5IDv6J.3Ym6zIRWiwh.', 'Justin', 'Sibonga', 'asdsd', 'Capitol Compound, Tenejero', NULL, NULL, 'business', 'active', 1, 1, '2025-05-26 00:34:05', '2025-05-23 01:56:11', '2025-05-26 00:34:05', 1, 1),
+(4, 'justinmarlosibonga@gmail.com', '$2b$10$UXFbMPTzFCT6Sis8RdKLAe64O6Bp2tJ1Rzt4BxH5khjTQyw3aIFRC', 'Justin', 'Sibonga', NULL, 'Balanga, Bataan', NULL, '/uploads/profile-pictures/4/profile_picture_1748219297693.png', 'fur_parent', 'active', 1, 1, '2025-05-26 00:16:11', '2025-05-24 02:36:37', '2025-05-26 00:28:17', 1, 1);
 
 -- --------------------------------------------------------
 
@@ -649,6 +742,15 @@ CREATE TABLE `user_restrictions` (
 --
 -- Indexes for dumped tables
 --
+
+--
+-- Indexes for table `admin_logs`
+--
+ALTER TABLE `admin_logs`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `admin_id` (`admin_id`),
+  ADD KEY `entity_type` (`entity_type`,`entity_id`),
+  ADD KEY `action` (`action`);
 
 --
 -- Indexes for table `bookings`
@@ -738,6 +840,14 @@ ALTER TABLE `provider_time_slots`
   ADD KEY `provider_id` (`provider_id`,`date`);
 
 --
+-- Indexes for table `rate_limits`
+--
+ALTER TABLE `rate_limits`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_identifier_action` (`identifier`,`action`),
+  ADD KEY `idx_window_start` (`window_start`);
+
+--
 -- Indexes for table `reviews`
 --
 ALTER TABLE `reviews`
@@ -791,6 +901,12 @@ ALTER TABLE `user_restrictions`
 --
 
 --
+-- AUTO_INCREMENT for table `admin_logs`
+--
+ALTER TABLE `admin_logs`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
 -- AUTO_INCREMENT for table `bookings`
 --
 ALTER TABLE `bookings`
@@ -800,19 +916,19 @@ ALTER TABLE `bookings`
 -- AUTO_INCREMENT for table `notifications`
 --
 ALTER TABLE `notifications`
-  MODIFY `notification_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `notification_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT for table `otp_attempts`
 --
 ALTER TABLE `otp_attempts`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
 -- AUTO_INCREMENT for table `otp_codes`
 --
 ALTER TABLE `otp_codes`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT for table `package_addons`
@@ -824,25 +940,25 @@ ALTER TABLE `package_addons`
 -- AUTO_INCREMENT for table `package_images`
 --
 ALTER TABLE `package_images`
-  MODIFY `image_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `image_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT for table `package_inclusions`
 --
 ALTER TABLE `package_inclusions`
-  MODIFY `inclusion_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
+  MODIFY `inclusion_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
 
 --
 -- AUTO_INCREMENT for table `password_reset_tokens`
 --
 ALTER TABLE `password_reset_tokens`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT for table `pets`
 --
 ALTER TABLE `pets`
-  MODIFY `pet_id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `pet_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT for table `provider_availability`
@@ -857,22 +973,28 @@ ALTER TABLE `provider_time_slots`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=209;
 
 --
+-- AUTO_INCREMENT for table `rate_limits`
+--
+ALTER TABLE `rate_limits`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=278;
+
+--
 -- AUTO_INCREMENT for table `reviews`
 --
 ALTER TABLE `reviews`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `service_bookings`
 --
 ALTER TABLE `service_bookings`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- AUTO_INCREMENT for table `service_packages`
 --
 ALTER TABLE `service_packages`
-  MODIFY `package_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+  MODIFY `package_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
 
 --
 -- AUTO_INCREMENT for table `service_providers`
@@ -884,7 +1006,7 @@ ALTER TABLE `service_providers`
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT for table `user_restrictions`

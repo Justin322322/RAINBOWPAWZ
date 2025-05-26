@@ -56,8 +56,8 @@ export async function GET(request: NextRequest) {
                CONCAT(u.first_name, ' ', u.last_name) as user_name,
                sp.name as provider_name
         FROM reviews r
-        JOIN users u ON r.user_id = u.id
-        JOIN service_providers sp ON r.service_provider_id = sp.id
+        JOIN users u ON r.user_id = u.user_id
+        JOIN service_providers sp ON r.service_provider_id = sp.provider_id
         ORDER BY r.created_at DESC
       `) as any[];
 

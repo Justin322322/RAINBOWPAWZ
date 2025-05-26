@@ -16,11 +16,13 @@ import {
   XCircleIcon,
   CheckCircleIcon,
   ArrowPathIcon,
+  DocumentCheckIcon,
 } from '@heroicons/react/24/outline';
 import FurParentNavbar from '@/components/navigation/FurParentNavbar';
 import withOTPVerification from '@/components/withOTPVerification';
 import { useToast } from '@/context/ToastContext';
 import ReviewPrompt from '@/components/reviews/ReviewPrompt';
+import CremationCertificate from '@/components/certificates/CremationCertificate';
 
 interface BookingDetailsProps {
   userData?: any;
@@ -35,6 +37,7 @@ function BookingDetailsPage({ userData }: BookingDetailsProps) {
   const [error, setError] = useState<string | null>(null);
   const [isCancelling, setIsCancelling] = useState(false);
   const [showReviewPrompt, setShowReviewPrompt] = useState(false);
+  const [showCertificate, setShowCertificate] = useState(false);
 
   useEffect(() => {
     if (!userData || !params.id) return;
@@ -45,15 +48,15 @@ function BookingDetailsPage({ userData }: BookingDetailsProps) {
         setError(null);
 
         const response = await fetch(`/api/cremation/bookings/${params.id}`);
-        
+
         if (!response.ok) {
           const errorData = await response.json();
           throw new Error(errorData.error || 'Failed to fetch booking details');
         }
-        
+
         const data = await response.json();
         setBooking(data);
-        
+
         // Show review prompt if booking is completed
         if (data.status === 'completed') {
           setShowReviewPrompt(true);
@@ -65,17 +68,17 @@ function BookingDetailsPage({ userData }: BookingDetailsProps) {
         setLoading(false);
       }
     };
-    
+
     fetchBookingDetails();
   }, [params.id, userData, showToast]);
 
   const handleCancelBooking = async () => {
     if (!booking || booking.status !== 'pending') return;
-    
+
     if (window.confirm('Are you sure you want to cancel this booking? This action cannot be undone.')) {
       try {
         setIsCancelling(true);
-        
+
         const response = await fetch(`/api/cremation/bookings/${booking.id}/status`, {
           method: 'PUT',
           headers: {
@@ -83,12 +86,12 @@ function BookingDetailsPage({ userData }: BookingDetailsProps) {
           },
           body: JSON.stringify({ status: 'cancelled' }),
         });
-        
+
         if (!response.ok) {
           const errorData = await response.json();
           throw new Error(errorData.error || 'Failed to cancel booking');
         }
-        
+
         // Update the booking status locally
         setBooking({ ...booking, status: 'cancelled' });
         showToast('Booking cancelled successfully', 'success');
@@ -330,6 +333,32 @@ function BookingDetailsPage({ userData }: BookingDetailsProps) {
               </div>
             </div>
 
+            {/* Certificate Section - Only show for completed bookings */}
+            {booking.status === 'completed' && (
+              <div className="bg-gradient-to-br from-green-50 to-blue-50 rounded-lg shadow-sm p-6 border border-green-200">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <div className="flex-shrink-0">
+                      <DocumentCheckIcon className="h-8 w-8 text-green-600" />
+                    </div>
+                    <div className="ml-4">
+                      <h2 className="text-lg font-medium text-gray-900">Cremation Certificate</h2>
+                      <p className="text-sm text-gray-600">
+                        Your service has been completed. Download your official cremation certificate as a keepsake.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setShowCertificate(true)}
+                    className="inline-flex items-center px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-200 shadow-sm"
+                  >
+                    <DocumentCheckIcon className="h-4 w-4 mr-2" />
+                    View Certificate
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Actions */}
             {booking.status === 'pending' && (
               <div className="flex justify-end">
@@ -346,6 +375,14 @@ function BookingDetailsPage({ userData }: BookingDetailsProps) {
                   {isCancelling ? 'Cancelling...' : 'Cancel Booking'}
                 </button>
               </div>
+            )}
+
+            {/* Certificate Modal */}
+            {showCertificate && booking && (
+              <CremationCertificate
+                booking={booking}
+                onClose={() => setShowCertificate(false)}
+              />
             )}
           </div>
         ) : (

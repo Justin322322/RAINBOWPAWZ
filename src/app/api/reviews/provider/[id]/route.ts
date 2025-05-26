@@ -3,7 +3,7 @@ import { query } from '@/lib/db';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // First await the entire params object
@@ -128,7 +128,7 @@ export async function GET(
             u.email as user_email,
             r.booking_id
            FROM reviews r
-           JOIN users u ON r.user_id = u.id
+           JOIN users u ON r.user_id = u.user_id
            WHERE r.service_provider_id = ?
            ORDER BY r.created_at DESC`,
           [providerIdParam]
@@ -203,14 +203,14 @@ export async function GET(
 
               if (userIds.length > 0) {
                 const usersData = await query(
-                  `SELECT id, CONCAT(first_name, ' ', last_name) as user_name, email
-                   FROM users WHERE id IN (?)`,
+                  `SELECT user_id, CONCAT(first_name, ' ', last_name) as user_name, email
+                   FROM users WHERE user_id IN (?)`,
                   [userIds]
                 ) as any[];
 
                 // Create a map of user ID to user data
                 const usersMap = usersData.reduce((acc: any, user: any) => {
-                  acc[user.id] = user;
+                  acc[user.user_id] = user;
                   return acc;
                 }, {});
 

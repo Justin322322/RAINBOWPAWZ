@@ -112,20 +112,34 @@ export async function GET(request: NextRequest) {
       // Continue with default values
     }
 
-    // Get booking data
+    // Get booking data from both tables
     let activeBookings = 0;
     let bookingsChange = 0;
 
     try {
-      // Query for active bookings
-      const activeBookingsResult = await query(`
+      // Query for active bookings from service_bookings table (primary)
+      const serviceBookingsResult = await query(`
         SELECT COUNT(*) as active_bookings
-        FROM bookings
+        FROM service_bookings
         WHERE provider_id = ? AND status IN ('pending', 'confirmed', 'in_progress')`,
         [providerId]
       ) as any[];
 
-      activeBookings = activeBookingsResult[0]?.active_bookings || 0;
+      activeBookings = serviceBookingsResult[0]?.active_bookings || 0;
+
+      // Also check legacy bookings table if it has data
+      try {
+        const legacyBookingsResult = await query(`
+          SELECT COUNT(*) as active_bookings
+          FROM bookings
+          WHERE provider_id = ? AND status IN ('pending', 'confirmed', 'in_progress')`,
+          [providerId]
+        ) as any[];
+
+        activeBookings += legacyBookingsResult[0]?.active_bookings || 0;
+      } catch (legacyError) {
+        console.log('Legacy bookings table query failed, continuing with service_bookings only');
+      }
 
       // Calculate bookings change (simplified for demo)
       bookingsChange = activeBookings > 0 ? 25 : 0; // Placeholder
@@ -160,21 +174,42 @@ export async function GET(request: NextRequest) {
     let recentBookings: any[] = [];
 
     try {
-      // Query for recent bookings - use correct column names
+      // Query for recent bookings from service_bookings table (primary)
       recentBookings = await query(`
-        SELECT b.booking_id as id, p.name as pet_name, p.species as pet_type,
+        SELECT sb.id, sb.pet_name, sb.pet_type,
                u.first_name, u.last_name,
-               s.name as service_name, b.status, b.booking_date as scheduled_date,
-               b.booking_time as scheduled_time, b.created_at
-        FROM bookings b
-        LEFT JOIN users u ON b.user_id = u.user_id
-        LEFT JOIN pets p ON b.pet_id = p.pet_id
-        LEFT JOIN service_packages s ON b.package_id = s.package_id
-        WHERE b.provider_id = ?
-        ORDER BY b.created_at DESC
+               sp.name as service_name, sb.status, sb.booking_date as scheduled_date,
+               sb.booking_time as scheduled_time, sb.created_at
+        FROM service_bookings sb
+        LEFT JOIN users u ON sb.user_id = u.user_id
+        LEFT JOIN service_packages sp ON sb.package_id = sp.package_id
+        WHERE sb.provider_id = ?
+        ORDER BY sb.created_at DESC
         LIMIT 5`,
         [providerId]
       ) as any[];
+
+      // If no results from service_bookings, try legacy bookings table
+      if (recentBookings.length === 0) {
+        try {
+          recentBookings = await query(`
+            SELECT b.booking_id as id, p.name as pet_name, p.species as pet_type,
+                   u.first_name, u.last_name,
+                   s.name as service_name, b.status, b.booking_date as scheduled_date,
+                   b.booking_time as scheduled_time, b.created_at
+            FROM bookings b
+            LEFT JOIN users u ON b.user_id = u.user_id
+            LEFT JOIN pets p ON b.pet_id = p.pet_id
+            LEFT JOIN service_packages s ON b.package_id = s.package_id
+            WHERE b.provider_id = ?
+            ORDER BY b.created_at DESC
+            LIMIT 5`,
+            [providerId]
+          ) as any[];
+        } catch (legacyError) {
+          console.log('Legacy bookings query failed, continuing with empty array');
+        }
+      }
     } catch (error) {
       console.error('Error fetching recent bookings:', error);
       // Continue with empty array

@@ -14,7 +14,7 @@ import {
 } from '@heroicons/react/24/outline';
 import FurParentNavbar from '@/components/navigation/FurParentNavbar';
 import withOTPVerification from '@/components/withOTPVerification';
-import { getImagePath } from '@/utils/imageUtils';
+import { getProfilePictureUrl, handleImageError, triggerProfilePictureUpdate } from '@/utils/imageUtils';
 
 interface ProfilePageProps {
   userData?: any;
@@ -206,8 +206,8 @@ function ProfilePage({ userData }: ProfilePageProps) {
       // Refresh user data to show the new profile picture
       await refreshUserData();
 
-      // Notify navbar to update profile picture
-      window.dispatchEvent(new CustomEvent('profilePictureUpdated'));
+      // Trigger profile picture update across all components
+      triggerProfilePictureUpdate(data.profilePicturePath);
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Failed to upload profile picture');
     } finally {
@@ -269,13 +269,11 @@ function ProfilePage({ userData }: ProfilePageProps) {
                       />
                     ) : currentUserData?.profile_picture ? (
                       <img
-                        src={getImagePath(currentUserData.profile_picture)}
+                        src={getProfilePictureUrl(currentUserData.profile_picture)}
                         alt="Profile Picture"
                         className="w-full h-full object-cover"
                         onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.style.display = 'none';
-                          target.nextElementSibling?.classList.remove('hidden');
+                          handleImageError(e, '/bg_4.png');
                         }}
                       />
                     ) : (

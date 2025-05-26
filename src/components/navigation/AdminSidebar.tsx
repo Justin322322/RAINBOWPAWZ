@@ -25,6 +25,7 @@ export default function AdminSidebar({ activePage: propActivePage }: AdminSideba
   const [activePage, setActivePage] = useState('');
   const [userManagementOpen, setUserManagementOpen] = useState(false);
   const [isNavigating, setIsNavigating] = useState(false);
+  const [currentYear, setCurrentYear] = useState<number | null>(null);
 
   // Navigation items
   const navigationItems = [
@@ -69,6 +70,11 @@ export default function AdminSidebar({ activePage: propActivePage }: AdminSideba
       id: 'furparents'
     }
   ];
+
+  // Set current year on client side to avoid hydration mismatch
+  useEffect(() => {
+    setCurrentYear(new Date().getFullYear());
+  }, []);
 
   // Determine active page based on pathname or prop
   useEffect(() => {
@@ -226,7 +232,7 @@ export default function AdminSidebar({ activePage: propActivePage }: AdminSideba
       {/* Footer */}
       <div className="absolute bottom-0 w-full border-t border-white/20 p-4">
         <div className="text-xs text-white/80 text-center">
-          © {new Date().getFullYear()} RainbowPaws<br />
+          © {currentYear || '2024'} RainbowPaws<br />
           Administrator Portal
         </div>
       </div>

@@ -13,7 +13,7 @@ import { clearAuthToken } from '@/utils/auth';
 import LogoutModal from '@/components/LogoutModal';
 import NotificationBell from '@/components/ui/NotificationBell';
 import { useSupressHydrationWarning } from '@/hooks/useSupressHydrationWarning';
-import { getImagePath } from '@/utils/imageUtils';
+import { getProfilePictureUrl, handleImageError } from '@/utils/imageUtils';
 
 interface CremationNavbarProps {
   activePage?: string;
@@ -250,13 +250,13 @@ export default function CremationNavbar({
                 <div className="bg-white rounded-full h-8 w-8 flex items-center justify-center mr-2 overflow-hidden">
                   {profilePicture ? (
                     <img
-                      src={getImagePath(profilePicture)}
+                      src={getProfilePictureUrl(profilePicture)}
                       alt="Profile"
                       className="h-full w-full object-cover"
                       onError={(e) => {
-                        // Fallback to user icon if image fails to load
-                        e.currentTarget.style.display = 'none';
-                        e.currentTarget.parentElement!.innerHTML = '<svg class="h-5 w-5 text-[var(--primary-green)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>';
+                        handleImageError(e, '/bg_4.png');
+                        // Also clear the profile picture state to show UserIcon
+                        setProfilePicture(null);
                       }}
                     />
                   ) : (

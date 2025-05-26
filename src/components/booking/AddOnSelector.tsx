@@ -44,8 +44,8 @@ export default function AddOnSelector({
         const data = await response.json();
 
         if (data.success) {
-          // Map the add-ons to our format
-          const addOns = data.addOns.map((addon: any) => ({
+          // Map the add-ons to our format, handle empty arrays gracefully
+          const addOns = (data.addOns || []).map((addon: any) => ({
             id: addon.id,
             name: addon.description || addon.name, // Support both formats
             price: parseFloat(addon.price) || 0,
@@ -54,11 +54,15 @@ export default function AddOnSelector({
           }));
 
           setAvailableAddOns(addOns);
+          // Clear any previous errors when successful
+          setError(null);
         } else {
           setError(data.error || 'Failed to load add-ons');
           setAvailableAddOns([]);
         }
       } catch (error) {
+        // Only show error for actual network/server errors, not empty results
+        console.warn('Add-ons loading error:', error);
         setError('Error loading add-ons. Please try again.');
         setAvailableAddOns([]);
       } finally {

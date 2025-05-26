@@ -109,7 +109,20 @@ export async function GET(
       });
     }
 
-    // If fallback doesn't exist, return 404
+    // If fallback doesn't exist, return a default image
+    console.log('All fallbacks failed, returning default image');
+    const defaultImagePath = join(process.cwd(), 'public', 'bg_4.png');
+    if (fs.existsSync(defaultImagePath)) {
+      const defaultImage = fs.readFileSync(defaultImagePath);
+      return new NextResponse(defaultImage, {
+        headers: {
+          'Content-Type': 'image/png',
+          'Cache-Control': 'public, max-age=3600',
+        },
+      });
+    }
+
+    // Final fallback - return 404
     return new NextResponse('Image not found', { status: 404 });
 
     // This code should never be reached since we check all paths above

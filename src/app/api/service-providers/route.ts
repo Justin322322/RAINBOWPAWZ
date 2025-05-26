@@ -72,20 +72,22 @@ export async function GET(request: Request) {
           whereClause += " AND status = 'active'";
         }
 
-        // Fetch from service_providers table with dynamic WHERE clause
+        // Fetch from service_providers table with dynamic WHERE clause, including user profile picture
         providersResult = await query(`
           SELECT
-            id,
-            name,
-            address,
-            phone,
-            service_description as description,
-            provider_type as type,
-            created_at,
-            ${hasApplicationStatus ? 'application_status' : hasVerificationStatus ? 'verification_status' : "'approved' as application_status"}
-          FROM service_providers
+            sp.provider_id as id,
+            sp.name,
+            sp.address,
+            sp.phone,
+            sp.description,
+            sp.provider_type as type,
+            sp.created_at,
+            u.profile_picture,
+            ${hasApplicationStatus ? 'sp.application_status' : hasVerificationStatus ? 'sp.verification_status' : "'approved' as application_status"}
+          FROM service_providers sp
+          LEFT JOIN users u ON sp.user_id = u.user_id
           WHERE ${whereClause}
-          ORDER BY name ASC
+          ORDER BY sp.name ASC
         `) as any[];
 
         // Add detailed logging to see what's happening with the query
@@ -114,17 +116,18 @@ export async function GET(request: Request) {
             const useProviderIdColumn = packageColumns.includes('provider_id');
 
             let packagesResult;
-            if (useServiceProviderIdColumn) {
-              packagesResult = await query(`
-                SELECT COUNT(*) as package_count
-                FROM service_packages
-                WHERE service_provider_id = ? AND is_active = TRUE
-              `, [provider.id]) as any[];
-            } else if (useProviderIdColumn) {
+            if (useProviderIdColumn) {
+              // Use provider_id which matches our database schema
               packagesResult = await query(`
                 SELECT COUNT(*) as package_count
                 FROM service_packages
                 WHERE provider_id = ? AND is_active = TRUE
+              `, [provider.id]) as any[];
+            } else if (useServiceProviderIdColumn) {
+              packagesResult = await query(`
+                SELECT COUNT(*) as package_count
+                FROM service_packages
+                WHERE service_provider_id = ? AND is_active = TRUE
               `, [provider.id]) as any[];
             } else {
               packagesResult = [{ package_count: 0 }];

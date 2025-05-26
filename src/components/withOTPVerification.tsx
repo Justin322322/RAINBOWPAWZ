@@ -51,10 +51,10 @@ const withOTPVerification = <P extends object>(
         if (userData?.role === 'fur_parent' || userData?.user_type === 'fur_parent' || userData?.role === 'user') {
           // Only check if the user has completed the tutorial
           const hasCompletedTutorial = localStorage.getItem('has_completed_tutorial') === 'true';
-          if (!hasCompletedTutorial) {
-            // Reset the ref to ensure the modal is shown
-            hasShownGetStartedModalRef.current = false;
-            // Force show the modal
+          if (!hasCompletedTutorial && !hasShownGetStartedModalRef.current) {
+            // Set the ref to prevent showing it multiple times in the same session
+            hasShownGetStartedModalRef.current = true;
+            // Show the modal
             setShowGetStartedModal(true);
 
             // Log for debugging
@@ -309,8 +309,9 @@ const withOTPVerification = <P extends object>(
       setShowGetStartedModal(false);
       // Mark that the user has completed the tutorial
       localStorage.setItem('has_completed_tutorial', 'true');
-      // Also set the ref to true to prevent showing it again in this session
+      // Keep the ref set to true to prevent showing it again
       hasShownGetStartedModalRef.current = true;
+      console.log('Get Started modal completed - tutorial marked as finished');
     };
 
     // Handle "Not Now" button click
@@ -318,6 +319,7 @@ const withOTPVerification = <P extends object>(
       setShowGetStartedModal(false);
       // Don't mark as completed, just hide for this session
       hasShownGetStartedModalRef.current = true;
+      console.log('Get Started modal dismissed - will show again on next login');
     };
 
     // Don't render anything while verifying - prevents flash

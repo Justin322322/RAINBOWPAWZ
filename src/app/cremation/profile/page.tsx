@@ -81,7 +81,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
   const { showToast } = useToast();
 
   // Define fetchProfileData function outside useEffect so it can be called elsewhere
-  const fetchProfileData = async () => {
+  const fetchProfileData = async (forceLoading = true) => {
     try {
       // Check authentication before making the API call
       const authToken = getAuthToken();
@@ -137,7 +137,10 @@ function CremationProfilePage({ userData }: { userData: any }) {
         return;
       }
 
-      setInitialLoading(true);
+      // Only set loading state if explicitly requested (for initial load)
+      if (forceLoading) {
+        setInitialLoading(true);
+      }
       setError(null); // Clear any previous errors
 
       // Add cache-busting query parameter and no-cache headers
@@ -222,7 +225,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
     }
   }, []);
 
-  // Fetch profile data
+  // Fetch profile data only on initial mount
   useEffect(() => {
     let isMounted = true; // Track if component is mounted
 
@@ -239,7 +242,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
     return () => {
       isMounted = false;
     };
-  }, [showToast]);
+  }, []); // Remove showToast dependency to prevent unnecessary refetches
 
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();

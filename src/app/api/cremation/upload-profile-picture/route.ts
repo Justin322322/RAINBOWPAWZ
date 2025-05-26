@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
 import { existsSync } from 'fs';
+import { query } from '@/lib/db';
 
 // Function to save profile picture to disk
 async function saveProfilePicture(file: File, userId: string): Promise<string> {
@@ -81,13 +82,17 @@ export async function POST(request: NextRequest) {
     // Save the profile picture
     const profilePicturePath = await saveProfilePicture(profilePicture, userId.toString());
 
-    // TODO: Update the database with the new profile picture path
-    // For now, we'll simulate updating by storing in a simple way
-    console.log(`Profile picture uploaded for user ${userId}: ${profilePicturePath}`);
-
-    // Store the uploaded profile picture path in a global variable for simulation
-    // In a real app, this would be saved to the database
-    global.uploadedProfilePicture = profilePicturePath;
+    // Update the database with the new profile picture path
+    try {
+      await query(
+        'UPDATE users SET profile_picture = ? WHERE user_id = ?',
+        [profilePicturePath, userId]
+      );
+      console.log(`Profile picture updated in database for user ${userId}: ${profilePicturePath}`);
+    } catch (dbError) {
+      console.error('Failed to update profile picture in database:', dbError);
+      throw new Error('Failed to save profile picture to database');
+    }
 
     return NextResponse.json({
       success: true,

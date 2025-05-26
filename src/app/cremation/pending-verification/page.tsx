@@ -123,13 +123,13 @@ export default function PendingVerificationPage() {
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-green-500 mr-2 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <span>You'll receive an email notification when your account is verified</span>
+              <span>You&apos;ll receive an email notification when your account is verified</span>
             </li>
             <li className="flex items-start">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-green-500 mr-2 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <span>Once verified, you'll have full access to the cremation center dashboard</span>
+              <span>Once verified, you&apos;ll have full access to the cremation center dashboard</span>
             </li>
           </ul>
         </div>

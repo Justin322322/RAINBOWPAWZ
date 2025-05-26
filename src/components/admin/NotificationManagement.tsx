@@ -119,7 +119,7 @@ export default function NotificationManagement() {
           .split(',')
           .map(id => parseInt(id.trim()))
           .filter(id => !isNaN(id));
-        
+
         if (userIds.length > 0) {
           payload.targetUsers = userIds;
         }
@@ -161,16 +161,7 @@ export default function NotificationManagement() {
     }
   };
 
-  const useTemplate = (templateType: keyof NotificationTemplates) => {
-    if (templates && templates[templateType]) {
-      setNotificationForm({
-        ...notificationForm,
-        type: templateType,
-        title: templates[templateType].title,
-        message: templates[templateType].message
-      });
-    }
-  };
+
 
   return (
     <div className="space-y-6">
@@ -239,7 +230,7 @@ export default function NotificationManagement() {
           {/* System Notification Form */}
           <div>
             <h4 className="text-md font-medium text-gray-900 mb-3">Send System Notification</h4>
-            
+
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700">Notification Type</label>
@@ -294,7 +285,17 @@ export default function NotificationManagement() {
                     {Object.keys(templates).map((templateType) => (
                       <button
                         key={templateType}
-                        onClick={() => useTemplate(templateType as keyof NotificationTemplates)}
+                        onClick={() => {
+                          const template = templates[templateType as keyof NotificationTemplates];
+                          if (template) {
+                            setNotificationForm({
+                              ...notificationForm,
+                              type: templateType,
+                              title: template.title,
+                              message: template.message
+                            });
+                          }
+                        }}
                         className="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
                       >
                         {templateType.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
