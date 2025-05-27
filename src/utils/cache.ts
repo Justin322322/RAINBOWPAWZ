@@ -93,11 +93,11 @@ class CacheManager {
     try {
       const key = this.generateGeocodingKey(address);
       const cached = localStorage.getItem(key);
-      
+
       if (!cached) return null;
 
       const entry: CacheEntry<GeocodingCacheData> = JSON.parse(cached);
-      
+
       if (!this.isValidEntry(entry)) {
         localStorage.removeItem(key);
         return null;
@@ -135,11 +135,11 @@ class CacheManager {
     try {
       const key = this.generateRoutingKey(start, end);
       const cached = localStorage.getItem(key);
-      
+
       if (!cached) return null;
 
       const entry: CacheEntry<RoutingCacheData> = JSON.parse(cached);
-      
+
       if (!this.isValidEntry(entry)) {
         localStorage.removeItem(key);
         return null;
@@ -158,7 +158,7 @@ class CacheManager {
   public cleanupExpiredEntries(): void {
     try {
       const keysToRemove: string[] = [];
-      
+
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
         if (!key || (!key.startsWith('geo_') && !key.startsWith('route_'))) continue;
@@ -177,10 +177,6 @@ class CacheManager {
       }
 
       keysToRemove.forEach(key => localStorage.removeItem(key));
-      
-      if (keysToRemove.length > 0) {
-        console.log(`Cleaned up ${keysToRemove.length} expired cache entries`);
-      }
     } catch (error) {
       console.warn('Failed to cleanup cache:', error);
     }
@@ -192,7 +188,7 @@ class CacheManager {
   public clearCache(): void {
     try {
       const keysToRemove: string[] = [];
-      
+
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
         if (key && (key.startsWith('geo_') || key.startsWith('route_'))) {
@@ -201,7 +197,6 @@ class CacheManager {
       }
 
       keysToRemove.forEach(key => localStorage.removeItem(key));
-      console.log(`Cleared ${keysToRemove.length} cache entries`);
     } catch (error) {
       console.warn('Failed to clear cache:', error);
     }

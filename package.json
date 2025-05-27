@@ -4,9 +4,11 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build && node scripts/copy-uploads.js",
+    "build": "next build",
+    "build:production": "next build && node scripts/copy-uploads.js",
+    "build:simple": "next build",
     "start": "next start",
-    "production": "next build && node scripts/copy-uploads.js && next start",
+    "production": "npm run build:production && next start",
     "start:any-port": "node -e \"const port = process.argv[2] || 3001; console.log('Starting on port ' + port); require('child_process').spawn('npx', ['next', 'start', '-p', port], {stdio: 'inherit'});\"",
     "lint": "next lint --max-warnings=0",
     "lint:fix": "next lint --fix",

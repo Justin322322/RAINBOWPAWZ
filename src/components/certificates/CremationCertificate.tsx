@@ -80,18 +80,176 @@ const CremationCertificate: React.FC<CremationCertificateProps> = ({ booking, on
         </div>
 
         {/* Certificate Content */}
-        <div ref={certificateRef} className="p-8 bg-gradient-to-br from-blue-50 to-purple-50 print:bg-white print:p-4">
+        <div ref={certificateRef} className="p-8 bg-gradient-to-br from-blue-50 to-purple-50 print:bg-white print:p-0 print:m-0">
           <style jsx global>{`
             @media print {
-              body { margin: 0; }
-              .print\\:hidden { display: none !important; }
-              .print\\:bg-white { background: white !important; }
-              .print\\:p-4 { padding: 1rem !important; }
-              .print\\:text-black { color: black !important; }
+              * {
+                -webkit-print-color-adjust: exact !important;
+                color-adjust: exact !important;
+                print-color-adjust: exact !important;
+              }
+
+              html, body {
+                margin: 0 !important;
+                padding: 0 !important;
+                width: 100% !important;
+                height: 100% !important;
+                background: white !important;
+                font-size: 12pt !important;
+                line-height: 1.4 !important;
+              }
+
+              .print\\:hidden {
+                display: none !important;
+              }
+
+              .print\\:bg-white {
+                background: white !important;
+                background-color: white !important;
+                background-image: none !important;
+              }
+
+              .print\\:p-0 {
+                padding: 0 !important;
+              }
+
+              .print\\:m-0 {
+                margin: 0 !important;
+              }
+
+              .print\\:text-black {
+                color: black !important;
+              }
+
+              .print\\:w-full {
+                width: 100% !important;
+              }
+
+              .print\\:h-auto {
+                height: auto !important;
+              }
+
+              .print\\:page-break-inside-avoid {
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+              }
+
+              .print\\:border-black {
+                border-color: black !important;
+              }
+
+              /* Hide modal overlay and ensure certificate takes full page */
+              .fixed.inset-0 {
+                position: static !important;
+                background: white !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                width: 100% !important;
+                height: auto !important;
+                max-width: none !important;
+                max-height: none !important;
+                overflow: visible !important;
+              }
+
+              .max-w-4xl {
+                max-width: none !important;
+                width: 100% !important;
+              }
+
+              .rounded-lg, .shadow-2xl, .shadow-lg {
+                border-radius: 0 !important;
+                box-shadow: none !important;
+              }
+
+              /* Ensure certificate content fits on one page */
+              .certificate-content {
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+                margin: 0 !important;
+                padding: 20pt !important;
+                width: 100% !important;
+                box-sizing: border-box !important;
+              }
+
+              /* Adjust font sizes for print */
+              .text-4xl { font-size: 24pt !important; }
+              .text-3xl { font-size: 20pt !important; }
+              .text-2xl { font-size: 16pt !important; }
+              .text-xl { font-size: 14pt !important; }
+              .text-lg { font-size: 12pt !important; }
+              .text-base { font-size: 11pt !important; }
+              .text-sm { font-size: 10pt !important; }
+              .text-xs { font-size: 9pt !important; }
+
+              /* Adjust spacing for print */
+              .mb-8 { margin-bottom: 16pt !important; }
+              .mb-6 { margin-bottom: 12pt !important; }
+              .mb-4 { margin-bottom: 8pt !important; }
+              .mb-2 { margin-bottom: 4pt !important; }
+              .mt-8 { margin-top: 16pt !important; }
+              .mt-6 { margin-top: 12pt !important; }
+              .mt-4 { margin-top: 8pt !important; }
+              .mt-2 { margin-top: 4pt !important; }
+              .p-8 { padding: 16pt !important; }
+              .p-6 { padding: 12pt !important; }
+              .p-4 { padding: 8pt !important; }
+              .pt-6 { padding-top: 12pt !important; }
+
+              /* Remove gradients and backgrounds for print */
+              .bg-gradient-to-br,
+              .bg-gradient-to-r,
+              .bg-blue-50,
+              .bg-purple-50,
+              .bg-blue-100,
+              .bg-purple-100,
+              .bg-yellow-50 {
+                background: white !important;
+                background-image: none !important;
+              }
+
+              /* Ensure borders are visible */
+              .border-4,
+              .border-double {
+                border: 2pt double black !important;
+              }
+
+              .border-gray-400 {
+                border-color: black !important;
+              }
+
+              .border-b-2 {
+                border-bottom: 1pt solid black !important;
+              }
+
+              .border-t {
+                border-top: 1pt solid black !important;
+              }
+
+              /* Icon adjustments for print */
+              .h-16.w-16 {
+                width: 24pt !important;
+                height: 24pt !important;
+              }
+
+              .h-6.w-6 {
+                width: 12pt !important;
+                height: 12pt !important;
+              }
+
+              /* Grid adjustments for print */
+              .grid-cols-3 {
+                display: flex !important;
+                justify-content: space-between !important;
+              }
+
+              .grid-cols-3 > div {
+                flex: 1 !important;
+                text-align: center !important;
+              }
             }
           `}</style>
           {/* Decorative Border */}
-          <div className="border-4 border-double border-gray-400 p-8 bg-white shadow-lg">
+          <div className="certificate-content border-4 border-double border-gray-400 p-8 bg-white shadow-lg print:shadow-none print:border-black print:page-break-inside-avoid">
             {/* Header with Logo/Emblem */}
             <div className="text-center mb-8">
               {/* Decorative Stars */}
@@ -101,11 +259,11 @@ const CremationCertificate: React.FC<CremationCertificateProps> = ({ booking, on
                 ))}
               </div>
 
-              <h1 className="text-4xl font-serif font-bold text-gray-800 mb-2">
+              <h1 className="text-4xl font-serif font-bold text-gray-800 mb-2 print:text-black">
                 Certificate of Cremation
               </h1>
-              <div className="w-32 h-1 bg-gradient-to-r from-blue-500 to-purple-500 mx-auto mb-4"></div>
-              <p className="text-lg text-gray-600 font-medium">
+              <div className="w-32 h-1 bg-gradient-to-r from-blue-500 to-purple-500 mx-auto mb-4 print:bg-black"></div>
+              <p className="text-lg text-gray-600 font-medium print:text-black">
                 Rainbow Paws Cremation Services
               </p>
             </div>
@@ -116,44 +274,44 @@ const CremationCertificate: React.FC<CremationCertificateProps> = ({ booking, on
                 <HeartIcon className="h-16 w-16 text-red-400 fill-current" />
               </div>
 
-              <p className="text-lg text-gray-700 leading-relaxed">
+              <p className="text-lg text-gray-700 leading-relaxed print:text-black">
                 This is to certify that
               </p>
 
-              <div className="bg-gradient-to-r from-blue-100 to-purple-100 p-6 rounded-lg border border-gray-200">
-                <h2 className="text-3xl font-serif font-bold text-gray-800 mb-2">
+              <div className="bg-gradient-to-r from-blue-100 to-purple-100 p-6 rounded-lg border border-gray-200 print:bg-white print:border-black">
+                <h2 className="text-3xl font-serif font-bold text-gray-800 mb-2 print:text-black">
                   {booking.pet_name}
                 </h2>
-                <p className="text-lg text-gray-600">
+                <p className="text-lg text-gray-600 print:text-black">
                   Beloved {booking.pet_type}
                 </p>
               </div>
 
-              <p className="text-lg text-gray-700 leading-relaxed">
+              <p className="text-lg text-gray-700 leading-relaxed print:text-black">
                 has been cremated with dignity, respect, and care on
               </p>
 
-              <div className="text-xl font-semibold text-gray-800 border-b-2 border-gray-300 pb-2 inline-block">
+              <div className="text-xl font-semibold text-gray-800 border-b-2 border-gray-300 pb-2 inline-block print:text-black print:border-black">
                 {formatDate(booking.booking_date)}
               </div>
 
-              <p className="text-lg text-gray-700 leading-relaxed">
+              <p className="text-lg text-gray-700 leading-relaxed print:text-black">
                 under the {booking.service_name} service package
               </p>
 
-              <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200 mt-6">
-                <p className="text-gray-700 italic">
+              <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200 mt-6 print:bg-white print:border-black">
+                <p className="text-gray-700 italic print:text-black">
                   "Until we meet again at the Rainbow Bridge, you will forever remain in our hearts."
                 </p>
               </div>
             </div>
 
             {/* Footer Information */}
-            <div className="border-t border-gray-300 pt-6">
+            <div className="border-t border-gray-300 pt-6 print:border-black">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
                 <div>
-                  <p className="text-sm text-gray-500 mb-1">Pet Parent</p>
-                  <p className="font-semibold text-gray-800">
+                  <p className="text-sm text-gray-500 mb-1 print:text-black">Pet Parent</p>
+                  <p className="font-semibold text-gray-800 print:text-black">
                     {booking.first_name && booking.last_name
                       ? `${booking.first_name} ${booking.last_name}`
                       : 'Pet Owner'
@@ -161,23 +319,23 @@ const CremationCertificate: React.FC<CremationCertificateProps> = ({ booking, on
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500 mb-1">Certificate Number</p>
-                  <p className="font-semibold text-gray-800">{certificateNumber}</p>
+                  <p className="text-sm text-gray-500 mb-1 print:text-black">Certificate Number</p>
+                  <p className="font-semibold text-gray-800 print:text-black">{certificateNumber}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500 mb-1">Date Issued</p>
-                  <p className="font-semibold text-gray-800">
+                  <p className="text-sm text-gray-500 mb-1 print:text-black">Date Issued</p>
+                  <p className="font-semibold text-gray-800 print:text-black">
                     {formatDate(new Date().toISOString())}
                   </p>
                 </div>
               </div>
 
               <div className="text-center mt-6">
-                <div className="w-48 border-b border-gray-400 mx-auto mb-2"></div>
-                <p className="text-sm text-gray-600">
+                <div className="w-48 border-b border-gray-400 mx-auto mb-2 print:border-black"></div>
+                <p className="text-sm text-gray-600 print:text-black">
                   {booking.provider_name || 'Rainbow Paws Cremation Center'}
                 </p>
-                <p className="text-xs text-gray-500">Authorized Cremation Service Provider</p>
+                <p className="text-xs text-gray-500 print:text-black">Authorized Cremation Service Provider</p>
               </div>
             </div>
 
@@ -185,7 +343,7 @@ const CremationCertificate: React.FC<CremationCertificateProps> = ({ booking, on
             <div className="text-center mt-8">
               <div className="flex justify-center space-x-2">
                 {[...Array(3)].map((_, i) => (
-                  <div key={i} className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                  <div key={i} className="w-2 h-2 bg-gray-400 rounded-full print:bg-black"></div>
                 ))}
               </div>
             </div>

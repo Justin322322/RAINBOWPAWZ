@@ -275,7 +275,7 @@ function ServicesPage({ userData }: ServicesPageProps) {
               ) : (
                 <>
                   <h2 className="text-lg md:text-xl text-[var(--primary-green)] text-center mb-6 modern-heading">
-                    Based on your location, we've found these nearby cremation centers:
+                    Based on your location, we&apos;ve found these nearby cremation centers:
                   </h2>
 
                   <div className="flex flex-col gap-4 items-center justify-center">
@@ -384,7 +384,7 @@ function ServicesPage({ userData }: ServicesPageProps) {
             <div className="bg-white rounded-lg shadow-md p-8 text-center">
               <MapPinIcon className="h-16 w-16 mx-auto text-gray-300 mb-4" />
               <h2 className="text-2xl font-semibold text-gray-700 mb-2">No service providers found</h2>
-              <p className="text-gray-500 mb-6">We couldn't find any pet cremation services in your area.</p>
+              <p className="text-gray-500 mb-6">We couldn&apos;t find any pet cremation services in your area.</p>
             </div>
           ) : (
             <>

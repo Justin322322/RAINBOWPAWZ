@@ -94,7 +94,7 @@ const nextConfig = {
   output: 'standalone',
   // Ensure public directory is included in the standalone output
   outputFileTracingIncludes: {
-    '/**': ['./public/**/*']
+    '/**': ['./public/**/*', './public/uploads/**/*']
   },
   // Disable telemetry
   distDir: '.next',

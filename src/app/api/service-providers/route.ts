@@ -271,53 +271,8 @@ export async function GET(request: Request) {
 
       // If no providers found in either table, create test providers
 
-      // Create test providers in Bataan area
-      const testProviders = [
-        {
-          id: 1001,
-          name: "Rainbow Bridge Pet Cremation",
-          address: "Capitol Drive, Balanga City, Bataan, 2100 Philippines",
-          phone: "(123) 456-7890",
-          email: "info@rainbowbridge.com",
-          description: "Compassionate pet cremation services with personalized memorials.",
-          type: "Pet Cremation Services",
-          packages: 3,
-          created_at: new Date().toISOString()
-        },
-        {
-          id: 1002,
-          name: "Peaceful Paws Memorial",
-          address: "National Road, Orani, Bataan, 2112 Philippines",
-          phone: "(234) 567-8901",
-          email: "care@peacefulpaws.com",
-          description: "Dignified pet cremation with eco-friendly options.",
-          type: "Pet Cremation Services",
-          packages: 2,
-          created_at: new Date().toISOString()
-        },
-        {
-          id: 1003,
-          name: "Forever Friends Pet Services",
-          address: "San Ramon Highway, Dinalupihan, Bataan, 2110 Philippines",
-          phone: "(345) 678-9012",
-          email: "service@foreverfriends.com",
-          description: "Comprehensive pet memorial services with home pickup options.",
-          type: "Pet Cremation Services",
-          packages: 4,
-          created_at: new Date().toISOString()
-        }
-      ];
-
-      // Calculate actual distances for test providers
-      testProviders.forEach(provider => {
-        const providerCoordinates = getBataanCoordinates(provider.address || 'Bataan');
-        const distanceValue = calculateDistance(userCoordinates, providerCoordinates);
-        // Using type assertion to add these properties safely
-        (provider as any).distance = `${distanceValue} km away`;
-        (provider as any).distanceValue = distanceValue;
-      });
-
-      return NextResponse.json({ providers: testProviders });
+      // No test providers - all data comes from database
+      return NextResponse.json({ providers: [] });
     } catch (dbError) {
       return NextResponse.json({ providers: [], error: 'Database error' });
     }

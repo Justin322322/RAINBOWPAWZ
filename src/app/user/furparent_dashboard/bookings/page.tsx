@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { format } from 'date-fns';
 import { Dialog, Transition } from '@headlessui/react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { getProductionImagePath } from '@/utils/imageUtils';
 import {
   ClockIcon,
@@ -140,7 +141,7 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
               }
             }
           } catch (parseError) {
-            const errorText = await response.text();
+            // Error parsing response
           }
 
           throw new Error(errorMessage);
@@ -498,13 +499,13 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
               <p className="text-gray-600">View and manage your service bookings</p>
             </div>
             <div className="mt-4 md:mt-0">
-              <a
+              <Link
                 href="/user/furparent_dashboard/services"
                 className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-[var(--primary-green)] hover:bg-[var(--primary-green-hover)] transition-all duration-300"
               >
                 <PlusCircleIcon className="h-5 w-5 mr-2" />
                 Book New Service
-              </a>
+              </Link>
             </div>
           </div>
         </motion.div>
@@ -610,7 +611,7 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
               <XCircleIcon className="h-5 w-5 text-red-500 mr-3 mt-0.5 flex-shrink-0" />
               <div className="flex-1">
                 <p className="text-red-800 font-medium">Database connection error</p>
-                <p className="text-red-700 text-sm mt-1">We're having trouble connecting to our database. This is usually a temporary issue.</p>
+                <p className="text-red-700 text-sm mt-1">We&apos;re having trouble connecting to our database. This is usually a temporary issue.</p>
 
                 <div className="mt-4 flex justify-end space-x-3">
                   <button
@@ -640,17 +641,17 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
               <h3 className="mt-4 text-lg font-medium text-gray-900">No bookings found</h3>
               <p className="mt-2 text-gray-600">
                 {activeFilter
-                  ? `You don't have any ${activeFilter} bookings.`
-                  : "You haven't made any bookings yet."}
+                  ? `You don&apos;t have any ${activeFilter} bookings.`
+                  : "You haven&apos;t made any bookings yet."}
               </p>
               <div className="mt-6">
-                <a
+                <Link
                   href="/user/furparent_dashboard/services"
                   className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-md text-white bg-[var(--primary-green)] hover:bg-[var(--primary-green-hover)] transition-all duration-300"
                 >
                   <ClipboardDocumentListIcon className="h-5 w-5 mr-2" />
                   Browse Services to Book
-                </a>
+                </Link>
               </div>
             </div>
           ) : (
@@ -1158,7 +1159,7 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
                             <ReviewDisplay bookingId={selectedBooking.id} userId={userData?.id} />
                           ) : (
                             <div className="bg-gray-50 p-4 rounded-lg">
-                              <p className="text-sm text-gray-600 mb-3">You haven't reviewed this booking yet. Your feedback helps other pet parents make informed decisions.</p>
+                              <p className="text-sm text-gray-600 mb-3">You haven&apos;t reviewed this booking yet. Your feedback helps other pet parents make informed decisions.</p>
                               <button
                                 onClick={() => {
                                   setShowDetailsModal(false);

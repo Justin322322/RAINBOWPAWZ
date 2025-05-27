@@ -359,148 +359,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
         const providerResponse = await fetch(`/api/service-providers/${providerIdParam}`);
         if (!providerResponse.ok) {
 
-          // Try special case for test providers
-          if (providerIdParam === '1001' || providerIdParam === '1002' || providerIdParam === '1003') {
-            const testProviders = {
-              '1001': {
-                id: 1001,
-                name: "Rainbow Bridge Pet Cremation",
-                city: "Balanga City, Bataan",
-                address: "Capitol Drive, Balanga City, Bataan, 2100 Philippines",
-                phone: "(123) 456-7890",
-                email: "info@rainbowbridge.com",
-                description: "Compassionate pet cremation services with personalized memorials.",
-                type: "Pet Cremation Services",
-                packages: 3,
-                distance: "5.5 km away",
-                distanceValue: 5.5,
-                created_at: new Date().toISOString()
-              },
-              '1002': {
-                id: 1002,
-                name: "Peaceful Paws Memorial",
-                city: "Orani, Bataan",
-                address: "National Road, Orani, Bataan, 2112 Philippines",
-                phone: "(234) 567-8901",
-                email: "care@peacefulpaws.com",
-                description: "Dignified pet cremation with eco-friendly options.",
-                type: "Pet Cremation Services",
-                packages: 2,
-                distance: "12.3 km away",
-                distanceValue: 12.3,
-                created_at: new Date().toISOString()
-              },
-              '1003': {
-                id: 1003,
-                name: "Forever Friends Pet Services",
-                city: "Dinalupihan, Bataan",
-                address: "San Ramon Highway, Dinalupihan, Bataan, 2110 Philippines",
-                phone: "(345) 678-9012",
-                email: "service@foreverfriends.com",
-                description: "Comprehensive pet memorial services with home pickup options.",
-                type: "Pet Cremation Services",
-                packages: 4,
-                distance: "18.7 km away",
-                distanceValue: 18.7,
-                created_at: new Date().toISOString()
-              }
-            };
-
-            const testProvider = testProviders[providerIdParam as keyof typeof testProviders];
-            if (testProvider) {
-              // Continue with test provider
-              // For packages, we'll also need test package data
-              const testPackages = {
-                '10001': {
-                  id: 10001,
-                  name: "Basic Cremation Package",
-                  description: "Simple cremation service with standard urn",
-                  category: "Communal",
-                  cremationType: "Standard",
-                  processingTime: "2-3 days",
-                  price: 3500,
-                  inclusions: ["Standard clay urn", "Memorial certificate", "Paw print impression"],
-                  addOns: ["Personalized nameplate (+₱500)", "Photo frame (+₱800)"],
-                  conditions: "For pets up to 50 lbs. Additional fees may apply for larger pets.",
-                  providerName: testProvider.name,
-                  providerId: testProvider.id
-                },
-                '10002': {
-                  id: 10002,
-                  name: "Premium Cremation Package",
-                  description: "Private cremation with premium urn and memorial certificate",
-                  category: "Private",
-                  cremationType: "Premium",
-                  processingTime: "1-2 days",
-                  price: 5500,
-                  inclusions: ["Wooden urn with nameplate", "Memorial certificate", "Paw print impression", "Fur clipping"],
-                  addOns: ["Memorial video (+₱1,200)", "Additional urns (+₱1,500)"],
-                  conditions: "Available for all pet sizes. Viewing options available upon request.",
-                  providerName: testProvider.name,
-                  providerId: testProvider.id
-                },
-                '10003': {
-                  id: 10003,
-                  name: "Deluxe Package",
-                  description: "Private cremation with wooden urn and memorial service",
-                  category: "Private",
-                  cremationType: "Premium",
-                  processingTime: "24 hours",
-                  price: 7500,
-                  inclusions: ["Premium wooden urn", "Memorial certificate", "Paw print impression", "Fur clipping", "Photo memorial"],
-                  addOns: ["Memorial video (+₱1,200)", "Custom engraving (+₱800)"],
-                  conditions: "Includes home pickup service within 20km radius.",
-                  providerName: testProvider.name,
-                  providerId: testProvider.id
-                }
-              };
-
-              let testPackage = testPackages[packageIdParam as keyof typeof testPackages];
-              if (!testPackage) {
-                // If package ID isn't one of our test IDs, use the first package as default
-                testPackage = testPackages['10001'];
-              }
-
-              // Set booking data with test data
-              setBookingData({
-                provider: testProvider,
-                package: testPackage
-              });
-
-              // We no longer need to set mock pets
-
-              // Don't set default date and time - require user to select them
-              setSelectedDate('');
-              setSelectedTimeSlot(null);
-
-              // Set pet information if coming from cart
-              if (fromCart === 'true' && petIdParam && petNameParam) {
-                setPetName(decodeURIComponent(petNameParam));
-
-                // Fetch additional pet details if available
-                try {
-                  const petResponse = await fetch(`/api/pets/${petIdParam}`);
-                  if (petResponse.ok) {
-                    const petData = await petResponse.json();
-                    if (petData.pet) {
-                      const pet = petData.pet;
-                      setPetType(pet.species || '');
-                      setPetBreed(pet.breed || '');
-                      setPetGender(pet.gender || '');
-                      setPetAge(pet.age || '');
-                      setPetWeight(pet.weight?.toString() || '');
-                      setPetSpecialNotes(pet.special_notes || '');
-                    }
-                  }
-                } catch (petError) {
-                }
-              }
-
-              // Mark as loaded
-              setLoading(false);
-              return;
-            }
-          }
+          // No test provider fallback - all data from database
 
           setError('Provider not found. Please try again or contact support.');
           return;
@@ -1223,7 +1082,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                           <div className="ml-3">
                             <span className="text-gray-700 font-medium">Pick-up</span>
                             <p className="text-sm text-gray-500 mt-1">
-                              You'll need to visit the provider's location to pick up your pet's remains.
+                              You&apos;ll need to visit the provider&apos;s location to pick up your pet&apos;s remains.
                             </p>
                           </div>
                         </label>
@@ -1241,7 +1100,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                           <div className="ml-2">
                             <span className="text-gray-700 font-medium">Delivery (additional fee)</span>
                             <p className="text-sm text-gray-500 mt-1">
-                              Have your pet's remains delivered to your address.
+                              Have your pet&apos;s remains delivered to your address.
                             </p>
                           </div>
                         </label>
@@ -1275,7 +1134,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                                   <ExclamationCircleIcon className="h-5 w-5 text-red-500 mr-2 flex-shrink-0" />
                                   <div>
                                     <p className="text-sm text-red-700 font-medium">
-                                      Your profile doesn't have a delivery address.
+                                      Your profile doesn&apos;t have a delivery address.
                                     </p>
                                     {validationErrors.deliveryAddress && validationErrors.formSubmitted && (
                                       <p className="text-sm text-red-600 mt-1">{validationErrors.deliveryAddress}</p>

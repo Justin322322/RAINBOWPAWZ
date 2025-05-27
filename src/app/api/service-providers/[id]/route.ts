@@ -24,63 +24,7 @@ export async function GET(
     }
 
 
-    // Check if this is a test provider first to avoid database errors
-    if (id === '1001' || id === '1002' || id === '1003') {
-
-      // Return the test provider data
-      const testProviders = {
-        '1001': {
-          id: 1001,
-          name: "Rainbow Bridge Pet Cremation",
-          city: "Balanga City, Bataan",
-          address: "Capitol Drive, Balanga City, Bataan, 2100 Philippines",
-          phone: "(123) 456-7890",
-          email: "info@rainbowbridge.com",
-          description: "Compassionate pet cremation services with personalized memorials. We offer a range of options to help you honor your beloved pet's memory, including private and communal cremation services, custom urns, memorial jewelry, and paw print keepsakes.",
-          type: "Pet Cremation Services",
-          packages: 3,
-          created_at: new Date().toISOString()
-        },
-        '1002': {
-          id: 1002,
-          name: "Peaceful Paws Memorial",
-          city: "Orani, Bataan",
-          address: "National Road, Orani, Bataan, 2112 Philippines",
-          phone: "(234) 567-8901",
-          email: "care@peacefulpaws.com",
-          description: "Dignified pet cremation with eco-friendly options. Our services include gentle handling of your pet, environmentally conscious cremation processes, biodegradable urns, and memorial tree planting options to create a living tribute to your pet.",
-          type: "Pet Cremation Services",
-          packages: 2,
-          created_at: new Date().toISOString()
-        },
-        '1003': {
-          id: 1003,
-          name: "Forever Friends Pet Services",
-          city: "Dinalupihan, Bataan",
-          address: "San Ramon Highway, Dinalupihan, Bataan, 2110 Philippines",
-          phone: "(345) 678-9012",
-          email: "service@foreverfriends.com",
-          description: "Comprehensive pet memorial services with home pickup options. We understand that saying goodbye is difficult, so we offer compassionate home collection services, private viewing rooms for final goodbyes, and a range of memorial products to honor your pet's memory.",
-          type: "Pet Cremation Services",
-          packages: 4,
-          created_at: new Date().toISOString()
-        }
-      };
-
-      // Calculate actual distance for the requested provider
-      const provider = testProviders[id as keyof typeof testProviders];
-      if (provider) {
-        const providerCoordinates = getBataanCoordinates(provider.address || provider.city || 'Bataan');
-        const distanceValue = calculateDistance(userCoordinates, providerCoordinates);
-        const enhancedProvider = {
-          ...provider,
-          distance: `${distanceValue} km away`,
-          distanceValue: distanceValue
-        };
-        return NextResponse.json({ provider: enhancedProvider });
-      }
-      return NextResponse.json({ provider });
-    }
+    // All provider data comes from database
 
     // Try to fetch from service_providers table
     try {
@@ -300,65 +244,7 @@ export async function GET(
         }
       }
 
-      // If this is a numeric provider ID that matches a test provider, return test data
-      if (!isNaN(Number(id)) &&
-          ['1001', '1002', '1003'].includes(id)) {
-
-        // Return test provider data (same as in test providers section)
-        const testProviders = {
-          '1001': {
-            id: 1001,
-            name: "Rainbow Bridge Pet Cremation (Test)",
-            city: "Balanga City, Bataan",
-            address: "Capitol Drive, Balanga City, Bataan, 2100 Philippines",
-            phone: "(123) 456-7890",
-            email: "info@rainbowbridge.com",
-            description: "Compassionate pet cremation services with personalized memorials.",
-            type: "Pet Cremation Services",
-            packages: 3,
-            created_at: new Date().toISOString()
-          },
-          '1002': {
-            id: 1002,
-            name: "Peaceful Paws Memorial (Test)",
-            city: "Orani, Bataan",
-            address: "National Road, Orani, Bataan, 2112 Philippines",
-            phone: "(234) 567-8901",
-            email: "care@peacefulpaws.com",
-            description: "Dignified pet cremation with eco-friendly options.",
-            type: "Pet Cremation Services",
-            packages: 2,
-            created_at: new Date().toISOString()
-          },
-          '1003': {
-            id: 1003,
-            name: "Forever Friends Pet Services (Test)",
-            city: "Dinalupihan, Bataan",
-            address: "San Ramon Highway, Dinalupihan, Bataan, 2110 Philippines",
-            phone: "(345) 678-9012",
-            email: "service@foreverfriends.com",
-            description: "Comprehensive pet memorial services with home pickup options.",
-            type: "Pet Cremation Services",
-            packages: 4,
-            created_at: new Date().toISOString()
-          }
-        };
-
-        // Calculate actual distance for the requested provider
-        const provider = testProviders[id as keyof typeof testProviders];
-        let enhancedProvider = { ...provider };
-
-        if (provider) {
-          const providerCoordinates = getBataanCoordinates(provider.address || provider.city || 'Bataan');
-          const distanceValue = calculateDistance(userCoordinates, providerCoordinates);
-          enhancedProvider = {
-            ...provider,
-            distance: `${distanceValue} km away`,
-            distanceValue: distanceValue
-          } as any;
-        }
-        return NextResponse.json({ provider: enhancedProvider });
-      }
+      // No test provider fallback - all data from database
 
       return NextResponse.json(
         {

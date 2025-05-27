@@ -131,7 +131,7 @@ function CartPage({ userData }: CartPageProps) {
           >
             <ShoppingCartIcon className="h-16 w-16 mx-auto text-gray-300 mb-4" />
             <h2 className="text-2xl font-semibold text-gray-700 mb-2">Your cart is empty</h2>
-            <p className="text-gray-500 mb-6">Looks like you haven't added any services to your cart yet.</p>
+            <p className="text-gray-500 mb-6">Looks like you haven&apos;t added any services to your cart yet.</p>
             <button
               onClick={() => router.push('/user/furparent_dashboard/services')}
               className="px-6 py-3 bg-[var(--primary-green)] text-white rounded-md hover:bg-[var(--primary-green-hover)] transition-colors"

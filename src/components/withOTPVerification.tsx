@@ -39,26 +39,30 @@ const withOTPVerification = <P extends object>(
     // Use a ref to track if we've shown the modal to prevent multiple renders from showing it again
     const hasShownOTPModalRef = useRef(false);
 
-    // Track if we've shown the Get Started modal to this user
+    // Track if we've shown the Get Started modal to this user in this session
     const hasShownGetStartedModalRef = useRef(false);
 
     useEffect(() => {
       console.log('[withOTPVerification] useEffect triggered');
 
-      // Always show the Get Started modal after login for fur parents
+      // Show the Get Started modal once per login session for fur parents
       const checkFirstTimeLogin = () => {
-        // Check if the user is a fur parent, regardless of OTP verification status
-        if (userData?.role === 'fur_parent' || userData?.user_type === 'fur_parent' || userData?.role === 'user') {
-          // Only check if the user has completed the tutorial
-          const hasCompletedTutorial = localStorage.getItem('has_completed_tutorial') === 'true';
-          if (!hasCompletedTutorial && !hasShownGetStartedModalRef.current) {
-            // Set the ref to prevent showing it multiple times in the same session
+        // Check if the user is a fur parent (user account type)
+        if (userData?.user_type === 'user' || userData?.role === 'user') {
+          // Check if the modal has been shown or dismissed in this login session
+          const sessionKey = `getting_started_shown_${userData.id}`;
+          const hasShownInSession = sessionStorage.getItem(sessionKey) === 'true';
+
+          if (!hasShownInSession && !hasShownGetStartedModalRef.current) {
+            // Mark as shown in session storage to prevent showing again in this session
+            sessionStorage.setItem(sessionKey, 'true');
+            // Set the ref to prevent showing it multiple times in the same render cycle
             hasShownGetStartedModalRef.current = true;
             // Show the modal
             setShowGetStartedModal(true);
 
             // Log for debugging
-            console.log('Showing Get Started modal for fur parent');
+            console.log('Showing Get Started modal for fur parent user');
           }
         }
       };
@@ -304,22 +308,30 @@ const withOTPVerification = <P extends object>(
       }, 500); // Small delay to ensure OTP modal is fully closed
     };
 
-    // Handle closing the Get Started modal when completed
+    // Handle closing the Get Started modal when completed (Finish button)
     const handleGetStartedClose = () => {
       setShowGetStartedModal(false);
-      // Mark that the user has completed the tutorial
-      localStorage.setItem('has_completed_tutorial', 'true');
+      // Mark as dismissed in session storage to prevent showing again in this session
+      if (userData?.id) {
+        const sessionKey = `getting_started_shown_${userData.id}`;
+        sessionStorage.setItem(sessionKey, 'true');
+      }
       // Keep the ref set to true to prevent showing it again
       hasShownGetStartedModalRef.current = true;
-      console.log('Get Started modal completed - tutorial marked as finished');
+      console.log('Get Started modal completed - dismissed for this session');
     };
 
-    // Handle "Not Now" button click
+    // Handle "Not Now" button click or close button
     const handleGetStartedNotNow = () => {
       setShowGetStartedModal(false);
-      // Don't mark as completed, just hide for this session
+      // Mark as dismissed in session storage to prevent showing again in this session
+      if (userData?.id) {
+        const sessionKey = `getting_started_shown_${userData.id}`;
+        sessionStorage.setItem(sessionKey, 'true');
+      }
+      // Keep the ref set to true to prevent showing it again
       hasShownGetStartedModalRef.current = true;
-      console.log('Get Started modal dismissed - will show again on next login');
+      console.log('Get Started modal dismissed - dismissed for this session');
     };
 
     // Don't render anything while verifying - prevents flash

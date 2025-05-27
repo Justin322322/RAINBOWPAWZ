@@ -1,6 +1,6 @@
 /**
  * Rainbow Paws Production Deployment Script
- * 
+ *
  * This script automates the process of building and running the application in production mode.
  * It handles dependency installation, building, and starting the server.
  */
@@ -26,7 +26,7 @@ const colors = {
   blink: '\x1b[5m',
   reverse: '\x1b[7m',
   hidden: '\x1b[8m',
-  
+
   fg: {
     black: '\x1b[30m',
     red: '\x1b[31m',
@@ -37,7 +37,7 @@ const colors = {
     cyan: '\x1b[36m',
     white: '\x1b[37m'
   },
-  
+
   bg: {
     black: '\x1b[40m',
     red: '\x1b[41m',
@@ -65,12 +65,12 @@ function printHeader(message) {
 // Helper function to execute commands and return a promise
 function executeCommand(command, args, options = {}) {
   return new Promise((resolve, reject) => {
-    const process = spawn(command, args, { 
+    const process = spawn(command, args, {
       stdio: 'inherit',
       shell: true,
       ...options
     });
-    
+
     process.on('close', (code) => {
       if (code === 0) {
         resolve();
@@ -78,7 +78,7 @@ function executeCommand(command, args, options = {}) {
         reject(new Error(`Command failed with exit code ${code}`));
       }
     });
-    
+
     process.on('error', (err) => {
       reject(err);
     });
@@ -106,10 +106,10 @@ async function checkMySQLRunning() {
 async function runProduction() {
   try {
     printHeader('Rainbow Paws Production Deployment');
-    
+
     printMessage('This script will build and start the application in production mode.', colors.fg.white);
     console.log();
-    
+
     // Check if Node.js is installed
     try {
       const nodeVersion = execSync('node -v', { encoding: 'utf8' }).trim();
@@ -119,18 +119,18 @@ async function runProduction() {
       printMessage('Please install Node.js from https://nodejs.org/', colors.fg.yellow);
       process.exit(1);
     }
-    
+
     // Check if MySQL is running
     printMessage('Checking for MySQL...', colors.fg.white);
     const mysqlRunning = await checkMySQLRunning();
     if (!mysqlRunning) {
       printMessage('WARNING: MySQL might not be running.', colors.fg.yellow);
       printMessage('The application requires a running MySQL database.', colors.fg.yellow);
-      
+
       const answer = await new Promise(resolve => {
         rl.question('Do you want to continue anyway? (y/n): ', resolve);
       });
-      
+
       if (answer.toLowerCase() !== 'y') {
         printMessage('Exiting...', colors.fg.yellow);
         process.exit(0);
@@ -138,7 +138,7 @@ async function runProduction() {
     } else {
       printMessage('MySQL is running.', colors.fg.green);
     }
-    
+
     // Step 1: Install dependencies
     printHeader('Step 1: Installing dependencies');
     try {
@@ -149,24 +149,24 @@ async function runProduction() {
       printMessage('Please check your internet connection and try again.', colors.fg.yellow);
       process.exit(1);
     }
-    
+
     // Step 2: Build the application
     printHeader('Step 2: Building the application for production');
     try {
-      await executeCommand('npm', ['run', 'build']);
+      await executeCommand('npm', ['run', 'build:production']);
       printMessage('Application built successfully.', colors.fg.green);
     } catch (error) {
       printMessage('ERROR: Build failed.', colors.fg.red);
       printMessage('Please check the error messages above and fix any issues.', colors.fg.yellow);
       process.exit(1);
     }
-    
+
     // Step 3: Start the production server
     printHeader('Step 3: Starting the production server');
     printMessage('The application is now running in production mode!', colors.fg.green);
     printMessage('Press Ctrl+C to stop the server.', colors.fg.yellow);
     console.log();
-    
+
     // Get the port from .env.local or use default
     let port = 3001;
     try {
@@ -180,11 +180,11 @@ async function runProduction() {
     } catch (error) {
       // Use default port if there's an error reading the file
     }
-    
+
     printMessage(`Access the application at:`, colors.fg.white);
     printMessage(`http://localhost:${port}`, colors.fg.green + colors.bright);
     console.log();
-    
+
     // Start the server
     try {
       await executeCommand('npm', ['start']);
@@ -192,10 +192,10 @@ async function runProduction() {
       // This will only execute if the server crashes
       printMessage('Server stopped unexpectedly.', colors.fg.red);
     }
-    
+
     // This will only execute if the server is stopped
     printMessage('Server stopped. Thank you for using Rainbow Paws!', colors.fg.cyan);
-    
+
   } catch (error) {
     printMessage(`An unexpected error occurred: ${error.message}`, colors.fg.red);
   } finally {

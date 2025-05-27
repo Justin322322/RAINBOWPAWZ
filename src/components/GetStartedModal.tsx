@@ -426,10 +426,19 @@ const GetStartedModal: React.FC<GetStartedModalProps> = ({
     }
   };
 
+  // Handle close button (X icon) - should behave like "Not Now"
+  const handleCloseButton = () => {
+    if (onNotNow) {
+      onNotNow();
+    } else {
+      onClose();
+    }
+  };
+
   return (
     <Modal
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={handleCloseButton}
       title="Getting Started with RainbowPaws"
       size="xlarge"
       closeOnOverlayClick={false}

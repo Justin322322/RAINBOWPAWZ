@@ -72,12 +72,12 @@ function FurParentDashboard({ userData }: FurParentDashboardProps) {
               <h1 className="text-4xl modern-heading text-[var(--text-primary)] mb-6">About RainbowPaws</h1>
               <p className="text-[var(--text-secondary)] modern-text mb-6">
                 Losing a beloved pet is never easy, and we understand the deep bond between you and your furry companion.
-                That's why we created RainbowPaws, an online platform designed to support pet owners during their time of loss.
+                That&apos;s why we created RainbowPaws, an online platform designed to support pet owners during their time of loss.
                 This connects clients with trusted service providers, ensuring a seamless and compassionate experience while honoring the memory of their beloved pets.
               </p>
               <p className="text-[var(--text-secondary)] modern-text mb-6">
                 Every day, we strive to improve our system to provide a dignified and transparent farewell for your cherished pets.
-                With RainbowPaws, you can confidently choose a trusted cremation service, ensuring peace of mind and respect for your pet's final journey.
+                With RainbowPaws, you can confidently choose a trusted cremation service, ensuring peace of mind and respect for your pet&apos;s final journey.
               </p>
             </div>
 

@@ -327,7 +327,7 @@ function ReviewsPage({ userData }: ReviewsPageProps) {
               <h4 className="text-sm font-medium text-blue-800 mb-2">How do customers leave reviews?</h4>
               <ul className="text-sm text-blue-700 list-disc pl-5 space-y-1">
                 <li>Customers can leave reviews after completing a booking</li>
-                <li>They'll see a review prompt in their booking details</li>
+                <li>They&apos;ll see a review prompt in their booking details</li>
                 <li>Reviews help build trust with potential customers</li>
                 <li>Higher ratings can improve your visibility in search results</li>
               </ul>

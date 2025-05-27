@@ -372,6 +372,41 @@
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 1;
+  line-clamp: 1;
+}
+
+/* Print styles for certificates */
+@media print {
+  @page {
+    size: A4;
+    margin: 0.5in;
+  }
+
+  /* Ensure certificate prints properly */
+  .certificate-content {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  /* Hide all non-certificate content when printing */
+  body > *:not(.fixed) {
+    display: none !important;
+  }
+
+  .fixed.inset-0 {
+    display: block !important;
+    position: static !important;
+    background: white !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* Ensure proper text rendering */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
 }
 
 .line-clamp-2 {
@@ -379,6 +414,7 @@
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
 }
 
 .line-clamp-3 {
@@ -386,4 +422,5 @@
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 3;
+  line-clamp: 3;
 }

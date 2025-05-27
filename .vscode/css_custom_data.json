@@ -1,0 +1,91 @@
+{
+  "version": 1.1,
+  "atDirectives": [
+    {
+      "name": "@tailwind",
+      "description": "Use the @tailwind directive to insert Tailwind's base, components, utilities and variants styles into your CSS.",
+      "references": [
+        {
+          "name": "Tailwind CSS Documentation",
+          "url": "https://tailwindcss.com/docs/functions-and-directives#tailwind"
+        }
+      ]
+    },
+    {
+      "name": "@apply",
+      "description": "Use @apply to inline any existing utility classes into your own custom CSS.",
+      "references": [
+        {
+          "name": "Tailwind CSS Documentation",
+          "url": "https://tailwindcss.com/docs/functions-and-directives#apply"
+        }
+      ]
+    },
+    {
+      "name": "@layer",
+      "description": "Use the @layer directive to tell Tailwind which \"bucket\" a set of custom styles belong to.",
+      "references": [
+        {
+          "name": "Tailwind CSS Documentation",
+          "url": "https://tailwindcss.com/docs/functions-and-directives#layer"
+        }
+      ]
+    },
+    {
+      "name": "@variants",
+      "description": "You can generate responsive, hover, focus, and other variants of your own utilities by wrapping their definitions in the @variants directive.",
+      "references": [
+        {
+          "name": "Tailwind CSS Documentation",
+          "url": "https://tailwindcss.com/docs/functions-and-directives#variants"
+        }
+      ]
+    },
+    {
+      "name": "@responsive",
+      "description": "You can generate responsive variants of your own classes by wrapping their definitions in the @responsive directive.",
+      "references": [
+        {
+          "name": "Tailwind CSS Documentation",
+          "url": "https://tailwindcss.com/docs/functions-and-directives#responsive"
+        }
+      ]
+    },
+    {
+      "name": "@screen",
+      "description": "The @screen directive allows you to create media queries that reference your breakpoints by name instead of duplicating their values in your own CSS.",
+      "references": [
+        {
+          "name": "Tailwind CSS Documentation",
+          "url": "https://tailwindcss.com/docs/functions-and-directives#screen"
+        }
+      ]
+    }
+  ],
+  "properties": [
+    {
+      "name": "color-adjust",
+      "description": "The color-adjust CSS property sets what, if anything, the user agent may do to optimize the appearance of the element on the output device.",
+      "syntax": "economy | exact",
+      "relevance": 50,
+      "references": [
+        {
+          "name": "MDN Reference",
+          "url": "https://developer.mozilla.org/docs/Web/CSS/color-adjust"
+        }
+      ]
+    },
+    {
+      "name": "print-color-adjust",
+      "description": "The print-color-adjust CSS property sets what, if anything, the user agent may do to optimize the appearance of the element on the output device.",
+      "syntax": "economy | exact",
+      "relevance": 50,
+      "references": [
+        {
+          "name": "MDN Reference",
+          "url": "https://developer.mozilla.org/docs/Web/CSS/print-color-adjust"
+        }
+      ]
+    }
+  ]
+}
