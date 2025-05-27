@@ -582,7 +582,10 @@ function CremationDashboardPage({ userData }: { userData: any }) {
                 </div>
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="text-lg font-medium text-gray-800">{pkg.name}</h3>
-                  <span className="text-lg font-semibold text-gray-800">₱{pkg.price.toLocaleString()}</span>
+                  <span className="text-lg font-semibold text-gray-800">₱{pkg.price.toLocaleString('en-PH', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                  })}</span>
                 </div>
                 <p className="text-sm text-gray-600 mb-4">{pkg.description}</p>
                 <div className="space-y-2">

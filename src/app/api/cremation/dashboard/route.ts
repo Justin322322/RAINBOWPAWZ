@@ -575,6 +575,10 @@ export async function GET(request: NextRequest) {
           else if (imagePath.startsWith('/uploads/') || imagePath.startsWith('uploads/')) {
             // Ensure it starts with a slash
             return imagePath.startsWith('/') ? imagePath : `/${imagePath}`;
+          }
+          // Check if it's a packages path (our corrected format)
+          else if (imagePath.startsWith('packages/')) {
+            return `/uploads/${imagePath}`;
           } else {
             // Otherwise assume it's in the packages directory
             return `/uploads/packages/${imagePath}`;
@@ -640,7 +644,7 @@ export async function GET(request: NextRequest) {
         },
         {
           name: 'Monthly Revenue',
-          value: `₱${monthlyRevenue.toLocaleString('en-US', {
+          value: `₱${parseFloat(monthlyRevenue).toLocaleString('en-PH', {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2
           })}`,
