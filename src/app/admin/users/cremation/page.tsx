@@ -16,14 +16,13 @@ import {
   CheckCircleIcon,
   XCircleIcon,
   ExclamationTriangleIcon,
-  CheckBadgeIcon,
-  EllipsisVerticalIcon
+  CheckBadgeIcon
 } from '@heroicons/react/24/outline';
 import Link from 'next/link';
 import { useToast } from '@/context/ToastContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import ConfirmationModal from '@/components/ConfirmationModal';
-import VerificationModal from '@/components/VerificationModal';
+
 import { LoadingSpinner } from '@/app/admin/services/client';
 
 // Define the type for cremation center data
@@ -63,25 +62,12 @@ export default function AdminCremationCentersPage() {
   const [successCenterName, setSuccessCenterName] = useState('');
   const [showRestrictModal, setShowRestrictModal] = useState(false);
   const [showRestoreModal, setShowRestoreModal] = useState(false);
-  const [showVerifyModal, setShowVerifyModal] = useState(false);
+
   const [centerToAction, setCenterToAction] = useState<CremationCenter | null>(null);
-  const [openDropdownId, setOpenDropdownId] = useState<string | number | null>(null);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+
   const { showToast } = useToast();
 
-  // Handle clicks outside the dropdown to close it
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setOpenDropdownId(null);
-      }
-    }
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, []);
 
   // Fetch cremation centers from the API
   useEffect(() => {
@@ -230,22 +216,9 @@ export default function AdminCremationCentersPage() {
     setShowRestoreModal(true);
   };
 
-  // Function to open the verify modal
-  const openVerifyModal = (center: CremationCenter) => {
-    setCenterToAction(center);
-    // Close details modal if it's open to avoid modal conflicts
-    if (showDetailsModal) {
-      setShowDetailsModal(false);
-    }
-    setShowVerifyModal(true);
-    // Close dropdown if open
-    setOpenDropdownId(null);
-  };
 
-  // Function to toggle dropdown
-  const toggleDropdown = (id: string | number) => {
-    setOpenDropdownId(openDropdownId === id ? null : id);
-  };
+
+
 
   // Handle restricting a cremation center
   const handleRestrictCenter = async (center: CremationCenter) => {
@@ -322,128 +295,7 @@ export default function AdminCremationCentersPage() {
     }
   };
 
-  // Handle verifying a cremation center
-  const handleVerifyCenter = async (notes: string) => {
-    if (isProcessing || !centerToAction) return;
 
-    try {
-      setIsProcessing(true);
-
-
-      // Ensure we're sending the correct data format
-      // The API expects numeric IDs, so convert if necessary
-      // Handle potential NaN values by using the original ID if parsing fails
-      let businessId;
-      try {
-        businessId = typeof centerToAction.id === 'string' ? parseInt(centerToAction.id) : centerToAction.id;
-        // If parsing resulted in NaN, use the original ID
-        if (isNaN(businessId) && typeof centerToAction.id === 'string') {
-          businessId = centerToAction.id;
-        }
-      } catch (error) {
-        // If any error occurs during parsing, use the original ID
-        businessId = centerToAction.id;
-      }
-
-
-      // Check if the center is already restricted
-      const isRestricted = centerToAction.verification_status === 'restricted';
-
-      const payload = {
-        userId: businessId,
-        userType: 'cremation_center',
-        action: 'verify',
-        notes: notes || (isRestricted ? 'Verified by admin but still restricted' : 'Verified by admin'),
-        businessId: businessId
-      };
-
-
-      const response = await fetch('/api/admin/users/verify', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
-
-      let data;
-      try {
-        data = await response.json();
-      } catch (jsonError) {
-        throw new Error('Invalid response from server');
-      }
-
-      if (!response.ok || !data.success) {
-        // Create an error with the cause containing additional details
-        const error = new Error(data.error || 'Failed to verify cremation center');
-        if (data.details) {
-          Object.defineProperty(error, 'cause', {
-            value: { details: data.details },
-            enumerable: true
-          });
-        }
-        throw error;
-      }
-
-      // Check if the center was restricted
-      const centerIsRestricted = centerToAction.verification_status === 'restricted';
-      const newStatus = centerIsRestricted ? 'restricted' : 'verified';
-
-      // Update the center's verification status in the local state
-      setCremationCenters(prevCenters =>
-        prevCenters.map(c =>
-          c.id === centerToAction.id ? {
-            ...c,
-            verified: true,
-            verification_status: newStatus,
-            status: centerIsRestricted ? 'restricted' : 'active'
-          } : c
-        )
-      );
-
-      // If the center is currently selected in the modal, update it
-      if (selectedCenter && selectedCenter.id === centerToAction.id) {
-        setSelectedCenter({
-          ...selectedCenter,
-          verified: true,
-          verification_status: newStatus,
-          status: centerIsRestricted ? 'restricted' : 'active'
-        });
-      }
-
-      showToast(`${centerToAction.name} has been verified successfully`, 'success');
-
-      // Close the modal
-      setShowVerifyModal(false);
-
-      // Force a refresh of the UI to ensure the status is updated
-      setTimeout(() => {
-        // This will trigger a re-render
-        setCremationCenters(prevCenters => [...prevCenters]);
-      }, 100);
-
-    } catch (err) {
-
-      // Extract detailed error message if available
-      let errorMessage = 'Failed to verify cremation center';
-
-      if (err instanceof Error) {
-        errorMessage = err.message;
-      }
-
-      // Check if we have a response with more details
-      if (err instanceof Error && 'cause' in err && err.cause && typeof err.cause === 'object') {
-        const cause = err.cause as any;
-        if (cause.details) {
-          errorMessage = `${errorMessage}: ${cause.details}`;
-        }
-      }
-
-      showToast(errorMessage, 'error');
-    } finally {
-      setIsProcessing(false);
-    }
-  };
 
   // Handle unrestricting a cremation center
   const handleUnrestrictCenter = async (center: CremationCenter) => {
@@ -905,36 +757,7 @@ export default function AdminCremationCentersPage() {
                           View
                         </button>
 
-                        {/* Verification Badge */}
-                        {center.verified || center.application_status === 'approved' || center.application_status === 'verified' ? (
-                          <span className="flex items-center text-green-600">
-                            <CheckBadgeIcon className="h-5 w-5 mr-1" />
-                            <span>Verified</span>
-                          </span>
-                        ) : (
-                          <div className="relative" ref={dropdownRef}>
-                            <button
-                              onClick={() => toggleDropdown(center.id)}
-                              className="text-gray-500 hover:text-gray-700 p-1 rounded-full focus:outline-none"
-                              disabled={isProcessing}
-                            >
-                              <EllipsisVerticalIcon className="h-5 w-5" />
-                            </button>
 
-                            {openDropdownId === center.id && (
-                              <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 py-1">
-                                <button
-                                  onClick={() => openVerifyModal(center)}
-                                  className="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                  disabled={isProcessing}
-                                >
-                                  <CheckBadgeIcon className="h-4 w-4 mr-2 text-green-600" />
-                                  Verify
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        )}
 
                         {/* Restrict/Unrestrict Button */}
                         {center.application_status !== 'restricted' &&
@@ -997,17 +820,7 @@ export default function AdminCremationCentersPage() {
         icon={<CheckCircleIcon className="h-6 w-6 text-green-600" />}
       />
 
-      {/* Verification Modal */}
-      <VerificationModal
-        isOpen={showVerifyModal}
-        onClose={() => setShowVerifyModal(false)}
-        onConfirm={handleVerifyCenter}
-        title="Verify Cremation Center"
-        message={centerToAction ? `Are you sure you want to verify "${centerToAction.name}"? This will make them visible to fur parents in the services section.` : ''}
-        confirmText="Verify"
-        confirmButtonClass="bg-blue-600 hover:bg-blue-700 focus:ring-blue-500"
-        isProcessing={isProcessing}
-      />
+
 
       {/* Center Details Modal */}
       {showDetailsModal && selectedCenter && (
@@ -1040,7 +853,7 @@ export default function AdminCremationCentersPage() {
                         </span>
                         <span>•</span>
                         <span className="flex items-center">
-                          {selectedCenter.verification_status === 'verified' ? (
+                          {selectedCenter.verification_status === 'verified' || selectedCenter.application_status === 'approved' ? (
                             <span className="flex items-center text-green-600 text-sm">
                               <ShieldCheckIcon className="h-4 w-4 mr-1" />
                               Verified
@@ -1050,21 +863,7 @@ export default function AdminCremationCentersPage() {
                               <ShieldExclamationIcon className="h-4 w-4 mr-1" />
                               Restricted
                             </span>
-                          ) : (
-                            <div className="relative">
-                              <button
-                                onClick={() => openVerifyModal(selectedCenter)}
-                                className="flex items-center text-red-600 text-sm hover:text-red-800"
-                                disabled={isProcessing}
-                              >
-                                <ShieldExclamationIcon className="h-4 w-4 mr-1" />
-                                Unverified
-                                <svg className="h-4 w-4 ml-1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                                  <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-                                </svg>
-                              </button>
-                            </div>
-                          )}
+                          ) : null}
                         </span>
                       </div>
                     </div>

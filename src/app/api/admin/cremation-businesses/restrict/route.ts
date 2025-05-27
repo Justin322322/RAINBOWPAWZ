@@ -63,9 +63,9 @@ export async function POST(request: NextRequest) {
 
       // First, check if the business profile exists
       const checkResult = await query(`
-        SELECT id, user_id, application_status, provider_type
+        SELECT provider_id, user_id, application_status, provider_type
         FROM ${tableName}
-        WHERE id = ?
+        WHERE provider_id = ?
       `, [businessId]) as any[];
 
 
@@ -146,7 +146,7 @@ export async function POST(request: NextRequest) {
       updateParams.push(businessId);
 
       // Build the final query
-      let updateQuery = `UPDATE ${tableName} SET ${updateParts.join(', ')} WHERE id = ?`;
+      let updateQuery = `UPDATE ${tableName} SET ${updateParts.join(', ')} WHERE provider_id = ?`;
 
       // Add provider_type condition if the column exists and the business type is known
       const businessType = checkResult[0].provider_type;
@@ -166,7 +166,7 @@ export async function POST(request: NextRequest) {
           if (businessType) {
             updateParams.pop();
           }
-          updateQuery = `UPDATE ${tableName} SET ${updateParts.join(', ')} WHERE id = ?`;
+          updateQuery = `UPDATE ${tableName} SET ${updateParts.join(', ')} WHERE provider_id = ?`;
 
           result = await query(updateQuery, updateParams);
         }
@@ -182,7 +182,7 @@ export async function POST(request: NextRequest) {
       try {
         // Get the user ID for this service provider
         const userResult = await query(`
-          SELECT user_id FROM ${tableName} WHERE id = ?
+          SELECT user_id FROM ${tableName} WHERE provider_id = ?
         `, [businessId]) as any[];
 
         if (userResult && userResult.length > 0) {
@@ -192,7 +192,7 @@ export async function POST(request: NextRequest) {
           await query(`
             UPDATE users
             SET status = ?, updated_at = NOW()
-            WHERE id = ?
+            WHERE user_id = ?
           `, [action === 'restrict' ? 'restricted' : 'active', userId]);
 
 
@@ -241,7 +241,7 @@ export async function POST(request: NextRequest) {
       const currentStatusResult = await query(`
         SELECT application_status
         FROM ${tableName}
-        WHERE id = ?
+        WHERE provider_id = ?
       `, [businessId]) as any[];
 
       const currentStatus = currentStatusResult && currentStatusResult.length > 0

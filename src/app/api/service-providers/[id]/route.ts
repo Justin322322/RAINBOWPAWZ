@@ -215,7 +215,7 @@ export async function GET(
             bp.created_at,
             ${hasBPAppStatus ? 'bp.application_status' : hasBPVerStatus ? 'bp.verification_status' : "'unknown'"} as status
           FROM business_profiles bp
-          JOIN users u ON bp.user_id = u.id
+          JOIN users u ON bp.user_id = u.user_id
           WHERE ${bpWhereClause}
           LIMIT 1
         `, [id]) as any[];
