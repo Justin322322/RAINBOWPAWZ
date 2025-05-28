@@ -95,7 +95,8 @@ export async function POST(request: NextRequest) {
           const tableName = useServiceProvidersTable ? 'service_providers' : 'business_profiles';
 
           // Check if the business exists
-          const businessExists = await query(`SELECT id, verification_status, application_status, user_id FROM ${tableName} WHERE id = ?`, [businessId]) as any[];
+          const idColumn = tableName === 'service_providers' ? 'provider_id' : 'id';
+          const businessExists = await query(`SELECT ${idColumn}, verification_status, application_status, user_id FROM ${tableName} WHERE ${idColumn} = ?`, [businessId]) as any[];
           if (!businessExists || businessExists.length === 0) {
             return NextResponse.json({
               error: `Business profile with ID ${businessId} not found in ${tableName} table`,
@@ -131,7 +132,7 @@ export async function POST(request: NextRequest) {
                   verification_date = NOW(),
                   verification_notes = ?,
                   updated_at = NOW()
-              WHERE id = ?
+              WHERE ${idColumn} = ?
             `, [
               updatedStatus,
               updatedStatus === 'approved' ? 'verified' : updatedStatus, // Convert 'approved' to 'verified' for backward compatibility
@@ -146,7 +147,7 @@ export async function POST(request: NextRequest) {
                   verification_date = NOW(),
                   verification_notes = ?,
                   updated_at = NOW()
-              WHERE id = ?
+              WHERE ${idColumn} = ?
             `, [
               updatedStatus === 'approved' ? 'verified' : updatedStatus, // Convert 'approved' to 'verified' for older schema
               notes || (currentStatus === 'restricted' ? 'Verified by admin but still restricted' : 'Verified by admin'),
@@ -161,7 +162,7 @@ export async function POST(request: NextRequest) {
               UPDATE users
               SET is_verified = 1,
                   updated_at = NOW()
-              WHERE id = ?
+              WHERE user_id = ?
             `, [businessUserId]);
 
           } else {

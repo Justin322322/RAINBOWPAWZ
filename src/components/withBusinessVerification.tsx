@@ -19,25 +19,23 @@ const withBusinessVerification = <P extends object>(
   const WithBusinessVerification: React.FC<Omit<P, 'userData'>> = (props) => {
     const router = useRouter();
 
-    // Check cache immediately during initialization to prevent loading flicker
-    const cachedVerification = getCachedBusinessVerification();
-    const hasCachedData = cachedVerification && cachedVerification.verified && cachedVerification.userData;
+    // Always start with loading state to prevent hydration mismatch
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const [userData, setUserData] = useState<any>(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isMounted, setIsMounted] = useState(false);
 
-    const [isAuthenticated, setIsAuthenticated] = useState(hasCachedData);
-    const [userData, setUserData] = useState<any>(hasCachedData ? cachedVerification.userData : null);
-    const [isLoading, setIsLoading] = useState(!hasCachedData);
+    // Set mounted state to prevent hydration mismatch
+    useEffect(() => {
+      setIsMounted(true);
+    }, []);
 
     useEffect(() => {
+      if (!isMounted) return; // Wait for component to mount
+
       const checkBusinessVerification = async () => {
         try {
-          // If we already have cached data, don't show loading
-          if (hasCachedData) {
-            return;
-          }
-
-          setIsLoading(true);
-
-          // Double-check cache in case it was set between render and effect
+          // Check cache after component is mounted
           const cachedVerification = getCachedBusinessVerification();
           if (cachedVerification && cachedVerification.verified && cachedVerification.userData) {
             setUserData(cachedVerification.userData);
@@ -128,7 +126,7 @@ const withBusinessVerification = <P extends object>(
       };
 
       checkBusinessVerification();
-    }, [router, hasCachedData]);
+    }, [router, isMounted]);
 
     // Show loading state while checking verification
     if (isLoading) {

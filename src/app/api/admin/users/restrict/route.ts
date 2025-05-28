@@ -111,7 +111,7 @@ export async function POST(request: NextRequest) {
         } else {
           // Update existing restrictions to inactive
           await query(`
-            UPDATE user_restrictions 
+            UPDATE user_restrictions
             SET is_active = 0, updated_at = NOW()
             WHERE user_id = ? AND is_active = 1
           `, [userId]);
@@ -141,7 +141,8 @@ export async function POST(request: NextRequest) {
 
 
         // First check if the business profile exists
-        const businessExists = await query(`SELECT id, user_id FROM ${tableName} WHERE id = ?`, [businessId]) as any[];
+        const idColumn = tableName === 'service_providers' ? 'provider_id' : 'id';
+        const businessExists = await query(`SELECT ${idColumn}, user_id FROM ${tableName} WHERE ${idColumn} = ?`, [businessId]) as any[];
         if (!businessExists || businessExists.length === 0) {
           return NextResponse.json({
             error: `Service provider with ID ${businessId} not found`,
@@ -154,11 +155,11 @@ export async function POST(request: NextRequest) {
         // Check what columns exist in the table
         const columnsResult = await query(`SHOW COLUMNS FROM ${tableName}`) as any[];
         const columnNames = columnsResult.map((col: any) => col.Field);
-        
+
         // Check for required columns
         const hasVerificationStatus = columnNames.includes('verification_status');
         const hasApplicationStatus = columnNames.includes('application_status');
-        
+
         // Determine new status values based on action
         const newVerificationStatus = action === 'restrict' ? 'restricted' : 'verified';
         const newApplicationStatus = action === 'restrict' ? 'restricted' : 'approved';
@@ -172,7 +173,7 @@ export async function POST(request: NextRequest) {
           updateParts.push('verification_status = ?');
           updateParams.push(newVerificationStatus);
         }
-        
+
         // Update application_status if it exists (preferred)
         if (hasApplicationStatus) {
           updateParts.push('application_status = ?');
@@ -185,11 +186,11 @@ export async function POST(request: NextRequest) {
             updateParts.push('restriction_reason = ?');
             updateParams.push(reason);
           }
-          
+
           if (columnNames.includes('restriction_date')) {
             updateParts.push('restriction_date = NOW()');
           }
-          
+
           if (columnNames.includes('restriction_duration')) {
             updateParts.push('restriction_duration = ?');
             updateParams.push(duration);
@@ -205,7 +206,7 @@ export async function POST(request: NextRequest) {
         if (columnNames.includes('updated_at')) {
           updateParts.push('updated_at = NOW()');
         }
-        
+
         // Add business ID to parameters list
         updateParams.push(businessId);
 
@@ -213,29 +214,29 @@ export async function POST(request: NextRequest) {
         await query(`
           UPDATE ${tableName}
           SET ${updateParts.join(', ')}
-          WHERE id = ?
+          WHERE ${idColumn} = ?
         `, updateParams);
 
 
         // Verify the status was updated correctly
         const verifyResult = await query(
-          `SELECT ${hasVerificationStatus ? 'verification_status' : ''}, ${hasApplicationStatus ? 'application_status' : ''} FROM ${tableName} WHERE id = ?`,
+          `SELECT ${hasVerificationStatus ? 'verification_status' : ''}, ${hasApplicationStatus ? 'application_status' : ''} FROM ${tableName} WHERE ${idColumn} = ?`,
           [businessId]
         ) as any[];
 
         if (verifyResult && verifyResult.length > 0) {
-          
+
           // Check for mismatch in statuses and retry if needed
           let statusMismatch = false;
-          
+
           if (hasVerificationStatus && verifyResult[0].verification_status !== newVerificationStatus) {
             statusMismatch = true;
           }
-          
+
           if (hasApplicationStatus && verifyResult[0].application_status !== newApplicationStatus) {
             statusMismatch = true;
           }
-          
+
           if (statusMismatch) {
             // Try to update again with a simplified query
             await query(
@@ -243,7 +244,7 @@ export async function POST(request: NextRequest) {
                SET ${hasVerificationStatus ? `verification_status = '${newVerificationStatus}'` : ''}
                   ${hasVerificationStatus && hasApplicationStatus ? ',' : ''}
                   ${hasApplicationStatus ? `application_status = '${newApplicationStatus}'` : ''}
-               WHERE id = ?`,
+               WHERE ${idColumn} = ?`,
               [businessId]
             );
           }
@@ -253,7 +254,7 @@ export async function POST(request: NextRequest) {
         await query(`
           UPDATE users
           SET status = ?, updated_at = NOW()
-          WHERE id = ?
+          WHERE user_id = ?
         `, [action === 'restrict' ? 'restricted' : 'active', businessUserId]);
 
         if (action === 'restrict') {
@@ -265,7 +266,7 @@ export async function POST(request: NextRequest) {
         } else {
           // Update existing restrictions to inactive
           await query(`
-            UPDATE user_restrictions 
+            UPDATE user_restrictions
             SET is_active = 0, updated_at = NOW()
             WHERE user_id = ? AND is_active = 1
           `, [businessUserId]);

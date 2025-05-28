@@ -49,6 +49,22 @@ INSERT INTO `admin_logs` (`id`, `admin_id`, `action`, `entity_type`, `entity_id`
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `admin_profiles`
+--
+
+CREATE TABLE `admin_profiles` (
+  `id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `username` varchar(50) DEFAULT NULL,
+  `full_name` varchar(100) DEFAULT NULL,
+  `admin_role` varchar(50) DEFAULT 'admin',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `bookings`
 --
 
@@ -772,6 +788,14 @@ ALTER TABLE `admin_logs`
   ADD KEY `action` (`action`);
 
 --
+-- Indexes for table `admin_profiles`
+--
+ALTER TABLE `admin_profiles`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `user_id` (`user_id`),
+  ADD KEY `username` (`username`);
+
+--
 -- Indexes for table `bookings`
 --
 ALTER TABLE `bookings`
@@ -926,6 +950,12 @@ ALTER TABLE `admin_logs`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
+-- AUTO_INCREMENT for table `admin_profiles`
+--
+ALTER TABLE `admin_profiles`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT for table `bookings`
 --
 ALTER TABLE `bookings`
@@ -1036,6 +1066,12 @@ ALTER TABLE `user_restrictions`
 --
 -- Constraints for dumped tables
 --
+
+--
+-- Constraints for table `admin_profiles`
+--
+ALTER TABLE `admin_profiles`
+  ADD CONSTRAINT `admin_profiles_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `bookings`

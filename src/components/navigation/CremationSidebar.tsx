@@ -77,6 +77,12 @@ export default function CremationSidebar({
       href: '/cremation/profile',
       icon: UserIcon,
       id: 'profile'
+    },
+    {
+      name: 'Settings',
+      href: '/cremation/settings',
+      icon: Cog6ToothIcon,
+      id: 'settings'
     }
   ];
 
@@ -111,8 +117,12 @@ export default function CremationSidebar({
         setActivePage('bookings');
       } else if (currentPath === 'history') {
         setActivePage('history');
+      } else if (currentPath === 'reviews') {
+        setActivePage('reviews');
       } else if (currentPath === 'profile') {
         setActivePage('profile');
+      } else if (currentPath === 'settings') {
+        setActivePage('settings');
       }
 
       setIsNavigating(false);
