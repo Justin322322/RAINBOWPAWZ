@@ -99,6 +99,27 @@ export default function CremationNavbar({
     const handleProfilePictureUpdate = (event: CustomEvent) => {
       if (event.detail?.profilePicturePath) {
         setProfilePicture(event.detail.profilePicturePath);
+
+        // Also update caches immediately
+        try {
+          const businessCache = sessionStorage.getItem('business_verification_cache');
+          if (businessCache) {
+            const cache = JSON.parse(businessCache);
+            if (cache.userData) {
+              cache.userData.profile_picture = event.detail.profilePicturePath;
+              sessionStorage.setItem('business_verification_cache', JSON.stringify(cache));
+            }
+          }
+
+          const userData = sessionStorage.getItem('user_data');
+          if (userData) {
+            const user = JSON.parse(userData);
+            user.profile_picture = event.detail.profilePicturePath;
+            sessionStorage.setItem('user_data', JSON.stringify(user));
+          }
+        } catch (error) {
+          console.error('Error updating caches:', error);
+        }
       } else {
         // Refetch from API if no path provided
         fetchProfilePicture();
@@ -137,19 +158,33 @@ export default function CremationNavbar({
       }
 
       // Only make API call if no cached profile picture found
-      const response = await fetch('/api/cremation/profile');
+      const response = await fetch('/api/cremation/profile', {
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      });
+
       if (response.ok) {
         const data = await response.json();
         if (data.profile?.profilePicturePath) {
           setProfilePicture(data.profile.profilePicturePath);
 
-          // Update cache with the fetched profile picture
+          // Update both caches with the fetched profile picture
           if (businessCache) {
             const cache = JSON.parse(businessCache);
             if (cache.userData) {
               cache.userData.profile_picture = data.profile.profilePicturePath;
               sessionStorage.setItem('business_verification_cache', JSON.stringify(cache));
             }
+          }
+
+          // Also update user data cache
+          const userDataCache = sessionStorage.getItem('user_data');
+          if (userDataCache) {
+            const user = JSON.parse(userDataCache);
+            user.profile_picture = data.profile.profilePicturePath;
+            sessionStorage.setItem('user_data', JSON.stringify(user));
           }
         }
       }

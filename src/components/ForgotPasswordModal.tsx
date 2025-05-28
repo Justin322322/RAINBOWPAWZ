@@ -105,7 +105,7 @@ const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({ isOpen, onClo
         )}
 
         <p className="text-gray-600 dark:text-gray-400 text-center font-light">
-          Enter your email address and we'll send you instructions to reset your password.
+          Enter your email address and we&apos;ll send you instructions to reset your password.
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-6">

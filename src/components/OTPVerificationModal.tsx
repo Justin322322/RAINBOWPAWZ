@@ -443,7 +443,7 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
             >
               <h2 className="text-2xl font-semibold text-gray-800 mb-2">Verify Your Account</h2>
               <p className="text-gray-600 mb-6">
-                We've sent a 6-digit verification code to <span className="font-medium">{userEmail}</span>
+                We&apos;ve sent a 6-digit verification code to <span className="font-medium">{userEmail}</span>
               </p>
 
               {/* Success message */}
@@ -482,7 +482,7 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
                       <p className="text-sm font-medium text-red-800">{errorMessage}</p>
                       {errorMessage.includes('expired') && (
                         <p className="text-xs mt-1 text-red-700">
-                          Click "Resend verification code" below to get a new code.
+                          Click &quot;Resend verification code&quot; below to get a new code.
                         </p>
                       )}
                       {errorMessage.includes('incorrect') && (

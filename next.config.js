@@ -83,12 +83,12 @@ const nextConfig = {
       }
     ]
   },
-  // Disable type checking and linting during build to reduce logs
+  // Enable type checking and linting during build
   eslint: {
-    ignoreDuringBuilds: true,
+    ignoreDuringBuilds: false,
   },
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false,
   },
   // Configure output for production builds
   output: 'standalone',
@@ -110,13 +110,14 @@ const nextConfig = {
         child_process: false,
         // Prevent client-side imports of these packages
         nodemailer: false,
-        emailjs: false
+        emailjs: false,
+        twilio: false
       };
     }
     return config;
   },
   // These packages will be bundled properly for server components
-  serverExternalPackages: ['nodemailer', 'emailjs'],
+  serverExternalPackages: ['nodemailer', 'emailjs', 'twilio'],
   // Next.js 13+ uses a different approach for server configuration
   // The server settings should be in next.config.mjs or package.json scripts
 

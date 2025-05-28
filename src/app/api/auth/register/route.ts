@@ -7,6 +7,9 @@ import { createAdminNotification } from '@/utils/adminNotificationService';
 // Import the consolidated email service
 import { sendWelcomeEmail } from '@/lib/consolidatedEmailService';
 
+// Import phone number formatting
+import { testPhoneNumberFormatting } from '@/lib/smsService';
+
 // Types for our request
 interface PersonalRegistrationData {
   firstName: string;
@@ -37,6 +40,24 @@ interface BusinessRegistrationData {
 }
 
 type RegistrationData = PersonalRegistrationData | BusinessRegistrationData;
+
+/**
+ * Helper function to format and validate Philippine phone numbers
+ */
+function formatPhoneNumber(phoneNumber: string | undefined): string | null {
+  if (!phoneNumber || !phoneNumber.trim()) {
+    return null;
+  }
+
+  const formatResult = testPhoneNumberFormatting(phoneNumber.trim());
+
+  if (formatResult.success && formatResult.formatted) {
+    return formatResult.formatted;
+  }
+
+  // If formatting fails, return null (will be handled as validation error if required)
+  return null;
+}
 
 export async function POST(request: Request) {
   // Test database connection first
@@ -183,12 +204,24 @@ export async function POST(request: Request) {
             }
           }
 
+          // Format phone numbers before saving
+          let formattedPhone = null;
+          if (data.account_type === 'personal') {
+            formattedPhone = formatPhoneNumber((data as PersonalRegistrationData).phoneNumber);
+          } else {
+            formattedPhone = formatPhoneNumber((data as BusinessRegistrationData).businessPhone);
+            // Validate business phone is required and properly formatted
+            if (!formattedPhone) {
+              throw new Error('Invalid business phone number format. Please enter a valid Philippine mobile number.');
+            }
+          }
+
           const values = [
             data.email,
             hashedPassword,
             data.firstName,
             data.lastName,
-            data.account_type === 'personal' ? data.phoneNumber || null : (data as BusinessRegistrationData).businessPhone,
+            formattedPhone,
             data.account_type === 'personal' ? data.address || null : (data as BusinessRegistrationData).businessAddress,
             genderValue,
             role
@@ -276,13 +309,16 @@ export async function POST(request: Request) {
               description: businessData.serviceDescription || null
             });
 
+            // Format business phone number (already validated above)
+            const formattedBusinessPhone = formatPhoneNumber(businessData.businessPhone);
+
             const values = [
               userId,
               businessData.businessName,
               providerType,
               data.firstName,
               data.lastName,
-              businessData.businessPhone,
+              formattedBusinessPhone,
               businessData.businessAddress,
               businessData.businessProvince || null, // province
               businessData.businessCity || null, // city

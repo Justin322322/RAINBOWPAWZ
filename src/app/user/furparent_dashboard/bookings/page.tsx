@@ -31,6 +31,7 @@ import FurParentPageSkeleton from '@/components/ui/FurParentPageSkeleton';
 import ReviewModal from '@/components/reviews/ReviewModal';
 import ReviewDisplay from '@/components/reviews/ReviewDisplay';
 import CremationCertificate from '@/components/certificates/CremationCertificate';
+import BookingTimeline from '@/components/booking/BookingTimeline';
 
 interface BookingData {
   id: number;
@@ -981,93 +982,12 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
                               </span>
                             </div>
 
-                            {/* Status Tracking UI */}
+                            {/* Enhanced Booking Timeline */}
                             <div className="my-4 pt-2 pb-3">
-                              <p className="text-sm font-medium text-gray-700 mb-3">Booking Progress</p>
-                              <div className="relative">
-                                {/* Progress Bar */}
-                                <div className="overflow-hidden h-2 mb-4 text-xs flex rounded bg-gray-200">
-                                  <div
-                                    className={`shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center ${
-                                      selectedBooking.status === 'cancelled'
-                                        ? 'bg-red-500'
-                                        : 'bg-[var(--primary-green)]'
-                                    }`}
-                                    style={{
-                                      width: selectedBooking.status === 'pending' ? '20%' :
-                                             selectedBooking.status === 'confirmed' ? '40%' :
-                                             selectedBooking.status === 'in_progress' ? '70%' :
-                                             selectedBooking.status === 'completed' ? '100%' :
-                                             selectedBooking.status === 'cancelled' ? '100%' : '0%'
-                                    }}
-                                  ></div>
-                                </div>
-
-                                {/* Status Steps */}
-                                <div className="flex justify-between -mt-1.5">
-                                  <div className="text-center relative">
-                                    <div className={`w-6 h-6 mx-auto rounded-full flex items-center justify-center ${
-                                      ['pending', 'confirmed', 'in_progress', 'completed'].includes(selectedBooking.status)
-                                        ? 'bg-[var(--primary-green)] text-white'
-                                        : selectedBooking.status === 'cancelled'
-                                          ? 'bg-red-500 text-white'
-                                          : 'bg-gray-300 text-gray-500'
-                                    }`}>
-                                      <ClockIcon className="h-3 w-3" />
-                                    </div>
-                                    <div className="text-xs mt-1 text-gray-600">Pending</div>
-                                  </div>
-
-                                  <div className="text-center relative">
-                                    <div className={`w-6 h-6 mx-auto rounded-full flex items-center justify-center ${
-                                      ['confirmed', 'in_progress', 'completed'].includes(selectedBooking.status)
-                                        ? 'bg-[var(--primary-green)] text-white'
-                                        : selectedBooking.status === 'cancelled'
-                                          ? 'bg-gray-300 text-gray-500'
-                                          : 'bg-gray-300 text-gray-500'
-                                    }`}>
-                                      <CheckCircleIcon className="h-3 w-3" />
-                                    </div>
-                                    <div className="text-xs mt-1 text-gray-600">Confirmed</div>
-                                  </div>
-
-                                  <div className="text-center relative">
-                                    <div className={`w-6 h-6 mx-auto rounded-full flex items-center justify-center ${
-                                      ['in_progress', 'completed'].includes(selectedBooking.status)
-                                        ? 'bg-[var(--primary-green)] text-white'
-                                        : selectedBooking.status === 'cancelled'
-                                          ? 'bg-gray-300 text-gray-500'
-                                          : 'bg-gray-300 text-gray-500'
-                                    }`}>
-                                      <ArrowPathIcon className="h-3 w-3" />
-                                    </div>
-                                    <div className="text-xs mt-1 text-gray-600">In Progress</div>
-                                  </div>
-
-                                  <div className="text-center relative">
-                                    <div className={`w-6 h-6 mx-auto rounded-full flex items-center justify-center ${
-                                      selectedBooking.status === 'completed'
-                                        ? 'bg-[var(--primary-green)] text-white'
-                                        : selectedBooking.status === 'cancelled'
-                                          ? 'bg-gray-300 text-gray-500'
-                                          : 'bg-gray-300 text-gray-500'
-                                    }`}>
-                                      <ClipboardDocumentCheckIcon className="h-3 w-3" />
-                                    </div>
-                                    <div className="text-xs mt-1 text-gray-600">Completed</div>
-                                  </div>
-                                </div>
-
-                                {/* Cancelled Status (if applicable) */}
-                                {selectedBooking.status === 'cancelled' && (
-                                  <div className="mt-3 bg-red-50 p-2 rounded-md border border-red-100">
-                                    <div className="flex items-center justify-center text-red-700">
-                                      <XCircleIcon className="h-4 w-4 mr-1" />
-                                      <span className="text-xs font-medium">This booking has been cancelled</span>
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
+                              <BookingTimeline
+                                currentStatus={selectedBooking.status as 'pending' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled'}
+                                className="border-0 bg-transparent p-0"
+                              />
                             </div>
 
                             <div className="flex justify-between items-center mb-3">

@@ -30,7 +30,7 @@ const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({ isOpen, onClose
 
         <div className="space-y-4">
           <p>
-            This Privacy Policy describes how Rainbow Paws ("we," "us," or "our") collects, uses, and discloses your personal information when you use our website and services. This policy is in compliance with Republic Act No. 10173, also known as the Data Privacy Act of 2012 of the Philippines.
+            This Privacy Policy describes how Rainbow Paws (&quot;we,&quot; &quot;us,&quot; or &quot;our&quot;) collects, uses, and discloses your personal information when you use our website and services. This policy is in compliance with Republic Act No. 10173, also known as the Data Privacy Act of 2012 of the Philippines.
           </p>
 
           <h3 className="text-md font-medium text-gray-900">1. Information We Collect</h3>
@@ -91,7 +91,7 @@ const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({ isOpen, onClose
           </ul>
 
           <h3 className="text-md font-medium text-gray-900">8. Changes to This Privacy Policy</h3>
-          <p>We may update this Privacy Policy from time to time. We will notify you of any changes by posting the new Privacy Policy on this page and updating the "Last Updated" date.</p>
+          <p>We may update this Privacy Policy from time to time. We will notify you of any changes by posting the new Privacy Policy on this page and updating the &quot;Last Updated&quot; date.</p>
 
           <h3 className="text-md font-medium text-gray-900">9. Contact Us</h3>
           <p>If you have any questions about this Privacy Policy or our data practices, please contact us at:</p>

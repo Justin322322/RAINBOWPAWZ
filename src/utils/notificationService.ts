@@ -10,7 +10,7 @@ export interface CreateNotificationParams {
   message: string;
   type: 'info' | 'success' | 'warning' | 'error';
   link?: string | null;
-  sendEmail?: boolean;
+  shouldSendEmail?: boolean;
   emailSubject?: string;
 }
 
@@ -23,7 +23,7 @@ export async function createNotification({
   message,
   type = 'info',
   link = null,
-  sendEmail = false,
+  shouldSendEmail = false,
   emailSubject
 }: CreateNotificationParams): Promise<{ success: boolean; notificationId?: number; error?: string }> {
   try {
@@ -38,15 +38,15 @@ export async function createNotification({
     ) as any;
 
     // If requested, also send an email notification
-    if (sendEmail) {
+    if (shouldSendEmail) {
       // Get user email
       const userResult = await query('SELECT email, first_name FROM users WHERE user_id = ?', [userId]) as any[];
 
-      if (userResult && userResult.length > 0) {      const { email, first_name } = userResult[0];
+      if (userResult && userResult.length > 0) {
+        const { email, first_name } = userResult[0];
 
         // Send the email notification
-        const emailSender = sendEmail as any;
-        await emailSender({
+        await sendEmail({
           to: email,
           subject: emailSubject || title,
           html: createEmailHtml(first_name, title, message, type, link),

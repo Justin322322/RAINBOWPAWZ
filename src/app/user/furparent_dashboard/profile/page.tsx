@@ -15,6 +15,7 @@ import {
 import FurParentNavbar from '@/components/navigation/FurParentNavbar';
 import withOTPVerification from '@/components/withOTPVerification';
 import { getProfilePictureUrl, handleImageError, triggerProfilePictureUpdate } from '@/utils/imageUtils';
+import PhilippinePhoneInput from '@/components/ui/PhilippinePhoneInput';
 
 interface ProfilePageProps {
   userData?: any;
@@ -408,15 +409,12 @@ function ProfilePage({ userData }: ProfilePageProps) {
                     </div>
 
                     <div>
-                      <label htmlFor="phoneNumber" className="block text-sm font-medium text-gray-700 mb-1">
-                        Phone Number
-                      </label>
-                      <input
-                        type="tel"
+                      <PhilippinePhoneInput
                         id="phoneNumber"
                         name="phoneNumber"
+                        label="Phone Number"
                         value={formData.phoneNumber}
-                        onChange={handleInputChange}
+                        onChange={(value) => setFormData({...formData, phoneNumber: value})}
                         className="w-full p-2 border border-gray-300 rounded-md focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
                       />
                     </div>

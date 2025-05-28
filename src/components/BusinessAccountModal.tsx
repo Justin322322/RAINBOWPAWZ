@@ -5,6 +5,7 @@ import Modal from './Modal';
 import { sendWelcomeEmail } from '../lib/emailService';
 import PrivacyPolicyModal from './PrivacyPolicyModal';
 import { useToast } from '@/context/ToastContext';
+import PhilippinePhoneInput from './ui/PhilippinePhoneInput';
 
 type BusinessAccountModalProps = {
   isOpen: boolean;
@@ -430,21 +431,15 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
             />
           </div>
 
-          <div>
-            <label htmlFor="businessPhone" className={labelClasses}>
-              Business Phone
-            </label>
-            <input
-              type="tel"
-              id="businessPhone"
-              name="businessPhone"
-              value={formData.businessPhone}
-              onChange={handleChange}
-              className={inputClasses}
-              placeholder="Enter your business phone number"
-              required
-            />
-          </div>
+          <PhilippinePhoneInput
+            id="businessPhone"
+            name="businessPhone"
+            label="Business Phone"
+            value={formData.businessPhone}
+            onChange={(value) => setFormData({...formData, businessPhone: value})}
+            className={inputClasses}
+            required
+          />
 
           <div>
             <label htmlFor="businessEmail" className={labelClasses}>

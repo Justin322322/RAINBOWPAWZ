@@ -262,7 +262,7 @@ const CompletedBookingReviewPrompt: React.FC<CompletedBookingReviewPromptProps> 
               </div>
 
               <div className="mt-3 text-xs text-gray-500">
-                You can always find your completed bookings in the "Completed" tab.
+                You can always find your completed bookings in the &quot;Completed&quot; tab.
                 <p className="mt-1">Note: Reviews can only be submitted within 5 days of booking completion. Once submitted, reviews cannot be edited.</p>
               </div>
             </div>

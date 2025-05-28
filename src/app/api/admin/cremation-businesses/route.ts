@@ -128,36 +128,16 @@ export async function GET(request: NextRequest) {
     }
 
     // Verify admin authentication
-    let isAuthenticated = false;
-    let userId = 'system';
-    let accountType = 'admin';
-
-    // Get auth token from request
     const authToken = getAuthTokenFromRequest(request);
 
-    // In development mode, we'll allow requests without auth token for testing
-    const isDevelopment = process.env.NODE_ENV === 'development';
-
-    if (authToken) {
-      // If we have a token, validate it
-      const tokenParts = authToken.split('_');
-      if (tokenParts.length === 2) {
-        userId = tokenParts[0];
-        accountType = tokenParts[1];
-        isAuthenticated = accountType === 'admin';
-      }
-    } else if (isDevelopment) {
-      // In development, allow requests without auth for testing
-      isAuthenticated = true;
+    if (!authToken) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Check authentication result
-    if (!isAuthenticated) {
-      return NextResponse.json({
-        error: 'Unauthorized',
-        details: 'Admin access required',
-        success: false
-      }, { status: 401 });
+    const [userId, accountType] = authToken.split('_');
+
+    if (accountType !== 'admin') {
+      return NextResponse.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
     }
 
     // Since you've migrated from business_profiles to service_providers,

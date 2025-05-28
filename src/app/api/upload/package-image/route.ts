@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
 
     // Get provider ID
     const providerResult = await query(
-      'SELECT id FROM service_providers WHERE user_id = ?',
+      'SELECT provider_id FROM service_providers WHERE user_id = ?',
       [userId]
     ) as any[];
 
@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
       }, { status: 404 });
     }
 
-    const providerId = providerResult[0].id;
+    const providerId = providerResult[0].provider_id;
 
     // Get form data
     const formData = await request.formData();

@@ -78,7 +78,7 @@ export class RateLimiter {
 
       // Check current request count for this identifier and action
       const currentCount = await query(
-        `SELECT request_count, window_start FROM rate_limits 
+        `SELECT request_count, window_start FROM rate_limits
          WHERE identifier = ? AND action = ? AND window_start >= ?
          ORDER BY window_start DESC LIMIT 1`,
         [config.identifier, config.action, windowStart]
@@ -196,8 +196,8 @@ export function createRateLimitHeaders(rateLimitResult: RateLimitResult): Record
  * Helper function to create standardized error responses
  */
 export function createStandardErrorResponse(
-  error: string, 
-  status: number = 500, 
+  error: string,
+  status: number = 500,
   additionalData: Record<string, any> = {}
 ): { error: string; success: boolean; timestamp: string } & Record<string, any> {
   return {
@@ -214,8 +214,8 @@ export function createStandardErrorResponse(
 export function createStandardSuccessResponse(
   data: Record<string, any> = {},
   message?: string
-): { success: boolean; timestamp: string } & Record<string, any> {
-  const response = {
+): { success: boolean; timestamp: string; message?: string } & Record<string, any> {
+  const response: { success: boolean; timestamp: string; message?: string } & Record<string, any> = {
     success: true,
     timestamp: new Date().toISOString(),
     ...data

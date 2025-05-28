@@ -27,13 +27,13 @@ const ReviewDisplay: React.FC<ReviewDisplayProps> = ({ bookingId, userId }) => {
       try {
         setLoading(true);
         const response = await fetch(`/api/reviews/user-booking/${bookingId}`);
-        
+
         if (!response.ok) {
           throw new Error('Failed to fetch review');
         }
-        
+
         const data = await response.json();
-        
+
         if (data.hasReview && data.review) {
           setReview(data.review);
         } else {
@@ -46,7 +46,7 @@ const ReviewDisplay: React.FC<ReviewDisplayProps> = ({ bookingId, userId }) => {
         setLoading(false);
       }
     };
-    
+
     if (bookingId && userId) {
       fetchReview();
     }
@@ -106,10 +106,10 @@ const ReviewDisplay: React.FC<ReviewDisplayProps> = ({ bookingId, userId }) => {
           {formatDate(review.created_at)}
         </span>
       </div>
-      
+
       {review.comment && (
         <p className="text-gray-700 mt-2">
-          "{review.comment}"
+          &quot;{review.comment}&quot;
         </p>
       )}
     </div>

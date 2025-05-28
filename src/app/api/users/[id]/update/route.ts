@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { getAuthTokenFromRequest } from '@/utils/auth';
+import { testPhoneNumberFormatting } from '@/lib/smsService';
 
 export async function PUT(request: NextRequest) {
   try {
@@ -48,6 +49,19 @@ export async function PUT(request: NextRequest) {
       }, { status: 400 });
     }
 
+    // Format phone number if provided
+    let formattedPhone = null;
+    if (phoneNumber && phoneNumber.trim()) {
+      const formatResult = testPhoneNumberFormatting(phoneNumber.trim());
+      if (formatResult.success && formatResult.formatted) {
+        formattedPhone = formatResult.formatted;
+      } else {
+        return NextResponse.json({
+          error: 'Invalid phone number format. Please enter a valid Philippine mobile number.'
+        }, { status: 400 });
+      }
+    }
+
     // Update user in database
     const updateResult = await query(
       `UPDATE users
@@ -58,7 +72,7 @@ export async function PUT(request: NextRequest) {
            gender = ?,
            updated_at = NOW()
        WHERE user_id = ?`,
-      [firstName, lastName, phoneNumber || null, address || null, sex || null, userId]
+      [firstName, lastName, formattedPhone, address || null, sex || null, userId]
     ) as any;
 
     if (updateResult.affectedRows === 0) {

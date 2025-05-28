@@ -2,6 +2,7 @@ import { query } from '@/lib/db';
 import { createNotification } from '@/utils/notificationService';
 import { sendEmail } from '@/lib/consolidatedEmailService';
 import { createBookingConfirmationEmail, createBookingStatusUpdateEmail } from '@/lib/emailTemplates';
+import { sendSMS, createBookingSMSMessage } from '@/lib/smsService';
 
 /**
  * Comprehensive notification service for all booking lifecycle events
@@ -11,6 +12,7 @@ import { createBookingConfirmationEmail, createBookingStatusUpdateEmail } from '
 export type BookingNotificationType =
   | 'booking_created'
   | 'booking_confirmed'
+  | 'booking_pending'
   | 'booking_in_progress'
   | 'booking_completed'
   | 'booking_cancelled'
@@ -73,11 +75,19 @@ export async function createBookingNotification(
         sendEmailNotification = true;
         break;
 
+      case 'booking_pending':
+        title = 'Booking Pending Review';
+        message = `Your booking for ${pet_name}'s ${service_name} is pending review by ${provider_name}. You will be notified once it's confirmed.`;
+        type = 'warning';
+        link = `/user/furparent_dashboard/bookings/${bookingId}`;
+        break;
+
       case 'booking_in_progress':
         title = 'Service In Progress';
         message = `The ${service_name} for ${pet_name} is now in progress. You will be notified when it's completed.`;
         type = 'info';
         link = `/user/furparent_dashboard/bookings/${bookingId}`;
+        sendEmailNotification = true;
         break;
 
       case 'booking_completed':
@@ -129,7 +139,7 @@ export async function createBookingNotification(
       message,
       type,
       link,
-      sendEmail: false // We'll handle email separately for better control
+      shouldSendEmail: false // We'll handle email separately for better control
     });
 
     // Send email notification if required
@@ -137,8 +147,13 @@ export async function createBookingNotification(
       await sendBookingEmailNotification(bookingDetails, notificationType, additionalData);
     }
 
+    // Send SMS notification if required
+    if (sendEmailNotification && notificationResult.success) {
+      await sendBookingSMSNotification(bookingDetails, notificationType);
+    }
+
     // Create provider notification for certain events
-    if (['booking_created'].includes(notificationType) && provider_id) {
+    if (['booking_created', 'booking_pending'].includes(notificationType) && provider_id) {
       await createProviderNotification(bookingDetails, notificationType);
     }
 
@@ -205,7 +220,7 @@ export async function createPaymentNotification(
       message,
       type,
       link,
-      sendEmail: ['payment_confirmed', 'payment_failed', 'payment_refunded'].includes(paymentStatus)
+      shouldSendEmail: ['payment_confirmed', 'payment_failed', 'payment_refunded'].includes(paymentStatus)
     });
   } catch (error) {
     console.error('Error creating payment notification:', error);
@@ -245,7 +260,7 @@ export async function createSystemNotification(
           message,
           type,
           link,
-          sendEmail: notificationType === 'system_maintenance'
+          shouldSendEmail: notificationType === 'system_maintenance'
         })
       )
     );
@@ -277,11 +292,11 @@ async function getBookingDetails(bookingId: number): Promise<any> {
         sb.booking_date,
         sb.booking_time,
         sb.price as total_amount,
-        sp.package_name as service_name,
-        COALESCE(bp.business_name, bp.name, CONCAT(u.first_name, ' ', u.last_name)) as provider_name
+        sp.name as service_name,
+        COALESCE(spr.name, CONCAT(u.first_name, ' ', u.last_name)) as provider_name
       FROM service_bookings sb
-      LEFT JOIN service_packages sp ON sb.package_id = sp.id
-      LEFT JOIN business_profiles bp ON sb.provider_id = bp.id
+      LEFT JOIN service_packages sp ON sb.package_id = sp.package_id
+      LEFT JOIN service_providers spr ON sb.provider_id = spr.provider_id
       LEFT JOIN users u ON sb.provider_id = u.user_id
       WHERE sb.id = ?
     `;
@@ -292,7 +307,7 @@ async function getBookingDetails(bookingId: number): Promise<any> {
       // Try bookings table as fallback
       bookingQuery = `
         SELECT
-          b.id,
+          b.booking_id as id,
           b.user_id,
           b.provider_id,
           b.pet_name,
@@ -300,11 +315,11 @@ async function getBookingDetails(bookingId: number): Promise<any> {
           b.booking_time,
           b.total_price as total_amount,
           'Cremation Service' as service_name,
-          COALESCE(bp.business_name, bp.name, CONCAT(u.first_name, ' ', u.last_name)) as provider_name
+          COALESCE(spr.name, CONCAT(u.first_name, ' ', u.last_name)) as provider_name
         FROM bookings b
-        LEFT JOIN business_profiles bp ON b.provider_id = bp.id
+        LEFT JOIN service_providers spr ON b.provider_id = spr.provider_id
         LEFT JOIN users u ON b.provider_id = u.user_id
-        WHERE b.id = ?
+        WHERE b.booking_id = ?
       `;
 
       result = await query(bookingQuery, [bookingId]) as any[];
@@ -346,12 +361,12 @@ async function sendBookingEmailNotification(
           bookingDate: formatDate(bookingDetails.booking_date),
           bookingTime: bookingDetails.booking_time,
           petName: bookingDetails.pet_name,
-          bookingId: bookingDetails.id,
-          totalAmount: bookingDetails.total_amount
+          bookingId: bookingDetails.id
         });
         break;
 
       case 'booking_confirmed':
+      case 'booking_in_progress':
       case 'booking_completed':
       case 'booking_cancelled':
         emailTemplate = createBookingStatusUpdateEmail({
@@ -362,7 +377,7 @@ async function sendBookingEmailNotification(
           bookingTime: bookingDetails.booking_time,
           petName: bookingDetails.pet_name,
           bookingId: bookingDetails.id,
-          status: notificationType.replace('booking_', '') as 'confirmed' | 'completed' | 'cancelled',
+          status: notificationType.replace('booking_', '') as 'confirmed' | 'in_progress' | 'completed' | 'cancelled',
           notes: additionalData?.reason
         });
         break;
@@ -384,6 +399,72 @@ async function sendBookingEmailNotification(
 }
 
 /**
+ * Helper function to send booking SMS notifications
+ */
+async function sendBookingSMSNotification(
+  bookingDetails: any,
+  notificationType: BookingNotificationType
+): Promise<void> {
+  try {
+    // Get user phone number and SMS preferences
+    const userResult = await query(
+      'SELECT phone, first_name, sms_notifications FROM users WHERE user_id = ?',
+      [bookingDetails.user_id]
+    ) as any[];
+
+    if (!userResult || userResult.length === 0) {
+      console.warn('User not found for SMS notification');
+      return;
+    }
+
+    const { phone, first_name, sms_notifications } = userResult[0];
+
+    // Check if user has SMS notifications enabled
+    if (!sms_notifications) {
+      console.log('SMS notifications disabled for user:', bookingDetails.user_id);
+      return;
+    }
+
+    // Check if user has a phone number
+    if (!phone) {
+      console.log('No phone number found for user:', bookingDetails.user_id);
+      return;
+    }
+
+    // Only send SMS for certain notification types
+    const smsEnabledTypes = ['booking_confirmed', 'booking_in_progress', 'booking_completed', 'booking_cancelled'];
+    if (!smsEnabledTypes.includes(notificationType)) {
+      return;
+    }
+
+    // Create SMS message
+    const status = notificationType.replace('booking_', '');
+    const smsMessage = createBookingSMSMessage(
+      first_name,
+      bookingDetails.pet_name,
+      bookingDetails.service_name,
+      status,
+      bookingDetails.id.toString()
+    );
+
+    // Send SMS
+    const smsResult = await sendSMS({
+      to: phone,
+      message: smsMessage
+    });
+
+    if (smsResult.success) {
+      console.log(`SMS notification sent successfully to ${phone} for booking ${bookingDetails.id}`);
+    } else {
+      console.error(`Failed to send SMS notification: ${smsResult.error}`);
+    }
+
+  } catch (error) {
+    console.error('Error sending booking SMS notification:', error);
+  }
+}
+
+/**
  * Helper function to create provider notifications
  */
 async function createProviderNotification(
@@ -393,8 +474,18 @@ async function createProviderNotification(
   try {
     if (!bookingDetails.provider_id) return;
 
-    // Get provider user ID from service_providers table
-    const providerResult = await query('SELECT user_id FROM service_providers WHERE provider_id = ?', [bookingDetails.provider_id]) as any[];
+    // Get provider user ID from service_providers table first
+    let providerResult = await query('SELECT user_id FROM service_providers WHERE provider_id = ?', [bookingDetails.provider_id]) as any[];
+
+    // If not found in service_providers, try businesses table for cremation businesses
+    if (!providerResult || providerResult.length === 0) {
+      providerResult = await query('SELECT user_id FROM businesses WHERE id = ?', [bookingDetails.provider_id]) as any[];
+    }
+
+    // If still not found, try direct user lookup (provider_id might be user_id)
+    if (!providerResult || providerResult.length === 0) {
+      providerResult = await query('SELECT user_id FROM users WHERE user_id = ? AND role = "business"', [bookingDetails.provider_id]) as any[];
+    }
 
     if (!providerResult || providerResult.length === 0) {
       console.warn('Provider user ID not found for notification, provider_id:', bookingDetails.provider_id);
@@ -412,6 +503,12 @@ async function createProviderNotification(
         title = 'New Booking Received';
         message = `You have received a new booking for ${bookingDetails.pet_name}'s ${bookingDetails.service_name}.`;
         link = `/cremation/bookings/${bookingDetails.id}`;
+        break;
+
+      case 'booking_pending':
+        title = 'Pending Booking Alert';
+        message = `You have a pending booking for ${bookingDetails.pet_name} that requires your attention.`;
+        link = `/cremation/bookings?status=pending`;
         break;
 
       default:

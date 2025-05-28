@@ -2,11 +2,28 @@ import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { getAuthTokenFromRequest } from '@/utils/auth';
 
+// Helper function to get user from auth token
+async function getUserFromToken(request: NextRequest) {
+  const authToken = getAuthTokenFromRequest(request);
+
+  if (!authToken) {
+    return { success: false, user: null };
+  }
+
+  const [userId, accountType] = authToken.split('_');
+
+  if (!userId || !accountType) {
+    return { success: false, user: null };
+  }
+
+  return { success: true, user: { id: userId, accountType } };
+}
+
 // GET - Retrieve user's notification preferences
 export async function GET(request: NextRequest) {
   try {
     // Get user ID from auth token
-    const authResult = await getAuthTokenFromRequest(request);
+    const authResult = await getUserFromToken(request);
     if (!authResult.success || !authResult.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -27,16 +44,16 @@ export async function GET(request: NextRequest) {
     }
 
     const user = userResult[0];
-    
+
     // Return preferences (default to true if null)
     const preferences = {
       sms_notifications: user.sms_notifications !== null ? Boolean(user.sms_notifications) : true,
       email_notifications: user.email_notifications !== null ? Boolean(user.email_notifications) : true
     };
 
-    return NextResponse.json({ 
-      success: true, 
-      preferences 
+    return NextResponse.json({
+      success: true,
+      preferences
     });
 
   } catch (error) {
@@ -52,7 +69,7 @@ export async function GET(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     // Get user ID from auth token
-    const authResult = await getAuthTokenFromRequest(request);
+    const authResult = await getUserFromToken(request);
     if (!authResult.success || !authResult.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -80,8 +97,8 @@ export async function PUT(request: NextRequest) {
       [sms_notifications, email_notifications, userId]
     );
 
-    return NextResponse.json({ 
-      success: true, 
+    return NextResponse.json({
+      success: true,
       message: 'Notification preferences updated successfully',
       preferences: {
         sms_notifications,
@@ -103,19 +120,19 @@ async function ensureNotificationColumns() {
   try {
     // Check if columns exist
     const columnsResult = await query(`
-      SELECT COLUMN_NAME 
-      FROM INFORMATION_SCHEMA.COLUMNS 
-      WHERE TABLE_SCHEMA = DATABASE() 
-      AND TABLE_NAME = 'users' 
+      SELECT COLUMN_NAME
+      FROM INFORMATION_SCHEMA.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'users'
       AND COLUMN_NAME IN ('sms_notifications', 'email_notifications')
     `);
 
     const existingColumns = columnsResult.map((row: any) => row.COLUMN_NAME);
-    
+
     // Add sms_notifications column if it doesn't exist
     if (!existingColumns.includes('sms_notifications')) {
       await query(`
-        ALTER TABLE users 
+        ALTER TABLE users
         ADD COLUMN sms_notifications BOOLEAN DEFAULT TRUE COMMENT 'User preference for SMS notifications'
       `);
       console.log('Added sms_notifications column to users table');
@@ -124,7 +141,7 @@ async function ensureNotificationColumns() {
     // Add email_notifications column if it doesn't exist
     if (!existingColumns.includes('email_notifications')) {
       await query(`
-        ALTER TABLE users 
+        ALTER TABLE users
         ADD COLUMN email_notifications BOOLEAN DEFAULT TRUE COMMENT 'User preference for email notifications'
       `);
       console.log('Added email_notifications column to users table');

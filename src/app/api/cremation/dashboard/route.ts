@@ -357,6 +357,10 @@ export async function GET(request: NextRequest) {
       `, [providerId]) as any[];
 
       monthlyRevenue = parseFloat(String(currentMonthRevenueResult[0]?.total || '0'));
+      // Ensure monthlyRevenue is a valid number
+      if (isNaN(monthlyRevenue)) {
+        monthlyRevenue = 0;
+      }
     }
     // Fallback to service_bookings and bookings tables if successful_bookings doesn't exist
     else {
@@ -381,6 +385,10 @@ export async function GET(request: NextRequest) {
         ) as any[];
 
         monthlyRevenue += monthlyServiceBookingsRevenue[0]?.total_revenue || 0;
+        // Ensure monthlyRevenue is a valid number
+        if (isNaN(monthlyRevenue)) {
+          monthlyRevenue = 0;
+        }
       }
 
       if (hasBookings) {
@@ -404,6 +412,10 @@ export async function GET(request: NextRequest) {
         ) as any[];
 
         monthlyRevenue += monthlyBookingsRevenue[0]?.total_revenue || 0;
+        // Ensure monthlyRevenue is a valid number
+        if (isNaN(monthlyRevenue)) {
+          monthlyRevenue = 0;
+        }
       }
     }
 
@@ -620,6 +632,11 @@ export async function GET(request: NextRequest) {
 
     // We already handle the dummy provider case at the beginning of the function
 
+    // Final validation to ensure all numeric values are valid
+    totalRevenue = isNaN(totalRevenue) ? 0 : totalRevenue;
+    monthlyRevenue = isNaN(monthlyRevenue) ? 0 : monthlyRevenue;
+    revenueChange = isNaN(revenueChange) ? 0 : revenueChange;
+
     // For real providers, return the actual data with stats matching the admin dashboard format
     return NextResponse.json({
       providerInfo: providerInfo[0],
@@ -644,12 +661,12 @@ export async function GET(request: NextRequest) {
         },
         {
           name: 'Monthly Revenue',
-          value: `₱${parseFloat(monthlyRevenue).toLocaleString('en-PH', {
+          value: `₱${(Number(monthlyRevenue) || 0).toLocaleString('en-PH', {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2
           })}`,
-          change: `${revenueChange > 0 ? '+' : ''}${revenueChange.toFixed(0)}%`,
-          changeType: revenueChange >= 0 ? 'increase' : 'decrease',
+          change: `${(revenueChange || 0) > 0 ? '+' : ''}${(revenueChange || 0).toFixed(0)}%`,
+          changeType: (revenueChange || 0) >= 0 ? 'increase' : 'decrease',
         },
       ],
       recentBookings: recentBookings.map((booking: any) => ({

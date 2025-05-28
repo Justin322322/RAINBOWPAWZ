@@ -6,6 +6,7 @@ import { sendWelcomeEmail } from '../lib/emailService';
 import PrivacyPolicyModal from './PrivacyPolicyModal';
 import { useToast } from '@/context/ToastContext';
 import { Button, Input, SelectInput, Checkbox } from '@/components/ui';
+import PhilippinePhoneInput from './ui/PhilippinePhoneInput';
 
 type PersonalAccountModalProps = {
   isOpen: boolean;
@@ -303,17 +304,13 @@ const PersonalAccountModal: React.FC<PersonalAccountModalProps> = ({ isOpen, onC
             labelClassName="font-light"
           />
 
-          <Input
-            type="tel"
+          <PhilippinePhoneInput
             id="phoneNumber"
             name="phoneNumber"
             label="Phone Number"
             value={formData.phoneNumber}
-            onChange={handleChange}
-            placeholder="Enter your phone number"
-            rounded="full"
-            size="lg"
-            labelClassName="font-light"
+            onChange={(value) => setFormData({...formData, phoneNumber: value})}
+            className="w-full px-4 py-3 bg-white border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-[var(--primary-green)] focus:border-transparent transition-all duration-200 font-light"
           />
 
           <div>

@@ -84,7 +84,7 @@ export default function LogoutModal({ isOpen, onClose, userName = 'User' }: Logo
               </svg>
             </div>
             <h2 className="text-2xl font-semibold text-gray-800 mb-2">Goodbye{userName ? `, ${userName}` : ''}!</h2>
-            <p className="text-gray-600 mb-6">You've been successfully logged out. Redirecting to home page...</p>
+            <p className="text-gray-600 mb-6">You&apos;ve been successfully logged out. Redirecting to home page...</p>
             <div className="w-12 h-1.5 bg-gray-200 rounded-full overflow-hidden">
               <motion.div
                 className="h-full bg-green-500 rounded-full"

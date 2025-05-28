@@ -22,6 +22,7 @@ import {
 import { getAuthToken, isBusiness } from '@/utils/auth';
 import { LoadingSpinner } from '@/app/admin/services/client';
 import { getImagePath } from '@/utils/imageUtils';
+import PhilippinePhoneInput from '@/components/ui/PhilippinePhoneInput';
 
 function CremationProfilePage({ userData }: { userData: any }) {
   // Password states
@@ -439,9 +440,17 @@ function CremationProfilePage({ userData }: { userData: any }) {
     setUploadingProfilePicture(true);
 
     try {
+      // Get the actual user ID from auth token
+      const authToken = getAuthToken();
+      if (!authToken) {
+        throw new Error('Authentication required');
+      }
+
+      const [userId] = authToken.split('_');
+
       const formData = new FormData();
       formData.append('profilePicture', profilePicture);
-      formData.append('userId', '3'); // Use the correct user ID
+      formData.append('userId', userId);
 
       const response = await fetch('/api/cremation/upload-profile-picture', {
         method: 'POST',
@@ -818,14 +827,12 @@ function CremationProfilePage({ userData }: { userData: any }) {
                 </div>
 
                 <div>
-                  <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
-                    Phone Number
-                  </label>
-                  <input
-                    type="tel"
+                  <PhilippinePhoneInput
                     id="phone"
+                    name="phone"
+                    label="Phone Number"
                     value={contactInfo.phone}
-                    onChange={(e) => setContactInfo({...contactInfo, phone: e.target.value})}
+                    onChange={(value) => setContactInfo({...contactInfo, phone: value})}
                     className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
                   />
                 </div>

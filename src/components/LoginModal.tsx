@@ -144,7 +144,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onShowSignup }
                 </svg>
               </div>
               <h2 className="text-2xl font-semibold text-gray-800 mb-2">Welcome back{userName ? `, ${userName}` : ''}!</h2>
-              <p className="text-gray-600 mb-6">You've successfully logged in. Redirecting you to your dashboard...</p>
+              <p className="text-gray-600 mb-6">You&apos;ve successfully logged in. Redirecting you to your dashboard...</p>
               <div className="w-12 h-1.5 bg-gray-200 rounded-full overflow-hidden">
                 <motion.div
                   className="h-full bg-green-500 rounded-full"
@@ -176,7 +176,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onShowSignup }
                     <p>{errorMessage}</p>
                     {errorMessage.includes('Incorrect password') && (
                       <p className="text-xs mt-1">
-                        Tip: If you've forgotten your password, click "Forgot password?" below.
+                        Tip: If you&apos;ve forgotten your password, click &quot;Forgot password?&quot; below.
                       </p>
                     )}
                     {errorMessage.includes('No account exists') && (
@@ -263,7 +263,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onShowSignup }
             </Button>
 
             <div className="text-center text-sm text-gray-500 dark:text-gray-400 font-light">
-              Don't have an account?{' '}
+              Don&apos;t have an account?{' '}
               <Button
                 type="button"
                 variant="link"

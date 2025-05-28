@@ -287,7 +287,7 @@ export const createBookingConfirmationEmail = (bookingDetails: {
   };
 };
 
-// Booking status update email template
+// Booking status update email template with timeline dots
 export const createBookingStatusUpdateEmail = (bookingDetails: {
   customerName: string;
   serviceName: string;
@@ -296,24 +296,33 @@ export const createBookingStatusUpdateEmail = (bookingDetails: {
   bookingTime: string;
   petName: string;
   bookingId: string | number;
-  status: 'confirmed' | 'completed' | 'cancelled';
+  status: 'confirmed' | 'in_progress' | 'completed' | 'cancelled';
   notes?: string;
 }) => {
   let statusText = '';
   let additionalInfo = '';
+  let timelineHtml = '';
 
   switch (bookingDetails.status) {
     case 'confirmed':
       statusText = 'confirmed';
-      additionalInfo = 'Please arrive on time for your appointment.';
+      additionalInfo = 'We have confirmed your booking. Please arrive on time for your appointment.';
+      timelineHtml = createTimelineHtml('confirmed');
+      break;
+    case 'in_progress':
+      statusText = 'in progress';
+      additionalInfo = 'Your pet is being cared for with the utmost respect and compassion.';
+      timelineHtml = createTimelineHtml('in_progress');
       break;
     case 'completed':
       statusText = 'completed';
-      additionalInfo = 'Thank you for choosing our services.';
+      additionalInfo = 'Your service has been completed. Thank you for choosing our services during this difficult time.';
+      timelineHtml = createTimelineHtml('completed');
       break;
     case 'cancelled':
       statusText = 'cancelled';
       additionalInfo = 'If you have any questions about this cancellation, please contact us.';
+      timelineHtml = ''; // No timeline for cancelled bookings
       break;
   }
 
@@ -323,6 +332,8 @@ export const createBookingStatusUpdateEmail = (bookingDetails: {
     <h2>Booking ${statusText.charAt(0).toUpperCase() + statusText.slice(1)}</h2>
     <p>Dear ${bookingDetails.customerName},</p>
     <p>Your booking has been ${statusText}.</p>
+
+    ${timelineHtml}
 
     <div class="info-box">
       <h3 style="margin-top: 0;">Booking Details</h3>
@@ -349,6 +360,66 @@ export const createBookingStatusUpdateEmail = (bookingDetails: {
     html: baseEmailTemplate(content)
   };
 };
+
+// Helper function to create timeline HTML for email
+function createTimelineHtml(currentStatus: 'confirmed' | 'in_progress' | 'completed'): string {
+  const steps = [
+    { id: 'confirmed', title: 'Booking Confirmed', description: 'We have confirmed your booking' },
+    { id: 'in_progress', title: 'Service in Progress', description: 'Your pet is being cared for' },
+    { id: 'completed', title: 'Service Completed', description: 'Your service has been completed' }
+  ];
+
+  const currentIndex = steps.findIndex(step => step.id === currentStatus);
+
+  return `
+    <div style="margin: 30px 0; padding: 20px; background-color: #f8fafc; border-radius: 8px;">
+      <h3 style="margin-top: 0; color: #1f2937; text-align: center;">Service Progress</h3>
+      <div style="display: flex; justify-content: space-between; align-items: center; max-width: 600px; margin: 0 auto;">
+        ${steps.map((step, index) => {
+          const isCompleted = index <= currentIndex;
+          const isCurrent = index === currentIndex;
+
+          return `
+            <div style="flex: 1; text-align: center; position: relative;">
+              <div style="
+                width: 40px;
+                height: 40px;
+                border-radius: 50%;
+                margin: 0 auto 10px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background-color: ${isCompleted ? '#10b981' : '#e5e7eb'};
+                color: ${isCompleted ? 'white' : '#6b7280'};
+                font-weight: bold;
+                ${isCurrent ? 'box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.2);' : ''}
+              ">
+                ${isCompleted ? '✓' : index + 1}
+              </div>
+              <div style="font-size: 14px; font-weight: 600; color: ${isCompleted ? '#10b981' : '#6b7280'}; margin-bottom: 5px;">
+                ${step.title}
+              </div>
+              <div style="font-size: 12px; color: #6b7280;">
+                ${step.description}
+              </div>
+              ${index < steps.length - 1 ? `
+                <div style="
+                  position: absolute;
+                  top: 20px;
+                  left: calc(50% + 20px);
+                  width: calc(100% - 40px);
+                  height: 2px;
+                  background-color: ${index < currentIndex ? '#10b981' : '#e5e7eb'};
+                  z-index: -1;
+                "></div>
+              ` : ''}
+            </div>
+          `;
+        }).join('')}
+      </div>
+    </div>
+  `;
+}
 
 // Business verification status email templates
 export const createBusinessVerificationEmail = (businessDetails: {

@@ -58,7 +58,7 @@ const GetStartedModal: React.FC<GetStartedModalProps> = ({
               <div className="flex items-start">
                 <div className="flex-shrink-0 bg-[var(--primary-green)] text-white rounded-full h-6 w-6 flex items-center justify-center mr-3 mt-0.5">2</div>
                 <div>
-                  <p className="text-gray-700">You'll see all available cremation centers and services in your area.</p>
+                  <p className="text-gray-700">You&apos;ll see all available cremation centers and services in your area.</p>
                 </div>
               </div>
             </div>
@@ -126,7 +126,7 @@ const GetStartedModal: React.FC<GetStartedModalProps> = ({
                 <div className="flex items-start">
                   <div className="flex-shrink-0 bg-[var(--primary-green)] text-white rounded-full h-6 w-6 flex items-center justify-center mr-3 mt-0.5">1</div>
                   <div>
-                    <p className="text-gray-700">Click "Get Directions" to see the route to your chosen cremation center.</p>
+                    <p className="text-gray-700">Click &quot;Get Directions&quot; to see the route to your chosen cremation center.</p>
                   </div>
                 </div>
                 <div className="flex items-start">
@@ -247,7 +247,7 @@ const GetStartedModal: React.FC<GetStartedModalProps> = ({
               <div className="flex items-start">
                 <div className="flex-shrink-0 bg-[var(--primary-green)] text-white rounded-full h-6 w-6 flex items-center justify-center mr-3 mt-0.5">1</div>
                 <div>
-                  <p className="text-gray-700">Choose "Book Now" to proceed directly to checkout, or "Add to Cart" to continue shopping.</p>
+                  <p className="text-gray-700">Choose &quot;Book Now&quot; to proceed directly to checkout, or &quot;Add to Cart&quot; to continue shopping.</p>
                 </div>
               </div>
               <div className="mt-2 flex justify-center">
@@ -276,7 +276,7 @@ const GetStartedModal: React.FC<GetStartedModalProps> = ({
                 <div className="flex items-start">
                   <div className="flex-shrink-0 bg-[var(--primary-green)] text-white rounded-full h-6 w-6 flex items-center justify-center mr-3 mt-0.5">1</div>
                   <div>
-                    <p className="text-gray-700">Review your cart and click "Proceed to Checkout".</p>
+                    <p className="text-gray-700">Review your cart and click &quot;Proceed to Checkout&quot;.</p>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
@@ -309,7 +309,7 @@ const GetStartedModal: React.FC<GetStartedModalProps> = ({
                 <div className="flex items-start">
                   <div className="flex-shrink-0 bg-[var(--primary-green)] text-white rounded-full h-6 w-6 flex items-center justify-center mr-3 mt-0.5">1</div>
                   <div>
-                    <p className="text-gray-700">Fill in your pet's details and select your preferences.</p>
+                    <p className="text-gray-700">Fill in your pet&apos;s details and select your preferences.</p>
                   </div>
                 </div>
                 <div className="mt-2">
@@ -355,7 +355,7 @@ const GetStartedModal: React.FC<GetStartedModalProps> = ({
                 <div className="flex items-start">
                   <div className="flex-shrink-0 bg-[var(--primary-green)] text-white rounded-full h-6 w-6 flex items-center justify-center mr-3 mt-0.5">1</div>
                   <div>
-                    <p className="text-gray-700">Choose between pickup or delivery for your pet's remains.</p>
+                    <p className="text-gray-700">Choose between pickup or delivery for your pet&apos;s remains.</p>
                   </div>
                 </div>
                 <div className="mt-2">
@@ -379,7 +379,7 @@ const GetStartedModal: React.FC<GetStartedModalProps> = ({
                 <div className="flex items-start">
                   <div className="flex-shrink-0 bg-[var(--primary-green)] text-white rounded-full h-6 w-6 flex items-center justify-center mr-3 mt-0.5">1</div>
                   <div>
-                    <p className="text-gray-700">View all your bookings in the "My Bookings" section.</p>
+                    <p className="text-gray-700">View all your bookings in the &quot;My Bookings&quot; section.</p>
                   </div>
                 </div>
                 <div className="mt-2">

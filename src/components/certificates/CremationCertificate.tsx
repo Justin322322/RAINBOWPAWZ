@@ -301,7 +301,7 @@ const CremationCertificate: React.FC<CremationCertificateProps> = ({ booking, on
 
               <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200 mt-6 print:bg-white print:border-black">
                 <p className="text-gray-700 italic print:text-black">
-                  "Until we meet again at the Rainbow Bridge, you will forever remain in our hearts."
+                  &quot;Until we meet again at the Rainbow Bridge, you will forever remain in our hearts.&quot;
                 </p>
               </div>
             </div>

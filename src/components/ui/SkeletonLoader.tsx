@@ -177,8 +177,10 @@ export const SkeletonCard: React.FC<SkeletonCardProps> = ({
   );
 };
 
-export default {
+const SkeletonLoader = {
   Skeleton,
   SkeletonText,
   SkeletonCard,
 };
+
+export default SkeletonLoader;

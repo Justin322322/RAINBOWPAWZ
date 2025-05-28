@@ -35,7 +35,6 @@ export default function CremationSidebar({
   const [activePage, setActivePage] = useState('');
   const [isNavigating, setIsNavigating] = useState(false);
   const [currentYear, setCurrentYear] = useState<number>(2024); // Default to prevent hydration mismatch
-  const [isMounted, setIsMounted] = useState(false);
 
   // Navigation items
   const navigationItems = [
@@ -93,7 +92,6 @@ export default function CremationSidebar({
 
   // Set current year on client side to avoid hydration mismatch
   useEffect(() => {
-    setIsMounted(true);
     setCurrentYear(new Date().getFullYear());
   }, []);
 
@@ -141,17 +139,10 @@ export default function CremationSidebar({
 
         {/* Logo and website name */}
         <div className="h-16 flex items-center px-6 border-b border-white/20">
-          {isMounted ? (
-            <Link href="/cremation/dashboard" className="flex items-center space-x-3">
-              <Image src="/logo.png" alt="Rainbow Paws Logo" width={40} height={40} className="h-10 w-auto" />
-              <span className="text-xl modern-heading text-white tracking-wide">RainbowPaws</span>
-            </Link>
-          ) : (
-            <div className="flex items-center space-x-3">
-              <Image src="/logo.png" alt="Rainbow Paws Logo" width={40} height={40} className="h-10 w-auto" />
-              <span className="text-xl modern-heading text-white tracking-wide">RainbowPaws</span>
-            </div>
-          )}
+          <Link href="/cremation/dashboard" className="flex items-center space-x-3">
+            <Image src="/logo.png" alt="Rainbow Paws Logo" width={40} height={40} className="h-10 w-auto" />
+            <span className="text-xl modern-heading text-white tracking-wide">RainbowPaws</span>
+          </Link>
         </div>
 
         {/* Navigation items */}
@@ -209,7 +200,7 @@ export default function CremationSidebar({
         {/* Footer */}
         <div className="absolute bottom-0 w-full border-t border-white/20 p-4">
           <div className="text-xs text-white/80 text-center">
-            © {isMounted ? currentYear : '2024'} RainbowPaws<br />
+            © {currentYear} RainbowPaws<br />
             Cremation Provider Portal
           </div>
         </div>

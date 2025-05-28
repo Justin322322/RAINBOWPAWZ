@@ -23,6 +23,7 @@ import withOTPVerification from '@/components/withOTPVerification';
 import { useToast } from '@/context/ToastContext';
 import ReviewPrompt from '@/components/reviews/ReviewPrompt';
 import CremationCertificate from '@/components/certificates/CremationCertificate';
+import BookingTimeline from '@/components/booking/BookingTimeline';
 
 interface BookingDetailsProps {
   userData?: any;
@@ -249,6 +250,14 @@ function BookingDetailsPage({ userData }: BookingDetailsProps) {
                 </div>
               </div>
             </div>
+
+            {/* Booking Timeline - Show progress for non-cancelled bookings */}
+            {booking.status !== 'cancelled' && (
+              <BookingTimeline
+                currentStatus={booking.status}
+                className="mb-6"
+              />
+            )}
 
             {/* Service Details */}
             <div className="bg-white rounded-lg shadow-sm p-6">

@@ -474,7 +474,7 @@ export default function BookingForm({
                       <div>
                         <h3 className="font-medium text-gray-900">Pickup</h3>
                         <p className="text-sm text-gray-500 mt-1">
-                          You'll bring your pet to the cremation center
+                          You&apos;ll bring your pet to the cremation center
                         </p>
                         <p className="text-sm font-medium text-[var(--primary-green)] mt-2">
                           Free
@@ -498,7 +498,7 @@ export default function BookingForm({
                       <div>
                         <h3 className="font-medium text-gray-900">Delivery</h3>
                         <p className="text-sm text-gray-500 mt-1">
-                          We'll pick up your pet from your location
+                          We&apos;ll pick up your pet from your location
                         </p>
                         {deliveryFee > 0 && (
                           <p className="text-sm font-medium text-[var(--primary-green)] mt-2">

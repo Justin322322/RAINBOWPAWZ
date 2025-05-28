@@ -1,36 +1,61 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { query } from '@/lib/db';
+import { getAuthTokenFromRequest } from '@/utils/auth';
+import { testPhoneNumberFormatting } from '@/lib/smsService';
+import bcrypt from 'bcryptjs';
 
 // GET endpoint to fetch cremation business profile
-export async function GET(_request: NextRequest) {
+export async function GET(request: NextRequest) {
   try {
-    // EMERGENCY FIX: Bypass authentication and use hardcoded user ID
-    console.log('EMERGENCY FIX: Bypassing authentication in API route');
+    // Verify authentication
+    const authToken = getAuthTokenFromRequest(request);
 
-    // EMERGENCY FIX: Create a dummy business profile that matches your database
+    if (!authToken) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const [userId, accountType] = authToken.split('_');
+
+    // Verify this is a business account
+    if (accountType !== 'business') {
+      return NextResponse.json({ error: 'Forbidden: Business access required' }, { status: 403 });
+    }
+
+    // Get business profile from database
     try {
-      // Create a dummy business data object that matches what would be returned from the database
-      const businessData = {
-        id: 4,
-        name: 'Rainbow Paws Cremation Center',
-        provider_type: 'cremation',
-        contact_first_name: 'Justin',
-        contact_last_name: 'Sibonga',
-        phone: '09123456789',
-        address: 'Samal Bataan',
-        province: 'Bataan',
-        city: 'Samal',
-        zip: '2113',
-        hours: '8:00 AM - 5:00 PM, Monday to Saturday',
-        service_description: 'Professional pet cremation services with care and respect.',
-        application_status: 'approved',
-        verification_date: '2025-05-23 02:43:36',
-        created_at: '2025-05-23 02:43:36',
-        business_permit_path: '/uploads/documents/3/business_permit_1748043753551.png',
-        bir_certificate_path: '/uploads/documents/3/bir_certificate_1748043753558.png',
-        government_id_path: '/uploads/documents/3/government_id_1748043753563.png',
-        profile_picture_path: (global as any).uploadedProfilePicture || null, // Will be set when user uploads a profile picture
-        user_email: 'justinmarlosibonga@gmail.com'
-      };
+      // Get the service provider details for this user including profile picture
+      const businessResult = await query(`
+        SELECT
+          sp.provider_id as id,
+          sp.name,
+          sp.provider_type,
+          sp.contact_first_name,
+          sp.contact_last_name,
+          sp.phone,
+          sp.address,
+          sp.province,
+          sp.city,
+          sp.zip,
+          sp.hours,
+          sp.description as service_description,
+          sp.application_status,
+          sp.verification_date,
+          sp.created_at,
+          sp.business_permit_path,
+          sp.bir_certificate_path,
+          sp.government_id_path,
+          u.email as user_email,
+          u.profile_picture
+        FROM service_providers sp
+        LEFT JOIN users u ON sp.user_id = u.user_id
+        WHERE sp.user_id = ?
+      `, [userId]) as any[];
+
+      if (!businessResult || businessResult.length === 0) {
+        return NextResponse.json({ error: 'Business profile not found' }, { status: 404 });
+      }
+
+      const businessData = businessResult[0];
 
       // Format response
       return NextResponse.json({
@@ -50,7 +75,7 @@ export async function GET(_request: NextRequest) {
           description: businessData.service_description || '',
           website: businessData.hours || '',
           logoPath: null,
-          profilePicturePath: businessData.profile_picture_path || null,
+          profilePicturePath: businessData.profile_picture || null,
           verified: businessData.application_status === 'approved',
           createdAt: businessData.created_at,
           documents: {
@@ -107,8 +132,19 @@ export async function GET(_request: NextRequest) {
 // PATCH endpoint to update cremation business profile
 export async function PATCH(request: NextRequest) {
   try {
-    // EMERGENCY FIX: Bypass authentication and use hardcoded user ID
-    console.log('EMERGENCY FIX: Bypassing authentication in API route');
+    // Verify authentication
+    const authToken = getAuthTokenFromRequest(request);
+
+    if (!authToken) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const [userId, accountType] = authToken.split('_');
+
+    // Verify this is a business account
+    if (accountType !== 'business') {
+      return NextResponse.json({ error: 'Forbidden: Business access required' }, { status: 403 });
+    }
 
     // Get update data from request body
     const body = await request.json();
@@ -124,16 +160,23 @@ export async function PATCH(request: NextRequest) {
         }, { status: 400 });
       }
 
-      // EMERGENCY FIX: Skip password verification and database update
-      console.log('EMERGENCY FIX: Skipping password verification and database update');
+      // Get current user password from database
+      const userResult = await query('SELECT password FROM users WHERE user_id = ?', [userId]) as any[];
 
-      // For demo purposes, only accept "password123" as the current password
-      if (currentPassword !== "password123") {
+      if (!userResult || userResult.length === 0) {
+        return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      }
+
+      // Verify current password
+      const isCurrentPasswordValid = await bcrypt.compare(currentPassword, userResult[0].password);
+
+      if (!isCurrentPasswordValid) {
         return NextResponse.json({ error: 'Current password is incorrect' }, { status: 400 });
       }
 
-      // Pretend we updated the password
-      console.log('Password would be updated to:', newPassword);
+      // Hash new password and update
+      const hashedNewPassword = await bcrypt.hash(newPassword, 10);
+      await query('UPDATE users SET password = ? WHERE user_id = ?', [hashedNewPassword, userId]);
 
       return NextResponse.json({
         success: true,
@@ -142,35 +185,54 @@ export async function PATCH(request: NextRequest) {
     }
     else if (body.address) {
       // Handle address update
-      const { street, city, state, zipCode, country } = body.address;
+      const { street, city, state, zipCode } = body.address;
 
-      // EMERGENCY FIX: Skip database update
-      console.log('EMERGENCY FIX: Skipping address update in database');
-      console.log('Would update address to:', { street, city, state, zipCode });
+      // Update service provider address
+      await query(`
+        UPDATE service_providers
+        SET address = ?, city = ?, province = ?, zip = ?, updated_at = NOW()
+        WHERE user_id = ?
+      `, [street, city, state, zipCode, userId]);
 
       return NextResponse.json({
         success: true,
         message: 'Address updated successfully',
-        address: { street, city, state, zipCode, country }
+        address: { street, city, state, zipCode, country: '' }
       });
     }
     else if (body.contactInfo) {
       // Handle contact info update
       const { firstName, lastName, email, phone } = body.contactInfo;
 
-      // EMERGENCY FIX: Skip database update
-      console.log('EMERGENCY FIX: Skipping contact info update in database');
-      console.log('Would update contact info to:', { firstName, lastName, phone });
-
-      // If email is updated, log it
-      if (email) {
-        console.log('Would update email to:', email);
+      // Format phone number if provided
+      let formattedPhone = null;
+      if (phone && phone.trim()) {
+        const formatResult = testPhoneNumberFormatting(phone.trim());
+        if (formatResult.success && formatResult.formatted) {
+          formattedPhone = formatResult.formatted;
+        } else {
+          return NextResponse.json({
+            error: 'Invalid phone number format. Please enter a valid Philippine mobile number.'
+          }, { status: 400 });
+        }
       }
+
+      // Update user email if provided
+      if (email) {
+        await query('UPDATE users SET email = ?, updated_at = NOW() WHERE user_id = ?', [email, userId]);
+      }
+
+      // Update service provider contact info
+      await query(`
+        UPDATE service_providers
+        SET contact_first_name = ?, contact_last_name = ?, phone = ?, updated_at = NOW()
+        WHERE user_id = ?
+      `, [firstName, lastName, formattedPhone, userId]);
 
       return NextResponse.json({
         success: true,
         message: 'Contact information updated successfully',
-        contactInfo: { firstName, lastName, email, phone }
+        contactInfo: { firstName, lastName, email, phone: formattedPhone }
       });
     }
 

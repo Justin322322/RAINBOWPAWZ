@@ -22,6 +22,7 @@ interface NotificationContextType {
   fetchNotifications: (unreadOnly?: boolean) => Promise<void>;
   markAsRead: (notificationId: number) => Promise<void>;
   markAllAsRead: () => Promise<void>;
+  removeNotification: (notificationId: number) => Promise<void>;
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
@@ -87,7 +88,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       // Use timeout to prevent hanging requests
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 8000);
-      
+
       const response = await fetch(apiUrl, {
         headers: {
           'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -95,7 +96,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
         },
         signal: controller.signal
       });
-      
+
       clearTimeout(timeoutId);
 
       if (!response.ok) {
@@ -119,7 +120,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
 
       try {
         const data = await response.json();
-        
+
         // Ensure data has the expected structure
         if (!data || typeof data !== 'object') {
           setNotifications([]);
@@ -269,6 +270,54 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
     }
   };
 
+  // Remove a specific notification
+  const removeNotification = async (notificationId: number) => {
+    // Check if user is authenticated
+    if (typeof window !== 'undefined' && !isAuthenticated()) {
+      return;
+    }
+
+    try {
+      // Determine if this is an admin user
+      const isAdmin = getUserId()?.includes('admin');
+
+      // Use the appropriate API endpoint based on user type
+      const apiUrl = isAdmin
+        ? `/api/admin/notifications/${notificationId}`
+        : `/api/notifications/${notificationId}`;
+
+      const response = await fetch(apiUrl, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to remove notification');
+      }
+
+      // Update local state - remove the notification from the list
+      setNotifications(prev => prev.filter(notification => notification.id !== notificationId));
+
+      // Update unread count if the removed notification was unread
+      setUnreadCount(prev => {
+        const removedNotification = notifications.find(n => n.id === notificationId);
+        if (removedNotification && removedNotification.is_read === 0) {
+          return Math.max(0, prev - 1);
+        }
+        return prev;
+      });
+
+      showToast('Notification removed successfully', 'success');
+      return await response.json();
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
+      showToast(errorMessage, 'error');
+    }
+  };
+
   // Initial fetch of notifications only if user is authenticated
   useEffect(() => {
     // Prevent multiple interval instances
@@ -322,6 +371,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
         fetchNotifications,
         markAsRead,
         markAllAsRead,
+        removeNotification,
       }}
     >
       {children}

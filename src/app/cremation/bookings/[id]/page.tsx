@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { format } from 'date-fns';
 import { motion } from 'framer-motion';
@@ -68,8 +68,25 @@ function BookingDetailsPage({ userData }: BookingDetailsProps) {
   const [error, setError] = useState<string | null>(null);
   const [updating, setUpdating] = useState(false);
   const [showCertificate, setShowCertificate] = useState(false);
+  const [previousStatus, setPreviousStatus] = useState<string | null>(null);
+  const [lastUpdateTime, setLastUpdateTime] = useState<number>(0);
+  const [updateSuccess, setUpdateSuccess] = useState(false);
 
+  // Flag to prevent re-fetching after successful updates
+  const hasInitiallyLoaded = useRef(false);
+
+  // Create a ref to store the showToast function to avoid dependency issues
+  const showToastRef = useRef(showToast);
+
+  // Update the ref when showToast changes
+  useEffect(() => {
+    showToastRef.current = showToast;
+  }, [showToast]);
+
+  // Stable fetch function that doesn't change on re-renders
   const fetchBookingDetails = useCallback(async () => {
+    if (!params.id) return;
+
     try {
       setLoading(true);
       setError(null);
@@ -83,44 +100,119 @@ function BookingDetailsPage({ userData }: BookingDetailsProps) {
 
       const data = await response.json();
       setBooking(data);
+      hasInitiallyLoaded.current = true; // Mark as initially loaded
     } catch (error) {
-      setError(error instanceof Error ? error.message : 'An error occurred while fetching booking details');
-      showToast('Error loading booking details: ' + (error instanceof Error ? error.message : 'Unknown error'), 'error');
+      const errorMessage = error instanceof Error ? error.message : 'An error occurred while fetching booking details';
+      setError(errorMessage);
+      // Use the ref to avoid dependency issues
+      if (showToastRef.current) {
+        showToastRef.current('Error loading booking details: ' + errorMessage, 'error');
+      }
     } finally {
       setLoading(false);
     }
-  }, [params.id, showToast]);
+  }, [params.id]); // Only depend on params.id - no showToast dependency
 
+  // Fetch booking details only when params.id changes - NEVER re-fetch after status updates
   useEffect(() => {
-    if (params.id) {
+    if (params.id && !hasInitiallyLoaded.current) {
       fetchBookingDetails();
     }
-  }, [params.id, fetchBookingDetails]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params.id]); // Intentionally exclude fetchBookingDetails to prevent circular dependency
 
-  const updateBookingStatus = async (newStatus: string) => {
+  // Use useRef to track ongoing requests and prevent multiple simultaneous calls
+  const updateRequestRef = useRef<AbortController | null>(null);
+
+  const updateBookingStatus = useCallback(async (newStatus: string) => {
+    if (!booking || updating || !params.id) return; // Prevent multiple simultaneous updates
+
+    // Enhanced debounce mechanism - prevent rapid clicks within 1.5 seconds
+    const now = Date.now();
+    if (now - lastUpdateTime < 1500) {
+      console.log('Update blocked by debounce mechanism');
+      return;
+    }
+
+    // Cancel any ongoing request
+    if (updateRequestRef.current) {
+      updateRequestRef.current.abort();
+    }
+
+    // Create new abort controller for this request
+    updateRequestRef.current = new AbortController();
+    setLastUpdateTime(now);
+
     try {
       setUpdating(true);
 
-      const response = await fetch(`/api/cremation/bookings/${params.id}/status`, {
+      // Store previous status for potential rollback
+      setPreviousStatus(booking.status);
+
+      // Optimistically update the UI immediately for better UX
+      setBooking(prev => prev ? { ...prev, status: newStatus } : null);
+
+      // Use the consolidated API route with abort signal
+      const response = await fetch(`/api/cremation/bookings/${params.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ status: newStatus }),
+        signal: updateRequestRef.current.signal,
       });
 
       if (!response.ok) {
-        throw new Error('Failed to update booking status');
+        // Rollback on error
+        setBooking(prev => prev ? { ...prev, status: previousStatus || booking.status } : null);
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update booking status');
       }
 
-      await fetchBookingDetails();
-      showToast(`Booking ${newStatus} successfully`, 'success');
+      // Show success message with immediate feedback
+      const statusLabels: Record<string, string> = {
+        'confirmed': 'confirmed',
+        'cancelled': 'cancelled',
+        'in_progress': 'started',
+        'completed': 'completed'
+      };
+
+      if (showToastRef.current) {
+        showToastRef.current(`Booking ${statusLabels[newStatus] || newStatus} successfully`, 'success');
+      }
+
+      // Show success state briefly
+      setUpdateSuccess(true);
+      setTimeout(() => setUpdateSuccess(false), 2000);
+
+      // CRITICAL: Never re-fetch data after successful updates - we use optimistic updates
+      // The booking state has already been updated optimistically above
+      // Any re-fetch would cause multiple page refreshes
     } catch (error) {
-      showToast('Failed to update booking status', 'error');
+      // Don't show error if request was aborted
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.log('Update request was aborted');
+        return;
+      }
+
+      if (showToastRef.current) {
+        showToastRef.current('Failed to update booking status', 'error');
+      }
     } finally {
       setUpdating(false);
+      setPreviousStatus(null);
+      updateRequestRef.current = null;
     }
-  };
+  }, [booking, updating, params.id, lastUpdateTime, previousStatus]); // Removed showToast dependency
+
+  // Cleanup effect to cancel ongoing requests when component unmounts
+  useEffect(() => {
+    return () => {
+      if (updateRequestRef.current) {
+        updateRequestRef.current.abort();
+      }
+    };
+  }, []);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -182,8 +274,8 @@ function BookingDetailsPage({ userData }: BookingDetailsProps) {
     }
   };
 
-  // Progress Timeline Component
-  const ProgressTimeline = ({ status }: { status: string }) => {
+  // Progress Timeline Component with improved animations - Memoized to prevent unnecessary re-renders
+  const ProgressTimeline = React.memo(({ status }: { status: string }) => {
     const stages = [
       {
         id: 'pending',
@@ -256,26 +348,34 @@ function BookingDetailsPage({ userData }: BookingDetailsProps) {
 
                 return (
                   <div key={stage.id} className="flex flex-col items-center relative flex-1">
-                    {/* Progress Line - only show green for completed stages */}
-                    {!isLast && stageStatus === 'completed' && (
-                      <motion.div
-                        className={`absolute top-10 left-1/2 w-full h-1 z-0 rounded-full ${
-                          status === 'cancelled' ? 'bg-gradient-to-r from-red-400 to-red-600' : 'bg-gradient-to-r from-green-400 to-green-600'
-                        }`}
-                        initial={{ width: '0%' }}
-                        animate={{ width: '100%' }}
-                        transition={{ duration: 1.5, ease: "easeInOut", delay: index * 0.3 }}
-                      ></motion.div>
+                    {/* Progress Line - improved animation */}
+                    {!isLast && (
+                      <div className="absolute top-10 left-1/2 w-full h-1 z-0 rounded-full bg-gray-200">
+                        {stageStatus === 'completed' && (
+                          <motion.div
+                            className={`h-full rounded-full ${
+                              status === 'cancelled' ? 'bg-gradient-to-r from-red-400 to-red-600' : 'bg-gradient-to-r from-green-400 to-green-600'
+                            }`}
+                            initial={{ width: '0%' }}
+                            animate={{ width: '100%' }}
+                            transition={{
+                              duration: 0.5,
+                              ease: "easeOut",
+                              delay: index * 0.1
+                            }}
+                          />
+                        )}
+                      </div>
                     )}
 
                     {/* Icon Circle */}
                     <motion.div
                       className={`
-                        relative z-20 w-20 h-20 rounded-full flex items-center justify-center border-4 transition-all duration-500 bg-white shadow-lg
+                        relative z-20 w-20 h-20 rounded-full flex items-center justify-center border-4 bg-white shadow-lg
                         ${stageStatus === 'completed'
                           ? 'border-green-500 bg-gradient-to-br from-green-400 to-green-600 text-white shadow-xl'
                           : stageStatus === 'current'
-                          ? `border-green-500 text-green-600 shadow-xl ring-4 ring-green-100 animate-pulse`
+                          ? `border-green-500 text-green-600 shadow-xl ring-4 ring-green-100`
                           : 'border-gray-300 text-gray-400 shadow-md'
                         }
                         ${status === 'cancelled' && stage.id === 'pending'
@@ -284,8 +384,28 @@ function BookingDetailsPage({ userData }: BookingDetailsProps) {
                         }
                       `}
                       initial={{ scale: 0.8, opacity: 0 }}
-                      animate={{ scale: 1, opacity: 1 }}
-                      transition={{ duration: 0.5, delay: index * 0.2 }}
+                      animate={{
+                        scale: 1,
+                        opacity: 1,
+                        ...(stageStatus === 'current' ? {
+                          boxShadow: [
+                            "0 0 0 0 rgba(34, 197, 94, 0.4)",
+                            "0 0 0 10px rgba(34, 197, 94, 0)",
+                            "0 0 0 0 rgba(34, 197, 94, 0)"
+                          ]
+                        } : {})
+                      }}
+                      transition={{
+                        duration: 0.4,
+                        delay: index * 0.1,
+                        ...(stageStatus === 'current' ? {
+                          boxShadow: {
+                            duration: 2,
+                            repeat: Infinity,
+                            ease: "easeInOut"
+                          }
+                        } : {})
+                      }}
                       whileHover={{ scale: 1.05 }}
                     >
                       <IconComponent className="h-8 w-8" />
@@ -296,22 +416,38 @@ function BookingDetailsPage({ userData }: BookingDetailsProps) {
                       className="mt-6 text-center max-w-36"
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.5, delay: index * 0.2 + 0.3 }}
+                      transition={{ duration: 0.3, delay: index * 0.1 + 0.2 }}
                     >
-                      <h3 className={`text-base font-semibold mb-2 ${
-                        stageStatus === 'completed' || stageStatus === 'current'
-                          ? 'text-gray-900'
-                          : 'text-gray-500'
-                      }`}>
+                      <motion.h3
+                        className={`text-base font-semibold mb-2 transition-colors duration-300 ${
+                          stageStatus === 'completed' || stageStatus === 'current'
+                            ? 'text-gray-900'
+                            : 'text-gray-500'
+                        }`}
+                        animate={{
+                          color: stageStatus === 'completed' || stageStatus === 'current'
+                            ? '#111827'
+                            : '#6B7280'
+                        }}
+                        transition={{ duration: 0.3 }}
+                      >
                         {stage.label}
-                      </h3>
-                      <p className={`text-sm leading-relaxed ${
-                        stageStatus === 'completed' || stageStatus === 'current'
-                          ? 'text-gray-600'
-                          : 'text-gray-400'
-                      }`}>
+                      </motion.h3>
+                      <motion.p
+                        className={`text-sm leading-relaxed transition-colors duration-300 ${
+                          stageStatus === 'completed' || stageStatus === 'current'
+                            ? 'text-gray-600'
+                            : 'text-gray-400'
+                        }`}
+                        animate={{
+                          color: stageStatus === 'completed' || stageStatus === 'current'
+                            ? '#4B5563'
+                            : '#9CA3AF'
+                        }}
+                        transition={{ duration: 0.3 }}
+                      >
                         {stage.description}
-                      </p>
+                      </motion.p>
                     </motion.div>
                   </div>
                 );
@@ -329,24 +465,29 @@ function BookingDetailsPage({ userData }: BookingDetailsProps) {
               const isLast = index === stages.length - 1;
 
               return (
-                <div key={stage.id} className="relative flex items-start">
+                <div key={`mobile-${stage.id}`} className="relative flex items-start">
                   {/* Vertical Line */}
                   {!isLast && (
-                    <div className={`absolute left-6 top-12 w-1 h-16 z-0 rounded-full shadow-sm ${
-                      stageStatus === 'completed' || (stageStatus === 'current' && index < stages.length - 1)
-                        ? 'bg-gradient-to-b from-green-400 to-green-600'
-                        : 'bg-gray-300'
-                    }`}></div>
+                    <div className="absolute left-6 top-12 w-1 h-16 z-0 rounded-full bg-gray-300">
+                      {(stageStatus === 'completed' || (stageStatus === 'current' && index < stages.length - 1)) && (
+                        <motion.div
+                          className="w-full rounded-full bg-gradient-to-b from-green-400 to-green-600"
+                          initial={{ height: '0%' }}
+                          animate={{ height: '100%' }}
+                          transition={{ duration: 0.6, delay: index * 0.1 + 0.3 }}
+                        />
+                      )}
+                    </div>
                   )}
 
                   {/* Icon Circle */}
                   <motion.div
                     className={`
-                      relative z-20 w-14 h-14 rounded-full flex items-center justify-center border-3 transition-all duration-500 bg-white shadow-lg
+                      relative z-20 w-14 h-14 rounded-full flex items-center justify-center border-3 bg-white shadow-lg
                       ${stageStatus === 'completed'
                         ? 'border-green-500 bg-gradient-to-br from-green-400 to-green-600 text-white shadow-xl'
                         : stageStatus === 'current'
-                        ? `border-green-500 text-green-600 shadow-xl ring-4 ring-green-100 animate-pulse`
+                        ? `border-green-500 text-green-600 shadow-xl ring-4 ring-green-100`
                         : 'border-gray-300 text-gray-400 shadow-md'
                       }
                       ${status === 'cancelled' && stage.id === 'pending'
@@ -355,8 +496,14 @@ function BookingDetailsPage({ userData }: BookingDetailsProps) {
                       }
                     `}
                     initial={{ scale: 0.8, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    transition={{ duration: 0.5, delay: index * 0.2 }}
+                    animate={{
+                      scale: 1,
+                      opacity: 1
+                    }}
+                    transition={{
+                      duration: 0.3,
+                      delay: index * 0.05
+                    }}
                   >
                     <IconComponent className="h-6 w-6" />
                   </motion.div>
@@ -366,22 +513,38 @@ function BookingDetailsPage({ userData }: BookingDetailsProps) {
                     className="ml-4 flex-1"
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.5, delay: index * 0.2 + 0.3 }}
+                    transition={{ duration: 0.3, delay: index * 0.1 + 0.2 }}
                   >
-                    <h3 className={`text-base font-semibold mb-1 ${
-                      stageStatus === 'completed' || stageStatus === 'current'
-                        ? 'text-gray-900'
-                        : 'text-gray-500'
-                    }`}>
+                    <motion.h3
+                      className={`text-base font-semibold mb-1 transition-colors duration-300 ${
+                        stageStatus === 'completed' || stageStatus === 'current'
+                          ? 'text-gray-900'
+                          : 'text-gray-500'
+                      }`}
+                      animate={{
+                        color: stageStatus === 'completed' || stageStatus === 'current'
+                          ? '#111827'
+                          : '#6B7280'
+                      }}
+                      transition={{ duration: 0.3 }}
+                    >
                       {stage.label}
-                    </h3>
-                    <p className={`text-sm leading-relaxed ${
-                      stageStatus === 'completed' || stageStatus === 'current'
-                        ? 'text-gray-600'
-                        : 'text-gray-400'
-                    }`}>
+                    </motion.h3>
+                    <motion.p
+                      className={`text-sm leading-relaxed transition-colors duration-300 ${
+                        stageStatus === 'completed' || stageStatus === 'current'
+                          ? 'text-gray-600'
+                          : 'text-gray-400'
+                      }`}
+                      animate={{
+                        color: stageStatus === 'completed' || stageStatus === 'current'
+                          ? '#4B5563'
+                          : '#9CA3AF'
+                      }}
+                      transition={{ duration: 0.3 }}
+                    >
                       {stage.description}
-                    </p>
+                    </motion.p>
                   </motion.div>
                 </div>
               );
@@ -390,67 +553,95 @@ function BookingDetailsPage({ userData }: BookingDetailsProps) {
         </div>
 
         {/* Enhanced Status Message */}
-        <div className={`mt-6 p-6 rounded-lg border-l-4 ${
-          status === 'completed' ? 'bg-green-50 border-green-400' :
-          status === 'in_progress' ? 'bg-purple-50 border-purple-400' :
-          status === 'confirmed' ? 'bg-blue-50 border-blue-400' :
-          status === 'cancelled' ? 'bg-red-50 border-red-400' :
-          'bg-yellow-50 border-yellow-400'
-        }`}>
+        <motion.div
+          className={`mt-6 p-6 rounded-lg border-l-4 transition-all duration-500 ${
+            status === 'completed' ? 'bg-green-50 border-green-400' :
+            status === 'in_progress' ? 'bg-purple-50 border-purple-400' :
+            status === 'confirmed' ? 'bg-blue-50 border-blue-400' :
+            status === 'cancelled' ? 'bg-red-50 border-red-400' :
+            'bg-yellow-50 border-yellow-400'
+          }`}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+        >
           <div className="flex items-start justify-between">
             <div className="flex items-start">
-              <div className={`w-3 h-3 rounded-full mr-4 mt-1 ${
-                status === 'completed' ? 'bg-green-500' :
-                status === 'in_progress' ? 'bg-purple-500' :
-                status === 'confirmed' ? 'bg-blue-500' :
-                status === 'cancelled' ? 'bg-red-500' :
-                'bg-yellow-500'
-              }`}></div>
+              <motion.div
+                className={`w-3 h-3 rounded-full mr-4 mt-1 transition-colors duration-300 ${
+                  status === 'completed' ? 'bg-green-500' :
+                  status === 'in_progress' ? 'bg-purple-500' :
+                  status === 'confirmed' ? 'bg-blue-500' :
+                  status === 'cancelled' ? 'bg-red-500' :
+                  'bg-yellow-500'
+                }`}
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ duration: 0.2 }}
+              />
               <div>
-                <h3 className={`font-medium mb-1 ${
-                  status === 'completed' ? 'text-green-800' :
-                  status === 'in_progress' ? 'text-purple-800' :
-                  status === 'confirmed' ? 'text-blue-800' :
-                  status === 'cancelled' ? 'text-red-800' :
-                  'text-yellow-800'
-                }`}>
+                <motion.h3
+                  className={`font-medium mb-1 transition-colors duration-300 ${
+                    status === 'completed' ? 'text-green-800' :
+                    status === 'in_progress' ? 'text-purple-800' :
+                    status === 'confirmed' ? 'text-blue-800' :
+                    status === 'cancelled' ? 'text-red-800' :
+                    'text-yellow-800'
+                  }`}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.2, delay: 0.1 }}
+                >
                   {status === 'pending' && 'Booking Received'}
                   {status === 'confirmed' && 'Booking Confirmed'}
                   {status === 'in_progress' && 'Service in Progress'}
                   {status === 'completed' && 'Service Completed'}
                   {status === 'cancelled' && 'Booking Cancelled'}
-                </h3>
-                <p className={`text-sm ${
-                  status === 'completed' ? 'text-green-700' :
-                  status === 'in_progress' ? 'text-purple-700' :
-                  status === 'confirmed' ? 'text-blue-700' :
-                  status === 'cancelled' ? 'text-red-700' :
-                  'text-yellow-700'
-                }`}>
+                </motion.h3>
+                <motion.p
+                  className={`text-sm transition-colors duration-300 ${
+                    status === 'completed' ? 'text-green-700' :
+                    status === 'in_progress' ? 'text-purple-700' :
+                    status === 'confirmed' ? 'text-blue-700' :
+                    status === 'cancelled' ? 'text-red-700' :
+                    'text-yellow-700'
+                  }`}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.2, delay: 0.2 }}
+                >
                   {status === 'pending' && 'We have received your booking and will confirm it shortly. You will be notified once confirmed.'}
                   {status === 'confirmed' && 'Your booking has been confirmed. We will start the service soon and keep you updated.'}
                   {status === 'in_progress' && 'Your pet is currently being cared for with the utmost respect and dignity.'}
                   {status === 'completed' && 'Your service has been completed. Thank you for trusting us during this difficult time.'}
                   {status === 'cancelled' && 'This booking has been cancelled. If you have any questions, please contact us.'}
-                </p>
+                </motion.p>
               </div>
             </div>
 
             {/* Certificate Button for Completed Services */}
             {status === 'completed' && (
-              <button
+              <motion.button
                 onClick={() => setShowCertificate(true)}
                 className="ml-4 inline-flex items-center px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-200"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.3, delay: 0.5 }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
               >
                 <DocumentCheckIcon className="h-4 w-4 mr-2" />
                 View Certificate
-              </button>
+              </motion.button>
             )}
           </div>
-        </div>
+        </motion.div>
       </motion.div>
     );
-  };
+  });
+
+  // Add display name for better debugging
+  ProgressTimeline.displayName = 'ProgressTimeline';
 
   if (loading) {
     return (
@@ -513,66 +704,115 @@ function BookingDetailsPage({ userData }: BookingDetailsProps) {
                 </div>
 
                 {/* Action Buttons - Moved to top */}
-                <div className="flex flex-col sm:flex-row gap-2 mt-4 sm:mt-0">
+                <motion.div
+                  className="flex flex-col sm:flex-row gap-2 mt-4 sm:mt-0"
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, delay: 0.2 }}
+                >
                   {booking.status === 'pending' && (
                     <>
-                      <button
+                      <motion.button
                         onClick={() => updateBookingStatus('cancelled')}
-                        className="px-4 py-2 border border-red-300 text-red-700 rounded-md text-sm font-medium hover:bg-red-50 flex items-center justify-center"
-                        disabled={updating}
+                        className={`px-4 py-2 border border-red-300 text-red-700 rounded-md text-sm font-medium hover:bg-red-50 flex items-center justify-center transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${
+                          updateSuccess ? 'bg-green-50 border-green-300 text-green-700' : ''
+                        }`}
+                        disabled={updating || updateSuccess}
+                        whileHover={{ scale: updating || updateSuccess ? 1 : 1.02 }}
+                        whileTap={{ scale: updating || updateSuccess ? 1 : 0.98 }}
                       >
-                        {updating ? (
-                          <ArrowPathIcon className="h-4 w-4 mr-2 animate-spin" />
-                        ) : (
-                          <XCircleIcon className="h-4 w-4 mr-2" />
-                        )}
-                        {updating ? 'Cancelling...' : 'Cancel Booking'}
-                      </button>
-                      <button
+                        <motion.div
+                          animate={{ rotate: updating ? 360 : 0 }}
+                          transition={{ duration: 1, repeat: updating ? Infinity : 0, ease: "linear" }}
+                        >
+                          {updating ? (
+                            <ArrowPathIcon className="h-4 w-4 mr-2" />
+                          ) : updateSuccess ? (
+                            <CheckCircleIcon className="h-4 w-4 mr-2" />
+                          ) : (
+                            <XCircleIcon className="h-4 w-4 mr-2" />
+                          )}
+                        </motion.div>
+                        {updating ? 'Cancelling...' : updateSuccess ? 'Success!' : 'Cancel Booking'}
+                      </motion.button>
+                      <motion.button
                         onClick={() => updateBookingStatus('confirmed')}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 flex items-center justify-center"
-                        disabled={updating}
+                        className={`px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 flex items-center justify-center transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${
+                          updateSuccess ? 'bg-green-600 hover:bg-green-700' : ''
+                        }`}
+                        disabled={updating || updateSuccess}
+                        whileHover={{ scale: updating || updateSuccess ? 1 : 1.02 }}
+                        whileTap={{ scale: updating || updateSuccess ? 1 : 0.98 }}
                       >
-                        {updating ? (
-                          <ArrowPathIcon className="h-4 w-4 mr-2 animate-spin" />
-                        ) : (
-                          <CheckCircleIcon className="h-4 w-4 mr-2" />
-                        )}
-                        {updating ? 'Confirming...' : 'Confirm Booking'}
-                      </button>
+                        <motion.div
+                          animate={{ rotate: updating ? 360 : 0 }}
+                          transition={{ duration: 1, repeat: updating ? Infinity : 0, ease: "linear" }}
+                        >
+                          {updating ? (
+                            <ArrowPathIcon className="h-4 w-4 mr-2" />
+                          ) : updateSuccess ? (
+                            <CheckCircleIcon className="h-4 w-4 mr-2" />
+                          ) : (
+                            <CheckCircleIcon className="h-4 w-4 mr-2" />
+                          )}
+                        </motion.div>
+                        {updating ? 'Confirming...' : updateSuccess ? 'Success!' : 'Confirm Booking'}
+                      </motion.button>
                     </>
                   )}
 
                   {booking.status === 'confirmed' && (
-                    <button
+                    <motion.button
                       onClick={() => updateBookingStatus('in_progress')}
-                      className="px-4 py-2 bg-purple-600 text-white rounded-md text-sm font-medium hover:bg-purple-700 flex items-center justify-center"
-                      disabled={updating}
+                      className={`px-4 py-2 bg-purple-600 text-white rounded-md text-sm font-medium hover:bg-purple-700 flex items-center justify-center transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${
+                        updateSuccess ? 'bg-green-600 hover:bg-green-700' : ''
+                      }`}
+                      disabled={updating || updateSuccess}
+                      whileHover={{ scale: updating || updateSuccess ? 1 : 1.02 }}
+                      whileTap={{ scale: updating || updateSuccess ? 1 : 0.98 }}
                     >
-                      {updating ? (
-                        <ArrowPathIcon className="h-4 w-4 mr-2 animate-spin" />
-                      ) : (
-                        <PlayIcon className="h-4 w-4 mr-2" />
-                      )}
-                      {updating ? 'Starting...' : 'Start Service'}
-                    </button>
+                      <motion.div
+                        animate={{ rotate: updating ? 360 : 0 }}
+                        transition={{ duration: 1, repeat: updating ? Infinity : 0, ease: "linear" }}
+                      >
+                        {updating ? (
+                          <ArrowPathIcon className="h-4 w-4 mr-2" />
+                        ) : updateSuccess ? (
+                          <CheckCircleIcon className="h-4 w-4 mr-2" />
+                        ) : (
+                          <PlayIcon className="h-4 w-4 mr-2" />
+                        )}
+                      </motion.div>
+                      {updating ? 'Starting...' : updateSuccess ? 'Success!' : 'Start Service'}
+                    </motion.button>
                   )}
 
                   {booking.status === 'in_progress' && (
-                    <button
+                    <motion.button
                       onClick={() => updateBookingStatus('completed')}
-                      className="px-4 py-2 bg-green-600 text-white rounded-md text-sm font-medium hover:bg-green-700 flex items-center justify-center"
-                      disabled={updating}
+                      className={`px-4 py-2 bg-green-600 text-white rounded-md text-sm font-medium hover:bg-green-700 flex items-center justify-center transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${
+                        updateSuccess ? 'bg-green-700' : ''
+                      }`}
+                      disabled={updating || updateSuccess}
+                      whileHover={{ scale: updating || updateSuccess ? 1 : 1.02 }}
+                      whileTap={{ scale: updating || updateSuccess ? 1 : 0.98 }}
                     >
-                      {updating ? (
-                        <ArrowPathIcon className="h-4 w-4 mr-2 animate-spin" />
-                      ) : (
-                        <CheckCircleIcon className="h-4 w-4 mr-2" />
-                      )}
-                      {updating ? 'Completing...' : 'Mark Complete'}
-                    </button>
+                      <motion.div
+                        animate={{ rotate: updating ? 360 : 0 }}
+                        transition={{ duration: 1, repeat: updating ? Infinity : 0, ease: "linear" }}
+                      >
+                        {updating ? (
+                          <ArrowPathIcon className="h-4 w-4 mr-2" />
+                        ) : updateSuccess ? (
+                          <CheckCircleIcon className="h-4 w-4 mr-2" />
+                        ) : (
+                          <CheckCircleIcon className="h-4 w-4 mr-2" />
+                        )}
+                      </motion.div>
+                      {updating ? 'Completing...' : updateSuccess ? 'Success!' : 'Mark Complete'}
+                    </motion.button>
                   )}
-                </div>
+                </motion.div>
               </div>
 
               <div className="border-t border-gray-200 pt-4 mt-4">

@@ -29,15 +29,8 @@ export function middleware(request: NextRequest) {
   // Exclude diagnostic pages from protection
   const isDiagnosePath = pathname.includes('/cremation/packages/diagnose/');
 
-  // SUPER EMERGENCY FIX: COMPLETELY DISABLE ALL PROTECTION FOR CREMATION PATHS
-  // This will allow access to the cremation dashboard without any verification
-  // We're setting this to false to bypass all checks
-  const isCremationPath = false; // Bypass all cremation path checks
-
-  // Also bypass all other checks for cremation paths
-  if (pathname.startsWith('/cremation')) {
-    return NextResponse.next();
-  }
+  // Define cremation paths that require business authentication
+  const isCremationPath = pathname.startsWith('/cremation') && pathname !== '/cremation';
 
   const isUserPath = pathname.startsWith('/user') && pathname !== '/user';
 

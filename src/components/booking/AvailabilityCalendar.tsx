@@ -653,6 +653,9 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
         throw new Error(responseData.error || `Failed to delete time slot (HTTP ${response.status})`);
       }
 
+      // Get response data for successful deletion
+      const responseData = await response.json();
+
       // After successfully deleting from the database, update the local state
       setAvailabilityData(prevData => {
         const newData = [...prevData];
@@ -852,7 +855,7 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
             Error loading packages: {packageLoadError}
           </p>
           <p className="text-orange-700 text-xs mt-1">
-            You can still set up availability, but you won't be able to select specific packages for time slots.
+            You can still set up availability, but you won&apos;t be able to select specific packages for time slots.
           </p>
         </div>
       )}
@@ -953,7 +956,7 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
             ) : (
               <div className="text-center py-4 text-gray-500 bg-gray-50 rounded-md border border-gray-200">
                 <p>No time slots have been added for this day.</p>
-                <p className="mt-2">Click "Add Time Slot" to set available times for bookings.</p>
+                <p className="mt-2">Click &quot;Add Time Slot&quot; to set available times for bookings.</p>
               </div>
             )}
           </div>
@@ -1035,7 +1038,7 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
                 ) : (
                   <div>
                     <p className="text-sm text-gray-500 mb-2">No service packages available. Please create packages first.</p>
-                    <p className="text-xs text-amber-600">You can still create time slots, but they won't be visible to customers until packages are added.</p>
+                    <p className="text-xs text-amber-600">You can still create time slots, but they won&apos;t be visible to customers until packages are added.</p>
                   </div>
                 )}
               </div>

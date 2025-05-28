@@ -433,7 +433,7 @@ function EditPackagePage({ userData }: EditPackagePageProps) {
             throw new Error('Server returned an error page instead of JSON. Please check server logs.');
           }
 
-          throw new Error(`Invalid response format from server: ${parseError.message}`);
+          throw new Error(`Invalid response format from server: ${parseError instanceof Error ? parseError.message : String(parseError)}`);
         }
 
         if (!response.ok) {

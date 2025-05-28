@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import CremationDashboardLayout from '@/components/navigation/CremationDashboardLayout';
@@ -40,6 +40,8 @@ function CremationDashboardPage({ userData }: { userData: any }) {
     recentBookings: [],
     servicePackages: []
   });
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [lastPendingCount, setLastPendingCount] = useState(0);
   const { showToast } = useToast();
   const [showAvailabilitySection, setShowAvailabilitySection] = useState(false);
   const [lastFetchAttempt, setLastFetchAttempt] = useState<number>(0);
@@ -55,77 +57,184 @@ function CremationDashboardPage({ userData }: { userData: any }) {
     }
   }, [userData]);
 
-  // Fetch dashboard data
-  useEffect(() => {
-    const fetchDashboardData = async () => {
-      // Use business_id or provider_id, with fallback to 999 for demo
-      const providerId = userData?.business_id || userData?.provider_id || 999;
+  // Fetch dashboard data function
+  const fetchDashboardData = useCallback(async (isRefresh = false) => {
+    // Use business_id or provider_id, with fallback to 999 for demo
+    const providerId = userData?.business_id || userData?.provider_id || 999;
 
-      if (!providerId) {
-        setLoading(false);
-        setIsLoading(false);
-        return;
-      }
+    if (!providerId) {
+      setLoading(false);
+      setIsLoading(false);
+      return;
+    }
 
-      // Prevent multiple rapid fetch attempts
+    // Prevent multiple rapid fetch attempts (except for manual refresh)
+    if (!isRefresh) {
       const now = Date.now();
       if (now - lastFetchAttempt < 5000) { // 5 second cooldown between fetch attempts
         return;
       }
-
       setLastFetchAttempt(now);
+    }
+
+    try {
+      if (isRefresh) {
+        setIsRefreshing(true);
+      } else {
+        setLoading(true);
+        setIsLoading(true);
+      }
+
       setDashboardError(null);
 
-      try {
-        // Add cache busting parameter to prevent cached results
-        const response = await fetch(`/api/cremation/dashboard?providerId=${providerId}&t=${now}`);
+      // Add cache busting parameter to prevent cached results
+      const now = Date.now();
+      const response = await fetch(`/api/cremation/dashboard?providerId=${providerId}&t=${now}`);
 
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          const errorMessage = `Failed to fetch dashboard data: ${response.status} ${errorData.error || ''}`;
-          setDashboardError(errorMessage);
-          throw new Error(errorMessage);
-        }
-
-        const data = await response.json();
-
-        // If data doesn't have the stats we need, add default ones
-        if (!data.stats || data.stats.length === 0) {
-          data.stats = [
-            { name: 'Total Bookings', value: '0', change: '0%', changeType: 'increase' },
-            { name: 'Pending Bookings', value: '0', change: '0%', changeType: 'increase' },
-            { name: 'Active Packages', value: '0', change: '0%', changeType: 'increase' },
-            { name: 'Monthly Revenue', value: '$0', change: '0%', changeType: 'increase' }
-          ];
-        }
-
-        setDashboardData(data);
-      } catch (error) {
-        // Only show toast once
-        if (!dashboardError) {
-          showToast('Failed to load dashboard data. Please try again later.', 'error');
-        }
-        setDashboardError(error instanceof Error ? error.message : 'Unknown error occurred');
-
-        // Set default data for development/demo purposes
-        setDashboardData({
-          stats: [
-            { name: 'Total Bookings', value: '0', change: '0%', changeType: 'increase' },
-            { name: 'Pending Bookings', value: '0', change: '0%', changeType: 'increase' },
-            { name: 'Active Packages', value: '0', change: '0%', changeType: 'increase' },
-            { name: 'Monthly Revenue', value: '$0', change: '0%', changeType: 'increase' }
-          ],
-          recentBookings: [],
-          popularPackages: []
-        });
-      } finally {
-        setLoading(false);
-        setIsLoading(false);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = `Failed to fetch dashboard data: ${response.status} ${errorData.error || ''}`;
+        setDashboardError(errorMessage);
+        throw new Error(errorMessage);
       }
-    };
 
+      const data = await response.json();
+
+      // If data doesn't have the stats we need, add default ones
+      if (!data.stats || data.stats.length === 0) {
+        data.stats = [
+          { name: 'Total Bookings', value: '0', change: '0%', changeType: 'increase' },
+          { name: 'Pending Bookings', value: '0', change: '0%', changeType: 'increase' },
+          { name: 'Active Packages', value: '0', change: '0%', changeType: 'increase' },
+          { name: 'Monthly Revenue', value: '₱0.00', change: '0%', changeType: 'increase' }
+        ];
+      }
+
+      // Check for new pending bookings and create notifications
+      const pendingStat = data.stats.find((stat: any) => stat.name === 'Pending Bookings');
+      const currentPendingCount = parseInt(pendingStat?.value || '0');
+
+      // Create notifications for pending bookings (both new and existing)
+      if (currentPendingCount > 0) {
+        // If there are more pending bookings than before, create notification for new ones
+        if (currentPendingCount > lastPendingCount && lastPendingCount >= 0) {
+          const newBookings = currentPendingCount - lastPendingCount;
+          if (newBookings > 0) {
+            try {
+              await fetch('/api/notifications', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  userId: userData.id,
+                  title: 'New Booking Alert',
+                  message: `You have ${newBookings} new pending ${newBookings === 1 ? 'booking' : 'bookings'} requiring your attention.`,
+                  type: 'info',
+                  link: '/cremation/bookings?status=pending'
+                })
+              });
+            } catch (notificationError) {
+              console.error('Failed to create notification:', notificationError);
+            }
+          }
+        }
+
+        // Also create a general notification if there are pending bookings (for first-time users)
+        if (lastPendingCount === 0 && currentPendingCount > 0) {
+          try {
+            await fetch('/api/notifications', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                userId: userData.id,
+                title: 'Pending Bookings Reminder',
+                message: `You have ${currentPendingCount} pending ${currentPendingCount === 1 ? 'booking' : 'bookings'} waiting for your review.`,
+                type: 'warning',
+                link: '/cremation/bookings?status=pending'
+              })
+            });
+          } catch (notificationError) {
+            console.error('Failed to create notification:', notificationError);
+          }
+        }
+      }
+      setLastPendingCount(currentPendingCount);
+
+      setDashboardData(data);
+    } catch (error) {
+      // Only show toast for non-refresh errors or first-time errors
+      if (!isRefresh && !dashboardError) {
+        showToast('Failed to load dashboard data. Please try again later.', 'error');
+      }
+      setDashboardError(error instanceof Error ? error.message : 'Unknown error occurred');
+
+      // Set default data for development/demo purposes
+      setDashboardData({
+        stats: [
+          { name: 'Total Bookings', value: '0', change: '0%', changeType: 'increase' },
+          { name: 'Pending Bookings', value: '0', change: '0%', changeType: 'increase' },
+          { name: 'Active Packages', value: '0', change: '0%', changeType: 'increase' },
+          { name: 'Monthly Revenue', value: '₱0.00', change: '0%', changeType: 'increase' }
+        ],
+        recentBookings: [],
+        popularPackages: []
+      });
+    } finally {
+      setLoading(false);
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  }, [userData, lastFetchAttempt, lastPendingCount, dashboardError, showToast]);
+
+  // Initial data fetch
+  useEffect(() => {
     fetchDashboardData();
-  }, [userData, showToast, lastFetchAttempt, dashboardError]);
+  }, [fetchDashboardData]);
+
+  // Check for pending bookings and create notifications
+  const checkPendingBookings = useCallback(async () => {
+    if (!userData) return;
+
+    try {
+      const response = await fetch('/api/cremation/notifications/check-pending');
+      if (response.ok) {
+        const data = await response.json();
+        if (data.notificationCreated && data.pendingCount > 0) {
+          // Optionally show a toast or update UI to indicate new notifications
+          console.log(`Created notification for ${data.pendingCount} pending bookings`);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to check pending bookings:', error);
+    }
+  }, [userData]);
+
+  // Set up polling for dashboard updates every 30 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchDashboardData(true);
+    }, 30000); // 30 seconds
+
+    return () => clearInterval(interval);
+  }, [fetchDashboardData, lastPendingCount]);
+
+  // Set up periodic check for pending bookings (every 2 minutes)
+  useEffect(() => {
+    if (!userData) return;
+
+    // Initial check
+    checkPendingBookings();
+
+    // Set up interval for periodic checks
+    const pendingCheckInterval = setInterval(() => {
+      checkPendingBookings();
+    }, 120000); // 2 minutes
+
+    return () => clearInterval(pendingCheckInterval);
+  }, [checkPendingBookings, userData]);
 
   // Check if availability tables exist
   useEffect(() => {
@@ -263,6 +372,13 @@ function CremationDashboardPage({ userData }: { userData: any }) {
             >
               View Bookings
             </button>
+            {/* Show pending bookings alert if there are any */}
+            {dashboardData.stats?.find((stat: any) => stat.name === 'Pending Bookings')?.value > 0 && (
+              <div className="flex items-center px-3 py-2 bg-yellow-100 text-yellow-800 rounded-lg text-sm">
+                <ClockIcon className="h-4 w-4 mr-2" />
+                {dashboardData.stats.find((stat: any) => stat.name === 'Pending Bookings')?.value} pending
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -296,7 +412,26 @@ function CremationDashboardPage({ userData }: { userData: any }) {
       )}
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="mb-8">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-lg font-medium text-gray-800">Dashboard Overview</h2>
+          <div className="flex items-center space-x-2">
+            {isRefreshing && (
+              <div className="flex items-center text-sm text-gray-600">
+                <div className="animate-spin rounded-full h-4 w-4 border-2 border-gray-300 border-t-[var(--primary-green)] mr-2"></div>
+                Updating...
+              </div>
+            )}
+            <button
+              onClick={() => fetchDashboardData(true)}
+              disabled={isRefreshing}
+              className="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              Refresh
+            </button>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {isLoading ? (
           // Loading skeleton for stats - consistent style
           Array(4).fill(0).map((_, index) => (
@@ -350,6 +485,7 @@ function CremationDashboardPage({ userData }: { userData: any }) {
             );
           })
         )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">

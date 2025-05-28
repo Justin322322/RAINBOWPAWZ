@@ -7,29 +7,14 @@ export async function POST(request: NextRequest) {
     // Verify admin authentication
     const authToken = getAuthTokenFromRequest(request);
 
-    // In development mode, we'll allow requests without auth token for testing
-    const isDevelopment = process.env.NODE_ENV === 'development';
-    let isAuthenticated = false;
-
-    if (authToken) {
-      // If we have a token, validate it
-      const tokenParts = authToken.split('_');
-      if (tokenParts.length === 2) {
-        const accountType = tokenParts[1];
-        isAuthenticated = accountType === 'admin';
-      }
-    } else if (isDevelopment) {
-      // In development, allow requests without auth for testing
-      isAuthenticated = true;
+    if (!authToken) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Check authentication result
-    if (!isAuthenticated) {
-      return NextResponse.json({
-        error: 'Unauthorized',
-        details: 'Admin access required',
-        success: false
-      }, { status: 401 });
+    const [adminUserId, accountType] = authToken.split('_');
+
+    if (accountType !== 'admin') {
+      return NextResponse.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
     }
 
     // Get request body
@@ -133,7 +118,7 @@ export async function POST(request: NextRequest) {
           const columnsResult = await query(`
             SHOW COLUMNS FROM ${tableName} LIKE 'application_status'
           `) as any[];
-          
+
           const hasApplicationStatus = columnsResult.length > 0;
 
           // Update the business profile
