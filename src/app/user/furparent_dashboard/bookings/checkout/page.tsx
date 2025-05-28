@@ -1262,12 +1262,12 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                       </div>
                     )}
 
-                    {selectedAddOns.length > 0 && addOnsTotalPrice > 0 && (
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Add-ons</span>
-                        <span className="font-medium">₱{addOnsTotalPrice.toLocaleString()}</span>
+                    {selectedAddOns.length > 0 && selectedAddOns.map((addon, index) => (
+                      <div key={index} className="flex justify-between">
+                        <span className="text-gray-600">{addon.name}</span>
+                        <span className="font-medium">₱{(typeof addon.price === 'number' ? addon.price : 0).toLocaleString()}</span>
                       </div>
-                    )}
+                    ))}
 
                     <div className="flex justify-between pt-3 border-t border-gray-200">
                       <span className="font-medium">Total</span>
