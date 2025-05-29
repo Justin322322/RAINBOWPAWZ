@@ -45,12 +45,12 @@ const CremationCertificate: React.FC<CremationCertificateProps> = ({ booking, on
   const certificateNumber = `RC-${booking.id.toString().padStart(6, '0')}`;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4" style={{ zIndex: 9999 }}>
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" style={{ zIndex: 9999 }}>
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.9 }}
-        className="bg-white rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto"
+        className="bg-white rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto relative z-[10000]"
       >
         {/* Header with actions */}
         <div className="flex justify-between items-center p-4 border-b border-gray-200 print:hidden">

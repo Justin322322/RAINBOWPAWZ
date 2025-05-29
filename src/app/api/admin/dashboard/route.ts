@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { getAuthTokenFromRequest } from '@/utils/auth';
+import { calculateRevenue, formatRevenue, calculatePercentageChange } from '@/lib/revenueCalculator';
 
 export async function GET(request: NextRequest) {
   try {
@@ -47,39 +48,10 @@ export async function GET(request: NextRequest) {
       SELECT COUNT(*) as count FROM service_packages WHERE is_active = 1
     `) as any[];
 
-    // Calculate revenue from bookings
-    let revenueResult = [{ total: 0 }];
-    let actualMonthlyRevenue = 0;
-
-    // Check if bookings table exists and has total_price column
-    const bookingsTableExists = await query(`
-      SELECT COUNT(*) as count
-      FROM information_schema.tables
-      WHERE table_schema = DATABASE()
-      AND table_name = 'bookings'
-    `) as any[];
-
-    if (bookingsTableExists[0]?.count === 1) {
-      // Get total revenue from all completed bookings
-      revenueResult = await query(`
-        SELECT SUM(total_price) as total FROM bookings
-        WHERE status = 'completed'
-      `) as any[];
-
-      // Get current month's revenue
-      const currentMonthRevenueResult = await query(`
-        SELECT SUM(total_price) as total FROM bookings
-        WHERE status = 'completed'
-        AND MONTH(created_at) = MONTH(CURRENT_DATE())
-        AND YEAR(created_at) = YEAR(CURRENT_DATE())
-      `) as any[];
-
-      actualMonthlyRevenue = parseFloat(String(currentMonthRevenueResult[0]?.total || '0'));
-    } else {
-      // If bookings table doesn't exist, set revenue to 0
-      revenueResult = [{ total: 0 }];
-      actualMonthlyRevenue = 0;
-    }
+    // Calculate revenue using standardized calculation
+    const revenueData = await calculateRevenue();
+    const actualMonthlyRevenue = revenueData.monthlyRevenue;
+    const revenueResult = [{ total: revenueData.totalRevenue }];
 
     // Get recent applications from service_providers table
     let recentApplications: any[] = [];
@@ -227,21 +199,8 @@ export async function GET(request: NextRequest) {
       previousMonthServicesCount = [{ count: Math.floor((activeServicesCount[0]?.count || 0) * 0.7) }];
     }
 
-    // Get previous month's revenue
-    let previousMonthRevenue = [{ total: 0 }];
-
-    if (bookingsTableExists[0]?.count === 1) {
-      // Get previous month's revenue from bookings
-      previousMonthRevenue = await query(`
-        SELECT SUM(total_price) as total FROM bookings
-        WHERE status = 'completed'
-        AND MONTH(created_at) = MONTH(DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH))
-        AND YEAR(created_at) = YEAR(DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH))
-      `) as any[];
-    } else {
-      // If no bookings table, set previous month revenue to 0
-      previousMonthRevenue = [{ total: 0 }];
-    }
+    // Previous month revenue is already calculated in revenueData
+    const previousMonthRevenue = [{ total: revenueData.previousMonthRevenue }];
 
     // Calculate percentage changes
     const calculateChange = (current: number, previous: number) => {

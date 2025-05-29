@@ -3,6 +3,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query, checkTableExists } from '@/lib/db';
 import { getAuthTokenFromRequest } from '@/utils/auth';
+import { calculateRevenue, formatRevenue } from '@/lib/revenueCalculator';
 import fs from 'fs';
 import path from 'path';
 
@@ -62,44 +63,16 @@ async function listImagePaths(packageId: number): Promise<string[]> {
 }
 
 async function gatherRevenueStats(): Promise<{ total: number; monthly: number }> {
-  let total = 0, monthly = 0;
-
   try {
-    // Check if bookings table exists
-    const hasBookings = await checkTableExists('bookings');
-
-    if (hasBookings) {
-      // Get total revenue from completed bookings
-      const totalResult = await query(
-        `SELECT COALESCE(SUM(total_price),0) AS total FROM bookings WHERE status='completed'`
-      );
-      total = parseFloat(String(totalResult[0]?.total || 0));
-
-      // Get monthly revenue
-      const monthlyResult = await query(
-        `SELECT COALESCE(SUM(total_price),0) AS total
-         FROM bookings
-         WHERE status='completed'
-         AND MONTH(created_at)=MONTH(CURRENT_DATE())
-         AND YEAR(created_at)=YEAR(CURRENT_DATE())`
-      );
-      monthly = parseFloat(String(monthlyResult[0]?.total || 0));
-    } else {
-      // Fallback to service_packages if no bookings table
-      const packagesResult = await query(
-        `SELECT COALESCE(SUM(price),0) AS total_price FROM service_packages`
-      );
-      total = parseFloat(String(packagesResult[0]?.total_price || 0));
-      monthly = total / 12; // Estimate monthly as 1/12 of total
-    }
+    const revenueData = await calculateRevenue();
+    return {
+      total: revenueData.totalRevenue,
+      monthly: revenueData.monthlyRevenue
+    };
   } catch (error) {
     console.error('Error gathering revenue stats:', error);
-    // If there's an error, return zeros
-    total = 0;
-    monthly = 0;
+    return { total: 0, monthly: 0 };
   }
-
-  return { total, monthly };
 }
 
 export async function GET(request: NextRequest) {

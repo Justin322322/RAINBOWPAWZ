@@ -89,6 +89,7 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
   useEffect(() => {
     const success = searchParams.get('success');
     const bookingId = searchParams.get('bookingId');
+    const showReview = searchParams.get('showReview');
 
     if (success === 'true' && bookingId) {
       setShowSuccessMessage(true);
@@ -103,8 +104,34 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
       setTimeout(() => {
         setShowSuccessMessage(false);
       }, 8000);
+    } else if (bookingId && !success) {
+      // Handle notification clicks - find and show the booking details modal
+      const bookingIdNum = parseInt(bookingId);
+      if (!isNaN(bookingIdNum)) {
+        // Wait for bookings to load, then open the modal
+        const checkAndOpenModal = () => {
+          const booking = allBookings.find(b => b.id === bookingIdNum);
+          if (booking) {
+            setSelectedBooking(booking);
+            if (showReview === 'true') {
+              setShowReviewModal(true);
+            } else {
+              setShowDetailsModal(true);
+            }
+            // Clear the URL parameters
+            router.replace('/user/furparent_dashboard/bookings', { scroll: false });
+          } else if (allBookings.length > 0) {
+            // Bookings are loaded but booking not found
+            console.warn('Booking not found:', bookingIdNum);
+            router.replace('/user/furparent_dashboard/bookings', { scroll: false });
+          }
+          // If allBookings is empty, we'll try again when it loads
+        };
+
+        checkAndOpenModal();
+      }
     }
-  }, [searchParams, router]);
+  }, [searchParams, router, allBookings]);
 
   // Modal states
   const [selectedBooking, setSelectedBooking] = useState<BookingData | null>(null);

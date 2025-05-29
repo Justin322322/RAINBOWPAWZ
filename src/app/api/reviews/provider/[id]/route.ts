@@ -81,7 +81,7 @@ export async function GET(
 
       // Add join to service_packages if service_name is not available in service_bookings
       if (!hasServiceNameColumn) {
-        joinClause += ` LEFT JOIN service_packages sp ON sb.package_id = sp.id`;
+        joinClause += ` LEFT JOIN service_packages sp ON sb.package_id = sp.package_id`;
       }
 
       // Make sure we're using the correct parameter type

@@ -63,7 +63,7 @@ export async function createBookingNotification(
         title = 'Booking Created Successfully';
         message = `Your booking for ${pet_name}'s ${service_name} with ${provider_name} has been created and is pending confirmation.`;
         type = 'success';
-        link = `/user/furparent_dashboard/bookings/${bookingId}`;
+        link = `/user/furparent_dashboard/bookings?bookingId=${bookingId}`;
         sendEmailNotification = true;
         break;
 
@@ -71,7 +71,7 @@ export async function createBookingNotification(
         title = 'Booking Confirmed';
         message = `Your booking for ${pet_name}'s ${service_name} on ${formatDate(booking_date)} at ${booking_time} has been confirmed.`;
         type = 'success';
-        link = `/user/furparent_dashboard/bookings/${bookingId}`;
+        link = `/user/furparent_dashboard/bookings?bookingId=${bookingId}`;
         sendEmailNotification = true;
         break;
 
@@ -79,14 +79,14 @@ export async function createBookingNotification(
         title = 'Booking Pending Review';
         message = `Your booking for ${pet_name}'s ${service_name} is pending review by ${provider_name}. You will be notified once it's confirmed.`;
         type = 'warning';
-        link = `/user/furparent_dashboard/bookings/${bookingId}`;
+        link = `/user/furparent_dashboard/bookings?bookingId=${bookingId}`;
         break;
 
       case 'booking_in_progress':
         title = 'Service In Progress';
         message = `The ${service_name} for ${pet_name} is now in progress. You will be notified when it's completed.`;
         type = 'info';
-        link = `/user/furparent_dashboard/bookings/${bookingId}`;
+        link = `/user/furparent_dashboard/bookings?bookingId=${bookingId}`;
         sendEmailNotification = true;
         break;
 
@@ -94,7 +94,7 @@ export async function createBookingNotification(
         title = 'Service Completed';
         message = `The ${service_name} for ${pet_name} has been completed. Thank you for choosing our services.`;
         type = 'success';
-        link = `/user/furparent_dashboard/bookings/${bookingId}`;
+        link = `/user/furparent_dashboard/bookings?bookingId=${bookingId}`;
         sendEmailNotification = true;
         break;
 
@@ -102,7 +102,7 @@ export async function createBookingNotification(
         title = 'Booking Cancelled';
         message = `Your booking for ${pet_name}'s ${service_name} has been cancelled. ${additionalData?.reason ? `Reason: ${additionalData.reason}` : ''}`;
         type = 'warning';
-        link = `/user/furparent_dashboard/bookings/${bookingId}`;
+        link = `/user/furparent_dashboard/bookings?bookingId=${bookingId}`;
         sendEmailNotification = true;
         break;
 
@@ -110,14 +110,14 @@ export async function createBookingNotification(
         title = 'Please Review Your Experience';
         message = `How was your experience with ${provider_name}? Your feedback helps us improve our services.`;
         type = 'info';
-        link = `/user/furparent_dashboard/bookings/${bookingId}/review`;
+        link = `/user/furparent_dashboard/bookings?bookingId=${bookingId}&showReview=true`;
         break;
 
       case 'reminder_24h':
         title = 'Booking Reminder - 24 Hours';
         message = `Reminder: Your appointment for ${pet_name}'s ${service_name} is scheduled for tomorrow at ${booking_time}.`;
         type = 'info';
-        link = `/user/furparent_dashboard/bookings/${bookingId}`;
+        link = `/user/furparent_dashboard/bookings?bookingId=${bookingId}`;
         sendEmailNotification = true;
         break;
 
@@ -125,7 +125,7 @@ export async function createBookingNotification(
         title = 'Booking Reminder - 1 Hour';
         message = `Reminder: Your appointment for ${pet_name}'s ${service_name} is in 1 hour. Please prepare for the service.`;
         type = 'warning';
-        link = `/user/furparent_dashboard/bookings/${bookingId}`;
+        link = `/user/furparent_dashboard/bookings?bookingId=${bookingId}`;
         break;
 
       default:
@@ -183,7 +183,7 @@ export async function createPaymentNotification(
     let title: string;
     let message: string;
     let type: 'info' | 'success' | 'warning' | 'error' = 'info';
-    let link = `/user/furparent_dashboard/bookings/${bookingId}`;
+    let link = `/user/furparent_dashboard/bookings?bookingId=${bookingId}`;
 
     switch (paymentStatus) {
       case 'payment_pending':
@@ -373,6 +373,7 @@ async function sendBookingEmailNotification(
         });
         break;
 
+      case 'booking_pending':
       case 'booking_confirmed':
       case 'booking_in_progress':
       case 'booking_completed':
@@ -385,7 +386,7 @@ async function sendBookingEmailNotification(
           bookingTime: bookingDetails.booking_time,
           petName: bookingDetails.pet_name,
           bookingId: bookingDetails.id,
-          status: notificationType.replace('booking_', '') as 'confirmed' | 'in_progress' | 'completed' | 'cancelled',
+          status: notificationType.replace('booking_', '') as 'pending' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled',
           notes: additionalData?.reason
         });
         break;

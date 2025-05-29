@@ -296,7 +296,7 @@ export const createBookingStatusUpdateEmail = (bookingDetails: {
   bookingTime: string;
   petName: string;
   bookingId: string | number;
-  status: 'confirmed' | 'in_progress' | 'completed' | 'cancelled';
+  status: 'pending' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled';
   notes?: string;
 }) => {
   let statusText = '';
@@ -304,6 +304,11 @@ export const createBookingStatusUpdateEmail = (bookingDetails: {
   let timelineHtml = '';
 
   switch (bookingDetails.status) {
+    case 'pending':
+      statusText = 'pending confirmation';
+      additionalInfo = 'Your booking has been submitted and is awaiting confirmation from the service provider.';
+      timelineHtml = createTimelineHtml('pending');
+      break;
     case 'confirmed':
       statusText = 'confirmed';
       additionalInfo = 'We have confirmed your booking. Please arrive on time for your appointment.';
@@ -362,76 +367,67 @@ export const createBookingStatusUpdateEmail = (bookingDetails: {
 };
 
 // Helper function to create timeline HTML for email
-function createTimelineHtml(currentStatus: 'confirmed' | 'in_progress' | 'completed'): string {
+function createTimelineHtml(currentStatus: 'pending' | 'confirmed' | 'in_progress' | 'completed'): string {
   const steps = [
-    { id: 'confirmed', title: 'Booking Confirmed', description: 'We have confirmed your booking' },
-    { id: 'in_progress', title: 'Service in Progress', description: 'Your pet is being cared for' },
-    { id: 'completed', title: 'Service Completed', description: 'Your service has been completed' }
+    { id: 'pending', title: 'Booking Created', description: 'Your booking has been submitted', icon: '●' },
+    { id: 'confirmed', title: 'Booking Confirmed', description: 'We have confirmed your booking', icon: '●' },
+    { id: 'in_progress', title: 'Service in Progress', description: 'Your pet is being cared for', icon: '●' },
+    { id: 'completed', title: 'Service Completed', description: 'Your service has been completed', icon: '●' }
   ];
 
   const currentIndex = steps.findIndex(step => step.id === currentStatus);
 
   return `
-    <div style="margin: 30px 0; padding: 20px; background-color: #f8fafc; border-radius: 8px;">
-      <h3 style="margin-top: 0; color: #1f2937; text-align: center;">Service Progress</h3>
+    <div style="margin: 30px 0; padding: 20px; background-color: #f8fafc; border-radius: 8px; font-family: Arial, sans-serif;">
+      <h3 style="margin-top: 0; color: #1f2937; text-align: center; font-size: 18px;">Service Progress</h3>
 
-      <!-- Progress Line Background -->
-      <div style="position: relative; max-width: 500px; margin: 0 auto;">
-        <div style="position: absolute; top: 20px; left: 60px; right: 60px; height: 2px; background-color: #e5e7eb; z-index: 1;"></div>
-
-        <!-- Progress Line Fill -->
-        <div style="
-          position: absolute;
-          top: 20px;
-          left: 60px;
-          height: 2px;
-          background-color: #10b981;
-          z-index: 2;
-          width: ${currentIndex > 0 ? (currentIndex / (steps.length - 1)) * 100 : 0}%;
-          max-width: calc(100% - 120px);
-        "></div>
-
-        <!-- Steps Container -->
-        <div style="display: flex; justify-content: space-between; align-items: flex-start; position: relative; z-index: 3;">
+      <!-- Email-safe table layout for timeline -->
+      <table cellpadding="0" cellspacing="0" border="0" style="width: 100%; max-width: 500px; margin: 20px auto;">
+        <!-- Progress line row -->
+        <tr>
+          <td colspan="${steps.length}" style="height: 40px; padding: 0;">
+            <table cellpadding="0" cellspacing="0" border="0" style="width: 100%; margin-top: 20px;">
+              <tr>
+                <td style="width: 50px;"></td>
+                <td style="height: 3px; background-color: #e5e7eb;">
+                  <table cellpadding="0" cellspacing="0" border="0" style="width: ${currentIndex > 0 ? Math.round((currentIndex / (steps.length - 1)) * 100) : 0}%; height: 3px; background-color: #10b981;">
+                    <tr><td></td></tr>
+                  </table>
+                </td>
+                <td style="width: 50px;"></td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+        <!-- Steps row -->
+        <tr>
           ${steps.map((step, index) => {
             const isCompleted = index <= currentIndex;
-            const isCurrent = index === currentIndex;
+            const stepWidth = Math.floor(100 / steps.length);
 
             return `
-              <div style="flex: 1; text-align: center; max-width: 150px;">
-                <!-- Circle -->
-                <div style="
-                  width: 40px;
-                  height: 40px;
-                  border-radius: 50%;
-                  margin: 0 auto 15px;
-                  display: flex;
-                  align-items: center;
-                  justify-content: center;
-                  background-color: ${isCompleted ? '#10b981' : '#ffffff'};
-                  color: ${isCompleted ? 'white' : '#6b7280'};
-                  font-weight: bold;
-                  font-size: 14px;
-                  border: ${isCompleted ? 'none' : '2px solid #d1d5db'};
-                  ${isCurrent && !isCompleted ? 'box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.2);' : ''}
-                  position: relative;
-                  z-index: 10;
-                ">
-                  ${isCompleted ? '✓' : index + 1}
-                </div>
+              <td style="width: ${stepWidth}%; text-align: center; vertical-align: top; padding: 10px 5px;">
+                <!-- Circle using table for better email compatibility -->
+                <table cellpadding="0" cellspacing="0" border="0" style="width: 50px; height: 50px; margin: 0 auto 15px; background-color: ${isCompleted ? '#10b981' : '#ffffff'}; border: ${isCompleted ? 'none' : '2px solid #d1d5db'}; border-radius: 50px;">
+                  <tr>
+                    <td style="text-align: center; vertical-align: middle; color: ${isCompleted ? 'white' : '#6b7280'}; font-weight: bold; font-size: 16px; line-height: 1;">
+                      ${isCompleted ? '✓' : step.icon}
+                    </td>
+                  </tr>
+                </table>
 
                 <!-- Text -->
-                <div style="font-size: 14px; font-weight: 600; color: ${isCompleted ? '#10b981' : '#6b7280'}; margin-bottom: 5px; line-height: 1.2;">
+                <div style="font-size: 14px; font-weight: 600; color: ${isCompleted ? '#10b981' : '#6b7280'}; margin-bottom: 8px; line-height: 1.2;">
                   ${step.title}
                 </div>
                 <div style="font-size: 12px; color: #6b7280; line-height: 1.3;">
                   ${step.description}
                 </div>
-              </div>
+              </td>
             `;
           }).join('')}
-        </div>
-      </div>
+        </tr>
+      </table>
     </div>
   `;
 }

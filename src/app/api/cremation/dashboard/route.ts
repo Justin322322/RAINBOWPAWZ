@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
+import { calculateRevenue, formatRevenue } from '@/lib/revenueCalculator';
 
 export async function GET(request: NextRequest) {
   try {
@@ -51,41 +52,11 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Get revenue data
-    let totalRevenue = 0;
-    let monthlyRevenue = 0;
-    let revenueChange = 0;
-
-    try {
-      // Query for total revenue
-      const revenueResult = await query(`
-        SELECT COALESCE(SUM(amount), 0) as total_revenue
-        FROM payments
-        WHERE provider_id = ?`,
-        [providerId]
-      ) as any[];
-
-      totalRevenue = revenueResult[0]?.total_revenue || 0;
-
-      // Query for monthly revenue
-      const currentDate = new Date();
-      const firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
-
-      const monthlyRevenueResult = await query(`
-        SELECT COALESCE(SUM(amount), 0) as monthly_revenue
-        FROM payments
-        WHERE provider_id = ? AND payment_date >= ?`,
-        [providerId, firstDayOfMonth]
-      ) as any[];
-
-      monthlyRevenue = monthlyRevenueResult[0]?.monthly_revenue || 0;
-
-      // Calculate revenue change (simplified for demo)
-      revenueChange = totalRevenue > 0 ? 15 : 0; // Placeholder
-    } catch (error) {
-      console.error('Error fetching revenue data:', error);
-      // Continue with default values
-    }
+    // Get revenue data using standardized calculation
+    const revenueData = await calculateRevenue(providerId);
+    let totalRevenue = revenueData.totalRevenue;
+    let monthlyRevenue = revenueData.monthlyRevenue;
+    let revenueChange = revenueData.revenueChange;
 
     // Get client data
     let newClients = 0;
@@ -323,101 +294,7 @@ export async function GET(request: NextRequest) {
     const hasServiceBookings = availableTables.includes('service_bookings');
     const hasBookings = availableTables.includes('bookings');
 
-    // Calculate stats
-    // 1. Get revenue, using successful_bookings table first (same as admin dashboard)
-    // Note: totalRevenue and monthlyRevenue are already declared above
-
-    // Check if successful_bookings table exists
-    const successfulBookingsExists = await query(`
-      SELECT COUNT(*) as count
-      FROM INFORMATION_SCHEMA.TABLES
-      WHERE TABLE_SCHEMA = DATABASE()
-      AND TABLE_NAME = 'successful_bookings'
-    `) as any[];
-
-    const hasSuccessfulBookings = successfulBookingsExists[0]?.count > 0;
-
-    if (hasSuccessfulBookings) {
-      // Get total revenue from all successful bookings (same as admin dashboard)
-      const totalRevenueResult = await query(`
-        SELECT COALESCE(SUM(transaction_amount), 0) as total
-        FROM successful_bookings
-        WHERE provider_id = ? AND payment_status = 'completed'
-      `, [providerId]) as any[];
-
-      totalRevenue = parseFloat(String(totalRevenueResult[0]?.total || '0'));
-
-      // Get current month's revenue (same as admin dashboard)
-      const currentMonthRevenueResult = await query(`
-        SELECT COALESCE(SUM(transaction_amount), 0) as total
-        FROM successful_bookings
-        WHERE provider_id = ? AND payment_status = 'completed'
-        AND MONTH(payment_date) = MONTH(CURRENT_DATE())
-        AND YEAR(payment_date) = YEAR(CURRENT_DATE())
-      `, [providerId]) as any[];
-
-      monthlyRevenue = parseFloat(String(currentMonthRevenueResult[0]?.total || '0'));
-      // Ensure monthlyRevenue is a valid number
-      if (isNaN(monthlyRevenue)) {
-        monthlyRevenue = 0;
-      }
-    }
-    // Fallback to service_bookings and bookings tables if successful_bookings doesn't exist
-    else {
-      if (hasServiceBookings) {
-        const serviceBookingsRevenue = await query(
-          `SELECT COALESCE(SUM(price), 0) as total_revenue
-           FROM service_bookings
-           WHERE provider_id = ? AND status = 'completed'`,
-          [providerId]
-        ) as any[];
-
-        totalRevenue += serviceBookingsRevenue[0]?.total_revenue || 0;
-
-        // Get monthly revenue from service_bookings
-        const monthlyServiceBookingsRevenue = await query(
-          `SELECT COALESCE(SUM(price), 0) as total_revenue
-           FROM service_bookings
-           WHERE provider_id = ? AND status = 'completed'
-           AND MONTH(created_at) = MONTH(CURRENT_DATE())
-           AND YEAR(created_at) = YEAR(CURRENT_DATE())`,
-          [providerId]
-        ) as any[];
-
-        monthlyRevenue += monthlyServiceBookingsRevenue[0]?.total_revenue || 0;
-        // Ensure monthlyRevenue is a valid number
-        if (isNaN(monthlyRevenue)) {
-          monthlyRevenue = 0;
-        }
-      }
-
-      if (hasBookings) {
-        const bookingsRevenue = await query(
-          `SELECT COALESCE(SUM(b.total_price), 0) as total_revenue
-           FROM bookings b
-           WHERE b.provider_id = ? AND b.status = 'completed'`,
-          [providerId]
-        ) as any[];
-
-        totalRevenue += bookingsRevenue[0]?.total_revenue || 0;
-
-        // Get monthly revenue from bookings
-        const monthlyBookingsRevenue = await query(
-          `SELECT COALESCE(SUM(b.total_price), 0) as total_revenue
-           FROM bookings b
-           WHERE b.provider_id = ? AND b.status = 'completed'
-           AND MONTH(b.created_at) = MONTH(CURRENT_DATE())
-           AND YEAR(b.created_at) = YEAR(CURRENT_DATE())`,
-          [providerId]
-        ) as any[];
-
-        monthlyRevenue += monthlyBookingsRevenue[0]?.total_revenue || 0;
-        // Ensure monthlyRevenue is a valid number
-        if (isNaN(monthlyRevenue)) {
-          monthlyRevenue = 0;
-        }
-      }
-    }
+    // Revenue is already calculated using standardized function above
 
     // 2. Get new clients count (last 30 days unique users)
     // Note: newClients is already declared above

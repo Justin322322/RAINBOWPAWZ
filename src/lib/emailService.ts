@@ -127,7 +127,7 @@ export const sendBookingStatusUpdateEmail = async (
     bookingTime: string;
     petName: string;
     bookingId: string | number;
-    status: 'confirmed' | 'completed' | 'cancelled';
+    status: 'pending' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled';
     notes?: string;
   },
   useQueue = true
