@@ -26,7 +26,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       FROM
         ${tableName}
       WHERE
-        id = ?
+        provider_id = ?
     `, [businessId]) as any[];
 
 

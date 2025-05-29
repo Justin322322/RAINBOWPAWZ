@@ -196,7 +196,7 @@ export async function POST(request: NextRequest) {
               // Mark existing restrictions as inactive
               await query(`
                 UPDATE user_restrictions
-                SET is_active = 0, updated_at = NOW()
+                SET is_active = 0
                 WHERE user_id = ? AND is_active = 1
               `, [userId]);
             }
@@ -255,7 +255,7 @@ export async function POST(request: NextRequest) {
 
       if (tableExists) {
         await query(`
-          INSERT INTO admin_logs (action, target_table, target_id, admin_id, details)
+          INSERT INTO admin_logs (action, entity_type, entity_id, admin_id, details)
           VALUES (?, ?, ?, ?, ?)
         `, [
           action === 'restrict' ? 'restrict_business' : 'restore_business',

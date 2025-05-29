@@ -77,6 +77,9 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
   const [selectedAddOns, setSelectedAddOns] = useState<AddOn[]>([]);
   const [addOnsTotalPrice, setAddOnsTotalPrice] = useState<number>(0);
 
+  // Ref to prevent multiple submissions
+  const submissionInProgress = useRef(false);
+
   // Mock data for service providers and packages
   const serviceProviders = [
     {
@@ -147,6 +150,11 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
         return newErrors;
       });
     }
+  };
+
+  // Clear all validation errors (useful when user starts fresh interaction)
+  const clearAllValidationErrors = () => {
+    setValidationErrors({ formSubmitted: false });
   };
 
   // Validate a field and show toast if invalid
@@ -263,6 +271,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
 
   // Handle date and time selection with validation
   const handleDateTimeSelected = (date: string, timeSlot: any | null) => {
+    console.log('handleDateTimeSelected called:', { date, timeSlot: timeSlot ? `${timeSlot.start}-${timeSlot.end}` : null });
 
     // Only update state if we have valid values
     if (date) {
@@ -270,20 +279,28 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
       clearValidationError('selectedDate');
     }
 
-    // Only update time slot if one is provided
-    // This prevents clearing the time slot when just the date is selected
+    // Handle time slot selection
     if (timeSlot) {
+      // User has selected a specific time slot
       setSelectedTimeSlot(timeSlot);
       clearValidationError('selectedTimeSlot');
-    }
 
-    // Always clear any date/time related errors when the user is making selections
-    if (error && (
-      error.includes("date") ||
-      error.includes("time slot") ||
-      error.includes("Missing booking information")
-    )) {
-      setError(null);
+      // Clear any general errors when user makes a complete selection
+      if (error && (
+        error.includes("date") ||
+        error.includes("time slot") ||
+        error.includes("Missing booking information")
+      )) {
+        setError(null);
+      }
+    } else if (date && !timeSlot) {
+      // User has selected a date but no time slot yet (normal during date selection)
+      // Don't clear the existing time slot unless it's for a different date
+      if (selectedTimeSlot && selectedDate && selectedDate !== date) {
+        // Date changed, clear the time slot
+        setSelectedTimeSlot(null);
+      }
+      // Don't trigger validation errors here - user is still in selection process
     }
 
     // If date is selected but time slot is null, the user is in the middle of the selection process
@@ -462,6 +479,12 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Prevent multiple submissions
+    if (submissionInProgress.current || isProcessing) {
+      showToast('Please wait, your booking is being processed...', 'warning');
+      return;
+    }
+
     // Mark the form as submitted to show all validation errors
     setValidationErrors(prev => ({ ...prev, formSubmitted: true }));
 
@@ -492,6 +515,8 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
       return;
     }
 
+    // Set submission in progress
+    submissionInProgress.current = true;
     setIsProcessing(true);
     setError(null);
 
@@ -590,8 +615,8 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
         }
       }
 
-      // Prepare booking data
-      const bookingData = {
+      // Prepare booking data for submission
+      const bookingSubmissionData = {
         userId: userData.id,
         providerId: providerId || 0,
         packageId: packageId || 0,
@@ -626,7 +651,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(bookingData)
+        body: JSON.stringify(bookingSubmissionData)
       });
 
       let responseData;
@@ -648,21 +673,90 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
         throw responseError;
       }
 
+      // Store the booking ID for reference
+      const bookingId = responseData.bookingId;
+
+      // For GCash payments, create payment intent and redirect to payment
+      if (paymentMethod === 'gcash') {
+        try {
+          const paymentResponse = await fetch('/api/payments/create-intent', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              booking_id: bookingId,
+              amount: calculateTotalPrice(),
+              currency: 'PHP',
+              payment_method: 'gcash',
+              description: `Payment for ${bookingData?.package?.name || 'Cremation Service'} - ${petName}`,
+              customer_info: {
+                name: `${userData.first_name} ${userData.last_name}`,
+                email: userData.email,
+                phone: userData.phone
+              }
+            })
+          });
+
+          const paymentData = await paymentResponse.json();
+
+          if (!paymentResponse.ok) {
+            throw new Error(paymentData.details || paymentData.error || 'Payment creation failed');
+          }
+
+          if (paymentData.success && paymentData.data.checkout_url) {
+            // Clear cart if booking was from cart
+            if (searchParams.get('fromCart') === 'true') {
+              try {
+                removeItem(items[0]?.id);
+              } catch (cartError) {
+                // Don't fail the checkout if cart clearing fails
+              }
+            }
+
+            // Show success toast for booking creation
+            showToast('Booking created! Redirecting to payment...', 'success');
+
+            // Redirect to GCash payment page
+            window.location.href = paymentData.data.checkout_url;
+            return; // Exit early to prevent further execution
+          } else {
+            throw new Error('No checkout URL received from payment provider');
+          }
+        } catch (paymentError) {
+          console.error('Payment creation error:', paymentError);
+          const errorMessage = paymentError instanceof Error ? paymentError.message : 'Payment setup failed';
+
+          // Check if it's the "Payment already processed" error
+          if (errorMessage.includes('Payment already processed')) {
+            showToast('This booking has already been paid for. Redirecting to your bookings...', 'info');
+            setTimeout(() => {
+              router.push('/user/furparent_dashboard/bookings?bookingId=' + bookingId);
+            }, 2000);
+            return;
+          }
+
+          showToast(`Booking created but payment setup failed: ${errorMessage}`, 'warning');
+
+          // Still redirect to bookings page so user can retry payment later
+          setTimeout(() => {
+            router.push('/user/furparent_dashboard/bookings?bookingId=' + bookingId + '&payment_error=true');
+          }, 2000);
+          return;
+        }
+      }
+
+      // For cash payments, show completion message
       // Clear cart if booking was from cart
       if (searchParams.get('fromCart') === 'true') {
-        // Clear the cart using the clearCart function from CartContext
         try {
-          removeItem(items[0]?.id); // Remove the processed item
-          // If we want to clear the entire cart, we would use clearCart() instead
+          removeItem(items[0]?.id);
         } catch (cartError) {
           // Don't fail the checkout if cart clearing fails
         }
       }
 
       setCheckoutComplete(true);
-
-      // Store the booking ID for reference in the success message
-      const bookingId = responseData.bookingId;
 
       // Show success toast
       showToast('Booking completed successfully!', 'success');
@@ -677,6 +771,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
       setError(errorMessage);
       showToast(errorMessage, 'error');
     } finally {
+      submissionInProgress.current = false;
       setIsProcessing(false);
     }
   };
@@ -989,7 +1084,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                         />
                       </div>
 
-                      {/* Validation error messages for date/time selection */}
+                      {/* Validation error messages for date/time selection - only show when form is submitted */}
                       {(validationErrors.selectedDate || validationErrors.selectedTimeSlot) && validationErrors.formSubmitted && (
                         <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-md">
                           <div className="flex">

@@ -375,12 +375,16 @@ async function ensureEmailQueueTable(): Promise<void> {
  */
 async function recordEmailSent(recipient: string, subject: string, messageId: string): Promise<void> {
   try {
+    // Ensure email tables exist before trying to insert
+    await ensureEmailQueueTable();
+
     // Record the email
     await query(
       'INSERT INTO email_log (recipient, subject, message_id) VALUES (?, ?, ?)',
       [recipient, subject, messageId]
     );
   } catch (error) {
+    console.error('Failed to record email in log:', error);
     // Don't throw the error - we don't want logging failures to affect email sending
   }
 }

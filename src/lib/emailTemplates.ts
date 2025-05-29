@@ -374,48 +374,63 @@ function createTimelineHtml(currentStatus: 'confirmed' | 'in_progress' | 'comple
   return `
     <div style="margin: 30px 0; padding: 20px; background-color: #f8fafc; border-radius: 8px;">
       <h3 style="margin-top: 0; color: #1f2937; text-align: center;">Service Progress</h3>
-      <div style="display: flex; justify-content: space-between; align-items: center; max-width: 600px; margin: 0 auto;">
-        ${steps.map((step, index) => {
-          const isCompleted = index <= currentIndex;
-          const isCurrent = index === currentIndex;
 
-          return `
-            <div style="flex: 1; text-align: center; position: relative;">
-              <div style="
-                width: 40px;
-                height: 40px;
-                border-radius: 50%;
-                margin: 0 auto 10px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                background-color: ${isCompleted ? '#10b981' : '#e5e7eb'};
-                color: ${isCompleted ? 'white' : '#6b7280'};
-                font-weight: bold;
-                ${isCurrent ? 'box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.2);' : ''}
-              ">
-                ${isCompleted ? '✓' : index + 1}
-              </div>
-              <div style="font-size: 14px; font-weight: 600; color: ${isCompleted ? '#10b981' : '#6b7280'}; margin-bottom: 5px;">
-                ${step.title}
-              </div>
-              <div style="font-size: 12px; color: #6b7280;">
-                ${step.description}
-              </div>
-              ${index < steps.length - 1 ? `
+      <!-- Progress Line Background -->
+      <div style="position: relative; max-width: 500px; margin: 0 auto;">
+        <div style="position: absolute; top: 20px; left: 60px; right: 60px; height: 2px; background-color: #e5e7eb; z-index: 1;"></div>
+
+        <!-- Progress Line Fill -->
+        <div style="
+          position: absolute;
+          top: 20px;
+          left: 60px;
+          height: 2px;
+          background-color: #10b981;
+          z-index: 2;
+          width: ${currentIndex > 0 ? (currentIndex / (steps.length - 1)) * 100 : 0}%;
+          max-width: calc(100% - 120px);
+        "></div>
+
+        <!-- Steps Container -->
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; position: relative; z-index: 3;">
+          ${steps.map((step, index) => {
+            const isCompleted = index <= currentIndex;
+            const isCurrent = index === currentIndex;
+
+            return `
+              <div style="flex: 1; text-align: center; max-width: 150px;">
+                <!-- Circle -->
                 <div style="
-                  position: absolute;
-                  top: 20px;
-                  left: calc(50% + 20px);
-                  width: calc(100% - 40px);
-                  height: 2px;
-                  background-color: ${index < currentIndex ? '#10b981' : '#e5e7eb'};
-                  z-index: -1;
-                "></div>
-              ` : ''}
-            </div>
-          `;
-        }).join('')}
+                  width: 40px;
+                  height: 40px;
+                  border-radius: 50%;
+                  margin: 0 auto 15px;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  background-color: ${isCompleted ? '#10b981' : '#ffffff'};
+                  color: ${isCompleted ? 'white' : '#6b7280'};
+                  font-weight: bold;
+                  font-size: 14px;
+                  border: ${isCompleted ? 'none' : '2px solid #d1d5db'};
+                  ${isCurrent && !isCompleted ? 'box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.2);' : ''}
+                  position: relative;
+                  z-index: 10;
+                ">
+                  ${isCompleted ? '✓' : index + 1}
+                </div>
+
+                <!-- Text -->
+                <div style="font-size: 14px; font-weight: 600; color: ${isCompleted ? '#10b981' : '#6b7280'}; margin-bottom: 5px; line-height: 1.2;">
+                  ${step.title}
+                </div>
+                <div style="font-size: 12px; color: #6b7280; line-height: 1.3;">
+                  ${step.description}
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
       </div>
     </div>
   `;

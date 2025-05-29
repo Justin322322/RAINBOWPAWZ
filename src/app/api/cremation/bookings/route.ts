@@ -502,9 +502,9 @@ export async function POST(request: NextRequest) {
     if (columns.includes('payment_status')) {
       availableColumns.push('payment_status');
       placeholders.push('?');
-      // If payment method is GCash, automatically set payment status to 'paid'
-      // Otherwise, set it to 'not_paid' by default
-      values.push(paymentMethod === 'gcash' ? 'paid' : 'not_paid');
+      // Always set payment status to 'not_paid' initially
+      // Payment status will be updated to 'paid' after successful payment processing
+      values.push('not_paid');
     }
 
     if (columns.includes('delivery_option')) {

@@ -164,7 +164,7 @@ export async function GET(request: NextRequest) {
               const providerResult = await query(`
                 SELECT name, address, city
                 FROM service_providers
-                WHERE id = ?
+                WHERE provider_id = ?
                 LIMIT 1
               `, [booking.provider_id]) as any[];
 

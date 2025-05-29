@@ -325,6 +325,13 @@ export default function CremationNavbar({
                   >
                     Profile
                   </Link>
+                  <Link
+                    href="/cremation/settings"
+                    className="block px-4 py-2 text-sm modern-text text-gray-700 hover:bg-gray-100"
+                    onClick={() => handleNavItemClick('settings')}
+                  >
+                    Settings
+                  </Link>
                   <div className="border-t border-gray-100"></div>
                   <button
                     className="block w-full text-left px-4 py-2 text-sm modern-text text-gray-700 hover:bg-gray-100 font-medium"

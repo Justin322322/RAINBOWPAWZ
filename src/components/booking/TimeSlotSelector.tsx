@@ -232,21 +232,28 @@ export default function TimeSlotSelector({
 
   const handleDateSelect = (dateString: string, timeSlots: TimeSlot[]) => {
     console.log(`TimeSlotSelector: Date selected: ${dateString} with ${timeSlots.length} time slots`);
-    setSelectedDateState(dateString);
-    setSelectedTimeSlotState(null); // Clear time slot selection when date changes
 
     // Clear any local error when a date is selected
     if (error) setError(null);
 
     // Check if this date has time slots
     const hasTimeSlots = timeSlots && timeSlots.length > 0;
+
+    // Update internal state
+    setSelectedDateState(dateString);
+
+    // Only clear time slot if selecting a different date
+    if (selectedDateState !== dateString) {
+      setSelectedTimeSlotState(null);
+    }
+
     if (hasTimeSlots) {
       console.log(`TimeSlotSelector: Date ${dateString} has ${timeSlots.length} time slots available`);
-      // We don't notify the parent yet to prevent validation errors
-      // The parent will be notified when a time slot is selected
+      // Clear any previous error when a valid date with slots is selected
+      setError(null);
 
-      // But we do notify the parent about the date selection
-      onDateTimeSelected(dateString, null);
+      // Notify the parent about the date selection (without clearing existing time slot)
+      onDateTimeSelected(dateString, selectedDateState === dateString ? selectedTimeSlotState : null);
     } else {
       console.log(`TimeSlotSelector: Date ${dateString} has no time slots available`);
 
@@ -255,7 +262,9 @@ export default function TimeSlotSelector({
         setError('This date has no available time slots. Please select another date.');
       }
 
-      // Still notify the parent about the date selection
+      // Clear time slot since no slots are available for this date
+      setSelectedTimeSlotState(null);
+      // Notify the parent about the date selection
       onDateTimeSelected(dateString, null);
     }
   };

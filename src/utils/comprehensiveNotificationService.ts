@@ -214,7 +214,8 @@ export async function createPaymentNotification(
         return { success: false, error: 'Invalid payment notification type' };
     }
 
-    return await createNotification({
+    // Create in-app notification
+    const notificationResult = await createNotification({
       userId: user_id,
       title,
       message,
@@ -222,6 +223,13 @@ export async function createPaymentNotification(
       link,
       shouldSendEmail: ['payment_confirmed', 'payment_failed', 'payment_refunded'].includes(paymentStatus)
     });
+
+    // Send SMS notification for important payment events
+    if (['payment_confirmed', 'payment_failed'].includes(paymentStatus)) {
+      await sendPaymentSMSNotification(bookingDetails, paymentStatus, paymentDetails);
+    }
+
+    return notificationResult;
   } catch (error) {
     console.error('Error creating payment notification:', error);
     return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
@@ -395,6 +403,77 @@ async function sendBookingEmailNotification(
     }
   } catch (error) {
     console.error('Error sending booking email notification:', error);
+  }
+}
+
+/**
+ * Helper function to send payment SMS notifications
+ */
+async function sendPaymentSMSNotification(
+  bookingDetails: any,
+  paymentStatus: PaymentNotificationType,
+  paymentDetails?: Record<string, any>
+): Promise<void> {
+  try {
+    // Get user phone number and SMS preferences
+    const userResult = await query(
+      'SELECT phone, first_name, sms_notifications FROM users WHERE user_id = ?',
+      [bookingDetails.user_id]
+    ) as any[];
+
+    if (!userResult || userResult.length === 0) {
+      console.warn('User not found for payment SMS notification');
+      return;
+    }
+
+    const { phone, first_name, sms_notifications } = userResult[0];
+
+    // Check if user has SMS notifications enabled
+    if (!sms_notifications) {
+      console.log('SMS notifications disabled for user:', bookingDetails.user_id);
+      return;
+    }
+
+    // Check if user has a phone number
+    if (!phone) {
+      console.log('No phone number found for user:', bookingDetails.user_id);
+      return;
+    }
+
+    let smsMessage = '';
+
+    switch (paymentStatus) {
+      case 'payment_confirmed':
+        smsMessage = `Hi ${first_name}! Your payment of ₱${bookingDetails.total_amount || bookingDetails.price} for ${bookingDetails.pet_name}'s ${bookingDetails.service_name} has been confirmed. Booking ID: #${bookingDetails.id}. Thank you for choosing Rainbow Paws!`;
+        break;
+
+      case 'payment_failed':
+        smsMessage = `Hi ${first_name}, your payment for ${bookingDetails.pet_name}'s ${bookingDetails.service_name} could not be processed. Please retry payment or contact support. Booking ID: #${bookingDetails.id}. Rainbow Paws`;
+        break;
+
+      case 'payment_refunded':
+        smsMessage = `Hi ${first_name}, your payment of ₱${bookingDetails.total_amount || bookingDetails.price} for booking #${bookingDetails.id} has been refunded. Please allow 3-5 business days for processing. Rainbow Paws`;
+        break;
+
+      default:
+        return; // No SMS for other payment statuses
+    }
+
+    if (smsMessage) {
+      const smsResult = await sendSMS({
+        to: phone,
+        message: smsMessage
+      });
+
+      if (smsResult.success) {
+        console.log(`Payment SMS sent successfully to ${phone} for booking ${bookingDetails.id}`);
+      } else {
+        console.error(`Failed to send payment SMS: ${smsResult.error}`);
+      }
+    }
+  } catch (error) {
+    console.error('Error sending payment SMS notification:', error);
+    // Don't throw error to avoid breaking the main notification flow
   }
 }
 
