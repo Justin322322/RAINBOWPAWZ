@@ -38,7 +38,7 @@
     "next": "15.3.2",
     "next-auth": "^4.24.11",
     "node-fetch": "^2.7.0",
-    "nodemailer": "^7.0.3",
+    "nodemailer": "^6.10.1",
     "react": "^19",
     "react-dom": "^19",
     "react-hot-toast": "^2.5.2",
