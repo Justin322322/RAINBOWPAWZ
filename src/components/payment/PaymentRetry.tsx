@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { toast } from 'react-hot-toast';
 import { ArrowPathIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 
@@ -28,19 +28,14 @@ export default function PaymentRetry({
   const [lastError, setLastError] = useState<string | null>(null);
   const [paymentStatus, setPaymentStatus] = useState<string | null>(null);
 
-  useEffect(() => {
-    // Check current payment status on component mount
-    checkPaymentStatus();
-  }, [bookingId]);
-
-  const checkPaymentStatus = async () => {
+  const checkPaymentStatus = useCallback(async () => {
     try {
       const response = await fetch(`/api/payments/status?booking_id=${bookingId}`);
       const data = await response.json();
 
       if (response.ok && data.success) {
         setPaymentStatus(data.data.status);
-        
+
         if (data.data.status === 'succeeded') {
           toast.success('Payment already completed!');
           if (onSuccess && data.data.transaction_id) {
@@ -53,7 +48,12 @@ export default function PaymentRetry({
     } catch (error) {
       console.error('Error checking payment status:', error);
     }
-  };
+  }, [bookingId, onSuccess]);
+
+  useEffect(() => {
+    // Check current payment status on component mount
+    checkPaymentStatus();
+  }, [checkPaymentStatus]);
 
   const retryPayment = async () => {
     if (retryCount >= maxRetries) {
@@ -95,10 +95,10 @@ export default function PaymentRetry({
 
         if (data.success && data.data.checkout_url) {
           toast.success('Redirecting to payment...');
-          
+
           // Redirect to GCash payment page
           window.location.href = data.data.checkout_url;
-          
+
           // Call success callback with transaction ID
           if (onSuccess && data.data.transaction_id) {
             onSuccess(data.data.transaction_id);
@@ -119,7 +119,7 @@ export default function PaymentRetry({
       const errorMessage = error instanceof Error ? error.message : 'Payment retry failed';
       setLastError(errorMessage);
       toast.error(`Retry ${retryCount} failed: ${errorMessage}`);
-      
+
       if (onError) {
         onError(errorMessage);
       }

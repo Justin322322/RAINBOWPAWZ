@@ -120,9 +120,11 @@ export default function AdminNavbar({ activePage: propActivePage, userName = 'Ad
               >
                 <div className="bg-white rounded-full h-8 w-8 flex items-center justify-center mr-2 overflow-hidden">
                   {profilePicture ? (
-                    <img
+                    <Image
                       src={getProfilePictureUrl(profilePicture)}
                       alt="Profile"
+                      width={32}
+                      height={32}
                       className="h-full w-full object-cover"
                       onError={(e) => {
                         handleImageError(e, '/bg_4.png');

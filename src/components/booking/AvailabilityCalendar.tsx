@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   CalendarIcon,
   ClockIcon,
@@ -95,53 +95,8 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
   useEffect(() => {
   }, [availabilityData]);
 
-  useEffect(() => {
-    if (providerId && providerId > 0) {
-      // Clear any existing data first to ensure we get fresh data
-      setAvailabilityData([]);
-      fetchAvailabilityData(true);
-      fetchProviderPackages();
-    } else {
-      setAvailabilityData([]);
-      setAvailablePackages([]);
-    }
-  }, [providerId]);
-
-  useEffect(() => {
-    if (providerId && providerId > 0) {
-      fetchAvailabilityData(false); // Don't clear existing data
-    }
-  }, [currentMonth]);
-
-  useEffect(() => {
-    if (showSuccessMessage) {
-      const timer = setTimeout(() => {
-        setShowSuccessMessage(false);
-      }, 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [showSuccessMessage]);
-
-  // Add effect to refetch data when needed
-  useEffect(() => {
-    // Set up periodic refresh for data synchronization
-    const refreshInterval = setInterval(() => {
-      if (providerId && providerId > 0) {
-        fetchAvailabilityData();
-      }
-    }, 60000); // Refresh every 60 seconds
-
-    return () => clearInterval(refreshInterval);
-  }, [providerId]);
-
-  // Add effect to cache data whenever it changes
-  useEffect(() => {
-    if (typeof window !== "undefined" && providerId && availabilityData.length > 0) {
-      localStorage.setItem(`availabilityData_${providerId}`, JSON.stringify(availabilityData));
-    }
-  }, [availabilityData, providerId]);
-
-  const fetchProviderPackages = async () => {
+  // Define functions before useEffect hooks that reference them
+  const fetchProviderPackages = useCallback(async () => {
     if (!providerId || providerId <= 0) return;
     try {
       setLoadingPackages(true);
@@ -170,9 +125,9 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
     } finally {
       setLoadingPackages(false);
     }
-  };
+  }, [providerId]);
 
-  const fetchAvailabilityData = async (clearExisting = true) => {
+  const fetchAvailabilityData = useCallback(async (clearExisting = true) => {
     if (!providerId || providerId <= 0) {
       setError("Cannot fetch availability without a valid Provider ID.");
       if (clearExisting) setAvailabilityData([]);
@@ -213,8 +168,6 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
         'Pragma': 'no-cache',
         'Expires': '0'
       });
-
-
 
       // Using fetch with more robust options
       const response = await fetch(url, {
@@ -261,12 +214,10 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
           };
         });
 
-
         // Log overall availability stats
         const availableDays = validatedData.filter((day: DayAvailability) => day.isAvailable).length;
         const daysWithTimeSlots = validatedData.filter((day: DayAvailability) => day.timeSlots && day.timeSlots.length > 0).length;
         const totalTimeSlots = validatedData.reduce((total: number, day: DayAvailability) => total + (day.timeSlots ? day.timeSlots.length : 0), 0);
-
 
         setAvailabilityData(prevData => {
           // If clearExisting is true, just use the new data
@@ -323,7 +274,60 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
       setLoading(false);
       forceCalendarRefresh(); // Always force refresh calendar after data fetching completes
     }
+  }, [providerId, currentMonth, onAvailabilityChange]);
+
+  // Force calendar to re-render
+  const forceCalendarRefresh = () => {
+    setCalendarKey(prev => prev + 1);
   };
+
+  useEffect(() => {
+    if (providerId && providerId > 0) {
+      // Clear any existing data first to ensure we get fresh data
+      setAvailabilityData([]);
+      fetchAvailabilityData(true);
+      fetchProviderPackages();
+    } else {
+      setAvailabilityData([]);
+      setAvailablePackages([]);
+    }
+  }, [providerId, fetchAvailabilityData, fetchProviderPackages]);
+
+  useEffect(() => {
+    if (providerId && providerId > 0) {
+      fetchAvailabilityData(false); // Don't clear existing data
+    }
+  }, [currentMonth, providerId, fetchAvailabilityData]);
+
+  useEffect(() => {
+    if (showSuccessMessage) {
+      const timer = setTimeout(() => {
+        setShowSuccessMessage(false);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [showSuccessMessage]);
+
+  // Add effect to refetch data when needed
+  useEffect(() => {
+    // Set up periodic refresh for data synchronization
+    const refreshInterval = setInterval(() => {
+      if (providerId && providerId > 0) {
+        fetchAvailabilityData();
+      }
+    }, 60000); // Refresh every 60 seconds
+
+    return () => clearInterval(refreshInterval);
+  }, [providerId, fetchAvailabilityData]);
+
+  // Add effect to cache data whenever it changes
+  useEffect(() => {
+    if (typeof window !== "undefined" && providerId && availabilityData.length > 0) {
+      localStorage.setItem(`availabilityData_${providerId}`, JSON.stringify(availabilityData));
+    }
+  }, [availabilityData, providerId]);
+
+
 
   const saveAvailability = async (updatedDayAvailability: DayAvailability) => {
     if (!providerId || providerId <= 0) {
@@ -521,10 +525,7 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
     saveAvailability(updatedDay);
   };
 
-  // Force calendar to re-render
-  const forceCalendarRefresh = () => {
-    setCalendarKey(prev => prev + 1);
-  };
+
 
   const handleAddTimeSlot = () => {
     if (!selectedDate) {

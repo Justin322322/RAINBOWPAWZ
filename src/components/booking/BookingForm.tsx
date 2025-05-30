@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/context/ToastContext';
 import {
@@ -59,26 +59,8 @@ export default function BookingForm({
   const [formStep, setFormStep] = useState(1);
   const [formValid, setFormValid] = useState(false);
 
-  // Fetch package details if packageId is provided
-  useEffect(() => {
-    if (packageId) {
-      fetchPackageDetails(packageId);
-    } else {
-      fetchAvailablePackages();
-    }
-  }, [packageId]);
-
-  // Update form validation state
-  useEffect(() => {
-    validateForm();
-  }, [petName, petType, selectedPackage, deliveryOption, deliveryAddress]);
-
-  // Update total price whenever relevant fields change
-  useEffect(() => {
-    calculateTotalPrice();
-  }, [basePrice, deliveryOption, deliveryDistance, addOnsTotalPrice]);
-
-  const fetchPackageDetails = async (id: number) => {
+  // Wrap functions in useCallback to prevent unnecessary re-renders
+  const fetchPackageDetails = useCallback(async (id: number) => {
     try {
       setLoading(true);
       const response = await fetch(`/api/packages/${id}`);
@@ -95,9 +77,9 @@ export default function BookingForm({
     } finally {
       setLoading(false);
     }
-  };
+  }, [showToast]);
 
-  const fetchAvailablePackages = async () => {
+  const fetchAvailablePackages = useCallback(async () => {
     try {
       setLoading(true);
       const response = await fetch(`/api/packages/available-images?providerId=${providerId}`);
@@ -118,7 +100,52 @@ export default function BookingForm({
     } finally {
       setLoading(false);
     }
-  };
+  }, [providerId, showToast]);
+
+  const validateForm = useCallback(() => {
+    const isValid =
+      petName.trim() !== '' &&
+      petType.trim() !== '' &&
+      selectedPackage !== null &&
+      (deliveryOption !== 'delivery' || (deliveryOption === 'delivery' && deliveryAddress.trim() !== ''));
+
+    setFormValid(isValid);
+  }, [petName, petType, selectedPackage, deliveryOption, deliveryAddress]);
+
+  const calculateTotalPrice = useCallback(() => {
+    let total = basePrice;
+
+    // Add delivery fee if delivery is selected
+    if (deliveryOption === 'delivery') {
+      total += deliveryFee;
+    }
+
+    // Add the total price of selected add-ons
+    total += addOnsTotalPrice;
+
+    setTotalPrice(total);
+  }, [basePrice, deliveryOption, deliveryFee, addOnsTotalPrice]);
+
+  // Fetch package details if packageId is provided
+  useEffect(() => {
+    if (packageId) {
+      fetchPackageDetails(packageId);
+    } else {
+      fetchAvailablePackages();
+    }
+  }, [packageId, fetchPackageDetails, fetchAvailablePackages]);
+
+  // Update form validation state
+  useEffect(() => {
+    validateForm();
+  }, [validateForm]);
+
+  // Update total price whenever relevant fields change
+  useEffect(() => {
+    calculateTotalPrice();
+  }, [calculateTotalPrice]);
+
+
 
   const handlePetImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -168,29 +195,7 @@ export default function BookingForm({
     }
   };
 
-  const validateForm = () => {
-    const isValid =
-      petName.trim() !== '' &&
-      petType.trim() !== '' &&
-      selectedPackage !== null &&
-      (deliveryOption !== 'delivery' || (deliveryOption === 'delivery' && deliveryAddress.trim() !== ''));
 
-    setFormValid(isValid);
-  };
-
-  const calculateTotalPrice = () => {
-    let total = basePrice;
-
-    // Add delivery fee if delivery is selected
-    if (deliveryOption === 'delivery') {
-      total += deliveryFee;
-    }
-
-    // Add the total price of selected add-ons
-    total += addOnsTotalPrice;
-
-    setTotalPrice(total);
-  };
 
   const estimateDeliveryFee = async () => {
     if (!deliveryAddress || deliveryOption !== 'delivery') {

@@ -6,6 +6,7 @@ import { format } from 'date-fns';
 import { Dialog, Transition } from '@headlessui/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { getProductionImagePath } from '@/utils/imageUtils';
 import {
   ClockIcon,
@@ -1042,9 +1043,11 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
                             <div className="flex items-start space-x-4">
                               {selectedBooking.pet_image_url ? (
                                 <div className="flex-shrink-0">
-                                  <img
+                                  <Image
                                     src={getProductionImagePath(selectedBooking.pet_image_url)}
                                     alt={selectedBooking.pet_name || 'Pet'}
+                                    width={96}
+                                    height={96}
                                     className="h-24 w-24 object-cover rounded-lg shadow-sm border border-gray-200"
                                     onError={(e) => {
                                       const target = e.target as HTMLImageElement;

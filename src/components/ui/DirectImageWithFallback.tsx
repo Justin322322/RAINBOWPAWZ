@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
 
 interface DirectImageWithFallbackProps {
   src: string;
@@ -198,10 +199,11 @@ const DirectImageWithFallback = ({
   return (
     <div className="relative w-full h-full bg-gray-100">
       {!error && (
-        <img
+        <Image
           src={imgSrc}
           alt={alt}
-          className={className}
+          fill
+          className={className.replace('w-full h-full', '')}
           onLoad={() => {
             if (debug) {
               setDebugInfo(prev => ({

@@ -85,28 +85,18 @@ export async function GET(request: NextRequest) {
         pets: petsResult
       });
     } catch (dbError) {
-
-      // Return mock pets as fallback
+      console.error('Database error fetching pets:', dbError);
       return NextResponse.json({
-        pets: [
-          { id: 1, name: 'Max', species: 'Dog', breed: 'Golden Retriever', gender: 'Male', weight: 30, color: 'Golden' },
-          { id: 2, name: 'Luna', species: 'Cat', breed: 'Siamese', gender: 'Female', weight: 4.5, color: 'Cream' },
-          { id: 3, name: 'Buddy', species: 'Dog', breed: 'Labrador', gender: 'Male', weight: 32, color: 'Black' }
-        ],
-        note: 'Using mock data due to database error'
-      });
+        error: 'Database error',
+        message: 'Unable to fetch pets. Please try again later.'
+      }, { status: 500 });
     }
   } catch (error) {
-
-    // Return mock pets as fallback
+    console.error('General error in pets GET route:', error);
     return NextResponse.json({
-      pets: [
-        { id: 1, name: 'Max', species: 'Dog', breed: 'Golden Retriever', gender: 'Male', weight: 30, color: 'Golden' },
-        { id: 2, name: 'Luna', species: 'Cat', breed: 'Siamese', gender: 'Female', weight: 4.5, color: 'Cream' },
-        { id: 3, name: 'Buddy', species: 'Dog', breed: 'Labrador', gender: 'Male', weight: 32, color: 'Black' }
-      ],
-      note: 'Using mock data due to error'
-    });
+      error: 'Server error',
+      message: 'An unexpected error occurred. Please try again later.'
+    }, { status: 500 });
   }
 }
 

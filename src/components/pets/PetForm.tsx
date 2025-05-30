@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import Image from 'next/image';
 import { XMarkIcon, CheckIcon, PhotoIcon } from '@heroicons/react/24/outline';
 import { Button, Input, Textarea, SelectInput } from '@/components/ui';
 
@@ -114,10 +115,11 @@ const PetForm: React.FC<PetFormProps> = ({ pet, onSubmit, onCancel, isSubmitting
             onClick={handleImageClick}
           >
             {imagePreview ? (
-              <img
+              <Image
                 src={imagePreview.startsWith('data:') ? imagePreview : imagePreview.startsWith('/') ? imagePreview : `/${imagePreview}`}
                 alt="Pet preview"
-                className="w-full h-full object-cover"
+                fill
+                className="object-cover"
                 onError={(e) => {
                   const target = e.target as HTMLImageElement;
                   target.onerror = null; // Prevent infinite loop

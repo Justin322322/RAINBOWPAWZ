@@ -266,15 +266,19 @@ function AdminProfilePage({ adminData }: AdminProfileProps) {
           <div className="relative">
             <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-gray-200 bg-gray-100 flex items-center justify-center">
               {profilePicturePreview ? (
-                <img
+                <Image
                   src={profilePicturePreview}
                   alt="Profile Picture Preview"
+                  width={96}
+                  height={96}
                   className="w-full h-full object-cover"
                 />
               ) : profileData?.profile_picture ? (
-                <img
+                <Image
                   src={profileData.profile_picture}
                   alt="Profile Picture"
+                  width={96}
+                  height={96}
                   className="w-full h-full object-cover"
                   onError={(e) => {
                     console.error('Failed to load profile picture:', e.currentTarget.src);

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { CalendarIcon, ClockIcon, CheckIcon } from '@heroicons/react/24/outline';
 
 type TimeSlot = {
@@ -53,24 +53,7 @@ export default function TimeSlotSelector({
     }
   }, [selectedDate, selectedTimeSlot]);
 
-  // Fetch availability data when component mounts or provider/month changes
-  useEffect(() => {
-    if (providerId) {
-      fetchAvailabilityData();
-    }
-  }, [providerId, currentMonth]);
-
-  // Make sure we display time slots for the selected date on component load
-  useEffect(() => {
-    if (selectedDate && availabilityData.length > 0) {
-      const selectedDayData = availabilityData.find(day => day.date === selectedDate);
-      if (selectedDayData) {
-      } else {
-      }
-    }
-  }, [selectedDate, availabilityData]);
-
-  const fetchAvailabilityData = async () => {
+  const fetchAvailabilityData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -132,7 +115,24 @@ export default function TimeSlotSelector({
     } finally {
       setLoading(false);
     }
-  };
+  }, [providerId, currentMonth, selectedDateState]);
+
+  // Fetch availability data when component mounts or provider/month changes
+  useEffect(() => {
+    if (providerId) {
+      fetchAvailabilityData();
+    }
+  }, [providerId, fetchAvailabilityData]);
+
+  // Make sure we display time slots for the selected date on component load
+  useEffect(() => {
+    if (selectedDate && availabilityData.length > 0) {
+      const selectedDayData = availabilityData.find(day => day.date === selectedDate);
+      if (selectedDayData) {
+      } else {
+      }
+    }
+  }, [selectedDate, availabilityData]);
 
   // Get days in the current month for the calendar
   const getDaysInMonth = () => {

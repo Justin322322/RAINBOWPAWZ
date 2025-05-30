@@ -35,27 +35,27 @@ export function useDataFetching<T = any>({
   const [data, setData] = useState<T | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
-  
+
   // Get global loading context
   const { setLoading, setLoadingMessage, setLoadingSection } = useLoading();
 
   const fetchData = useCallback(async (options: { silent?: boolean } = {}) => {
     const { silent = false } = options;
-    
+
     if (!silent) {
       setIsLoading(true);
       setError(null);
-      
+
       if (showGlobalLoading) {
         setLoading(true);
         setLoadingMessage(loadingMessage);
       }
-      
+
       if (showSectionLoading) {
         setLoadingSection(sectionId);
       }
     }
-    
+
     try {
       const requestOptions: RequestInit = {
         method,
@@ -64,42 +64,42 @@ export function useDataFetching<T = any>({
           ...headers,
         },
       };
-      
+
       if (body && method !== 'GET') {
         requestOptions.body = JSON.stringify(body);
       }
-      
+
       const response = await fetch(url, requestOptions);
-      
+
       if (!response.ok) {
         throw new Error(`Error ${response.status}: ${response.statusText}`);
       }
-      
+
       const result = await response.json();
       setData(result);
-      
+
       if (onSuccess) {
         onSuccess(result);
       }
-      
+
       return result;
     } catch (err) {
       const error = err instanceof Error ? err : new Error(String(err));
       setError(error);
-      
+
       if (onError) {
         onError(error);
       }
-      
+
       return null;
     } finally {
       if (!silent) {
         setIsLoading(false);
-        
+
         if (showGlobalLoading) {
           setLoading(false);
         }
-        
+
         if (showSectionLoading) {
           setLoadingSection(null);
         }
@@ -111,7 +111,8 @@ export function useDataFetching<T = any>({
     if (!skipInitialFetch) {
       fetchData();
     }
-  }, [...dependencies, skipInitialFetch]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [...dependencies, skipInitialFetch, fetchData]);
 
   return { data, isLoading, error, fetchData, setData };
 }

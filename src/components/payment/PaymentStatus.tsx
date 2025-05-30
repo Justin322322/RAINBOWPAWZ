@@ -1,12 +1,12 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { 
-  CheckCircleIcon, 
-  ClockIcon, 
-  XCircleIcon, 
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  CheckCircleIcon,
+  ClockIcon,
+  XCircleIcon,
   ExclamationTriangleIcon,
-  ArrowPathIcon 
+  ArrowPathIcon
 } from '@heroicons/react/24/outline';
 
 interface PaymentStatusProps {
@@ -45,16 +45,7 @@ export default function PaymentStatus({
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
-  useEffect(() => {
-    fetchPaymentStatus();
-
-    if (autoRefresh) {
-      const interval = setInterval(fetchPaymentStatus, refreshInterval);
-      return () => clearInterval(interval);
-    }
-  }, [bookingId, autoRefresh, refreshInterval]);
-
-  const fetchPaymentStatus = async () => {
+  const fetchPaymentStatus = useCallback(async () => {
     try {
       setError(null);
       const response = await fetch(`/api/payments/status?booking_id=${bookingId}`);
@@ -80,7 +71,16 @@ export default function PaymentStatus({
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [bookingId, paymentData?.status, onStatusChange]);
+
+  useEffect(() => {
+    fetchPaymentStatus();
+
+    if (autoRefresh) {
+      const interval = setInterval(fetchPaymentStatus, refreshInterval);
+      return () => clearInterval(interval);
+    }
+  }, [fetchPaymentStatus, autoRefresh, refreshInterval]);
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -183,7 +183,7 @@ export default function PaymentStatus({
             </span>
           </div>
         </div>
-        
+
         {autoRefresh && (
           <button
             onClick={fetchPaymentStatus}

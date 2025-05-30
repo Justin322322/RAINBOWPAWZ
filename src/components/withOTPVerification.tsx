@@ -262,7 +262,7 @@ const withOTPVerification = <P extends object>(
       };
 
       checkAuth();
-    }, [router, hasShownOTPModal]);
+    }, [router, hasShownOTPModal, userData]);
 
     const handleVerificationSuccess = () => {
       // Update user data to reflect verification

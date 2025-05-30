@@ -11,10 +11,6 @@ interface LoginResponse {
 }
 
 export async function POST(request: Request) {
-  // Get the origin/host to identify if this is coming from port 3000
-  const origin = request.headers.get('origin') || '';
-  const host = request.headers.get('host') || '';
-  const isPort3000 = origin.includes(':3000') || host.includes(':3000');
 
 
   // Add CORS headers
@@ -114,17 +110,7 @@ export async function POST(request: Request) {
         }
 
         // Compare password with stored hash
-        let passwordMatch = await bcrypt.compare(password, user.password);
-
-        // Special handling for port 3000 where bcrypt might behave differently
-        if (!passwordMatch && isPort3000) {
-
-          // For development only - if the password starts with 'Test' and we're on port 3000
-          // This is a special case for development testing only
-          if (password === 'Test@123' && user.email.includes('admin')) {
-            passwordMatch = true;
-          }
-        }
+        const passwordMatch = await bcrypt.compare(password, user.password);
 
         if (passwordMatch) {
           // Remove password from the returned data

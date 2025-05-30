@@ -35,48 +35,52 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
   // Helper function to get/set cooldown in sessionStorage
   const cooldownKey = `otp_cooldown_${userId}`;
 
+  // Global variable to track if OTP has been sent for this user across all instances
+  // This helps prevent duplicate OTPs when multiple components are mounted/unmounted
+  const globalOtpSentKey = `global_otp_sent_${userId}`;
+
   // Check if we've already sent the initial OTP for this user
-  const hasInitialOtpBeenSent = (): boolean => {
+  const hasInitialOtpBeenSent = useCallback((): boolean => {
     try {
       return sessionStorage.getItem(initialOtpSentKey) === 'true';
     } catch (error) {
       return false;
     }
-  };
+  }, [initialOtpSentKey]);
 
   // Mark that we've sent the initial OTP
-  const markInitialOtpSent = (): void => {
+  const markInitialOtpSent = useCallback((): void => {
     try {
       // Store in both session storage (for current session) and local storage (for persistence)
       sessionStorage.setItem(initialOtpSentKey, 'true');
       window.localStorage.setItem(globalOtpSentKey, 'true');
     } catch (error) {
     }
-  };
+  }, [initialOtpSentKey, globalOtpSentKey]);
 
-  const getStoredCooldownEndTime = (): number | null => {
+  const getStoredCooldownEndTime = useCallback((): number | null => {
     try {
       const stored = sessionStorage.getItem(cooldownKey);
       return stored ? parseInt(stored) : null;
     } catch (error) {
       return null;
     }
-  };
+  }, [cooldownKey]);
 
-  const setStoredCooldownEndTime = (durationInSeconds: number) => {
+  const setStoredCooldownEndTime = useCallback((durationInSeconds: number) => {
     try {
       const endTime = Date.now() + (durationInSeconds * 1000);
       sessionStorage.setItem(cooldownKey, endTime.toString());
     } catch (error) {
     }
-  };
+  }, [cooldownKey]);
 
-  const clearStoredCooldownEndTime = () => {
+  const clearStoredCooldownEndTime = useCallback(() => {
     try {
       sessionStorage.removeItem(cooldownKey);
     } catch (error) {
     }
-  };
+  }, [cooldownKey]);
 
   // Initialize countdown timer from storage
   // This effect runs once when component mounts and isOpen changes
@@ -103,7 +107,7 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
         clearInterval(intervalId);
       };
     }
-  }, [isOpen]);
+  }, [isOpen, getStoredCooldownEndTime]);
 
   // Track if an OTP request is in progress
   const isGeneratingOtpRef = useRef(false);
@@ -168,34 +172,30 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
       // Reset the flag to allow future OTP generation
       isGeneratingOtpRef.current = false;
     }
-  }, [userId, userEmail]);
+  }, [userId, userEmail, setStoredCooldownEndTime, markInitialOtpSent]);
 
   // Initialize OTP sending (only once after login)
   // Using a ref to track initialization across renders
   const hasInitializedRef = useRef(false);
 
-  // Global variable to track if OTP has been sent for this user across all instances
-  // This helps prevent duplicate OTPs when multiple components are mounted/unmounted
-  const globalOtpSentKey = `global_otp_sent_${userId}`;
-
   // Check if OTP has been sent globally
-  const hasOtpBeenSentGlobally = (): boolean => {
+  const hasOtpBeenSentGlobally = useCallback((): boolean => {
     try {
       return window.localStorage.getItem(globalOtpSentKey) === 'true';
     } catch (error) {
       return false;
     }
-  };
+  }, [globalOtpSentKey]);
 
   // Mark OTP as sent globally
-  const markOtpSentGlobally = (): void => {
+  const markOtpSentGlobally = useCallback((): void => {
     try {
       window.localStorage.setItem(globalOtpSentKey, 'true');
       // Also set the session storage for backward compatibility
       sessionStorage.setItem(initialOtpSentKey, 'true');
     } catch (error) {
     }
-  };
+  }, [globalOtpSentKey, initialOtpSentKey]);
 
   useEffect(() => {
     // Only proceed if the modal is open and we haven't initialized yet
@@ -228,7 +228,7 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
       // Mark as initialized in state too
       setHasInitialized(true);
     }
-  }, [isOpen, generateOTP]);
+  }, [isOpen, generateOTP, hasOtpBeenSentGlobally, hasInitialOtpBeenSent, markOtpSentGlobally]);
 
   // Countdown timer effect to update stored countdown
   useEffect(() => {
@@ -249,7 +249,7 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
 
       return () => clearTimeout(timer);
     }
-  }, [resendCooldown]);
+  }, [resendCooldown, setStoredCooldownEndTime, clearStoredCooldownEndTime]);
 
   // Success animation timeout
   useEffect(() => {

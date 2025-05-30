@@ -85,7 +85,7 @@ export function usePackages({ userData }: UsePackagesProps) {
     } finally {
       setIsLoading(false);
     }
-  }, [userData, showToast]);
+  }, [providerId, showToast]);
 
   // Handle package deletion
   const handleDeleteClick = useCallback((packageId: number) => {
@@ -162,8 +162,7 @@ export function usePackages({ userData }: UsePackagesProps) {
   useEffect(() => {
     setIsLoading(true);
     fetchPackages();
-    // Only depend on providerId, not the entire fetchPackages function
-  }, [providerId]);
+  }, [fetchPackages]);
 
   // Filter packages based on search term and category (memoized)
   const filteredPackages = useCallback(() => {

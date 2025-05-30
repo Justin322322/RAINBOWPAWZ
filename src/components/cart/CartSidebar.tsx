@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { XMarkIcon, ShoppingCartIcon, TrashIcon, MinusIcon, PlusIcon } from '@heroicons/react/24/outline';
 import { useCart } from '@/contexts/CartContext';
@@ -17,13 +17,13 @@ const CartSidebar: React.FC<CartSidebarProps> = ({ isOpen, onClose }) => {
   const [isClosing, setIsClosing] = useState(false);
 
   // Handle closing animation
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     setIsClosing(true);
     setTimeout(() => {
       setIsClosing(false);
       onClose();
     }, 300);
-  };
+  }, [onClose]);
 
   // Close cart when clicking outside
   useEffect(() => {
@@ -36,7 +36,7 @@ const CartSidebar: React.FC<CartSidebarProps> = ({ isOpen, onClose }) => {
 
     document.addEventListener('click', handleOutsideClick);
     return () => document.removeEventListener('click', handleOutsideClick);
-  }, [isOpen]);
+  }, [isOpen, handleClose]);
 
   // Handle checkout
   const handleCheckout = () => {

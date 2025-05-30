@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import Modal from '@/components/Modal';
 import ReviewForm from './ReviewForm';
@@ -30,13 +30,7 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
   const [hasReview, setHasReview] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (isOpen && bookingId) {
-      checkReviewStatus();
-    }
-  }, [isOpen, bookingId]);
-
-  const checkReviewStatus = async () => {
+  const checkReviewStatus = useCallback(async () => {
     setIsLoading(true);
     setError(null);
 
@@ -54,7 +48,14 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [bookingId]);
+
+  // Check review status when modal opens
+  useEffect(() => {
+    if (isOpen && bookingId) {
+      checkReviewStatus();
+    }
+  }, [isOpen, bookingId, checkReviewStatus]);
 
   const handleSuccess = () => {
     setHasReview(true);

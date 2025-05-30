@@ -544,9 +544,9 @@ function CremationHistoryPage({ userData }: { userData: any }) {
                               alt={booking.petName || 'Pet'}
                               width={40}
                               height={40}
-                              onError={(e) => {
-                                // @ts-ignore - Next.js Image doesn't have src property on event target
-                                (e.target as HTMLImageElement).src = '/icons/pet-placeholder.png';
+                              onError={(e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+                                const target = e.target as HTMLImageElement;
+                                target.src = '/icons/pet-placeholder.png';
                               }}
                             />
                           ) : (

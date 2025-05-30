@@ -52,17 +52,18 @@ const PackageImage = ({ src, alt, fallbackText = 'No image available' }: Package
           priority
         />
       ) : useFallbackImg ? (
-        <img
+        <Image
           src={imgSrc}
           alt={alt}
-          className="w-full h-full object-cover"
+          fill
+          className="object-cover"
           onLoad={() => {
             setLoaded(true);
             setError(false);
           }}
           onError={() => {
             setError(true);
-            
+
             // Attempt to fetch the image to see server response
             fetch(imgSrc)
               .then(response => {
@@ -86,7 +87,7 @@ const PackageImage = ({ src, alt, fallbackText = 'No image available' }: Package
               <span className="text-xs text-gray-400 mt-1 max-w-full px-4 truncate">
                 {imgSrc}
               </span>
-              <button 
+              <button
                 className="mt-2 px-2 py-1 bg-gray-200 rounded text-xs text-gray-600 hover:bg-gray-300"
                 onClick={() => {
                   // Force refresh the image with a new timestamp
@@ -105,4 +106,4 @@ const PackageImage = ({ src, alt, fallbackText = 'No image available' }: Package
   );
 };
 
-export default PackageImage; 
+export default PackageImage;

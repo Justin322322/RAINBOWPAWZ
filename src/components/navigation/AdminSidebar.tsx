@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
@@ -56,7 +56,7 @@ export default function AdminSidebar({ activePage: propActivePage }: AdminSideba
   ];
 
   // User management subsections
-  const userManagementItems = [
+  const userManagementItems = useMemo(() => [
     {
       name: 'Cremation Centers',
       href: '/admin/users/cremation',
@@ -69,7 +69,7 @@ export default function AdminSidebar({ activePage: propActivePage }: AdminSideba
       icon: UsersIcon,
       id: 'furparents'
     }
-  ];
+  ], []);
 
   // Set current year on client side to avoid hydration mismatch
   useEffect(() => {

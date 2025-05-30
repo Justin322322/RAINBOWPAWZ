@@ -52,17 +52,27 @@ export const ProductionSafeImage: React.FC<ProductionSafeImageProps> = ({
   // Always use the API route in production for better reliability
   const finalSrc = error ? fallbackSrc : getProductionImagePath(imgSrc);
 
-  // Use a regular img tag for simplicity and consistent behavior
-  return (
-    <img
+  // Use Next.js Image component for better optimization
+  return fill ? (
+    <Image
       src={finalSrc}
       alt={alt}
+      fill
       className={`${className} ${loaded ? 'opacity-100' : 'opacity-0'} transition-opacity duration-300`}
-      width={width}
-      height={height}
       onError={handleError}
       onLoad={() => setLoaded(true)}
-      style={fill ? { objectFit: 'cover', width: '100%', height: '100%' } : undefined}
+      priority={priority}
+    />
+  ) : (
+    <Image
+      src={finalSrc}
+      alt={alt}
+      width={width || 400}
+      height={height || 300}
+      className={`${className} ${loaded ? 'opacity-100' : 'opacity-0'} transition-opacity duration-300`}
+      onError={handleError}
+      onLoad={() => setLoaded(true)}
+      priority={priority}
     />
   );
 };

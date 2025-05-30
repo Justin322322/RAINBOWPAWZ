@@ -1,4 +1,5 @@
 import React from 'react';
+import Image from 'next/image';
 import { PencilSquareIcon, TrashIcon } from '@heroicons/react/24/outline';
 
 interface PetCardProps {
@@ -26,12 +27,13 @@ const PetCard: React.FC<PetCardProps> = ({ pet, onEdit, onDelete }) => {
     <div className="border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow">
       <div className="flex flex-col sm:flex-row">
         {/* Pet Image */}
-        <div className="w-full sm:w-1/3 h-40 sm:h-auto">
+        <div className="w-full sm:w-1/3 h-40 sm:h-auto relative">
           {imagePath ? (
-            <img
+            <Image
               src={imagePath.startsWith('/') ? imagePath : `/${imagePath}`}
               alt={pet.name}
-              className="w-full h-full object-cover"
+              fill
+              className="object-cover"
               onError={(e) => {
                 const target = e.target as HTMLImageElement;
                 target.onerror = null; // Prevent infinite loop

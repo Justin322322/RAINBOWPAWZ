@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import CremationDashboardLayout from '@/components/navigation/CremationDashboardLayout';
 import withBusinessVerification from '@/components/withBusinessVerification';
 import { useToast } from '@/context/ToastContext';
@@ -23,6 +23,7 @@ import { getAuthToken, isBusiness } from '@/utils/auth';
 import { LoadingSpinner } from '@/app/admin/services/client';
 import { getImagePath } from '@/utils/imageUtils';
 import PhilippinePhoneInput from '@/components/ui/PhilippinePhoneInput';
+import Image from 'next/image';
 
 function CremationProfilePage({ userData }: { userData: any }) {
   // Password states
@@ -82,7 +83,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
   const { showToast } = useToast();
 
   // Define fetchProfileData function outside useEffect so it can be called elsewhere
-  const fetchProfileData = async (forceLoading = true) => {
+  const fetchProfileData = useCallback(async (forceLoading = true) => {
     try {
       // Check authentication before making the API call
       const authToken = getAuthToken();
@@ -213,7 +214,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
     } finally {
       setInitialLoading(false);
     }
-  };
+  }, [showToast]);
 
   // Check for showDocuments query parameter on page load
   useEffect(() => {
@@ -243,7 +244,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
     return () => {
       isMounted = false;
     };
-  }, []); // Remove showToast dependency to prevent unnecessary refetches
+  }, [fetchProfileData]); // Include fetchProfileData dependency
 
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -595,15 +596,19 @@ function CremationProfilePage({ userData }: { userData: any }) {
           <div className="relative">
             <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-gray-200 bg-gray-100 flex items-center justify-center">
               {profilePicturePreview ? (
-                <img
+                <Image
                   src={profilePicturePreview}
                   alt="Profile Picture Preview"
+                  width={96}
+                  height={96}
                   className="w-full h-full object-cover"
                 />
               ) : profileData?.profilePicturePath ? (
-                <img
+                <Image
                   src={getImagePath(profileData.profilePicturePath)}
                   alt="Profile Picture"
+                  width={96}
+                  height={96}
                   className="w-full h-full object-cover"
                   onError={(e) => {
                     console.error('Failed to load profile picture:', e.currentTarget.src);
@@ -1051,10 +1056,11 @@ function CremationProfilePage({ userData }: { userData: any }) {
               <div className="relative mb-3">
                 {profileData.documents.businessPermitPath ? (
                   <div className="aspect-w-16 aspect-h-9 bg-gray-100 rounded-md overflow-hidden">
-                      <img
+                      <Image
                         src={getImagePath(profileData.documents.businessPermitPath)}
                         alt="Business Permit"
-                        className="object-cover w-full h-full"
+                        fill
+                        className="object-cover"
                         onError={(e) => {
                           console.error('Failed to load Business Permit:', e.currentTarget.src);
                           // If image fails to load, try with the API route directly
@@ -1131,10 +1137,11 @@ function CremationProfilePage({ userData }: { userData: any }) {
               <div className="relative mb-3">
                 {profileData.documents.birCertificatePath ? (
                   <div className="aspect-w-16 aspect-h-9 bg-gray-100 rounded-md overflow-hidden">
-                      <img
+                      <Image
                         src={getImagePath(profileData.documents.birCertificatePath)}
                         alt="BIR Certificate"
-                        className="object-cover w-full h-full"
+                        fill
+                        className="object-cover"
                         onError={(e) => {
                           console.error('Failed to load BIR Certificate:', e.currentTarget.src);
                           // If image fails to load, try with the API route directly
@@ -1211,10 +1218,11 @@ function CremationProfilePage({ userData }: { userData: any }) {
               <div className="relative mb-3">
                 {profileData.documents.governmentIdPath ? (
                   <div className="aspect-w-16 aspect-h-9 bg-gray-100 rounded-md overflow-hidden">
-                      <img
+                      <Image
                         src={getImagePath(profileData.documents.governmentIdPath)}
                         alt="Government ID"
-                        className="object-cover w-full h-full"
+                        fill
+                        className="object-cover"
                         onError={(e) => {
                           console.error('Failed to load Government ID:', e.currentTarget.src);
                           // If image fails to load, try with the API route directly
@@ -1349,7 +1357,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
                     <div className="relative mb-3">
                       <div className="aspect-w-16 aspect-h-9 bg-gray-100 rounded-md overflow-hidden">
                         {documents.businessPermit.preview.startsWith('data:image') ? (
-                          <img src={documents.businessPermit.preview} alt="Preview" className="object-cover" />
+                          <Image src={documents.businessPermit.preview} alt="Preview" fill className="object-cover" />
                         ) : (
                           <div className="flex items-center justify-center h-full">
                             <DocumentIcon className="h-12 w-12 text-gray-400" />
@@ -1391,7 +1399,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
                     <div className="relative mb-3">
                       <div className="aspect-w-16 aspect-h-9 bg-gray-100 rounded-md overflow-hidden">
                         {documents.birCertificate.preview.startsWith('data:image') ? (
-                          <img src={documents.birCertificate.preview} alt="Preview" className="object-cover" />
+                          <Image src={documents.birCertificate.preview} alt="Preview" fill className="object-cover" />
                         ) : (
                           <div className="flex items-center justify-center h-full">
                             <DocumentIcon className="h-12 w-12 text-gray-400" />
@@ -1433,7 +1441,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
                     <div className="relative mb-3">
                       <div className="aspect-w-16 aspect-h-9 bg-gray-100 rounded-md overflow-hidden">
                         {documents.governmentId.preview.startsWith('data:image') ? (
-                          <img src={documents.governmentId.preview} alt="Preview" className="object-cover" />
+                          <Image src={documents.governmentId.preview} alt="Preview" fill className="object-cover" />
                         ) : (
                           <div className="flex items-center justify-center h-full">
                             <DocumentIcon className="h-12 w-12 text-gray-400" />

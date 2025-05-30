@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, Suspense } from 'react';
+import React, { useEffect, useState, Suspense, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { XCircleIcon } from '@heroicons/react/24/solid';
 
@@ -13,16 +13,7 @@ function PaymentFailedContent() {
   const bookingId = searchParams.get('booking_id');
   const error = searchParams.get('error');
 
-  useEffect(() => {
-    if (bookingId) {
-      // Get payment details for retry
-      getPaymentDetails();
-    } else {
-      setIsLoading(false);
-    }
-  }, [bookingId]);
-
-  const getPaymentDetails = async () => {
+  const getPaymentDetails = useCallback(async () => {
     try {
       const response = await fetch(`/api/payments/status?booking_id=${bookingId}`);
       const data = await response.json();
@@ -37,7 +28,16 @@ function PaymentFailedContent() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [bookingId]);
+
+  useEffect(() => {
+    if (bookingId) {
+      // Get payment details for retry
+      getPaymentDetails();
+    } else {
+      setIsLoading(false);
+    }
+  }, [bookingId, getPaymentDetails]);
 
   const handleRetryPayment = () => {
     // Redirect back to checkout with the same booking

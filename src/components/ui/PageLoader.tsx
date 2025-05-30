@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Image from 'next/image';
 import { motion } from 'framer-motion';
 import Spinner from './Spinner';
 import { cn } from '@/utils/classNames';
@@ -29,14 +30,14 @@ export const PageLoader: React.FC<PageLoaderProps> = ({
   withAnimation = true,
 }) => {
   const Container = withAnimation ? motion.div : 'div';
-  
-  const animationProps = withAnimation 
+
+  const animationProps = withAnimation
     ? {
         initial: { opacity: 0 },
         animate: { opacity: 1 },
         exit: { opacity: 0 },
         transition: { duration: 0.3 }
-      } 
+      }
     : {};
 
   return (
@@ -52,17 +53,19 @@ export const PageLoader: React.FC<PageLoaderProps> = ({
       <div className="flex flex-col items-center justify-center p-6 rounded-lg">
         {showLogo && (
           <div className="mb-6">
-            <img 
-              src={logoSrc} 
-              alt="Logo" 
-              className="h-16 w-auto" 
+            <Image
+              src={logoSrc}
+              alt="Logo"
+              width={64}
+              height={64}
+              className="h-16 w-auto"
             />
           </div>
         )}
-        
-        <Spinner 
-          size={spinnerSize} 
-          color={spinnerColor} 
+
+        <Spinner
+          size={spinnerSize}
+          color={spinnerColor}
           label={message}
           showLabel={true}
         />

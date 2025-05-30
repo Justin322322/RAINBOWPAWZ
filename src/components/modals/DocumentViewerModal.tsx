@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import Image from 'next/image';
 import { Dialog, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
 import { XMarkIcon, CheckCircleIcon, XCircleIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
@@ -149,9 +150,11 @@ const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
                     )}
 
                     {isImageFile ? (
-                      <img
+                      <Image
                         src={formattedDocumentUrl}
                         alt={documentType || 'Document'}
+                        width={800}
+                        height={600}
                         className="w-full h-auto object-contain"
                         style={{ maxHeight: '60vh' }}
                         onLoad={handleImageLoad}

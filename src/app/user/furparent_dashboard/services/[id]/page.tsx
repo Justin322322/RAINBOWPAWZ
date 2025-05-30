@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -53,10 +53,10 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
   // Will fetch real data from API
 
   // Mock data for user's pets
-  const mockPets = [
+  const mockPets = useMemo(() => [
     { id: 1, name: 'Max', species: 'Dog', breed: 'Golden Retriever', age: 8 },
     { id: 2, name: 'Luna', species: 'Cat', breed: 'Siamese', age: 5 }
-  ];
+  ], []);
 
   // State for package carousel
   const [currentPackageIndex, setCurrentPackageIndex] = useState(0);
@@ -165,7 +165,7 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
     if (providerId) {
       fetchData();
     }
-  }, [providerId, userLocation]);
+  }, [providerId, userLocation, mockPets]);
 
   const handleNextPackage = () => {
     const sortedPackages = getSortedPackages();

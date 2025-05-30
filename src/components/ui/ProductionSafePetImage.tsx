@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { getProductionImagePath } from '@/utils/imageUtils';
 
 interface ProductionSafePetImageProps {
@@ -67,10 +68,24 @@ export const ProductionSafePetImage: React.FC<ProductionSafePetImageProps> = ({
   // Use our utility function to get a production-ready image path
   const finalSrc = error ? fallbackSrc : getProductionImagePath(imgSrc);
 
+  // Get dimensions from size classes
+  const getDimensions = (size: 'small' | 'medium' | 'large') => {
+    switch (size) {
+      case 'small': return { width: 64, height: 64 };
+      case 'medium': return { width: 96, height: 96 };
+      case 'large': return { width: 128, height: 128 };
+      default: return { width: 96, height: 96 };
+    }
+  };
+
+  const { width, height } = getDimensions(size);
+
   return (
-    <img
+    <Image
       src={finalSrc}
       alt={alt}
+      width={width}
+      height={height}
       className={`${sizeClasses[size]} object-cover rounded-lg shadow-sm ${className} ${loaded ? 'opacity-100' : 'opacity-95'} transition-opacity duration-300`}
       onError={handleError}
       onLoad={() => setLoaded(true)}

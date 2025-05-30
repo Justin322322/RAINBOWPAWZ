@@ -190,9 +190,11 @@ export default function FurParentNavbar({ activePage: propActivePage, userName =
               >
                 <div className="bg-white rounded-full h-8 w-8 flex items-center justify-center mr-2 overflow-hidden">
                   {profilePicture ? (
-                    <img
+                    <Image
                       src={getProfilePictureUrl(profilePicture)}
                       alt="Profile"
+                      width={32}
+                      height={32}
                       className="h-full w-full object-cover"
                       onError={(e) => {
                         handleImageError(e, '/bg_4.png');
@@ -210,13 +212,6 @@ export default function FurParentNavbar({ activePage: propActivePage, userName =
 
               {isDropdownOpen && (
                 <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10">
-                  <Link
-                    href="/user/furparent_dashboard"
-                    className="block px-4 py-2 text-sm modern-text text-gray-700 hover:bg-gray-100 font-medium"
-                    onClick={() => setActivePage('home')}
-                  >
-                    Dashboard
-                  </Link>
                   <Link
                     href="/user/furparent_dashboard/bookings"
                     className="block px-4 py-2 text-sm modern-text text-gray-700 hover:bg-gray-100"

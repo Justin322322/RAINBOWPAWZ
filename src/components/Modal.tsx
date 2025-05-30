@@ -40,7 +40,7 @@ const Modal: React.FC<ModalProps> = ({
       document.body.style.overflow = 'auto';
       window.removeEventListener('keydown', handleEscape);
     };
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, closeOnOverlayClick]);
 
   const sizeClasses = {
     small: 'max-w-md',

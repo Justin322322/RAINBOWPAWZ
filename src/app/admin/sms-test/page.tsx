@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useToast } from '@/context/ToastContext';
 import AdminDashboardLayout from '@/components/navigation/AdminDashboardLayout';
 import withAdminAuth from '@/components/withAdminAuth';
@@ -21,9 +21,27 @@ function SMSTestPage({ adminData }: { adminData: any }) {
   const [isTesting, setIsTesting] = useState(false);
   const [formattedPhone, setFormattedPhone] = useState('');
 
+  const loadConfig = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const response = await fetch('/api/sms/test');
+      if (response.ok) {
+        const data = await response.json();
+        setConfig(data);
+      } else {
+        showToast('Failed to load SMS configuration', 'error');
+      }
+    } catch (error) {
+      console.error('Error loading SMS config:', error);
+      showToast('Error loading SMS configuration', 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [showToast]);
+
   useEffect(() => {
     loadConfig();
-  }, []);
+  }, [loadConfig]);
 
   // Format phone number as user types
   useEffect(() => {
@@ -46,24 +64,6 @@ function SMSTestPage({ adminData }: { adminData: any }) {
       setFormattedPhone('');
     }
   }, [testPhone]);
-
-  const loadConfig = async () => {
-    try {
-      setIsLoading(true);
-      const response = await fetch('/api/sms/test');
-      if (response.ok) {
-        const data = await response.json();
-        setConfig(data);
-      } else {
-        showToast('Failed to load SMS configuration', 'error');
-      }
-    } catch (error) {
-      console.error('Error loading SMS config:', error);
-      showToast('Error loading SMS configuration', 'error');
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const testSMS = async () => {
     if (!testPhone.trim()) {

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, Suspense } from 'react';
+import React, { useEffect, useState, Suspense, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { CheckCircleIcon } from '@heroicons/react/24/solid';
 import { toast } from 'react-hot-toast';
@@ -14,18 +14,7 @@ function PaymentSuccessContent() {
 
   const bookingId = searchParams.get('booking_id');
 
-  useEffect(() => {
-    if (!bookingId) {
-      setError('Missing booking ID');
-      setIsLoading(false);
-      return;
-    }
-
-    // Verify payment status
-    verifyPaymentStatus();
-  }, [bookingId]);
-
-  const verifyPaymentStatus = async () => {
+  const verifyPaymentStatus = useCallback(async () => {
     try {
       const response = await fetch(`/api/payments/status?booking_id=${bookingId}`);
       const data = await response.json();
@@ -53,7 +42,18 @@ function PaymentSuccessContent() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [bookingId]);
+
+  useEffect(() => {
+    if (!bookingId) {
+      setError('Missing booking ID');
+      setIsLoading(false);
+      return;
+    }
+
+    // Verify payment status
+    verifyPaymentStatus();
+  }, [bookingId, verifyPaymentStatus]);
 
   const handleContinue = () => {
     // Redirect to booking details or dashboard

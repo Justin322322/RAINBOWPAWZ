@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { createBookingNotification, scheduleBookingReminders } from '@/utils/comprehensiveNotificationService';
@@ -195,17 +194,16 @@ export async function GET(request: NextRequest) {
     const stats: Record<string, number> = {};
 
     for (const [key, sqlQuery] of Object.entries(statsQueries)) {
-      let statsParams: string[] = [];
+      let statsParams: (string | number)[] = [];
       if (useServiceBookings) {
         // For service_bookings, we need to add each package ID and the provider ID
-        const packageIdsStr = packageIds.map(id => String(id));
-        statsParams = [...packageIdsStr, String(providerId)];
+        statsParams = [...packageIds, providerId];
       } else {
         // For regular bookings, we just need the package IDs
-        statsParams = packageIds.map(id => String(id));
+        statsParams = packageIds;
       }
 
-      const result = await query(sqlQuery, statsParams) as any[];
+      const result = await query(sqlQuery as string, statsParams) as any[];
       stats[key] = result[0]?.count || 0;
     }
 

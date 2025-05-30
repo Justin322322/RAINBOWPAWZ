@@ -129,7 +129,7 @@ function BookingDetailsPage({ userData }: BookingDetailsProps) {
     if (booking && hasInitiallyLoaded.current) {
       console.log('Booking state updated:', booking.status);
     }
-  }, [booking?.status]); // Only monitor status changes for logging
+  }, [booking]); // Monitor booking changes for logging
 
   // Use useRef to track ongoing requests and prevent multiple simultaneous calls
   const updateRequestRef = useRef<AbortController | null>(null);
@@ -224,7 +224,7 @@ function BookingDetailsPage({ userData }: BookingDetailsProps) {
       updateRequestRef.current = null;
       isOperationInProgress.current = false; // Clear operation flag
     }
-  }, [booking?.status, updating, params.id, lastUpdateTime]); // Simplified dependencies
+  }, [booking, updating, params.id, lastUpdateTime]); // Include booking object
 
   // Cleanup effect to cancel ongoing requests when component unmounts
   useEffect(() => {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { geocodingService } from '@/utils/geocoding';
@@ -59,54 +59,52 @@ export default function MapComponent({
   const [isMapLocked, setIsMapLocked] = useState(true); // Map is locked by default
   const [isRouting, setIsRouting] = useState(false);
 
-  // Check if we're in a browser environment before initializing Leaflet
-  useEffect(() => {
-    if (typeof window !== 'undefined' && !userCoordinates) {
-      // If initial coordinates are provided, use them
-      if (initialUserCoordinates) {
-        setUserCoordinates(initialUserCoordinates);
-      } else if (userAddress) {
-        // Otherwise, set default coordinates first to prevent error if geocoding fails
-        const defaultCoordinates: [number, number] = [14.6742, 120.5434]; // Balanga City center coordinates
-        setUserCoordinates(defaultCoordinates);
+  // Add user marker
+  const addUserMarker = useCallback((coordinates: [number, number]) => {
+    if (!mapRef.current) return;
 
-        // Delayed geocoding to ensure DOM is ready
-        const timer = setTimeout(() => {
-          geocodeAddressEnhanced(userAddress, 'user');
-        }, 100);
-
-        return () => clearTimeout(timer);
-      }
+    // Remove existing user marker if present
+    if (userMarkerRef.current) {
+      userMarkerRef.current.removeFrom(mapRef.current);
+      userMarkerRef.current = null;
     }
-  }, [userAddress, initialUserCoordinates]);
 
-  // When user coordinates change, update the marker
-  useEffect(() => {
-    if (userCoordinates && mapRef.current && mapLoaded) {
-      // If there's already a user marker, update its position
-      // otherwise create a new one
-      if (userMarkerRef.current) {
-        userMarkerRef.current.setLatLng([userCoordinates[0], userCoordinates[1]]);
-      } else {
-        addUserMarker(userCoordinates);
-      }
-    }
-  }, [userCoordinates, mapLoaded]);
+    // Create user icon (green location pin)
+    const userIcon = L.divIcon({
+      className: 'custom-user-icon',
+      html: `
+        <div style="position: relative;">
+          <div class="pulse-animation" style="position: absolute; width: 48px; height: 48px; border-radius: 50%; background-color: rgba(76, 175, 80, 0.3); top: -6px; left: -6px; transform-origin: center;"></div>
+          <div style="width: 38px; height: 38px; background-color: #4CAF50; border-radius: 50% 50% 0 50%; transform: rotate(45deg); box-shadow: 0 3px 6px rgba(0,0,0,0.3);">
+            <div style="position: absolute; top: 10px; left: 10px; width: 18px; height: 18px; background-color: white; border-radius: 50%; transform: rotate(-45deg);"></div>
+          </div>
+          <div style="position: absolute; top: -28px; left: 50%; transform: translateX(-50%); background-color: #4CAF50; color: white; padding: 3px 8px; border-radius: 4px; white-space: nowrap; font-weight: bold; font-size: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.2);">Your Location</div>
+        </div>
+        <style>
+          @keyframes pulse {
+            0% { transform: scale(1); opacity: 0.7; }
+            50% { transform: scale(1.3); opacity: 0.3; }
+            100% { transform: scale(1); opacity: 0.7; }
+          }
+          .pulse-animation {
+            animation: pulse 2s infinite ease-in-out;
+          }
+        </style>
+      `,
+      iconSize: [38, 38],
+      iconAnchor: [19, 38],
+      popupAnchor: [0, -38]
+    });
 
-  // Initialize map when both userCoordinates and DOM are ready
-  useEffect(() => {
-    if (typeof window !== 'undefined' && userCoordinates && mapContainerRef.current && !mapLoaded) {
-      // Check if map container exists before initializing
-      const container = document.getElementById('map-container');
-      if (container) {
-        initializeMap(userCoordinates);
-        setMapLoaded(true);
-      }
-    }
-  }, [userCoordinates, mapLoaded]);
+    // Add new marker with high zIndex to ensure it stays on top
+    userMarkerRef.current = L.marker([coordinates[0], coordinates[1]], {
+      icon: userIcon,
+      zIndexOffset: 1000 // This ensures the user location is always on top
+    }).addTo(mapRef.current);
+  }, []);
 
   // Enhanced geocoding function using the new geocoding service
-  const geocodeAddressEnhanced = async (address: string, type: 'user' | 'provider', providerId?: number) => {
+  const geocodeAddressEnhanced = useCallback(async (address: string, type: 'user' | 'provider', providerId?: number) => {
     if (type === 'user' && mapLoaded) return; // Prevent re-geocoding if map is already loaded
 
     setIsGeocoding(true);
@@ -160,10 +158,31 @@ export default function MapComponent({
     } finally {
       setIsGeocoding(false);
     }
-  };
+  }, [mapLoaded, addUserMarker]);
+
+  // Check if we're in a browser environment before initializing Leaflet
+  useEffect(() => {
+    if (typeof window !== 'undefined' && !userCoordinates) {
+      // If initial coordinates are provided, use them
+      if (initialUserCoordinates) {
+        setUserCoordinates(initialUserCoordinates);
+      } else if (userAddress) {
+        // Otherwise, set default coordinates first to prevent error if geocoding fails
+        const defaultCoordinates: [number, number] = [14.6742, 120.5434]; // Balanga City center coordinates
+        setUserCoordinates(defaultCoordinates);
+
+        // Delayed geocoding to ensure DOM is ready
+        const timer = setTimeout(() => {
+          geocodeAddressEnhanced(userAddress, 'user');
+        }, 100);
+
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [userAddress, initialUserCoordinates, userCoordinates, geocodeAddressEnhanced]);
 
   // Initialize map with coordinates - optimized version
-  const initializeMap = (coordinates: [number, number]) => {
+  const initializeMap = useCallback((coordinates: [number, number]) => {
     if (typeof window === 'undefined' || mapRef.current) return;
 
     try {
@@ -229,103 +248,10 @@ export default function MapComponent({
     } catch (error) {
       setGeocodeError("Error loading map. Please refresh the page.");
     }
-  };
-
-  // Geocode provider addresses efficiently with batching
-  useEffect(() => {
-    if (userCoordinates && serviceProviders.length > 0 && providerCoordinates.size === 0 && mapLoaded) {
-      const geocodeProviders = async () => {
-        // Process providers in batches of 3 to avoid rate limiting
-        const batchSize = 3;
-        for (let i = 0; i < serviceProviders.length; i += batchSize) {
-          const batch = serviceProviders.slice(i, i + batchSize);
-
-          // Process batch in parallel
-          await Promise.all(
-            batch.map(provider => geocodeAddressEnhanced(provider.address, 'provider', provider.id))
-          );
-
-          // Add delay between batches to avoid rate limiting
-          if (i + batchSize < serviceProviders.length) {
-            await new Promise(resolve => setTimeout(resolve, 1000));
-          }
-        }
-      };
-
-      geocodeProviders();
-    }
-  }, [userCoordinates, serviceProviders, providerCoordinates, mapLoaded]);
-
-  // Update markers whenever provider coordinates change
-  useEffect(() => {
-    if (mapRef.current && providerCoordinates.size > 0) {
-      addProviderMarkers();
-      // Auto-adjust zoom to show all markers when providers are loaded
-      adjustMapViewToShowAllMarkers();
-    }
-  }, [providerCoordinates]);
-
-  // Handle selectedProviderId changes - trigger directions when selected from card
-  useEffect(() => {
-    if (selectedProviderId && mapRef.current && providerCoordinates.size > 0 && mapLoaded) {
-      const coordinates = providerCoordinates.get(selectedProviderId);
-      if (coordinates) {
-        // Find the provider to get its name
-        const provider = serviceProviders.find(p => p.id === selectedProviderId);
-        if (provider) {
-          setSelectedProviderName(provider.name);
-          displayRouteToProviderEnhanced(coordinates, provider.name);
-        }
-      }
-    }
-  }, [selectedProviderId, providerCoordinates, mapLoaded]);
-
-  // Add user marker
-  const addUserMarker = (coordinates: [number, number]) => {
-    if (!mapRef.current) return;
-
-    // Remove existing user marker if present
-    if (userMarkerRef.current) {
-      userMarkerRef.current.removeFrom(mapRef.current);
-      userMarkerRef.current = null;
-    }
-
-    // Create user icon (green location pin)
-    const userIcon = L.divIcon({
-      className: 'custom-user-icon',
-      html: `
-        <div style="position: relative;">
-          <div class="pulse-animation" style="position: absolute; width: 48px; height: 48px; border-radius: 50%; background-color: rgba(76, 175, 80, 0.3); top: -6px; left: -6px; transform-origin: center;"></div>
-          <div style="width: 38px; height: 38px; background-color: #4CAF50; border-radius: 50% 50% 0 50%; transform: rotate(45deg); box-shadow: 0 3px 6px rgba(0,0,0,0.3);">
-            <div style="position: absolute; top: 10px; left: 10px; width: 18px; height: 18px; background-color: white; border-radius: 50%; transform: rotate(-45deg);"></div>
-          </div>
-          <div style="position: absolute; top: -28px; left: 50%; transform: translateX(-50%); background-color: #4CAF50; color: white; padding: 3px 8px; border-radius: 4px; white-space: nowrap; font-weight: bold; font-size: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.2);">Your Location</div>
-        </div>
-        <style>
-          @keyframes pulse {
-            0% { transform: scale(1); opacity: 0.7; }
-            50% { transform: scale(1.3); opacity: 0.3; }
-            100% { transform: scale(1); opacity: 0.7; }
-          }
-          .pulse-animation {
-            animation: pulse 2s infinite ease-in-out;
-          }
-        </style>
-      `,
-      iconSize: [38, 38],
-      iconAnchor: [19, 38],
-      popupAnchor: [0, -38]
-    });
-
-    // Add new marker with high zIndex to ensure it stays on top
-    userMarkerRef.current = L.marker([coordinates[0], coordinates[1]], {
-      icon: userIcon,
-      zIndexOffset: 1000 // This ensures the user location is always on top
-    }).addTo(mapRef.current);
-  };
+  }, [addUserMarker]);
 
   // Function to add provider markers
-  const addProviderMarkers = () => {
+  const addProviderMarkers = useCallback(() => {
     if (!mapRef.current) return;
 
     // Clear existing provider markers
@@ -389,6 +315,7 @@ export default function MapComponent({
 
             newRouteButton.addEventListener('click', () => {
               setSelectedProviderName(provider.name);
+              // Use the current function reference to avoid dependency issues
               displayRouteToProviderEnhanced(coordinates, provider.name);
             });
           }
@@ -414,10 +341,11 @@ export default function MapComponent({
       // Store marker reference
       providerMarkersRef.current.push(marker);
     });
-  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [serviceProviders, providerCoordinates]); // displayRouteToProviderEnhanced is accessed via closure to avoid circular dependency
 
   // Function to adjust map view to show all markers (user + providers)
-  const adjustMapViewToShowAllMarkers = () => {
+  const adjustMapViewToShowAllMarkers = useCallback(() => {
     if (!mapRef.current || !userCoordinates || providerCoordinates.size === 0) return;
 
     // Create bounds that include user location and all provider locations
@@ -437,77 +365,10 @@ export default function MapComponent({
       padding: [20, 20], // 20px padding on all sides
       maxZoom: 15 // Don't zoom in too much even if markers are close
     });
-  };
-
-  // Format distance in meters to a more human-readable format
-  const formatDistance = (meters: number): string => {
-    if (meters < 1000) {
-      return `${Math.round(meters)} m`;
-    } else {
-      return `${(meters / 1000).toFixed(1)} km`;
-    }
-  };
-
-  // Format duration in seconds to a more human-readable format with realistic travel time
-  const formatDuration = (seconds: number, roadType: string = 'normal', distance: number = 0): string => {
-    // Apply a moderate traffic factor based on road type
-    let trafficFactor = 1.8; // Default factor - more balanced
-
-    // Adjust traffic factor based on road type
-    if (roadType.includes('motorway') || roadType.includes('trunk')) {
-      trafficFactor = 1.5; // Highways are faster but still have traffic
-    } else if (roadType.includes('residential') || roadType.includes('service')) {
-      trafficFactor = 2.2; // Residential areas have stops and slower speeds
-    } else if (roadType.includes('primary') || roadType.includes('secondary')) {
-      trafficFactor = 1.8; // Main roads with traffic lights
-    } else if (roadType.includes('tertiary') || roadType.includes('unclassified')) {
-      trafficFactor = 2.0; // Smaller roads with turns
-    }
-
-    // Apply time-of-day factor based on current time - more moderate
-    const hour = new Date().getHours();
-    let timeOfDayFactor = 1.0;
-
-    // Adjust for rush hours - more balanced
-    if ((hour >= 7 && hour <= 9) || (hour >= 16 && hour <= 19)) {
-      timeOfDayFactor = 1.3; // Rush hour traffic
-    } else if ((hour >= 10 && hour <= 15) || (hour >= 20 && hour <= 22)) {
-      timeOfDayFactor = 1.1; // Mid-day and evening traffic
-    } else {
-      timeOfDayFactor = 1.0; // Early morning or late night
-    }
-
-    // Add time for traffic lights and intersections - more moderate
-    const stepIntersections = Math.ceil(distance / 300); // One intersection every 300m
-    const averageWaitTimePerIntersection = 15; // seconds - more realistic
-    const intersectionTime = stepIntersections * averageWaitTimePerIntersection;
-
-    // Calculate adjusted time based on actual driving conditions
-    const adjustedSeconds = (seconds * trafficFactor * timeOfDayFactor) + intersectionTime;
-
-    if (adjustedSeconds < 60) {
-      return `${Math.round(adjustedSeconds)} sec`;
-    }
-
-    const minutes = Math.floor(adjustedSeconds / 60);
-    if (minutes < 60) {
-      const remainingSeconds = Math.round(adjustedSeconds % 60);
-      if (remainingSeconds > 0) {
-        return `${minutes} min ${remainingSeconds} sec`;
-      }
-      return `${minutes} min`;
-    } else {
-      const hours = Math.floor(minutes / 60);
-      const remainingMinutes = minutes % 60;
-      if (remainingMinutes > 0) {
-        return `${hours} hr ${remainingMinutes} min`;
-      }
-      return `${hours} hr`;
-    }
-  };
+  }, [userCoordinates, providerCoordinates]);
 
   // Enhanced function to display route on map using multiple routing services
-  const displayRouteToProviderEnhanced = async (providerCoords: [number, number], providerName: string) => {
+  const displayRouteToProviderEnhanced = useCallback(async (providerCoords: [number, number], providerName: string) => {
     if (!mapRef.current || !userCoordinates) return;
 
     // Clear existing route
@@ -563,7 +424,85 @@ export default function MapComponent({
     } finally {
       setIsRouting(false);
     }
-  };
+  }, [userCoordinates]);
+
+  // When user coordinates change, update the marker
+  useEffect(() => {
+    if (userCoordinates && mapRef.current && mapLoaded) {
+      // If there's already a user marker, update its position
+      // otherwise create a new one
+      if (userMarkerRef.current) {
+        userMarkerRef.current.setLatLng([userCoordinates[0], userCoordinates[1]]);
+      } else {
+        addUserMarker(userCoordinates);
+      }
+    }
+  }, [userCoordinates, mapLoaded, addUserMarker]);
+
+  // Initialize map when both userCoordinates and DOM are ready
+  useEffect(() => {
+    if (typeof window !== 'undefined' && userCoordinates && mapContainerRef.current && !mapLoaded) {
+      // Check if map container exists before initializing
+      const container = document.getElementById('map-container');
+      if (container) {
+        initializeMap(userCoordinates);
+        setMapLoaded(true);
+      }
+    }
+  }, [userCoordinates, mapLoaded, initializeMap]);
+
+  // Geocode provider addresses efficiently with batching
+  useEffect(() => {
+    if (userCoordinates && serviceProviders.length > 0 && providerCoordinates.size === 0 && mapLoaded) {
+      const geocodeProviders = async () => {
+        // Process providers in batches of 3 to avoid rate limiting
+        const batchSize = 3;
+        for (let i = 0; i < serviceProviders.length; i += batchSize) {
+          const batch = serviceProviders.slice(i, i + batchSize);
+
+          // Process batch in parallel
+          await Promise.all(
+            batch.map(provider => geocodeAddressEnhanced(provider.address, 'provider', provider.id))
+          );
+
+          // Add delay between batches to avoid rate limiting
+          if (i + batchSize < serviceProviders.length) {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
+        }
+      };
+
+      geocodeProviders();
+    }
+  }, [userCoordinates, serviceProviders, providerCoordinates, mapLoaded, geocodeAddressEnhanced]);
+
+  // Update markers whenever provider coordinates change
+  useEffect(() => {
+    if (mapRef.current && providerCoordinates.size > 0) {
+      addProviderMarkers();
+      // Auto-adjust zoom to show all markers when providers are loaded
+      adjustMapViewToShowAllMarkers();
+    }
+  }, [providerCoordinates, addProviderMarkers, adjustMapViewToShowAllMarkers]);
+
+  // Handle selectedProviderId changes - trigger directions when selected from card
+  useEffect(() => {
+    if (selectedProviderId && mapRef.current && providerCoordinates.size > 0 && mapLoaded) {
+      const coordinates = providerCoordinates.get(selectedProviderId);
+      if (coordinates) {
+        // Find the provider to get its name
+        const provider = serviceProviders.find(p => p.id === selectedProviderId);
+        if (provider) {
+          setSelectedProviderName(provider.name);
+          displayRouteToProviderEnhanced(coordinates, provider.name);
+        }
+      }
+    }
+  }, [selectedProviderId, providerCoordinates, mapLoaded, serviceProviders, displayRouteToProviderEnhanced]);
+
+
+
+
 
   // Initialize cache cleanup on component mount
   useEffect(() => {

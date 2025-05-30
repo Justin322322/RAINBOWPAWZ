@@ -1025,9 +1025,11 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                           <div className="mt-1 flex items-center space-x-4">
                             {petImagePreview ? (
                               <div className="relative">
-                                <img
+                                <Image
                                   src={petImagePreview}
                                   alt="Pet preview"
+                                  width={96}
+                                  height={96}
                                   className="w-24 h-24 rounded-md object-cover"
                                 />
                                 <button
@@ -1132,9 +1134,11 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                       <div className="space-y-3">
                         <div className="flex items-center p-4 border rounded-md bg-blue-50 border-blue-200">
                           <div className="h-6 w-6 flex-shrink-0 relative">
-                            <img
+                            <Image
                               src="/images/check-icon.svg"
                               alt="GCash"
+                              width={24}
+                              height={24}
                               className="h-6 w-6 object-contain"
                               style={{ filter: 'invert(33%) sepia(93%) saturate(1352%) hue-rotate(184deg) brightness(97%) contrast(96%)' }}
                             />

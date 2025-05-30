@@ -16,6 +16,7 @@ import FurParentNavbar from '@/components/navigation/FurParentNavbar';
 import withOTPVerification from '@/components/withOTPVerification';
 import { getProfilePictureUrl, handleImageError, triggerProfilePictureUpdate } from '@/utils/imageUtils';
 import PhilippinePhoneInput from '@/components/ui/PhilippinePhoneInput';
+import Image from 'next/image';
 
 interface ProfilePageProps {
   userData?: any;
@@ -263,15 +264,19 @@ function ProfilePage({ userData }: ProfilePageProps) {
                 <div className="relative">
                   <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-gray-200 bg-gray-100 flex items-center justify-center">
                     {profilePicturePreview ? (
-                      <img
+                      <Image
                         src={profilePicturePreview}
                         alt="Profile Picture Preview"
+                        width={96}
+                        height={96}
                         className="w-full h-full object-cover"
                       />
                     ) : currentUserData?.profile_picture ? (
-                      <img
+                      <Image
                         src={getProfilePictureUrl(currentUserData.profile_picture)}
                         alt="Profile Picture"
+                        width={96}
+                        height={96}
                         className="w-full h-full object-cover"
                         onError={(e) => {
                           handleImageError(e, '/bg_4.png');

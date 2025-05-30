@@ -803,7 +803,6 @@ export default function AdminCremationCentersPage() {
         message={`Are you sure you want to restrict "${centerToAction?.name}"? This will prevent them from accepting new bookings.`}
         confirmText="Restrict Access"
         confirmButtonClass="bg-red-600 hover:bg-red-700 focus:ring-red-500"
-        // @ts-ignore - Component accepts JSX but TypeScript has wrong definition
         icon={<ExclamationTriangleIcon className="h-6 w-6 text-red-600" />}
       />
 
@@ -816,7 +815,6 @@ export default function AdminCremationCentersPage() {
         message={`Are you sure you want to unrestrict "${centerToAction?.name}"? This will allow them to accept new bookings again.`}
         confirmText="Unrestrict Access"
         confirmButtonClass="bg-green-600 hover:bg-green-700 focus:ring-green-500"
-        // @ts-ignore - Component accepts JSX but TypeScript has wrong definition
         icon={<CheckCircleIcon className="h-6 w-6 text-green-600" />}
       />
 
