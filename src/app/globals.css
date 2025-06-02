@@ -1,0 +1,394 @@
+/* Fonts are imported in the layout.tsx file using Next.js Font optimization */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --primary-green: #1B4D3E;
+  --primary-green-light: #2C7A62;
+  --primary-green-dark: #153C31;
+  --primary-green-hover: #1F5A49;
+  --primary-green-bg: rgba(27, 77, 62, 0.1);
+  --primary-green-border: rgba(27, 77, 62, 0.2);
+  --text-primary: #1B4D3E;
+  --text-secondary: #4A5568;
+  --text-light: #718096;
+  --background-light: #F8FAF9;
+  --background-white: #FFFFFF;
+  --card-bg: #FAFAFA;
+
+  /* Font variables */
+  --font-sans: var(--font-inter), -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  --font-serif: var(--font-playfair), Georgia, Cambria, "Times New Roman", Times, serif;
+}
+
+@layer base {
+  html {
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply bg-[var(--background-light)] text-[var(--text-primary)];
+    font-family: var(--font-sans);
+    letter-spacing: -0.01em;
+    line-height: 1.6;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-normal text-[var(--text-primary)];
+    font-family: var(--font-serif);
+    letter-spacing: -0.02em;
+    line-height: 1.3;
+  }
+
+  /* Ensure text-white class takes precedence for headings */
+  h1.text-white, h2.text-white, h3.text-white, h4.text-white, h5.text-white, h6.text-white,
+  .text-white h1, .text-white h2, .text-white h3, .text-white h4, .text-white h5, .text-white h6 {
+    color: white !important;
+  }
+
+  p {
+    @apply text-[var(--text-secondary)] font-normal;
+    font-family: var(--font-sans);
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-[var(--primary-green)] text-white px-8 py-4 rounded-md font-medium
+    hover:bg-[var(--primary-green-hover)] transition-all duration-300 uppercase tracking-wider text-sm;
+    font-family: var(--font-sans);
+    letter-spacing: 0.05em;
+  }
+
+  .btn-outline {
+    @apply border-2 border-white text-white px-8 py-4 rounded-md font-medium
+    hover:bg-white/10 transition-all duration-300 uppercase tracking-wider text-sm;
+    font-family: var(--font-sans);
+    letter-spacing: 0.05em;
+  }
+
+  .section-title {
+    @apply text-4xl font-light text-center text-[var(--primary-green)] mb-12;
+    font-family: var(--font-serif);
+  }
+
+  .nav-link {
+    @apply text-white hover:text-gray-200 transition-colors duration-300 font-normal;
+    font-family: var(--font-sans);
+  }
+
+  .service-card {
+    @apply bg-white p-8 rounded-lg shadow-sm hover:shadow-md transition-all duration-300
+    border border-gray-100 hover:border-[var(--primary-green-border)];
+  }
+
+  .service-icon {
+    @apply w-12 h-12 text-[var(--primary-green)] mb-6;
+  }
+
+  .service-title {
+    @apply text-2xl font-light text-[var(--primary-green)] mb-4;
+  }
+
+  .service-description {
+    @apply text-gray-600 leading-relaxed font-light mb-6;
+  }
+
+  .service-feature {
+    @apply flex items-center text-sm text-gray-500 mb-2 font-light;
+  }
+
+  .hero-title {
+    @apply text-6xl md:text-7xl font-light text-white mb-6 leading-tight tracking-wide;
+    font-family: var(--font-serif);
+  }
+
+  .hero-description {
+    @apply text-xl text-gray-200 mb-12 max-w-2xl font-light leading-relaxed;
+    font-family: var(--font-sans);
+  }
+
+  .hero-button {
+    @apply px-8 py-4 rounded-md text-sm font-medium uppercase tracking-wider
+    transition-all duration-300 hover:transform hover:scale-105;
+  }
+
+  .hero-button-primary {
+    @apply bg-[var(--primary-green)] text-white
+    hover:bg-[var(--primary-green-light)];
+  }
+
+  .hero-button-outline {
+    @apply border-2 border-white text-white
+    hover:bg-white/10;
+  }
+}
+
+.timeline-dot {
+  @apply w-4 h-4 rounded-full bg-[var(--primary-green)] absolute left-1/2 -translate-x-1/2 z-10;
+}
+
+.timeline-line {
+  @apply w-0.5 h-full bg-[var(--primary-green)] absolute left-1/2 -translate-x-1/2 opacity-20;
+}
+
+.timeline-card {
+  @apply bg-[var(--background-white)] rounded-xl p-6 transition-all duration-300
+  shadow-sm hover:shadow-md border border-gray-100 hover:border-[var(--primary-green-border)];
+}
+
+.timeline-icon {
+  @apply w-16 h-16 rounded-full bg-[var(--primary-green)] text-white flex items-center justify-center
+  text-2xl font-light hover:bg-[var(--primary-green-hover)] transition-colors duration-300;
+}
+
+.timeline-date {
+  @apply text-[var(--primary-green)] font-medium;
+}
+
+.timeline-title {
+  @apply text-2xl font-light text-[var(--primary-green)] mb-4;
+}
+
+.timeline-description {
+  @apply text-[var(--text-secondary)] leading-relaxed font-light;
+}
+
+.timeline-icon-small {
+  @apply w-12 h-12 rounded-full bg-[var(--primary-green-bg)] flex items-center justify-center;
+}
+
+.roadmap-container {
+  @apply relative py-12 max-w-6xl mx-auto px-4;
+}
+
+.roadmap-line {
+  @apply absolute left-1/2 top-0 h-full w-[1px] bg-[var(--primary-green)] opacity-20;
+  transform: translateX(-50%);
+}
+
+.step-wrapper {
+  @apply relative flex items-start mb-20 last:mb-0;
+}
+
+.step-wrapper:nth-child(even) {
+  @apply flex-row-reverse;
+}
+
+.step-card {
+  @apply bg-[var(--card-bg)] rounded-lg p-8 relative w-[calc(50%-2rem)];
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.step-wrapper:nth-child(odd) .step-card {
+  @apply ml-auto;
+}
+
+.step-wrapper:nth-child(even) .step-card {
+  @apply mr-auto;
+}
+
+.step-number {
+  @apply w-12 h-12 rounded-full bg-[var(--primary-green)] text-white flex items-center justify-center
+  text-xl font-normal absolute -left-6 -top-6 z-10;
+}
+
+.step-title {
+  @apply text-xl font-normal text-[var(--primary-green)] mb-2;
+}
+
+.step-description {
+  @apply text-[var(--text-secondary)] text-base leading-relaxed;
+}
+
+.step-icon {
+  @apply w-6 h-6 text-[var(--primary-green)] mb-4;
+}
+
+/* Map styles */
+#map-container {
+  width: 100%;
+  height: 100%;
+  min-height: 400px;
+  position: relative;
+  z-index: 1;
+}
+
+/* Custom map marker styles */
+.custom-div-icon {
+  background: transparent;
+  border: none;
+}
+
+/* Popup styles */
+.leaflet-popup-content-wrapper {
+  border-radius: 8px;
+  padding: 0;
+  overflow: hidden;
+}
+
+.leaflet-popup-content {
+  margin: 0;
+  padding: 12px;
+  width: 250px !important;
+}
+
+.leaflet-popup-tip-container {
+  margin-top: -1px;
+}
+
+.leaflet-popup-tip {
+  background-color: white;
+}
+
+/* Button styles in popups */
+.view-services-btn, .route-button {
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.view-services-btn:hover {
+  background-color: #1F5A49 !important;
+}
+
+.route-button:hover {
+  background-color: #444 !important;
+}
+
+/* Legend styles */
+.legend {
+  line-height: 1.5;
+  font-size: 14px;
+}
+
+/* Loading spinner animation */
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #2F7B5F;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+/* Page fade-out animation for smoother transitions */
+@keyframes fadeOut {
+  0% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+.animate-fade-out {
+  animation: fadeOut 0.5s ease-out forwards;
+}
+
+/* Optimize the map tile loading */
+.leaflet-tile {
+  visibility: hidden;
+}
+
+.leaflet-tile-loaded {
+  visibility: visible;
+}
+
+/* Ensure map is visible in container */
+.leaflet-container {
+  height: 100%;
+  width: 100%;
+}
+
+/* Loader animation for small spinners */
+.spinner-sm {
+  display: inline-block;
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: white;
+  animation: spin 1s ease-in-out infinite;
+}
+
+/* Loader animation for image uploads */
+.loader {
+  display: inline-block;
+  width: 2rem;
+  height: 2rem;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: white;
+  animation: spin 1s ease-in-out infinite;
+}
+
+/* Modern typography enhancements */
+.modern-heading {
+  font-family: var(--font-serif);
+  letter-spacing: -0.03em;
+  font-weight: 500;
+}
+
+/* Toast message z-index override to ensure they're always on top */
+.toast-container {
+  z-index: 999999 !important;
+  position: fixed !important;
+}
+
+.toast-message {
+  z-index: 999999 !important;
+  position: relative !important;
+}
+
+.modern-text {
+  font-family: var(--font-sans);
+  letter-spacing: -0.01em;
+  line-height: 1.7;
+}
+
+.modern-caption {
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  color: var(--text-light);
+  letter-spacing: 0.02em;
+}
+
+.modern-label {
+  font-family: var(--font-sans);
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+}
+
+/* Line clamp utilities for text truncation */
+.line-clamp-1 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+  line-clamp: 1;
+}
+
+/* Print styles for certificates - moved to component level for better control */
+
+.line-clamp-2 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.line-clamp-3 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+}
