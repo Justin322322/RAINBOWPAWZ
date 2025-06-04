@@ -43,11 +43,11 @@ const Modal: React.FC<ModalProps> = ({
   }, [isOpen, onClose, closeOnOverlayClick]);
 
   const sizeClasses = {
-    small: 'max-w-md',
-    medium: 'max-w-lg',
-    large: 'max-w-2xl',
-    xlarge: 'max-w-4xl',
-    fullscreen: 'max-w-[80vw] max-h-[90vh]'
+    small: 'max-w-md w-full mx-4 sm:mx-auto',
+    medium: 'max-w-lg w-full mx-4 sm:mx-auto',
+    large: 'max-w-2xl w-full mx-4 sm:mx-auto',
+    xlarge: 'max-w-4xl w-full mx-4 sm:mx-auto',
+    fullscreen: 'max-w-[95vw] sm:max-w-[80vw] max-h-[95vh] sm:max-h-[90vh] w-full mx-2 sm:mx-auto'
   };
 
   return (
@@ -63,16 +63,16 @@ const Modal: React.FC<ModalProps> = ({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm"
+            transition={{ duration: 0.15, ease: "easeOut" }}
+            className="fixed inset-0 bg-black/60"
             onClick={closeOnOverlayClick ? onClose : undefined}
           />
 
           <motion.div
-            initial={{ scale: 0.95, opacity: 0 }}
+            initial={{ scale: 0.98, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.95, opacity: 0 }}
-            transition={{ duration: 0.2, ease: "easeOut" }}
+            exit={{ scale: 0.98, opacity: 0 }}
+            transition={{ duration: 0.15, ease: "easeOut" }}
             className={`
               relative bg-white rounded-xl shadow-2xl w-full
               ${sizeClasses[size]} max-h-[90vh] overflow-hidden flex flex-col

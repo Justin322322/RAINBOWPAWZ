@@ -13,10 +13,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const [, accountType] = authToken.split('_');
+    let accountType: string | null = null;
+
+    // Check if it's a JWT token or old format
+    if (authToken.includes('.')) {
+      // JWT token format
+      const { decodeTokenUnsafe } = await import('@/lib/jwt');
+      const payload = decodeTokenUnsafe(authToken);
+      accountType = payload?.accountType || null;
+    } else {
+      // Old format fallback
+      const parts = authToken.split('_');
+      accountType = parts.length === 2 ? parts[1] : null;
+    }
+
     if (accountType !== 'admin') {
-      return NextResponse.json({ 
-        error: 'Unauthorized - Admin access required' 
+      return NextResponse.json({
+        error: 'Unauthorized - Admin access required'
       }, { status: 403 });
     }
 

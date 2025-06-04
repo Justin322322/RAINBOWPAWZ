@@ -52,33 +52,48 @@ export const useCart = () => useContext(CartContext);
 
 // Cart provider component
 export const CartProvider = ({ children }: { children: ReactNode }) => {
-  // Initialize cart from localStorage if available
+  // Initialize cart with empty array to prevent hydration mismatch
   const [items, setItems] = useState<CartItem[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const [isHydrated, setIsHydrated] = useState(false);
 
-  // Load cart from localStorage on component mount
+  // Handle hydration properly
   useEffect(() => {
-    // Check if we're in the browser environment
-    if (typeof window !== 'undefined' && window.localStorage) {
-      const storedCart = localStorage.getItem('cart');
-      if (storedCart) {
-        try {
-          setItems(JSON.parse(storedCart));
-        } catch (error) {
-          console.error('Error parsing cart from localStorage:', error);
-          setItems([]);
-        }
-      }
-    }
-    setLoaded(true);
+    setIsHydrated(true);
   }, []);
 
-  // Save cart to localStorage whenever it changes
+  // Load cart from localStorage only after hydration
   useEffect(() => {
-    if (loaded && typeof window !== 'undefined' && window.localStorage) {
-      localStorage.setItem('cart', JSON.stringify(items));
+    if (!isHydrated) return;
+
+    try {
+      const storedCart = localStorage.getItem('cart');
+      if (storedCart) {
+        const parsedCart = JSON.parse(storedCart);
+        // Validate cart structure before setting
+        if (Array.isArray(parsedCart)) {
+          setItems(parsedCart);
+        }
+      }
+    } catch (error) {
+      console.warn('Error loading cart from localStorage:', error);
+      // Clear corrupted cart data
+      localStorage.removeItem('cart');
+    } finally {
+      setLoaded(true);
     }
-  }, [items, loaded]);
+  }, [isHydrated]);
+
+  // Save cart to localStorage whenever it changes (only after initial load)
+  useEffect(() => {
+    if (loaded && isHydrated) {
+      try {
+        localStorage.setItem('cart', JSON.stringify(items));
+      } catch (error) {
+        console.warn('Error saving cart to localStorage:', error);
+      }
+    }
+  }, [items, loaded, isHydrated]);
 
   // Calculate total price and item count
   const totalPrice = items.reduce((total, item) => {

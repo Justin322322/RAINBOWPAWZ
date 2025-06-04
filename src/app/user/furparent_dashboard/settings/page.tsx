@@ -92,6 +92,7 @@ function SettingsPage({ userData }: SettingsPageProps) {
       }, 5000);
       return () => clearTimeout(timer);
     }
+    return () => {}; // Return empty cleanup function for else case
   }, [message]);
 
   return (

@@ -169,6 +169,8 @@ export default function MapComponent({
 
   // Check if we're in a browser environment before initializing Leaflet
   useEffect(() => {
+    let timer: NodeJS.Timeout | null = null;
+
     if (typeof window !== 'undefined' && !userCoordinates) {
       // If initial coordinates are provided, use them
       if (initialUserCoordinates) {
@@ -179,13 +181,18 @@ export default function MapComponent({
         setUserCoordinates(defaultCoordinates);
 
         // Delayed geocoding to ensure DOM is ready
-        const timer = setTimeout(() => {
+        timer = setTimeout(() => {
           geocodeAddressEnhanced(userAddress, 'user');
         }, 100);
-
-        return () => clearTimeout(timer);
       }
     }
+
+    // Cleanup function that always returns
+    return () => {
+      if (timer) {
+        clearTimeout(timer);
+      }
+    };
   }, [userAddress, initialUserCoordinates, userCoordinates, geocodeAddressEnhanced]);
 
   // Initialize map with coordinates - optimized version
@@ -562,19 +569,28 @@ export default function MapComponent({
 
   return (
     <div className="relative w-full h-full">
-      <div id="map-container" ref={mapContainerRef} className="w-full h-full rounded-lg overflow-hidden shadow-inner">
+      <div
+        id="map-container"
+        ref={mapContainerRef}
+        className="w-full h-full rounded-lg overflow-hidden shadow-inner"
+        style={{
+          minHeight: '300px',
+          height: 'clamp(300px, 50vh, 500px)'
+        }}
+      >
         {/* Map will be rendered here */}
       </div>
 
-      {/* Map lock indicator */}
+      {/* Map lock indicator - responsive */}
       <div
-        className={`absolute top-4 left-12 bg-white px-3 py-1.5 rounded shadow-md z-[1000] text-sm transition-opacity duration-300 ${isMapLocked ? 'opacity-100' : 'opacity-0'}`}
+        className={`absolute top-2 sm:top-4 left-2 sm:left-12 bg-white px-2 sm:px-3 py-1 sm:py-1.5 rounded shadow-md z-[1000] text-xs sm:text-sm transition-opacity duration-300 ${isMapLocked ? 'opacity-100' : 'opacity-0'}`}
       >
-        <div className="flex items-center gap-1.5">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+        <div className="flex items-center gap-1 sm:gap-1.5">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 sm:h-4 sm:w-4 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2-2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
           </svg>
-          <span className="text-gray-700">Press <kbd className="px-1.5 py-0.5 bg-gray-100 border border-gray-300 rounded-sm mx-0.5 text-xs font-mono">Ctrl</kbd> to interact with map</span>
+          <span className="text-gray-700 hidden sm:inline">Press <kbd className="px-1.5 py-0.5 bg-gray-100 border border-gray-300 rounded-sm mx-0.5 text-xs font-mono">Ctrl</kbd> to interact with map</span>
+          <span className="text-gray-700 sm:hidden">Ctrl to interact</span>
         </div>
       </div>
 
@@ -690,17 +706,17 @@ export default function MapComponent({
         </div>
       )}
 
-      {/* Route instructions panel */}
+      {/* Route instructions panel - responsive */}
       {routeInstructions && (
-        <div className="absolute bottom-4 right-4 bg-white rounded-lg shadow-lg p-4 max-w-xs max-h-[60%] overflow-y-auto z-[1000] border-l-4 border-[#2F7B5F]">
-          <div className="flex justify-between items-center mb-3">
-            <h3 className="text-[#2F7B5F] font-bold text-sm">Directions to {selectedProviderName}</h3>
+        <div className="absolute bottom-2 sm:bottom-4 left-2 right-2 sm:left-auto sm:right-4 bg-white rounded-lg shadow-lg p-3 sm:p-4 sm:max-w-xs max-h-[50%] sm:max-h-[60%] overflow-y-auto z-[1000] border-l-4 border-[#2F7B5F]">
+          <div className="flex justify-between items-center mb-2 sm:mb-3">
+            <h3 className="text-[#2F7B5F] font-bold text-xs sm:text-sm truncate pr-2">Directions to {selectedProviderName}</h3>
             <button
-              className="text-gray-600 hover:text-gray-800"
+              className="text-gray-600 hover:text-gray-800 flex-shrink-0"
               onClick={() => setRouteInstructions(null)}
               aria-label="Close directions"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-5 h-5">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-4 h-4 sm:w-5 sm:h-5">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>

@@ -1,4 +1,4 @@
-import ApplicationDetailClient from './client.jsx';
+import ApplicationDetailClient from './client';
 
 export default async function ApplicationDetailPage({ params }: { params: { id: string } }) {
   const { id } = await params;

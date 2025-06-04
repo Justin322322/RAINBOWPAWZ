@@ -12,7 +12,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const [userId, accountType] = authToken.split('_');
+    let userId: string | null = null;
+    let accountType: string | null = null;
+
+    // Check if it's a JWT token or old format
+    if (authToken.includes('.')) {
+      // JWT token format
+      const { decodeTokenUnsafe } = await import('@/lib/jwt');
+      const payload = decodeTokenUnsafe(authToken);
+      userId = payload?.userId || null;
+      accountType = payload?.accountType || null;
+    } else {
+      // Old format fallback
+      const parts = authToken.split('_');
+      if (parts.length === 2) {
+        userId = parts[0];
+        accountType = parts[1];
+      }
+    }
 
     if (accountType !== 'admin') {
       return NextResponse.json({ error: 'Forbidden: Admin access required' }, { status: 403 });

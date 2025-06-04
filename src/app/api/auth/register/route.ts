@@ -195,9 +195,9 @@ export async function POST(request: Request) {
           let genderValue = null;
           if (data.account_type === 'personal' && (data as PersonalRegistrationData).sex) {
             const sex = (data as PersonalRegistrationData).sex;
-            if (sex.toLowerCase() === 'male') {
+            if (sex && sex.toLowerCase() === 'male') {
               genderValue = 'Male';
-            } else if (sex.toLowerCase() === 'female') {
+            } else if (sex && sex.toLowerCase() === 'female') {
               genderValue = 'Female';
             } else {
               genderValue = 'Other';

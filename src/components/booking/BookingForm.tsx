@@ -12,7 +12,7 @@ import {
   CheckCircleIcon,
 } from '@heroicons/react/24/outline';
 import Image from 'next/image';
-import AddOnSelector, { AddOn } from './AddOnSelector';
+import AddOnSelector, { AddOn } from '@/components/booking/AddOnSelector';
 import { Button, Input, Textarea, SelectInput } from '@/components/ui';
 import { getUserId } from '@/utils/auth';
 
@@ -32,6 +32,9 @@ export default function BookingForm({
 }: BookingFormProps) {
   const router = useRouter();
   const { showToast } = useToast();
+
+  // Get userId from auth if not provided as prop
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   // Form fields
   const [petName, setPetName] = useState('');
@@ -128,6 +131,18 @@ export default function BookingForm({
     setTotalPrice(total);
   }, [basePrice, deliveryOption, deliveryFee, addOnsTotalPrice]);
 
+  // Initialize userId from prop or auth
+  useEffect(() => {
+    if (userId) {
+      setCurrentUserId(userId.toString());
+    } else {
+      const authUserId = getUserId();
+      if (authUserId) {
+        setCurrentUserId(authUserId);
+      }
+    }
+  }, [userId]);
+
   // Fetch package details if packageId is provided
   useEffect(() => {
     if (packageId) {
@@ -173,11 +188,15 @@ export default function BookingForm({
   const uploadPetImage = async () => {
     if (!petImage) return null;
 
+    if (!currentUserId) {
+      throw new Error('User not authenticated. Please log in and try again.');
+    }
+
     try {
       setPetImageUploading(true);
       const formData = new FormData();
       formData.append('image', petImage);
-      formData.append('userId', userId.toString());
+      formData.append('userId', currentUserId);
 
       const response = await fetch('/api/upload/pet-image', {
         method: 'POST',
@@ -239,6 +258,11 @@ export default function BookingForm({
       return;
     }
 
+    if (!currentUserId) {
+      showToast('User not authenticated. Please log in and try again.', 'error');
+      return;
+    }
+
     try {
       setLoading(true);
 
@@ -250,7 +274,7 @@ export default function BookingForm({
 
       // Create booking
       const bookingData = {
-        userId,
+        userId: parseInt(currentUserId, 10),
         providerId,
         packageId: selectedPackage?.id,
         specialRequests,

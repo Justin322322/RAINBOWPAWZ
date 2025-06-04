@@ -2,15 +2,24 @@
 
 import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
 
+interface LoadingState {
+  isLoading: boolean;
+  message: string | null;
+  priority: 'low' | 'medium' | 'high';
+  timestamp: number;
+}
+
 interface LoadingContextType {
   isLoading: boolean;
   setLoading: (isLoading: boolean) => void;
-  startLoading: () => void;
+  startLoading: (message?: string, priority?: 'low' | 'medium' | 'high') => void;
   stopLoading: () => void;
   loadingMessage: string | null;
   setLoadingMessage: (message: string | null) => void;
   loadingSection: string | null;
   setLoadingSection: (section: string | null) => void;
+  activeSections: Map<string, LoadingState>;
+  clearAllLoading: () => void;
 }
 
 const LoadingContext = createContext<LoadingContextType | undefined>(undefined);
@@ -23,6 +32,7 @@ export const LoadingProvider: React.FC<LoadingProviderProps> = ({ children }) =>
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState<string | null>(null);
   const [loadingSection, setLoadingSection] = useState<string | null>(null);
+  const [activeSections, setActiveSections] = useState<Map<string, LoadingState>>(new Map());
 
   const setLoading = useCallback((loading: boolean) => {
     setIsLoading(loading);
@@ -33,8 +43,11 @@ export const LoadingProvider: React.FC<LoadingProviderProps> = ({ children }) =>
     }
   }, []);
 
-  const startLoading = useCallback(() => {
+  const startLoading = useCallback((message?: string, priority: 'low' | 'medium' | 'high' = 'medium') => {
     setIsLoading(true);
+    if (message) {
+      setLoadingMessage(message);
+    }
   }, []);
 
   const stopLoading = useCallback(() => {
@@ -42,6 +55,39 @@ export const LoadingProvider: React.FC<LoadingProviderProps> = ({ children }) =>
     setLoadingMessage(null);
     setLoadingSection(null);
   }, []);
+
+  const clearAllLoading = useCallback(() => {
+    setIsLoading(false);
+    setLoadingMessage(null);
+    setLoadingSection(null);
+    setActiveSections(new Map());
+  }, []);
+
+  // Enhanced setLoadingSection with conflict prevention
+  const enhancedSetLoadingSection = useCallback((section: string | null) => {
+    if (section) {
+      setActiveSections(prev => {
+        const newMap = new Map(prev);
+        newMap.set(section, {
+          isLoading: true,
+          message: loadingMessage,
+          priority: 'medium',
+          timestamp: Date.now()
+        });
+        return newMap;
+      });
+      setLoadingSection(section);
+    } else {
+      setActiveSections(prev => {
+        const newMap = new Map(prev);
+        if (loadingSection) {
+          newMap.delete(loadingSection);
+        }
+        return newMap;
+      });
+      setLoadingSection(null);
+    }
+  }, [loadingMessage, loadingSection]);
 
   return (
     <LoadingContext.Provider
@@ -53,7 +99,9 @@ export const LoadingProvider: React.FC<LoadingProviderProps> = ({ children }) =>
         loadingMessage,
         setLoadingMessage,
         loadingSection,
-        setLoadingSection,
+        setLoadingSection: enhancedSetLoadingSection,
+        activeSections,
+        clearAllLoading,
       }}
     >
       {children}
@@ -69,24 +117,34 @@ export const useLoading = (): LoadingContextType => {
   return context;
 };
 
-// Utility hook for section-specific loading
+// Enhanced utility hook for section-specific loading with conflict prevention
 export const useSectionLoading = (sectionId: string): {
   isSectionLoading: boolean;
-  startSectionLoading: (message?: string) => void;
+  startSectionLoading: (message?: string, priority?: 'low' | 'medium' | 'high') => void;
   stopSectionLoading: () => void;
+  hasConflict: boolean;
 } => {
-  const { loadingSection, setLoadingSection, setLoadingMessage } = useLoading();
+  const { loadingSection, setLoadingSection, setLoadingMessage, activeSections } = useLoading();
 
   const isSectionLoading = loadingSection === sectionId;
+  const hasConflict = activeSections.size > 1 && activeSections.has(sectionId);
 
   const startSectionLoading = useCallback(
-    (message?: string) => {
-      setLoadingSection(sectionId);
-      if (message) {
-        setLoadingMessage(message);
+    (message?: string, priority: 'low' | 'medium' | 'high' = 'medium') => {
+      // Check for conflicts and resolve based on priority
+      const currentSection = activeSections.get(sectionId);
+      const shouldOverride = !currentSection ||
+        priority === 'high' ||
+        (priority === 'medium' && currentSection.priority === 'low');
+
+      if (shouldOverride) {
+        setLoadingSection(sectionId);
+        if (message) {
+          setLoadingMessage(message);
+        }
       }
     },
-    [sectionId, setLoadingSection, setLoadingMessage]
+    [sectionId, setLoadingSection, setLoadingMessage, activeSections]
   );
 
   const stopSectionLoading = useCallback(() => {
@@ -100,5 +158,6 @@ export const useSectionLoading = (sectionId: string): {
     isSectionLoading,
     startSectionLoading,
     stopSectionLoading,
+    hasConflict,
   };
 };

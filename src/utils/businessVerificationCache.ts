@@ -115,9 +115,9 @@ export const isBusinessVerificationCacheValid = (): boolean => {
   // Quick check using memory cache first
   if (memoryCache) {
     const now = Date.now();
-    return memoryCache.timestamp &&
+    return !!(memoryCache.timestamp &&
            (now - memoryCache.timestamp) < VERIFICATION_CACHE_DURATION &&
-           memoryCache.verified === true;
+           memoryCache.verified === true);
   }
 
   const cached = getCachedBusinessVerification();

@@ -4,10 +4,10 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
-import LoginModal from '../components/LoginModal';
-import SignupOptionModal from '../components/SignupOptionModal';
-import PersonalAccountModal from '../components/PersonalAccountModal';
-import BusinessAccountModal from '../components/BusinessAccountModal';
+import LoginModal from '@/components/LoginModal';
+import SignupOptionModal from '@/components/SignupOptionModal';
+import PersonalAccountModal from '@/components/PersonalAccountModal';
+import BusinessAccountModal from '@/components/BusinessAccountModal';
 import { ChevronRightIcon, SparklesIcon, CalendarIcon, UserGroupIcon, HeartIcon, HomeIcon, CheckIcon, MapPinIcon } from '@heroicons/react/24/outline';
 import { CalendarIcon as CalendarIconSolid, HeartIcon as HeartIconSolid, SparklesIcon as SparklesIconSolid } from '@heroicons/react/24/solid';
 

@@ -35,22 +35,34 @@ export function useDataFetching<T = any>({
   const [data, setData] = useState<T | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
+  const [abortController, setAbortController] = useState<AbortController | null>(null);
 
   // Get global loading context
-  const { setLoading, setLoadingMessage, setLoadingSection } = useLoading();
+  const { setLoading, setLoadingMessage, setLoadingSection, clearAllLoading } = useLoading();
 
   const fetchData = useCallback(async (options: { silent?: boolean } = {}) => {
     const { silent = false } = options;
+
+    // Cancel any existing request
+    if (abortController) {
+      abortController.abort();
+    }
+
+    // Create new abort controller for this request
+    const newAbortController = new AbortController();
+    setAbortController(newAbortController);
 
     if (!silent) {
       setIsLoading(true);
       setError(null);
 
+      // Prevent overlapping global loaders
       if (showGlobalLoading) {
         setLoading(true);
         setLoadingMessage(loadingMessage);
       }
 
+      // Prevent overlapping section loaders
       if (showSectionLoading) {
         setLoadingSection(sectionId);
       }
@@ -63,6 +75,7 @@ export function useDataFetching<T = any>({
           'Content-Type': 'application/json',
           ...headers,
         },
+        signal: newAbortController.signal, // Add abort signal
       };
 
       if (body && method !== 'GET') {
@@ -84,6 +97,11 @@ export function useDataFetching<T = any>({
 
       return result;
     } catch (err) {
+      // Don't set error if request was aborted
+      if (err instanceof Error && err.name === 'AbortError') {
+        return null;
+      }
+
       const error = err instanceof Error ? err : new Error(String(err));
       setError(error);
 
@@ -93,9 +111,13 @@ export function useDataFetching<T = any>({
 
       return null;
     } finally {
+      // Clear abort controller
+      setAbortController(null);
+
       if (!silent) {
         setIsLoading(false);
 
+        // Ensure loading states are properly cleared
         if (showGlobalLoading) {
           setLoading(false);
         }
@@ -105,7 +127,16 @@ export function useDataFetching<T = any>({
         }
       }
     }
-  }, [url, method, body, headers, loadingMessage, showGlobalLoading, showSectionLoading, sectionId, onSuccess, onError, setLoading, setLoadingMessage, setLoadingSection]);
+  }, [url, method, body, headers, loadingMessage, showGlobalLoading, showSectionLoading, sectionId, onSuccess, onError, setLoading, setLoadingMessage, setLoadingSection, abortController]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (abortController) {
+        abortController.abort();
+      }
+    };
+  }, [abortController]);
 
   useEffect(() => {
     if (!skipInitialFetch) {

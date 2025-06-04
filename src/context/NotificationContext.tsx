@@ -44,7 +44,13 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isHydrated, setIsHydrated] = useState(false);
   const { showToast } = useToast();
+
+  // Handle hydration properly
+  useEffect(() => {
+    setIsHydrated(true);
+  }, []);
 
   // Fetch notifications from the API
   const fetchNotifications = async (unreadOnly = false) => {

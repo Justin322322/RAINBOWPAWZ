@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import Spinner from './Spinner';
+import Spinner from '@/components/ui/Spinner';
 import { cn } from '@/utils/classNames';
 
 export interface SectionLoaderProps {
@@ -32,13 +32,13 @@ export const SectionLoader: React.FC<SectionLoaderProps> = ({
 }) => {
   const Container = withAnimation ? motion.div : 'div';
   
-  const animationProps = withAnimation 
+  const animationProps = withAnimation
     ? {
         initial: { opacity: 0 },
         animate: { opacity: 1 },
         exit: { opacity: 0 },
-        transition: { duration: 0.2 }
-      } 
+        transition: { duration: 0.15, ease: "easeOut" }
+      }
     : {};
 
   return (

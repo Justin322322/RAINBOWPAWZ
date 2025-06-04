@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { getAuthTokenFromRequest } from '@/utils/auth';
+import { decodeTokenUnsafe } from '@/lib/jwt';
 
 export async function GET(request: NextRequest) {
   try {
@@ -16,7 +17,18 @@ export async function GET(request: NextRequest) {
 
     // Check account type if we have a token
     if (authToken) {
-      const [tokenUserId, accountType] = authToken.split('_');
+      let accountType: string | null = null;
+
+      // Check if it's a JWT token or old format
+      if (authToken.includes('.')) {
+        // JWT token format
+        const payload = decodeTokenUnsafe(authToken);
+        accountType = payload?.accountType || null;
+      } else {
+        // Old format fallback
+        const parts = authToken.split('_');
+        accountType = parts.length === 2 ? parts[1] : null;
+      }
 
       // Only allow admins to access this endpoint (unless in development)
       if (accountType !== 'admin' && !isDevelopment) {

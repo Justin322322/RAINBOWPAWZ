@@ -218,18 +218,18 @@ export async function POST(request: NextRequest) {
             // Create mock booking details
             bookingDetails = {
               customerName: `${userResult[0].first_name} ${userResult[0].last_name}`,
-              serviceName: 'Pet Memorial Service',
-              providerName: 'Rainbow Paws Provider',
+              serviceName: 'Pet Memorial Service' as string,
+              providerName: 'Rainbow Paws Provider' as string,
               bookingDate: new Date().toLocaleDateString('en-US', {
                 weekday: 'long',
                 year: 'numeric',
                 month: 'long',
                 day: 'numeric'
               }),
-              bookingTime: '10:00 AM',
-              petName: 'Your Pet',
-              bookingId: bookingId,
-              status: 'cancelled',
+              bookingTime: '10:00 AM' as string,
+              petName: 'Your Pet' as string,
+              bookingId: bookingId as string | number,
+              status: 'cancelled' as const,
               notes: 'Your booking has been cancelled as requested.'
             };
           }
@@ -245,24 +245,34 @@ export async function POST(request: NextRequest) {
       if (!bookingDetails) {
         bookingDetails = {
           customerName: 'Valued Customer',
-          serviceName: 'Pet Memorial Service',
-          providerName: 'Rainbow Paws Provider',
+          serviceName: 'Pet Memorial Service' as string,
+          providerName: 'Rainbow Paws Provider' as string,
           bookingDate: new Date().toLocaleDateString('en-US', {
             weekday: 'long',
             year: 'numeric',
             month: 'long',
             day: 'numeric'
           }),
-          bookingTime: '10:00 AM',
-          petName: 'Your Pet',
-          bookingId: bookingId,
-          status: 'cancelled',
+          bookingTime: '10:00 AM' as string,
+          petName: 'Your Pet' as string,
+          bookingId: bookingId as string | number,
+          status: 'cancelled' as const,
           notes: 'Your booking has been cancelled as requested.'
         };
       }
 
       // Create email content using template
-      const emailContent = createBookingStatusUpdateEmail(bookingDetails);
+      const emailContent = createBookingStatusUpdateEmail({
+        customerName: bookingDetails.customerName,
+        serviceName: bookingDetails.serviceName,
+        providerName: bookingDetails.providerName,
+        bookingDate: bookingDetails.bookingDate,
+        bookingTime: bookingDetails.bookingTime,
+        petName: bookingDetails.petName,
+        bookingId: bookingDetails.bookingId,
+        status: 'cancelled' as const,
+        notes: bookingDetails.notes
+      });
 
       // Send email using unified email service
       try {

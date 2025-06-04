@@ -2,20 +2,11 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import OTPVerificationModal from './OTPVerificationModal';
-import GetStartedModal from './GetStartedModal';
+import OTPVerificationModal from '@/components/OTPVerificationModal';
+import GetStartedModal from '@/components/GetStartedModal';
+import { decodeTokenUnsafe } from '@/lib/jwt';
 import { fastAuthCheck } from '@/utils/auth';
-
-// Define the shape of the user data
-interface UserData {
-  id: number;
-  email: string;
-  first_name: string;
-  last_name: string;
-  is_otp_verified: number;
-  user_type: string;
-  [key: string]: any; // Allow for other properties
-}
+import { useAuthState, UserData } from '@/contexts/AuthStateContext';
 
 // Global state to prevent re-verification on page navigation
 let globalUserAuthState = {
@@ -202,8 +193,26 @@ const withOTPVerification = <P extends object>(
 
           console.log('[withOTPVerification] Auth value:', authValue);
 
-          // Extract user ID and account type from auth token
-          const [userId, accountType] = authValue.split('_');
+          let userId: string | null = null;
+          let accountType: string | null = null;
+
+          // Check if it's a JWT token or old format
+          if (authValue.includes('.')) {
+            // JWT token format
+            const payload = decodeTokenUnsafe(authValue);
+            if (payload) {
+              userId = payload.userId;
+              accountType = payload.accountType;
+            }
+          } else {
+            // Old format fallback
+            const parts = authValue.split('_');
+            if (parts.length === 2) {
+              userId = parts[0];
+              accountType = parts[1];
+            }
+          }
+
           console.log('[withOTPVerification] Parsed auth:', { userId, accountType });
 
           // Validate account type

@@ -12,7 +12,7 @@ const dbConfig = {
   database: process.env.DB_NAME || 'rainbow_paws',
   port: MYSQL_PORT,
   waitForConnections: true,
-  connectionLimit: 5,
+  connectionLimit: process.env.NODE_ENV === 'production' ? 20 : 10, // Increased pool size
   queueLimit: 0,
   acquireTimeout: 60000,
   timeout: 60000,
@@ -36,7 +36,7 @@ const productionConfig = {
   database: process.env.DB_NAME || 'rainbow_paws',
   port: MYSQL_PORT, // Always use 3306 for MySQL
   waitForConnections: true,
-  connectionLimit: 5,
+  connectionLimit: process.env.NODE_ENV === 'production' ? 20 : 10, // Increased pool size
   queueLimit: 0,
   acquireTimeout: 60000,
   timeout: 60000,

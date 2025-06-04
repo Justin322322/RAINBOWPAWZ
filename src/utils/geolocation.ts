@@ -2,7 +2,7 @@
  * Utility functions for handling geolocation
  */
 
-import { geocodingService } from './geocoding';
+import { geocodingService } from '@/utils/geocoding';
 
 // Interface for location data
 export interface LocationData {

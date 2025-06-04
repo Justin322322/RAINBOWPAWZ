@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { getAuthTokenFromRequest } from '@/utils/auth';
+import { decodeTokenUnsafe } from '@/lib/jwt';
 
 export async function GET(request: NextRequest) {
   try {
@@ -15,15 +16,30 @@ export async function GET(request: NextRequest) {
     }
 
     // Parse the token to get user ID and account type
-    const tokenParts = authToken.split('_');
-    if (tokenParts.length !== 2) {
+    let userId: string | null = null;
+    let accountType: string | null = null;
+
+    // Check if it's a JWT token or old format
+    if (authToken.includes('.')) {
+      // JWT token format
+      const payload = decodeTokenUnsafe(authToken);
+      userId = payload?.userId || null;
+      accountType = payload?.accountType || null;
+    } else {
+      // Old format fallback
+      const parts = authToken.split('_');
+      if (parts.length === 2) {
+        userId = parts[0];
+        accountType = parts[1];
+      }
+    }
+
+    if (!userId || !accountType) {
       return NextResponse.json({
         success: false,
         error: 'Invalid authentication token format'
       }, { status: 401 });
     }
-
-    const [userId, accountType] = tokenParts;
 
     // Check if this is a business user
     if (accountType !== 'business') {

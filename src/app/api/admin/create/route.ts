@@ -6,14 +6,41 @@ export async function POST(request: NextRequest) {
   try {
     // Get admin details from request body
     const body = await request.json();
-    const { 
-      email = 'admin@example.com', 
-      password = 'Admin123!', 
-      firstName = 'Admin', 
-      lastName = 'User',
-      username = 'admin',
-      role = 'super_admin'
+    const {
+      email,
+      password,
+      firstName,
+      lastName,
+      username,
+      role
     } = body;
+
+    // SECURITY: Validate all required fields are provided
+    if (!email || !password || !firstName || !lastName || !username) {
+      return NextResponse.json({
+        error: 'Missing required fields',
+        message: 'email, password, firstName, lastName, and username are required'
+      }, { status: 400 });
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return NextResponse.json({
+        error: 'Invalid email format'
+      }, { status: 400 });
+    }
+
+    // Validate password strength
+    if (password.length < 8) {
+      return NextResponse.json({
+        error: 'Password too weak',
+        message: 'Password must be at least 8 characters long'
+      }, { status: 400 });
+    }
+
+    // Set default role if not provided
+    const adminRole = role || 'admin';
 
     // Hash the password
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -57,17 +84,17 @@ export async function POST(request: NextRequest) {
       if (existingProfileResult && existingProfileResult.length > 0) {
         // Update existing profile
         await query(
-          `UPDATE admin_profiles 
+          `UPDATE admin_profiles
            SET username = ?, full_name = ?, admin_role = ?
            WHERE user_id = ?`,
-          [username, `${firstName} ${lastName}`, role, userId]
+          [username, `${firstName} ${lastName}`, adminRole, userId]
         );
       } else {
         // Create new admin profile
         await query(
           `INSERT INTO admin_profiles (user_id, username, full_name, admin_role)
            VALUES (?, ?, ?, ?)`,
-          [userId, username, `${firstName} ${lastName}`, role]
+          [userId, username, `${firstName} ${lastName}`, adminRole]
         );
       }
 
@@ -88,17 +115,17 @@ export async function POST(request: NextRequest) {
         if (existingOldAdminResult && existingOldAdminResult.length > 0) {
           // Update existing admin
           await query(
-            `UPDATE admins 
+            `UPDATE admins
              SET username = ?, password = ?, full_name = ?, role = ?
              WHERE email = ?`,
-            [username, hashedPassword, `${firstName} ${lastName}`, role, email]
+            [username, hashedPassword, `${firstName} ${lastName}`, adminRole, email]
           );
         } else {
           // Create new admin in old table
           await query(
             `INSERT INTO admins (username, password, email, full_name, role)
              VALUES (?, ?, ?, ?, ?)`,
-            [username, hashedPassword, email, `${firstName} ${lastName}`, role]
+            [username, hashedPassword, email, `${firstName} ${lastName}`, adminRole]
           );
         }
       }
@@ -115,7 +142,7 @@ export async function POST(request: NextRequest) {
           firstName,
           lastName,
           username,
-          role
+          role: adminRole
         }
       });
     } catch (error) {

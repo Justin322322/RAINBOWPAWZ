@@ -8,33 +8,41 @@ interface DashboardSkeletonProps {
 }
 
 export default function DashboardSkeleton({ type = 'admin' }: DashboardSkeletonProps) {
-  // Animation for skeleton pulse effect
+  // Optimized animation for skeleton pulse effect - reduced CPU usage
   const pulseAnimation = {
-    initial: { opacity: 0.6 },
+    initial: { opacity: 0.7 },
     animate: {
-      opacity: 1,
+      opacity: [0.7, 1, 0.7],
       transition: {
+        duration: 2,
+        ease: "easeInOut",
         repeat: Infinity,
-        repeatType: "reverse" as const,
-        duration: 1.5
+        repeatDelay: 0.5 // Add delay between repeats to reduce CPU usage
       }
     }
   };
 
-  // Staggered entrance animation for skeleton items
+  // Simplified entrance animation for skeleton items
   const containerAnimation = {
     hidden: { opacity: 0 },
     show: {
       opacity: 1,
       transition: {
-        staggerChildren: 0.1
+        duration: 0.3,
+        staggerChildren: 0.05 // Reduced stagger for better performance
       }
     }
   };
 
   const itemAnimation = {
-    hidden: { opacity: 0, y: 20 },
-    show: { opacity: 1, y: 0 }
+    hidden: { opacity: 0, y: 10 }, // Reduced transform distance
+    show: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        duration: 0.2 // Faster individual animations
+      }
+    }
   };
 
   // Render different skeletons based on the dashboard type

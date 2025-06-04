@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import CremationNavbar from './CremationNavbar';
 import CremationSidebar from './CremationSidebar';
-import DashboardSkeleton from '../ui/DashboardSkeleton';
+import DashboardSkeleton from '@/components/ui/DashboardSkeleton';
 import { HomeIcon, DocumentTextIcon, ArchiveBoxIcon, CalendarIcon, ClockIcon, UserCircleIcon } from '@heroicons/react/24/outline';
 
 interface CremationDashboardLayoutProps {

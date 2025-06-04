@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { getProductionImagePath } from '@/utils/imageUtils';
 import {
@@ -21,244 +21,63 @@ import DeclineModal from '@/components/DeclineModal';
 import DocumentViewerModal from '@/components/modals/DocumentViewerModal';
 import SectionLoader from '@/components/ui/SectionLoader';
 
-function ApplicationDetailContent({ id }) {
+interface ApplicationDetailContentProps {
+  id: string;
+}
+
+interface Application {
+  id: string;
+  businessId: string;
+  status: string;
+  verificationStatus: string;
+  submitDate: string;
+  businessName: string;
+  businessType?: string;
+  businessHours?: string;
+  city?: string;
+  province?: string;
+  zip?: string;
+  description?: string;
+  contactFirstName?: string;
+  contactLastName?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  documents?: Array<{
+    type?: string;
+    name?: string;
+    url?: string;
+    path?: string;
+  }>;
+  verificationDate?: string;
+  application_status?: string;
+}
+
+function ApplicationDetailContent({ id }: ApplicationDetailContentProps) {
   const router = useRouter();
-  const [application, setApplication] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [isDocumentModalOpen, setIsDocumentModalOpen] = useState(false);
-  const [selectedDocument, setSelectedDocument] = useState({ url: '', type: '' });
+  const [application, setApplication] = useState<Application | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string>('');
+  const [isDocumentModalOpen, setIsDocumentModalOpen] = useState<boolean>(false);
+  const [selectedDocument, setSelectedDocument] = useState<{ url: string; type: string }>({ url: '', type: '' });
 
   // Confirmation modals
-  const [isApproveModalOpen, setIsApproveModalOpen] = useState(false);
-  const [isDeclineModalOpen, setIsDeclineModalOpen] = useState(false);
+  const [isApproveModalOpen, setIsApproveModalOpen] = useState<boolean>(false);
+  const [isDeclineModalOpen, setIsDeclineModalOpen] = useState<boolean>(false);
 
   // Animation states
-  const [isApprovalSuccess, setIsApprovalSuccess] = useState(false);
-  const [isDeclineSuccess, setIsDeclineSuccess] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [successBusinessName, setSuccessBusinessName] = useState('');
+  const [isApprovalSuccess, setIsApprovalSuccess] = useState<boolean>(false);
+  const [isDeclineSuccess, setIsDeclineSuccess] = useState<boolean>(false);
+  const [isProcessing, setIsProcessing] = useState<boolean>(false);
+  const [successBusinessName, setSuccessBusinessName] = useState<string>('');
 
   // Helper function to safely display values
-  const safeValue = (value, defaultValue = 'Not provided') => {
+  const safeValue = (value: any, defaultValue: string = 'Not provided'): string => {
     return value !== null && value !== undefined ? value : defaultValue;
   };
 
-  // Fetch application data
-  useEffect(() => {
-    if (id) {
-      // Check if we have a stored status in sessionStorage
-      try {
-        const storedStatus = sessionStorage.getItem(`application_${id}_status`);
-        // We'll use this in fetchApplicationData
-      } catch (storageError) {
-        // Error accessing sessionStorage
-      }
-
-      // EMERGENCY FIX: Check if this is a declined or restricted application
-      // and force the correct status display
-      const checkDirectStatus = async () => {
-        try {
-          const cacheBuster = new Date().getTime();
-          const dbStatusResponse = await fetch(`/api/businesses/applications/${id}/status?_=${cacheBuster}`);
-
-          if (dbStatusResponse.ok) {
-            const dbStatusData = await dbStatusResponse.json();
-
-            if (dbStatusData.verification_status === 'declined' || dbStatusData.verification_status === 'restricted') {
-
-              // Force the correct status in the UI
-              setApplication(prev => {
-                if (!prev) {
-                  return {
-                    id: `APP${id.toString().padStart(3, '0')}`,
-                    businessId: id,
-                    status: dbStatusData.verification_status,
-                    verificationStatus: dbStatusData.verification_status,
-                    submitDate: new Date().toLocaleDateString('en-US', {
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric'
-                    }),
-                    businessName: 'Loading...',
-                    documents: []
-                  };
-                }
-                return {
-                  ...prev,
-                  status: dbStatusData.verification_status,
-                  verificationStatus: dbStatusData.verification_status
-                };
-              });
-            }
-          }
-        } catch (error) {
-        }
-      };
-
-      checkDirectStatus();
-      fetchApplicationData();
-    }
-  }, [id]);
-
-  // Function to open document modal with production-ready image path
-  const openDocumentModal = (url, type) => {
-    // Process the URL to ensure it works in production
-    let processedUrl = url;
-
-    // If it's a document path, ensure it uses the API route
-    if (url && typeof url === 'string') {
-      // If it's already an API path, use it as is
-      if (!url.startsWith('/api/')) {
-        // For document paths, use the API route
-        if (url.includes('/documents/') || url.includes('/business/') || url.includes('/businesses/')) {
-          // Try to extract the relevant path
-          const parts = url.split('/');
-          const relevantIndex = parts.findIndex(part =>
-            part === 'documents' || part === 'business' || part === 'businesses'
-          );
-
-          if (relevantIndex >= 0) {
-            const relevantPath = parts.slice(relevantIndex).join('/');
-            processedUrl = `/api/image/${relevantPath}`;
-          }
-        }
-        // For uploads paths, use the API route
-        else if (url.includes('/uploads/')) {
-          // Extract the path after /uploads/
-          const uploadPath = url.substring(url.indexOf('/uploads/') + '/uploads/'.length);
-          processedUrl = `/api/image/${uploadPath}`;
-        }
-        // For other paths, use the production image path utility
-        else {
-          processedUrl = getProductionImagePath(url);
-        }
-      }
-    }
-
-    setSelectedDocument({ url: processedUrl, type });
-    setIsDocumentModalOpen(true);
-  };
-
-  // Function to handle document approval
-  const handleApproveDocument = async (note) => {
-    try {
-      setIsProcessing(true);
-
-      const response = await fetch(`/api/businesses/applications/${id}/approve`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ notes: note }),
-      });
-
-      if (response.ok) {
-        await response.json();
-
-        // Update application status locally
-        setApplication(prev => ({
-          ...prev,
-          status: 'approved',
-          verificationDate: new Date().toISOString().split('T')[0]
-        }));
-
-        // Set success state to trigger animation
-        setSuccessBusinessName(application.businessName);
-        setIsApprovalSuccess(true);
-
-        // Close the modal
-        setIsApproveModalOpen(false);
-
-        // Reset success state after animation completes
-        setTimeout(() => {
-          setIsApprovalSuccess(false);
-          setSuccessBusinessName('');
-
-          // Fetch updated data
-          fetchApplicationData();
-        }, 3000);
-      } else {
-        const data = await response.json();
-        throw new Error(data.message || 'Failed to approve application');
-      }
-    } catch (error) {
-      alert('Failed to approve application: ' + (error.message || 'Unknown error'));
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  // Function to handle document decline
-  const handleDeclineDocument = async (note, requestDocuments) => {
-    try {
-      setIsProcessing(true);
-
-      const response = await fetch(`/api/businesses/applications/${id}/decline`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          note,
-          requestDocuments,
-        }),
-      });
-
-      if (response.ok) {
-        await response.json();
-
-        // Update application status locally
-        const newStatus = requestDocuments ? 'documents_required' : 'declined';
-
-        setApplication(prev => {
-          const updated = {
-            ...prev,
-            status: newStatus,
-            verificationStatus: newStatus,
-            verificationDate: new Date().toISOString().split('T')[0]
-          };
-          return updated;
-        });
-
-        // Set success state to trigger animation
-        setSuccessBusinessName(application.businessName);
-        setIsDeclineSuccess(true);
-
-        // Reset success state after animation completes and force a hard reload
-        setTimeout(() => {
-          setIsDeclineSuccess(false);
-          setSuccessBusinessName('');
-
-          // Store the status in sessionStorage to ensure it persists across page reloads
-          try {
-            sessionStorage.setItem(`application_${id}_status`, newStatus);
-
-            // EMERGENCY FIX: Also store in localStorage as a backup
-            localStorage.setItem(`application_${id}_status`, newStatus);
-
-            // Set a cookie as another backup method
-            document.cookie = `application_${id}_status=${newStatus}; path=/; max-age=3600`;
-          } catch (storageError) {
-            // Failed to store status in storage
-          }
-
-          // Force a hard reload of the page to ensure all UI elements are updated
-          window.location.href = `/admin/applications/${id}?t=${Date.now()}&status=${newStatus}`;
-        }, 1500);
-      } else {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to decline application');
-      }
-    } catch (error) {
-      alert('Failed to decline application: ' + (error.message || 'Unknown error'));
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
   // Refactored fetch application data function to be reusable
-  const fetchApplicationData = async () => {
+  const fetchApplicationData = useCallback(async (): Promise<void> => {
     setIsLoading(true);
     setError('');
 
@@ -269,7 +88,7 @@ function ApplicationDetailContent({ id }) {
       // CRITICAL: First, let's directly check the database status to ensure we get the most accurate information
       // This is the most reliable source of truth
       const dbStatusResponse = await fetch(`/api/businesses/applications/${id}/status?_=${cacheBuster}`);
-      let verificationStatusFromDB = null;
+      let verificationStatusFromDB: string | null = null;
 
       if (dbStatusResponse.ok) {
         const dbStatusData = await dbStatusResponse.json();
@@ -281,7 +100,7 @@ function ApplicationDetailContent({ id }) {
             // Create a minimal application object with the correct status
             // This ensures the UI shows the correct status even if the API is returning incorrect data
             if (!application) {
-              const minimalApp = {
+              const minimalApp: Application = {
                 id: `APP${id.toString().padStart(3, '0')}`,
                 businessId: id,
                 status: verificationStatusFromDB,
@@ -298,9 +117,9 @@ function ApplicationDetailContent({ id }) {
             } else {
               // Update the existing application object with the correct status
               setApplication(prev => ({
-                ...prev,
-                status: verificationStatusFromDB,
-                verificationStatus: verificationStatusFromDB
+                ...prev!,
+                status: verificationStatusFromDB!,
+                verificationStatus: verificationStatusFromDB!
               }));
             }
           }
@@ -342,7 +161,7 @@ function ApplicationDetailContent({ id }) {
       }
 
       // Check if we have a status in the URL query parameters
-      let statusFromURL = null;
+      let statusFromURL: string | null = null;
       try {
         const urlParams = new URLSearchParams(window.location.search);
         statusFromURL = urlParams.get('status');
@@ -351,7 +170,7 @@ function ApplicationDetailContent({ id }) {
       }
 
       // Check if we have a stored status in sessionStorage
-      let storedStatus = null;
+      let storedStatus: string | null = null;
       try {
         storedStatus = sessionStorage.getItem(`application_${id}_status`);
 
@@ -416,11 +235,226 @@ function ApplicationDetailContent({ id }) {
       }
       setApplication(data);
     } catch (error) {
-      setError(error.message || 'An error occurred while loading the application');
+      setError((error as Error).message || 'An error occurred while loading the application');
     } finally {
       setIsLoading(false);
     }
+  }, [id, application]);
+
+  // Fetch application data
+  useEffect(() => {
+    if (id) {
+      // Check if we have a stored status in sessionStorage
+      try {
+        const storedStatus = sessionStorage.getItem(`application_${id}_status`);
+        // We'll use this in fetchApplicationData
+      } catch (storageError) {
+        // Error accessing sessionStorage
+      }
+
+      // EMERGENCY FIX: Check if this is a declined or restricted application
+      // and force the correct status display
+      const checkDirectStatus = async () => {
+        try {
+          const cacheBuster = new Date().getTime();
+          const dbStatusResponse = await fetch(`/api/businesses/applications/${id}/status?_=${cacheBuster}`);
+
+          if (dbStatusResponse.ok) {
+            const dbStatusData = await dbStatusResponse.json();
+
+            if (dbStatusData.verification_status === 'declined' || dbStatusData.verification_status === 'restricted') {
+
+              // Force the correct status in the UI
+              setApplication(prev => {
+                if (!prev) {
+                  return {
+                    id: `APP${id.toString().padStart(3, '0')}`,
+                    businessId: id,
+                    status: dbStatusData.verification_status,
+                    verificationStatus: dbStatusData.verification_status,
+                    submitDate: new Date().toLocaleDateString('en-US', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric'
+                    }),
+                    businessName: 'Loading...',
+                    documents: []
+                  };
+                }
+                return {
+                  ...prev,
+                  status: dbStatusData.verification_status,
+                  verificationStatus: dbStatusData.verification_status
+                };
+              });
+            }
+          }
+        } catch (error) {
+        }
+      };
+
+      checkDirectStatus();
+      fetchApplicationData();
+    }
+  }, [id, fetchApplicationData]);
+
+  // Function to open document modal with production-ready image path
+  const openDocumentModal = (url: string, type: string): void => {
+    // Process the URL to ensure it works in production
+    let processedUrl = url;
+
+    // If it's a document path, ensure it uses the API route
+    if (url && typeof url === 'string') {
+      // If it's already an API path, use it as is
+      if (!url.startsWith('/api/')) {
+        // For document paths, use the API route
+        if (url.includes('/documents/') || url.includes('/business/') || url.includes('/businesses/')) {
+          // Try to extract the relevant path
+          const parts = url.split('/');
+          const relevantIndex = parts.findIndex(part =>
+            part === 'documents' || part === 'business' || part === 'businesses'
+          );
+
+          if (relevantIndex >= 0) {
+            const relevantPath = parts.slice(relevantIndex).join('/');
+            processedUrl = `/api/image/${relevantPath}`;
+          }
+        }
+        // For uploads paths, use the API route
+        else if (url.includes('/uploads/')) {
+          // Extract the path after /uploads/
+          const uploadPath = url.substring(url.indexOf('/uploads/') + '/uploads/'.length);
+          processedUrl = `/api/image/${uploadPath}`;
+        }
+        // For other paths, use the production image path utility
+        else {
+          processedUrl = getProductionImagePath(url);
+        }
+      }
+    }
+
+    setSelectedDocument({ url: processedUrl, type });
+    setIsDocumentModalOpen(true);
   };
+
+  // Function to handle document approval
+  const handleApproveDocument = async (note: string): Promise<void> => {
+    try {
+      setIsProcessing(true);
+
+      const response = await fetch(`/api/businesses/applications/${id}/approve`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ notes: note }),
+      });
+
+      if (response.ok) {
+        await response.json();
+
+        // Update application status locally
+        setApplication(prev => ({
+          ...prev!,
+          status: 'approved',
+          verificationDate: new Date().toISOString().split('T')[0]
+        }));
+
+        // Set success state to trigger animation
+        setSuccessBusinessName(application!.businessName);
+        setIsApprovalSuccess(true);
+
+        // Close the modal
+        setIsApproveModalOpen(false);
+
+        // Reset success state after animation completes
+        setTimeout(() => {
+          setIsApprovalSuccess(false);
+          setSuccessBusinessName('');
+
+          // Fetch updated data
+          fetchApplicationData();
+        }, 3000);
+      } else {
+        const data = await response.json();
+        throw new Error(data.message || 'Failed to approve application');
+      }
+    } catch (error) {
+      alert('Failed to approve application: ' + ((error as Error).message || 'Unknown error'));
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // Function to handle document decline
+  const handleDeclineDocument = async (note: string, requestDocuments: boolean): Promise<void> => {
+    try {
+      setIsProcessing(true);
+
+      const response = await fetch(`/api/businesses/applications/${id}/decline`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          note,
+          requestDocuments,
+        }),
+      });
+
+      if (response.ok) {
+        await response.json();
+
+        // Update application status locally
+        const newStatus = requestDocuments ? 'documents_required' : 'declined';
+
+        setApplication(prev => {
+          const updated = {
+            ...prev!,
+            status: newStatus,
+            verificationStatus: newStatus,
+            verificationDate: new Date().toISOString().split('T')[0]
+          };
+          return updated;
+        });
+
+        // Set success state to trigger animation
+        setSuccessBusinessName(application!.businessName);
+        setIsDeclineSuccess(true);
+
+        // Reset success state after animation completes and force a hard reload
+        setTimeout(() => {
+          setIsDeclineSuccess(false);
+          setSuccessBusinessName('');
+
+          // Store the status in sessionStorage to ensure it persists across page reloads
+          try {
+            sessionStorage.setItem(`application_${id}_status`, newStatus);
+
+            // EMERGENCY FIX: Also store in localStorage as a backup
+            localStorage.setItem(`application_${id}_status`, newStatus);
+
+            // Set a cookie as another backup method
+            document.cookie = `application_${id}_status=${newStatus}; path=/; max-age=3600`;
+          } catch (storageError) {
+            // Failed to store status in storage
+          }
+
+          // Force a hard reload of the page to ensure all UI elements are updated
+          window.location.href = `/admin/applications/${id}?t=${Date.now()}&status=${newStatus}`;
+        }, 1500);
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to decline application');
+      }
+    } catch (error) {
+      alert('Failed to decline application: ' + ((error as Error).message || 'Unknown error'));
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+
 
   // Render the application details
   const renderApplicationDetails = () => {
@@ -469,7 +503,7 @@ function ApplicationDetailContent({ id }) {
           <ExclamationTriangleIcon className="mx-auto h-12 w-12 text-yellow-400" />
           <h3 className="mt-2 text-lg font-medium text-gray-900">Application Not Found</h3>
           <p className="mt-1 text-sm text-gray-500">
-            The application you're looking for doesn't exist or you don't have permission to view it.
+            The application you&apos;re looking for doesn&apos;t exist or you don&apos;t have permission to view it.
           </p>
           <div className="mt-6">
             <Link
@@ -574,7 +608,7 @@ function ApplicationDetailContent({ id }) {
                       </div>
                       <div className="flex space-x-2">
                         <button
-                          onClick={() => openDocumentModal(doc.url || doc.path, doc.type || doc.name)}
+                          onClick={() => openDocumentModal(doc.url || doc.path || '', doc.type || doc.name || '')}
                           className="text-sm text-blue-600 hover:text-blue-800 hover:underline"
                         >
                           View Document
@@ -645,7 +679,7 @@ function ApplicationDetailContent({ id }) {
                         </p>
                         {actualStatus !== application.status && (
                           <p className="text-xs text-red-500 mt-1">
-                            Status corrected from "{application.status}" to "{actualStatus}"
+                            Status corrected from &quot;{application.status}&quot; to &quot;{actualStatus}&quot;
                           </p>
                         )}
                       </div>
@@ -860,7 +894,7 @@ function ApplicationDetailContent({ id }) {
   );
 }
 
-function ApplicationDetailClient({ id }) {
+function ApplicationDetailClient({ id }: ApplicationDetailContentProps) {
   return (
     <AdminDashboardLayout activePage="applications">
       <ApplicationDetailContent id={id} />

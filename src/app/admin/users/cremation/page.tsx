@@ -21,7 +21,7 @@ import {
 import Link from 'next/link';
 import { useToast } from '@/context/ToastContext';
 import { motion, AnimatePresence } from 'framer-motion';
-import ConfirmationModal from '@/components/ConfirmationModal';
+import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 
 import { LoadingSpinner } from '@/app/admin/services/client';
 
@@ -798,11 +798,11 @@ export default function AdminCremationCentersPage() {
       <ConfirmationModal
         isOpen={showRestrictModal}
         onClose={() => setShowRestrictModal(false)}
-        onConfirm={() => centerToAction && handleRestrictCenter(centerToAction)}
+        onConfirm={() => centerToAction ? handleRestrictCenter(centerToAction) : Promise.resolve()}
         title="Restrict Cremation Center"
         message={`Are you sure you want to restrict "${centerToAction?.name}"? This will prevent them from accepting new bookings.`}
         confirmText="Restrict Access"
-        confirmButtonClass="bg-red-600 hover:bg-red-700 focus:ring-red-500"
+        variant="danger"
         icon={<ExclamationTriangleIcon className="h-6 w-6 text-red-600" />}
       />
 
@@ -810,11 +810,11 @@ export default function AdminCremationCentersPage() {
       <ConfirmationModal
         isOpen={showRestoreModal}
         onClose={() => setShowRestoreModal(false)}
-        onConfirm={() => centerToAction && handleUnrestrictCenter(centerToAction)}
+        onConfirm={() => centerToAction ? handleUnrestrictCenter(centerToAction) : Promise.resolve()}
         title="Unrestrict Cremation Center"
         message={`Are you sure you want to unrestrict "${centerToAction?.name}"? This will allow them to accept new bookings again.`}
         confirmText="Unrestrict Access"
-        confirmButtonClass="bg-green-600 hover:bg-green-700 focus:ring-green-500"
+        variant="success"
         icon={<CheckCircleIcon className="h-6 w-6 text-green-600" />}
       />
 

@@ -2,18 +2,57 @@
  * Authentication utility functions
  */
 import { NextRequest } from 'next/server';
+import { decodeTokenUnsafe, extractTokenFromHeader, type JWTPayload } from '@/lib/jwt';
+
+// Parse auth token and extract user info (for API routes)
+export const parseAuthToken = (authToken: string): { userId: string; accountType: string } | null => {
+  try {
+    let userId: string | null = null;
+    let accountType: string | null = null;
+
+    // Check if it's a JWT token or old format
+    if (authToken.includes('.')) {
+      // JWT token format
+      const payload = decodeTokenUnsafe(authToken);
+      userId = payload?.userId || null;
+      accountType = payload?.accountType || null;
+    } else {
+      // Old format fallback
+      const parts = authToken.split('_');
+      if (parts.length === 2) {
+        userId = parts[0];
+        accountType = parts[1];
+      }
+    }
+
+    if (!userId || !accountType) {
+      return null;
+    }
+
+    return { userId, accountType };
+  } catch (error) {
+    return null;
+  }
+};
 
 // Get auth token from server request (for API routes)
 export const getAuthTokenFromRequest = (request: NextRequest): string | null => {
-  const cookieHeader = request.headers.get('cookie');
+  // First try Authorization header (preferred for API calls)
+  const authHeader = request.headers.get('authorization');
+  if (authHeader) {
+    const token = extractTokenFromHeader(authHeader);
+    if (token) {
+      return token;
+    }
+  }
 
+  // Fallback to cookie-based authentication
+  const cookieHeader = request.headers.get('cookie');
   if (!cookieHeader) {
     return null;
   }
 
   const cookies = cookieHeader.split(';');
-
-  // Try to find auth_token with different approaches
   let authCookie = cookies.find(cookie => cookie.trim().startsWith('auth_token='));
 
   if (!authCookie) {
@@ -35,12 +74,16 @@ export const getAuthTokenFromRequest = (request: NextRequest): string | null => 
   try {
     const token = decodeURIComponent(encodedToken);
 
-    // Validate token format (should be userId_accountType)
-    if (!token || !token.includes('_')) {
-      return null;
+    // Check if it's a JWT token or old format
+    if (token.includes('.')) {
+      // JWT token format
+      return token;
+    } else if (token.includes('_')) {
+      // Old format - still support for backward compatibility
+      return token;
     }
 
-    return token;
+    return null;
   } catch (error) {
     return null;
   }
@@ -62,8 +105,8 @@ export const getAuthToken = (): string | null => {
         // Decode the URI component
         const token = decodeURIComponent(encodedToken);
 
-        // Validate token format (should be userId_accountType)
-        if (token && token.includes('_')) {
+        // Validate token format (JWT tokens contain dots, old format contains underscores)
+        if (token && (token.includes('.') || token.includes('_'))) {
           return token;
         }
       }
@@ -73,7 +116,7 @@ export const getAuthToken = (): string | null => {
     if (typeof window !== 'undefined' && window.location.port === '3000') {
       try {
         const localStorageToken = localStorage.getItem('auth_token_3000');
-        if (localStorageToken && localStorageToken.includes('_')) {
+        if (localStorageToken && (localStorageToken.includes('.') || localStorageToken.includes('_'))) {
           return localStorageToken;
         }
       } catch (e) {
@@ -83,12 +126,18 @@ export const getAuthToken = (): string | null => {
 
     // If cookie not found or invalid, try sessionStorage as fallback
     const sessionToken = sessionStorage.getItem('auth_token');
-    if (sessionToken && sessionToken.includes('_')) {
+    if (sessionToken && (sessionToken.includes('.') || sessionToken.includes('_'))) {
       // If found in sessionStorage, try to restore the cookie
-      const [userId, accountType] = sessionToken.split('_');
-      if (userId && accountType) {
-        // Don't call setAuthToken here to avoid infinite recursion
-        // Just return the token from sessionStorage
+      if (sessionToken.includes('_')) {
+        // Old format
+        const [userId, accountType] = sessionToken.split('_');
+        if (userId && accountType) {
+          // Don't call setAuthToken here to avoid infinite recursion
+          // Just return the token from sessionStorage
+          return sessionToken;
+        }
+      } else {
+        // JWT format
         return sessionToken;
       }
     }
@@ -100,20 +149,42 @@ export const getAuthToken = (): string | null => {
   }
 };
 
-// Get user ID from auth token
+// Get user ID from auth token (supports both JWT and old format)
 export const getUserId = (): string | null => {
   const token = getAuthToken();
   if (!token) return null;
 
+  // Check if it's a JWT token
+  if (token.includes('.')) {
+    const payload = decodeTokenUnsafe(token);
+    return payload?.userId || null;
+  }
+
+  // Old format fallback
   return token.split('_')[0];
 };
 
-// Get account type from auth token
+// Get account type from auth token (supports both JWT and old format)
 export const getAccountType = (): string | null => {
   const token = getAuthToken();
   if (!token) return null;
 
+  // Check if it's a JWT token
+  if (token.includes('.')) {
+    const payload = decodeTokenUnsafe(token);
+    return payload?.accountType || null;
+  }
+
+  // Old format fallback
   return token.split('_')[1];
+};
+
+// Get JWT payload from token
+export const getJWTPayload = (): JWTPayload | null => {
+  const token = getAuthToken();
+  if (!token || !token.includes('.')) return null;
+
+  return decodeTokenUnsafe(token);
 };
 
 // Check if user is authenticated
@@ -142,12 +213,12 @@ export const isFurParent = (): boolean => {
   return hasAccountType('user');
 };
 
-// Set auth token in cookie
-export const setAuthToken = (userId: string, accountType: string, expirationDays: number = 30): void => {
+// Set auth token in cookie (accepts pre-generated JWT token)
+export const setAuthToken = (userId: string, accountType: string, expirationDays: number = 30, token?: string): void => {
   if (typeof document === 'undefined') return;
 
-  // Create the token value - format is userId_accountType
-  const tokenValue = `${userId}_${accountType}`;
+  // Use provided token or create a legacy format token for backward compatibility
+  const tokenValue = token || `${userId}_${accountType}`;
 
   // Clear any existing auth token - use multiple approaches to ensure it's cleared
   document.cookie = 'auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
@@ -256,12 +327,31 @@ export const checkAuthStatus = async (): Promise<{
     const authToken = getAuthToken();
 
     if (authToken) {
-      const parts = authToken.split('_');
-      if (parts.length === 2) {
+      let userId: string | null = null;
+      let accountType: string | null = null;
+
+      // Check if it's a JWT token or old format
+      if (authToken.includes('.')) {
+        // JWT token format
+        const payload = decodeTokenUnsafe(authToken);
+        if (payload) {
+          userId = payload.userId;
+          accountType = payload.accountType;
+        }
+      } else {
+        // Old format fallback
+        const parts = authToken.split('_');
+        if (parts.length === 2) {
+          userId = parts[0];
+          accountType = parts[1];
+        }
+      }
+
+      if (userId && accountType) {
         return {
           authenticated: true,
-          userId: parts[0],
-          accountType: parts[1]
+          userId,
+          accountType
         };
       }
     }
@@ -272,7 +362,7 @@ export const checkAuthStatus = async (): Promise<{
       const accountType = sessionStorage.getItem('auth_account_type');
 
       if (userId && accountType) {
-        // Try to restore the cookie from sessionStorage
+        // Try to restore the cookie from sessionStorage (legacy format)
         setAuthToken(userId, accountType, 30);
 
         return {
@@ -327,7 +417,25 @@ export const fastAuthCheck = (): {
     const authToken = getAuthToken();
     if (!authToken) return defaultState;
 
-    const [userId, accountType] = authToken.split('_');
+    let userId: string | null = null;
+    let accountType: string | null = null;
+
+    // Check if it's a JWT token or old format
+    if (authToken.includes('.')) {
+      // JWT token format
+      const payload = decodeTokenUnsafe(authToken);
+      if (payload) {
+        userId = payload.userId;
+        accountType = payload.accountType;
+      }
+    } else {
+      // Old format fallback
+      const parts = authToken.split('_');
+      if (parts.length === 2) {
+        userId = parts[0];
+        accountType = parts[1];
+      }
+    }
 
     if (!userId || !accountType) return defaultState;
 

@@ -59,11 +59,11 @@ const Modal: React.FC<ModalProps> = ({
   }, [isOpen, onClose, closeOnEsc]);
 
   const sizeClasses = {
-    small: 'max-w-md',
-    medium: 'max-w-lg',
-    large: 'max-w-2xl',
-    xlarge: 'max-w-4xl',
-    fullscreen: 'max-w-[80vw] max-h-[90vh]'
+    small: 'max-w-md w-full mx-4 sm:mx-auto',
+    medium: 'max-w-lg w-full mx-4 sm:mx-auto',
+    large: 'max-w-2xl w-full mx-4 sm:mx-auto',
+    xlarge: 'max-w-4xl w-full mx-4 sm:mx-auto',
+    fullscreen: 'max-w-[95vw] sm:max-w-[80vw] max-h-[95vh] sm:max-h-[90vh] w-full mx-2 sm:mx-auto'
   };
 
   const variantClasses = {
@@ -78,7 +78,7 @@ const Modal: React.FC<ModalProps> = ({
     <AnimatePresence>
       {isOpen && (
         <div
-          className="fixed inset-0 z-[9999] flex items-center justify-center p-4 md:p-6 mt-0"
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-2 sm:p-4 md:p-6"
           role="dialog"
           aria-modal="true"
           aria-labelledby={title ? "modal-title" : undefined}
@@ -87,20 +87,20 @@ const Modal: React.FC<ModalProps> = ({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm"
+            transition={{ duration: 0.15, ease: "easeOut" }}
+            className="fixed inset-0 bg-black/60"
             onClick={closeOnOverlayClick ? onClose : undefined}
           />
 
           <motion.div
-            initial={{ scale: 0.95, opacity: 0 }}
+            initial={{ scale: 0.98, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.95, opacity: 0 }}
-            transition={{ duration: 0.2, ease: "easeOut" }}
+            exit={{ scale: 0.98, opacity: 0 }}
+            transition={{ duration: 0.15, ease: "easeOut" }}
             className={cn(
-              "relative bg-white rounded-xl shadow-2xl w-full",
+              "relative bg-white rounded-lg sm:rounded-xl shadow-2xl",
               sizeClasses[size],
-              "max-h-[90vh] overflow-hidden flex flex-col",
+              "max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col",
               "z-[9999]",
               className
             )}
@@ -108,24 +108,24 @@ const Modal: React.FC<ModalProps> = ({
             {!hideHeader && (headerContent || title) && (
               <div className={cn(
                 variantClasses[variant],
-                "px-6 py-4 flex justify-between items-center",
+                "px-4 sm:px-6 py-3 sm:py-4 flex justify-between items-center",
                 headerClassName
               )}>
                 {headerContent || (
-                  <div className="flex items-center">
+                  <div className="flex items-center min-w-0 flex-1">
                     {onBack && (
                       <button
                         onClick={onBack}
-                        className="text-white hover:text-white/80 transition-colors duration-200 mr-4 flex items-center"
+                        className="text-white hover:text-white/80 transition-colors duration-200 mr-2 sm:mr-4 flex items-center flex-shrink-0"
                         aria-label="Go back"
                       >
-                        <ArrowLeftIcon className="w-5 h-5" />
+                        <ArrowLeftIcon className="w-4 h-4 sm:w-5 sm:h-5" />
                       </button>
                     )}
                     {title && (
                       <h2
                         id="modal-title"
-                        className="text-xl font-medium"
+                        className="text-lg sm:text-xl font-medium truncate"
                       >
                         {title}
                       </h2>
@@ -135,25 +135,25 @@ const Modal: React.FC<ModalProps> = ({
                 {showCloseButton && (
                   <button
                     onClick={onClose}
-                    className="text-white hover:text-white/80 transition-colors duration-200"
+                    className="text-white hover:text-white/80 transition-colors duration-200 flex-shrink-0 ml-2"
                     aria-label="Close modal"
                   >
-                    <XMarkIcon className="w-6 h-6" />
+                    <XMarkIcon className="w-5 h-5 sm:w-6 sm:h-6" />
                   </button>
                 )}
               </div>
             )}
 
             <div className={cn(
-              "px-6 py-4 overflow-y-auto flex-1",
-              "max-h-[calc(90vh-120px)]",
+              "px-4 sm:px-6 py-4 overflow-y-auto flex-1",
+              "max-h-[calc(95vh-120px)] sm:max-h-[calc(90vh-120px)]",
               contentClassName
             )}>
               {children}
             </div>
 
             {footerContent && (
-              <div className="px-6 py-4 border-t border-gray-200">
+              <div className="px-4 sm:px-6 py-3 sm:py-4 border-t border-gray-200">
                 {footerContent}
               </div>
             )}

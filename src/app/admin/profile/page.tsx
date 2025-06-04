@@ -1,16 +1,13 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { motion } from 'framer-motion';
 import AdminDashboardLayout from '@/components/navigation/AdminDashboardLayout';
 import withAdminAuth from '@/components/withAdminAuth';
 import {
   UserIcon,
   EnvelopeIcon,
   KeyIcon,
-  CameraIcon,
   CheckCircleIcon,
-  ExclamationTriangleIcon,
   XCircleIcon
 } from '@heroicons/react/24/outline';
 import Image from 'next/image';

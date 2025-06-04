@@ -5,6 +5,7 @@ import ClientToastProvider from "@/components/providers/ClientToastProvider";
 import ToastWrapper from "@/components/providers/ToastWrapper";
 import NotificationProvider from "@/components/providers/NotificationProvider";
 import { LoadingProvider } from "@/contexts/LoadingContext";
+import { AuthStateProvider } from "@/contexts/AuthStateContext";
 import LoadingOverlay from "@/components/ui/LoadingOverlay";
 import Script from 'next/script';
 
@@ -50,15 +51,17 @@ export default function RootLayout({
         <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
       </head>
       <body className={inter.className}>
-        <ClientToastProvider>
-          <NotificationProvider>
-            <LoadingProvider>
-              {children}
-              <LoadingOverlay />
-            </LoadingProvider>
-          </NotificationProvider>
-        </ClientToastProvider>
-        <ToastWrapper />
+        <AuthStateProvider>
+          <ClientToastProvider>
+            <NotificationProvider>
+              <LoadingProvider>
+                {children}
+                <LoadingOverlay />
+              </LoadingProvider>
+            </NotificationProvider>
+          </ClientToastProvider>
+          <ToastWrapper />
+        </AuthStateProvider>
       </body>
     </html>
   );

@@ -2,7 +2,7 @@
  * Enhanced routing service with multiple providers and caching
  */
 
-import { cacheManager, RoutingCacheData } from './cache';
+import { cacheManager, RoutingCacheData } from '@/utils/cache';
 
 export interface RouteStep {
   instruction: string;

@@ -4,7 +4,19 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { XMarkIcon, ArrowPathIcon, CheckIcon } from '@heroicons/react/24/outline';
 
-const ConfirmationModal = ({
+interface ConfirmationModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: () => Promise<void> | void;
+  title: string;
+  message: string;
+  confirmText?: string;
+  cancelText?: string;
+  confirmButtonClass?: string;
+  icon?: React.ReactNode;
+}
+
+const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   isOpen,
   onClose,
   onConfirm,
@@ -15,8 +27,8 @@ const ConfirmationModal = ({
   confirmButtonClass = 'bg-green-600 hover:bg-green-700',
   icon = null
 }) => {
-  const [isLoading, setIsLoading] = useState(false);
-  const [isSuccess, setIsSuccess] = useState(false);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isSuccess, setIsSuccess] = useState<boolean>(false);
   return (
     <AnimatePresence>
       {isOpen && (

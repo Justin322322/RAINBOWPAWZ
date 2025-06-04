@@ -6,34 +6,30 @@ A full-featured application for pet memorial services.
 
 To get started quickly, follow these steps:
 
-1. **Setup environment variables**:
-   ```
-   npm run setup
-   ```
-   This will create an `.env.local` file with the necessary environment variables.
-
-   For quick setup with default values, use:
-   ```
-   npm run setup -- --quick
-   ```
-
-2. **Install dependencies**:
-   ```
+1. **Install dependencies**:
+   ```bash
    npm install
    ```
 
-3. **Run the development server**:
+2. **Setup environment variables**:
+   Copy the example environment file and configure your settings:
+   ```bash
+   cp .env.example .env.local
    ```
+   Edit `.env.local` with your actual configuration values.
+
+3. **Run the development server**:
+   ```bash
    npm run dev
    ```
 
 4. **Build for production**:
-   ```
+   ```bash
    npm run build
    ```
 
 5. **Run the production server**:
-   ```
+   ```bash
    npm start
    ```
 
@@ -70,9 +66,9 @@ For testing with real emails, set `DEV_EMAIL_MODE=false` and provide valid SMTP 
 - `npm run dev` - Start the development server
 - `npm run build` - Build for production
 - `npm start` - Start the production server
-- `npm run start:custom` - Start with a custom port
-
-- `npm run setup` - Set up environment variables
+- `npm run lint` - Run ESLint to check code quality
+- `npm run lint:fix` - Run ESLint and automatically fix issues
+- `npm run type-check` - Run TypeScript type checking
 
 ## Cleanup and Maintenance
 
@@ -80,53 +76,23 @@ The project automatically handles cleanup during the build process. Build artifa
 
 ## Running on Different Ports
 
-The application now supports running on any port. Here are several ways to change the port:
+You can run the application on different ports using standard Next.js commands:
 
-### Using the run-app-any-port script (Easiest)
-
-For Windows users:
-```
-run-app-any-port.bat
-```
-
-For Linux/Mac users:
-```
-./run-app-any-port.sh
-```
-
-These scripts will prompt you for the port number and mode (development or production).
-
-### Using the change-port utility
-
-This is another easy way to run the app on a different port:
-
+### Development
 ```bash
-npm run change-port 3001
-# or without specifying a port (it will prompt you)
-npm run change-port
+npx next dev -p 3005
 ```
 
-### Using start-any-port
-
+### Production
 ```bash
-npm run start:any-port 3002
+npm run build
+npx next start -p 3005
 ```
 
-### Using Next.js directly
-
-```bash
-npx next dev -p 3005 -H 0.0.0.0
-# or for production
-npx next start -p 3005 -H 0.0.0.0
-```
-
-### By updating .env.local
-
-You can manually edit the `.env.local` file to include:
-
+### Environment Variables
+You can also set the port in your `.env.local` file:
 ```
 PORT=3010
-HOST=0.0.0.0
 NEXT_PUBLIC_APP_URL=http://localhost:3010
 ```
 
@@ -146,18 +112,18 @@ To learn more about Next.js, take a look at the following resources:
 
 ## Deployment
 
-For production deployment, use:
+For production deployment, use standard Next.js commands:
 
 ```bash
 npm run build
-npm run start
+npm start
 ```
 
-Or to specify a custom port:
+To specify a custom port:
 
 ```bash
 npm run build
-npm run start:any-port 8080
+npx next start -p 8080
 ```
 
 ## Package Image Organization

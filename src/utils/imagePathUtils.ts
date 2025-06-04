@@ -2,7 +2,7 @@
  * Utility functions for handling image paths in the application
  */
 
-import { getAppBaseUrl } from './appUrl';
+import { getAppBaseUrl } from '@/utils/appUrl';
 
 /**
  * Converts a relative image path to an absolute URL

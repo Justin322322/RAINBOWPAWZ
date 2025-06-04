@@ -21,7 +21,7 @@ import {
 import Link from 'next/link';
 import { useToast } from '@/context/ToastContext';
 import { motion, AnimatePresence } from 'framer-motion';
-import ConfirmationModal from '@/components/ConfirmationModal';
+import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 import Image from 'next/image';
 import { Badge, Button, Input } from '@/components/ui';
 
@@ -778,7 +778,7 @@ export default function AdminFurParentsPage() {
           </div>
         }
         confirmText="Restrict Access"
-        confirmButtonClass="bg-red-600 hover:bg-red-700 focus:ring-red-500"
+        variant="danger"
         icon={<ExclamationTriangleIcon className="h-6 w-6 text-red-600" />}
       />
 
@@ -790,7 +790,7 @@ export default function AdminFurParentsPage() {
         title="Unrestrict Fur Parent"
         message={`Are you sure you want to unrestrict;${userToAction?.first_name} ${userToAction?.last_name};? This will allow them to make bookings again.`}
         confirmText="Unrestrict Access"
-        confirmButtonClass="bg-green-600 hover:bg-green-700 focus:ring-green-500"
+        variant="success"
         icon={<CheckCircleIcon className="h-6 w-6 text-green-600" />}
       />
 

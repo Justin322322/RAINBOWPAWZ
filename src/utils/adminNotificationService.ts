@@ -4,8 +4,8 @@ interface AdminNotificationParams {
   type: string;
   title: string;
   message: string;
-  entityType?: string;
-  entityId?: number;
+  entityType?: string | null;
+  entityId?: number | null;
 }
 
 /**

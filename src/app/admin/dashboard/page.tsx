@@ -5,20 +5,14 @@ import AdminDashboardLayout from '@/components/navigation/AdminDashboardLayout';
 import {
   UserGroupIcon,
   DocumentCheckIcon,
-  ClipboardDocumentCheckIcon,
-  CheckBadgeIcon,
   XCircleIcon,
   ExclamationTriangleIcon,
-  ArrowUpIcon,
-  ArrowDownIcon,
   FireIcon,
   BanknotesIcon,
-  MagnifyingGlassIcon,
   ArrowPathIcon,
 } from '@heroicons/react/24/outline';
 import Link from 'next/link';
 import withAdminAuth from '@/components/withAdminAuth';
-import { motion, AnimatePresence } from 'framer-motion';
 import StatCard from '@/components/ui/StatCard';
 import { Skeleton, SkeletonText, SkeletonCard } from '@/components/ui/SkeletonLoader';
 
@@ -170,16 +164,7 @@ function AdminDashboardPage({ adminData }: { adminData: any }) {
     fetchDashboardData();
   }, []);
 
-  // Helper function to calculate percentage for progress bars
-  const calculatePercentage = (value: number, total: number, minPercent: number = 0, maxPercent: number = 100) => {
-    // If value is 0, return 0 (no progress bar)
-    if (value === 0) return 0;
-    // If total is 0 but value is not, return minPercent
-    if (total === 0) return minPercent;
-    const percent = Math.round((value / total) * 100);
-    // Ensure percentage is between minPercent and maxPercent
-    return Math.min(Math.max(percent, minPercent), maxPercent);
-  };  // Get status badge based on application status
+  // Get status badge based on application status
   const getStatusBadge = (status: string) => {
     switch(status) {
       case 'pending':

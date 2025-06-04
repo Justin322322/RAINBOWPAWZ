@@ -39,6 +39,11 @@ export const Skeleton: React.FC<SkeletonProps> = ({
         animate && 'animate-pulse',
         className
       )}
+      style={{
+        // Use CSS animation instead of Framer Motion for better performance
+        animationDuration: animate ? '2s' : undefined,
+        animationDelay: animate ? `${Math.random() * 0.5}s` : undefined, // Stagger animations
+      }}
     >
       {children}
     </div>

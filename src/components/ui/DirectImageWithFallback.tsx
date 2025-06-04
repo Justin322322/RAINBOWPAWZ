@@ -11,6 +11,26 @@ interface DirectImageWithFallbackProps {
   debug?: boolean;
 }
 
+interface DebugInfo {
+  originalPath?: string;
+  fixedPath?: string | null;
+  cleanPath?: string;
+  newSrc?: string;
+  fileName?: string;
+  packageId?: string;
+  timestamp?: string;
+  fileExists?: boolean;
+  status?: number;
+  contentType?: string | null;
+  contentLength?: string | null;
+  checkedAt?: string;
+  error?: string;
+  loaded?: boolean;
+  errorAt?: string;
+  errorEvent?: string;
+  loadedAt?: string;
+}
+
 const DirectImageWithFallback = ({
   src,
   alt,
@@ -21,7 +41,7 @@ const DirectImageWithFallback = ({
   const [error, setError] = useState(false);
   const [imgSrc, setImgSrc] = useState('');
   const [loadAttempts, setLoadAttempts] = useState(0);
-  const [debugInfo, setDebugInfo] = useState<any>({});
+  const [debugInfo, setDebugInfo] = useState<DebugInfo>({});
   const [fixedPath, setFixedPath] = useState<string | null>(null);
 
   // Function to fix image path if needed

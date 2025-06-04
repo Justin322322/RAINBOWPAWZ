@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, ReactNode } from 'react';
-import ToastContainer, { ToastMessage, ToastType } from '../components/ui/ToastContainer';
+import ToastContainer, { ToastMessage, ToastType } from '@/components/ui/ToastContainer';
 
 interface ToastContextType {
   showToast: (message: string, type: ToastType, duration?: number) => void;

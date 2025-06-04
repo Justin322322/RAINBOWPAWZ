@@ -152,6 +152,114 @@ export class RateLimiter {
   }
 
   /**
+   * Rate limiting for authentication attempts
+   */
+  static async checkAuthLimit(identifier: string): Promise<RateLimitResult> {
+    return this.checkRateLimit({
+      maxRequests: 5, // 5 attempts per 15 minutes
+      windowMinutes: 15,
+      identifier,
+      action: 'auth_attempt'
+    });
+  }
+
+  /**
+   * Rate limiting for OTP generation
+   */
+  static async checkOtpGenerationLimit(identifier: string): Promise<RateLimitResult> {
+    return this.checkRateLimit({
+      maxRequests: 3, // 3 OTP requests per 5 minutes
+      windowMinutes: 5,
+      identifier,
+      action: 'otp_generation'
+    });
+  }
+
+  /**
+   * Rate limiting for OTP verification
+   */
+  static async checkOtpVerificationLimit(identifier: string): Promise<RateLimitResult> {
+    return this.checkRateLimit({
+      maxRequests: 10, // 10 verification attempts per 15 minutes
+      windowMinutes: 15,
+      identifier,
+      action: 'otp_verification'
+    });
+  }
+
+  /**
+   * Rate limiting for booking creation
+   */
+  static async checkBookingCreationLimit(userId: string): Promise<RateLimitResult> {
+    return this.checkRateLimit({
+      maxRequests: 10, // 10 bookings per hour
+      windowMinutes: 60,
+      identifier: userId,
+      action: 'booking_creation'
+    });
+  }
+
+  /**
+   * Rate limiting for payment processing
+   */
+  static async checkPaymentLimit(identifier: string): Promise<RateLimitResult> {
+    return this.checkRateLimit({
+      maxRequests: 5, // 5 payment attempts per 10 minutes
+      windowMinutes: 10,
+      identifier,
+      action: 'payment_processing'
+    });
+  }
+
+  /**
+   * Rate limiting for review submission
+   */
+  static async checkReviewSubmissionLimit(userId: string): Promise<RateLimitResult> {
+    return this.checkRateLimit({
+      maxRequests: 5, // 5 reviews per hour
+      windowMinutes: 60,
+      identifier: userId,
+      action: 'review_submission'
+    });
+  }
+
+  /**
+   * Rate limiting for file uploads
+   */
+  static async checkFileUploadLimit(userId: string): Promise<RateLimitResult> {
+    return this.checkRateLimit({
+      maxRequests: 20, // 20 uploads per hour
+      windowMinutes: 60,
+      identifier: userId,
+      action: 'file_upload'
+    });
+  }
+
+  /**
+   * Rate limiting for password reset requests
+   */
+  static async checkPasswordResetLimit(identifier: string): Promise<RateLimitResult> {
+    return this.checkRateLimit({
+      maxRequests: 3, // 3 reset requests per hour
+      windowMinutes: 60,
+      identifier,
+      action: 'password_reset'
+    });
+  }
+
+  /**
+   * Rate limiting for admin operations
+   */
+  static async checkAdminOperationLimit(adminId: string): Promise<RateLimitResult> {
+    return this.checkRateLimit({
+      maxRequests: 100, // 100 admin operations per hour
+      windowMinutes: 60,
+      identifier: adminId,
+      action: 'admin_operation'
+    });
+  }
+
+  /**
    * Convenience method for notification mark-read rate limiting
    */
   static async checkNotificationMarkReadLimit(userId: string): Promise<RateLimitResult> {

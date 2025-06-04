@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import Spinner from './Spinner';
+import Spinner from '@/components/ui/Spinner';
 import { cn } from '@/utils/classNames';
 import { useLoading } from '@/contexts/LoadingContext';
 
@@ -46,7 +46,7 @@ export const LoadingOverlay: React.FC<LoadingOverlayProps> = ({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.2 }}
+          transition={{ duration: 0.15, ease: "easeOut" }}
           className={cn(
             'fixed inset-0 flex items-center justify-center',
             opacityClasses[opacity],

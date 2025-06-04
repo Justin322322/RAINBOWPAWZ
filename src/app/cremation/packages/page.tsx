@@ -15,7 +15,7 @@ import {
   EyeIcon,
   EyeSlashIcon
 } from '@heroicons/react/24/outline';
-import ConfirmationModal from '@/components/ConfirmationModal';
+import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 import { toast } from 'react-hot-toast';
 import { LoadingSpinner } from '@/app/cremation/components/LoadingComponents';
 
@@ -220,7 +220,7 @@ function PackagesPage({ userData }: PackagesPageProps) {
         title="Confirm Deletion"
         message={`Are you sure you want to delete the package "${packages.find(pkg => pkg.id === packageToDelete)?.name}"? This action cannot be undone.`}
         confirmText="Delete"
-        confirmButtonClass="bg-red-600 hover:bg-red-700 focus:ring-red-500"
+        variant="danger"
         icon={<TrashIcon className="h-6 w-6 text-red-600" />}
       />
     </CremationDashboardLayout>

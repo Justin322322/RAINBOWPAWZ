@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { query, testConnection } from '@/lib/db';
 import bcrypt from 'bcryptjs';
+import { generateToken } from '@/lib/jwt';
 
 // Types for our response
 interface LoginResponse {
@@ -155,11 +156,19 @@ export async function POST(request: Request) {
                     id: user.user_id // Ensure id field is present
                   };
 
+                  // Generate JWT token
+                  const token = generateToken({
+                    userId: user.user_id.toString(),
+                    accountType: 'admin',
+                    email: user.email
+                  });
+
                   return NextResponse.json({
                     success: true,
                     message: 'Login successful',
                     user: adminUser,
-                    account_type: 'admin'
+                    account_type: 'admin',
+                    token
                   }, {
                     headers
                   });
@@ -210,11 +219,19 @@ export async function POST(request: Request) {
                   id: user.user_id // Ensure id field is present
                 };
 
+                // Generate JWT token
+                const token = generateToken({
+                  userId: user.user_id.toString(),
+                  accountType: 'business',
+                  email: user.email
+                });
+
                 return NextResponse.json({
                   success: true,
                   message: 'Login successful',
                   user: businessUser,
-                  account_type: 'business'
+                  account_type: 'business',
+                  token
                 }, {
                   headers
                 });
@@ -227,12 +244,20 @@ export async function POST(request: Request) {
           // Add user_type for backward compatibility
           user.user_type = user.role === 'fur_parent' ? 'fur_parent' : user.role;
 
+          // Generate JWT token
+          const token = generateToken({
+            userId: user.user_id.toString(),
+            accountType: accountType as 'user' | 'admin' | 'business',
+            email: user.email
+          });
+
           // Return user data for personal accounts or if profile details couldn't be fetched
           return NextResponse.json({
             success: true,
             message: 'Login successful',
             user,
-            account_type: accountType
+            account_type: accountType,
+            token
           }, {
             headers
           });

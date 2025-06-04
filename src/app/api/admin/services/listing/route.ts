@@ -67,12 +67,27 @@ export async function GET(request: NextRequest) {
   const dev = process.env.NODE_ENV !== 'production';
   let isAuth = false;
   const token = getAuthTokenFromRequest(request);
+
   if (token) {
-    const [, role] = token.split('_');
-    isAuth = role === 'admin';
+    let accountType: string | null = null;
+
+    // Check if it's a JWT token or old format
+    if (token.includes('.')) {
+      // JWT token format
+      const { decodeTokenUnsafe } = await import('@/lib/jwt');
+      const payload = decodeTokenUnsafe(token);
+      accountType = payload?.accountType || null;
+    } else {
+      // Old format fallback
+      const parts = token.split('_');
+      accountType = parts.length === 2 ? parts[1] : null;
+    }
+
+    isAuth = accountType === 'admin';
   } else if (dev) {
     isAuth = true;
   }
+
   if (!isAuth) {
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   }

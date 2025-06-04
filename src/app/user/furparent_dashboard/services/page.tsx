@@ -96,7 +96,7 @@ function ServicesPage({ userData }: ServicesPageProps) {
             location = {
               address: userDataToUse.address,
               coordinates: geocodedLocation.coordinates,
-              source: 'profile'
+              source: 'profile' as const
             };
             console.log('✅ Successfully geocoded user address to coordinates:', geocodedLocation.coordinates);
           } catch (error) {
@@ -104,13 +104,13 @@ function ServicesPage({ userData }: ServicesPageProps) {
             // Fallback to address without coordinates
             location = {
               address: userDataToUse.address,
-              source: 'profile'
+              source: 'profile' as const
             };
           }
         } else {
           location = {
             address: defaultAddress,
-            source: 'default'
+            source: 'default' as const
           };
           console.log('⚠️ Using default address (no user address found):', defaultAddress);
           console.log('User data address was:', userDataToUse?.address);
@@ -122,7 +122,7 @@ function ServicesPage({ userData }: ServicesPageProps) {
         // Fall back to default address
         setUserLocation({
           address: defaultAddress,
-          source: 'default'
+          source: 'default' as const
         });
       } finally {
         setIsLoadingLocation(false);
@@ -142,6 +142,7 @@ function ServicesPage({ userData }: ServicesPageProps) {
 
       return () => clearTimeout(timer);
     }
+    return () => {}; // Return empty cleanup function for else case
   }, [isLoadingLocation]);
 
   // Scroll to map when showing directions

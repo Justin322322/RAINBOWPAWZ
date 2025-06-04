@@ -46,12 +46,38 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const [userId, accountType] = authToken.split('_');
+    let userId: string;
+    let accountType: string;
 
-    if (!userId || (accountType !== 'user' && accountType !== 'fur_parent')) {
+    // Check if it's a JWT token or old format
+    if (authToken.includes('.')) {
+      // JWT token format
+      const { decodeTokenUnsafe } = await import('@/lib/jwt');
+      const payload = decodeTokenUnsafe(authToken);
+
+      if (!payload || !payload.userId || !payload.accountType) {
+        return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+      }
+
+      userId = payload.userId;
+      accountType = payload.accountType;
+    } else {
+      // Old format fallback
+      const parts = authToken.split('_');
+      if (parts.length !== 2) {
+        return NextResponse.json({ error: 'Invalid token format' }, { status: 401 });
+      }
+
+      userId = parts[0];
+      accountType = parts[1];
+    }
+
+    // Allow admin users to access bookings (for testing/management purposes)
+    // Allow regular users and fur_parents to access their own bookings
+    if (!userId || !['user', 'fur_parent', 'admin'].includes(accountType)) {
       return NextResponse.json({
         error: 'Unauthorized',
-        details: `Invalid account type: ${accountType}. Expected 'user' or 'fur_parent'`
+        details: `Invalid account type: ${accountType}. Expected 'user', 'fur_parent', or 'admin'`
       }, { status: 401 });
     }
 

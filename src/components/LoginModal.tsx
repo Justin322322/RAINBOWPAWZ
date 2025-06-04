@@ -94,6 +94,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onShowSignup }
       // Get user ID and account type from response
       const userId = data.user.id;
       const accountType = data.account_type;
+      const token = data.token; // JWT token from server
       const firstName = data.user.first_name || '';
       const lastName = data.user.last_name || '';
 
@@ -101,9 +102,12 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onShowSignup }
         throw new Error('User ID missing from login response');
       }
 
+      if (!token) {
+        throw new Error('Authentication token missing from login response');
+      }
 
       // Set the auth token cookie with a 30-day expiration
-      setAuthToken(userId.toString(), accountType, 30);
+      setAuthToken(userId.toString(), accountType, 30, token);
 
       // Set success state and user name for the success animation
       setUserName(firstName ? `${firstName} ${lastName}` : email.split('@')[0]);

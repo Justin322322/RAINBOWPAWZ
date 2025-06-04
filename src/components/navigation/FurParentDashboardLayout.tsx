@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import FurParentNavbar from './FurParentNavbar';
 import withOTPVerification from '@/components/withOTPVerification';
-import DashboardSkeleton from '../ui/DashboardSkeleton';
+import DashboardSkeleton from '@/components/ui/DashboardSkeleton';
 
 interface FurParentDashboardLayoutProps {
   children: React.ReactNode;

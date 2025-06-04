@@ -3,6 +3,7 @@ import { query } from '@/lib/db';
 import { getAuthTokenFromRequest } from '@/utils/auth';
 import { testPhoneNumberFormatting } from '@/lib/smsService';
 import bcrypt from 'bcryptjs';
+import { decodeTokenUnsafe } from '@/lib/jwt';
 
 // GET endpoint to fetch cremation business profile
 export async function GET(request: NextRequest) {
@@ -14,10 +15,26 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const [userId, accountType] = authToken.split('_');
+    let userId: string | null = null;
+    let accountType: string | null = null;
+
+    // Check if it's a JWT token or old format
+    if (authToken.includes('.')) {
+      // JWT token format
+      const payload = decodeTokenUnsafe(authToken);
+      userId = payload?.userId || null;
+      accountType = payload?.accountType || null;
+    } else {
+      // Old format fallback
+      const parts = authToken.split('_');
+      if (parts.length === 2) {
+        userId = parts[0];
+        accountType = parts[1];
+      }
+    }
 
     // Verify this is a business account
-    if (accountType !== 'business') {
+    if (accountType !== 'business' || !userId) {
       return NextResponse.json({ error: 'Forbidden: Business access required' }, { status: 403 });
     }
 
@@ -139,10 +156,26 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const [userId, accountType] = authToken.split('_');
+    let userId: string | null = null;
+    let accountType: string | null = null;
+
+    // Check if it's a JWT token or old format
+    if (authToken.includes('.')) {
+      // JWT token format
+      const payload = decodeTokenUnsafe(authToken);
+      userId = payload?.userId || null;
+      accountType = payload?.accountType || null;
+    } else {
+      // Old format fallback
+      const parts = authToken.split('_');
+      if (parts.length === 2) {
+        userId = parts[0];
+        accountType = parts[1];
+      }
+    }
 
     // Verify this is a business account
-    if (accountType !== 'business') {
+    if (accountType !== 'business' || !userId) {
       return NextResponse.json({ error: 'Forbidden: Business access required' }, { status: 403 });
     }
 

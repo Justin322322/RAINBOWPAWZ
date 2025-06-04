@@ -58,27 +58,49 @@
 
 @layer components {
   .btn-primary {
-    @apply bg-[var(--primary-green)] text-white px-8 py-4 rounded-md font-medium
-    hover:bg-[var(--primary-green-hover)] transition-all duration-300 uppercase tracking-wider text-sm;
+    @apply bg-[var(--primary-green)] text-white px-4 sm:px-8 py-3 sm:py-4 rounded-md font-medium
+    hover:bg-[var(--primary-green-hover)] transition-all duration-300 uppercase tracking-wider text-xs sm:text-sm;
     font-family: var(--font-sans);
     letter-spacing: 0.05em;
   }
 
   .btn-outline {
-    @apply border-2 border-white text-white px-8 py-4 rounded-md font-medium
-    hover:bg-white/10 transition-all duration-300 uppercase tracking-wider text-sm;
+    @apply border-2 border-white text-white px-4 sm:px-8 py-3 sm:py-4 rounded-md font-medium
+    hover:bg-white/10 transition-all duration-300 uppercase tracking-wider text-xs sm:text-sm;
     font-family: var(--font-sans);
     letter-spacing: 0.05em;
   }
 
   .section-title {
-    @apply text-4xl font-light text-center text-[var(--primary-green)] mb-12;
+    @apply text-2xl sm:text-3xl md:text-4xl font-light text-center text-[var(--primary-green)] mb-8 sm:mb-12;
     font-family: var(--font-serif);
   }
 
   .nav-link {
     @apply text-white hover:text-gray-200 transition-colors duration-300 font-normal;
     font-family: var(--font-sans);
+  }
+
+  /* Mobile-specific utilities */
+  .mobile-safe-area {
+    @apply px-4 sm:px-6 lg:px-8;
+  }
+
+  .mobile-text {
+    @apply text-sm sm:text-base;
+  }
+
+  .mobile-button {
+    @apply px-3 py-2 sm:px-4 sm:py-3 text-sm sm:text-base;
+  }
+
+  .mobile-modal {
+    @apply mx-2 sm:mx-4 max-w-[95vw] sm:max-w-lg;
+  }
+
+  /* Touch-friendly interactive elements */
+  .touch-target {
+    @apply min-h-[44px] min-w-[44px];
   }
 
   .service-card {

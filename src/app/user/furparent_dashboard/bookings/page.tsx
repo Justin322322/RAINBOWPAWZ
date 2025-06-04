@@ -919,7 +919,7 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
                                   <div className="flex justify-between pl-2 mt-1">
                                     <p className="text-sm text-gray-600">Add-ons Subtotal:</p>
                                     <p className="text-sm font-medium text-gray-900">
-                                      ₱{((selectedBooking as any).extras_total || (selectedBooking as any).extras?.reduce((sum, item) => sum + Number(item.price), 0) || 0).toLocaleString()}
+                                      ₱{((selectedBooking as any).extras_total || (selectedBooking as any).extras?.reduce((sum: number, item: any) => sum + Number(item.price), 0) || 0).toLocaleString()}
                                     </p>
                                   </div>
                                 </>

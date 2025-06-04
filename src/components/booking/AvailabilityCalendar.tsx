@@ -342,6 +342,7 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
       }, 3000);
       return () => clearTimeout(timer);
     }
+    return () => {}; // Return empty cleanup function for else case
   }, [showSuccessMessage]);
 
   // Add effect to refetch data when needed
@@ -800,6 +801,7 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
       }, 5000); // Hide after 5 seconds
       return () => clearTimeout(timer);
     }
+    return () => {}; // Return empty cleanup function for else case
   }, [showConflictMessage]);
 
   return (

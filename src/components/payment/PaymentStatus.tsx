@@ -76,10 +76,17 @@ export default function PaymentStatus({
   useEffect(() => {
     fetchPaymentStatus();
 
+    let interval: NodeJS.Timeout | null = null;
+
     if (autoRefresh) {
-      const interval = setInterval(fetchPaymentStatus, refreshInterval);
-      return () => clearInterval(interval);
+      interval = setInterval(fetchPaymentStatus, refreshInterval);
     }
+
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
   }, [fetchPaymentStatus, autoRefresh, refreshInterval]);
 
   const getStatusIcon = (status: string) => {

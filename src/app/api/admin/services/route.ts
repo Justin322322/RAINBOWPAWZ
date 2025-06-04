@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { getAuthTokenFromRequest } from '@/utils/auth';
+import { decodeTokenUnsafe } from '@/lib/jwt';
 
 export async function GET(request: NextRequest) {
   try {
@@ -11,11 +12,20 @@ export async function GET(request: NextRequest) {
 
     if (authToken) {
       // If we have a token, validate it
-      const tokenParts = authToken.split('_');
-      if (tokenParts.length === 2) {
-        const accountType = tokenParts[1];
-        isAuthenticated = accountType === 'admin';
+      let accountType: string | null = null;
+
+      // Check if it's a JWT token or old format
+      if (authToken.includes('.')) {
+        // JWT token format
+        const payload = decodeTokenUnsafe(authToken);
+        accountType = payload?.accountType || null;
+      } else {
+        // Old format fallback
+        const parts = authToken.split('_');
+        accountType = parts.length === 2 ? parts[1] : null;
       }
+
+      isAuthenticated = accountType === 'admin';
     }
 
     // Check authentication result

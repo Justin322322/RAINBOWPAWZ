@@ -9,14 +9,10 @@ const port = process.env.PORT || 3001;
 const dbPort = 3306;
 
 const nextConfig = {
-  // Pass environment variables to the client
+  // Pass only safe environment variables to the client
+  // SECURITY: Never expose database credentials to client-side
   env: {
-    DB_HOST: process.env.DB_HOST || 'localhost',
-    DB_USER: process.env.DB_USER || 'root',
-    DB_PASSWORD: process.env.DB_PASSWORD || '',
-    DB_NAME: process.env.DB_NAME || 'rainbow_paws',
-    DB_PORT: '3306', // Always use the standard MySQL port
-    // Add the port and app URL for client-side access
+    // Only expose port and app URL for client-side access
     PORT: port,
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL || `http://localhost:${port}`,
     // Don't include NODE_ENV here as it's not allowed
@@ -76,7 +72,7 @@ const nextConfig = {
         source: '/:path*',
         headers: [
           { key: 'Access-Control-Allow-Credentials', value: 'true' },
-          { key: 'Access-Control-Allow-Origin', value: process.env.NODE_ENV === 'production' ? process.env.NEXT_PUBLIC_APP_URL || '' : '*' },
+          { key: 'Access-Control-Allow-Origin', value: process.env.NEXT_PUBLIC_APP_URL || `http://localhost:${port}` },
           { key: 'Access-Control-Allow-Methods', value: 'GET,DELETE,PATCH,POST,PUT,OPTIONS' },
           { key: 'Access-Control-Allow-Headers', value: 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization' },
         ],
@@ -90,14 +86,7 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: false,
   },
-  // Configure output for production builds
-  output: 'standalone',
-  // Ensure public directory is included in the standalone output
-  outputFileTracingIncludes: {
-    '/**': ['./public/**/*', './public/uploads/**/*']
-  },
-  // Disable telemetry
-  distDir: '.next',
+  // Standard Next.js configuration
   webpack: (config, { isServer }) => {
     if (!isServer) {
       // Don't resolve server-only modules on the client
@@ -117,11 +106,7 @@ const nextConfig = {
     return config;
   },
   // These packages will be bundled properly for server components
-  serverExternalPackages: ['nodemailer', 'emailjs', 'twilio'],
-  // Next.js 13+ uses a different approach for server configuration
-  // The server settings should be in next.config.mjs or package.json scripts
-
-
+  serverExternalPackages: ['nodemailer', 'emailjs', 'twilio']
 };
 
 module.exports = nextConfig;

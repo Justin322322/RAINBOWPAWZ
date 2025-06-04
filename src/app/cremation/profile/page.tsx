@@ -388,7 +388,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
     }
   };
 
-  const triggerFileInput = (ref: React.RefObject<HTMLInputElement>) => {
+  const triggerFileInput = (ref: React.RefObject<HTMLInputElement | null>) => {
     if (ref.current) {
       ref.current.click();
     }

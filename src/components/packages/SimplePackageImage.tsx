@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { ProductionSafeImage } from '../ui/ProductionSafeImage';
+import { ProductionSafeImage } from '@/components/ui/ProductionSafeImage';
 
 interface SimplePackageImageProps {
   images?: string[] | null;

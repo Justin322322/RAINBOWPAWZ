@@ -30,17 +30,37 @@ module.exports = {
       },
       keyframes: {
         fadeIn: {
-          '0%': { opacity: 0, transform: 'scale(0.95)' },
+          '0%': { opacity: 0, transform: 'scale(0.98)' },
           '100%': { opacity: 1, transform: 'scale(1)' },
         },
+        fadeOut: {
+          '0%': { opacity: 1, transform: 'scale(1)' },
+          '100%': { opacity: 0, transform: 'scale(0.98)' },
+        },
+        slideUp: {
+          '0%': { opacity: 0, transform: 'translateY(10px)' },
+          '100%': { opacity: 1, transform: 'translateY(0)' },
+        },
+        slideDown: {
+          '0%': { opacity: 1, transform: 'translateY(0)' },
+          '100%': { opacity: 0, transform: 'translateY(10px)' },
+        },
         modalAppear: {
-          '0%': { opacity: 0, transform: 'scale(0.95) translateY(10px)' },
+          '0%': { opacity: 0, transform: 'scale(0.98) translateY(5px)' },
           '100%': { opacity: 1, transform: 'scale(1) translateY(0)' },
+        },
+        optimizedPulse: {
+          '0%, 100%': { opacity: 0.7 },
+          '50%': { opacity: 1 },
         }
       },
       animation: {
-        fadeIn: 'fadeIn 0.2s ease-out',
-        'modal-appear': 'modalAppear 0.3s ease-out'
+        fadeIn: 'fadeIn 0.15s ease-out',
+        fadeOut: 'fadeOut 0.15s ease-out',
+        slideUp: 'slideUp 0.2s ease-out',
+        slideDown: 'slideDown 0.2s ease-out',
+        'modal-appear': 'modalAppear 0.15s ease-out',
+        'optimized-pulse': 'optimizedPulse 2s ease-in-out infinite',
       },
     },
   },

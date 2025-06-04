@@ -2,7 +2,7 @@
  * Enhanced geocoding service with multiple providers and fallbacks
  */
 
-import { cacheManager, GeocodingCacheData } from './cache';
+import { cacheManager, GeocodingCacheData } from '@/utils/cache';
 
 export interface GeocodingResult {
   coordinates: [number, number];

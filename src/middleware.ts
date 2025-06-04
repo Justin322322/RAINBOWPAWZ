@@ -4,6 +4,23 @@ import type { NextRequest } from 'next/server';
 // Middleware runs in the Edge Runtime which doesn't support Node.js APIs
 // We'll handle image serving through API routes for better compatibility
 
+// Edge Runtime compatible JWT decoder (no verification, just parsing)
+function decodeJWTPayload(token: string): any | null {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) {
+      return null;
+    }
+
+    const payload = parts[1];
+    const paddedPayload = payload + '='.repeat((4 - payload.length % 4) % 4);
+    const decodedPayload = atob(paddedPayload);
+    return JSON.parse(decodedPayload);
+  } catch (error) {
+    return null;
+  }
+}
+
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
@@ -53,15 +70,28 @@ export function middleware(request: NextRequest) {
         decodedValue = authCookie;
       }
 
-      // Extract account type from auth token
-      const parts = decodedValue.split('_');
+      let userId: string;
+      let accountType: string;
 
-      if (parts.length !== 2) {
-        return NextResponse.redirect(new URL('/', request.url));
+      // Check if it's a JWT token or old format
+      if (decodedValue.includes('.')) {
+        // JWT token format - decode without verification in middleware
+        // (verification will be done server-side when needed)
+        const payload = decodeJWTPayload(decodedValue);
+        if (!payload || !payload.userId || !payload.accountType) {
+          return NextResponse.redirect(new URL('/', request.url));
+        }
+        userId = payload.userId;
+        accountType = payload.accountType;
+      } else {
+        // Old format fallback
+        const parts = decodedValue.split('_');
+        if (parts.length !== 2) {
+          return NextResponse.redirect(new URL('/', request.url));
+        }
+        userId = parts[0];
+        accountType = parts[1];
       }
-
-      const userId = parts[0];
-      const accountType = parts[1];
 
       // Validate account type based on the path
       if (isAdminPath && accountType !== 'admin') {

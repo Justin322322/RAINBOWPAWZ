@@ -601,7 +601,7 @@ export async function POST(request: NextRequest) {
           }
         } else {
           // Store add-ons as a JSON string in special_requests if booking_addons table doesn't exist
-          const addOnsText = selectedAddOns.map(addon =>
+          const addOnsText = selectedAddOns.map((addon: any) =>
             `${addon.name} (₱${addon.price.toLocaleString()})`
           ).join(', ');
 

@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import AdminNavbar from './AdminNavbar';
 import AdminSidebar from './AdminSidebar';
 import withAdminAuth from '@/components/withAdminAuth';
-import DashboardSkeleton from '../ui/DashboardSkeleton';
+import DashboardSkeleton from '@/components/ui/DashboardSkeleton';
 
 interface AdminDashboardLayoutProps {
   children: React.ReactNode;
@@ -31,13 +31,19 @@ function AdminDashboardLayout({
 
   // Effect to simulate content loading with a short delay
   useEffect(() => {
+    let timer: NodeJS.Timeout | null = null;
+
     if (adminData) {
-      const timer = setTimeout(() => {
+      timer = setTimeout(() => {
         setContentLoading(false);
       }, 300);
-
-      return () => clearTimeout(timer);
     }
+
+    return () => {
+      if (timer) {
+        clearTimeout(timer);
+      }
+    };
   }, [adminData]);
 
   // State for mobile sidebar visibility

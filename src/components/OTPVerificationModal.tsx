@@ -85,6 +85,8 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
   // Initialize countdown timer from storage
   // This effect runs once when component mounts and isOpen changes
   useEffect(() => {
+    let intervalId: NodeJS.Timeout | null = null;
+
     if (isOpen) {
       const updateTimerFromStorage = () => {
         const cooldownEndTime = getStoredCooldownEndTime();
@@ -101,12 +103,14 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
       updateTimerFromStorage();
 
       // Update timer every second to ensure it stays in sync
-      const intervalId = setInterval(updateTimerFromStorage, 1000);
-
-      return () => {
-        clearInterval(intervalId);
-      };
+      intervalId = setInterval(updateTimerFromStorage, 1000);
     }
+
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
   }, [isOpen, getStoredCooldownEndTime]);
 
   // Track if an OTP request is in progress
@@ -232,8 +236,10 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
 
   // Countdown timer effect to update stored countdown
   useEffect(() => {
+    let timer: NodeJS.Timeout | null = null;
+
     if (resendCooldown > 0) {
-      const timer = setTimeout(() => {
+      timer = setTimeout(() => {
         const newCount = resendCooldown - 1;
         setResendCooldown(newCount);
 
@@ -246,25 +252,35 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
           clearStoredCooldownEndTime();
         }
       }, 1000);
-
-      return () => clearTimeout(timer);
     }
+
+    return () => {
+      if (timer) {
+        clearTimeout(timer);
+      }
+    };
   }, [resendCooldown, setStoredCooldownEndTime, clearStoredCooldownEndTime]);
 
   // Success animation timeout
   useEffect(() => {
+    let timer: NodeJS.Timeout | null = null;
+
     if (verificationStatus === 'success') {
       // We'll use a very simple approach here - just close the modal after
       // a brief delay to show the success animation
-      const timer = setTimeout(() => {
+      timer = setTimeout(() => {
         // Close the modal if needed, but only after verification is fully complete
         if (typeof onClose === 'function') {
           onClose();
         }
       }, 1500);
-
-      return () => clearTimeout(timer);
     }
+
+    return () => {
+      if (timer) {
+        clearTimeout(timer);
+      }
+    };
   }, [verificationStatus, onClose]);
 
   const handleInputChange = (index: number, value: string) => {

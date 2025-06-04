@@ -88,13 +88,17 @@ export default function Toast({
   const styles = getToastStyles();
 
   return (
-    <AnimatePresence>
+    <AnimatePresence mode="wait">
       {isVisible && (
         <motion.div
-          initial={{ opacity: 0, y: -50 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -50 }}
-          transition={{ duration: 0.3 }}
+          initial={{ opacity: 0, y: -20, scale: 0.95 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: -20, scale: 0.95 }}
+          transition={{
+            duration: 0.2,
+            ease: "easeOut",
+            layout: { duration: 0.15 }
+          }}
           className={`toast-message w-full shadow-lg rounded-lg ${styles.bg} border ${styles.border} p-4 mx-auto max-w-md shadow-xl relative`}
           style={{ zIndex: 999999 }}
         >

@@ -4,7 +4,15 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { XMarkIcon, ExclamationTriangleIcon, ArrowPathIcon, CheckIcon, XCircleIcon } from '@heroicons/react/24/outline';
 
-const DeclineModal = ({
+interface DeclineModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onDecline: (reason: string, requestDocuments: boolean) => Promise<void>;
+  title?: string;
+  minLength?: number;
+}
+
+const DeclineModal: React.FC<DeclineModalProps> = ({
   isOpen,
   onClose,
   onDecline,

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { getAuthTokenFromRequest } from '@/utils/auth';
+import { decodeTokenUnsafe } from '@/lib/jwt';
 import { calculateRevenue, formatRevenue, calculatePercentageChange } from '@/lib/revenueCalculator';
 
 // Safely execute a database query with error handling
@@ -26,7 +27,19 @@ export async function GET(request: NextRequest) {
     }
 
     if (authToken) {
-      const [, accountType] = authToken.split('_'); // Using comma to skip the first element
+      let accountType: string | null = null;
+
+      // Check if it's a JWT token or old format
+      if (authToken.includes('.')) {
+        // JWT token format
+        const payload = decodeTokenUnsafe(authToken);
+        accountType = payload?.accountType || null;
+      } else {
+        // Old format fallback
+        const parts = authToken.split('_');
+        accountType = parts.length === 2 ? parts[1] : null;
+      }
+
       if (accountType !== 'admin' && !isDevelopment) {
         return NextResponse.json({ error: 'Unauthorized - Admin access required' }, { status: 403 });
       }

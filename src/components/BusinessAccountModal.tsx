@@ -1,11 +1,11 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import Modal from './Modal';
-import { sendWelcomeEmail } from '../lib/emailService';
-import PrivacyPolicyModal from './PrivacyPolicyModal';
+import Modal from '@/components/Modal';
+import { sendWelcomeEmail } from '@/lib/emailService';
+import PrivacyPolicyModal from '@/components/PrivacyPolicyModal';
 import { useToast } from '@/context/ToastContext';
-import PhilippinePhoneInput from './ui/PhilippinePhoneInput';
+import PhilippinePhoneInput from '@/components/ui/PhilippinePhoneInput';
 
 type BusinessAccountModalProps = {
   isOpen: boolean;

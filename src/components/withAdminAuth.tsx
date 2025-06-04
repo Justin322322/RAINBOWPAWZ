@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { fastAuthCheck } from '@/utils/auth';
+import { decodeTokenUnsafe } from '@/lib/jwt';
 
 // Define the shape of the admin data
 export interface AdminData {
@@ -85,15 +86,27 @@ const withAdminAuth = <P_Original extends object>(
                 authValue = cookieParts[1];
               }
 
-              const tokenParts = authValue.split('_');
+              let userId: string | null = null;
+              let accountType: string | null = null;
 
-              if (tokenParts.length === 2) {
-                const [userId, accountType] = tokenParts;
-
-                if (userId && accountType === 'admin') {
-                  await fetchAdminData(userId);
-                  return;
+              // Check if it's a JWT token or old format
+              if (authValue.includes('.')) {
+                // JWT token format
+                const payload = decodeTokenUnsafe(authValue);
+                userId = payload?.userId || null;
+                accountType = payload?.accountType || null;
+              } else {
+                // Old format fallback
+                const parts = authValue.split('_');
+                if (parts.length === 2) {
+                  userId = parts[0];
+                  accountType = parts[1];
                 }
+              }
+
+              if (userId && accountType === 'admin') {
+                await fetchAdminData(userId);
+                return;
               }
             }
           }
@@ -103,15 +116,27 @@ const withAdminAuth = <P_Original extends object>(
             try {
               const localStorageToken = localStorage.getItem('auth_token_3000');
               if (localStorageToken) {
-                const tokenParts = localStorageToken.split('_');
+                let userId: string | null = null;
+                let accountType: string | null = null;
 
-                if (tokenParts.length === 2) {
-                  const [userId, accountType] = tokenParts;
-
-                  if (userId && accountType === 'admin') {
-                    await fetchAdminData(userId);
-                    return;
+                // Check if it's a JWT token or old format
+                if (localStorageToken.includes('.')) {
+                  // JWT token format
+                  const payload = decodeTokenUnsafe(localStorageToken);
+                  userId = payload?.userId || null;
+                  accountType = payload?.accountType || null;
+                } else {
+                  // Old format fallback
+                  const parts = localStorageToken.split('_');
+                  if (parts.length === 2) {
+                    userId = parts[0];
+                    accountType = parts[1];
                   }
+                }
+
+                if (userId && accountType === 'admin') {
+                  await fetchAdminData(userId);
+                  return;
                 }
               }
             } catch (e) {
@@ -121,15 +146,27 @@ const withAdminAuth = <P_Original extends object>(
           // Try sessionStorage as fallback
           const sessionToken = sessionStorage.getItem('auth_token');
           if (sessionToken) {
-            const tokenParts = sessionToken.split('_');
+            let userId: string | null = null;
+            let accountType: string | null = null;
 
-            if (tokenParts.length === 2) {
-              const [userId, accountType] = tokenParts;
-
-              if (userId && accountType === 'admin') {
-                await fetchAdminData(userId);
-                return;
+            // Check if it's a JWT token or old format
+            if (sessionToken.includes('.')) {
+              // JWT token format
+              const payload = decodeTokenUnsafe(sessionToken);
+              userId = payload?.userId || null;
+              accountType = payload?.accountType || null;
+            } else {
+              // Old format fallback
+              const parts = sessionToken.split('_');
+              if (parts.length === 2) {
+                userId = parts[0];
+                accountType = parts[1];
               }
+            }
+
+            if (userId && accountType === 'admin') {
+              await fetchAdminData(userId);
+              return;
             }
           }
 
