@@ -341,15 +341,14 @@ export async function GET(request: NextRequest) {
                 SELECT b.*,
                        'N/A' as pet_name,
                        'N/A' as pet_type,
-                       bs.price as service_price,
-                       bp.business_name as provider_name,
-                       bp.business_address as provider_address,
-                       st.name as service_name,
-                       st.description as service_description
+                       sp.price as service_price,
+                       spr.name as provider_name,
+                       spr.address as provider_address,
+                       sp.name as service_name,
+                       sp.description as service_description
                 FROM bookings b
-                LEFT JOIN business_services bs ON b.business_service_id = bs.id
-                LEFT JOIN business_profiles bp ON bs.business_id = bp.id
-                LEFT JOIN service_types st ON bs.service_type_id = st.id
+                LEFT JOIN service_packages sp ON b.package_id = sp.package_id
+                LEFT JOIN service_providers spr ON sp.provider_id = spr.provider_id
                 WHERE b.user_id = ?
               `;
             } else if (hasPetNameColumn && hasPetTypeColumn) {
@@ -358,15 +357,14 @@ export async function GET(request: NextRequest) {
                 SELECT b.*,
                        b.pet_name as pet_name,
                        b.pet_type as pet_type,
-                       bs.price as service_price,
-                       bp.business_name as provider_name,
-                       bp.business_address as provider_address,
-                       st.name as service_name,
-                       st.description as service_description
+                       sp.price as service_price,
+                       spr.name as provider_name,
+                       spr.address as provider_address,
+                       sp.name as service_name,
+                       sp.description as service_description
                 FROM bookings b
-                LEFT JOIN business_services bs ON b.business_service_id = bs.id
-                LEFT JOIN business_profiles bp ON bs.business_id = bp.id
-                LEFT JOIN service_types st ON bs.service_type_id = st.id
+                LEFT JOIN service_packages sp ON b.package_id = sp.package_id
+                LEFT JOIN service_providers spr ON sp.provider_id = spr.provider_id
                 WHERE b.user_id = ?
               `;
             } else {
@@ -375,15 +373,14 @@ export async function GET(request: NextRequest) {
                 SELECT b.*,
                        'N/A' as pet_name,
                        'N/A' as pet_type,
-                       bs.price as service_price,
-                       bp.business_name as provider_name,
-                       bp.business_address as provider_address,
-                       st.name as service_name,
-                       st.description as service_description
+                       sp.price as service_price,
+                       spr.name as provider_name,
+                       spr.address as provider_address,
+                       sp.name as service_name,
+                       sp.description as service_description
                 FROM bookings b
-                LEFT JOIN business_services bs ON b.business_service_id = bs.id
-                LEFT JOIN business_profiles bp ON bs.business_id = bp.id
-                LEFT JOIN service_types st ON bs.service_type_id = st.id
+                LEFT JOIN service_packages sp ON b.package_id = sp.package_id
+                LEFT JOIN service_providers spr ON sp.provider_id = spr.provider_id
                 WHERE b.user_id = ?
               `;
             }
@@ -402,7 +399,7 @@ export async function GET(request: NextRequest) {
                      'Service Address' as provider_address,
                      'Service' as service_name,
                      'Service Description' as service_description,
-                     b.total_amount as service_price,
+                     b.total_price as service_price,
                      b.pet_name as pet_name,
                      b.pet_type as pet_type
               FROM bookings b
@@ -763,8 +760,8 @@ export async function GET(request: NextRequest) {
                  sp.name as provider_name,
                  sp.address as provider_address
           FROM bookings b
-          LEFT JOIN service_packages spkg ON b.business_service_id = spkg.id
-          LEFT JOIN service_providers sp ON spkg.service_provider_id = sp.id
+          LEFT JOIN service_packages spkg ON b.package_id = spkg.package_id
+          LEFT JOIN service_providers sp ON spkg.provider_id = sp.provider_id
           WHERE b.user_id = ?
         `;
 
@@ -839,9 +836,9 @@ export async function GET(request: NextRequest) {
                    spkg.description as service_description,
                    spkg.price as service_price
             FROM bookings b
-            LEFT JOIN pets p ON b.pet_id = p.id
-            LEFT JOIN service_packages spkg ON b.business_service_id = spkg.id
-            LEFT JOIN service_providers sp ON spkg.service_provider_id = sp.id
+            LEFT JOIN pets p ON b.pet_id = p.pet_id
+            LEFT JOIN service_packages spkg ON b.package_id = spkg.package_id
+            LEFT JOIN service_providers sp ON spkg.provider_id = sp.provider_id
             WHERE b.user_id = ?
           `;
         } else {
@@ -857,8 +854,8 @@ export async function GET(request: NextRequest) {
                    spkg.description as service_description,
                    spkg.price as service_price
             FROM bookings b
-            LEFT JOIN service_packages spkg ON b.business_service_id = spkg.id
-            LEFT JOIN service_providers sp ON spkg.service_provider_id = sp.id
+            LEFT JOIN service_packages spkg ON b.package_id = spkg.package_id
+            LEFT JOIN service_providers sp ON spkg.provider_id = sp.provider_id
             WHERE b.user_id = ?
           `;
         }
@@ -906,9 +903,9 @@ export async function GET(request: NextRequest) {
                        'Provider Address' as provider_address,
                        'Cremation Service' as service_name,
                        'Pet cremation service' as service_description,
-                       b.total_amount as service_price
+                       b.total_price as service_price
                 FROM bookings b
-                LEFT JOIN pets p ON b.pet_id = p.id
+                LEFT JOIN pets p ON b.pet_id = p.pet_id
                 WHERE b.user_id = ?
               `;
             } else {
@@ -922,7 +919,7 @@ export async function GET(request: NextRequest) {
                        'Provider Address' as provider_address,
                        'Cremation Service' as service_name,
                        'Pet cremation service' as service_description,
-                       b.total_amount as service_price
+                       b.total_price as service_price
                 FROM bookings b
                 WHERE b.user_id = ?
               `;
@@ -941,7 +938,7 @@ export async function GET(request: NextRequest) {
                 provider_address: 'Provider Address',
                 service_name: 'Cremation Service',
                 service_description: 'Pet cremation service',
-                service_price: booking.total_amount,
+                service_price: booking.total_price,
                 pet_name: booking.pet_name || 'Pet',
                 pet_type: booking.pet_type || 'Unknown'
               }));
@@ -1063,7 +1060,7 @@ export async function POST(request: NextRequest) {
       const columnNames = columnsResult.map((row: any) => row.COLUMN_NAME.toLowerCase());
 
       // Build dynamic SQL based on available columns
-      let insertColumns = ['user_id', 'booking_date', 'booking_time', 'status', 'total_amount', 'special_requests'];
+      let insertColumns = ['user_id', 'booking_date', 'booking_time', 'status', 'total_price', 'special_requests'];
       let insertValues = [userId, bookingData.date, bookingData.time, 'pending', totalAmount, bookingData.specialRequests || ''];
 
       // Add pet_id only if the column exists in the table

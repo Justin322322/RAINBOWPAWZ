@@ -78,14 +78,14 @@ export async function GET(request: NextRequest) {
         try {
           const completedBookingsQuery = `
             SELECT sb.id as booking_id,
-                  bs.business_id as service_provider_id,
-                  b.name as provider_name,
+                  sp.provider_id as service_provider_id,
+                  spr.name as provider_name,
                   sb.booking_date,
-                  bs.id as service_type_id,
-                  bs.name as service_name
+                  sp.package_id as service_type_id,
+                  sp.name as service_name
             FROM service_bookings sb
-            JOIN business_services bs ON sb.business_service_id = bs.id
-            JOIN businesses b ON bs.business_id = b.id
+            JOIN service_packages sp ON sb.package_id = sp.package_id
+            JOIN service_providers spr ON sp.provider_id = spr.provider_id
             WHERE sb.user_id = ?
             AND sb.status = 'completed'
             ORDER BY sb.booking_date DESC

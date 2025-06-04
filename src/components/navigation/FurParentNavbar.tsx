@@ -7,7 +7,13 @@ import { usePathname, useRouter } from 'next/navigation';
 import {
   ShoppingCartIcon,
   UserIcon,
-  ChevronDownIcon
+  ChevronDownIcon,
+  Bars3Icon,
+  XMarkIcon,
+  HomeIcon,
+  CogIcon,
+  CalendarDaysIcon,
+  ArrowRightOnRectangleIcon
 } from '@heroicons/react/24/outline';
 import { clearAuthToken } from '@/utils/auth';
 import LogoutModal from '@/components/LogoutModal';
@@ -32,6 +38,7 @@ export default function FurParentNavbar({ activePage: propActivePage, userName =
   const router = useRouter();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [activePage, setActivePage] = useState('');
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   // Use global state to persist profile picture across navigation
@@ -149,38 +156,73 @@ export default function FurParentNavbar({ activePage: propActivePage, userName =
   useEffect(() => {
     // We're not using this global click handler anymore
     // The CartDropdown component handles its own click outside events
-    // This was causing the cart to close when clicking inside it
+    // The NotificationBell component handles its own click outside events
+    // This was causing the cart and notifications to close when clicking inside them
 
-    // We'll keep the user dropdown functionality
+    // We'll keep the user dropdown and mobile menu functionality
     const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element;
+
+      // Don't close if clicking on notification bell or its dropdown
+      if (target.closest('[data-notification-bell]')) {
+        return;
+      }
+
+      // Don't close if clicking on cart or its dropdown
+      if (target.closest('[data-cart-dropdown]')) {
+        return;
+      }
+
       // Only close the user dropdown when it's open
       if (isDropdownOpen) {
         setIsDropdownOpen(false);
       }
+      // Close mobile menu when clicking outside
+      if (isMobileMenuOpen) {
+        setIsMobileMenuOpen(false);
+      }
     };
 
-    // Add event listener only when user dropdown is open
-    if (isDropdownOpen) {
+    // Add event listener only when user dropdown or mobile menu is open
+    if (isDropdownOpen || isMobileMenuOpen) {
       document.addEventListener('click', handleClickOutside);
     }
 
     return () => {
       document.removeEventListener('click', handleClickOutside);
     };
-  }, [isDropdownOpen]);
+  }, [isDropdownOpen, isMobileMenuOpen]);
 
   return (
     <header className="bg-[var(--primary-green)] shadow-[0_4px_10px_rgba(0,0,0,0.3)] relative z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-20">
+        <div className="flex items-center justify-between h-16 md:h-20">
           <div className="flex items-center">
+            {/* Mobile menu button */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsMobileMenuOpen(!isMobileMenuOpen);
+              }}
+              className="md:hidden text-white p-2 rounded-lg hover:bg-white/20 transition-colors duration-300 mr-2"
+            >
+              {isMobileMenuOpen ? (
+                <XMarkIcon className="h-6 w-6" />
+              ) : (
+                <Bars3Icon className="h-6 w-6" />
+              )}
+            </button>
+
             <Link
               href="/user/furparent_dashboard"
-              className="flex items-center space-x-3"
-              onClick={() => setActivePage('home')}
+              className="flex items-center space-x-2 md:space-x-3"
+              onClick={() => {
+                setActivePage('home');
+                setIsMobileMenuOpen(false);
+              }}
             >
-              <Image src="/logo.png" alt="Rainbow Paws Logo" width={40} height={40} className="h-10 w-auto" />
-              <span className="text-xl modern-heading text-white tracking-wide">RainbowPaws</span>
+              <Image src="/logo.png" alt="Rainbow Paws Logo" width={40} height={40} className="h-8 w-8 md:h-10 md:w-10 object-contain" />
+              <span className="text-lg md:text-xl modern-heading text-white tracking-wide">RainbowPaws</span>
             </Link>
           </div>
           <div className="hidden md:flex items-center justify-center space-x-10 absolute left-1/2 transform -translate-x-1/2">
@@ -206,9 +248,11 @@ export default function FurParentNavbar({ activePage: propActivePage, userName =
               Bookings
             </Link>
           </div>
-          <div className="flex items-center space-x-4">
-            <NotificationBell />
-            <div className="relative">
+          <div className="flex items-center space-x-2 md:space-x-4">
+            <div className="hidden md:block" data-notification-bell>
+              <NotificationBell />
+            </div>
+            <div className="relative" data-cart-dropdown>
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -216,9 +260,9 @@ export default function FurParentNavbar({ activePage: propActivePage, userName =
                 }}
                 className="text-white p-2 rounded-full hover:bg-white/10 transition-colors relative"
               >
-                <ShoppingCartIcon className="h-6 w-6" />
+                <ShoppingCartIcon className="h-5 w-5 md:h-6 md:w-6" />
                 {itemCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center shadow-md">
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 md:h-5 md:w-5 flex items-center justify-center shadow-md text-[10px] md:text-xs">
                     {itemCount}
                   </span>
                 )}
@@ -231,10 +275,14 @@ export default function FurParentNavbar({ activePage: propActivePage, userName =
             </div>
             <div className="relative">
               <button
-                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                className="flex items-center space-x-2 text-white focus:outline-none border border-white/30 rounded-full px-4 py-2 hover:bg-white/10 transition-all duration-300"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsDropdownOpen(!isDropdownOpen);
+                  setIsMobileMenuOpen(false); // Close mobile menu when user dropdown opens
+                }}
+                className="flex items-center space-x-1 md:space-x-2 text-white focus:outline-none border border-white/30 rounded-full px-2 py-1 md:px-4 md:py-2 hover:bg-white/10 transition-all duration-300"
               >
-                <div className="bg-white rounded-full h-8 w-8 flex items-center justify-center mr-2 overflow-hidden">
+                <div className="bg-white rounded-full h-6 w-6 md:h-8 md:w-8 flex items-center justify-center mr-1 md:mr-2 overflow-hidden">
                   {profilePicture ? (
                     <Image
                       src={getProfilePictureUrl(profilePicture)}
@@ -251,11 +299,11 @@ export default function FurParentNavbar({ activePage: propActivePage, userName =
                       unoptimized // Prevent Next.js from reprocessing the image during navigation
                     />
                   ) : (
-                    <UserIcon className="h-5 w-5 text-[var(--primary-green)]" />
+                    <UserIcon className="h-3 w-3 md:h-5 md:w-5 text-[var(--primary-green)]" />
                   )}
                 </div>
-                <span className="modern-text font-medium tracking-wide">{userName}</span>
-                <ChevronDownIcon className="h-4 w-4 ml-2" />
+                <span className="modern-text font-medium tracking-wide text-xs md:text-sm hidden sm:block">{userName}</span>
+                <ChevronDownIcon className="h-3 w-3 md:h-4 md:w-4 ml-1 md:ml-2" />
               </button>
 
               {isDropdownOpen && (
@@ -263,14 +311,25 @@ export default function FurParentNavbar({ activePage: propActivePage, userName =
                   <Link
                     href="/user/furparent_dashboard/bookings"
                     className="block px-4 py-2 text-sm modern-text text-gray-700 hover:bg-gray-100"
-                    onClick={() => setActivePage('bookings')}
+                    onClick={() => {
+                      setActivePage('bookings');
+                      setIsDropdownOpen(false);
+                    }}
                   >
                     My Bookings
                   </Link>
-                  <Link href="/user/furparent_dashboard/profile" className="block px-4 py-2 text-sm modern-text text-gray-700 hover:bg-gray-100">
+                  <Link
+                    href="/user/furparent_dashboard/profile"
+                    className="block px-4 py-2 text-sm modern-text text-gray-700 hover:bg-gray-100"
+                    onClick={() => setIsDropdownOpen(false)}
+                  >
                     Profile
                   </Link>
-                  <Link href="/user/furparent_dashboard/settings" className="block px-4 py-2 text-sm modern-text text-gray-700 hover:bg-gray-100">
+                  <Link
+                    href="/user/furparent_dashboard/settings"
+                    className="block px-4 py-2 text-sm modern-text text-gray-700 hover:bg-gray-100"
+                    onClick={() => setIsDropdownOpen(false)}
+                  >
                     Settings
                   </Link>
                   <div className="border-t border-gray-100"></div>
@@ -286,6 +345,103 @@ export default function FurParentNavbar({ activePage: propActivePage, userName =
           </div>
         </div>
       </div>
+
+      {/* Mobile Navigation Menu */}
+      {isMobileMenuOpen && (
+        <>
+          {/* Backdrop overlay */}
+          <div
+            className="fixed inset-0 bg-black/20 z-40 md:hidden"
+            onClick={() => setIsMobileMenuOpen(false)}
+          />
+
+          {/* Mobile menu */}
+          <div className="md:hidden bg-[var(--primary-green)] border-t border-white/20 relative z-50 shadow-lg">
+            <div className="px-4 py-4 space-y-2">
+              {/* Notifications for mobile */}
+              <div className="flex items-center justify-between px-3 py-3 rounded-lg bg-white/10" data-notification-bell>
+                <span className="modern-text text-white font-medium">Notifications</span>
+                <NotificationBell />
+              </div>
+
+              <Link
+                href="/user/furparent_dashboard"
+                className={`flex items-center px-4 py-4 rounded-lg text-white hover:bg-white/10 transition-all duration-300 ${
+                  activePage === 'home' ? 'bg-white/20 font-medium' : ''
+                }`}
+                onClick={() => {
+                  setActivePage('home');
+                  setIsMobileMenuOpen(false);
+                }}
+              >
+                <HomeIcon className="h-6 w-6 mr-4" />
+                <span className="modern-text text-base">Home</span>
+              </Link>
+
+              <Link
+                href="/user/furparent_dashboard/services"
+                className={`flex items-center px-4 py-4 rounded-lg text-white hover:bg-white/10 transition-all duration-300 ${
+                  activePage === 'services' ? 'bg-white/20 font-medium' : ''
+                }`}
+                onClick={() => {
+                  setActivePage('services');
+                  setIsMobileMenuOpen(false);
+                }}
+              >
+                <CogIcon className="h-6 w-6 mr-4" />
+                <span className="modern-text text-base">Services</span>
+              </Link>
+
+              <Link
+                href="/user/furparent_dashboard/bookings"
+                className={`flex items-center px-4 py-4 rounded-lg text-white hover:bg-white/10 transition-all duration-300 ${
+                  activePage === 'bookings' ? 'bg-white/20 font-medium' : ''
+                }`}
+                onClick={() => {
+                  setActivePage('bookings');
+                  setIsMobileMenuOpen(false);
+                }}
+              >
+                <CalendarDaysIcon className="h-6 w-6 mr-4" />
+                <span className="modern-text text-base">Bookings</span>
+              </Link>
+
+              {/* Divider */}
+              <div className="border-t border-white/20 my-3"></div>
+
+              {/* Profile actions for mobile */}
+              <Link
+                href="/user/furparent_dashboard/profile"
+                className="flex items-center px-4 py-4 rounded-lg text-white hover:bg-white/10 transition-all duration-300"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                <UserIcon className="h-6 w-6 mr-4" />
+                <span className="modern-text text-base">Profile</span>
+              </Link>
+
+              <Link
+                href="/user/furparent_dashboard/settings"
+                className="flex items-center px-4 py-4 rounded-lg text-white hover:bg-white/10 transition-all duration-300"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                <CogIcon className="h-6 w-6 mr-4" />
+                <span className="modern-text text-base">Settings</span>
+              </Link>
+
+              <button
+                className="flex items-center w-full px-4 py-4 rounded-lg text-white hover:bg-white/10 transition-all duration-300"
+                onClick={() => {
+                  setIsMobileMenuOpen(false);
+                  handleLogoutClick();
+                }}
+              >
+                <ArrowRightOnRectangleIcon className="h-6 w-6 mr-4" />
+                <span className="modern-text text-base">Logout</span>
+              </button>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Logout Modal */}
       <LogoutModal

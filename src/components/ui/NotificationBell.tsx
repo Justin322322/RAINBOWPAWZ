@@ -159,7 +159,7 @@ export default function NotificationBell() {
   };
 
   return (
-    <div className="relative z-50" ref={dropdownRef}>
+    <div className="relative z-[70]" ref={dropdownRef} data-notification-bell>
       <button
         onClick={(e) => {
           e.stopPropagation();
@@ -185,7 +185,7 @@ export default function NotificationBell() {
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-96 max-w-[90vw] bg-white rounded-lg shadow-xl py-1 z-10 max-h-[80vh] overflow-y-auto border border-gray-200">
+        <div className="absolute right-0 mt-2 w-96 max-w-[90vw] bg-white rounded-lg shadow-xl py-1 z-[80] max-h-[80vh] overflow-y-auto border border-gray-200">
           <div className="px-4 py-2 border-b border-gray-200 bg-gray-50 rounded-t-lg">
             <div className="flex justify-between items-center">
               <h3 className="text-sm font-medium text-gray-900">Notifications</h3>

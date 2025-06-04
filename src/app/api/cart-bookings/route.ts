@@ -102,7 +102,7 @@ export async function POST(request: NextRequest) {
             booking_date,
             booking_time,
             status,
-            total_amount,
+            total_price,
             special_requests,
             quantity
           ) VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?)
@@ -129,11 +129,11 @@ export async function POST(request: NextRequest) {
             INSERT INTO bookings (
               user_id,
               pet_id,
-              business_service_id,
+              package_id,
               booking_date,
               booking_time,
               status,
-              total_amount,
+              total_price,
               special_requests
             ) VALUES (?, ?, ?, ?, ?, 'pending', ?, ?)
           `, [
@@ -154,7 +154,7 @@ export async function POST(request: NextRequest) {
               booking_date,
               booking_time,
               status,
-              total_amount,
+              total_price,
               special_requests
             ) VALUES (?, ?, ?, ?, 'pending', ?, ?)
           `, [

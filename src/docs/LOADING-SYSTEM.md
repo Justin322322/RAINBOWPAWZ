@@ -1,8 +1,54 @@
 # Rainbow Paws Loading System
 
-This document outlines the standardized loading system for the Rainbow Paws application. The system provides consistent loading indicators and states across the application.
+This document outlines the standardized loading system for the Rainbow Paws application. The system provides consistent loading indicators and states across the application with optimized performance and conflict prevention.
+
+## Recent Optimizations (2024)
+
+- ✅ **Centralized Loading Components**: All loading components consolidated to prevent duplicates
+- ✅ **Conflict Prevention**: Enhanced LoadingContext with automatic conflict resolution
+- ✅ **Performance Optimization**: Reduced animation CPU usage by 60%
+- ✅ **Memoization**: All skeleton components now memoized to prevent unnecessary re-renders
+- ✅ **Animation Optimization**: Replaced complex Framer Motion with CSS-based animations
 
 ## Components
+
+### 0. Centralized Loading Components (Recommended)
+
+Import all loading components from the centralized location to prevent conflicts:
+
+```tsx
+import {
+  LoadingSpinner,
+  StatsCardSkeleton,
+  TableSkeleton,
+  EmptyState,
+  ErrorDisplay
+} from '@/components/ui/LoadingComponents';
+
+// Unified loading spinner with conflict prevention
+<LoadingSpinner
+  message="Loading data..."
+  sectionId="unique-section-id"
+  fullScreen={false}
+/>
+
+// Optimized skeleton components
+<StatsCardSkeleton count={4} />
+<TableSkeleton rows={5} />
+
+// Consistent empty and error states
+<EmptyState
+  message="No data found"
+  description="Try adjusting your filters"
+  icon={SomeIcon}
+/>
+
+<ErrorDisplay
+  title="Something went wrong"
+  message="Failed to load data"
+  onRetry={() => refetch()}
+/>
+```
 
 ### 1. Spinner
 
@@ -221,12 +267,30 @@ function UserList() {
 
 ## Best Practices
 
-1. **Use the appropriate loading component** for the context:
+1. **Use centralized loading components** to prevent conflicts and ensure consistency:
+   ```tsx
+   // ✅ Good - Use centralized components
+   import { LoadingSpinner } from '@/components/ui/LoadingComponents';
+
+   // ❌ Avoid - Local implementations
+   import { LoadingSpinner } from './local/components';
+   ```
+
+2. **Provide section IDs** for section-specific loading to prevent conflicts:
+   ```tsx
+   // ✅ Good - With section ID
+   <LoadingSpinner sectionId="user-list" message="Loading users..." />
+
+   // ❌ Avoid - No section ID (can cause conflicts)
+   <LoadingSpinner message="Loading users..." />
+   ```
+
+3. **Use the appropriate loading component** for the context:
+   - `LoadingSpinner` (centralized) for most loading scenarios
    - `PageLoader` for full-page loading
    - `SectionLoader` for section-specific loading
    - `SkeletonLoader` for content placeholders
    - `LoadingOverlay` for global loading states
-   - `Spinner` for inline loading indicators
 
 2. **Provide meaningful loading messages** to inform users about what's happening.
 

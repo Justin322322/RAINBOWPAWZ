@@ -106,8 +106,8 @@ export async function GET(request: NextRequest) {
         FROM bookings b
         JOIN users u ON b.user_id = u.user_id
         LEFT JOIN pets p ON p.user_id = u.user_id AND p.created_at <= DATE_ADD(b.created_at, INTERVAL 5 SECOND)
-        JOIN service_packages sp ON b.business_service_id = sp.package_id
-        WHERE b.business_service_id IN (${packagePlaceholders})
+        JOIN service_packages sp ON b.package_id = sp.package_id
+        WHERE b.package_id IN (${packagePlaceholders})
         AND b.status NOT IN ('completed', 'cancelled')
         GROUP BY b.id
       `;
@@ -184,12 +184,12 @@ export async function GET(request: NextRequest) {
     } else {
       statsQueries = {
         total: `SELECT COUNT(*) as count FROM bookings WHERE business_service_id IN (${packagePlaceholders})`,
-        pending: `SELECT COUNT(*) as count FROM bookings WHERE business_service_id IN (${packagePlaceholders}) AND status = 'pending'`,
-        confirmed: `SELECT COUNT(*) as count FROM bookings WHERE business_service_id IN (${packagePlaceholders}) AND status = 'confirmed'`,
-        inProgress: `SELECT COUNT(*) as count FROM bookings WHERE business_service_id IN (${packagePlaceholders}) AND status = 'in_progress'`,
-        completed: `SELECT COUNT(*) as count FROM bookings WHERE business_service_id IN (${packagePlaceholders}) AND status = 'completed'`,
-        cancelled: `SELECT COUNT(*) as count FROM bookings WHERE business_service_id IN (${packagePlaceholders}) AND status = 'cancelled'`,
-        totalRevenue: `SELECT COALESCE(SUM(total_price), 0) as revenue FROM bookings WHERE business_service_id IN (${packagePlaceholders}) AND status = 'completed'`
+        pending: `SELECT COUNT(*) as count FROM bookings WHERE package_id IN (${packagePlaceholders}) AND status = 'pending'`,
+        confirmed: `SELECT COUNT(*) as count FROM bookings WHERE package_id IN (${packagePlaceholders}) AND status = 'confirmed'`,
+        inProgress: `SELECT COUNT(*) as count FROM bookings WHERE package_id IN (${packagePlaceholders}) AND status = 'in_progress'`,
+        completed: `SELECT COUNT(*) as count FROM bookings WHERE package_id IN (${packagePlaceholders}) AND status = 'completed'`,
+        cancelled: `SELECT COUNT(*) as count FROM bookings WHERE package_id IN (${packagePlaceholders}) AND status = 'cancelled'`,
+        totalRevenue: `SELECT COALESCE(SUM(total_price), 0) as revenue FROM bookings WHERE package_id IN (${packagePlaceholders}) AND status = 'completed'`
       };
     }
 

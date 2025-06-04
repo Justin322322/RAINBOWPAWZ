@@ -63,11 +63,46 @@ export const LoadingProvider: React.FC<LoadingProviderProps> = ({ children }) =>
     setActiveSections(new Map());
   }, []);
 
-  // Enhanced setLoadingSection with conflict prevention
+  // Conflict detection and resolution
+  const resolveLoadingConflicts = useCallback(() => {
+    if (activeSections.size > 1) {
+      // Find the highest priority loading state
+      let highestPriority: LoadingState | null = null;
+      let highestPrioritySection: string | null = null;
+
+      const priorityOrder: Record<'low' | 'medium' | 'high', number> = { high: 3, medium: 2, low: 1 };
+
+      for (const [sectionId, state] of activeSections.entries()) {
+        if (!highestPriority ||
+            priorityOrder[state.priority] > priorityOrder[highestPriority.priority] ||
+            (priorityOrder[state.priority] === priorityOrder[highestPriority.priority] &&
+             state.timestamp > highestPriority.timestamp)) {
+          highestPriority = state;
+          highestPrioritySection = sectionId;
+        }
+      }
+
+      // Set the highest priority section as active
+      if (highestPrioritySection && highestPriority) {
+        setLoadingSection(highestPrioritySection);
+        setLoadingMessage(highestPriority.message);
+      }
+    }
+  }, [activeSections]);
+
+  // Enhanced setLoadingSection with conflict prevention and priority management
   const enhancedSetLoadingSection = useCallback((section: string | null) => {
     if (section) {
       setActiveSections(prev => {
         const newMap = new Map(prev);
+
+        // Check for existing section with same ID
+        const existingSection = newMap.get(section);
+        if (existingSection && existingSection.isLoading) {
+          // Don't create duplicate loading states for the same section
+          return prev;
+        }
+
         newMap.set(section, {
           isLoading: true,
           message: loadingMessage,
@@ -88,6 +123,11 @@ export const LoadingProvider: React.FC<LoadingProviderProps> = ({ children }) =>
       setLoadingSection(null);
     }
   }, [loadingMessage, loadingSection]);
+
+  // Auto-resolve conflicts when active sections change
+  React.useEffect(() => {
+    resolveLoadingConflicts();
+  }, [resolveLoadingConflicts]);
 
   return (
     <LoadingContext.Provider

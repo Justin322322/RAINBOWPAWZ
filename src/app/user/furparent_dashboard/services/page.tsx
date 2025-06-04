@@ -365,39 +365,21 @@ function ServicesPage({ userData }: ServicesPageProps) {
                     </div>
                   </div>
                 ) : (
-                  <FurParentPageSkeleton type="services" />
+                  <SectionLoader
+                    message="Loading map..."
+                    minHeight="h-full"
+                    withBackground={true}
+                    rounded={true}
+                    sectionId="services-map"
+                  />
                 )}
               </div>
 
-              {/* Footer text with skeleton loading */}
+              {/* Footer text with optimized skeleton loading */}
               {isLoading ? (
                 <div className="mt-2 text-center">
-                  <motion.div
-                    className="h-4 bg-gray-200 rounded-md w-3/4 mx-auto mb-1"
-                    initial={{ opacity: 0.6 }}
-                    animate={{
-                      opacity: [0.6, 1, 0.6],
-                      transition: {
-                        repeat: Infinity,
-                        duration: 1.5,
-                        ease: "easeInOut",
-                        delay: 0.8
-                      }
-                    }}
-                  />
-                  <motion.div
-                    className="h-3 bg-gray-200 rounded-md w-1/2 mx-auto"
-                    initial={{ opacity: 0.6 }}
-                    animate={{
-                      opacity: [0.6, 1, 0.6],
-                      transition: {
-                        repeat: Infinity,
-                        duration: 1.5,
-                        ease: "easeInOut",
-                        delay: 1.0
-                      }
-                    }}
-                  />
+                  <div className="h-4 bg-gray-200 rounded-md w-3/4 mx-auto mb-1 animate-pulse" />
+                  <div className="h-3 bg-gray-200 rounded-md w-1/2 mx-auto animate-pulse" />
                 </div>
               ) : (
                 <p className="modern-caption mt-2 text-center">
@@ -422,6 +404,7 @@ function ServicesPage({ userData }: ServicesPageProps) {
               withBackground={true}
               withShadow={true}
               rounded={true}
+              sectionId="services-grid"
             />
           ) : serviceProviders.length === 0 ? (
             <div className="bg-white rounded-lg shadow-md p-8 text-center">

@@ -16,6 +16,7 @@ export interface SectionLoaderProps {
   withBorder?: boolean;
   withShadow?: boolean;
   rounded?: boolean;
+  sectionId?: string; // Optional section ID for conflict prevention
 }
 
 export const SectionLoader: React.FC<SectionLoaderProps> = ({
@@ -29,6 +30,7 @@ export const SectionLoader: React.FC<SectionLoaderProps> = ({
   withBorder = false,
   withShadow = false,
   rounded = true,
+  sectionId, // Optional section ID for conflict prevention
 }) => {
   const Container = withAnimation ? motion.div : 'div';
   

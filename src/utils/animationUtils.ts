@@ -3,7 +3,7 @@
  * Provides standardized animation configurations and performance optimizations
  */
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 
 // Optimized animation configurations
 export const ANIMATION_CONFIG = {
@@ -222,6 +222,45 @@ export const useOptimizedAnimation = (baseConfig: any) => {
     isAnimating,
     startAnimation,
     endAnimation,
+  };
+};
+
+// Optimized skeleton animation hook
+export const useSkeletonAnimation = () => {
+  const prefersReducedMotion = animationUtils.prefersReducedMotion();
+
+  return {
+    shouldAnimate: !prefersReducedMotion,
+    animationClass: prefersReducedMotion ? '' : 'animate-pulse',
+    animationStyle: prefersReducedMotion ? {} : {
+      animationDuration: '2s',
+      animationTimingFunction: 'ease-in-out',
+      animationIterationCount: 'infinite',
+      animationDirection: 'alternate',
+    }
+  };
+};
+
+// Loading state conflict prevention
+export const useLoadingConflictPrevention = (loadingId: string) => {
+  const [activeLoadingStates] = useState(new Set<string>());
+
+  const startLoading = useCallback(() => {
+    if (activeLoadingStates.has(loadingId)) {
+      return false; // Prevent duplicate loading states
+    }
+    activeLoadingStates.add(loadingId);
+    return true;
+  }, [loadingId, activeLoadingStates]);
+
+  const stopLoading = useCallback(() => {
+    activeLoadingStates.delete(loadingId);
+  }, [loadingId, activeLoadingStates]);
+
+  return {
+    startLoading,
+    stopLoading,
+    hasConflict: activeLoadingStates.has(loadingId)
   };
 };
 

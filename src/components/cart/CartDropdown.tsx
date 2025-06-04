@@ -79,7 +79,8 @@ const CartDropdown = ({ isOpen, onClose }: CartDropdownProps) => {
     <div
       ref={dropdownRef}
       onClick={handleDropdownClick}
-      className="absolute right-0 top-full mt-2 w-80 bg-white rounded-lg shadow-lg z-50 overflow-hidden"
+      className="absolute right-0 top-full mt-2 w-80 max-w-[90vw] bg-white rounded-lg shadow-xl border border-gray-200 z-[60] overflow-hidden"
+      data-cart-dropdown
     >
       <div className="p-4 bg-[var(--primary-green)] text-white flex justify-between items-center">
         <h3 className="font-medium flex items-center">

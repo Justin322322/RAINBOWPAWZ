@@ -13,7 +13,7 @@ export interface SkeletonProps {
   children?: React.ReactNode;
 }
 
-export const Skeleton: React.FC<SkeletonProps> = ({
+export const Skeleton: React.FC<SkeletonProps> = React.memo(({
   className,
   width = 'w-full',
   height = 'h-4',
@@ -29,6 +29,18 @@ export const Skeleton: React.FC<SkeletonProps> = ({
     full: 'rounded-full',
   };
 
+  // Use consistent animation timing instead of random delays
+  const animationStyle = React.useMemo(() => {
+    if (!animate) return {};
+
+    return {
+      animationDuration: '2s',
+      animationTimingFunction: 'ease-in-out',
+      animationIterationCount: 'infinite',
+      animationDirection: 'alternate',
+    };
+  }, [animate]);
+
   return (
     <div
       className={cn(
@@ -39,16 +51,16 @@ export const Skeleton: React.FC<SkeletonProps> = ({
         animate && 'animate-pulse',
         className
       )}
-      style={{
-        // Use CSS animation instead of Framer Motion for better performance
-        animationDuration: animate ? '2s' : undefined,
-        animationDelay: animate ? `${Math.random() * 0.5}s` : undefined, // Stagger animations
-      }}
+      style={animationStyle}
+      role="presentation"
+      aria-hidden="true"
     >
       {children}
     </div>
   );
-};
+});
+
+Skeleton.displayName = 'Skeleton';
 
 export interface SkeletonTextProps extends SkeletonProps {
   lines?: number;
@@ -56,7 +68,7 @@ export interface SkeletonTextProps extends SkeletonProps {
   lastLineWidth?: 'full' | '3/4' | '2/3' | '1/2' | '1/3' | '1/4';
 }
 
-export const SkeletonText: React.FC<SkeletonTextProps> = ({
+export const SkeletonText: React.FC<SkeletonTextProps> = React.memo(({
   className,
   lines = 3,
   spacing = 'normal',
@@ -69,27 +81,34 @@ export const SkeletonText: React.FC<SkeletonTextProps> = ({
     loose: 'space-y-3',
   };
 
-  const lastLineWidthClasses = {
-    full: 'w-full',
-    '3/4': 'w-3/4',
-    '2/3': 'w-2/3',
-    '1/2': 'w-1/2',
-    '1/3': 'w-1/3',
-    '1/4': 'w-1/4',
-  };
+  // Memoize the skeleton lines to prevent unnecessary re-renders
+  const skeletonLines = React.useMemo(() => {
+    const lastLineWidthClasses = {
+      full: 'w-full',
+      '3/4': 'w-3/4',
+      '2/3': 'w-2/3',
+      '1/2': 'w-1/2',
+      '1/3': 'w-1/3',
+      '1/4': 'w-1/4',
+    };
+
+    return Array.from({ length: lines }).map((_, index) => (
+      <Skeleton
+        key={`skeleton-text-line-${index}`}
+        className={index === lines - 1 ? lastLineWidthClasses[lastLineWidth] : ''}
+        {...props}
+      />
+    ));
+  }, [lines, lastLineWidth, props]);
 
   return (
     <div className={cn(spacingClasses[spacing], className)}>
-      {Array.from({ length: lines }).map((_, index) => (
-        <Skeleton
-          key={index}
-          className={index === lines - 1 ? lastLineWidthClasses[lastLineWidth] : ''}
-          {...props}
-        />
-      ))}
+      {skeletonLines}
     </div>
   );
-};
+});
+
+SkeletonText.displayName = 'SkeletonText';
 
 export interface SkeletonCardProps {
   className?: string;
@@ -104,7 +123,7 @@ export interface SkeletonCardProps {
   contentLines?: number;
 }
 
-export const SkeletonCard: React.FC<SkeletonCardProps> = ({
+export const SkeletonCard: React.FC<SkeletonCardProps> = React.memo(({
   className,
   animate = true,
   withImage = false,
@@ -132,6 +151,8 @@ export const SkeletonCard: React.FC<SkeletonCardProps> = ({
         withBorder && 'border border-gray-200',
         className
       )}
+      role="presentation"
+      aria-hidden="true"
     >
       {withImage && (
         <Skeleton
@@ -180,7 +201,9 @@ export const SkeletonCard: React.FC<SkeletonCardProps> = ({
       </div>
     </div>
   );
-};
+});
+
+SkeletonCard.displayName = 'SkeletonCard';
 
 const SkeletonLoader = {
   Skeleton,
