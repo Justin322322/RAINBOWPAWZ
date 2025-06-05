@@ -400,8 +400,8 @@ export async function GET(request: NextRequest) {
                      'Service' as service_name,
                      'Service Description' as service_description,
                      b.total_price as service_price,
-                     b.pet_name as pet_name,
-                     b.pet_type as pet_type
+                     'Unknown Pet' as pet_name,
+                     'Unknown Type' as pet_type
               FROM bookings b
               WHERE b.user_id = ?
             `;

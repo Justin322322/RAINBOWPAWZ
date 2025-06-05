@@ -15,7 +15,8 @@ import {
   ClockIcon,
   StarIcon,
   Cog6ToothIcon,
-  ArrowRightOnRectangleIcon
+  ArrowRightOnRectangleIcon,
+  BellIcon
 } from '@heroicons/react/24/outline';
 import { clearAuthToken } from '@/utils/auth';
 import LogoutModal from '@/components/LogoutModal';
@@ -207,50 +208,17 @@ export default function CremationNavbar({
   const [isNavigating, setIsNavigating] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 
-  // Navigation items for mobile menu
-  const navigationItems = [
-    {
-      name: 'Overview',
-      href: '/cremation/dashboard',
-      icon: HomeIcon,
-      id: 'dashboard'
-    },
-    {
-      name: 'My Packages',
-      href: '/cremation/packages',
-      icon: SquaresPlusIcon,
-      id: 'packages'
-    },
-    {
-      name: 'Active Bookings',
-      href: '/cremation/bookings',
-      icon: CalendarIcon,
-      id: 'bookings'
-    },
-    {
-      name: 'Booking History',
-      href: '/cremation/history',
-      icon: ClockIcon,
-      id: 'history'
-    },
-    {
-      name: 'Reviews',
-      href: '/cremation/reviews',
-      icon: StarIcon,
-      id: 'reviews'
-    }
-  ];
-
   // Handle navigation item click
   const handleNavItemClick = (id: string) => {
     setIsNavigating(true);
     setIsDropdownOpen(false);
-    // Don't set active page here, let the useEffect handle it after navigation
+    setIsMobileMenuOpen(false);
   };
 
   // Open logout modal
   const handleLogoutClick = () => {
     setIsDropdownOpen(false);
+    setIsMobileMenuOpen(false);
     setShowLogoutModal(true);
   };
 
@@ -312,35 +280,61 @@ export default function CremationNavbar({
         setActivePage('bookings');
       } else if (pathname === '/cremation/history') {
         setActivePage('history');
+      } else if (pathname.includes('/cremation/reviews')) {
+        setActivePage('reviews');
       } else if (pathname.includes('/cremation/profile')) {
         setActivePage('profile');
       } else if (pathname.includes('/cremation/settings')) {
         setActivePage('settings');
-      } else if (pathname.includes('/cremation/reports')) {
-        const reportType = pathname.split('/').pop();
-        if (reportType === 'monthly') {
-          setActivePage('monthly-reports');
-        } else if (reportType === 'services') {
-          setActivePage('service-reports');
-        }
       }
       setIsNavigating(false);
     }
   }, [pathname, propActivePage]);
+
+  // Navigation items for mobile menu
+  const navigationItems = [
+    {
+      name: 'Overview',
+      href: '/cremation/dashboard',
+      icon: HomeIcon,
+      id: 'dashboard'
+    },
+    {
+      name: 'My Packages',
+      href: '/cremation/packages',
+      icon: SquaresPlusIcon,
+      id: 'packages'
+    },
+    {
+      name: 'Active Bookings',
+      href: '/cremation/bookings',
+      icon: CalendarIcon,
+      id: 'bookings'
+    },
+    {
+      name: 'Booking History',
+      href: '/cremation/history',
+      icon: ClockIcon,
+      id: 'history'
+    },
+    {
+      name: 'Reviews',
+      href: '/cremation/reviews',
+      icon: StarIcon,
+      id: 'reviews'
+    }
+  ];
 
   return (
     <header className="bg-[var(--primary-green)] shadow-[0_4px_10px_rgba(0,0,0,0.3)] relative z-50 w-full">
       <div className="w-full px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 md:h-20">
           <div className="flex items-center">
-            {/* Mobile menu button - enhanced */}
+            {/* Mobile menu button */}
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                if (onMenuToggle) {
-                  onMenuToggle(); // For sidebar toggle
-                }
-                setIsMobileMenuOpen(!isMobileMenuOpen); // For mobile menu
+                setIsMobileMenuOpen(!isMobileMenuOpen);
               }}
               className="lg:hidden text-white p-2 rounded-lg hover:bg-white/20 transition-colors duration-300 mr-2"
             >
@@ -351,7 +345,7 @@ export default function CremationNavbar({
               )}
             </button>
 
-            <h1 className="text-white text-lg md:text-xl font-semibold ml-2 hidden md:block">Cremation Center Dashboard</h1>
+            <h1 className="text-white text-lg md:text-xl font-semibold ml-2">Cremation Center Dashboard</h1>
           </div>
 
           <div className="flex items-center space-x-2 md:space-x-4">
@@ -367,8 +361,6 @@ export default function CremationNavbar({
                   setIsMobileMenuOpen(false); // Close mobile menu when user dropdown opens
                 }}
                 className="flex items-center space-x-1 md:space-x-2 text-white focus:outline-none border border-white/30 rounded-full px-2 py-1 md:px-4 md:py-2 hover:bg-white/20 transition-all duration-300"
-                aria-expanded={isDropdownOpen}
-                aria-haspopup="true"
               >
                 <div className="bg-white rounded-full h-6 w-6 md:h-8 md:w-8 flex items-center justify-center mr-1 md:mr-2 overflow-hidden">
                   {profilePicture ? (
@@ -388,15 +380,10 @@ export default function CremationNavbar({
                     <UserIcon className="h-3 w-3 md:h-5 md:w-5 text-[var(--primary-green)]" />
                   )}
                 </div>
-                {/* Only show the actual username after client-side hydration */}
                 <span className="modern-text font-medium tracking-wide text-xs md:text-sm hidden sm:block">
                   {isMounted ? userName : 'Cremation Provider'}
                 </span>
-                <ChevronDownIcon
-                  className={`h-3 w-3 md:h-4 md:w-4 ml-1 md:ml-2 transform transition-transform duration-200 ${
-                    isDropdownOpen ? 'rotate-180' : ''
-                  }`}
-                />
+                <ChevronDownIcon className="h-3 w-3 md:h-4 md:w-4 ml-1 md:ml-2" />
               </button>
 
               {isDropdownOpen && (

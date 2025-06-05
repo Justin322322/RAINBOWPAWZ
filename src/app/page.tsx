@@ -8,7 +8,7 @@ import LoginModal from '@/components/LoginModal';
 import SignupOptionModal from '@/components/SignupOptionModal';
 import PersonalAccountModal from '@/components/PersonalAccountModal';
 import BusinessAccountModal from '@/components/BusinessAccountModal';
-import { ChevronRightIcon, SparklesIcon, CalendarIcon, UserGroupIcon, HeartIcon, HomeIcon, CheckIcon, MapPinIcon } from '@heroicons/react/24/outline';
+import { ChevronRightIcon, SparklesIcon, CalendarIcon, UserGroupIcon, HeartIcon, HomeIcon, CheckIcon, MapPinIcon, Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline';
 import { CalendarIcon as CalendarIconSolid, HeartIcon as HeartIconSolid, SparklesIcon as SparklesIconSolid } from '@heroicons/react/24/solid';
 
 export default function Home() {
@@ -17,6 +17,7 @@ export default function Home() {
   const [isPersonalAccountModalOpen, setIsPersonalAccountModalOpen] = useState(false);
   const [isBusinessAccountModalOpen, setIsBusinessAccountModalOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Scroll effect for navbar and check URL parameters
   useEffect(() => {
@@ -104,6 +105,8 @@ export default function Home() {
               <Image src="/logo.png" alt="Rainbow Paws Logo" width={40} height={40} className="h-10 w-auto" />
               <span className="text-xl modern-heading text-white tracking-wide">RainbowPaws</span>
             </Link>
+            
+            {/* Desktop Navigation */}
             <nav className="hidden md:flex items-center space-x-10">
               <a onClick={(e) => handleSmoothScroll(e, 'services')}
                 className="text-base modern-text text-white hover:text-white transition-all duration-300 relative after:content-[''] after:absolute after:-bottom-2 after:left-0 after:w-0 after:h-0.5 after:bg-white after:transition-all after:duration-300 hover:after:w-full cursor-pointer"
@@ -121,6 +124,8 @@ export default function Home() {
                 Our Promise
               </a>
             </nav>
+            
+            {/* Desktop Auth Buttons */}
             <div className="hidden md:flex items-center space-x-6">
               <button onClick={openLoginModal}
                 className="text-white hover:text-white transition-all duration-300 modern-label tracking-wider relative after:content-[''] after:absolute after:-bottom-1 after:left-0 after:w-0 after:h-0.5 after:bg-white after:transition-all after:duration-300 hover:after:w-full"
@@ -133,8 +138,91 @@ export default function Home() {
                 JOIN US
               </button>
             </div>
+            
+            {/* Mobile menu button */}
+            <button
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="md:hidden text-white p-2 rounded-lg hover:bg-white/20 transition-colors duration-300"
+            >
+              {isMobileMenuOpen ? (
+                <XMarkIcon className="h-6 w-6" />
+              ) : (
+                <Bars3Icon className="h-6 w-6" />
+              )}
+            </button>
           </div>
         </div>
+        
+        {/* Mobile Navigation Menu */}
+        {isMobileMenuOpen && (
+          <>
+            {/* Backdrop overlay */}
+            <div
+              className="fixed inset-0 bg-black/20 z-40 md:hidden"
+              onClick={() => setIsMobileMenuOpen(false)}
+            />
+
+            {/* Mobile menu */}
+            <div className="md:hidden bg-[var(--primary-green)] border-t border-white/20 relative z-50 shadow-lg">
+              <div className="px-4 py-4 space-y-2">
+                {/* Navigation Links */}
+                <a 
+                  onClick={(e) => {
+                    handleSmoothScroll(e, 'services');
+                    setIsMobileMenuOpen(false);
+                  }}
+                  className="flex items-center px-4 py-4 rounded-lg text-white hover:bg-white/10 transition-all duration-300 cursor-pointer"
+                >
+                  <span className="modern-text text-base">Memorial Services</span>
+                </a>
+                
+                <a 
+                  onClick={(e) => {
+                    handleSmoothScroll(e, 'how-it-works');
+                    setIsMobileMenuOpen(false);
+                  }}
+                  className="flex items-center px-4 py-4 rounded-lg text-white hover:bg-white/10 transition-all duration-300 cursor-pointer"
+                >
+                  <span className="modern-text text-base">How It Works</span>
+                </a>
+                
+                <a 
+                  onClick={(e) => {
+                    handleSmoothScroll(e, 'promise');
+                    setIsMobileMenuOpen(false);
+                  }}
+                  className="flex items-center px-4 py-4 rounded-lg text-white hover:bg-white/10 transition-all duration-300 cursor-pointer"
+                >
+                  <span className="modern-text text-base">Our Promise</span>
+                </a>
+
+                {/* Divider */}
+                <div className="border-t border-white/20 my-3"></div>
+
+                {/* Auth buttons for mobile */}
+                <button
+                  onClick={() => {
+                    openLoginModal();
+                    setIsMobileMenuOpen(false);
+                  }}
+                  className="flex items-center w-full px-4 py-4 rounded-lg text-white hover:bg-white/10 transition-all duration-300"
+                >
+                  <span className="modern-text text-base">Login</span>
+                </button>
+                
+                <button
+                  onClick={() => {
+                    openSignupOptionModal();
+                    setIsMobileMenuOpen(false);
+                  }}
+                  className="flex items-center w-full px-4 py-4 rounded-lg text-white hover:bg-white/10 transition-all duration-300"
+                >
+                  <span className="modern-text text-base">Join Us</span>
+                </button>
+              </div>
+            </div>
+          </>
+        )}
       </header>
 
       {/* Hero Section */}

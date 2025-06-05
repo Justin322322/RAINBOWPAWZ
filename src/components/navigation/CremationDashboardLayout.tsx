@@ -26,34 +26,45 @@ export default function CremationDashboardLayout({
   // we can trust that propUserData is valid and authenticated
   const userData = propUserData;
 
-  // State for mobile sidebar visibility
-  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  // Content loading state for skeleton animation only
+  const [contentLoading, setContentLoading] = useState(true);
 
-  // Toggle mobile sidebar
-  const toggleMobileSidebar = () => {
-    setIsMobileSidebarOpen(!isMobileSidebarOpen);
-  };
+  // Effect to simulate content loading with a short delay
+  useEffect(() => {
+    let timer: NodeJS.Timeout | null = null;
+
+    if (userData) {
+      timer = setTimeout(() => {
+        setContentLoading(false);
+      }, 300);
+    }
+
+    return () => {
+      if (timer) {
+        clearTimeout(timer);
+      }
+    };
+  }, [userData]);
 
   // Get display name from user data
   const displayName = userData?.business_name ||
     (userData?.first_name ? `${userData.first_name} ${userData.last_name || ''}` : propUserName);
 
-  // Render the dashboard
+  // Render the cremation dashboard with admin-like structure
   return (
     <div className="min-h-screen bg-gray-50">
-      <CremationSidebar
-        activePage={activePage}
-        isMobileOpen={isMobileSidebarOpen}
-        onCloseMobile={() => setIsMobileSidebarOpen(false)}
-      />
-      <div className="lg:pl-64 transition-all duration-300">
+      <CremationSidebar activePage={activePage} />
+      <div className="lg:pl-64 transition-all duration-300"> {/* Responsive padding like admin */}
         <CremationNavbar
           activePage={activePage}
           userName={displayName}
-          onMenuToggle={toggleMobileSidebar}
         />
-        <main className="p-6">
-          {children}
+        <main className="p-4 md:p-6"> {/* Match admin padding */}
+          {contentLoading ? (
+            <DashboardSkeleton type="cremation" />
+          ) : (
+            children
+          )}
         </main>
       </div>
     </div>

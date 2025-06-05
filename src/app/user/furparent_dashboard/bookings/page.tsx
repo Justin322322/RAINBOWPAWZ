@@ -688,8 +688,8 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
               <h3 className="mt-4 text-lg font-medium text-gray-900">No bookings found</h3>
               <p className="mt-2 text-gray-600">
                 {activeFilter
-                  ? `You don&apos;t have any ${activeFilter} bookings.`
-                  : "You haven&apos;t made any bookings yet."}
+                  ? `You don't have any ${activeFilter} bookings.`
+                  : "You haven't made any bookings yet."}
               </p>
               <div className="mt-6">
                 <Link

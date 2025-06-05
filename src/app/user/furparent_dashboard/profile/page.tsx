@@ -219,11 +219,22 @@ function ProfilePage({ userData }: ProfilePageProps) {
       setSuccess('Profile updated successfully');
       setIsEditing(false);
 
-      // Reload the page to reflect the updated profile data
-      // This is a simple way to ensure all components using userData are updated
-      setTimeout(() => {
-        window.location.reload();
-      }, 1500);
+      // Update current user data state to reflect changes immediately
+      setCurrentUserData(data.user);
+
+      // Update form data to reflect the changes
+      setFormData({
+        firstName: data.user.first_name || '',
+        lastName: data.user.last_name || '',
+        email: data.user.email || '',
+        phoneNumber: data.user.phone || data.user.phone_number || '',
+        address: data.user.address || '',
+        sex: data.user.gender || data.user.sex || ''
+      });
+
+      // Trigger a custom event to notify other components of the user data update
+      const updateEvent = new CustomEvent('userDataUpdated', { detail: data.user });
+      window.dispatchEvent(updateEvent);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update profile. Please try again.');
     } finally {

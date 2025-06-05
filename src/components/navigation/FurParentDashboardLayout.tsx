@@ -22,10 +22,31 @@ function FurParentDashboardLayout({
 }: FurParentDashboardLayoutProps) {
   const pathname = usePathname();
   const [activePage, setActivePage] = useState('');
+  const [currentUserData, setCurrentUserData] = useState(userData);
 
-  // Use user name from userData if available
-  const displayName = userData?.first_name
-    ? `${userData.first_name} ${userData.last_name || ''}`
+  // Listen for user data updates
+  useEffect(() => {
+    const handleUserDataUpdate = (event: CustomEvent) => {
+      if (event.detail) {
+        setCurrentUserData(event.detail);
+      }
+    };
+
+    window.addEventListener('userDataUpdated', handleUserDataUpdate as EventListener);
+
+    return () => {
+      window.removeEventListener('userDataUpdated', handleUserDataUpdate as EventListener);
+    };
+  }, []);
+
+  // Update current user data when prop changes
+  useEffect(() => {
+    setCurrentUserData(userData);
+  }, [userData]);
+
+  // Use user name from current userData if available
+  const displayName = currentUserData?.first_name
+    ? `${currentUserData.first_name} ${currentUserData.last_name || ''}`
     : userName;
 
   // Determine active page based on pathname or prop
@@ -55,11 +76,11 @@ function FurParentDashboardLayout({
 
       {/* Main Content */}
       <main>
-        {/* Clone children and pass userData to them */}
+        {/* Clone children and pass currentUserData to them */}
         {React.Children.map(children, (child) => {
           if (React.isValidElement(child)) {
-            console.log('🔍 [Layout] Passing userData to child, address:', userData?.address);
-            return React.cloneElement(child, { userData } as any);
+            console.log('🔍 [Layout] Passing userData to child, address:', currentUserData?.address);
+            return React.cloneElement(child, { userData: currentUserData } as any);
           }
           return child;
         })}

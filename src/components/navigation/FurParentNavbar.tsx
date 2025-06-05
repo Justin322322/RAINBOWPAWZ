@@ -113,17 +113,27 @@ export default function FurParentNavbar({ activePage: propActivePage, userName =
     }
   }, [profilePicture]);
 
-  // Listen for profile picture updates from other components
+  // Listen for profile picture updates and user data updates from other components
   useEffect(() => {
     const handleProfilePictureUpdate = () => {
       updateProfilePictureFromStorage();
     };
 
-    // Listen for custom event when profile picture is updated
+    const handleUserDataUpdate = (event: CustomEvent) => {
+      // Update session storage with new user data
+      if (event.detail) {
+        sessionStorage.setItem('user_data', JSON.stringify(event.detail));
+        updateProfilePictureFromStorage();
+      }
+    };
+
+    // Listen for custom events
     window.addEventListener('profilePictureUpdated', handleProfilePictureUpdate);
+    window.addEventListener('userDataUpdated', handleUserDataUpdate as EventListener);
 
     return () => {
       window.removeEventListener('profilePictureUpdated', handleProfilePictureUpdate);
+      window.removeEventListener('userDataUpdated', handleUserDataUpdate as EventListener);
     };
   }, [updateProfilePictureFromStorage]);
 

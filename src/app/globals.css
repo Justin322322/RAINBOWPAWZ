@@ -231,6 +231,53 @@
   @apply w-6 h-6 text-[var(--primary-green)] mb-4;
 }
 
+/* Mobile-only fixes */
+@media (max-width: 767px) {
+  .roadmap-container {
+    @apply px-4;
+  }
+
+  .roadmap-line {
+    @apply left-6;
+    transform: none;
+  }
+
+  .step-wrapper {
+    @apply block mb-8;
+  }
+
+  .step-wrapper:nth-child(even) {
+    @apply block;
+  }
+
+  .step-card {
+    @apply w-auto ml-16 mr-4 p-4;
+    width: calc(100% - 5rem);
+  }
+
+  .step-wrapper:nth-child(odd) .step-card {
+    @apply ml-16 mr-4;
+    width: calc(100% - 5rem);
+  }
+
+  .step-wrapper:nth-child(even) .step-card {
+    @apply ml-16 mr-4;
+    width: calc(100% - 5rem);
+  }
+
+  .step-number {
+    @apply -right-2 -top-2 w-8 h-8 text-sm;
+  }
+
+  .step-title {
+    @apply text-base mb-2;
+  }
+
+  .step-description {
+    @apply text-sm;
+  }
+}
+
 /* Map styles */
 #map-container {
   width: 100%;

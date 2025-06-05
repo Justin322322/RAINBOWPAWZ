@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
-import { getAuthTokenFromRequest } from '@/utils/auth';
+import { getAuthTokenFromRequest, parseAuthToken } from '@/utils/auth';
 import { testPhoneNumberFormatting } from '@/lib/smsService';
 
 export async function PUT(request: NextRequest) {
@@ -23,7 +23,13 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const [tokenUserId, accountType] = authToken.split('_');
+    // Parse auth token to get user ID and account type
+    const authData = parseAuthToken(authToken);
+    if (!authData) {
+      return NextResponse.json({ error: 'Invalid authentication token' }, { status: 401 });
+    }
+
+    const { userId: tokenUserId, accountType } = authData;
 
     // Only allow users to update their own profile (or admins to update any profile)
     if (tokenUserId !== userId && accountType !== 'admin') {
