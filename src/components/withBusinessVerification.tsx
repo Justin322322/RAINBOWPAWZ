@@ -12,6 +12,12 @@ import {
 // Export the clear function for use in other components
 export { clearBusinessVerificationCache };
 
+// Global state to cache business verification like withAdminAuth does
+let globalBusinessAuthState = {
+  verified: false,
+  userData: null as any,
+};
+
 // HOC to wrap components that require business verification
 const withBusinessVerification = <P extends object>(
   Component: React.ComponentType<P & { userData: any }>
@@ -20,26 +26,31 @@ const withBusinessVerification = <P extends object>(
     const router = useRouter();
 
     // Always start with loading state to prevent hydration mismatch
-    const [isAuthenticated, setIsAuthenticated] = useState(false);
-    const [userData, setUserData] = useState<any>(null);
-    const [isLoading, setIsLoading] = useState(true);
-    const [isMounted, setIsMounted] = useState(false);
-
-    // Set mounted state to prevent hydration mismatch
-    useEffect(() => {
-      setIsMounted(true);
-    }, []);
+    const [isAuthenticated, setIsAuthenticated] = useState(globalBusinessAuthState.verified);
+    const [userData, setUserData] = useState<any>(globalBusinessAuthState.userData);
+    const [isLoading, setIsLoading] = useState(!globalBusinessAuthState.verified);
 
     useEffect(() => {
-      if (!isMounted) return; // Wait for component to mount
+      // If we already have global state, use it immediately
+      if (globalBusinessAuthState.verified && globalBusinessAuthState.userData) {
+        if (!userData) setUserData(globalBusinessAuthState.userData);
+        if (!isAuthenticated) setIsAuthenticated(globalBusinessAuthState.verified);
+        setIsLoading(false);
+        return;
+      }
 
       const checkBusinessVerification = async () => {
         try {
-          // Check cache after component is mounted
+          // Check cache first
           const cachedVerification = getCachedBusinessVerification();
           if (cachedVerification && cachedVerification.verified && cachedVerification.userData) {
             setUserData(cachedVerification.userData);
             setIsAuthenticated(true);
+            // Cache in global state like admin
+            globalBusinessAuthState = {
+              verified: true,
+              userData: cachedVerification.userData
+            };
             setIsLoading(false);
             return;
           }
@@ -48,14 +59,18 @@ const withBusinessVerification = <P extends object>(
           const authResult = fastAuthCheck();
 
           if (!authResult.authenticated) {
-            console.log('User not authenticated, redirecting to home');
+            if (process.env.NODE_ENV === 'development') {
+              console.log('User not authenticated, redirecting to home');
+            }
             router.push('/');
             return;
           }
 
           // For business users, we need to fetch the user data from the API
           if (authResult.accountType !== 'business') {
-            console.log('User is not a business user, redirecting to home');
+            if (process.env.NODE_ENV === 'development') {
+              console.log('User is not a business user, redirecting to home');
+            }
             router.push('/');
             return;
           }
@@ -65,7 +80,9 @@ const withBusinessVerification = <P extends object>(
           const result = await response.json();
 
           if (!result.success) {
-            console.log('Failed to get business status, redirecting to home');
+            if (process.env.NODE_ENV === 'development') {
+              console.log('Failed to get business status, redirecting to home');
+            }
             router.push('/');
             return;
           }
@@ -75,14 +92,18 @@ const withBusinessVerification = <P extends object>(
 
           // Check if user is a business user
           if (user.user_type !== 'business' && user.role !== 'business') {
-            console.log('User is not a business user, redirecting to home');
+            if (process.env.NODE_ENV === 'development') {
+              console.log('User is not a business user, redirecting to home');
+            }
             router.push('/');
             return;
           }
 
           // Check if business has service provider data
           if (!serviceProvider) {
-            console.log('No service provider data found, redirecting to pending verification');
+            if (process.env.NODE_ENV === 'development') {
+              console.log('No service provider data found, redirecting to pending verification');
+            }
             router.push('/cremation/pending-verification');
             return;
           }
@@ -105,14 +126,24 @@ const withBusinessVerification = <P extends object>(
             // Cache the verification result
             setCachedBusinessVerification(completeUserData, true);
 
+            // Cache in global state like admin
+            globalBusinessAuthState = {
+              verified: true,
+              userData: completeUserData
+            };
+
           } else if (applicationStatus === 'restricted') {
             // Business is restricted, redirect to restricted page
-            console.log('Business is restricted');
+            if (process.env.NODE_ENV === 'development') {
+              console.log('Business is restricted');
+            }
             router.push('/cremation/restricted');
             return;
           } else {
             // Business is pending or rejected, redirect to pending verification
-            console.log('Business application is pending or rejected, redirecting to pending verification');
+            if (process.env.NODE_ENV === 'development') {
+              console.log('Business application is pending or rejected, redirecting to pending verification');
+            }
             router.push('/cremation/pending-verification');
             return;
           }
@@ -126,18 +157,11 @@ const withBusinessVerification = <P extends object>(
       };
 
       checkBusinessVerification();
-    }, [router, isMounted]);
+    }, [router, isAuthenticated, userData]);
 
     // Show loading state while checking verification
     if (isLoading) {
-      return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--primary-green)] mx-auto"></div>
-            <p className="mt-4 text-gray-600">Verifying business access...</p>
-          </div>
-        </div>
-      );
+      return null;
     }
 
     // Only render component if authenticated and verified

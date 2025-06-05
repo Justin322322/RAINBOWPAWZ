@@ -99,25 +99,25 @@ export default function Toast({
             ease: "easeOut",
             layout: { duration: 0.15 }
           }}
-          className={`toast-message w-full shadow-lg rounded-lg ${styles.bg} border ${styles.border} p-4 mx-auto max-w-md shadow-xl relative`}
+          className={`toast-message w-full shadow-lg rounded-lg ${styles.bg} border ${styles.border} p-3 sm:p-4 mx-auto shadow-xl relative`}
           style={{ zIndex: 999999 }}
         >
-          <div className="flex items-center">
+          <div className="flex items-start">
             <div className="flex-shrink-0">
               {styles.icon}
             </div>
-            <div className="ml-3 flex-grow">
-              <p className={`text-sm ${styles.text}`}>{message}</p>
+            <div className="ml-2 sm:ml-3 flex-grow">
+              <p className={`text-xs sm:text-sm ${styles.text} leading-tight sm:leading-normal`}>{message}</p>
             </div>
             {onClose && (
-              <div className="ml-4 flex-shrink-0 flex">
+              <div className="ml-2 sm:ml-4 flex-shrink-0 flex">
                 <button
                   type="button"
-                  className={`inline-flex ${styles.text} hover:opacity-75 focus:outline-none`}
+                  className={`inline-flex ${styles.text} hover:opacity-75 focus:outline-none p-1`}
                   onClick={onClose}
                 >
                   <span className="sr-only">Close</span>
-                  <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <svg className="h-4 w-4 sm:h-5 sm:w-5" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
                   </svg>
                 </button>

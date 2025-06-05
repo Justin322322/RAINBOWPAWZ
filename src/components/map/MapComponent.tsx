@@ -169,7 +169,7 @@ export default function MapComponent({
     } finally {
       setIsGeocoding(false);
     }
-  }, [mapLoaded, addUserMarker]);
+  }, [mapLoaded, addUserMarker, initialUserCoordinates]);
 
   // Check if we're in a browser environment before initializing Leaflet
   useEffect(() => {

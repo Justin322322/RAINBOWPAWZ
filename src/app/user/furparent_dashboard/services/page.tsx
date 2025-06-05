@@ -227,7 +227,7 @@ function ServicesPage({ userData }: ServicesPageProps) {
     };
 
     fetchServiceProviders();
-  }, [userLocation.address, userLocation.coordinates, isLoadingLocation]);
+  }, [userLocation, isLoadingLocation]);
 
   // Pagination
   const providersPerPage = 3;

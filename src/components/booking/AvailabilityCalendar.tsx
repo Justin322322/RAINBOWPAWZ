@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useToast } from '@/context/ToastContext';
 import {
   CalendarIcon,
   ClockIcon,
@@ -11,7 +12,12 @@ import {
   ArrowPathIcon,
   CheckIcon,
   ChevronLeftIcon,
-  ChevronRightIcon
+  ChevronRightIcon,
+  CalendarDaysIcon,
+  Square3Stack3DIcon,
+  DocumentDuplicateIcon,
+  ClipboardDocumentListIcon,
+  SparklesIcon
 } from '@heroicons/react/24/outline';
 
 type TimeSlot = {
@@ -43,6 +49,21 @@ interface AvailabilityCalendarProps {
 }
 
 export default function AvailabilityCalendar({ providerId, onAvailabilityChange, onSaveSuccess }: AvailabilityCalendarProps) {
+  // Enhanced view state
+  const { showToast } = useToast();
+  const [viewMode, setViewMode] = useState<'month' | 'year'>('month');
+  const [currentYear, setCurrentYear] = useState<number>(new Date().getFullYear());
+  const [showBulkActions, setShowBulkActions] = useState<boolean>(false);
+  const [showQuickPresets, setShowQuickPresets] = useState<boolean>(false);
+  const [showCopyModal, setShowCopyModal] = useState<boolean>(false);
+  const [selectedMonthToCopy, setSelectedMonthToCopy] = useState<string>('');
+  const [targetMonths, setTargetMonths] = useState<string[]>([]);
+  const [selectedQuickSetupPackages, setSelectedQuickSetupPackages] = useState<number[]>([]);
+  const [weekdayStartTime, setWeekdayStartTime] = useState<string>("09:00");
+  const [weekdayEndTime, setWeekdayEndTime] = useState<string>("17:00");
+  const [weekendStartTime, setWeekendStartTime] = useState<string>("10:00");
+  const [weekendEndTime, setWeekendEndTime] = useState<string>("16:00");
+  
   const [currentMonth, setCurrentMonth] = useState<Date>(() => {
     const savedMonth = typeof window !== "undefined" ? localStorage.getItem('availabilityCalendarMonth') : null;
     if (savedMonth) {
@@ -304,8 +325,28 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
         setError('Unexpected response from server.');
       }
     } catch (err) {
+      console.error('Error fetching availability data:', err);
       setError(`Failed to fetch availability: ${err instanceof Error ? err.message : String(err)}`);
       // Don't clear availability data on error to preserve existing state
+      
+      // If this is a network error, try to fallback to cached data
+      if (err instanceof Error && err.message.includes('fetch')) {
+        console.log('Network error detected, checking for cached data');
+        if (typeof window !== 'undefined') {
+          const cachedData = localStorage.getItem(`availabilityData_${providerId}`);
+          if (cachedData) {
+            try {
+              const parsed = JSON.parse(cachedData);
+              if (Array.isArray(parsed) && parsed.length > 0) {
+                setAvailabilityData(parsed);
+                setError('Using cached data due to network error');
+              }
+            } catch (parseError) {
+              console.error('Error parsing cached data:', parseError);
+            }
+          }
+        }
+      }
     } finally {
       setLoading(false);
       forceCalendarRefresh(); // Always force refresh calendar after data fetching completes
@@ -327,13 +368,13 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
       setAvailabilityData([]);
       setAvailablePackages([]);
     }
-  }, [providerId, fetchAvailabilityData, fetchProviderPackages]);
+  }, [providerId]); // Removed fetchAvailabilityData and fetchProviderPackages to prevent infinite loops
 
   useEffect(() => {
     if (providerId && providerId > 0) {
       fetchAvailabilityData(false); // Don't clear existing data
     }
-  }, [currentMonth, providerId, fetchAvailabilityData]);
+  }, [currentMonth, providerId]); // Removed fetchAvailabilityData to prevent infinite loops
 
   useEffect(() => {
     if (showSuccessMessage) {
@@ -355,7 +396,7 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
     }, 60000); // Refresh every 60 seconds
 
     return () => clearInterval(refreshInterval);
-  }, [providerId, fetchAvailabilityData]);
+  }, [providerId]); // Removed fetchAvailabilityData to prevent infinite loops
 
   // Add effect to cache data whenever it changes
   useEffect(() => {
@@ -505,6 +546,30 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
 
     return days;
   };
+  
+  // Year view helper function
+  const getMonthsInYear = () => {
+    const months = [];
+    for (let month = 0; month < 12; month++) {
+      const monthDate = new Date(currentYear, month, 1);
+      const monthData = availabilityData.filter(day => {
+        const date = new Date(day.date);
+        return date.getFullYear() === currentYear && date.getMonth() === month;
+      });
+      
+      const availableDays = monthData.filter(day => day.timeSlots.length > 0).length;
+      const totalTimeSlots = monthData.reduce((total, day) => total + day.timeSlots.length, 0);
+      
+      months.push({
+        date: monthDate,
+        name: monthDate.toLocaleString('default', { month: 'long' }),
+        availableDays,
+        totalTimeSlots,
+        hasAvailability: availableDays > 0
+      });
+    }
+    return months;
+  };
 
   // Fix for date discrepancy - ensure we're using the correct date without timezone issues
   const formatDateToString = (date: Date): string => {
@@ -520,6 +585,333 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
   };
   const handlePreviousMonth = () => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1));
   const handleNextMonth = () => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
+  
+  // Enhanced navigation functions
+  const handlePreviousYear = () => setCurrentYear(prev => prev - 1);
+  const handleNextYear = () => setCurrentYear(prev => prev + 1);
+  
+  // Quick preset functions with batch operations
+  const applyWeekdaysOnly = async () => {
+    if (!selectedQuickSetupPackages || selectedQuickSetupPackages.length === 0) {
+      setServiceSelectionError("Please select at least one service for the time slots");
+      return;
+    }
+
+    if (weekdayStartTime >= weekdayEndTime) {
+      setServiceSelectionError("Weekday end time must be after start time");
+      return;
+    }
+
+    setLoading(true);
+    const batchData: DayAvailability[] = [];
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    console.log('Setting weekday availability for year:', currentYear);
+    
+    for (let month = 0; month < 12; month++) {
+      const daysInMonth = new Date(currentYear, month + 1, 0).getDate();
+      for (let day = 1; day <= daysInMonth; day++) {
+        const date = new Date(currentYear, month, day);
+        const dayOfWeek = date.getDay();
+        
+        // Only process weekdays (Monday=1, Tuesday=2, Wednesday=3, Thursday=4, Friday=5)
+        if (dayOfWeek === 0 || dayOfWeek === 6) {
+          // Skip weekends explicitly
+          continue;
+        }
+        
+        // Skip past dates
+        if (date < today) {
+          continue;
+        }
+        
+        const dateString = formatDateToString(date);
+        
+        // Always set weekday availability, replacing any existing slots
+        batchData.push({
+          date: dateString,
+          isAvailable: true,
+          timeSlots: [
+            {
+              id: Date.now().toString() + Math.random().toString(36).substring(2, 9),
+              start: weekdayStartTime,
+              end: weekdayEndTime,
+              availableServices: selectedQuickSetupPackages
+            }
+          ]
+        });
+      }
+    }
+    
+    console.log('Weekday batch data prepared:', batchData.length, 'days');
+    
+    // Batch API call instead of individual calls
+    try {
+      const response = await fetch('/api/cremation/availability/batch', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          providerId,
+          availabilityBatch: batchData
+        }),
+      });
+
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to set bulk availability');
+      }
+
+      // Update local state
+      setAvailabilityData(prevData => {
+        const newData = [...prevData];
+        batchData.forEach(dayData => {
+          const existingIndex = newData.findIndex(day => day.date === dayData.date);
+          if (existingIndex >= 0) {
+            newData[existingIndex] = dayData;
+          } else {
+            newData.push(dayData);
+          }
+        });
+        return newData;
+      });
+      
+      // Show comprehensive toast message
+      if (result.successCount > 0 && (!result.errors || result.errors.length === 0)) {
+        showToast(`✅ Weekday availability set for ${result.successCount} days! (${weekdayStartTime}-${weekdayEndTime})`, 'success');
+        setShowQuickPresets(false);
+      } else if (result.successCount > 0 && result.errors && result.errors.length > 0) {
+        showToast(`⚠️ Weekday availability partially set: ${result.successCount} successful, ${result.errors.length} failed`, 'warning');
+      } else {
+        showToast(`❌ Failed to set weekday availability: ${result.errors?.length || 0} errors occurred`, 'error');
+      }
+      
+      // Refresh the calendar data
+      fetchAvailabilityData(false);
+      
+    } catch (error) {
+      showToast(`Failed to set weekday availability: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const applyWeekendsOnly = async () => {
+    if (!selectedQuickSetupPackages || selectedQuickSetupPackages.length === 0) {
+      setServiceSelectionError("Please select at least one service for the time slots");
+      return;
+    }
+
+    if (weekendStartTime >= weekendEndTime) {
+      setServiceSelectionError("Weekend end time must be after start time");
+      return;
+    }
+
+    setLoading(true);
+    const batchData: DayAvailability[] = [];
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    console.log('Setting weekend availability for year:', currentYear);
+    
+    for (let month = 0; month < 12; month++) {
+      const daysInMonth = new Date(currentYear, month + 1, 0).getDate();
+      for (let day = 1; day <= daysInMonth; day++) {
+        const date = new Date(currentYear, month, day);
+        const dayOfWeek = date.getDay();
+        
+        // Only process weekends (Sunday=0, Saturday=6)
+        if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+          // Skip weekdays explicitly
+          continue;
+        }
+        
+        // Skip past dates
+        if (date < today) {
+          continue;
+        }
+        
+        const dateString = formatDateToString(date);
+        
+        // Always set weekend availability, replacing any existing slots
+        batchData.push({
+          date: dateString,
+          isAvailable: true,
+          timeSlots: [
+            {
+              id: Date.now().toString() + Math.random().toString(36).substring(2, 9),
+              start: weekendStartTime,
+              end: weekendEndTime,
+              availableServices: selectedQuickSetupPackages
+            }
+          ]
+        });
+      }
+    }
+    
+    console.log('Weekend batch data prepared:', batchData.length, 'days');
+    
+    // Batch API call
+    try {
+      const response = await fetch('/api/cremation/availability/batch', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          providerId,
+          availabilityBatch: batchData
+        }),
+      });
+
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to set bulk availability');
+      }
+
+      // Update local state
+      setAvailabilityData(prevData => {
+        const newData = [...prevData];
+        batchData.forEach(dayData => {
+          const existingIndex = newData.findIndex(day => day.date === dayData.date);
+          if (existingIndex >= 0) {
+            newData[existingIndex] = dayData;
+          } else {
+            newData.push(dayData);
+          }
+        });
+        return newData;
+      });
+      
+      // Show comprehensive toast message
+      if (result.successCount > 0 && (!result.errors || result.errors.length === 0)) {
+        showToast(`✅ Weekend availability set for ${result.successCount} days! (${weekendStartTime}-${weekendEndTime})`, 'success');
+        setShowQuickPresets(false);
+      } else if (result.successCount > 0 && result.errors && result.errors.length > 0) {
+        showToast(`⚠️ Weekend availability partially set: ${result.successCount} successful, ${result.errors.length} failed`, 'warning');
+      } else {
+        showToast(`❌ Failed to set weekend availability: ${result.errors?.length || 0} errors occurred`, 'error');
+      }
+      
+      // Refresh the calendar data
+      fetchAvailabilityData(false);
+      
+    } catch (error) {
+      showToast(`Failed to set weekend availability: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const clearAllAvailability = async () => {
+    if (!confirm('Are you sure you want to clear all availability? This cannot be undone.')) return;
+    
+    setLoading(true);
+    
+    try {
+      // Prepare batch data to clear all availability
+      const batchData = availabilityData.map(day => ({
+        date: day.date,
+        isAvailable: false,
+        timeSlots: []
+      }));
+
+      if (batchData.length === 0) {
+        showToast('No availability data to clear', 'info');
+        setLoading(false);
+        return;
+      }
+
+      // Use batch API for clearing
+      const response = await fetch('/api/cremation/availability/batch', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          providerId,
+          availabilityBatch: batchData
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to clear availability');
+      }
+
+      // Update local state
+      setAvailabilityData([]);
+      
+      // Show single consolidated toast message
+      showToast(`✅ All availability cleared successfully! (${result.successCount} days processed)`, 'success');
+      setShowQuickPresets(false);
+      
+      // Refresh data
+      fetchAvailabilityData(false);
+    } catch (error) {
+      showToast(`Failed to clear availability: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  // Copy availability functions
+  const copyMonthAvailability = async () => {
+    if (!selectedMonthToCopy || targetMonths.length === 0) {
+      alert('Please select source month and target months');
+      return;
+    }
+    
+    const [sourceYear, sourceMonth] = selectedMonthToCopy.split('-').map(Number);
+    const sourceData = availabilityData.filter(day => {
+      const date = new Date(day.date);
+      return date.getFullYear() === sourceYear && date.getMonth() === sourceMonth - 1;
+    });
+    
+    if (sourceData.length === 0) {
+      alert('No availability data found for the selected source month');
+      return;
+    }
+    
+    const promises = [];
+    for (const targetMonthStr of targetMonths) {
+      const [targetYear, targetMonth] = targetMonthStr.split('-').map(Number);
+      
+      for (const sourceDay of sourceData) {
+        if (sourceDay.timeSlots.length === 0) continue;
+        
+        const sourceDate = new Date(sourceDay.date);
+        const targetDate = new Date(targetYear, targetMonth - 1, sourceDate.getDate());
+        
+        // Skip if target date doesn't exist (e.g., Feb 30)
+        if (targetDate.getMonth() !== targetMonth - 1) continue;
+        
+        const targetDateString = formatDateToString(targetDate);
+        const newDay: DayAvailability = {
+          date: targetDateString,
+          isAvailable: sourceDay.isAvailable,
+          timeSlots: sourceDay.timeSlots.map(slot => ({
+            ...slot,
+            id: Date.now().toString() + Math.random().toString(36).substring(2, 9)
+          }))
+        };
+        
+        promises.push(saveAvailability(newDay));
+      }
+    }
+    
+    await Promise.all(promises);
+    setSuccessMessage(`Availability copied to ${targetMonths.length} month(s)!`);
+    setShowSuccessMessage(true);
+    setShowCopyModal(false);
+    setSelectedMonthToCopy('');
+    setTargetMonths([]);
+  };
   const handleDayClick = (date: Date) => {
     // Prevent selecting past dates
     const today = new Date();
@@ -584,7 +976,7 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
 
     // If no packages are available, show a warning but still allow creating time slots
     if (availablePackages.length === 0) {
-      setServiceSelectionError("Warning: No packages available. Time slot will be created but won't be visible to customers until packages are added.");
+      setServiceSelectionError("Warning: No packages available. Time slot will be created but won&apos;t be visible to customers until packages are added.");
 
       // Create a default package selection to allow the time slot to be saved
       setSelectedPackages([0]); // Use 0 as a placeholder ID
@@ -661,17 +1053,13 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
       setLoading(true);
       setError(null);
 
-
-
       // First update local state for immediate feedback
       const existingDay = availabilityData.find(day => day.date === dateString);
       if (!existingDay) {
-        setError("Could not find the selected day's data.");
+        showToast("Could not find the selected day's data.", 'error');
         setLoading(false);
         return;
       }
-
-
 
       // Update local state
       const updatedSlots = existingDay.timeSlots.filter(slot => slot.id !== timeSlotId);
@@ -707,30 +1095,14 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
       });
 
       // Show success message for time slot deletion
-      setSuccessMessage('Time slot deleted successfully!');
-      setShowSuccessMessage(true);
-      setTimeout(() => setShowSuccessMessage(false), 3000);
+      showToast('Time slot deleted successfully!', 'success');
 
       // Force calendar re-render
       forceCalendarRefresh();
 
-      // If there are no more time slots, we should update the availability data
-      if (responseData.remaining_slots === 0) {
-        console.log('No remaining slots, updating availability data');
-        // Save the updated day with no time slots
-        saveAvailability(updatedDay);
-      }
-
-      // Always refresh the data from the server to ensure UI is in sync with database
-      // Use a longer timeout to ensure the database has time to process the deletion
-      setTimeout(() => {
-        console.log('Refreshing availability data after deletion');
-        fetchAvailabilityData(true);
-      }, 1000);
-
-    } catch (err) {
-      console.error('Error deleting time slot:', err);
-      setError(`Failed to delete time slot: ${err instanceof Error ? err.message : String(err)}`);
+    } catch (error) {
+      console.error('Error removing time slot:', error);
+      showToast(`Failed to remove time slot: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
 
       // Try one more approach - clear all slots for the date
       try {
@@ -747,9 +1119,7 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
         console.log('Clear date response:', clearResponseData);
 
         if (clearResponse.ok && clearResponseData.affectedRows > 0) {
-          setSuccessMessage(`Cleared ${clearResponseData.affectedRows} time slots for ${dateString}`);
-          setShowSuccessMessage(true);
-          setTimeout(() => setShowSuccessMessage(false), 3000);
+          showToast(`Cleared ${clearResponseData.affectedRows} time slots for ${dateString}`, 'success');
 
           // Force refresh after clearing
           setTimeout(() => {
@@ -806,90 +1176,388 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
 
   return (
     <div className="w-full">
-      {/* Calendar Header */}
-      <div className="flex justify-between items-center mb-4">
-        <button
-          type="button"
-          onClick={handlePreviousMonth}
-          className="p-2 hover:bg-gray-100 rounded-full"
-          disabled={isDisabled}
-        >
-          <ChevronLeftIcon className="h-5 w-5 text-gray-600" />
-        </button>
-        <h2 className="text-lg font-semibold">
-          {currentMonth.toLocaleString('default', { month: 'long', year: 'numeric' })}
-        </h2>
-        <button
-          type="button"
-          onClick={handleNextMonth}
-          className="p-2 hover:bg-gray-100 rounded-full"
-          disabled={isDisabled}
-        >
-          <ChevronRightIcon className="h-5 w-5 text-gray-600" />
-        </button>
-      </div>
-
-      {/* Calendar Grid */}
-      <div className="grid grid-cols-7 gap-1 mb-2">
-        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
-          <div key={day} className="text-center text-sm font-medium text-gray-600 py-2">
-            {day}
+      {/* Enhanced Calendar Header */}
+      <div className="space-y-4 mb-4">
+        {/* View Toggle & Quick Actions */}
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center space-x-2">
+            {/* View Mode Toggle */}
+            <div className="flex bg-gray-100 rounded-lg p-1">
+              <button
+                type="button"
+                onClick={() => setViewMode('month')}
+                className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
+                  viewMode === 'month' 
+                    ? 'bg-white text-[var(--primary-green)] shadow-sm' 
+                    : 'text-gray-600 hover:text-gray-800'
+                }`}
+              >
+                <CalendarIcon className="h-4 w-4 inline mr-1" />
+                Month
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('year')}
+                className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
+                  viewMode === 'year' 
+                    ? 'bg-white text-[var(--primary-green)] shadow-sm' 
+                    : 'text-gray-600 hover:text-gray-800'
+                }`}
+              >
+                <CalendarDaysIcon className="h-4 w-4 inline mr-1" />
+                Year
+              </button>
+            </div>
           </div>
-        ))}
-      </div>
 
-      <div key={calendarKey} className="grid grid-cols-7 gap-1">
-        {days.map((day, index) => {
-          const isPastDay = day.date && day.date < new Date(new Date().setHours(0, 0, 0, 0));
+          {/* Quick Action Buttons */}
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowQuickPresets(!showQuickPresets)}
+              className="px-3 py-1 bg-blue-50 text-blue-700 rounded-md text-xs font-medium hover:bg-blue-100 transition-colors"
+              disabled={isDisabled}
+            >
+              <SparklesIcon className="h-4 w-4 inline mr-1" />
+              Quick Setup
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowCopyModal(true)}
+              className="px-3 py-1 bg-purple-50 text-purple-700 rounded-md text-xs font-medium hover:bg-purple-100 transition-colors"
+              disabled={isDisabled}
+            >
+              <DocumentDuplicateIcon className="h-4 w-4 inline mr-1" />
+              <span className="hidden sm:inline">Copy Month</span>
+              <span className="sm:hidden">Copy</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleRefreshData}
+              className="px-3 py-1 bg-gray-50 text-gray-700 rounded-md text-xs font-medium hover:bg-gray-100 transition-colors"
+              disabled={isDisabled}
+            >
+              <ArrowPathIcon className="h-4 w-4 inline mr-1" />
+              <span className="hidden sm:inline">Refresh</span>
+            </button>
+          </div>
+        </div>
 
-          return (
-            <div key={index} className="aspect-square p-0.5">
-              {day.type === 'empty' ? (
-                <div className="h-full"></div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => !isPastDay && handleDayClick(day.date!)}
-                  disabled={isPastDay}
-                  className={`
-                    h-full w-full flex flex-col items-center justify-center rounded-md p-1 transition-colors
-                    ${isPastDay ? 'bg-gray-100 text-gray-400 cursor-not-allowed' :
-                      day.timeSlots && day.timeSlots.length > 0
-                        ? 'bg-green-100 hover:bg-green-200 text-green-800 border border-green-300'
-                        : 'bg-gray-50 hover:bg-gray-100 text-gray-800'
-                    }
-                    ${selectedDate && day.dateString === formatDateToString(selectedDate)
-                      ? 'ring-2 ring-[var(--primary-green)]'
-                      : ''
-                    }
-                  `}
-                >
-                  <span className="text-sm font-medium">
-                    {day.date!.getDate()}
-                  </span>
-                  {day.timeSlots && day.timeSlots.length > 0 && !isPastDay && (
-                    <div className="flex flex-col items-center mt-1">
-                      <div className={`px-1 py-0.5 rounded-sm text-xs font-medium ${
-                        day.timeSlots.some(slot => slot.isBooked) 
-                          ? 'bg-orange-200 text-orange-800' 
-                          : 'bg-green-200 text-green-800'
-                      }`}>
-                        {day.timeSlots.length} slots
-                      </div>
-                      {day.timeSlots.some(slot => slot.isBooked) && (
-                        <div className="mt-0.5 px-1 py-0.5 bg-red-200 rounded-sm text-xs font-medium text-red-800">
-                          Has bookings
-                        </div>
-                      )}
+        {/* Navigation Header */}
+        {viewMode === 'month' ? (
+          <div className="flex justify-between items-center">
+            <button
+              type="button"
+              onClick={handlePreviousMonth}
+              className="p-2 hover:bg-gray-100 rounded-full"
+              disabled={isDisabled}
+            >
+              <ChevronLeftIcon className="h-5 w-5 text-gray-600" />
+            </button>
+            <h2 className="text-lg font-semibold">
+              {currentMonth.toLocaleString('default', { month: 'long', year: 'numeric' })}
+            </h2>
+            <button
+              type="button"
+              onClick={handleNextMonth}
+              className="p-2 hover:bg-gray-100 rounded-full"
+              disabled={isDisabled}
+            >
+              <ChevronRightIcon className="h-5 w-5 text-gray-600" />
+            </button>
+          </div>
+        ) : (
+          <div className="flex justify-between items-center">
+            <button
+              type="button"
+              onClick={handlePreviousYear}
+              className="p-2 hover:bg-gray-100 rounded-full"
+              disabled={isDisabled}
+            >
+              <ChevronLeftIcon className="h-5 w-5 text-gray-600" />
+            </button>
+            <h2 className="text-lg font-semibold">{currentYear}</h2>
+            <button
+              type="button"
+              onClick={handleNextYear}
+              className="p-2 hover:bg-gray-100 rounded-full"
+              disabled={isDisabled}
+            >
+              <ChevronRightIcon className="h-5 w-5 text-gray-600" />
+            </button>
+          </div>
+        )}
+
+        {/* Quick Presets Panel */}
+        {showQuickPresets && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <h3 className="text-sm font-medium text-blue-800 mb-3">Quick Setup Options</h3>
+            
+            {/* Time Settings */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-blue-800 mb-2">
+                Time Slot Settings
+              </label>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-3">
+                {/* Weekday Times */}
+                <div className="bg-white border border-blue-200 rounded-md p-3">
+                  <h4 className="text-sm font-medium text-gray-700 mb-2">Weekdays (Mon-Fri)</h4>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1">Start</label>
+                      <input
+                        type="time"
+                        value={weekdayStartTime}
+                        onChange={(e) => setWeekdayStartTime(e.target.value)}
+                        className="w-full p-1 border border-gray-300 rounded text-xs"
+                      />
                     </div>
-                  )}
-                </button>
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1">End</label>
+                      <input
+                        type="time"
+                        value={weekdayEndTime}
+                        onChange={(e) => setWeekdayEndTime(e.target.value)}
+                        className="w-full p-1 border border-gray-300 rounded text-xs"
+                      />
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Weekend Times */}
+                <div className="bg-white border border-blue-200 rounded-md p-3">
+                  <h4 className="text-sm font-medium text-gray-700 mb-2">Weekends (Sat-Sun)</h4>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1">Start</label>
+                      <input
+                        type="time"
+                        value={weekendStartTime}
+                        onChange={(e) => setWeekendStartTime(e.target.value)}
+                        className="w-full p-1 border border-gray-300 rounded text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1">End</label>
+                      <input
+                        type="time"
+                        value={weekendEndTime}
+                        onChange={(e) => setWeekendEndTime(e.target.value)}
+                        className="w-full p-1 border border-gray-300 rounded text-xs"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Service Selection */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-blue-800 mb-2">
+                Select Services for Time Slots: <span className="text-red-500">*</span>
+              </label>
+              {serviceSelectionError && (
+                <div className="flex items-center mb-2 text-sm text-red-600">
+                  <ExclamationCircleIcon className="h-4 w-4 mr-1 flex-shrink-0" />
+                  {serviceSelectionError}
+                </div>
+              )}
+              {loadingPackages ? (
+                <div className="text-center py-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-blue-600 mx-auto"></div>
+                </div>
+              ) : availablePackages.length > 0 ? (
+                <div className="max-h-32 overflow-y-auto border border-blue-200 rounded-md p-2 bg-white">
+                  {availablePackages.map((pkg: any) => (
+                    <div key={pkg.id} className="flex items-center py-1">
+                      <input
+                        type="checkbox"
+                        id={`quick-setup-package-${pkg.id}`}
+                        checked={selectedQuickSetupPackages.includes(pkg.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedQuickSetupPackages([...selectedQuickSetupPackages, pkg.id]);
+                          } else {
+                            setSelectedQuickSetupPackages(selectedQuickSetupPackages.filter(id => id !== pkg.id));
+                          }
+                          setServiceSelectionError(null);
+                        }}
+                        className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                      />
+                      <label htmlFor={`quick-setup-package-${pkg.id}`} className="ml-2 text-sm text-gray-700">
+                        {pkg.name} (₱{pkg.price?.toLocaleString()})
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-sm text-gray-600 bg-white border border-blue-200 rounded-md p-2">
+                  No service packages available. Please create packages first.
+                </div>
               )}
             </div>
-          );
-        })}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={applyWeekdaysOnly}
+                disabled={selectedQuickSetupPackages.length === 0}
+                className="px-3 py-2 bg-green-100 text-green-800 rounded-md text-xs font-medium hover:bg-green-200 transition-colors disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
+              >
+                <ClockIcon className="h-4 w-4 inline mr-1" />
+                Weekdays ({weekdayStartTime}-{weekdayEndTime})
+              </button>
+              <button
+                type="button"
+                onClick={applyWeekendsOnly}
+                disabled={selectedQuickSetupPackages.length === 0}
+                className="px-3 py-2 bg-orange-100 text-orange-800 rounded-md text-xs font-medium hover:bg-orange-200 transition-colors disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
+              >
+                <CalendarIcon className="h-4 w-4 inline mr-1" />
+                Weekends ({weekendStartTime}-{weekendEndTime})
+              </button>
+              <button
+                type="button"
+                onClick={clearAllAvailability}
+                className="px-3 py-2 bg-red-100 text-red-800 rounded-md text-xs font-medium hover:bg-red-200 transition-colors sm:col-span-2 lg:col-span-1"
+              >
+                <TrashIcon className="h-4 w-4 inline mr-1" />
+                Clear All
+              </button>
+            </div>
+            <div className="mt-3 pt-3 border-t border-blue-200 flex justify-between items-center">
+              <div className="text-xs text-blue-700">
+                {selectedQuickSetupPackages.length > 0 ? 
+                  `${selectedQuickSetupPackages.length} service(s) selected` : 
+                  'Select services first'
+                }
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowQuickPresets(false);
+                  setServiceSelectionError(null);
+                }}
+                className="text-xs text-blue-600 hover:text-blue-800"
+              >
+                Close Panel
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
+      {/* Calendar Content */}
+      {viewMode === 'month' ? (
+        <>
+          {/* Monthly Calendar Grid */}
+          <div className="grid grid-cols-7 gap-1 mb-2">
+            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
+              <div key={day} className="text-center text-xs sm:text-sm font-medium text-gray-600 py-2">
+                {day}
+              </div>
+            ))}
+          </div>
+
+          <div key={calendarKey} className="grid grid-cols-7 gap-0.5 sm:gap-1">
+            {getDaysInMonth().map((day, index) => {
+              const isPastDay = day.date && day.date < new Date(new Date().setHours(0, 0, 0, 0));
+
+              return (
+                <div key={index} className="aspect-square p-0.5">
+                  {day.type === 'empty' ? (
+                    <div className="h-full"></div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => !isPastDay && handleDayClick(day.date!)}
+                      disabled={isPastDay}
+                      className={`
+                        h-full w-full flex flex-col items-center justify-center rounded-md p-0.5 sm:p-1 transition-colors text-xs sm:text-sm
+                        ${isPastDay ? 'bg-gray-100 text-gray-400 cursor-not-allowed' :
+                          day.timeSlots && day.timeSlots.length > 0
+                            ? 'bg-green-100 hover:bg-green-200 text-green-800 border border-green-300'
+                            : 'bg-gray-50 hover:bg-gray-100 text-gray-800'
+                        }
+                        ${selectedDate && day.dateString === formatDateToString(selectedDate)
+                          ? 'ring-2 ring-[var(--primary-green)]'
+                          : ''
+                        }
+                      `}
+                    >
+                      <span className="text-xs sm:text-sm font-medium">
+                        {day.date!.getDate()}
+                      </span>
+                      {day.timeSlots && day.timeSlots.length > 0 && !isPastDay && (
+                        <div className="flex flex-col items-center mt-0.5 sm:mt-1">
+                          <div className={`px-1 py-0.5 rounded-sm text-xs font-medium ${
+                            day.timeSlots.some(slot => slot.isBooked) 
+                              ? 'bg-orange-200 text-orange-800' 
+                              : 'bg-green-200 text-green-800'
+                          }`}>
+                            <span className="hidden sm:inline">{day.timeSlots.length} slots</span>
+                            <span className="sm:hidden">{day.timeSlots.length}</span>
+                          </div>
+                          {day.timeSlots.some(slot => slot.isBooked) && (
+                            <div className="mt-0.5 px-1 py-0.5 bg-red-200 rounded-sm text-xs font-medium text-red-800">
+                              <span className="hidden sm:inline">Has bookings</span>
+                              <span className="sm:hidden">Booked</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </>
+      ) : (
+        <>
+          {/* Yearly Calendar Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {getMonthsInYear().map((month, index) => (
+              <div
+                key={index}
+                className={`border rounded-lg p-4 cursor-pointer transition-all hover:shadow-md ${
+                  month.hasAvailability
+                    ? 'border-green-200 bg-green-50 hover:bg-green-100'
+                    : 'border-gray-200 bg-gray-50 hover:bg-gray-100'
+                }`}
+                onClick={() => {
+                  setCurrentMonth(month.date);
+                  setViewMode('month');
+                }}
+              >
+                <div className="flex justify-between items-center mb-2">
+                  <h3 className="font-medium text-gray-800">{month.name}</h3>
+                  {month.hasAvailability && (
+                    <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                  )}
+                </div>
+                <div className="space-y-1 text-xs text-gray-600">
+                  <div className="flex justify-between">
+                    <span>Available Days:</span>
+                    <span className="font-medium">{month.availableDays}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Time Slots:</span>
+                    <span className="font-medium">{month.totalTimeSlots}</span>
+                  </div>
+                </div>
+                {month.hasAvailability && (
+                  <div className="mt-2 text-xs text-green-700 font-medium">
+                    Click to view details
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {/* Messages and Status */}
       {isDisabled && (
         <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4 mb-4">
           <p className="text-yellow-700">
@@ -908,46 +1576,6 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
           <p className="text-orange-700 text-xs mt-1">
             You can still set up availability, but you won&apos;t be able to select specific packages for time slots.
           </p>
-        </div>
-      )}
-
-      {error && !isDisabled && (
-        <div className="bg-orange-50 border border-orange-200 rounded-md p-4 mb-4 flex items-center justify-between">
-          <div className="flex items-start">
-            <ExclamationCircleIcon className="h-5 w-5 text-orange-500 mr-2 mt-0.5 flex-shrink-0" />
-            <p className="text-orange-700">{error}</p>
-          </div>
-          <button
-            type="button"
-            onClick={() => fetchAvailabilityData(true)}
-            className="px-3 py-1 bg-orange-100 hover:bg-orange-200 text-orange-800 rounded-md text-sm"
-          >
-            Retry
-          </button>
-        </div>
-      )}
-
-
-
-      {showSuccessMessage && (
-        <div className="bg-green-50 border border-green-200 rounded-md p-4 mb-4 flex items-center justify-between">
-          <div className="flex items-start">
-            <CheckIcon className="h-5 w-5 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
-            <p className="text-green-700">{successMessage}</p>
-          </div>
-          <button type="button" onClick={() => setShowSuccessMessage(false)} className="px-3 py-1 bg-green-100 hover:bg-green-200 text-green-800 rounded-md text-sm">Dismiss</button>
-        </div>
-      )}
-
-      {showConflictMessage && (
-        <div className="fixed top-5 right-5 bg-red-50 border border-red-200 rounded-md p-4 mb-4 flex items-center justify-between shadow-lg z-50 max-w-md">
-          <div className="flex items-start">
-            <ExclamationCircleIcon className="h-5 w-5 text-red-500 mr-2 mt-0.5 flex-shrink-0" />
-            <p className="text-red-700">{conflictMessage}</p>
-          </div>
-          <button type="button" onClick={() => setShowConflictMessage(false)} className="ml-4 p-1 rounded-full hover:bg-red-100">
-            <XMarkIcon className="h-5 w-5 text-red-500" />
-          </button>
         </div>
       )}
 
@@ -979,35 +1607,37 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
             {selectedDayData && selectedDayData.timeSlots.length > 0 ? (
               <div className="space-y-2 mt-2">
                 <h4 className="text-sm font-medium text-gray-600">Time Slots:</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 gap-2">
                   {selectedDayData.timeSlots.map((slot) => (
                     <div
                       key={slot.id}
-                      className={`flex justify-between items-center p-2 rounded-md border ${
+                      className={`flex flex-col sm:flex-row sm:justify-between sm:items-center p-3 rounded-md border gap-2 ${
                         slot.isBooked 
                           ? 'bg-red-50 border-red-200 hover:bg-red-100' 
                           : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
                       }`}
                     >
-                      <div className="flex items-center">
-                        <span className={`font-medium ${slot.isBooked ? 'text-red-700' : 'text-gray-700'}`}>
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                        <span className={`font-medium text-sm ${slot.isBooked ? 'text-red-700' : 'text-gray-700'}`}>
                           {slot.start} - {slot.end}
                         </span>
-                        {slot.isBooked && (
-                          <span className="ml-2 text-xs bg-red-100 text-red-800 px-2 py-0.5 rounded-full">
-                            Booked
-                          </span>
-                        )}
-                        {slot.availableServices && slot.availableServices.length > 0 && !slot.isBooked && (
-                          <span className="ml-2 text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">
-                            {slot.availableServices.length} service{slot.availableServices.length !== 1 ? 's' : ''}
-                          </span>
-                        )}
+                        <div className="flex flex-wrap gap-1">
+                          {slot.isBooked && (
+                            <span className="text-xs bg-red-100 text-red-800 px-2 py-0.5 rounded-full">
+                              Booked
+                            </span>
+                          )}
+                          {slot.availableServices && slot.availableServices.length > 0 && !slot.isBooked && (
+                            <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">
+                              {slot.availableServices.length} service{slot.availableServices.length !== 1 ? 's' : ''}
+                            </span>
+                          )}
+                        </div>
                       </div>
                       <button
                         type="button"
                         onClick={() => handleRemoveTimeSlot(selectedDayData.date, slot.id)}
-                        className={`${slot.isBooked ? 'text-red-600 hover:text-red-800' : 'text-red-500 hover:text-red-700'} p-1 hover:bg-red-50 rounded-full`}
+                        className={`${slot.isBooked ? 'text-red-600 hover:text-red-800' : 'text-red-500 hover:text-red-700'} p-2 hover:bg-red-50 rounded-full self-end sm:self-center`}
                         title={slot.isBooked ? "Remove booked time slot" : "Remove time slot"}
                       >
                         <TrashIcon className="h-4 w-4" />
@@ -1032,9 +1662,10 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
         )
       )}
 
+      {/* Modals */}
       {showTimeSlotModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full">
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg p-4 sm:p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-medium">Add Time Slot</h3>
               <button type="button" onClick={() => setShowTimeSlotModal(false)}>
@@ -1082,7 +1713,7 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
                     <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-[var(--primary-green)] mx-auto"></div>
                   </div>
                 ) : availablePackages.length > 0 ? (
-                  <div className="max-h-40 overflow-y-auto border border-gray-200 rounded-md p-2">
+                  <div className="max-h-32 sm:max-h-40 overflow-y-auto border border-gray-200 rounded-md p-2">
                     {availablePackages.map((pkg: any) => (
                       <div key={pkg.id} className="flex items-center py-1">
                         <input

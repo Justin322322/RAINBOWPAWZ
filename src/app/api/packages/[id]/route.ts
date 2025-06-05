@@ -92,8 +92,27 @@ export async function PATCH(
   if (!authToken) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-  const [userId, accountType] = authToken.split('_');
-  if (accountType !== 'business') {
+
+  let userId: string | null = null;
+  let accountType: string | null = null;
+
+  // Check if it's a JWT token or old format
+  if (authToken.includes('.')) {
+    // JWT token format
+    const { decodeTokenUnsafe } = await import('@/lib/jwt');
+    const payload = decodeTokenUnsafe(authToken);
+    userId = payload?.userId || null;
+    accountType = payload?.accountType || null;
+  } else {
+    // Old format fallback
+    const parts = authToken.split('_');
+    if (parts.length === 2) {
+      userId = parts[0];
+      accountType = parts[1];
+    }
+  }
+
+  if (!userId || !accountType || accountType !== 'business') {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
@@ -113,7 +132,7 @@ export async function PATCH(
     [packageId]
   )) as any[];
   if (!pkgOwner.length || Number(pkgOwner[0].provider_id) !== providerId) {
-    return NextResponse.json({ error: 'Not allowed', status: 403 });
+    return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
   }
 
   let body: any;
@@ -125,11 +144,28 @@ export async function PATCH(
 
   // simple toggle active
   if (typeof body.isActive === 'boolean') {
-    await query(
-      `UPDATE service_packages SET is_active = ? WHERE package_id = ?`,
-      [body.isActive ? 1 : 0, packageId]
-    );
-    return NextResponse.json({ success: true, isActive: body.isActive });
+    try {
+      const updateResult = await query(
+        `UPDATE service_packages SET is_active = ? WHERE package_id = ?`,
+        [body.isActive ? 1 : 0, packageId]
+      ) as any;
+      
+      if (updateResult.affectedRows === 0) {
+        return NextResponse.json({ error: 'Package not found or no changes made' }, { status: 404 });
+      }
+      
+      return NextResponse.json({ 
+        success: true, 
+        isActive: body.isActive,
+        message: `Package ${body.isActive ? 'activated' : 'deactivated'} successfully`
+      });
+    } catch (updateError: any) {
+      console.error('Error toggling package status:', updateError);
+      return NextResponse.json(
+        { error: 'Failed to update package status', details: updateError.message },
+        { status: 500 }
+      );
+    }
   }
 
   // full update
@@ -237,8 +273,27 @@ export async function DELETE(
   if (!authToken) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-  const [, accountType] = authToken.split('_');
-  if (accountType !== 'business') {
+
+  let userId: string | null = null;
+  let accountType: string | null = null;
+
+  // Check if it's a JWT token or old format
+  if (authToken.includes('.')) {
+    // JWT token format
+    const { decodeTokenUnsafe } = await import('@/lib/jwt');
+    const payload = decodeTokenUnsafe(authToken);
+    userId = payload?.userId || null;
+    accountType = payload?.accountType || null;
+  } else {
+    // Old format fallback
+    const parts = authToken.split('_');
+    if (parts.length === 2) {
+      userId = parts[0];
+      accountType = parts[1];
+    }
+  }
+
+  if (!userId || !accountType || accountType !== 'business') {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 

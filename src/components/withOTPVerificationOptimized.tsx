@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import OTPVerificationModal from '@/components/OTPVerificationModal';
 import GetStartedModal from '@/components/GetStartedModal';
@@ -31,7 +31,7 @@ const withOTPVerificationOptimized = <P extends object>(
     const [isInitialized, setIsInitialized] = useState(false);
 
     // Show the Get Started modal once per login session for fur parents
-    const checkFirstTimeLogin = () => {
+    const checkFirstTimeLogin = useCallback(() => {
       if (userData?.user_type === 'user' || userData?.role === 'user') {
         const sessionKey = `getting_started_shown_${userData.id}`;
         const permanentKey = `getting_started_dismissed_${userData.id}`;
@@ -45,7 +45,7 @@ const withOTPVerificationOptimized = <P extends object>(
           setShowGetStartedModal(true);
         }
       }
-    };
+    }, [userData]);
 
     useEffect(() => {
       const initializeAuth = async () => {
@@ -162,7 +162,7 @@ const withOTPVerificationOptimized = <P extends object>(
       if (!isInitialized) {
         initializeAuth();
       }
-    }, [isAuthenticated, userData, isOtpVerified, isInitialized, router, setUserData, setIsAuthenticated, syncFromStorage]);
+    }, [isAuthenticated, userData, isOtpVerified, isInitialized, router, setUserData, setIsAuthenticated, syncFromStorage, checkFirstTimeLogin]);
 
     const handleVerificationSuccess = () => {
       if (userData) {

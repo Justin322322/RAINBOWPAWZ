@@ -8,26 +8,43 @@ interface ToastContextType {
   hideToast: (id: string) => void;
 }
 
+interface ToastProviderProps {
+  children: ReactNode;
+}
+
 const ToastContext = createContext<ToastContextType | undefined>(undefined);
 
-export const useToast = () => {
+export function useToast() {
   const context = useContext(ToastContext);
   if (!context) {
     throw new Error('useToast must be used within a ToastProvider');
   }
   return context;
-};
-
-interface ToastProviderProps {
-  children: ReactNode;
 }
 
 export function ToastProvider({ children }: ToastProviderProps) {
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
   const showToast = (message: string, type: ToastType = 'info', duration: number = 4000) => {
+    // Check if a similar toast already exists to prevent duplicates
+    const existingToast = toasts.find(toast => 
+      toast.message === message && toast.type === type
+    );
+    
+    if (existingToast) {
+      // Update the existing toast's timeout
+      hideToast(existingToast.id);
+    }
+
     const id = Math.random().toString(36).substring(2, 9);
-    setToasts((prev) => [...prev, { id, message, type }]);
+    const newToast = { id, message, type };
+    
+    setToasts((prev) => {
+      // Limit maximum number of toasts shown at once
+      const maxToasts = 3;
+      const filteredToasts = prev.slice(-(maxToasts - 1));
+      return [...filteredToasts, newToast];
+    });
 
     // Auto-remove toast after specified duration (default 4 seconds)
     if (typeof window !== 'undefined') {
@@ -49,4 +66,4 @@ export function ToastProvider({ children }: ToastProviderProps) {
       <ToastContainer toasts={toasts} onClose={hideToast} />
     </ToastContext.Provider>
   );
-};
+}

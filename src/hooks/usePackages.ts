@@ -10,7 +10,7 @@ export interface UsePackagesProps {
 
 export function usePackages({ userData }: UsePackagesProps) {
   const [packages, setPackages] = useState<PackageData[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -27,6 +27,10 @@ export function usePackages({ userData }: UsePackagesProps) {
 
       // Fetch packages from API
       const response = await fetch(`/api/packages?providerId=${providerId}&includeInactive=true`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
         credentials: 'include',
       });
 
@@ -82,8 +86,6 @@ export function usePackages({ userData }: UsePackagesProps) {
     } catch (error) {
       showToast(error instanceof Error ? error.message : 'Failed to fetch packages', 'error');
       setPackages([]);
-    } finally {
-      setIsLoading(false);
     }
   }, [providerId, showToast]);
 
@@ -99,11 +101,10 @@ export function usePackages({ userData }: UsePackagesProps) {
         // Delete package via API
         const response = await fetch(`/api/packages/${packageToDelete}`, {
           method: 'DELETE',
-          // Include credentials to ensure auth token is sent
-          credentials: 'include',
           headers: {
-            'Content-Type': 'application/json'
-          }
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
         });
 
         if (!response.ok) {
@@ -137,8 +138,10 @@ export function usePackages({ userData }: UsePackagesProps) {
         body: JSON.stringify({ isActive: !currentActiveState }),
       });
 
+      const result = await response.json();
+
       if (!response.ok) {
-        throw new Error(`Failed to update package status: ${response.status}`);
+        throw new Error(result.error || `Failed to update package status: ${response.status}`);
       }
 
       // Update local state
@@ -149,18 +152,21 @@ export function usePackages({ userData }: UsePackagesProps) {
       );
 
       showToast(
-        `Package ${!currentActiveState ? 'activated' : 'deactivated'} successfully`,
+        result.message || `Package ${!currentActiveState ? 'activated' : 'deactivated'} successfully`,
         'success'
       );
     } catch (error) {
-      showToast('Failed to update package status. Please try again later.', 'error');
+      console.error('Package toggle error:', error);
+      showToast(
+        error instanceof Error ? error.message : 'Failed to update package status. Please try again later.', 
+        'error'
+      );
     } finally {
       setToggleLoading(null);
     }
   }, [showToast]);
   // Load packages only on component mount or if providerId changes
   useEffect(() => {
-    setIsLoading(true);
     fetchPackages();
   }, [fetchPackages]);
 
