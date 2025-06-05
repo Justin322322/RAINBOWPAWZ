@@ -23,6 +23,7 @@ import FurParentPageSkeleton from '@/components/ui/FurParentPageSkeleton';
 import { getPackageImageUrl, handleImageError } from '@/utils/imageUtils';
 import TimeSlotSelector from '@/components/booking/TimeSlotSelector';
 import ReviewsList from '@/components/reviews/ReviewsList';
+import { getUserLocation, geocodeAddress, LocationData } from '@/utils/geolocation';
 
 interface ServiceDetailPageProps {
   userData?: any;
@@ -61,33 +62,78 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
   const [currentPackageIndex, setCurrentPackageIndex] = useState(0);
   const [sortBy, setSortBy] = useState('all');
 
-  // Get user location from profile
-  const [userLocation, setUserLocation] = useState('Balanga City, Bataan');
+  // Get user location from profile with coordinates support
+  const defaultAddress = 'Balanga City, 2100 Bataan, Philippines';
+  const [userLocation, setUserLocation] = useState<LocationData>({
+    address: defaultAddress,
+    source: 'default'
+  });
+  const [isLoadingLocation, setIsLoadingLocation] = useState(true);
 
   useEffect(() => {
-    // Get user data from props or session storage
-    let userDataToUse = userData;
+    const getLocation = async () => {
+      setIsLoadingLocation(true);
+      try {
+        // Get user data from props or session storage
+        let userDataToUse = userData;
 
-    // If userData is not provided as prop, try to get it from session storage
-    if (!userDataToUse && typeof window !== 'undefined') {
-      const sessionUserData = sessionStorage.getItem('user_data');
-      if (sessionUserData) {
-        try {
-          userDataToUse = JSON.parse(sessionUserData);
-        } catch (error) {
-          console.error('Failed to parse user data from session storage:', error);
+        // If userData is not provided as prop, try to get it from session storage
+        if (!userDataToUse && typeof window !== 'undefined') {
+          const sessionUserData = sessionStorage.getItem('user_data');
+          if (sessionUserData) {
+            try {
+              userDataToUse = JSON.parse(sessionUserData);
+            } catch (error) {
+              console.error('Failed to parse user data from session storage:', error);
+            }
+          }
         }
-      }
-    }
 
-    // Get user location from profile if available
-    if (userDataToUse?.address && userDataToUse.address.trim() !== '') {
-      setUserLocation(userDataToUse.address);
-      console.log('Using user profile address for service detail:', userDataToUse.address);
-    } else {
-      console.log('Using default address for service detail: Balanga City, Bataan');
-    }
-  }, [userData]);
+        let location: LocationData;
+
+        if (userDataToUse?.address && userDataToUse.address.trim() !== '') {
+          console.log('✅ Using user profile address for service detail:', userDataToUse.address);
+
+          try {
+            // Geocode the user's profile address to get coordinates
+            const geocodedLocation = await geocodeAddress(userDataToUse.address);
+            location = {
+              address: userDataToUse.address,
+              coordinates: geocodedLocation.coordinates,
+              source: 'profile' as const
+            };
+            console.log('✅ Successfully geocoded user address to coordinates:', geocodedLocation.coordinates);
+          } catch (error) {
+            console.error('❌ Failed to geocode user address:', error);
+            // Fallback to address without coordinates
+            location = {
+              address: userDataToUse.address,
+              source: 'profile' as const
+            };
+          }
+        } else {
+          location = {
+            address: defaultAddress,
+            source: 'default' as const
+          };
+          console.log('⚠️ Using default address for service detail:', defaultAddress);
+        }
+
+        setUserLocation(location);
+      } catch (error) {
+        console.error('Error getting user location:', error);
+        // Fall back to default address
+        setUserLocation({
+          address: defaultAddress,
+          source: 'default' as const
+        });
+      } finally {
+        setIsLoadingLocation(false);
+      }
+    };
+
+    getLocation();
+  }, [userData, defaultAddress]);
 
   // Function to sort packages based on selected criteria
   const getSortedPackages = () => {
@@ -106,13 +152,30 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
   };
 
   useEffect(() => {
+    // Wait for location loading to complete to ensure we have coordinates if available
+    if (isLoadingLocation) {
+      console.log('⏳ [Service Detail] Waiting for location loading to complete...');
+      return;
+    }
+
     // Fetch real provider data
     setLoading(true);
 
     const fetchData = async () => {
       try {
         // Fetch provider details with user location for accurate distance calculation
-        const providerResponse = await fetch(`/api/service-providers/${providerId}?location=${encodeURIComponent(userLocation)}`);
+        let apiUrl = `/api/service-providers/${providerId}?location=${encodeURIComponent(userLocation.address)}`;
+
+        // Add coordinates if available for more accurate distance calculation
+        if (userLocation.coordinates) {
+          const [lat, lng] = userLocation.coordinates;
+          apiUrl += `&lat=${lat}&lng=${lng}`;
+          console.log('🎯 [Service Detail] Sending coordinates to API:', { lat, lng });
+        } else {
+          console.log('📍 [Service Detail] No coordinates available, using address only:', userLocation.address);
+        }
+
+        const providerResponse = await fetch(apiUrl);
 
         if (!providerResponse.ok) {
           throw new Error('Failed to fetch provider details');
@@ -182,7 +245,7 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
     if (providerId) {
       fetchData();
     }
-  }, [providerId, userLocation, mockPets]);
+  }, [providerId, userLocation, isLoadingLocation, mockPets]);
 
   const handleNextPackage = () => {
     const sortedPackages = getSortedPackages();

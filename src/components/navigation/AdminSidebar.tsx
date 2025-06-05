@@ -138,7 +138,7 @@ export default function AdminSidebar({ activePage: propActivePage }: AdminSideba
   };
 
   return (
-    <div className="h-screen w-64 bg-[var(--primary-green)] shadow-lg fixed left-0 top-0 z-40">
+    <div className="h-screen w-64 bg-[var(--primary-green)] shadow-lg fixed left-0 top-0 z-40 hidden lg:block">
       {/* Logo and website name */}
       <div className="h-16 flex items-center px-6 border-b border-white/20">
         <Link href="/admin/dashboard" className="flex items-center space-x-3">

@@ -22,6 +22,7 @@ export interface RoutingCacheData {
   distance: string;
   duration: string;
   steps: any[];
+  trafficAware: boolean; // Include trafficAware in cache data
 }
 
 class CacheManager {
@@ -55,8 +56,9 @@ class CacheManager {
   /**
    * Generate a cache key for routing
    */
-  private generateRoutingKey(start: [number, number], end: [number, number]): string {
-    return `route_${start[0].toFixed(4)}_${start[1].toFixed(4)}_${end[0].toFixed(4)}_${end[1].toFixed(4)}`;
+  private generateRoutingKey(start: [number, number], end: [number, number], trafficAware: boolean = false): string {
+    const trafficSuffix = trafficAware ? '_traffic' : '_normal';
+    return `route_${start[0].toFixed(4)}_${start[1].toFixed(4)}_${end[0].toFixed(4)}_${end[1].toFixed(4)}${trafficSuffix}`;
   }
 
   /**
@@ -122,9 +124,9 @@ class CacheManager {
    */
   public setRoutingCache(start: [number, number], end: [number, number], data: RoutingCacheData): void {
     if (typeof window === 'undefined' || !window.localStorage) return;
-    
+
     try {
-      const key = this.generateRoutingKey(start, end);
+      const key = this.generateRoutingKey(start, end, data.trafficAware);
       const entry: CacheEntry<RoutingCacheData> = {
         data,
         timestamp: Date.now(),
@@ -140,11 +142,11 @@ class CacheManager {
   /**
    * Get routing data from cache
    */
-  public getRoutingCache(start: [number, number], end: [number, number]): RoutingCacheData | null {
+  public getRoutingCache(start: [number, number], end: [number, number], trafficAware: boolean = false): RoutingCacheData | null {
     if (typeof window === 'undefined' || !window.localStorage) return null;
-    
+
     try {
-      const key = this.generateRoutingKey(start, end);
+      const key = this.generateRoutingKey(start, end, trafficAware);
       const cached = localStorage.getItem(key);
 
       if (!cached) return null;
@@ -200,7 +202,7 @@ class CacheManager {
    */
   public clearCache(): void {
     if (typeof window === 'undefined' || !window.localStorage) return;
-    
+
     try {
       const keysToRemove: string[] = [];
 
@@ -214,6 +216,29 @@ class CacheManager {
       keysToRemove.forEach(key => localStorage.removeItem(key));
     } catch (error) {
       console.warn('Failed to clear cache:', error);
+    }
+  }
+
+  /**
+   * Clear only routing cache (useful when updating routing logic)
+   */
+  public clearRoutingCache(): void {
+    if (typeof window === 'undefined' || !window.localStorage) return;
+
+    try {
+      const keysToRemove: string[] = [];
+
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('route_')) {
+          keysToRemove.push(key);
+        }
+      }
+
+      keysToRemove.forEach(key => localStorage.removeItem(key));
+      console.log('🗑️ Cleared routing cache entries:', keysToRemove.length);
+    } catch (error) {
+      console.warn('Failed to clear routing cache:', error);
     }
   }
 

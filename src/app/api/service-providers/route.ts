@@ -1,14 +1,35 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { calculateDistance, getBataanCoordinates } from '@/utils/distance';
+import { calculateEnhancedDistance, formatDistance } from '@/utils/routeDistance';
 
 export async function GET(request: Request) {
   // Extract user location from query parameters
   const { searchParams } = new URL(request.url);
   const userLocation = searchParams.get('location') || 'Balanga City, Bataan';
+  const userLat = searchParams.get('lat');
+  const userLng = searchParams.get('lng');
 
   // Get coordinates for the user's location
-  const userCoordinates = getBataanCoordinates(userLocation);
+  let userCoordinates;
+
+  // Priority 1: Use provided coordinates if available
+  if (userLat && userLng) {
+    const lat = parseFloat(userLat);
+    const lng = parseFloat(userLng);
+
+    if (!isNaN(lat) && !isNaN(lng)) {
+      userCoordinates = { lat, lng };
+      console.log('🎯 [API] Using provided coordinates:', userCoordinates);
+    } else {
+      console.warn('⚠️ [API] Invalid coordinates provided, falling back to geocoding');
+      userCoordinates = getBataanCoordinates(userLocation);
+    }
+  } else {
+    // Priority 2: Fallback to address-based lookup
+    console.log('📍 [API] No coordinates provided, using address lookup for:', userLocation);
+    userCoordinates = getBataanCoordinates(userLocation);
+  }
   try {
 
     try {
@@ -121,25 +142,46 @@ export async function GET(request: Request) {
               packagesResult = await query(`
                 SELECT COUNT(*) as package_count
                 FROM service_packages
-                WHERE provider_id = ? AND is_active = TRUE
+                WHERE provider_id = ? AND is_active = 1
               `, [provider.id]) as any[];
+
             } else if (useServiceProviderIdColumn) {
               packagesResult = await query(`
                 SELECT COUNT(*) as package_count
                 FROM service_packages
-                WHERE service_provider_id = ? AND is_active = TRUE
+                WHERE service_provider_id = ? AND is_active = 1
               `, [provider.id]) as any[];
+
             } else {
               packagesResult = [{ package_count: 0 }];
+
             }
 
             provider.packages = packagesResult[0]?.package_count || 0;
 
             // Calculate actual distance based on coordinates
             const providerCoordinates = getBataanCoordinates(provider.address || 'Bataan');
-            const distanceValue = calculateDistance(userCoordinates, providerCoordinates);
-            provider.distance = `${distanceValue} km away`;
-            provider.distanceValue = distanceValue; // Store numeric value for sorting
+
+            try {
+              // Use enhanced distance calculation with real routing
+              const distanceResult = await calculateEnhancedDistance(userCoordinates, providerCoordinates);
+              provider.distance = distanceResult.formattedDistance;
+              provider.distanceValue = distanceResult.distance; // Store numeric value for sorting
+
+              console.log('📍 [Distance] Real routing calculation for', provider.name, ':', {
+                distance: distanceResult.distance,
+                formatted: distanceResult.formattedDistance,
+                source: distanceResult.source,
+                userCoords: userCoordinates,
+                providerCoords: providerCoordinates
+              });
+            } catch (error) {
+              console.error('📍 [Distance] Real routing calculation failed, using fallback:', error);
+              // Fallback to simple calculation
+              const distanceValue = calculateDistance(userCoordinates, providerCoordinates);
+              provider.distance = `${distanceValue} km away`;
+              provider.distanceValue = distanceValue;
+            }
           } catch (error) {
             provider.packages = 0;
             provider.distance = 'Distance unavailable';
@@ -237,19 +279,19 @@ export async function GET(request: Request) {
               packagesResult = await query(`
                 SELECT COUNT(*) as package_count
                 FROM service_packages
-                WHERE service_provider_id = ? AND is_active = TRUE
+                WHERE service_provider_id = ? AND is_active = 1
               `, [business.id]) as any[];
             } else if (useProviderIdColumn) {
               packagesResult = await query(`
                 SELECT COUNT(*) as package_count
                 FROM service_packages
-                WHERE provider_id = ? AND is_active = TRUE
+                WHERE provider_id = ? AND is_active = 1
               `, [business.id]) as any[];
             } else if (useBusinessIdColumn) {
               packagesResult = await query(`
                 SELECT COUNT(*) as package_count
                 FROM service_packages
-                WHERE business_id = ? AND is_active = TRUE
+                WHERE business_id = ? AND is_active = 1
               `, [business.id]) as any[];
             } else {
               packagesResult = [{ package_count: 0 }];
@@ -257,11 +299,27 @@ export async function GET(request: Request) {
 
             business.packages = packagesResult[0]?.package_count || 0;
 
-            // Calculate actual distance based on coordinates
+            // Calculate actual distance based on coordinates using real routing
             const businessCoordinates = getBataanCoordinates(business.address || 'Bataan');
-            const distanceValue = calculateDistance(userCoordinates, businessCoordinates);
-            (business as any).distance = `${distanceValue} km away`;
-            (business as any).distanceValue = distanceValue; // Store numeric value for sorting
+
+            try {
+              // Use enhanced distance calculation with real routing
+              const distanceResult = await calculateEnhancedDistance(userCoordinates, businessCoordinates);
+              (business as any).distance = distanceResult.formattedDistance;
+              (business as any).distanceValue = distanceResult.distance; // Store numeric value for sorting
+
+              console.log('📍 [Distance] Real routing calculation for business', business.name, ':', {
+                distance: distanceResult.distance,
+                formatted: distanceResult.formattedDistance,
+                source: distanceResult.source
+              });
+            } catch (error) {
+              console.error('📍 [Distance] Real routing calculation failed for business, using fallback:', error);
+              // Fallback to simple calculation
+              const distanceValue = calculateDistance(userCoordinates, businessCoordinates);
+              (business as any).distance = `${distanceValue} km away`;
+              (business as any).distanceValue = distanceValue;
+            }
           } catch (error) {
           }
         }

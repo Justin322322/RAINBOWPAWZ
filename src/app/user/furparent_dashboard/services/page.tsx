@@ -77,11 +77,9 @@ function ServicesPage({ userData }: ServicesPageProps) {
         console.log('🔍 [Services] User data available:', !!userDataToUse);
         console.log('🔍 [Services] User address:', userDataToUse?.address);
 
-        // Clear geocoding cache for testing (temporary)
-        if (userDataToUse?.address) {
-          console.log('🔍 [Services] Clearing geocoding cache for fresh lookup');
-          cacheManager.clearCache();
-        }
+        // Clear routing cache to remove old invalid entries (one-time fix)
+        console.log('🗑️ [Services] Clearing routing cache to fix trafficAware issue');
+        cacheManager.clearRoutingCache();
 
         // Use profile address or default, and geocode to get coordinates
         let location;
@@ -92,6 +90,7 @@ function ServicesPage({ userData }: ServicesPageProps) {
 
           try {
             // Geocode the user's profile address to get coordinates
+            console.log('🗺️ [Frontend] Starting geocoding for address:', userDataToUse.address);
             const geocodedLocation = await geocodeAddress(userDataToUse.address);
             location = {
               address: userDataToUse.address,
@@ -99,13 +98,16 @@ function ServicesPage({ userData }: ServicesPageProps) {
               source: 'profile' as const
             };
             console.log('✅ Successfully geocoded user address to coordinates:', geocodedLocation.coordinates);
+            console.log('✅ Final location object:', location);
           } catch (error) {
             console.error('❌ Failed to geocode user address:', error);
+            console.error('❌ Error details:', error);
             // Fallback to address without coordinates
             location = {
               address: userDataToUse.address,
               source: 'profile' as const
             };
+            console.log('⚠️ Using fallback location without coordinates:', location);
           }
         } else {
           location = {
@@ -175,8 +177,27 @@ function ServicesPage({ userData }: ServicesPageProps) {
         // Add a small delay to ensure the skeleton is visible
         await new Promise(resolve => setTimeout(resolve, 800));
 
+        // Wait for location loading to complete to ensure we have coordinates if available
+        if (isLoadingLocation) {
+          console.log('⏳ [Frontend] Waiting for location loading to complete...');
+          return;
+        }
+
         // Pass user location to the API for accurate distance calculation
-        const response = await fetch(`/api/service-providers?location=${encodeURIComponent(userLocation.address)}`);
+        let apiUrl = `/api/service-providers?location=${encodeURIComponent(userLocation.address)}`;
+
+        // Add coordinates if available for more accurate distance calculation
+        console.log('🔍 [Frontend] Checking userLocation for coordinates:', userLocation);
+        if (userLocation.coordinates) {
+          const [lat, lng] = userLocation.coordinates;
+          apiUrl += `&lat=${lat}&lng=${lng}`;
+          console.log('🎯 [Frontend] Sending coordinates to API:', { lat, lng });
+        } else {
+          console.log('📍 [Frontend] No coordinates available, using address only:', userLocation.address);
+          console.log('📍 [Frontend] userLocation.coordinates is:', userLocation.coordinates);
+        }
+
+        const response = await fetch(apiUrl);
 
         if (!response.ok) {
           throw new Error('Failed to fetch service providers');
@@ -206,7 +227,7 @@ function ServicesPage({ userData }: ServicesPageProps) {
     };
 
     fetchServiceProviders();
-  }, [userLocation.address]);
+  }, [userLocation.address, userLocation.coordinates, isLoadingLocation]);
 
   // Pagination
   const providersPerPage = 3;

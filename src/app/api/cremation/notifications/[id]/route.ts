@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthTokenFromRequest } from '@/utils/auth';
 import { query } from '@/lib/db';
+import { decodeTokenUnsafe } from '@/lib/jwt';
 
 /**
  * DELETE - Remove a specific cremation provider notification
@@ -27,8 +28,25 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const [userId, accountType] = authToken.split('_');
-    if (accountType !== 'business') {
+    let userId: string | null = null;
+    let accountType: string | null = null;
+
+    // Check if it's a JWT token or old format
+    if (authToken.includes('.')) {
+      // JWT token format
+      const payload = decodeTokenUnsafe(authToken);
+      userId = payload?.userId || null;
+      accountType = payload?.accountType || null;
+    } else {
+      // Old format fallback
+      const parts = authToken.split('_');
+      if (parts.length === 2) {
+        userId = parts[0];
+        accountType = parts[1];
+      }
+    }
+
+    if (!userId || !accountType || accountType !== 'business') {
       return NextResponse.json({
         error: 'Unauthorized - Business access required'
       }, { status: 403 });
@@ -105,8 +123,25 @@ export async function PATCH(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const [userId, accountType] = authToken.split('_');
-    if (accountType !== 'business') {
+    let userId: string | null = null;
+    let accountType: string | null = null;
+
+    // Check if it's a JWT token or old format
+    if (authToken.includes('.')) {
+      // JWT token format
+      const payload = decodeTokenUnsafe(authToken);
+      userId = payload?.userId || null;
+      accountType = payload?.accountType || null;
+    } else {
+      // Old format fallback
+      const parts = authToken.split('_');
+      if (parts.length === 2) {
+        userId = parts[0];
+        accountType = parts[1];
+      }
+    }
+
+    if (!userId || !accountType || accountType !== 'business') {
       return NextResponse.json({
         error: 'Unauthorized - Business access required'
       }, { status: 403 });

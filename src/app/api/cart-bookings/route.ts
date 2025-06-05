@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
         processing_time,
         name
       FROM service_packages
-      WHERE id = ? AND is_active = TRUE
+      WHERE id = ? AND is_active = 1
     `, [packageId]) as any[];
 
     if (!packageResult || packageResult.length === 0) {

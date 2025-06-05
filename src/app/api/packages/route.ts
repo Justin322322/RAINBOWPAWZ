@@ -21,10 +21,10 @@ export async function GET(request: NextRequest) {
     if (providerId) {
       whereClause = `WHERE sp.provider_id = ${parseInt(providerId)}`;
       if (!includeInactive) {
-        whereClause += ' AND sp.is_active = TRUE';
+        whereClause += ' AND sp.is_active = 1';
       }
     } else if (!includeInactive) {
-      whereClause = 'WHERE sp.is_active = TRUE';
+      whereClause = 'WHERE sp.is_active = 1';
     }
 
     if (packageIdParam) {

@@ -22,15 +22,15 @@ export function calculateDistance(coord1: Coordinates | null, coord2: Coordinate
   const R = 6371; // Radius of the Earth in kilometers
   const dLat = deg2rad(coord2.lat - coord1.lat);
   const dLon = deg2rad(coord2.lng - coord1.lng);
-  
-  const a = 
+
+  const a =
     Math.sin(dLat/2) * Math.sin(dLat/2) +
-    Math.cos(deg2rad(coord1.lat)) * Math.cos(deg2rad(coord2.lat)) * 
+    Math.cos(deg2rad(coord1.lat)) * Math.cos(deg2rad(coord2.lat)) *
     Math.sin(dLon/2) * Math.sin(dLon/2);
-  
+
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
   const distance = R * c; // Distance in kilometers
-  
+
   return Math.max(0.1, parseFloat(distance.toFixed(1))); // Ensure minimum distance of 0.1km
 }
 
@@ -66,7 +66,7 @@ function deg2rad(deg: number): number {
 export function getBataanCoordinates(location: string): Coordinates {
   // Default coordinates for Balanga City, Bataan (center point)
   const defaultCoords = { lat: 14.6761, lng: 120.5439 };
-  
+
   // Common locations in Bataan with their coordinates
   const locations: Record<string, Coordinates> = {
     // Cities
@@ -77,6 +77,7 @@ export function getBataanCoordinates(location: string): Coordinates {
     'hermosa': { lat: 14.8333, lng: 120.5000 },
     'orani': { lat: 14.8004, lng: 120.5292 },
     'samal': { lat: 14.7667, lng: 120.5167 },
+    'samal bataan': { lat: 14.7667, lng: 120.5167 }, // More specific match for Samal, Bataan
     'abucay': { lat: 14.7333, lng: 120.5333 },
     'pilar': { lat: 14.6667, lng: 120.5667 },
     'orion': { lat: 14.6333, lng: 120.5833 },
@@ -88,30 +89,41 @@ export function getBataanCoordinates(location: string): Coordinates {
     'bataan peninsula state university': { lat: 14.6417, lng: 120.5419 },
     'bpsu': { lat: 14.6417, lng: 120.5419 },
     'the peninsula': { lat: 14.6761, lng: 120.5439 },
+    // Specific business locations
+    'rainbow paws cremation center': { lat: 14.7667, lng: 120.5167 }, // Samal, Bataan location
   };
   
-  if (!location) return defaultCoords;
-  
-  // Convert to lowercase and remove common words for better matching
+  if (!location) {
+    return defaultCoords;
+  }
+
+  // Convert to lowercase for better matching
   const normalizedLocation = location.toLowerCase()
     .replace(/[,\s]+philippines/g, '')
     .replace(/\d{4}/, '')  // Remove postal codes
-    .replace(/bataan/g, '')
     .replace(/\s+/g, ' ')
     .trim();
 
-  // Try exact match first
-  if (locations[normalizedLocation]) {
-    return locations[normalizedLocation];
+  // Try exact match first (including with "bataan")
+  const exactMatch = locations[normalizedLocation];
+  if (exactMatch) {
+    return exactMatch;
   }
-  
+
+  // Try without "bataan" for broader matching
+  const withoutBataan = normalizedLocation.replace(/bataan/g, '').replace(/\s+/g, ' ').trim();
+  const withoutBataanMatch = locations[withoutBataan];
+  if (withoutBataanMatch) {
+    return withoutBataanMatch;
+  }
+
   // Check if the location contains any of the known locations
   for (const [key, coords] of Object.entries(locations)) {
-    if (normalizedLocation.includes(key)) {
+    if (normalizedLocation.includes(key) || withoutBataan.includes(key)) {
       return coords;
     }
   }
-  
+
   // Return default coordinates if no match is found
   return defaultCoords;
 }

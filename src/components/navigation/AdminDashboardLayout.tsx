@@ -58,9 +58,9 @@ function AdminDashboardLayout({
   return (
     <div className="min-h-screen bg-gray-50">
       <AdminSidebar activePage={activePage} />
-      <div className="pl-64"> {/* This padding should match the width of the sidebar */}
+      <div className="lg:pl-64 transition-all duration-300"> {/* Responsive padding */}
         <AdminNavbar activePage={activePage} userName={displayName} />
-        <main className="p-6">
+        <main className="p-4 md:p-6">
           {contentLoading ? (
             <DashboardSkeleton type="admin" />
           ) : (

@@ -203,8 +203,8 @@ export async function GET(request: NextRequest) {
 
     // 6. Get active service packages count
     const servicePackagesResult = await query(`
-      SELECT COUNT(*) as count 
-      FROM service_packages 
+      SELECT COUNT(*) as count
+      FROM service_packages
       WHERE provider_id = ? AND is_active = 1`,
       [providerId]
     ) as any[];

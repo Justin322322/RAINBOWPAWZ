@@ -105,7 +105,11 @@ export default function MapComponent({
 
   // Enhanced geocoding function using the new geocoding service
   const geocodeAddressEnhanced = useCallback(async (address: string, type: 'user' | 'provider', providerId?: number) => {
-    if (type === 'user' && mapLoaded) return; // Prevent re-geocoding if map is already loaded
+    // If initial coordinates were provided, don't geocode user location to maintain consistency with API
+    if (type === 'user' && (mapLoaded || initialUserCoordinates)) {
+      console.log('🗺️ [MapComponent] Skipping user geocoding - using provided coordinates for consistency with API');
+      return;
+    }
 
     console.log(`🗺️ [MapComponent] Starting geocoding for ${type}:`, address);
     setIsGeocoding(true);
@@ -172,15 +176,17 @@ export default function MapComponent({
     let timer: NodeJS.Timeout | null = null;
 
     if (typeof window !== 'undefined' && !userCoordinates) {
-      // If initial coordinates are provided, use them
+      // If initial coordinates are provided, use them (these are the same coordinates used by the API)
       if (initialUserCoordinates) {
+        console.log('🗺️ [MapComponent] Using provided coordinates (same as API):', initialUserCoordinates);
         setUserCoordinates(initialUserCoordinates);
       } else if (userAddress) {
         // Otherwise, set default coordinates first to prevent error if geocoding fails
         const defaultCoordinates: [number, number] = [14.6742, 120.5434]; // Balanga City center coordinates
+        console.log('🗺️ [MapComponent] Using default coordinates:', defaultCoordinates);
         setUserCoordinates(defaultCoordinates);
 
-        // Delayed geocoding to ensure DOM is ready
+        // Only geocode if no coordinates were provided - this ensures consistency with API
         timer = setTimeout(() => {
           geocodeAddressEnhanced(userAddress, 'user');
         }, 100);
@@ -401,6 +407,12 @@ export default function MapComponent({
                                  { lat: userCoordinates[0], lng: userCoordinates[1] };
 
       const startCoords: [number, number] = [currentUserPosition.lat, currentUserPosition.lng];
+
+      console.log('🗺️ [MapComponent] Calculating route with coordinates:', {
+        userCoords: startCoords,
+        providerCoords: providerCoords,
+        providerName: providerName
+      });
 
       // Get route using the enhanced routing service
       const routeResult = await routingService.getRoute(startCoords, providerCoords, { trafficAware: true });

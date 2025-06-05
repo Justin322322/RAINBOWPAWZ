@@ -44,12 +44,14 @@ class RoutingService {
    * Get route between two points
    */
   public async getRoute(
-    start: [number, number], 
+    start: [number, number],
     end: [number, number],
     options: { trafficAware?: boolean } = {}
   ): Promise<RoutingResult> {
-    // Check cache first
-    const cached = cacheManager.getRoutingCache(start, end);
+    const trafficAware = options.trafficAware || false;
+
+    // Check cache first with trafficAware parameter
+    const cached = cacheManager.getRoutingCache(start, end, trafficAware);
     if (cached) {
       return {
         route: cached.route,
@@ -57,7 +59,7 @@ class RoutingService {
         duration: cached.duration,
         steps: cached.steps,
         provider: 'cached',
-        trafficAware: false
+        trafficAware: cached.trafficAware // Use the cached trafficAware value
       };
     }
 
@@ -69,12 +71,13 @@ class RoutingService {
       try {
         const result = await this.routeWithRetry(start, end, provider, options);
         
-        // Cache successful result
+        // Cache successful result with trafficAware value
         cacheManager.setRoutingCache(start, end, {
           route: result.route,
           distance: result.distance,
           duration: result.duration,
-          steps: result.steps
+          steps: result.steps,
+          trafficAware: result.trafficAware
         });
 
         return result;
