@@ -3,6 +3,7 @@ import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
 import { existsSync } from 'fs';
 import { query } from '@/lib/db';
+import { getAuthTokenFromRequest } from '@/utils/auth';
 import { cleanupOldFiles } from '@/utils/fileSystemUtils';
 
 // Function to save profile picture to disk
@@ -45,6 +46,35 @@ async function saveProfilePicture(file: File, userId: string): Promise<string> {
 
 export async function POST(request: NextRequest) {
   try {
+    // Get auth token to verify the user
+    const authToken = getAuthTokenFromRequest(request);
+    if (!authToken) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    let tokenUserId: string | null = null;
+    let accountType: string | null = null;
+
+    // Check if it's a JWT token or old format
+    if (authToken.includes('.')) {
+      // JWT token format
+      const { decodeTokenUnsafe } = await import('@/lib/jwt');
+      const payload = decodeTokenUnsafe(authToken);
+      tokenUserId = payload?.userId || null;
+      accountType = payload?.accountType || null;
+    } else {
+      // Old format fallback
+      const parts = authToken.split('_');
+      if (parts.length === 2) {
+        tokenUserId = parts[0];
+        accountType = parts[1];
+      }
+    }
+
+    if (!tokenUserId || !accountType) {
+      return NextResponse.json({ error: 'Invalid authentication token' }, { status: 401 });
+    }
+
     // Parse the multipart form data
     const formData = await request.formData();
 
@@ -54,6 +84,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         error: 'No user ID provided'
       }, { status: 400 });
+    }
+
+    // Only allow users to update their own profile picture (or admins)
+    if (tokenUserId !== userId.toString() && accountType !== 'admin') {
+      return NextResponse.json({ 
+        error: 'You are not authorized to update this profile picture' 
+      }, { status: 403 });
     }
 
     // Get the profile picture file

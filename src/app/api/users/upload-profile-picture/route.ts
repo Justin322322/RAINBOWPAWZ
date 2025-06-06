@@ -52,7 +52,28 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const [tokenUserId, accountType] = authToken.split('_');
+    let tokenUserId: string | null = null;
+    let accountType: string | null = null;
+
+    // Check if it's a JWT token or old format
+    if (authToken.includes('.')) {
+      // JWT token format
+      const { decodeTokenUnsafe } = await import('@/lib/jwt');
+      const payload = decodeTokenUnsafe(authToken);
+      tokenUserId = payload?.userId || null;
+      accountType = payload?.accountType || null;
+    } else {
+      // Old format fallback
+      const parts = authToken.split('_');
+      if (parts.length === 2) {
+        tokenUserId = parts[0];
+        accountType = parts[1];
+      }
+    }
+
+    if (!tokenUserId) {
+      return NextResponse.json({ error: 'Invalid authentication token' }, { status: 401 });
+    }
 
     // Parse the multipart form data
     const formData = await request.formData();
