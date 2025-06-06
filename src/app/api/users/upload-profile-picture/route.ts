@@ -58,10 +58,15 @@ export async function POST(request: NextRequest) {
     // Check if it's a JWT token or old format
     if (authToken.includes('.')) {
       // JWT token format
-      const { decodeTokenUnsafe } = await import('@/lib/jwt');
-      const payload = decodeTokenUnsafe(authToken);
-      tokenUserId = payload?.userId || null;
-      accountType = payload?.accountType || null;
+      try {
+        const { decodeTokenUnsafe } = await import('@/lib/jwt');
+        const payload = decodeTokenUnsafe(authToken);
+        tokenUserId = payload?.userId || null;
+        accountType = payload?.accountType || null;
+      } catch (jwtError) {
+        console.error('Invalid JWT token:', jwtError);
+        return NextResponse.json({ error: 'Invalid authentication token' }, { status: 401 });
+      }
     } else {
       // Old format fallback
       const parts = authToken.split('_');
@@ -71,7 +76,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    if (!tokenUserId) {
+    if (!tokenUserId || !accountType) {
       return NextResponse.json({ error: 'Invalid authentication token' }, { status: 401 });
     }
 
