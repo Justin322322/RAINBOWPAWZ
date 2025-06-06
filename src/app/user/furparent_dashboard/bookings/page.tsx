@@ -249,7 +249,12 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
 
       // Check each booking for reviews
       for (const booking of bookings) {
-        const response = await fetch(`/api/reviews/booking/${booking.id}`);
+        const response = await fetch(`/api/reviews/booking/${booking.id}`, {
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
 
         if (response.ok) {
           const data = await response.json();
@@ -818,7 +823,7 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
                         variant="outline"
                       />
                     )}
-                    {booking.status === 'completed' && !reviewedBookingIds.includes(booking.id) && (
+                    {booking.status === 'completed' && !reviewedBookingIds.includes(booking.id) && userData?.id && (
                       <button
                         onClick={() => {
                           setSelectedBooking(booking);
@@ -1142,22 +1147,26 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
                         <div className="mt-6">
                           <h4 className="text-sm font-medium text-gray-500 mb-2">Your Review</h4>
                           {reviewedBookingIds.includes(selectedBooking.id) ? (
-                            <ReviewDisplay bookingId={selectedBooking.id} userId={userData?.id} />
+                            userData?.id && <ReviewDisplay bookingId={selectedBooking.id} userId={userData.id} />
                           ) : (
                             <div className="bg-gray-50 p-4 rounded-lg">
                               <p className="text-sm text-gray-600 mb-3">You haven&apos;t reviewed this booking yet. Your feedback helps other pet parents make informed decisions.</p>
-                              <button
-                                onClick={() => {
-                                  setShowDetailsModal(false);
-                                  setTimeout(() => {
-                                    setShowReviewModal(true);
-                                  }, 300);
-                                }}
-                                className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 flex items-center w-fit"
-                              >
-                                <StarIcon className="h-4 w-4 mr-2" />
-                                Leave a Review
-                              </button>
+                              {userData?.id ? (
+                                <button
+                                  onClick={() => {
+                                    setShowDetailsModal(false);
+                                    setTimeout(() => {
+                                      setShowReviewModal(true);
+                                    }, 300);
+                                  }}
+                                  className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 flex items-center w-fit"
+                                >
+                                  <StarIcon className="h-4 w-4 mr-2" />
+                                  Leave a Review
+                                </button>
+                              ) : (
+                                <p className="text-sm text-gray-500">Please log in to leave a review.</p>
+                              )}
                             </div>
                           )}
                         </div>
@@ -1337,12 +1346,12 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
       </Transition>
 
       {/* Review Modal */}
-      {selectedBooking && (
+      {selectedBooking && userData?.id && (
         <ReviewModal
           isOpen={showReviewModal}
           onClose={() => setShowReviewModal(false)}
           bookingId={selectedBooking.id}
-          userId={userData?.id}
+          userId={userData.id}
           providerId={selectedBooking.provider_id || 0}
           providerName={selectedBooking.provider_name || 'Service Provider'}
           onSuccess={() => {

@@ -363,8 +363,9 @@ export default function CremationNavbar({
             <h1 className="text-white text-lg md:text-xl font-semibold ml-2">Cremation Center Dashboard</h1>
           </div>
 
-          <div className="flex items-center space-x-2 md:space-x-4">
-            <div className="hidden md:block" data-notification-bell>
+          <div className="flex items-center space-x-2 md:space-x-4">          
+            {/* Notification Bell - visible on all screen sizes */}
+            <div data-notification-bell>
               <NotificationBell />
             </div>
 
@@ -450,12 +451,6 @@ export default function CremationNavbar({
           {/* Mobile menu */}
           <div className="lg:hidden bg-[var(--primary-green)] border-t border-white/20 relative z-50 shadow-lg">
             <div className="px-4 py-4 space-y-2">
-              {/* Notifications for mobile */}
-              <div className="flex items-center justify-between px-3 py-3 rounded-lg bg-white/10" data-notification-bell>
-                <span className="modern-text text-white font-medium">Notifications</span>
-                <NotificationBell />
-              </div>
-
               {/* Main navigation items */}
               {navigationItems.map((item) => {
                 const isActive = activePage === item.id;

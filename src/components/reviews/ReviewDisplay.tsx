@@ -26,7 +26,12 @@ const ReviewDisplay: React.FC<ReviewDisplayProps> = ({ bookingId, userId }) => {
     const fetchReview = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`/api/reviews/user-booking/${bookingId}`);
+        const response = await fetch(`/api/reviews/user-booking/${bookingId}`, {
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
 
         if (!response.ok) {
           throw new Error('Failed to fetch review');

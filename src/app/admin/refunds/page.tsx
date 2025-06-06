@@ -47,6 +47,8 @@ function AdminRefundsPage() {
   const [selectedRefund, setSelectedRefund] = useState<Refund | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [userName, setUserName] = useState('');
+  const [processingApproval, setProcessingApproval] = useState<Set<number>>(new Set());
+  const [processingDenial, setProcessingDenial] = useState<Set<number>>(new Set());
   const { showToast } = useToast();
 
   useEffect(() => {
@@ -121,7 +123,7 @@ function AdminRefundsPage() {
 
   const handleApproveRefund = async (refundId: number) => {
     try {
-      setLoading(true);
+      setProcessingApproval(prev => new Set(prev).add(refundId));
       const response = await fetch(`/api/admin/refunds/${refundId}/approve`, {
         method: 'POST',
         headers: {
@@ -141,13 +143,17 @@ function AdminRefundsPage() {
       console.error('Error approving refund:', error);
       showToast('Failed to approve refund', 'error');
     } finally {
-      setLoading(false);
+      setProcessingApproval(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(refundId);
+        return newSet;
+      });
     }
   };
 
   const handleDenyRefund = async (refundId: number) => {
     try {
-      setLoading(true);
+      setProcessingDenial(prev => new Set(prev).add(refundId));
       const response = await fetch(`/api/admin/refunds/${refundId}/deny`, {
         method: 'POST',
         headers: {
@@ -167,7 +173,11 @@ function AdminRefundsPage() {
       console.error('Error denying refund:', error);
       showToast('Failed to deny refund', 'error');
     } finally {
-      setLoading(false);
+      setProcessingDenial(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(refundId);
+        return newSet;
+      });
     }
   };
 
@@ -312,18 +322,26 @@ function AdminRefundsPage() {
                       <>
                         <button
                           onClick={() => handleApproveRefund(refund.id)}
-                          className="px-3 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center"
-                          disabled={loading}
+                          className="px-3 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                          disabled={processingApproval.has(refund.id) || processingDenial.has(refund.id)}
                         >
-                          <CheckCircleIcon className="h-4 w-4 mr-1" />
+                          {processingApproval.has(refund.id) ? (
+                            <div className="h-4 w-4 mr-1 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          ) : (
+                            <CheckCircleIcon className="h-4 w-4 mr-1" />
+                          )}
                           Approve
                         </button>
                         <button
                           onClick={() => handleDenyRefund(refund.id)}
-                          className="px-3 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center"
-                          disabled={loading}
+                          className="px-3 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                          disabled={processingApproval.has(refund.id) || processingDenial.has(refund.id)}
                         >
-                          <XCircleIcon className="h-4 w-4 mr-1" />
+                          {processingDenial.has(refund.id) ? (
+                            <div className="h-4 w-4 mr-1 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          ) : (
+                            <XCircleIcon className="h-4 w-4 mr-1" />
+                          )}
                           Deny
                         </button>
                       </>

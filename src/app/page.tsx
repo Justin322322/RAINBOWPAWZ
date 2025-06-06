@@ -274,6 +274,25 @@ export default function Home() {
                 JOIN OUR PROVIDER NETWORK
               </button>
             </motion.div>
+            
+            {/* Mobile Login Buttons */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.6 }}
+              className="md:hidden flex flex-col sm:flex-row justify-center gap-4 mt-8"
+            >
+              <button onClick={openLoginModal}
+                className="px-6 py-3 bg-white/10 backdrop-blur-md text-white hover:bg-white/20 border border-white/30 rounded-full transition-all duration-300 transform hover:-translate-y-0.5 modern-label tracking-wide shadow-lg hover:shadow-xl"
+              >
+                LOGIN
+              </button>
+              <button onClick={openSignupOptionModal}
+                className="px-6 py-3 bg-transparent text-white hover:bg-white/10 border border-white rounded-full transition-all duration-300 transform hover:-translate-y-0.5 modern-label tracking-wide"
+              >
+                SIGN UP
+              </button>
+            </motion.div>
           </div>
         </div>
       </section>

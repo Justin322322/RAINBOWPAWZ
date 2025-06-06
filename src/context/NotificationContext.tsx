@@ -79,8 +79,8 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       if (isAdmin) {
         apiUrl = `/api/admin/notifications?unread_only=${unreadOnly}`;
       } else if (isBusiness) {
-        // Cremation business users use the user notification endpoint
-        apiUrl = `/api/user/notifications?limit=50`;
+        // Cremation business users use the dedicated cremation notification endpoint
+        apiUrl = `/api/cremation/notifications?limit=50`;
       } else {
         // Regular fur parent users
         apiUrl = `/api/user/notifications?limit=50`;
@@ -243,10 +243,11 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
     }
 
     try {
-      // Determine if this is an admin user
+      // Determine user type
       const userId = getUserId();
       const userType = getAccountType();
       const isAdmin = userType === 'admin';
+      const isBusiness = userType === 'business';
 
       // Use the appropriate API endpoint based on user type
       let apiUrl = '';
@@ -255,6 +256,9 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       if (isAdmin) {
         apiUrl = '/api/admin/notifications';
         requestBody = { notificationIds: [notificationId] };
+      } else if (isBusiness) {
+        apiUrl = `/api/cremation/notifications/${notificationId}`;
+        requestBody = {}; // PATCH request doesn't need body for single notification
       } else {
         apiUrl = '/api/user/notifications';
         requestBody = { notificationId: notificationId };
@@ -301,10 +305,11 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
     }
 
     try {
-      // Determine if this is an admin user
+      // Determine user type
       const userId = getUserId();
       const userType = getAccountType();
       const isAdmin = userType === 'admin';
+      const isBusiness = userType === 'business';
 
       // Use the appropriate API endpoint based on user type
       let apiUrl = '';
@@ -312,6 +317,9 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
 
       if (isAdmin) {
         apiUrl = '/api/admin/notifications';
+        requestBody = { markAll: true };
+      } else if (isBusiness) {
+        apiUrl = '/api/cremation/notifications';
         requestBody = { markAll: true };
       } else {
         apiUrl = '/api/user/notifications';
@@ -361,15 +369,21 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
     }
 
     try {
-      // Determine if this is an admin user
+      // Determine user type
       const userId = getUserId();
       const userType = getAccountType();
       const isAdmin = userType === 'admin';
+      const isBusiness = userType === 'business';
 
       // Use the appropriate API endpoint based on user type
-      const apiUrl = isAdmin
-        ? `/api/admin/notifications/${notificationId}`
-        : `/api/user/notifications/${notificationId}`;
+      let apiUrl = '';
+      if (isAdmin) {
+        apiUrl = `/api/admin/notifications/${notificationId}`;
+      } else if (isBusiness) {
+        apiUrl = `/api/cremation/notifications/${notificationId}`;
+      } else {
+        apiUrl = `/api/user/notifications/${notificationId}`;
+      }
 
       const response = await fetch(apiUrl, {
         method: 'DELETE',

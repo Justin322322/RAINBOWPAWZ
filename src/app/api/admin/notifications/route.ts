@@ -6,29 +6,8 @@ import { getAuthTokenFromRequest } from '@/utils/auth';
 export async function GET(request: NextRequest) {
   try {
     // Verify admin authentication
-    let isAuthenticated = false;
-    let accountType = '';
-
-    // Get auth token from request
     const authToken = getAuthTokenFromRequest(request);
-
-    // In development mode, we'll allow requests without auth token for testing
-    const isDevelopment = process.env.NODE_ENV === 'development';
-
-    if (authToken) {
-      // If we have a token, validate it
-      const tokenParts = authToken.split('_');
-      if (tokenParts.length === 2) {
-        accountType = tokenParts[1];
-        isAuthenticated = accountType === 'admin';
-      }
-    } else if (isDevelopment) {
-      // In development, allow requests without auth for testing
-      isAuthenticated = true;
-    }
-
-    // Check authentication result
-    if (!isAuthenticated) {
+    if (!authToken) {
       return NextResponse.json({
         error: 'Unauthorized',
         details: 'Admin access required',
@@ -43,11 +22,43 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    // Check if it's a JWT token or old format
+    let userId = null;
+    let accountType = null;
+
+    if (authToken.includes('.')) {
+      // JWT token format
+      const { decodeTokenUnsafe } = await import('@/lib/jwt');
+      const payload = decodeTokenUnsafe(authToken);
+      userId = payload?.userId || null;
+      accountType = payload?.accountType || null;
+    } else {
+      // Old format fallback
+      const parts = authToken.split('_');
+      if (parts.length === 2) {
+        userId = parts[0];
+        accountType = parts[1];
+      }
+    }
+
+    if (accountType !== 'admin') {
+      return NextResponse.json({
+        error: 'Unauthorized',
+        details: 'Admin access required',
+        success: false,
+        notifications: []
+      }, { 
+        status: 403,
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        }
+      });
+    }
+
     // Get query parameters
     const { searchParams } = new URL(request.url);
     const unreadOnly = searchParams.get('unread_only') === 'true';
-
-
 
     // Get notifications from the database
     // First check if the admin_notifications table exists
@@ -87,8 +98,6 @@ export async function GET(request: NextRequest) {
         LIMIT 50
       `);
 
-
-
       // Check which table exists: business_profiles or service_providers
       const tableCheckResult = await query(`
         SELECT table_name
@@ -99,7 +108,6 @@ export async function GET(request: NextRequest) {
 
       const tableNames = tableCheckResult.map((row: any) => row.table_name);
       const useServiceProvidersTable = tableNames.includes('service_providers');
-
 
       // Get pending applications count
       let pendingCount = 0;
@@ -210,35 +218,47 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     // Verify admin authentication
-    let isAuthenticated = false;
-    let accountType = '';
-
-    // Get auth token from request
     const authToken = getAuthTokenFromRequest(request);
-
-    // In development mode, we'll allow requests without auth token for testing
-    const isDevelopment = process.env.NODE_ENV === 'development';
-
-    if (authToken) {
-      // If we have a token, validate it
-      const tokenParts = authToken.split('_');
-      if (tokenParts.length === 2) {
-        accountType = tokenParts[1];
-        isAuthenticated = accountType === 'admin';
-      }
-    } else if (isDevelopment) {
-      // In development, allow requests without auth for testing
-      isAuthenticated = true;
-    }
-
-    // Check authentication result
-    if (!isAuthenticated) {
+    if (!authToken) {
       return NextResponse.json({
         error: 'Unauthorized',
         details: 'Admin access required',
         success: false
       }, { 
         status: 401,
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        }
+      });
+    }
+
+    // Check if it's a JWT token or old format
+    let userId = null;
+    let accountType = null;
+
+    if (authToken.includes('.')) {
+      // JWT token format
+      const { decodeTokenUnsafe } = await import('@/lib/jwt');
+      const payload = decodeTokenUnsafe(authToken);
+      userId = payload?.userId || null;
+      accountType = payload?.accountType || null;
+    } else {
+      // Old format fallback
+      const parts = authToken.split('_');
+      if (parts.length === 2) {
+        userId = parts[0];
+        accountType = parts[1];
+      }
+    }
+
+    if (accountType !== 'admin') {
+      return NextResponse.json({
+        error: 'Unauthorized',
+        details: 'Admin access required',
+        success: false
+      }, { 
+        status: 403,
         headers: {
           'Cache-Control': 'no-cache, no-store, must-revalidate',
           'Pragma': 'no-cache'

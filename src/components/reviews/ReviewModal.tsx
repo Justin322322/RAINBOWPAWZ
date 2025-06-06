@@ -35,7 +35,12 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
     setError(null);
 
     try {
-      const response = await fetch(`/api/reviews/booking/${bookingId}`);
+      const response = await fetch(`/api/reviews/booking/${bookingId}`, {
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
       if (response.ok) {
         const data = await response.json();
         setHasReview(data.hasReview);
@@ -63,6 +68,21 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
       onSuccess();
     }
   };
+
+  // Don't render if required props are missing
+  if (!bookingId || !userId || !providerId) {
+    console.error('ReviewModal: Missing required props:', { 
+      bookingId, 
+      userId, 
+      providerId,
+      types: {
+        bookingId: typeof bookingId,
+        userId: typeof userId,
+        providerId: typeof providerId
+      }
+    });
+    return null;
+  }
 
   return (
     <Modal

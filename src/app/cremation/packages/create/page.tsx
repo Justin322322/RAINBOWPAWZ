@@ -222,14 +222,40 @@ function usePackageForm(router: AppRouterInstance, showToast: {
       }
 
       try {
-        const res = await fetch('/api/upload/package-image', { method: 'POST', body: payload });
+        const res = await fetch('/api/upload/package-image', { 
+          method: 'POST', 
+          body: payload,
+          credentials: 'include'
+        });
+        
         if (!res.ok) {
-          const err = await res.json(); throw new Error(err.error || 'Upload failed');
+          const err = await res.json();
+          console.error('Image upload failed:', err);
+          
+          // Provide specific error messages based on the response
+          let errorMessage = `Failed to upload ${file.name}`;
+          if (err.error) {
+            if (err.error.includes('Unauthorized')) {
+              errorMessage = 'Authentication required. Please log in again.';
+            } else if (err.error.includes('business accounts')) {
+              errorMessage = 'Only business accounts can upload package images.';
+            } else if (err.error.includes('Service provider not found')) {
+              errorMessage = 'Service provider profile not found. Please complete your business profile first.';
+            } else {
+              errorMessage = `Failed to upload ${file.name}: ${err.error}`;
+            }
+          }
+          
+          throw new Error(errorMessage);
         }
+        
         const data = await res.json();
+        console.log('Image upload successful:', data);
         return data.filePath as string;
       } catch (err) {
-        showToast(`Failed to upload ${file.name}`, 'error');
+        const errorMessage = err instanceof Error ? err.message : `Failed to upload ${file.name}`;
+        showToast(errorMessage, 'error');
+        console.error('Image upload error:', err);
         return null;
       }
     });
@@ -237,7 +263,9 @@ function usePackageForm(router: AppRouterInstance, showToast: {
     const paths = (await Promise.all(uploadPromises)).filter(p => p) as string[];
     if (paths.length) {
       setFormData(prev => ({ ...prev, images: [...prev.images, ...paths] }));
-      showToast(`${paths.length} images uploaded`, 'success');
+      showToast(`${paths.length} images uploaded successfully`, 'success');
+    } else if (files.length > 0) {
+      showToast('No images were uploaded successfully. Please check the errors above.', 'error');
     }
   }, [showToast, formData.packageId]);
 
@@ -261,17 +289,43 @@ function usePackageForm(router: AppRouterInstance, showToast: {
     if (!validateForm()) return;
     setIsSubmitting(true);
     try {
+      console.log('Submitting package data:', formData);
+      
       const res = await fetch('/api/packages', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+        credentials: 'include'
       });
+      
       if (!res.ok) {
-        const err = await res.json(); throw new Error(err.error || 'Creation failed');
+        const err = await res.json();
+        console.error('Package creation failed:', err);
+        
+        // Provide specific error messages based on the response
+        let errorMessage = 'Failed to create package';
+        if (err.error) {
+          if (err.error.includes('Unauthorized')) {
+            errorMessage = 'Authentication required. Please log in again.';
+          } else if (err.error.includes('business accounts')) {
+            errorMessage = 'Only business accounts can create packages.';
+          } else if (err.error.includes('Service provider not found')) {
+            errorMessage = 'Service provider profile not found. Please complete your business profile first.';
+          } else {
+            errorMessage = err.error;
+          }
+        }
+        
+        throw new Error(errorMessage);
       }
-      showToast('Package created!', 'success' as ToastType);
+      
+      const result = await res.json();
+      console.log('Package created successfully:', result);
+      showToast('Package created successfully!', 'success' as ToastType);
       router.push('/cremation/packages');
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed to create';
+      const msg = err instanceof Error ? err.message : 'Failed to create package';
+      console.error('Package creation error:', err);
       setErrors({ submit: msg });
       showToast(msg, 'error' as ToastType);
     } finally {

@@ -28,7 +28,12 @@ const ReviewPrompt: React.FC<ReviewPromptProps> = ({
     // Check if user has already reviewed this booking
     const checkExistingReview = async () => {
       try {
-        const response = await fetch(`/api/reviews/booking/${bookingId}`);
+        const response = await fetch(`/api/reviews/booking/${bookingId}`, {
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
         
         if (response.ok) {
           const data = await response.json();

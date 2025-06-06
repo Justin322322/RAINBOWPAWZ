@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { getAuthTokenFromRequest } from '@/utils/auth';
 import { sendEmail } from '@/lib/consolidatedEmailService';
+import { createAdminNotification } from '@/utils/adminNotificationService';
 
 /**
  * POST - Deny a refund request
@@ -20,7 +21,25 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const [, accountType] = authToken.split('_');
+    // Check if it's a JWT token or old format
+    let userId = null;
+    let accountType = null;
+
+    if (authToken.includes('.')) {
+      // JWT token format
+      const { decodeTokenUnsafe } = await import('@/lib/jwt');
+      const payload = decodeTokenUnsafe(authToken);
+      userId = payload?.userId || null;
+      accountType = payload?.accountType || null;
+    } else {
+      // Old format fallback
+      const parts = authToken.split('_');
+      if (parts.length === 2) {
+        userId = parts[0];
+        accountType = parts[1];
+      }
+    }
+
     if (accountType !== 'admin') {
       return NextResponse.json({
         error: 'Unauthorized - Admin access required'
@@ -117,6 +136,19 @@ export async function POST(
       } catch (emailError) {
         console.error('Failed to send denial email:', emailError);
       }
+    }
+
+    // Create admin notification for refund denial
+    try {
+      await createAdminNotification({
+        type: 'refund_denied',
+        title: 'Refund Request Denied',
+        message: `Refund request for booking #${refund.booking_id} (${refund.pet_name}) has been denied. Amount: ₱${refund.amount.toFixed(2)}`,
+        entityType: 'refund',
+        entityId: refundId
+      });
+    } catch (adminNotificationError) {
+      console.error('Failed to create admin notification:', adminNotificationError);
     }
 
     return NextResponse.json({

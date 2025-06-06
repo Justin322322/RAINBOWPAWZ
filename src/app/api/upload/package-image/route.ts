@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { writeFile, mkdir } from 'fs/promises';
 import { join, dirname } from 'path';
-import { getAuthTokenFromRequest } from '@/utils/auth';
+import { getAuthTokenFromRequest, parseAuthTokenAsync } from '@/utils/auth';
 import { query } from '@/lib/db';
 import * as fs from 'fs';
 
@@ -17,7 +17,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const [userId, accountType] = authToken.split('_');
+    // Parse auth token to handle both JWT and old formats
+    const authData = await parseAuthTokenAsync(authToken);
+    if (!authData) {
+      return NextResponse.json({ error: 'Invalid authentication token' }, { status: 401 });
+    }
+
+    const { userId, accountType } = authData;
 
     // Only business accounts can upload package images
     if (accountType !== 'business') {

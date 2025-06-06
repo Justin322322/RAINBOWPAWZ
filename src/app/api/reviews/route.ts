@@ -12,16 +12,72 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const [tokenUserId, accountType] = authToken.split('_');
+    // Check if it's a JWT token or old format
+    let tokenUserId = null;
+    let accountType = null;
+
+    if (authToken.includes('.')) {
+      // JWT token format
+      try {
+        const { decodeTokenUnsafe } = await import('@/lib/jwt');
+        const payload = decodeTokenUnsafe(authToken);
+        tokenUserId = payload?.userId?.toString() || null;
+        accountType = payload?.accountType || null;
+      } catch (error) {
+        console.error('Error decoding JWT token:', error);
+        return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+      }
+    } else {
+      // Old format fallback
+      const parts = authToken.split('_');
+      if (parts.length === 2) {
+        tokenUserId = parts[0];
+        accountType = parts[1];
+      }
+    }
+
+    if (!tokenUserId) {
+      return NextResponse.json({ error: 'Invalid authentication token' }, { status: 401 });
+    }
 
     const body = await request.json();
     const { booking_id, user_id, service_provider_id, rating, comment } = body;
 
+    console.log('Review submission data:', {
+      booking_id,
+      user_id,
+      service_provider_id,
+      rating,
+      tokenUserId,
+      accountType
+    });
+
     // Validate required fields
     if (!booking_id || !user_id || !service_provider_id || !rating) {
+      console.error('Missing required fields:', {
+        booking_id: { value: booking_id, type: typeof booking_id, present: !!booking_id },
+        user_id: { value: user_id, type: typeof user_id, present: !!user_id },
+        service_provider_id: { value: service_provider_id, type: typeof service_provider_id, present: !!service_provider_id },
+        rating: { value: rating, type: typeof rating, present: !!rating }
+      });
       return NextResponse.json({
-        error: 'Booking ID, User ID, Service Provider ID, and Rating are required'
+        error: 'Booking ID, User ID, Service Provider ID, and Rating are required',
+        receivedData: { booking_id, user_id, service_provider_id, rating },
+        validation: {
+          booking_id: !!booking_id,
+          user_id: !!user_id,
+          service_provider_id: !!service_provider_id,
+          rating: !!rating
+        }
       }, { status: 400 });
+    }
+
+    // Ensure the authenticated user matches the user_id in the request
+    if (tokenUserId !== user_id.toString()) {
+      console.error('User ID mismatch:', { tokenUserId, requestUserId: user_id });
+      return NextResponse.json({
+        error: 'You can only submit reviews for your own bookings'
+      }, { status: 403 });
     }
 
     // Validate rating is between 1 and 5

@@ -99,29 +99,31 @@ function ApplicationDetailContent({ id }: ApplicationDetailContentProps) {
           if (verificationStatusFromDB === 'declined' || verificationStatusFromDB === 'restricted') {
             // Create a minimal application object with the correct status
             // This ensures the UI shows the correct status even if the API is returning incorrect data
-            if (!application) {
-              const minimalApp: Application = {
-                id: `APP${id.toString().padStart(3, '0')}`,
-                businessId: id,
-                status: verificationStatusFromDB,
-                verificationStatus: verificationStatusFromDB,
-                submitDate: new Date().toLocaleDateString('en-US', {
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric'
-                }),
-                businessName: 'Loading...',
-                documents: []
-              };
-              setApplication(minimalApp);
-            } else {
-              // Update the existing application object with the correct status
-              setApplication(prev => ({
-                ...prev!,
-                status: verificationStatusFromDB!,
-                verificationStatus: verificationStatusFromDB!
-              }));
-            }
+            setApplication(prev => {
+              if (!prev) {
+                const minimalApp: Application = {
+                  id: `APP${id.toString().padStart(3, '0')}`,
+                  businessId: id,
+                  status: verificationStatusFromDB!,
+                  verificationStatus: verificationStatusFromDB!,
+                  submitDate: new Date().toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                  }),
+                  businessName: 'Loading...',
+                  documents: []
+                };
+                return minimalApp;
+              } else {
+                // Update the existing application object with the correct status
+                return {
+                  ...prev,
+                  status: verificationStatusFromDB!,
+                  verificationStatus: verificationStatusFromDB!
+                };
+              }
+            });
           }
         }
       }
@@ -239,61 +241,11 @@ function ApplicationDetailContent({ id }: ApplicationDetailContentProps) {
     } finally {
       setIsLoading(false);
     }
-  }, [id, application]);
+  }, [id]);
 
   // Fetch application data
   useEffect(() => {
     if (id) {
-      // Check if we have a stored status in sessionStorage
-      try {
-        const storedStatus = sessionStorage.getItem(`application_${id}_status`);
-        // We'll use this in fetchApplicationData
-      } catch (storageError) {
-        // Error accessing sessionStorage
-      }
-
-      // EMERGENCY FIX: Check if this is a declined or restricted application
-      // and force the correct status display
-      const checkDirectStatus = async () => {
-        try {
-          const cacheBuster = new Date().getTime();
-          const dbStatusResponse = await fetch(`/api/businesses/applications/${id}/status?_=${cacheBuster}`);
-
-          if (dbStatusResponse.ok) {
-            const dbStatusData = await dbStatusResponse.json();
-
-            if (dbStatusData.verification_status === 'declined' || dbStatusData.verification_status === 'restricted') {
-
-              // Force the correct status in the UI
-              setApplication(prev => {
-                if (!prev) {
-                  return {
-                    id: `APP${id.toString().padStart(3, '0')}`,
-                    businessId: id,
-                    status: dbStatusData.verification_status,
-                    verificationStatus: dbStatusData.verification_status,
-                    submitDate: new Date().toLocaleDateString('en-US', {
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric'
-                    }),
-                    businessName: 'Loading...',
-                    documents: []
-                  };
-                }
-                return {
-                  ...prev,
-                  status: dbStatusData.verification_status,
-                  verificationStatus: dbStatusData.verification_status
-                };
-              });
-            }
-          }
-        } catch (error) {
-        }
-      };
-
-      checkDirectStatus();
       fetchApplicationData();
     }
   }, [id, fetchApplicationData]);

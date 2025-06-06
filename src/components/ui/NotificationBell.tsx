@@ -9,8 +9,34 @@ import Link from 'next/link';
 
 export default function NotificationBell() {
   const [isOpen, setIsOpen] = useState(false);
+  const [dropdownPosition, setDropdownPosition] = useState<{ right?: string; left?: string }>({ right: '0' });
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
   const { notifications, unreadCount, loading, markAsRead, markAllAsRead, removeNotification, fetchNotifications } = useNotifications();
+
+  // Calculate dropdown position to prevent overflow
+  const calculateDropdownPosition = () => {
+    if (buttonRef.current) {
+      const buttonRect = buttonRef.current.getBoundingClientRect();
+      const viewportWidth = window.innerWidth;
+      const dropdownWidth = window.innerWidth < 640 ? 288 : window.innerWidth < 1024 ? 320 : 384; // w-72, w-80, w-96
+      
+      // Check if dropdown would overflow on the right
+      const wouldOverflow = buttonRect.right - dropdownWidth < 0 || buttonRect.left + dropdownWidth > viewportWidth;
+      
+      if (wouldOverflow) {
+        // Calculate optimal position to keep dropdown within viewport
+        const rightEdge = Math.min(16, viewportWidth - dropdownWidth - 16); // 16px margin from right edge
+        setDropdownPosition({ 
+          right: `${rightEdge}px`,
+          left: 'auto'
+        });
+      } else {
+        // Default position (right-aligned to button)
+        setDropdownPosition({ right: '0', left: 'auto' });
+      }
+    }
+  };
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -22,6 +48,7 @@ export default function NotificationBell() {
 
     if (isOpen) {
       document.addEventListener('mousedown', handleClickOutside);
+      calculateDropdownPosition();
     }
 
     return () => {
@@ -161,6 +188,7 @@ export default function NotificationBell() {
   return (
     <div className="relative z-[70]" ref={dropdownRef} data-notification-bell>
       <button
+        ref={buttonRef}
         onClick={(e) => {
           e.stopPropagation();
           setIsOpen(!isOpen);
@@ -185,46 +213,65 @@ export default function NotificationBell() {
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-96 max-w-[90vw] bg-white rounded-lg shadow-xl py-1 z-[80] max-h-[80vh] overflow-y-auto border border-gray-200">
-          <div className="px-4 py-2 border-b border-gray-200 bg-gray-50 rounded-t-lg">
+        <div className="absolute mt-2 w-72 sm:w-80 lg:w-96 max-w-[calc(100vw-1rem)] bg-white rounded-xl shadow-2xl border border-gray-100 z-[9999] max-h-[85vh] overflow-hidden"
+             style={{ 
+               position: 'absolute',
+               top: '100%',
+               ...dropdownPosition,
+               marginTop: '0.5rem'
+             }}>
+          {/* Header */}
+          <div className="px-4 py-3 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-gray-100/50">
             <div className="flex justify-between items-center">
-              <h3 className="text-sm font-medium text-gray-900">Notifications</h3>
+              <div className="flex items-center space-x-2">
+                <div className="p-1.5 bg-[var(--primary-green)] rounded-lg">
+                  <BellIcon className="h-4 w-4 text-white" />
+                </div>
+                <h3 className="text-sm font-semibold text-gray-900">Notifications</h3>
+                {unreadCount > 0 && (
+                  <span className="hidden sm:inline-flex px-2 py-0.5 bg-red-100 text-red-800 text-xs font-medium rounded-full">
+                    {unreadCount} new
+                  </span>
+                )}
+              </div>
               {unreadCount > 0 && (
                 <button
                   onClick={() => markAllAsRead()}
-                  className="text-xs text-[var(--primary-green)] hover:text-[var(--primary-green-dark)] font-medium"
+                  className="text-xs text-[var(--primary-green)] hover:text-[var(--primary-green-dark)] font-medium px-2 py-1 rounded-md hover:bg-white/50 transition-all duration-200 whitespace-nowrap"
                 >
-                  Mark all as read
+                  Mark all read
                 </button>
               )}
             </div>
           </div>
-
-          {loading && (
+          
+          {/* Content */}
+          <div className="max-h-[70vh] overflow-y-auto overscroll-contain">
+            {loading && (
             <div className="flex justify-center items-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[var(--primary-green)]"></div>
             </div>
           )}
 
-          {!loading && notifications.length === 0 && (
-            <div className="px-4 py-8 text-center">
-              <div className="mx-auto w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mb-3">
-                <BellIcon className="h-6 w-6 text-gray-400" />
+            {!loading && notifications.length === 0 && (
+              <div className="px-4 py-8 text-center">
+                <div className="mx-auto w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mb-3">
+                  <BellIcon className="h-6 w-6 text-gray-400" />
+                </div>
+                <p className="text-sm text-gray-500">No notifications yet</p>
+                <p className="text-xs text-gray-400 mt-1">We&apos;ll notify you when something important happens</p>
               </div>
-              <p className="text-sm text-gray-500">No notifications yet</p>
-              <p className="text-xs text-gray-400 mt-1">We&apos;ll notify you when something important happens</p>
-            </div>
-          )}
+            )}
 
-          {!loading && notifications.length > 0 && (
-            <div className="divide-y divide-gray-100">
-              {notifications.filter(notification => notification && notification.id).map((notification, index) => (
-                <div
-                  key={`notification-${notification.id}-${index}`}
-                  className={`px-4 py-3 hover:bg-gray-50 transition-colors ${
-                    notification.is_read === 0 ? 'bg-blue-50/70' : ''
-                  }`}
-                >
+            {!loading && notifications.length > 0 && (
+              <div className="divide-y divide-gray-100">
+                {notifications.filter(notification => notification && notification.id).map((notification, index) => (
+                  <div
+                    key={`notification-${notification.id}-${index}`}
+                    className={`px-4 py-3 hover:bg-gray-50 transition-colors ${
+                      notification.is_read === 0 ? 'bg-blue-50/70' : ''
+                    }`}
+                  >
                   {notification.link ? (
                     <div className="relative group">
                       <Link
@@ -284,22 +331,24 @@ export default function NotificationBell() {
                     </div>
                   )}
                 </div>
-              ))}
+                                ))}
+                </div>
+              )}
             </div>
-          )}
 
-          <div className="px-4 py-2 border-t border-gray-200 bg-gray-50 rounded-b-lg">
-            <div className="flex justify-center">
-              <button
-                onClick={() => setIsOpen(false)}
-                className="text-xs text-gray-500 hover:text-gray-700 font-medium"
-              >
-                Close
-              </button>
+            {/* Footer */}
+            <div className="px-4 py-2 border-t border-gray-100 bg-gradient-to-r from-gray-50 to-gray-100/50">
+              <div className="flex justify-center">
+                <button
+                  onClick={() => setIsOpen(false)}
+                  className="text-xs text-gray-500 hover:text-gray-700 font-medium px-3 py-1 rounded-md hover:bg-white/50 transition-all duration-200"
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
-    </div>
-  );
-}
+        )}
+      </div>
+    );
+  }

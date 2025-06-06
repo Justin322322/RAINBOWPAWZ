@@ -64,7 +64,12 @@ const CompletedBookingReviewPrompt: React.FC<CompletedBookingReviewPromptProps> 
           }
         }
 
-        const response = await fetch('/api/reviews/pending');
+        const response = await fetch('/api/reviews/pending', {
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
 
         if (!response.ok) {
           throw new Error('Failed to fetch pending reviews');

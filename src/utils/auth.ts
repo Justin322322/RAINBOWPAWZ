@@ -14,8 +14,45 @@ export const parseAuthToken = (authToken: string): { userId: string; accountType
     if (authToken.includes('.')) {
       // JWT token format
       const payload = decodeTokenUnsafe(authToken);
-      userId = payload?.userId || null;
+      userId = payload?.userId?.toString() || null;
       accountType = payload?.accountType || null;
+    } else {
+      // Old format fallback
+      const parts = authToken.split('_');
+      if (parts.length === 2) {
+        userId = parts[0];
+        accountType = parts[1];
+      }
+    }
+
+    if (!userId || !accountType) {
+      return null;
+    }
+
+    return { userId, accountType };
+  } catch (error) {
+    return null;
+  }
+};
+
+// Enhanced version that also handles async JWT import for API routes
+export const parseAuthTokenAsync = async (authToken: string): Promise<{ userId: string; accountType: string } | null> => {
+  try {
+    let userId: string | null = null;
+    let accountType: string | null = null;
+
+    // Check if it's a JWT token or old format
+    if (authToken.includes('.')) {
+      // JWT token format
+      try {
+        const { decodeTokenUnsafe } = await import('@/lib/jwt');
+        const payload = decodeTokenUnsafe(authToken);
+        userId = payload?.userId?.toString() || null;
+        accountType = payload?.accountType || null;
+      } catch (error) {
+        console.error('Error decoding JWT token:', error);
+        return null;
+      }
     } else {
       // Old format fallback
       const parts = authToken.split('_');

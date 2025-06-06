@@ -203,6 +203,154 @@ export async function processPayMongoRefund(
 
     const transaction = transactionResult[0];
 
+    // PayMongo requires the payment ID, not the payment_intent_id or source_id
+    // We need to get the actual payment ID from PayMongo
+    let paymentId: string | null = null;
+    
+    if (transaction.provider_transaction_id) {
+      // If we have the payment ID stored, use it
+      paymentId = transaction.provider_transaction_id;
+      console.log('Using stored payment ID:', paymentId);
+    } else if (transaction.payment_intent_id) {
+      // If we only have payment_intent_id, retrieve the payment from PayMongo
+      try {
+        console.log('Retrieving payment intent:', transaction.payment_intent_id);
+        const { retrievePaymentIntent } = await import('@/lib/paymongo');
+        const paymentIntent = await retrievePaymentIntent(transaction.payment_intent_id);
+        
+        // Get the first successful payment from the payment intent
+        if (paymentIntent.attributes.payments && paymentIntent.attributes.payments.length > 0) {
+          const successfulPayment = paymentIntent.attributes.payments.find(
+            (payment: any) => payment.attributes.status === 'paid'
+          );
+          if (successfulPayment) {
+            paymentId = successfulPayment.id;
+            console.log('Found payment ID from intent:', paymentId);
+            
+            // Store the payment ID for future use
+            await query(`
+              UPDATE payment_transactions
+              SET provider_transaction_id = ?, updated_at = NOW()
+              WHERE id = ?
+            `, [paymentId, transaction.id]);
+          }
+        } else {
+          console.log('No payments found in payment intent');
+        }
+      } catch (error) {
+        console.error('Error retrieving payment intent:', error);
+        
+        // Try to find payment by searching recent payments
+        try {
+          console.log('Attempting to find payment by searching recent transactions...');
+          const { listPayments } = await import('@/lib/paymongo');
+          const recentPayments = await listPayments({ limit: 100 });
+          
+          // Look for a payment that matches our transaction amount and timing
+          const matchingPayment = recentPayments.find((payment: any) => {
+            const paymentAmount = payment.attributes.amount;
+            const transactionAmount = phpToCentavos(transaction.price);
+            const paymentDate = new Date(payment.attributes.created_at * 1000);
+            const transactionDate = new Date(transaction.created_at);
+            
+            // Check if amounts match and payments were created within 24 hours of each other
+            const amountMatches = paymentAmount === transactionAmount;
+            const timeDiff = Math.abs(paymentDate.getTime() - transactionDate.getTime());
+            const timeMatches = timeDiff < (24 * 60 * 60 * 1000); // 24 hours
+            
+            return amountMatches && timeMatches && payment.attributes.status === 'paid';
+          });
+          
+          if (matchingPayment) {
+            paymentId = matchingPayment.id;
+            console.log('Found matching payment by search:', paymentId);
+            
+            // Store the payment ID for future use
+            await query(`
+              UPDATE payment_transactions
+              SET provider_transaction_id = ?, updated_at = NOW()
+              WHERE id = ?
+            `, [paymentId, transaction.id]);
+          }
+        } catch (searchError) {
+          console.error('Error searching for payments:', searchError);
+        }
+      }
+    } else if (transaction.source_id) {
+      // For source-based payments, try to find the payment using the source
+      try {
+        console.log('Retrieving source:', transaction.source_id);
+        const { retrieveSource } = await import('@/lib/paymongo');
+        const source = await retrieveSource(transaction.source_id);
+        
+        if (source.attributes.status === 'chargeable') {
+          // Search for payments that used this source
+          const { listPayments } = await import('@/lib/paymongo');
+          const recentPayments = await listPayments({ limit: 100 });
+          
+          const sourcePayment = recentPayments.find((payment: any) => {
+            return payment.attributes.source?.id === transaction.source_id && 
+                   payment.attributes.status === 'paid';
+          });
+          
+          if (sourcePayment) {
+            paymentId = sourcePayment.id;
+            console.log('Found payment ID from source:', paymentId);
+            
+            // Store the payment ID for future use
+            await query(`
+              UPDATE payment_transactions
+              SET provider_transaction_id = ?, updated_at = NOW()
+              WHERE id = ?
+            `, [paymentId, transaction.id]);
+          }
+        }
+      } catch (error) {
+        console.error('Error retrieving source:', error);
+      }
+    }
+
+    if (!paymentId) {
+      // Try one more approach - search by transaction metadata
+      try {
+        console.log('Final attempt: searching by booking ID in payment descriptions...');
+        const { listPayments } = await import('@/lib/paymongo');
+        const recentPayments = await listPayments({ limit: 200 });
+        
+        const bookingPayment = recentPayments.find((payment: any) => {
+          const description = payment.attributes.description || '';
+          const paymentAmount = payment.attributes.amount;
+          const transactionAmount = phpToCentavos(transaction.price);
+          
+          // Look for booking ID in description and matching amount
+          const hasBookingId = description.includes(`#${bookingId}`) || 
+                             description.includes(`booking ${bookingId}`) ||
+                             description.includes(`booking_${bookingId}`);
+          const amountMatches = paymentAmount === transactionAmount;
+          
+          return hasBookingId && amountMatches && payment.attributes.status === 'paid';
+        });
+        
+        if (bookingPayment) {
+          paymentId = bookingPayment.id;
+          console.log('Found payment ID by booking description:', paymentId);
+          
+          // Store the payment ID for future use
+          await query(`
+            UPDATE payment_transactions
+            SET provider_transaction_id = ?, updated_at = NOW()
+            WHERE id = ?
+          `, [paymentId, transaction.id]);
+        }
+      } catch (searchError) {
+        console.error('Error searching payments by description:', searchError);
+      }
+    }
+
+    if (!paymentId) {
+      throw new Error(`Cannot determine PayMongo payment ID for refund. Tried all resolution methods for booking ${bookingId}. Please ensure the payment was processed through PayMongo and try again.`);
+    }
+
     // Create refund with PayMongo
     const refundData: PayMongoRefundData = {
       amount: phpToCentavos(transaction.price),
@@ -210,10 +358,13 @@ export async function processPayMongoRefund(
       notes: `Refund for booking #${bookingId}`
     };
 
-    const paymongoRefund = await createPayMongoRefund(
-      transaction.payment_intent_id || transaction.source_id,
-      refundData
-    );
+    console.log('Attempting PayMongo refund:', {
+      paymentId,
+      amount: refundData.amount,
+      reason: refundData.reason
+    });
+
+    const paymongoRefund = await createPayMongoRefund(paymentId, refundData);
 
     // Update refund record with PayMongo transaction ID
     await query(`
@@ -222,18 +373,83 @@ export async function processPayMongoRefund(
       WHERE id = ?
     `, [paymongoRefund.id, REFUND_STATUS.PROCESSING, refundId]);
 
+    // Store the payment ID if we didn't have it before
+    if (!transaction.provider_transaction_id && paymentId) {
+      await query(`
+        UPDATE payment_transactions
+        SET provider_transaction_id = ?, updated_at = NOW()
+        WHERE id = ?
+      `, [paymentId, transaction.id]);
+    }
+
+    console.log('PayMongo refund created successfully:', paymongoRefund.id);
     return true;
+
   } catch (error) {
     console.error('Error processing PayMongo refund:', error);
 
-    // Update refund status to failed
+    // Parse PayMongo specific errors for better handling
+    let errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    let shouldRetry = false;
+    let retryAfterMinutes = 0;
+
+    // Check for specific PayMongo error patterns
+    if (errorMessage.includes('provider_processing_error')) {
+      errorMessage = 'PayMongo provider is temporarily unavailable. Retrying in 5 minutes.';
+      shouldRetry = true;
+      retryAfterMinutes = 5;
+    } else if (errorMessage.includes('resource_processing_state')) {
+      errorMessage = 'A refund is already being processed for this payment.';
+      shouldRetry = false;
+    } else if (errorMessage.includes('resource_failed_state')) {
+      errorMessage = 'This payment cannot be refunded (payment not in paid state).';
+      shouldRetry = false;
+    } else if (errorMessage.includes('allowed_date_exceeded')) {
+      errorMessage = 'Refund period has expired for this payment method.';
+      shouldRetry = false;
+    } else if (errorMessage.includes('available_balance_insufficient')) {
+      errorMessage = 'Insufficient balance in PayMongo account for refund.';
+      shouldRetry = false;
+    } else if (errorMessage.includes('parameter_above_maximum')) {
+      errorMessage = 'Refund amount exceeds the maximum refundable amount.';
+      shouldRetry = false;
+    } else if (errorMessage.includes('refund_not_allowed')) {
+      errorMessage = 'Refunds are not allowed for this payment type.';
+      shouldRetry = false;
+    } else if (errorMessage.includes('Cannot determine PayMongo payment ID')) {
+      // This is our custom error for payment ID resolution issues
+      errorMessage = 'Unable to locate the PayMongo payment record. This may indicate a payment data synchronization issue.';
+      shouldRetry = true;
+      retryAfterMinutes = 10;
+    } else if (errorMessage.includes('timeout') || errorMessage.includes('network')) {
+      errorMessage = 'Network timeout communicating with PayMongo. Retrying in 2 minutes.';
+      shouldRetry = true;
+      retryAfterMinutes = 2;
+    } else if (errorMessage.includes('rate limit')) {
+      errorMessage = 'PayMongo API rate limit exceeded. Retrying in 15 minutes.';
+      shouldRetry = true;
+      retryAfterMinutes = 15;
+    }
+
+    // Update refund status with detailed error message and retry info
+    const statusToSet = shouldRetry ? REFUND_STATUS.PENDING : REFUND_STATUS.FAILED;
+    const notes = shouldRetry 
+      ? `PayMongo Error: ${errorMessage} Will retry automatically.`
+      : `PayMongo Error: ${errorMessage} Manual intervention required.`;
+
     await query(`
       UPDATE refunds
-      SET status = ?, notes = CONCAT(COALESCE(notes, ''), '\nPayMongo Error: ', ?), updated_at = NOW()
+      SET status = ?, notes = CONCAT(COALESCE(notes, ''), '\n', ?), updated_at = NOW()
       WHERE id = ?
-    `, [REFUND_STATUS.FAILED, error instanceof Error ? error.message : 'Unknown error', refundId]);
+    `, [statusToSet, notes, refundId]);
 
-    throw error;
+    // If we should retry, schedule a retry (you could implement a job queue for this)
+    if (shouldRetry && retryAfterMinutes > 0) {
+      console.log(`Refund ${refundId} will be retried in ${retryAfterMinutes} minutes`);
+      // TODO: Implement automatic retry mechanism with job queue
+    }
+
+    throw new Error(errorMessage);
   }
 }
 
@@ -286,6 +502,131 @@ export async function getRefundById(refundId: number): Promise<Refund | null> {
   } catch (error) {
     console.error('Error getting refund by ID:', error);
     return null;
+  }
+}
+
+/**
+ * Retry failed PayMongo refunds that are eligible for retry
+ */
+export async function retryFailedRefunds(): Promise<{ success: number; failed: number; }> {
+  try {
+    // Get refunds that are pending and have retry notes
+    const retryableRefunds = await query(`
+      SELECT r.*, sb.payment_method
+      FROM refunds r
+      JOIN service_bookings sb ON r.booking_id = sb.id
+      WHERE r.status = 'pending' 
+      AND sb.payment_method = 'gcash'
+      AND r.notes LIKE '%Will retry automatically%'
+      AND r.updated_at < DATE_SUB(NOW(), INTERVAL 2 MINUTE)
+    `) as any[];
+
+    let successCount = 0;
+    let failedCount = 0;
+
+    for (const refund of retryableRefunds) {
+      try {
+        console.log(`Retrying refund ${refund.id} for booking ${refund.booking_id}`);
+        
+        await processPayMongoRefund(refund.booking_id, refund.id, refund.reason);
+        successCount++;
+        
+        console.log(`Successfully retried refund ${refund.id}`);
+      } catch (error) {
+        console.error(`Failed to retry refund ${refund.id}:`, error);
+        failedCount++;
+      }
+    }
+
+    if (retryableRefunds.length > 0) {
+      console.log(`Retry results: ${successCount} successful, ${failedCount} failed out of ${retryableRefunds.length} attempts`);
+    }
+
+    return { success: successCount, failed: failedCount };
+  } catch (error) {
+    console.error('Error retrying failed refunds:', error);
+    return { success: 0, failed: 0 };
+  }
+}
+
+/**
+ * Validate and fix payment data for refunds
+ */
+export async function validatePaymentDataForRefund(bookingId: number): Promise<boolean> {
+  try {
+    console.log(`Validating payment data for booking ${bookingId}`);
+    
+    // Get booking and transaction info
+    const bookingResult = await query(`
+      SELECT sb.*, pt.payment_intent_id, pt.source_id, pt.provider_transaction_id
+      FROM service_bookings sb
+      LEFT JOIN payment_transactions pt ON sb.id = pt.booking_id AND pt.status = 'succeeded'
+      WHERE sb.id = ? AND sb.payment_method = 'gcash' AND sb.payment_status = 'paid'
+    `, [bookingId]) as any[];
+
+    if (!bookingResult || bookingResult.length === 0) {
+      console.log(`No GCash payment found for booking ${bookingId}`);
+      return false;
+    }
+
+    const booking = bookingResult[0];
+    
+    // If we already have provider_transaction_id, we're good
+    if (booking.provider_transaction_id) {
+      console.log(`Payment data already validated for booking ${bookingId}`);
+      return true;
+    }
+
+    // Try to resolve the payment ID using our improved resolution logic
+    if (booking.payment_intent_id || booking.source_id) {
+      try {
+        // Use a simulated call to our payment resolution logic
+        const transaction = {
+          id: booking.id,
+          payment_intent_id: booking.payment_intent_id,
+          source_id: booking.source_id,
+          price: booking.price,
+          created_at: booking.created_at
+        };
+
+        // Try to resolve payment ID (reuse the logic from processPayMongoRefund)
+        let paymentId: string | null = null;
+
+        if (booking.payment_intent_id) {
+          const { retrievePaymentIntent } = await import('@/lib/paymongo');
+          const paymentIntent = await retrievePaymentIntent(booking.payment_intent_id);
+          
+          if (paymentIntent.attributes.payments && paymentIntent.attributes.payments.length > 0) {
+            const successfulPayment = paymentIntent.attributes.payments.find(
+              (payment: any) => payment.attributes.status === 'paid'
+            );
+            if (successfulPayment) {
+              paymentId = successfulPayment.id;
+            }
+          }
+        }
+
+        if (paymentId) {
+          // Update the payment transaction with the resolved payment ID
+          await query(`
+            UPDATE payment_transactions
+            SET provider_transaction_id = ?, updated_at = NOW()
+            WHERE booking_id = ? AND status = 'succeeded'
+          `, [paymentId, bookingId]);
+          
+          console.log(`Successfully resolved and stored payment ID for booking ${bookingId}: ${paymentId}`);
+          return true;
+        }
+      } catch (error) {
+        console.error(`Error resolving payment ID for booking ${bookingId}:`, error);
+      }
+    }
+
+    console.log(`Could not validate payment data for booking ${bookingId}`);
+    return false;
+  } catch (error) {
+    console.error(`Error validating payment data for booking ${bookingId}:`, error);
+    return false;
   }
 }
 

@@ -275,17 +275,37 @@ function EditPackagePage({ userData }: EditPackagePageProps) {
           const response = await fetch('/api/upload/package-image', {
             method: 'POST',
             body: formData,
+            credentials: 'include',
           });
 
           if (!response.ok) {
             const errorData = await response.json();
-            throw new Error(errorData.error || 'Failed to upload image');
+            console.error('Image upload failed:', errorData);
+            
+            // Provide specific error messages based on the response
+            let errorMessage = `Failed to upload ${file.name}`;
+            if (errorData.error) {
+              if (errorData.error.includes('Unauthorized')) {
+                errorMessage = 'Authentication required. Please log in again.';
+              } else if (errorData.error.includes('business accounts')) {
+                errorMessage = 'Only business accounts can upload package images.';
+              } else if (errorData.error.includes('Service provider not found')) {
+                errorMessage = 'Service provider profile not found. Please complete your business profile first.';
+              } else {
+                errorMessage = `Failed to upload ${file.name}: ${errorData.error}`;
+              }
+            }
+            
+            throw new Error(errorMessage);
           }
 
           const data = await response.json();
+          console.log('Image upload successful:', data);
           return data.filePath; // Return the file path from the server
         } catch (error) {
-          showToast(`Failed to upload ${file.name}`, 'error');
+          const errorMessage = error instanceof Error ? error.message : `Failed to upload ${file.name}`;
+          showToast(errorMessage, 'error');
+          console.error('Image upload error:', error);
           return null;
         }
       });

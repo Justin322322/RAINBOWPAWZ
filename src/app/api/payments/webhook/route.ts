@@ -57,6 +57,14 @@ export async function POST(request: NextRequest) {
         await handlePaymentFailed(eventData);
         break;
 
+      case 'refund.succeeded':
+        await handleRefundSucceeded(eventData);
+        break;
+
+      case 'refund.failed':
+        await handleRefundFailed(eventData);
+        break;
+
       default:
         console.log('Unhandled webhook event type:', eventType);
     }
@@ -180,6 +188,82 @@ async function handlePaymentFailed(paymentData: any) {
     }
   } catch (error) {
     console.error('Error handling payment.failed:', error);
+  }
+}
+
+async function handleRefundSucceeded(refundData: any) {
+  try {
+    const refundId = refundData.id;
+    const paymentId = refundData.attributes.payment_id;
+    const status = refundData.attributes.status;
+
+    console.log('Processing refund.succeeded:', { refundId, paymentId, status });
+
+    // Find the refund record by PayMongo transaction ID
+    const refundQuery = `
+      SELECT r.id, r.booking_id
+      FROM refunds r
+      WHERE r.transaction_id = ? AND r.status = 'processing'
+    `;
+    const refundResult = await query(refundQuery, [refundId]) as any[];
+
+    if (refundResult.length > 0) {
+      const { id: localRefundId, booking_id } = refundResult[0];
+
+      // Complete the refund process
+      const { completeRefund } = await import('@/services/refundService');
+      await completeRefund(booking_id, localRefundId);
+
+      // Create refund notification
+      await createPaymentNotification(booking_id, 'payment_refunded');
+      console.log('Refund processed notification sent for booking:', booking_id);
+
+      console.log('Refund completed successfully:', localRefundId);
+    } else {
+      console.warn('Refund record not found for PayMongo refund:', refundId);
+    }
+  } catch (error) {
+    console.error('Error handling refund.succeeded:', error);
+  }
+}
+
+async function handleRefundFailed(refundData: any) {
+  try {
+    const refundId = refundData.id;
+    const paymentId = refundData.attributes.payment_id;
+    const status = refundData.attributes.status;
+    const failureReason = refundData.attributes.failure_reason || 'Refund failed';
+
+    console.log('Processing refund.failed:', { refundId, paymentId, status, failureReason });
+
+    // Find the refund record by PayMongo transaction ID
+    const refundQuery = `
+      SELECT r.id, r.booking_id
+      FROM refunds r
+      WHERE r.transaction_id = ? AND r.status = 'processing'
+    `;
+    const refundResult = await query(refundQuery, [refundId]) as any[];
+
+    if (refundResult.length > 0) {
+      const { id: localRefundId, booking_id } = refundResult[0];
+
+      // Mark refund as failed
+      await query(`
+        UPDATE refunds
+        SET status = 'failed', notes = CONCAT(COALESCE(notes, ''), '\nPayMongo refund failed: ', ?), updated_at = NOW()
+        WHERE id = ?
+      `, [failureReason, localRefundId]);
+
+      // Create refund notification
+      await createPaymentNotification(booking_id, 'payment_failed');
+      console.log('Refund failed notification sent for booking:', booking_id);
+
+      console.log('Refund marked as failed:', localRefundId);
+    } else {
+      console.warn('Refund record not found for PayMongo refund:', refundId);
+    }
+  } catch (error) {
+    console.error('Error handling refund.failed:', error);
   }
 }
 

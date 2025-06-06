@@ -98,16 +98,6 @@ export default function TimeSlotSelector({
 
       setAvailabilityData(data.availability || []);
 
-      // If we have a selected date, check if it's in the fetched data
-      if (selectedDateState) {
-        const selectedDayData = data.availability?.find((day: any) => day.date === selectedDateState);
-        if (selectedDayData) {
-          console.log(`TimeSlotSelector: Selected date ${selectedDateState} found in fetched data with ${selectedDayData.timeSlots?.length || 0} slots`);
-        } else {
-          console.log(`TimeSlotSelector: Selected date ${selectedDateState} NOT found in fetched data`);
-        }
-      }
-
     } catch (error) {
       console.error('TimeSlotSelector: Error fetching availability data:', error);
       setError('No available time slots found. Please contact the service provider.');
@@ -115,14 +105,14 @@ export default function TimeSlotSelector({
     } finally {
       setLoading(false);
     }
-  }, [providerId, currentMonth, selectedDateState]);
+  }, [providerId, currentMonth]);
 
   // Fetch availability data when component mounts or provider/month changes
   useEffect(() => {
     if (providerId) {
       fetchAvailabilityData();
     }
-  }, [providerId, fetchAvailabilityData]);
+  }, [fetchAvailabilityData, providerId]);
 
   // Make sure we display time slots for the selected date on component load
   useEffect(() => {

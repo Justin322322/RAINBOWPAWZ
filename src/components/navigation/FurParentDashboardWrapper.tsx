@@ -35,7 +35,12 @@ const FurParentDashboardWrapper: React.FC<FurParentDashboardWrapperProps> = ({
 
       try {
         // Fetch pending reviews
-        const response = await fetch('/api/reviews/pending');
+        const response = await fetch('/api/reviews/pending', {
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
         if (!response.ok) return;
 
         const data = await response.json();

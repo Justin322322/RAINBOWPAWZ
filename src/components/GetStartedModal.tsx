@@ -46,29 +46,29 @@ const GetStartedModal: React.FC<GetStartedModalProps> = ({
     switch (currentStep) {
       case 1:
         return (
-          <div className="space-y-6">
-            <h3 className="text-2xl font-medium text-gray-900 mb-4">Finding Cremation Services</h3>
-            <div className="space-y-4">
-              <div className="flex items-start">
-                <div className="flex-shrink-0 bg-[var(--primary-green)] text-white rounded-full h-6 w-6 flex items-center justify-center mr-3 mt-0.5">1</div>
+          <div className="space-y-4 sm:space-y-6">
+            <h3 className="text-xl sm:text-2xl font-medium text-gray-900 mb-3 sm:mb-4">Finding Cremation Services</h3>
+            <div className="space-y-3 sm:space-y-4">
+                              <div className="flex items-start">
+                <div className="flex-shrink-0 bg-[var(--primary-green)] text-white rounded-full h-5 w-5 sm:h-6 sm:w-6 flex items-center justify-center mr-2 sm:mr-3 mt-0.5 text-xs sm:text-sm">1</div>
                 <div>
-                  <p className="text-gray-700">Click on the <span className="font-medium">Services</span> tab in the navigation bar to browse cremation services.</p>
+                  <p className="text-sm sm:text-base text-gray-700">Click on the <span className="font-medium">Services</span> tab in the navigation bar to browse cremation services.</p>
                 </div>
               </div>
               <div className="flex items-start">
-                <div className="flex-shrink-0 bg-[var(--primary-green)] text-white rounded-full h-6 w-6 flex items-center justify-center mr-3 mt-0.5">2</div>
+                <div className="flex-shrink-0 bg-[var(--primary-green)] text-white rounded-full h-5 w-5 sm:h-6 sm:w-6 flex items-center justify-center mr-2 sm:mr-3 mt-0.5 text-xs sm:text-sm">2</div>
                 <div>
-                  <p className="text-gray-700">You&apos;ll see all available cremation centers and services in your area.</p>
+                  <p className="text-sm sm:text-base text-gray-700">You&apos;ll see all available cremation centers and services in your area.</p>
                 </div>
               </div>
             </div>
-            <div className="mt-4">
+            <div className="mt-3 sm:mt-4">
               <Image
                 src="/get_started/1.png"
                 alt="Services Navigation"
                 width={800}
                 height={400}
-                className="rounded-lg shadow-md mx-auto"
+                className="rounded-lg shadow-md mx-auto w-full max-w-full h-auto"
                 onError={(e) => {
                   // Fallback if image doesn't exist
                   e.currentTarget.style.display = 'none';
@@ -444,17 +444,17 @@ const GetStartedModal: React.FC<GetStartedModalProps> = ({
       closeOnOverlayClick={false}
       className="mt-0 pt-0"
     >
-      <div className="space-y-6 max-w-3xl mx-auto">
-        <p className="text-gray-700 text-lg">
+      <div className="space-y-4 sm:space-y-6 max-w-3xl mx-auto px-2 sm:px-0">
+        <p className="text-gray-700 text-base sm:text-lg">
           Welcome to RainbowPaws, {userName}! Our platform offers a seamless way to find and book trusted cremation services for your beloved pets. This guide will help you get started with our platform effortlessly.
         </p>
 
         {/* Step indicator */}
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex justify-between items-center mb-4 sm:mb-6 px-2">
           {Array.from({ length: totalSteps }).map((_, index) => (
             <div key={index} className="flex flex-col items-center">
               <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center mb-1 ${
+                className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center mb-1 text-xs sm:text-sm ${
                   index + 1 === currentStep
                     ? 'bg-[var(--primary-green)] text-white'
                     : index + 1 < currentStep
@@ -463,50 +463,57 @@ const GetStartedModal: React.FC<GetStartedModalProps> = ({
                 }`}
               >
                 {index + 1 < currentStep ? (
-                  <CheckCircleIcon className="h-5 w-5" />
+                  <CheckCircleIcon className="h-3 w-3 sm:h-5 sm:w-5" />
                 ) : (
                   index + 1
                 )}
               </div>
-              <div className="text-xs text-gray-500 text-center">
+              <div className="text-xs text-gray-500 text-center hidden sm:block">
                 {index === 0 && "Find Services"}
                 {index === 1 && "Locate Centers"}
                 {index === 2 && "Explore"}
                 {index === 3 && "Select"}
                 {index === 4 && "Complete"}
               </div>
+              <div className="text-xs text-gray-500 text-center sm:hidden">
+                {index === 0 && "Find"}
+                {index === 1 && "Locate"}
+                {index === 2 && "Explore"}
+                {index === 3 && "Select"}
+                {index === 4 && "Done"}
+              </div>
             </div>
           ))}
         </div>
 
         {/* Step content */}
-        <div className="min-h-[450px] overflow-y-auto max-w-3xl mx-auto">
+        <div className="min-h-[350px] sm:min-h-[450px] overflow-y-auto max-w-3xl mx-auto">
           {renderStepContent()}
         </div>
 
         {/* Navigation buttons */}
-        <div className="flex justify-between mt-8 max-w-3xl mx-auto">
+        <div className="flex justify-between mt-6 sm:mt-8 max-w-3xl mx-auto px-2">
           {currentStep === 1 ? (
             <button
               onClick={onNotNow}
-              className="px-4 py-2 text-gray-600 hover:text-gray-800 hover:underline"
+              className="px-3 py-2 sm:px-4 sm:py-2 text-sm sm:text-base text-gray-600 hover:text-gray-800 hover:underline"
             >
               Not Now
             </button>
           ) : (
             <button
               onClick={handlePrev}
-              className="px-4 py-2 rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300"
+              className="px-3 py-2 sm:px-4 sm:py-2 text-sm sm:text-base rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300"
             >
               Previous
             </button>
           )}
           <button
             onClick={handleNext}
-            className="px-4 py-2 bg-[var(--primary-green)] text-white rounded-lg hover:bg-green-700 flex items-center"
+            className="px-3 py-2 sm:px-4 sm:py-2 text-sm sm:text-base bg-[var(--primary-green)] text-white rounded-lg hover:bg-green-700 flex items-center"
           >
             {currentStep === totalSteps ? 'Finish' : 'Next'}
-            <ArrowRightIcon className="ml-2 h-4 w-4" />
+            <ArrowRightIcon className="ml-1 sm:ml-2 h-3 w-3 sm:h-4 sm:w-4" />
           </button>
         </div>
       </div>

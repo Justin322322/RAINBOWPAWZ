@@ -47,6 +47,13 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
       return;
     }
 
+    // Validate required props
+    if (!bookingId || !userId || !providerId) {
+      setError('Missing required information. Please try again.');
+      console.error('Missing required props:', { bookingId, userId, providerId });
+      return;
+    }
+
     setIsSubmitting(true);
     setError('');
 
@@ -64,6 +71,7 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify({
           booking_id: bookingId,
           user_id: userId,
@@ -77,11 +85,18 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
       console.log('Review submission response:', responseData);
 
       if (!response.ok) {
+        // Log validation details if available
+        if (responseData.validation) {
+          console.error('Validation failed:', responseData.validation);
+        }
+        
         // Check for specific error messages
         if (responseData.error && responseData.error.includes('already reviewed')) {
           throw new Error('You have already submitted a review for this booking.');
         } else if (responseData.error && responseData.error.includes('5 days')) {
           throw new Error('Reviews can only be submitted within 5 days of booking completion.');
+        } else if (responseData.error && responseData.error.includes('required')) {
+          throw new Error('Missing required information. Please refresh the page and try again.');
         } else {
           throw new Error(responseData.error || 'Failed to submit review');
         }

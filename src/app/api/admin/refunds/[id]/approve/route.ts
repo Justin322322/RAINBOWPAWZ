@@ -9,6 +9,7 @@ import {
 import { sendEmail } from '@/lib/consolidatedEmailService';
 import { createRefundNotificationEmail } from '@/lib/emailTemplates';
 import { createUserNotification } from '@/utils/userNotificationService';
+import { createAdminNotification } from '@/utils/adminNotificationService';
 
 /**
  * POST - Approve a refund request
@@ -27,7 +28,25 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const [, accountType] = authToken.split('_');
+    // Check if it's a JWT token or old format
+    let userId = null;
+    let accountType = null;
+
+    if (authToken.includes('.')) {
+      // JWT token format
+      const { decodeTokenUnsafe } = await import('@/lib/jwt');
+      const payload = decodeTokenUnsafe(authToken);
+      userId = payload?.userId || null;
+      accountType = payload?.accountType || null;
+    } else {
+      // Old format fallback
+      const parts = authToken.split('_');
+      if (parts.length === 2) {
+        userId = parts[0];
+        accountType = parts[1];
+      }
+    }
+
     if (accountType !== 'admin') {
       return NextResponse.json({
         error: 'Unauthorized - Admin access required'
@@ -48,6 +67,7 @@ export async function POST(
         sb.booking_date,
         sb.booking_time,
         sb.payment_method,
+        sb.user_id,
         CONCAT(u.first_name, ' ', u.last_name) as user_name,
         u.email as user_email
       FROM refunds r
@@ -67,7 +87,11 @@ export async function POST(
     // Process the refund based on payment method
     try {
       if (refund.payment_method === 'gcash') {
-        // Check if there's a valid PayMongo transaction first
+        // First, try to validate and fix payment data if needed
+        const { validatePaymentDataForRefund } = await import('@/services/refundService');
+        await validatePaymentDataForRefund(refund.booking_id);
+
+        // Check if there's a valid PayMongo transaction
         const hasPayMongoTransaction = await hasValidPayMongoTransaction(refund.booking_id);
 
         if (hasPayMongoTransaction) {
@@ -75,64 +99,145 @@ export async function POST(
             // Process PayMongo refund for GCash payments
             await processPayMongoRefund(refund.booking_id, refundId, refund.reason);
 
-          // Update refund status to processing (will be completed via webhook)
-          await query(`
-            UPDATE refunds
-            SET status = 'processing', updated_at = NOW()
-            WHERE id = ?
-          `, [refundId]);
+            // Update refund status to processing (will be completed via webhook)
+            await query(`
+              UPDATE refunds
+              SET status = 'processing', updated_at = NOW()
+              WHERE id = ?
+            `, [refundId]);
 
-          // Send approval email for PayMongo processing
-          if (refund.user_email) {
+            // Send approval email for PayMongo processing
+            if (refund.user_email) {
+              try {
+                const refundEmailContent = createRefundNotificationEmail({
+                  customerName: refund.user_name,
+                  bookingId: refund.booking_id.toString(),
+                  petName: refund.pet_name,
+                  amount: refund.amount,
+                  reason: refund.reason,
+                  status: 'processing',
+                  paymentMethod: refund.payment_method,
+                  estimatedDays: 7
+                });
+
+                await sendEmail({
+                  to: refund.user_email,
+                  subject: refundEmailContent.subject,
+                  html: refundEmailContent.html
+                });
+              } catch (emailError) {
+                console.error('Failed to send approval email:', emailError);
+              }
+            }
+
+            // Create user notification for refund processing
             try {
-              const refundEmailContent = createRefundNotificationEmail({
-                customerName: refund.user_name,
-                bookingId: refund.booking_id.toString(),
-                petName: refund.pet_name,
+              await createUserNotification({
+                userId: refund.user_id,
+                type: 'refund_approved',
+                title: 'Refund Approved',
+                message: `Your refund request for ${refund.pet_name} has been approved and is being processed. You will receive your refund within 5-10 business days.`,
+                entityType: 'booking',
+                entityId: refund.booking_id
+              });
+            } catch (notificationError) {
+              console.error('Failed to create user notification:', notificationError);
+            }
+
+                         // Create admin notification for refund processing
+             try {
+               await createAdminNotification({
+                 type: 'refund_processing',
+                 title: 'Refund Processing',
+                 message: `Refund for booking #${refund.booking_id} (${refund.pet_name}) is being processed via PayMongo.`,
+                 entityType: 'refund',
+                 entityId: refundId
+               });
+             } catch (adminNotificationError) {
+               console.error('Failed to create admin notification:', adminNotificationError);
+             }
+
+            return NextResponse.json({
+              success: true,
+              message: 'Refund approved and submitted to PayMongo. Processing may take 5-10 business days.',
+              refund: {
+                id: refundId,
+                booking_id: refund.booking_id,
                 amount: refund.amount,
-                reason: refund.reason,
-                status: 'processing',
-                paymentMethod: refund.payment_method,
-                estimatedDays: 7
-              });
-
-              await sendEmail({
-                to: refund.user_email,
-                subject: refundEmailContent.subject,
-                html: refundEmailContent.html
-              });
-            } catch (emailError) {
-              console.error('Failed to send approval email:', emailError);
-            }
-          }
-
-          // Create user notification for refund processing
-          try {
-            await createUserNotification({
-              userId: refund.user_id,
-              type: 'refund_approved',
-              title: 'Refund Approved',
-              message: `Your refund request for ${refund.pet_name} has been approved and is being processed. You will receive your refund within 5-10 business days.`,
-              entityType: 'booking',
-              entityId: refund.booking_id
+                status: 'processing'
+              }
             });
-          } catch (notificationError) {
-            console.error('Failed to create user notification:', notificationError);
-          }
+          } catch (paymongoError) {
+            console.error('PayMongo refund error:', paymongoError);
+            // Fall back to manual processing for GCash payments when PayMongo fails
+            await completeRefund(refund.booking_id, refundId);
 
-          return NextResponse.json({
-            success: true,
-            message: 'Refund approved and submitted to PayMongo. Processing may take 5-10 business days.',
-            refund: {
-              id: refundId,
-              booking_id: refund.booking_id,
-              amount: refund.amount,
-              status: 'processing'
+            // Send completion email for manual processing
+            if (refund.user_email) {
+              try {
+                const refundEmailContent = createRefundNotificationEmail({
+                  customerName: refund.user_name,
+                  bookingId: refund.booking_id.toString(),
+                  petName: refund.pet_name,
+                  amount: refund.amount,
+                  reason: refund.reason,
+                  status: 'processed',
+                  paymentMethod: refund.payment_method,
+                  estimatedDays: undefined,
+                  notes: 'Refund processed manually due to PayMongo integration issue.'
+                });
+
+                await sendEmail({
+                  to: refund.user_email,
+                  subject: refundEmailContent.subject,
+                  html: refundEmailContent.html
+                });
+              } catch (emailError) {
+                console.error('Failed to send completion email:', emailError);
+              }
             }
-          });
-        } catch (paymongoError) {
-          console.error('PayMongo refund error:', paymongoError);
-          // Fall back to manual processing for GCash payments when PayMongo fails
+
+            // Create user notification for refund completion
+            try {
+              await createUserNotification({
+                userId: refund.user_id,
+                type: 'refund_processed',
+                title: 'Refund Processed',
+                message: `Your refund for ${refund.pet_name} has been processed successfully. The amount of ₱${refund.amount.toFixed(2)} has been refunded.`,
+                entityType: 'booking',
+                entityId: refund.booking_id
+              });
+            } catch (notificationError) {
+              console.error('Failed to create user notification:', notificationError);
+            }
+
+                         // Create admin notification for refund completion
+             try {
+               await createAdminNotification({
+                 type: 'refund_processed',
+                 title: 'Refund Processed',
+                 message: `Refund for booking #${refund.booking_id} (${refund.pet_name}) has been processed successfully. Amount: ₱${refund.amount.toFixed(2)}`,
+                 entityType: 'refund',
+                 entityId: refundId
+               });
+             } catch (adminNotificationError) {
+               console.error('Failed to create admin notification:', adminNotificationError);
+             }
+
+            return NextResponse.json({
+              success: true,
+              message: 'Refund approved and processed manually. PayMongo integration failed.',
+              refund: {
+                id: refundId,
+                booking_id: refund.booking_id,
+                amount: refund.amount,
+                status: 'processed'
+              }
+            });
+          }
+        } else {
+          // No PayMongo transaction found, process manually
+          console.log(`No PayMongo transaction found for booking ${refund.booking_id}, processing manually`);
           await completeRefund(refund.booking_id, refundId);
 
           // Send completion email for manual processing
@@ -147,7 +252,7 @@ export async function POST(
                 status: 'processed',
                 paymentMethod: refund.payment_method,
                 estimatedDays: undefined,
-                notes: 'Refund processed manually due to PayMongo integration issue.'
+                notes: 'Refund processed manually as no PayMongo transaction was found for this GCash payment.'
               });
 
               await sendEmail({
@@ -174,9 +279,22 @@ export async function POST(
             console.error('Failed to create user notification:', notificationError);
           }
 
+          // Create admin notification for refund completion
+          try {
+            await createAdminNotification({
+              type: 'refund_processed',
+              title: 'Refund Processed (Manual)',
+              message: `Refund for booking #${refund.booking_id} (${refund.pet_name}) has been processed manually. Amount: ₱${refund.amount.toFixed(2)}`,
+              entityType: 'refund',
+              entityId: refundId
+            });
+          } catch (adminNotificationError) {
+            console.error('Failed to create admin notification:', adminNotificationError);
+          }
+
           return NextResponse.json({
             success: true,
-            message: 'Refund approved and processed manually. PayMongo integration failed.',
+            message: 'Refund approved and processed manually. No PayMongo transaction found for this GCash payment.',
             refund: {
               id: refundId,
               booking_id: refund.booking_id,
@@ -185,61 +303,6 @@ export async function POST(
             }
           });
         }
-      } else {
-        // No PayMongo transaction found, process manually
-        console.log(`No PayMongo transaction found for booking ${refund.booking_id}, processing manually`);
-        await completeRefund(refund.booking_id, refundId);
-
-        // Send completion email for manual processing
-        if (refund.user_email) {
-          try {
-            const refundEmailContent = createRefundNotificationEmail({
-              customerName: refund.user_name,
-              bookingId: refund.booking_id.toString(),
-              petName: refund.pet_name,
-              amount: refund.amount,
-              reason: refund.reason,
-              status: 'processed',
-              paymentMethod: refund.payment_method,
-              estimatedDays: undefined,
-              notes: 'Refund processed manually as no PayMongo transaction was found for this GCash payment.'
-            });
-
-            await sendEmail({
-              to: refund.user_email,
-              subject: refundEmailContent.subject,
-              html: refundEmailContent.html
-            });
-          } catch (emailError) {
-            console.error('Failed to send completion email:', emailError);
-          }
-        }
-
-        // Create user notification for refund completion
-        try {
-          await createUserNotification({
-            userId: refund.user_id,
-            type: 'refund_processed',
-            title: 'Refund Processed',
-            message: `Your refund for ${refund.pet_name} has been processed successfully. The amount of ₱${refund.amount.toFixed(2)} has been refunded.`,
-            entityType: 'booking',
-            entityId: refund.booking_id
-          });
-        } catch (notificationError) {
-          console.error('Failed to create user notification:', notificationError);
-        }
-
-        return NextResponse.json({
-          success: true,
-          message: 'Refund approved and processed manually. No PayMongo transaction found for this GCash payment.',
-          refund: {
-            id: refundId,
-            booking_id: refund.booking_id,
-            amount: refund.amount,
-            status: 'processed'
-          }
-        });
-      }
       } else {
         // For cash payments, complete refund immediately
         await completeRefund(refund.booking_id, refundId);
@@ -280,6 +343,19 @@ export async function POST(
           });
         } catch (notificationError) {
           console.error('Failed to create user notification:', notificationError);
+        }
+
+        // Create admin notification for refund completion
+        try {
+          await createAdminNotification({
+            type: 'refund_processed',
+            title: 'Refund Processed (Cash)',
+            message: `Cash refund for booking #${refund.booking_id} (${refund.pet_name}) has been processed. Amount: ₱${refund.amount.toFixed(2)}`,
+            entityType: 'refund',
+            entityId: refundId
+          });
+        } catch (adminNotificationError) {
+          console.error('Failed to create admin notification:', adminNotificationError);
         }
 
         return NextResponse.json({
