@@ -279,17 +279,8 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
               return;
             }
             
-            // Format booking time (HH:MM)
-            let formattedBookingTime: string;
-            if (typeof bookingTime === 'string') {
-              formattedBookingTime = bookingTime.substring(0, 5);
-            } else if (bookingTime instanceof Date) {
-              formattedBookingTime = bookingTime.toTimeString().substring(0, 5);
-            } else {
-              // Convert any other type to string and try to extract time format
-              const timeStr = String(bookingTime);
-              formattedBookingTime = timeStr.length >= 5 ? timeStr.substring(0, 5) : '09:00';
-            }
+            // Format booking time (HH:MM) using robust time formatting
+            const formattedBookingTime = formatTimeToHHMM(bookingTime);
             
             // Find the day in our availability data
             const dayIndex = cleanedAvailability.findIndex((day: DayAvailability) => day.date === formattedBookingDate);
@@ -605,6 +596,76 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
     const newMinutes = totalMinutes % 60;
     return `${String(newHours).padStart(2, '0')}:${String(newMinutes).padStart(2, '0')}`;
   };
+
+  /**
+   * Formats various time formats into HH:MM string format
+   * Handles strings, Date objects, and numeric times consistently
+   * @param timeValue - The time value to format (string, Date, number, etc.)
+   * @returns Formatted time string in HH:MM format, or '09:00' as fallback
+   */
+  const formatTimeToHHMM = (timeValue: any): string => {
+    if (!timeValue && timeValue !== 0) {
+      return '09:00'; // Default fallback
+    }
+
+    // Handle string inputs
+    if (typeof timeValue === 'string') {
+      const trimmed = timeValue.trim();
+      
+      // Check if it's already in HH:MM format (with optional seconds)
+      const timeMatch = trimmed.match(/^(\d{1,2}):(\d{2})(?::\d{2})?/);
+      if (timeMatch) {
+        const hours = parseInt(timeMatch[1], 10);
+        const minutes = parseInt(timeMatch[2], 10);
+        if (hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59) {
+          return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+        }
+      }
+      
+      // Handle numeric strings like "1430" (HHMM format)
+      const numericMatch = trimmed.match(/^\d{3,4}$/);
+      if (numericMatch) {
+        const numStr = trimmed.padStart(4, '0'); // Ensure 4 digits
+        const hours = parseInt(numStr.substring(0, 2), 10);
+        const minutes = parseInt(numStr.substring(2, 4), 10);
+        if (hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59) {
+          return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+        }
+      }
+      
+      // If string looks like it might have time at the beginning, try to extract first 5 chars
+      if (trimmed.length >= 5 && trimmed.substring(0, 5).match(/^\d{2}:\d{2}$/)) {
+        return trimmed.substring(0, 5);
+      }
+    }
+    
+    // Handle Date objects - use UTC to avoid timezone issues
+    if (timeValue instanceof Date && !isNaN(timeValue.getTime())) {
+      const hours = timeValue.getUTCHours();
+      const minutes = timeValue.getUTCMinutes();
+      return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+    }
+    
+    // Handle numeric inputs (assuming minutes since midnight or HHMM format)
+    if (typeof timeValue === 'number' && !isNaN(timeValue)) {
+      if (timeValue >= 0 && timeValue < 1440) { // Minutes since midnight (0-1439)
+        const hours = Math.floor(timeValue / 60);
+        const minutes = timeValue % 60;
+        return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+      } else if (timeValue >= 0 && timeValue <= 2359) { // HHMM format
+        const hours = Math.floor(timeValue / 100);
+        const minutes = timeValue % 100;
+        if (hours <= 23 && minutes <= 59) {
+          return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+        }
+      }
+    }
+    
+    // Fallback for any unrecognized format
+    console.warn('Unable to parse time value:', timeValue, 'Using default time 09:00');
+    return '09:00';
+  };
+
   const handlePreviousMonth = () => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1));
   const handleNextMonth = () => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
   
