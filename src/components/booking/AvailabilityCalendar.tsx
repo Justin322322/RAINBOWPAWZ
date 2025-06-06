@@ -280,9 +280,16 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
             }
             
             // Format booking time (HH:MM)
-            const formattedBookingTime = typeof bookingTime === 'string' 
-              ? bookingTime.substring(0, 5) 
-              : bookingTime;
+            let formattedBookingTime: string;
+            if (typeof bookingTime === 'string') {
+              formattedBookingTime = bookingTime.substring(0, 5);
+            } else if (bookingTime instanceof Date) {
+              formattedBookingTime = bookingTime.toTimeString().substring(0, 5);
+            } else {
+              // Convert any other type to string and try to extract time format
+              const timeStr = String(bookingTime);
+              formattedBookingTime = timeStr.length >= 5 ? timeStr.substring(0, 5) : '09:00';
+            }
             
             // Find the day in our availability data
             const dayIndex = cleanedAvailability.findIndex((day: DayAvailability) => day.date === formattedBookingDate);
