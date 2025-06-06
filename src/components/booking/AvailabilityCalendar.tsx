@@ -117,274 +117,101 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
   useEffect(() => {
   }, [availabilityData]);
 
-  // Define functions before useEffect hooks that reference them
-  const fetchProviderPackages = useCallback(async () => {
+  // Use useCallback to memoize functions
+  const fetchAvailabilityData = useCallback(async (clearData = false) => {
     if (!providerId || providerId <= 0) return;
-    try {
-      setLoadingPackages(true);
-      setPackageLoadError(null); // Reset error state
-      const response = await fetch(`/api/packages?providerId=${providerId}&t=${Date.now()}`);
 
-      if (!response.ok) {
-        // Get detailed error information
-        const errorText = await response.text();
-        try {
-          const errorJson = JSON.parse(errorText);
-          const errorMessage = errorJson.error || errorJson.details || `Failed to fetch provider packages: ${response.status}`;
-          setPackageLoadError(errorMessage);
-          throw new Error(errorMessage);
-        } catch (parseError) {
-          const errorMessage = `Failed to fetch provider packages: ${response.status} - ${errorText.substring(0, 100)}`;
-          setPackageLoadError(errorMessage);
-          throw new Error(errorMessage);
-        }
+    try {
+      if (clearData) {
+        setAvailabilityData([]);
       }
-
-      const data = await response.json();
-      setAvailablePackages(data.packages || []);
-    } catch (err) {
-      setAvailablePackages([]);
-    } finally {
-      setLoadingPackages(false);
-    }
-  }, [providerId]);
-
-  const fetchAvailabilityData = useCallback(async (clearExisting = true) => {
-    if (!providerId || providerId <= 0) {
-      setError("Cannot fetch availability without a valid Provider ID.");
-      if (clearExisting) setAvailabilityData([]);
-      return;
-    }
-    try {
       setLoading(true);
       setError(null);
 
-      // Get the first and last day that will be displayed in the calendar
-      const year = currentMonth.getFullYear();
-      const month = currentMonth.getMonth();
+      // Use caching for availability data
+      const cacheKey = `availabilityData_${providerId}_${formatDateToString(currentMonth)}`;
+      const cacheTimeout = 5 * 60 * 1000; // 5 minutes
 
-      // First day of the month
-      const firstDay = new Date(year, month, 1);
-      // Last day of the month
-      const lastDay = new Date(year, month + 1, 0);
+      // Check for cached data first
+      if (typeof window !== "undefined" && !clearData) {
+        const cached = localStorage.getItem(cacheKey);
+        const cacheTimestamp = localStorage.getItem(`${cacheKey}_timestamp`);
+        if (cached && cacheTimestamp) {
+          const age = Date.now() - parseInt(cacheTimestamp);
+          if (age < cacheTimeout) {
+            setAvailabilityData(JSON.parse(cached));
+            setLoading(false);
+            return;
+          }
+        }
+      }
 
-      // First day shown in calendar (could be previous month)
-      const firstCalendarDay = new Date(year, month, 1);
-      // Last day shown in calendar (could be next month)
-      const lastCalendarDay = new Date(year, month + 1, 0);
+      const yearParam = currentMonth ? currentMonth.getFullYear() : new Date().getFullYear();
+      const monthParam = currentMonth ? currentMonth.getMonth() + 1 : new Date().getMonth() + 1;
 
-      // Format dates for API
-      const startDate = firstCalendarDay.toISOString().split('T')[0];
-      const endDate = lastCalendarDay.toISOString().split('T')[0];
-
-      const monthString = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}`;
-
-      // Add a timestamp to force fresh data
-      const timestamp = new Date().getTime();
-      const url = `/api/cremation/availability?providerId=${providerId}&startDate=${startDate}&endDate=${endDate}&month=${monthString}&t=${timestamp}`;
-
-      console.log(`Fetching availability data from: ${url}`);
-
-      const headers = new Headers({
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache',
-        'Expires': '0'
-      });
-
-      // Using fetch with more robust options
-      const response = await fetch(url, {
-        headers,
+      const response = await fetch(`/api/cremation/availability?providerId=${providerId}&year=${yearParam}&month=${monthParam}`, {
         method: 'GET',
-        credentials: 'same-origin', // Include cookies in the request
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
       });
 
       if (!response.ok) {
-        const errorText = await response.text();
-        try {
-          const errorData = JSON.parse(errorText);
-          throw new Error(errorData.error || `Failed to fetch data: ${response.statusText}`);
-        } catch (parseError) {
-          throw new Error(`HTTP error ${response.status}: ${errorText.substring(0, 100)}`);
-        }
+        throw new Error('Failed to fetch availability data');
       }
 
       const data = await response.json();
+      const availability = Array.isArray(data.availability) ? data.availability : [];
 
-      // Now fetch bookings to mark booked slots
-      let bookedSlots: { date: string; time: string; }[] = [];
-      try {
-        const bookingsResponse = await fetch(`/api/cremation/bookings?providerId=${providerId}`, {
-          headers,
-          method: 'GET',
-          credentials: 'same-origin',
-        });
-        
-        if (bookingsResponse.ok) {
-          const bookingsData = await bookingsResponse.json();
-          
-          // Extract all bookings that are not cancelled
-          const bookings = bookingsData.bookings || [];
-          bookedSlots = bookings
-            .filter((booking: any) => booking.status !== 'cancelled')
-            .map((booking: any) => ({
-              date: booking.booking_date ? booking.booking_date.split('T')[0] : null,
-              time: booking.booking_time ? booking.booking_time.substring(0, 5) : null
-            }))
-            .filter((booking: any) => booking.date && booking.time);
-        }
-      } catch (bookingError) {
-        console.error('Error fetching bookings:', bookingError);
-        // Continue with availability data, even if bookings failed
+      setAvailabilityData(availability);
+
+      // Cache the data
+      if (typeof window !== "undefined" && availability.length > 0) {
+        localStorage.setItem(cacheKey, JSON.stringify(availability));
+        localStorage.setItem(`${cacheKey}_timestamp`, Date.now().toString());
       }
 
-      if (Array.isArray(data.availability)) {
-        if (data.availability.length === 0) {
-        }
-
-        // Validate and clean availability data
-        const validatedData = data.availability.map((day: any) => {
-          // Ensure timeSlots is always an array
-          const timeSlots = Array.isArray(day.timeSlots) ?
-            day.timeSlots.map((slot: any) => {
-              // Check if this slot is booked
-              const isBooked = bookedSlots.some(
-                booking => booking.date === day.date && booking.time === slot.start
-              );
-              
-              return {
-                ...slot,
-                id: slot.id || Date.now().toString() + Math.random().toString(36).substring(2, 9), // Ensure each slot has a unique ID
-                isBooked: isBooked
-              };
-            }) :
-            [];
-
-          // Check for days with time slots
-          if (timeSlots.length > 0) {
-              // Time slots available
-          }
-
-          return {
-            date: day.date,
-            isAvailable: Boolean(day.isAvailable), // Force boolean
-            timeSlots: timeSlots
-          };
-        });
-
-        // Log overall availability stats
-        const availableDays = validatedData.filter((day: DayAvailability) => day.isAvailable).length;
-        const daysWithTimeSlots = validatedData.filter((day: DayAvailability) => day.timeSlots && day.timeSlots.length > 0).length;
-        const totalTimeSlots = validatedData.reduce((total: number, day: DayAvailability) => total + (day.timeSlots ? day.timeSlots.length : 0), 0);
-
-        setAvailabilityData(prevData => {
-          // If clearExisting is true, just use the new data
-          if (clearExisting) {
-            return validatedData;
-          }
-
-          // Otherwise, merge old and new data with new data taking precedence
-          const finalDataMap = new Map(prevData.map((item: DayAvailability) => [item.date, item]));
-
-          // Log the dates we're updating
-          validatedData.forEach((item: DayAvailability) => {
-            const existing = finalDataMap.get(item.date);
-            if (existing) {
-              // Updated existing date
-            } else {
-              // New date added
-            }
-            finalDataMap.set(item.date, item);
-          });
-
-          const sortedData = Array.from(finalDataMap.values()).sort((a, b) => {
-            const dateA = new Date(a.date);
-            const dateB = new Date(b.date);
-            // Handle cases where dates might be invalid, though they should be YYYY-MM-DD strings
-            if (isNaN(dateA.getTime())) return 1;
-            if (isNaN(dateB.getTime())) return -1;
-            return dateA.getTime() - dateB.getTime();
-          });
-
-          const daysWithSlots = sortedData.filter(d => d.timeSlots.length > 0);
-
-          return sortedData;
-        });
-
-        // Force calendar re-render
-        forceCalendarRefresh();
-
-        if (validatedData.length === 0) {
-          setError('No availability data found for this month.');
-        } else {
-          setError(null);
-        }
-
-        if (onAvailabilityChange) onAvailabilityChange(validatedData);
-      } else {
-        // Don't clear the entire state, just log the error
-        setError('Unexpected response from server.');
-      }
+      onAvailabilityChange?.(availability);
     } catch (err) {
-      console.error('Error fetching availability data:', err);
-      setError(`Failed to fetch availability: ${err instanceof Error ? err.message : String(err)}`);
-      // Don't clear availability data on error to preserve existing state
-      
-      // If this is a network error, try to fallback to cached data
-      if (err instanceof Error && err.message.includes('fetch')) {
-        console.log('Network error detected, checking for cached data');
-        if (typeof window !== 'undefined') {
-          const cachedData = localStorage.getItem(`availabilityData_${providerId}`);
-          if (cachedData) {
-            try {
-              const parsed = JSON.parse(cachedData);
-              if (Array.isArray(parsed) && parsed.length > 0) {
-                setAvailabilityData(parsed);
-                setError('Using cached data due to network error');
-              }
-            } catch (parseError) {
-              console.error('Error parsing cached data:', parseError);
-            }
-          }
-        }
-      }
+      setError(err instanceof Error ? err.message : 'Unknown error occurred');
     } finally {
       setLoading(false);
-      forceCalendarRefresh(); // Always force refresh calendar after data fetching completes
     }
   }, [providerId, currentMonth, onAvailabilityChange]);
 
-  // Force calendar to re-render
-  const forceCalendarRefresh = () => {
-    setCalendarKey(prev => prev + 1);
-  };
+  const fetchProviderPackages = useCallback(async () => {
+    if (!providerId || providerId <= 0) return;
 
+    try {
+      const response = await fetch(`/api/packages?providerId=${providerId}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch packages');
+      }
+      const data = await response.json();
+      setAvailablePackages(data.packages || []);
+    } catch (err) {
+      console.error('Error fetching packages:', err);
+      setAvailablePackages([]);
+    }
+  }, [providerId]);
+
+  // Updated useEffect hooks with proper dependencies
   useEffect(() => {
     if (providerId && providerId > 0) {
-      // Clear any existing data first to ensure we get fresh data
-      setAvailabilityData([]);
       fetchAvailabilityData(true);
       fetchProviderPackages();
     } else {
       setAvailabilityData([]);
       setAvailablePackages([]);
     }
-  }, [providerId]); // Removed fetchAvailabilityData and fetchProviderPackages to prevent infinite loops
+  }, [providerId, fetchAvailabilityData, fetchProviderPackages]);
 
   useEffect(() => {
     if (providerId && providerId > 0) {
       fetchAvailabilityData(false); // Don't clear existing data
     }
-  }, [currentMonth, providerId]); // Removed fetchAvailabilityData to prevent infinite loops
-
-  useEffect(() => {
-    if (showSuccessMessage) {
-      const timer = setTimeout(() => {
-        setShowSuccessMessage(false);
-      }, 3000);
-      return () => clearTimeout(timer);
-    }
-    return () => {}; // Return empty cleanup function for else case
-  }, [showSuccessMessage]);
+  }, [currentMonth, providerId, fetchAvailabilityData]);
 
   // Add effect to refetch data when needed
   useEffect(() => {
@@ -396,16 +223,28 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
     }, 60000); // Refresh every 60 seconds
 
     return () => clearInterval(refreshInterval);
-  }, [providerId]); // Removed fetchAvailabilityData to prevent infinite loops
+  }, [providerId, fetchAvailabilityData]);
 
-  // Add effect to cache data whenever it changes
   useEffect(() => {
-    if (typeof window !== "undefined" && providerId && availabilityData.length > 0) {
-      localStorage.setItem(`availabilityData_${providerId}`, JSON.stringify(availabilityData));
+    if (showSuccessMessage) {
+      const timer = setTimeout(() => {
+        setShowSuccessMessage(false);
+      }, 3000);
+      return () => clearTimeout(timer);
     }
-  }, [availabilityData, providerId]);
+    return () => {}; // Return empty cleanup function for else case
+  }, [showSuccessMessage]);
 
-
+  // Add effect to hide conflict message after a timeout
+  useEffect(() => {
+    if (showConflictMessage) {
+      const timer = setTimeout(() => {
+        setShowConflictMessage(false);
+      }, 5000); // Hide after 5 seconds
+      return () => clearTimeout(timer);
+    }
+    return () => {}; // Return empty cleanup function for else case
+  }, [showConflictMessage]);
 
   const saveAvailability = async (updatedDayAvailability: DayAvailability) => {
     if (!providerId || providerId <= 0) {
@@ -1163,16 +1002,10 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
     // Force re-render of the calendar data
   }, [availabilityData]);
 
-  // Add this effect to hide conflict message after a timeout
-  useEffect(() => {
-    if (showConflictMessage) {
-      const timer = setTimeout(() => {
-        setShowConflictMessage(false);
-      }, 5000); // Hide after 5 seconds
-      return () => clearTimeout(timer);
-    }
-    return () => {}; // Return empty cleanup function for else case
-  }, [showConflictMessage]);
+  // Force calendar to re-render
+  const forceCalendarRefresh = () => {
+    setCalendarKey(prev => prev + 1);
+  };
 
   return (
     <div className="w-full">
