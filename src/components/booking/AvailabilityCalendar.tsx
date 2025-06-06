@@ -42,6 +42,21 @@ type CalendarDay = {
   timeSlots?: TimeSlot[];
 };
 
+// Raw data types from API (before cleaning)
+type RawTimeSlot = {
+  id?: string;
+  start?: string;
+  end?: string;
+  availableServices?: any;
+  isBooked?: boolean;
+};
+
+type RawDayAvailability = {
+  date?: string;
+  isAvailable?: any;
+  timeSlots?: any;
+};
+
 interface AvailabilityCalendarProps {
   providerId: number;
   onAvailabilityChange?: (availability: DayAvailability[]) => void;
@@ -162,17 +177,169 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
       }
 
       const data = await response.json();
-      const availability = Array.isArray(data.availability) ? data.availability : [];
+      const rawAvailability = Array.isArray(data.availability) ? data.availability : [];
 
-      setAvailabilityData(availability);
+      // Data validation and cleaning logic
+      const cleanedAvailability = rawAvailability.map((day: any): DayAvailability => {
+        // Ensure required properties exist with correct types
+        const cleanedDay: DayAvailability = {
+          date: day.date || '',
+          isAvailable: Boolean(day.isAvailable),
+          timeSlots: []
+        };
 
-      // Cache the data
-      if (typeof window !== "undefined" && availability.length > 0) {
-        localStorage.setItem(cacheKey, JSON.stringify(availability));
+        // Validate and clean time slots
+        if (Array.isArray(day.timeSlots)) {
+          cleanedDay.timeSlots = day.timeSlots
+            .filter((slot: any) => slot && typeof slot === 'object')
+            .map((slot: RawTimeSlot): TimeSlot => {
+              // Generate unique ID if missing
+              const slotId = slot.id || `${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+              
+              // Ensure availableServices is an array
+              let availableServices: number[] = [];
+              if (Array.isArray(slot.availableServices)) {
+                availableServices = slot.availableServices
+                  .map((id: any) => {
+                    const numId = typeof id === 'string' ? parseInt(id, 10) : id;
+                    return isNaN(numId) ? 0 : numId;
+                  })
+                  .filter((id: number) => id > 0);
+              }
+
+              // Note: Time slots that exist in the database are available by definition
+              // When a booking is made, the corresponding time slot is deleted from provider_time_slots
+              // So any time slot returned by the API is available (not booked)
+              const isBooked = Boolean(slot.isBooked) || false;
+
+              return {
+                id: slotId,
+                start: slot.start || '09:00',
+                end: slot.end || '10:00',
+                availableServices,
+                isBooked
+              };
+            })
+            .filter((slot: any) => slot.start && slot.end); // Remove invalid time slots
+        }
+
+        return cleanedDay;
+      });
+
+      // Additionally, we can fetch recent bookings to show them as booked time slots for display purposes
+      try {
+        const startDate = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
+        const endDate = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
+        const formattedStartDate = formatDateToString(startDate);
+        const formattedEndDate = formatDateToString(endDate);
+
+        // Fetch recent bookings to display them as booked time slots
+        const bookingsResponse = await fetch(`/api/cremation/bookings?providerId=${providerId}&limit=1000`, {
+          method: 'GET',
+          headers: {
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
+          }
+        });
+
+        if (bookingsResponse.ok) {
+          const bookingsData = await bookingsResponse.json();
+          const allBookings = Array.isArray(bookingsData.bookings) ? bookingsData.bookings : [];
+          
+          // Filter bookings to only include those in the current month
+          const currentMonthBookings = allBookings.filter((booking: any) => {
+            const bookingDate = booking.booking_date || booking.date;
+            if (!bookingDate) return false;
+            
+            let formattedBookingDate: string;
+            if (typeof bookingDate === 'string') {
+              formattedBookingDate = bookingDate.includes('T') ? bookingDate.split('T')[0] : bookingDate;
+            } else if (bookingDate instanceof Date) {
+              formattedBookingDate = formatDateToString(bookingDate);
+            } else {
+              return false;
+            }
+            
+            return formattedBookingDate >= formattedStartDate && formattedBookingDate <= formattedEndDate;
+          });
+
+          // Add booked time slots to the availability data for display
+          currentMonthBookings.forEach((booking: any) => {
+            const bookingDate = booking.booking_date || booking.date;
+            const bookingTime = booking.booking_time || booking.time;
+            
+            if (!bookingDate || !bookingTime || booking.status === 'cancelled') return;
+            
+            let formattedBookingDate: string;
+            if (typeof bookingDate === 'string') {
+              formattedBookingDate = bookingDate.includes('T') ? bookingDate.split('T')[0] : bookingDate;
+            } else if (bookingDate instanceof Date) {
+              formattedBookingDate = formatDateToString(bookingDate);
+            } else {
+              return;
+            }
+            
+            // Format booking time (HH:MM)
+            const formattedBookingTime = typeof bookingTime === 'string' 
+              ? bookingTime.substring(0, 5) 
+              : bookingTime;
+            
+            // Find the day in our availability data
+            const dayIndex = cleanedAvailability.findIndex((day: DayAvailability) => day.date === formattedBookingDate);
+            if (dayIndex >= 0) {
+              // Check if a time slot for this booking already exists (shouldn't happen, but just in case)
+              const existingSlotIndex = cleanedAvailability[dayIndex].timeSlots.findIndex(
+                (slot: TimeSlot) => slot.start.substring(0, 5) === formattedBookingTime
+              );
+              
+              if (existingSlotIndex >= 0) {
+                // Mark existing slot as booked
+                cleanedAvailability[dayIndex].timeSlots[existingSlotIndex].isBooked = true;
+              } else {
+                // Add a booked time slot to show the booking
+                const bookedSlot: TimeSlot = {
+                  id: `booked_${booking.id}`,
+                  start: formattedBookingTime,
+                  end: addHoursToTime(formattedBookingTime, 1), // Assume 1-hour duration
+                  availableServices: [],
+                  isBooked: true
+                };
+                
+                cleanedAvailability[dayIndex].timeSlots.push(bookedSlot);
+                cleanedAvailability[dayIndex].isAvailable = true; // Mark day as having activity
+              }
+            } else {
+              // Create a new day entry for this booking
+              const bookedSlot: TimeSlot = {
+                id: `booked_${booking.id}`,
+                start: formattedBookingTime,
+                end: addHoursToTime(formattedBookingTime, 1), // Assume 1-hour duration
+                availableServices: [],
+                isBooked: true
+              };
+              
+              cleanedAvailability.push({
+                date: formattedBookingDate,
+                isAvailable: true,
+                timeSlots: [bookedSlot]
+              });
+            }
+          });
+        }
+      } catch (bookingError) {
+        console.warn('Failed to fetch existing bookings for display:', bookingError);
+        // Continue without booking data rather than failing completely
+      }
+
+      setAvailabilityData(cleanedAvailability);
+
+      // Cache the cleaned data
+      if (typeof window !== "undefined" && cleanedAvailability.length > 0) {
+        localStorage.setItem(cacheKey, JSON.stringify(cleanedAvailability));
         localStorage.setItem(`${cacheKey}_timestamp`, Date.now().toString());
       }
 
-      onAvailabilityChange?.(availability);
+      onAvailabilityChange?.(cleanedAvailability);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error occurred');
     } finally {
@@ -421,6 +588,15 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
 
     // Format as YYYY-MM-DD
     return `${year}-${month}-${day}`;
+  };
+
+  // Helper function to add hours to a time string
+  const addHoursToTime = (timeString: string, hours: number): string => {
+    const [hoursStr, minutesStr] = timeString.split(':');
+    const totalMinutes = parseInt(hoursStr, 10) * 60 + parseInt(minutesStr, 10) + (hours * 60);
+    const newHours = Math.floor(totalMinutes / 60) % 24;
+    const newMinutes = totalMinutes % 60;
+    return `${String(newHours).padStart(2, '0')}:${String(newMinutes).padStart(2, '0')}`;
   };
   const handlePreviousMonth = () => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1));
   const handleNextMonth = () => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
