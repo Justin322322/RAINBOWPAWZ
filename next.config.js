@@ -2,8 +2,8 @@
 // Load environment variables
 require('dotenv').config({ path: '.env.local' });
 
-// Get port from environment or default to 3001
-const port = process.env.PORT || 3001;
+// Get port from environment or default to 3000
+const port = process.env.PORT || 3000;
 
 // Always use 3306 for MySQL
 const dbPort = 3306;
@@ -13,11 +13,11 @@ const nextConfig = {
   // SECURITY: Never expose database credentials to client-side
   env: {
     // Only expose port and app URL for client-side access
-    NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+    NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL || `http://localhost:${port}`,
     NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
     NEXT_PUBLIC_APP_VERSION: process.env.NEXT_PUBLIC_APP_VERSION || '1.0.0',
     // Convert PORT to string to avoid Next.js config warning
-    PORT: String(process.env.PORT || 3000),
+    PORT: String(port),
     // Don't include NODE_ENV here as it's not allowed
   },
   // Configure image handling
