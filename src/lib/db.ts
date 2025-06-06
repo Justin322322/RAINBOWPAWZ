@@ -14,15 +14,11 @@ const dbConfig = {
   waitForConnections: true,
   connectionLimit: process.env.NODE_ENV === 'production' ? 20 : 10, // Increased pool size
   queueLimit: 0,
-  acquireTimeout: 60000,
-  timeout: 60000,
-  socketPath: undefined,
-  // Removed insecureAuth for security
-  // Add connection timeout and better error handling
+  // Removed invalid options that cause warnings in MySQL2
   connectTimeout: 10000,
   debug: process.env.NODE_ENV === 'development',
   multipleStatements: false,
-  ssl: false
+  ssl: undefined // Use undefined instead of false for MySQL2 compatibility
 };
 
 // Create a connection pool with error handling
@@ -38,10 +34,9 @@ const productionConfig = {
   waitForConnections: true,
   connectionLimit: process.env.NODE_ENV === 'production' ? 20 : 10, // Increased pool size
   queueLimit: 0,
-  acquireTimeout: 60000,
-  timeout: 60000,
-  socketPath: undefined,
-  // Removed insecureAuth for security
+  // Removed invalid options that cause warnings in MySQL2
+  connectTimeout: 10000,
+  ssl: undefined // Use undefined instead of false for MySQL2 compatibility
 };
 
 // Use production config in production, otherwise use environment variables
