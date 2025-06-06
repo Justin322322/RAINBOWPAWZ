@@ -38,6 +38,11 @@ const withAdminAuth = <P_Original extends object>(
         // Ensure local state is also up-to-date if global state was already set
         if (!retrievedAdminData) setRetrievedAdminData(globalAdminAuthState.adminData);
         if (!isAuthenticated) setIsAuthenticated(globalAdminAuthState.verified);
+        
+        // Trigger profile picture update event for cached data
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new Event('profilePictureUpdated'));
+        }
         return;
       }
 
@@ -49,6 +54,11 @@ const withAdminAuth = <P_Original extends object>(
           verified: true,
           adminData: fastCheck.adminData
         };
+        
+        // Trigger profile picture update event for fast check data
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new Event('profilePictureUpdated'));
+        }
         return;
       }
 
@@ -62,6 +72,11 @@ const withAdminAuth = <P_Original extends object>(
             verified: true,
             adminData: parsedData
           };
+          
+          // Trigger profile picture update event for cached session data
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new Event('profilePictureUpdated'));
+          }
           return;
         } catch (e) {
           sessionStorage.removeItem('admin_data');
@@ -205,6 +220,11 @@ const withAdminAuth = <P_Original extends object>(
           setIsAuthenticated(true);
           sessionStorage.setItem('admin_data', JSON.stringify(fetchedAdminData));
           globalAdminAuthState = { verified: true, adminData: fetchedAdminData };
+
+          // Trigger profile picture update event to notify navbar
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new Event('profilePictureUpdated'));
+          }
         } catch (fetchError) {
           router.replace('/');
         }

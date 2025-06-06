@@ -20,6 +20,7 @@ import ConfirmationModal from '@/components/ConfirmationModal';
 import DeclineModal from '@/components/DeclineModal';
 import DocumentViewerModal from '@/components/modals/DocumentViewerModal';
 import SectionLoader from '@/components/ui/SectionLoader';
+import { getAuthToken } from '@/utils/auth';
 
 interface ApplicationDetailContentProps {
   id: string;
@@ -294,11 +295,20 @@ function ApplicationDetailContent({ id }: ApplicationDetailContentProps) {
     try {
       setIsProcessing(true);
 
+      // Get auth token for the request
+      const authToken = getAuthToken();
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+
+      // Add authorization header if token exists
+      if (authToken) {
+        headers['Authorization'] = `Bearer ${authToken}`;
+      }
+
       const response = await fetch(`/api/businesses/applications/${id}/approve`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify({ notes: note }),
       });
 
@@ -343,11 +353,20 @@ function ApplicationDetailContent({ id }: ApplicationDetailContentProps) {
     try {
       setIsProcessing(true);
 
+      // Get auth token for the request
+      const authToken = getAuthToken();
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+
+      // Add authorization header if token exists
+      if (authToken) {
+        headers['Authorization'] = `Bearer ${authToken}`;
+      }
+
       const response = await fetch(`/api/businesses/applications/${id}/decline`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify({
           note,
           requestDocuments,
@@ -405,8 +424,6 @@ function ApplicationDetailContent({ id }: ApplicationDetailContentProps) {
       setIsProcessing(false);
     }
   };
-
-
 
   // Render the application details
   const renderApplicationDetails = () => {

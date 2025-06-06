@@ -306,8 +306,11 @@ export const setAuthToken = (userId: string, accountType: string, expirationDays
 export const clearAuthToken = async (): Promise<void> => {
   if (typeof document === 'undefined') return;
 
-  // Clear all session storage
-  sessionStorage.clear();
+  // Clear specific session storage items instead of clearing all
+  sessionStorage.removeItem('auth_user_id');
+  sessionStorage.removeItem('auth_account_type');
+  sessionStorage.removeItem('auth_port');
+  sessionStorage.removeItem('auth_token');
 
   // Clear localStorage backups
   try {

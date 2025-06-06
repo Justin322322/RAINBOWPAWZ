@@ -44,11 +44,13 @@ export default function LogoutModal({ isOpen, onClose, userName = 'User' }: Logo
       // Clear business verification cache
       clearBusinessVerificationCache();
 
-      // Clear session storage
+      // Clear session storage items specifically (preserve any other session data)
       sessionStorage.removeItem('user_data');
+      sessionStorage.removeItem('admin_data'); // Clear admin data
       sessionStorage.removeItem('otp_verified');
       sessionStorage.removeItem('auth_user_id');
       sessionStorage.removeItem('auth_account_type');
+      sessionStorage.removeItem('auth_token');
 
       // Redirect to home page after a short delay
       setTimeout(() => {
@@ -57,6 +59,15 @@ export default function LogoutModal({ isOpen, onClose, userName = 'User' }: Logo
     } catch (error) {
       // Still clear the token and redirect even if the API call fails
       clearAuthToken();
+      
+      // Clear session storage on error too
+      sessionStorage.removeItem('user_data');
+      sessionStorage.removeItem('admin_data');
+      sessionStorage.removeItem('otp_verified');
+      sessionStorage.removeItem('auth_user_id');
+      sessionStorage.removeItem('auth_account_type');
+      sessionStorage.removeItem('auth_token');
+      
       showToast('Logged out successfully', 'success');
       router.push('/');
     }

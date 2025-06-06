@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
 
     // Check if the user exists in the users table with role='admin'
     const userResult = await query(
-      `SELECT user_id, first_name, last_name, email, role
+      `SELECT user_id, first_name, last_name, email, role, profile_picture
        FROM users
        WHERE user_id = ? AND role = 'admin'`,
       [id]
@@ -34,7 +34,8 @@ export async function GET(request: NextRequest) {
         user_type: 'admin',
         role: user.role,
         username: user.first_name.toLowerCase(),
-        full_name: `${user.first_name} ${user.last_name}`
+        full_name: `${user.first_name} ${user.last_name}`,
+        profile_picture: user.profile_picture
       };
 
       return NextResponse.json(adminData);

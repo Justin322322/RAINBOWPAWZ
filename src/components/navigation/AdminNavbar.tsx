@@ -75,10 +75,35 @@ export default function AdminNavbar({ activePage: propActivePage, userName = 'Ad
     // Listen for custom event when profile picture is updated
     window.addEventListener('profilePictureUpdated', handleProfilePictureUpdate);
 
+    // Also listen for storage events (when sessionStorage is updated from other components)
+    const handleStorageChange = () => {
+      updateProfilePictureFromStorage();
+    };
+    window.addEventListener('storage', handleStorageChange);
+
+    // Poll for session storage changes (since storage event doesn't fire for sessionStorage in same tab)
+    const pollForChanges = () => {
+      const adminData = sessionStorage.getItem('admin_data');
+      if (adminData) {
+        try {
+          const admin = JSON.parse(adminData);
+          if (admin.profile_picture !== profilePicture) {
+            setProfilePicture(admin.profile_picture || null);
+          }
+        } catch (error) {
+          // Ignore parsing errors
+        }
+      }
+    };
+
+    const interval = setInterval(pollForChanges, 1000); // Check every second
+
     return () => {
       window.removeEventListener('profilePictureUpdated', handleProfilePictureUpdate);
+      window.removeEventListener('storage', handleStorageChange);
+      clearInterval(interval);
     };
-  }, []);
+  }, [profilePicture]);
 
   // Open logout modal
   const handleLogoutClick = () => {
