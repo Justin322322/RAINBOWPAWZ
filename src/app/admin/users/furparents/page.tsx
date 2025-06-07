@@ -24,6 +24,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 import Image from 'next/image';
 import { Badge, Button, Input } from '@/components/ui';
+import { getAuthToken } from '@/utils/auth';
 
 // Types and interfaces
 type UserStatus = 'active' | 'restricted' | 'suspended' | 'inactive';
@@ -41,6 +42,7 @@ interface User {
   is_verified: boolean;
   pets?: number;
   completedBookings?: number;
+  profile_picture?: string | null; // Add profile picture field
   restriction?: {
     reason: string;
     restriction_date: string;
@@ -104,12 +106,21 @@ export default function AdminFurParentsPage() {
           role: 'fur_parent'
         });
 
+        // Get auth token for the request
+        const authToken = getAuthToken();
+        const headers: Record<string, string> = {
+          'X-Requested-With': 'fetch',
+          'X-Client-Time': new Date().toISOString()
+        };
+
+        // Add authorization header if token exists
+        if (authToken) {
+          headers['Authorization'] = `Bearer ${authToken}`;
+        }
+
         const response = await fetch(`/api/users?${params.toString()}`, {
           cache: 'no-store',
-          headers: {
-            'X-Requested-With': 'fetch',
-            'X-Client-Time': new Date().toISOString()
-          }
+          headers
         });
 
         if (!response.ok) {
@@ -206,11 +217,20 @@ export default function AdminFurParentsPage() {
     try {
       setIsProcessing(true);
 
+      // Get auth token for the request
+      const authToken = getAuthToken();
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+
+      // Add authorization header if token exists
+      if (authToken) {
+        headers['Authorization'] = `Bearer ${authToken}`;
+      }
+
       const response = await fetch(`/api/users/${userToAction.user_id}/restrict`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify({
           restricted: true,
           reason: restrictReason || 'Restricted by admin'
@@ -271,11 +291,20 @@ export default function AdminFurParentsPage() {
     try {
       setIsProcessing(true);
 
+      // Get auth token for the request
+      const authToken = getAuthToken();
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+
+      // Add authorization header if token exists
+      if (authToken) {
+        headers['Authorization'] = `Bearer ${authToken}`;
+      }
+
       const response = await fetch(`/api/users/${userToAction.user_id}/restrict`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify({
           restricted: false
         }),
@@ -587,8 +616,27 @@ export default function AdminFurParentsPage() {
                     <tr key={user.user_id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
-                          <div className="flex-shrink-0 h-10 w-10 bg-[var(--primary-green)] text-white rounded-full flex items-center justify-center">
-                            <UserCircleIcon className="h-6 w-6" />
+                          <div className="flex-shrink-0 h-10 w-10 bg-[var(--primary-green)] text-white rounded-full flex items-center justify-center overflow-hidden">
+                            {user.profile_picture ? (
+                              <img
+                                src={user.profile_picture.startsWith('/') ? user.profile_picture : `/uploads/profile-pictures/${user.user_id}/${user.profile_picture}`}
+                                alt={`${user.first_name} ${user.last_name} profile`}
+                                className="h-full w-full object-cover"
+                                onError={(e) => {
+                                  // Fallback to user icon if image fails to load
+                                  e.currentTarget.style.display = 'none';
+                                  const parent = e.currentTarget.parentElement;
+                                  if (parent && !parent.querySelector('.fallback-icon')) {
+                                    const icon = document.createElement('div');
+                                    icon.className = 'fallback-icon';
+                                    icon.innerHTML = '<svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>';
+                                    parent.appendChild(icon);
+                                  }
+                                }}
+                              />
+                            ) : (
+                              <UserCircleIcon className="h-6 w-6" />
+                            )}
                           </div>
                           <div className="ml-4">
                             <div className="text-sm font-medium text-gray-900">{user.first_name} {user.last_name}</div>
@@ -810,10 +858,29 @@ export default function AdminFurParentsPage() {
             <div className="p-6">
               <div className="flex flex-col space-y-6">
                 {/* Header */}
-                <div className="flex items-center justify-between">
+                                  <div className="flex items-center justify-between">
                   <div className="flex items-center">
-                    <div className="h-16 w-16 bg-[var(--primary-green)] text-white rounded-full flex items-center justify-center mr-4">
-                      <UserCircleIcon className="h-10 w-10" />
+                    <div className="h-16 w-16 bg-[var(--primary-green)] text-white rounded-full flex items-center justify-center mr-4 overflow-hidden">
+                      {selectedUser.profile_picture ? (
+                        <img
+                          src={selectedUser.profile_picture.startsWith('/') ? selectedUser.profile_picture : `/uploads/profile-pictures/${selectedUser.user_id}/${selectedUser.profile_picture}`}
+                          alt={`${selectedUser.first_name} ${selectedUser.last_name} profile`}
+                          className="h-full w-full object-cover"
+                          onError={(e) => {
+                            // Fallback to user icon if image fails to load
+                            e.currentTarget.style.display = 'none';
+                            const parent = e.currentTarget.parentElement;
+                            if (parent && !parent.querySelector('.fallback-icon')) {
+                              const icon = document.createElement('div');
+                              icon.className = 'fallback-icon';
+                              icon.innerHTML = '<svg class="h-10 w-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>';
+                              parent.appendChild(icon);
+                            }
+                          }}
+                        />
+                      ) : (
+                        <UserCircleIcon className="h-10 w-10" />
+                      )}
                     </div>
                     <div>
                       <h3 className="text-2xl font-semibold text-gray-900">{selectedUser.first_name} {selectedUser.last_name}</h3>

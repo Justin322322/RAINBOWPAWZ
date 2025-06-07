@@ -22,6 +22,7 @@ import Link from 'next/link';
 import { useToast } from '@/context/ToastContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
+import { getAuthToken } from '@/utils/auth';
 
 import { LoadingSpinner } from '@/app/admin/services/client';
 
@@ -45,6 +46,7 @@ interface CremationCenter {
   verification_status?: string; // Optional for backward compatibility
   city?: string;
   province?: string;
+  profile_picture?: string | null; // Add profile picture field
 }
 
 export default function AdminCremationCentersPage() {
@@ -76,14 +78,22 @@ export default function AdminCremationCentersPage() {
         setLoading(true);
         setError(null);
 
+        // Get auth token for the request
+        const authToken = getAuthToken();
+        const headers: Record<string, string> = {
+          'X-Requested-With': 'fetch',
+          'X-Client-Time': new Date().toISOString()
+        };
+
+        // Add authorization header if token exists
+        if (authToken) {
+          headers['Authorization'] = `Bearer ${authToken}`;
+        }
+
         const response = await fetch('/api/admin/cremation-businesses', {
           // Add cache: 'no-store' to prevent caching
           cache: 'no-store',
-          // Add headers for debugging
-          headers: {
-            'X-Requested-With': 'fetch',
-            'X-Client-Time': new Date().toISOString()
-          }
+          headers
         });
 
 
@@ -112,7 +122,18 @@ export default function AdminCremationCentersPage() {
           // Fetch active services count from service_packages table
           const fetchServicesCount = async (centerId: string | number) => {
             try {
-              const serviceResponse = await fetch(`/api/admin/services?providerId=${centerId}`);
+              // Get auth token for the services request
+              const authToken = getAuthToken();
+              const serviceHeaders: Record<string, string> = {};
+
+              // Add authorization header if token exists
+              if (authToken) {
+                serviceHeaders['Authorization'] = `Bearer ${authToken}`;
+              }
+
+              const serviceResponse = await fetch(`/api/admin/services?providerId=${centerId}`, {
+                headers: serviceHeaders
+              });
               if (serviceResponse.ok) {
                 const serviceData = await serviceResponse.json();
                 if (serviceData.success && serviceData.services) {
@@ -227,11 +248,20 @@ export default function AdminCremationCentersPage() {
     try {
       setIsProcessing(true);
 
+      // Get auth token for the request
+      const authToken = getAuthToken();
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+
+      // Add authorization header if token exists
+      if (authToken) {
+        headers['Authorization'] = `Bearer ${authToken}`;
+      }
+
       const response = await fetch('/api/admin/cremation-businesses/restrict', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify({
           businessId: center.id,
           action: 'restrict'
@@ -304,13 +334,22 @@ export default function AdminCremationCentersPage() {
     try {
       setIsProcessing(true);
 
+      // Get auth token for the request
+      const authToken = getAuthToken();
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+
+      // Add authorization header if token exists
+      if (authToken) {
+        headers['Authorization'] = `Bearer ${authToken}`;
+      }
+
       // Try the cremation-businesses/restrict endpoint first with 'restore' action
       try {
         const response = await fetch('/api/admin/cremation-businesses/restrict', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers,
           body: JSON.stringify({
             businessId: center.id,
             action: 'restore'
@@ -341,9 +380,7 @@ export default function AdminCremationCentersPage() {
       // Try the dedicated unrestrict endpoint as fallback
       const fallbackResponse = await fetch('/api/admin/users/unrestrict', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify({
           userId: center.id,
           userType: 'cremation_center',
@@ -642,14 +679,22 @@ export default function AdminCremationCentersPage() {
                 // Trigger a re-fetch without page reload
                 const fetchCremationCenters = async () => {
                   try {
+                    // Get auth token for the retry request
+                    const authToken = getAuthToken();
+                    const retryHeaders: Record<string, string> = {
+                      'X-Requested-With': 'fetch-retry',
+                      'X-Client-Time': new Date().toISOString()
+                    };
+
+                    // Add authorization header if token exists
+                    if (authToken) {
+                      retryHeaders['Authorization'] = `Bearer ${authToken}`;
+                    }
+
                     const response = await fetch('/api/admin/cremation-businesses', {
                       // Add cache: 'no-store' to prevent caching
                       cache: 'no-store',
-                      // Add headers for debugging
-                      headers: {
-                        'X-Requested-With': 'fetch-retry',
-                        'X-Client-Time': new Date().toISOString()
-                      }
+                      headers: retryHeaders
                     });
 
 
@@ -724,8 +769,27 @@ export default function AdminCremationCentersPage() {
                   <tr key={center.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
-                        <div className="flex-shrink-0 h-10 w-10 bg-[var(--primary-green)] text-white rounded-full flex items-center justify-center">
-                          <BuildingStorefrontIcon className="h-6 w-6" />
+                        <div className="flex-shrink-0 h-10 w-10 bg-[var(--primary-green)] text-white rounded-full flex items-center justify-center overflow-hidden">
+                          {center.profile_picture ? (
+                            <img
+                              src={center.profile_picture.startsWith('/') ? center.profile_picture : `/uploads/profile-pictures/${center.id}/${center.profile_picture}`}
+                              alt={`${center.name} profile`}
+                              className="h-full w-full object-cover"
+                              onError={(e) => {
+                                // Fallback to building icon if image fails to load
+                                e.currentTarget.style.display = 'none';
+                                const parent = e.currentTarget.parentElement;
+                                if (parent && !parent.querySelector('.fallback-icon')) {
+                                  const icon = document.createElement('div');
+                                  icon.className = 'fallback-icon';
+                                  icon.innerHTML = '<svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>';
+                                  parent.appendChild(icon);
+                                }
+                              }}
+                            />
+                          ) : (
+                            <BuildingStorefrontIcon className="h-6 w-6" />
+                          )}
                         </div>
                         <div className="ml-4">
                           <div className="text-sm font-medium text-gray-900">{center.name}</div>
@@ -838,8 +902,27 @@ export default function AdminCremationCentersPage() {
                 {/* Header */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center">
-                    <div className="h-16 w-16 bg-[var(--primary-green)] text-white rounded-full flex items-center justify-center mr-4">
-                      <BuildingStorefrontIcon className="h-10 w-10" />
+                    <div className="h-16 w-16 bg-[var(--primary-green)] text-white rounded-full flex items-center justify-center mr-4 overflow-hidden">
+                      {selectedCenter.profile_picture ? (
+                        <img
+                          src={selectedCenter.profile_picture.startsWith('/') ? selectedCenter.profile_picture : `/uploads/profile-pictures/${selectedCenter.id}/${selectedCenter.profile_picture}`}
+                          alt={`${selectedCenter.name} profile`}
+                          className="h-full w-full object-cover"
+                          onError={(e) => {
+                            // Fallback to building icon if image fails to load
+                            e.currentTarget.style.display = 'none';
+                            const parent = e.currentTarget.parentElement;
+                            if (parent && !parent.querySelector('.fallback-icon')) {
+                              const icon = document.createElement('div');
+                              icon.className = 'fallback-icon';
+                              icon.innerHTML = '<svg class="h-10 w-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>';
+                              parent.appendChild(icon);
+                            }
+                          }}
+                        />
+                      ) : (
+                        <BuildingStorefrontIcon className="h-10 w-10" />
+                      )}
                     </div>
                     <div>
                       <h3 className="text-2xl font-semibold text-gray-900">{selectedCenter.name}</h3>

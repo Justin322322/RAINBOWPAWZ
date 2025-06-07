@@ -88,6 +88,14 @@ function CremationProfilePage({ userData }: { userData: any }) {
       // Check authentication before making the API call
       const authToken = getAuthToken();
       if (!authToken || !isBusiness()) {
+        // Try to get the profile picture from localStorage to preserve it when session expires
+        let preservedProfilePicture: string | null = null;
+        try {
+          preservedProfilePicture = localStorage.getItem('cremation_profile_picture');
+        } catch (error) {
+          console.error('Error reading profile picture from localStorage:', error);
+        }
+
         // Create a dummy profile with the correct data structure
         const dummyProfile = {
           id: 4,
@@ -105,7 +113,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
           description: 'Professional pet cremation services with care and respect.',
           website: '8:00 AM - 5:00 PM, Monday to Saturday',
           logoPath: null,
-          profilePicturePath: null,
+          profilePicturePath: preservedProfilePicture, // Use preserved profile picture instead of null
           verified: true,
           createdAt: '2025-05-23T02:43:36.000Z',
           documents: {
@@ -178,6 +186,15 @@ function CremationProfilePage({ userData }: { userData: any }) {
 
       // Update form states with fetched data
       if (data.profile) {
+        // Update localStorage with the profile picture from API data
+        if (data.profile.profilePicturePath) {
+          try {
+            localStorage.setItem('cremation_profile_picture', data.profile.profilePicturePath);
+          } catch (error) {
+            console.error('Error updating profile picture in localStorage:', error);
+          }
+        }
+
         setAddress({
           street: data.profile.address.street || '',
           city: data.profile.address.city || '',
