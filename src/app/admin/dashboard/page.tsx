@@ -15,6 +15,7 @@ import Link from 'next/link';
 import withAdminAuth from '@/components/withAdminAuth';
 import StatCard from '@/components/ui/StatCard';
 import { Skeleton, SkeletonText, SkeletonCard } from '@/components/ui/SkeletonLoader';
+import { adminFetch, handleAdminResponse } from '@/utils/auth';
 
 function AdminDashboardPage({ adminData }: { adminData: any }) {
   const userName = adminData?.full_name || 'System Administrator';
@@ -71,21 +72,15 @@ function AdminDashboardPage({ adminData }: { adminData: any }) {
 
       try {
         // First try the primary dashboard endpoint
-        let response = await fetch('/api/admin/dashboard', {
-          method: 'GET',
-          headers: {
-            'Cache-Control': 'no-cache'
-          }
+        let response = await adminFetch('/api/admin/dashboard', {
+          method: 'GET'
         });
 
         if (!response.ok) {
           console.error(`Primary dashboard endpoint failed: ${response.status} ${response.statusText}`);
           // Try fallback to dashboard-stats endpoint if primary fails
-          response = await fetch('/api/admin/dashboard-stats', {
-            method: 'GET',
-            headers: {
-              'Cache-Control': 'no-cache'
-            }
+          response = await adminFetch('/api/admin/dashboard-stats', {
+            method: 'GET'
           });
           
           if (!response.ok) {
@@ -93,58 +88,72 @@ function AdminDashboardPage({ adminData }: { adminData: any }) {
           }
         }
 
-        const result = await response.json();
+        const result = await handleAdminResponse<any>(
+          response,
+          (data: any) => {
+            // Success callback - data processing will be done below
+          },
+          (error) => {
+            // Error callback
+            setError(error);
+          }
+        );
 
-        if (result.success) {
+        if (!result.success) {
+          return;
+        }
+
+        if (result.success && result.data) {
+          const responseData = result.data;
           // Check if the data is from the dashboard or dashboard-stats endpoint
-          if (result.stats) {
+          if (responseData.stats) {
             // Handle dashboard-stats format
             setDashboardData({
               stats: {
                 totalUsers: { 
-                  value: result.stats.totalUsers.count, 
-                  change: result.stats.totalUsers.change + '%', 
-                  changeType: result.stats.totalUsers.changeType 
+                  value: responseData.stats.totalUsers.count, 
+                  change: responseData.stats.totalUsers.change + '%', 
+                  changeType: responseData.stats.totalUsers.changeType 
                 },
                 applicationRequests: { 
-                  value: result.stats.applications.count, 
-                  change: result.stats.applications.change + '%', 
-                  changeType: result.stats.applications.changeType 
+                  value: responseData.stats.applications.count, 
+                  change: responseData.stats.applications.change + '%', 
+                  changeType: responseData.stats.applications.changeType 
                 },
                 activeServices: { 
-                  value: result.stats.services.count, 
-                  change: result.stats.services.change + '%', 
-                  changeType: result.stats.services.changeType 
+                  value: responseData.stats.services.count, 
+                  change: responseData.stats.services.change + '%', 
+                  changeType: responseData.stats.services.changeType 
                 },
                 monthlyRevenue: { 
-                  value: `₱${result.stats.revenue.amount.toLocaleString('en-US', {
+                  value: `₱${responseData.stats.revenue.amount.toLocaleString('en-US', {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2
                   })}`, 
-                  change: result.stats.revenue.change + '%', 
-                  changeType: result.stats.revenue.changeType 
+                  change: responseData.stats.revenue.change + '%', 
+                  changeType: responseData.stats.revenue.changeType 
                 }
               },
               userDistribution: {
                 activeUsers: { 
-                  cremationCenters: result.stats.activeUsers.cremation, 
-                  furParents: result.stats.activeUsers.furparent 
+                  cremationCenters: responseData.stats.activeUsers.cremation, 
+                  furParents: responseData.stats.activeUsers.furparent 
                 },
                 pendingApplications: { 
-                  thisMonth: result.stats.pendingApplications.current_month, 
-                  lastMonth: result.stats.pendingApplications.last_month 
+                  thisMonth: responseData.stats.pendingApplications.current_month, 
+                  lastMonth: responseData.stats.pendingApplications.last_month 
                 },
                 restrictedUsers: { 
-                  cremationCenters: result.stats.restrictedUsers.cremation, 
-                  furParents: result.stats.restrictedUsers.furparent 
+                  cremationCenters: responseData.stats.restrictedUsers.cremation, 
+                  furParents: responseData.stats.restrictedUsers.furparent 
                 }
               }
             });
             setRecentApplications([]);
           } else {
             // Original dashboard format
-            setDashboardData(result.data);
-            setRecentApplications(result.data.recentApplications || []);
+            setDashboardData(responseData);
+            setRecentApplications(responseData.recentApplications || []);
           }
           
           console.log('Dashboard data loaded successfully');

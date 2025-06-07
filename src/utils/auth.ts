@@ -532,3 +532,99 @@ export const fastAuthCheck = (): {
     return defaultState;
   }
 };
+
+// Protected fetch function for admin API calls
+// This prevents showing 401 errors when user is not authenticated (e.g., after logout)
+export const adminFetch = async (url: string, options: RequestInit = {}): Promise<Response> => {
+  // Check if user is authenticated before making the call
+  const authToken = getAuthToken();
+  if (!authToken) {
+    // Return a fake 401 response to indicate no auth without making network call
+    return new Response(JSON.stringify({ error: 'No authentication token' }), {
+      status: 401,
+      statusText: 'Unauthorized',
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+
+  // Set up headers with authorization
+  const headers: Record<string, string> = {
+    'X-Requested-With': 'fetch',
+    'X-Client-Time': new Date().toISOString(),
+    'Content-Type': 'application/json',
+    ...((options.headers as Record<string, string>) || {})
+  };
+
+  // Add authorization header
+  headers['Authorization'] = `Bearer ${authToken}`;
+
+  // Make the API call
+  const response = await fetch(url, {
+    ...options,
+    cache: 'no-store',
+    headers
+  });
+
+  return response;
+};
+
+// Helper function to handle admin API responses with proper error handling
+export const handleAdminResponse = async <T>(
+  response: Response,
+  onSuccess?: (data: T) => void,
+  onError?: (error: string) => void,
+  showToast?: (message: string, type: 'error' | 'success') => void
+): Promise<{ success: boolean; data?: T; error?: string }> => {
+  try {
+    // If it's a 401 and user has no token, don't show error
+    if (response.status === 401 && !getAuthToken()) {
+      return { success: false, error: 'Not authenticated' };
+    }
+
+    if (!response.ok) {
+      let errorMessage = `Request failed: ${response.status} ${response.statusText}`;
+      
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.details || errorData.error || errorMessage;
+      } catch (parseError) {
+        // Ignore JSON parsing errors
+      }
+
+      // Only show error if user is authenticated
+      if (getAuthToken()) {
+        onError?.(errorMessage);
+        showToast?.(errorMessage, 'error');
+      }
+
+      return { success: false, error: errorMessage };
+    }
+
+    const data = await response.json();
+    
+    if (!data.success && data.success !== undefined) {
+      const errorMessage = data.error || 'Request failed';
+      
+      // Only show error if user is authenticated
+      if (getAuthToken()) {
+        onError?.(errorMessage);
+        showToast?.(errorMessage, 'error');
+      }
+      
+      return { success: false, error: errorMessage };
+    }
+
+    onSuccess?.(data);
+    return { success: true, data };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Network error';
+    
+    // Only show error if user is authenticated
+    if (getAuthToken()) {
+      onError?.(errorMessage);
+      showToast?.(errorMessage, 'error');
+    }
+    
+    return { success: false, error: errorMessage };
+  }
+};

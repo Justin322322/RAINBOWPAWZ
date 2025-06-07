@@ -22,6 +22,14 @@ let globalAdminAuthState = {
   adminData: null as AdminData | null,
 };
 
+// Function to clear global admin auth state (called during logout)
+export const clearGlobalAdminAuth = () => {
+  globalAdminAuthState = {
+    verified: false,
+    adminData: null
+  };
+};
+
 // HOC to wrap components that require admin authentication
 // P_Original are the props of the component being wrapped, *excluding* the injected adminData prop.
 const withAdminAuth = <P_Original extends object>(
@@ -34,6 +42,32 @@ const withAdminAuth = <P_Original extends object>(
     const [retrievedAdminData, setRetrievedAdminData] = useState<AdminData | null>(globalAdminAuthState.adminData);
 
     useEffect(() => {
+      // Check if auth token still exists before using cached admin data
+      const currentAuthToken = typeof window !== 'undefined' ? (() => {
+        try {
+          const cookies = document.cookie.split(';');
+          const authCookie = cookies.find(cookie => cookie.trim().startsWith('auth_token='));
+          if (authCookie) {
+            const cookieParts = authCookie.split('=');
+            if (cookieParts.length === 2) {
+              return decodeURIComponent(cookieParts[1]);
+            }
+          }
+          return sessionStorage.getItem('auth_token') || localStorage.getItem('auth_token_3000');
+        } catch (e) {
+          return null;
+        }
+      })() : null;
+
+      // If no auth token exists, clear global state and redirect
+      if (!currentAuthToken) {
+        globalAdminAuthState = { verified: false, adminData: null };
+        setIsAuthenticated(false);
+        setRetrievedAdminData(null);
+        router.replace('/');
+        return;
+      }
+
       if (globalAdminAuthState.verified && globalAdminAuthState.adminData) {
         // Ensure local state is also up-to-date if global state was already set
         if (!retrievedAdminData) setRetrievedAdminData(globalAdminAuthState.adminData);

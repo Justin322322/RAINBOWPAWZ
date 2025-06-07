@@ -618,9 +618,11 @@ export default function AdminFurParentsPage() {
                         <div className="flex items-center">
                           <div className="flex-shrink-0 h-10 w-10 bg-[var(--primary-green)] text-white rounded-full flex items-center justify-center overflow-hidden">
                             {user.profile_picture ? (
-                              <img
+                              <Image
                                 src={user.profile_picture.startsWith('/') ? user.profile_picture : `/uploads/profile-pictures/${user.user_id}/${user.profile_picture}`}
                                 alt={`${user.first_name} ${user.last_name} profile`}
+                                width={40}
+                                height={40}
                                 className="h-full w-full object-cover"
                                 onError={(e) => {
                                   // Fallback to user icon if image fails to load
@@ -862,9 +864,11 @@ export default function AdminFurParentsPage() {
                   <div className="flex items-center">
                     <div className="h-16 w-16 bg-[var(--primary-green)] text-white rounded-full flex items-center justify-center mr-4 overflow-hidden">
                       {selectedUser.profile_picture ? (
-                        <img
+                        <Image
                           src={selectedUser.profile_picture.startsWith('/') ? selectedUser.profile_picture : `/uploads/profile-pictures/${selectedUser.user_id}/${selectedUser.profile_picture}`}
                           alt={`${selectedUser.first_name} ${selectedUser.last_name} profile`}
+                          width={64}
+                          height={64}
                           className="h-full w-full object-cover"
                           onError={(e) => {
                             // Fallback to user icon if image fails to load

@@ -19,6 +19,7 @@ import {
   CheckBadgeIcon
 } from '@heroicons/react/24/outline';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useToast } from '@/context/ToastContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
@@ -69,17 +70,23 @@ export default function AdminCremationCentersPage() {
 
   const { showToast } = useToast();
 
-
-
   // Fetch cremation centers from the API
   useEffect(() => {
     const fetchCremationCenters = async () => {
       try {
+        // Check if user is authenticated before making API calls
+        const authToken = getAuthToken();
+        if (!authToken) {
+          // If no auth token, don't make the API call and don't show error
+          setCremationCenters([]);
+          setLoading(false);
+          return;
+        }
+
         setLoading(true);
         setError(null);
 
         // Get auth token for the request
-        const authToken = getAuthToken();
         const headers: Record<string, string> = {
           'X-Requested-With': 'fetch',
           'X-Client-Time': new Date().toISOString()
@@ -98,6 +105,14 @@ export default function AdminCremationCentersPage() {
 
 
         if (!response.ok) {
+          // Check if it's an authentication error and user has no token
+          if (response.status === 401 && !getAuthToken()) {
+            // User is not authenticated, don't show error message
+            setCremationCenters([]);
+            setLoading(false);
+            return;
+          }
+
           // Try to get the error message from the response
           let errorDetails = '';
           try {
@@ -163,10 +178,13 @@ export default function AdminCremationCentersPage() {
 
         setCremationCenters(centersWithRating);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'An unknown error occurred');
+        // Only show error if user is authenticated (has token)
+        if (getAuthToken()) {
+          setError(err instanceof Error ? err.message : 'An unknown error occurred');
 
-        // Show toast with error message
-        showToast('Failed to load cremation centers: ' + (err instanceof Error ? err.message : 'Unknown error'), 'error');
+          // Show toast with error message only if user is authenticated
+          showToast('Failed to load cremation centers: ' + (err instanceof Error ? err.message : 'Unknown error'), 'error');
+        }
 
         // Set empty array instead of mock data to ensure we're showing real data
         setCremationCenters([]);
@@ -236,10 +254,6 @@ export default function AdminCremationCentersPage() {
     }
     setShowRestoreModal(true);
   };
-
-
-
-
 
   // Handle restricting a cremation center
   const handleRestrictCenter = async (center: CremationCenter) => {
@@ -324,8 +338,6 @@ export default function AdminCremationCentersPage() {
       setIsProcessing(false);
     }
   };
-
-
 
   // Handle unrestricting a cremation center
   const handleUnrestrictCenter = async (center: CremationCenter) => {
@@ -679,8 +691,15 @@ export default function AdminCremationCentersPage() {
                 // Trigger a re-fetch without page reload
                 const fetchCremationCenters = async () => {
                   try {
-                    // Get auth token for the retry request
+                    // Check if user is authenticated before making retry request
                     const authToken = getAuthToken();
+                    if (!authToken) {
+                      // If no auth token, don't make the API call
+                      setCremationCenters([]);
+                      setLoading(false);
+                      return;
+                    }
+
                     const retryHeaders: Record<string, string> = {
                       'X-Requested-With': 'fetch-retry',
                       'X-Client-Time': new Date().toISOString()
@@ -699,6 +718,14 @@ export default function AdminCremationCentersPage() {
 
 
                     if (!response.ok) {
+                      // Check if it's an authentication error and user has no token
+                      if (response.status === 401 && !getAuthToken()) {
+                        // User is not authenticated, don't show error message
+                        setCremationCenters([]);
+                        setLoading(false);
+                        return;
+                      }
+
                       // Try to get the error message from the response
                       let errorDetails = '';
                       try {
@@ -722,11 +749,14 @@ export default function AdminCremationCentersPage() {
                     }));
                     setCremationCenters(centersWithRating);
                   } catch (err) {
-                    setError(err instanceof Error ? err.message : 'An unknown error occurred');
+                    // Only show error if user is authenticated (has token)
+                    if (getAuthToken()) {
+                      setError(err instanceof Error ? err.message : 'An unknown error occurred');
 
-                    // Don't show toast for development mode to reduce notification spam
-                    if (process.env.NODE_ENV !== 'development') {
-                      showToast('Failed to load cremation centers', 'error');
+                      // Don't show toast for development mode to reduce notification spam
+                      if (process.env.NODE_ENV !== 'development') {
+                        showToast('Failed to load cremation centers', 'error');
+                      }
                     }
                   } finally {
                     setLoading(false);
@@ -771,9 +801,11 @@ export default function AdminCremationCentersPage() {
                       <div className="flex items-center">
                         <div className="flex-shrink-0 h-10 w-10 bg-[var(--primary-green)] text-white rounded-full flex items-center justify-center overflow-hidden">
                           {center.profile_picture ? (
-                            <img
+                            <Image
                               src={center.profile_picture.startsWith('/') ? center.profile_picture : `/uploads/profile-pictures/${center.id}/${center.profile_picture}`}
                               alt={`${center.name} profile`}
+                              width={40}
+                              height={40}
                               className="h-full w-full object-cover"
                               onError={(e) => {
                                 // Fallback to building icon if image fails to load
@@ -904,9 +936,11 @@ export default function AdminCremationCentersPage() {
                   <div className="flex items-center">
                     <div className="h-16 w-16 bg-[var(--primary-green)] text-white rounded-full flex items-center justify-center mr-4 overflow-hidden">
                       {selectedCenter.profile_picture ? (
-                        <img
+                        <Image
                           src={selectedCenter.profile_picture.startsWith('/') ? selectedCenter.profile_picture : `/uploads/profile-pictures/${selectedCenter.id}/${selectedCenter.profile_picture}`}
                           alt={`${selectedCenter.name} profile`}
+                          width={64}
+                          height={64}
                           className="h-full w-full object-cover"
                           onError={(e) => {
                             // Fallback to building icon if image fails to load

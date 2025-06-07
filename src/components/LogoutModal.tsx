@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { clearAuthToken } from '@/utils/auth';
 import { useToast } from '@/context/ToastContext';
 import { clearBusinessVerificationCache } from '@/utils/businessVerificationCache';
+import { clearGlobalAdminAuth } from '@/components/withAdminAuth';
 import Modal from './Modal';
 
 interface LogoutModalProps {
@@ -44,6 +45,9 @@ export default function LogoutModal({ isOpen, onClose, userName = 'User' }: Logo
       // Clear business verification cache
       clearBusinessVerificationCache();
 
+      // Clear global admin auth state
+      clearGlobalAdminAuth();
+
       // Clear session storage items specifically (preserve any other session data)
       sessionStorage.removeItem('user_data');
       sessionStorage.removeItem('admin_data'); // Clear admin data
@@ -59,6 +63,9 @@ export default function LogoutModal({ isOpen, onClose, userName = 'User' }: Logo
     } catch (error) {
       // Still clear the token and redirect even if the API call fails
       clearAuthToken();
+      
+      // Clear global admin auth state on error too
+      clearGlobalAdminAuth();
       
       // Clear session storage on error too
       sessionStorage.removeItem('user_data');
