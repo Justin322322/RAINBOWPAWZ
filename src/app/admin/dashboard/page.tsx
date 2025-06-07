@@ -15,7 +15,8 @@ import Link from 'next/link';
 import withAdminAuth from '@/components/withAdminAuth';
 import StatCard from '@/components/ui/StatCard';
 import { Skeleton, SkeletonText, SkeletonCard } from '@/components/ui/SkeletonLoader';
-import { adminFetch, handleAdminResponse } from '@/utils/auth';
+import { getAuthToken } from '@/utils/auth';
+import ErrorBoundary from '@/components/ErrorBoundary';
 
 function AdminDashboardPage({ adminData }: { adminData: any }) {
   const userName = adminData?.full_name || 'System Administrator';
@@ -34,6 +35,39 @@ function AdminDashboardPage({ adminData }: { adminData: any }) {
       restrictedUsers: { cremationCenters: 0, furParents: 0 }
     }
   });
+
+  // Ensure dashboardData always has the required structure
+  const safeLoadDashboardData = (newData: any) => {
+    const defaultData = {
+      stats: {
+        totalUsers: { value: 0, change: '0%', changeType: 'increase' },
+        applicationRequests: { value: 0, change: '0%', changeType: 'increase' },
+        activeServices: { value: 0, change: '0%', changeType: 'increase' },
+        monthlyRevenue: { value: '₱0', change: '0%', changeType: 'increase' }
+      },
+      userDistribution: {
+        activeUsers: { cremationCenters: 0, furParents: 0 },
+        pendingApplications: { thisMonth: 0, lastMonth: 0 },
+        restrictedUsers: { cremationCenters: 0, furParents: 0 }
+      }
+    };
+
+    // Deep merge new data with default structure
+    const mergedData = {
+      ...defaultData,
+      ...newData,
+      stats: {
+        ...defaultData.stats,
+        ...newData?.stats
+      },
+      userDistribution: {
+        ...defaultData.userDistribution,
+        ...newData?.userDistribution
+      }
+    };
+
+    setDashboardData(mergedData);
+  };
   const [error, setError] = useState<string | null>(null);
 
   // Define stats configuration
@@ -67,104 +101,121 @@ function AdminDashboardPage({ adminData }: { adminData: any }) {
   // Fetch dashboard data
   useEffect(() => {
     const fetchDashboardData = async () => {
-      setIsLoading(true);
-      setError(null);
-
       try {
+        setIsLoading(true);
+        setError(null);
+
+        // Check if user is authenticated before making API calls
+        const authToken = getAuthToken();
+        if (!authToken) {
+          // If no auth token, don't make the API call and don't show error
+          setIsLoading(false);
+          return;
+        }
+
+        console.log('Fetching dashboard data...');
+
+        // Get auth token for the request
+        const headers: Record<string, string> = {
+          'X-Requested-With': 'fetch',
+          'X-Client-Time': new Date().toISOString(),
+          'Content-Type': 'application/json'
+        };
+
+        // Add authorization header if token exists
+        if (authToken) {
+          headers['Authorization'] = `Bearer ${authToken}`;
+        }
+
         // First try the primary dashboard endpoint
-        let response = await adminFetch('/api/admin/dashboard', {
-          method: 'GET'
+        let response = await fetch('/api/admin/dashboard', {
+          method: 'GET',
+          cache: 'no-store',
+          headers
         });
 
         if (!response.ok) {
           console.error(`Primary dashboard endpoint failed: ${response.status} ${response.statusText}`);
           // Try fallback to dashboard-stats endpoint if primary fails
-          response = await adminFetch('/api/admin/dashboard-stats', {
-            method: 'GET'
+          response = await fetch('/api/admin/dashboard-stats', {
+            method: 'GET',
+            cache: 'no-store',
+            headers
           });
           
           if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Dashboard API error:', response.status, response.statusText, errorText);
             throw new Error(`Failed to fetch dashboard data: ${response.status} ${response.statusText}`);
           }
         }
 
-        const result = await handleAdminResponse<any>(
-          response,
-          (data: any) => {
-            // Success callback - data processing will be done below
-          },
-          (error) => {
-            // Error callback
-            setError(error);
-          }
-        );
+        const responseData = await response.json();
+        console.log('Dashboard response:', responseData);
 
-        if (!result.success) {
-          return;
+        // Check if the response is successful
+        if (responseData.success === false) {
+          throw new Error(responseData.error || 'Failed to fetch dashboard data');
         }
 
-        if (result.success && result.data) {
-          const responseData = result.data;
-          // Check if the data is from the dashboard or dashboard-stats endpoint
-          if (responseData.stats) {
-            // Handle dashboard-stats format
-            setDashboardData({
-              stats: {
-                totalUsers: { 
-                  value: responseData.stats.totalUsers.count, 
-                  change: responseData.stats.totalUsers.change + '%', 
-                  changeType: responseData.stats.totalUsers.changeType 
-                },
-                applicationRequests: { 
-                  value: responseData.stats.applications.count, 
-                  change: responseData.stats.applications.change + '%', 
-                  changeType: responseData.stats.applications.changeType 
-                },
-                activeServices: { 
-                  value: responseData.stats.services.count, 
-                  change: responseData.stats.services.change + '%', 
-                  changeType: responseData.stats.services.changeType 
-                },
-                monthlyRevenue: { 
-                  value: `₱${responseData.stats.revenue.amount.toLocaleString('en-US', {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2
-                  })}`, 
-                  change: responseData.stats.revenue.change + '%', 
-                  changeType: responseData.stats.revenue.changeType 
-                }
-              },
-              userDistribution: {
-                activeUsers: { 
-                  cremationCenters: responseData.stats.activeUsers.cremation, 
-                  furParents: responseData.stats.activeUsers.furparent 
-                },
-                pendingApplications: { 
-                  thisMonth: responseData.stats.pendingApplications.current_month, 
-                  lastMonth: responseData.stats.pendingApplications.last_month 
-                },
-                restrictedUsers: { 
-                  cremationCenters: responseData.stats.restrictedUsers.cremation, 
-                  furParents: responseData.stats.restrictedUsers.furparent 
-                }
-              }
-            });
-            setRecentApplications([]);
-          } else {
-            // Original dashboard format
-            setDashboardData(responseData);
-            setRecentApplications(responseData.recentApplications || []);
-          }
+        // Handle the data structure
+        if (responseData.stats) {
+          // Handle dashboard-stats format
+          const statsData = responseData.stats;
           
-          console.log('Dashboard data loaded successfully');
+          safeLoadDashboardData({
+            stats: {
+              totalUsers: { 
+                value: statsData.totalUsers?.count || 0, 
+                change: (statsData.totalUsers?.change || 0) + '%', 
+                changeType: statsData.totalUsers?.changeType || 'increase' 
+              },
+              applicationRequests: { 
+                value: statsData.applications?.count || 0, 
+                change: (statsData.applications?.change || 0) + '%', 
+                changeType: statsData.applications?.changeType || 'increase' 
+              },
+              activeServices: { 
+                value: statsData.services?.count || 0, 
+                change: (statsData.services?.change || 0) + '%', 
+                changeType: statsData.services?.changeType || 'increase' 
+              },
+              monthlyRevenue: { 
+                value: `₱${(statsData.revenue?.amount || 0).toLocaleString('en-US', {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2
+                })}`, 
+                change: (statsData.revenue?.change || 0) + '%', 
+                changeType: statsData.revenue?.changeType || 'increase' 
+              }
+            },
+            userDistribution: {
+              activeUsers: { 
+                cremationCenters: statsData.activeUsers?.cremation || 0, 
+                furParents: statsData.activeUsers?.furparent || 0 
+              },
+              pendingApplications: { 
+                thisMonth: statsData.pendingApplications?.current_month || 0, 
+                lastMonth: statsData.pendingApplications?.last_month || 0 
+              },
+              restrictedUsers: { 
+                cremationCenters: statsData.restrictedUsers?.cremation || 0, 
+                furParents: statsData.restrictedUsers?.furparent || 0 
+              }
+            }
+          });
+          setRecentApplications([]);
         } else {
-          setError(result.error || 'Failed to fetch dashboard data');
-          console.error('Dashboard data error:', result.error || 'Unknown error');
+          // Original dashboard format
+          safeLoadDashboardData(responseData);
+          setRecentApplications(responseData.recentApplications || []);
         }
+        
+        console.log('Dashboard data loaded successfully');
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
+        console.error('Dashboard data fetch error:', err);
         setError(errorMessage);
-        console.error('Dashboard data fetch error:', errorMessage);
       } finally {
         setIsLoading(false);
       }
@@ -203,312 +254,314 @@ function AdminDashboardPage({ adminData }: { adminData: any }) {
       default:
         return (
           <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800 min-w-[90px] justify-center">
-            {status}
+            Unknown
           </span>
         );
     }
   };
   return (
-    <AdminDashboardLayout activePage="dashboard" userName={userName}>
-      {/* Header section */}
-      <div className="mb-8 bg-white rounded-xl shadow-sm p-6">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
-          <div>
-            <h1 className="text-2xl font-semibold text-gray-800">Dashboard</h1>
-            <p className="text-gray-600 mt-1">Overview of your pet cremation business</p>
+    <ErrorBoundary>
+      <AdminDashboardLayout activePage="dashboard" userName={userName}>
+        {/* Header section */}
+        <div className="mb-8 bg-white rounded-xl shadow-sm p-6">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
+            <div>
+              <h1 className="text-2xl font-semibold text-gray-800">Dashboard</h1>
+              <p className="text-gray-600 mt-1">Overview of your pet cremation business</p>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {isLoading ? (
-          // Using standardized skeleton loader
-          Array(4).fill(0).map((_, index) => (
-            <SkeletonCard
-              key={index}
-              withHeader={true}
-              contentLines={1}
-              withFooter={false}
-              withShadow={true}
-              rounded="lg"
-              animate={true}
-            />
-          ))
-        ) : error ? (
-          // Error state
-          <div className="col-span-4 bg-white rounded-xl shadow-sm p-6">
-            <div className="flex items-center justify-center">
-              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-red-100 text-red-600 mb-4">
-                <XCircleIcon className="h-6 w-6" />
-              </div>
-            </div>
-            <p className="text-red-600 font-medium text-center mb-2">Error loading dashboard data</p>
-            <p className="text-gray-500 text-sm text-center">{error}</p>
-            <div className="flex justify-center mt-4">
-              <button
-                onClick={() => window.location.reload()}
-                className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg text-sm font-medium text-gray-700 transition-colors"
-              >
-                Retry
-              </button>
-            </div>
-          </div>
-        ) : (
-          // Actual stats
-          statsConfig.map((stat, index) => {
-            const statData = dashboardData.stats[stat.key];
-            return (
-              <StatCard
-                key={index}
-                icon={<stat.icon />}
-                label={stat.name}
-                value={statData.value}
-                color={stat.color as 'blue' | 'yellow' | 'purple' | 'amber' | 'green'}
-              />
-            );
-          })
-        )}
-      </div>
-
-      {/* Recent Applications */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between mb-5">
-          <h2 className="text-lg font-medium text-gray-800">Recent Applications</h2>
-          <Link
-            href="/admin/applications"
-            className="text-[var(--primary-green)] hover:text-[var(--primary-green-hover)] text-sm font-medium hover:underline flex items-center"
-          >
-            View All
-            <svg className="ml-1 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-          </Link>
-        </div>
-        {isLoading ? (
-          // Using standardized skeleton loader for table
-          <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-            <div className="p-6">
-              <SkeletonText
-                lines={1}
-                height="h-6"
-                spacing="tight"
-                lastLineWidth="1/4"
-                className="mb-6"
-              />
-              <div className="space-y-4">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="flex items-center space-x-4">
-                    <Skeleton height="h-12" width="w-12" rounded="full" />
-                    <div className="flex-1">
-                      <SkeletonText
-                        lines={2}
-                        spacing="tight"
-                        lastLineWidth="1/2"
-                      />
-                    </div>
-                    <Skeleton height="h-8" width="w-20" rounded="md" />
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        ) : error ? (
-          <div className="bg-white rounded-xl shadow-sm p-6">
-            <div className="flex items-center justify-center">
-              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-red-100 text-red-600 mb-4">
-                <XCircleIcon className="h-6 w-6" />
-              </div>
-            </div>
-            <p className="text-red-600 font-medium text-center mb-2">Failed to load recent applications</p>
-            <p className="text-gray-500 text-sm text-center">{error}</p>
-            <div className="flex justify-center mt-4">
-              <button
-                onClick={() => window.location.reload()}
-                className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg text-sm font-medium text-gray-700 transition-colors"
-              >
-                Retry
-              </button>
-            </div>
-          </div>
-        ) : recentApplications.length > 0 ? (
-          <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                    >
-                      Business
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                    >
-                      Owner
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                    >
-                      Date
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                    >
-                      Status
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
-                    >
-                      Action
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {recentApplications.map((application) => (
-                    <tr key={application.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">{application.businessName}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{application.owner}</div>
-                        <div className="text-sm text-gray-500">{application.email}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{application.submitDate}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {getStatusBadge(application.status || 'pending')}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <Link
-                          href={`/admin/applications/${application.id}`}
-                          className="text-[var(--primary-green)] hover:text-[var(--secondary-green)] hover:underline"
-                        >
-                          View
-                        </Link>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        ) : (
-          <div className="bg-white rounded-xl shadow-sm p-6 text-center">
-            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gray-100 text-gray-400 mb-4">
-              <DocumentCheckIcon className="h-6 w-6" />
-            </div>
-            <p className="text-gray-500 text-sm">No recent applications found.</p>
-          </div>
-        )}
-      </div>
-
-      {/* User Distribution */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between mb-5">
-          <h2 className="text-lg font-medium text-gray-800">User Distribution</h2>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           {isLoading ? (
-            // Using standardized skeleton loader for user distribution
-            Array(2).fill(0).map((_, index) => (
+            // Using standardized skeleton loader
+            Array(4).fill(0).map((_, index) => (
               <SkeletonCard
                 key={index}
                 withHeader={true}
-                contentLines={2}
+                contentLines={1}
                 withFooter={false}
                 withShadow={true}
                 rounded="lg"
                 animate={true}
-                className="p-6"
               />
             ))
           ) : error ? (
-            <div className="col-span-2 bg-white rounded-xl shadow-sm p-6">
+            // Error state
+            <div className="col-span-4 bg-white rounded-xl shadow-sm p-6">
               <div className="flex items-center justify-center">
-                <div className="inline-flex items-center justify-center w-10 h-10 bg-red-100 rounded-lg mb-4">
-                  <ExclamationTriangleIcon className="w-6 h-6 text-red-600" />
+                <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-red-100 text-red-600 mb-4">
+                  <XCircleIcon className="h-6 w-6" />
                 </div>
               </div>
-              <div className="text-center">
-                <h3 className="text-lg font-medium text-gray-900 mb-2">Unable to Load User Data</h3>
-                <p className="text-gray-600 mb-4">{error}</p>
-                <button 
-                  onClick={() => {
-                    setError(null);
-                    window.location.reload();
-                  }}
-                  className="inline-flex items-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              <p className="text-red-600 font-medium text-center mb-2">Error loading dashboard data</p>
+              <p className="text-gray-500 text-sm text-center">{error}</p>
+              <div className="flex justify-center mt-4">
+                <button
+                  onClick={() => window.location.reload()}
+                  className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg text-sm font-medium text-gray-700 transition-colors"
                 >
-                  <ArrowPathIcon className="w-4 h-4 mr-2" />
-                  Try Again
+                  Retry
                 </button>
               </div>
             </div>
           ) : (
-            <>
-              {/* Active Users */}
-              <div className="bg-white rounded-xl shadow-sm p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-sm font-medium text-gray-500">Active Users</h3>
-                  <div className="flex space-x-2">
-                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                      Total: {(dashboardData.userDistribution?.activeUsers?.cremationCenters || 0) + (dashboardData.userDistribution?.activeUsers?.furParents || 0)}
-                    </span>
-                  </div>
-                </div>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">Cremation Centers</span>
-                    <span className="text-lg font-semibold text-gray-900">
-                      {dashboardData.userDistribution?.activeUsers?.cremationCenters || 0}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">Fur Parents</span>
-                    <span className="text-lg font-semibold text-gray-900">
-                      {dashboardData.userDistribution?.activeUsers?.furParents || 0}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Pending Applications */}
-              <div className="bg-white rounded-xl shadow-sm p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-sm font-medium text-gray-500">Application Status</h3>
-                  <div className="flex space-x-2">
-                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                      This Month: {dashboardData.userDistribution?.pendingApplications?.thisMonth || 0}
-                    </span>
-                  </div>
-                </div>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">This Month</span>
-                    <span className="text-lg font-semibold text-gray-900">
-                      {dashboardData.userDistribution?.pendingApplications?.thisMonth || 0}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">Last Month</span>
-                    <span className="text-lg font-semibold text-gray-600">
-                      {dashboardData.userDistribution?.pendingApplications?.lastMonth || 0}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </>
+            // Actual stats
+            statsConfig.map((stat, index) => {
+              const statData = dashboardData?.stats?.[stat.key];
+              return (
+                <StatCard
+                  key={index}
+                  icon={<stat.icon />}
+                  label={stat.name}
+                  value={statData?.value || 0}
+                  color={stat.color as 'blue' | 'yellow' | 'purple' | 'amber' | 'green'}
+                />
+              );
+            })
           )}
         </div>
-      </div>
-    </AdminDashboardLayout>
+
+        {/* Recent Applications */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-5">
+            <h2 className="text-lg font-medium text-gray-800">Recent Applications</h2>
+            <Link
+              href="/admin/applications"
+              className="text-[var(--primary-green)] hover:text-[var(--primary-green-hover)] text-sm font-medium hover:underline flex items-center"
+            >
+              View All
+              <svg className="ml-1 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </Link>
+          </div>
+          {isLoading ? (
+            // Using standardized skeleton loader for table
+            <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+              <div className="p-6">
+                <SkeletonText
+                  lines={1}
+                  height="h-6"
+                  spacing="tight"
+                  lastLineWidth="1/4"
+                  className="mb-6"
+                />
+                <div className="space-y-4">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="flex items-center space-x-4">
+                      <Skeleton height="h-12" width="w-12" rounded="full" />
+                      <div className="flex-1">
+                        <SkeletonText
+                          lines={2}
+                          spacing="tight"
+                          lastLineWidth="1/2"
+                        />
+                      </div>
+                      <Skeleton height="h-8" width="w-20" rounded="md" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : error ? (
+            <div className="bg-white rounded-xl shadow-sm p-6">
+              <div className="flex items-center justify-center">
+                <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-red-100 text-red-600 mb-4">
+                  <XCircleIcon className="h-6 w-6" />
+                </div>
+              </div>
+              <p className="text-red-600 font-medium text-center mb-2">Failed to load recent applications</p>
+              <p className="text-gray-500 text-sm text-center">{error}</p>
+              <div className="flex justify-center mt-4">
+                <button
+                  onClick={() => window.location.reload()}
+                  className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg text-sm font-medium text-gray-700 transition-colors"
+                >
+                  Retry
+                </button>
+              </div>
+            </div>
+          ) : recentApplications.length > 0 ? (
+            <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th
+                        scope="col"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
+                        Business
+                      </th>
+                      <th
+                        scope="col"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
+                        Owner
+                      </th>
+                      <th
+                        scope="col"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
+                        Date
+                      </th>
+                      <th
+                        scope="col"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
+                        Status
+                      </th>
+                      <th
+                        scope="col"
+                        className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
+                        Action
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {recentApplications.map((application) => (
+                      <tr key={application.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-gray-900">{application.businessName}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">{application.owner}</div>
+                          <div className="text-sm text-gray-500">{application.email}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">{application.submitDate}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {getStatusBadge(application.status || 'pending')}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          <Link
+                            href={`/admin/applications/${application.id}`}
+                            className="text-[var(--primary-green)] hover:text-[var(--secondary-green)] hover:underline"
+                          >
+                            View
+                          </Link>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-white rounded-xl shadow-sm p-6 text-center">
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gray-100 text-gray-400 mb-4">
+                <DocumentCheckIcon className="h-6 w-6" />
+              </div>
+              <p className="text-gray-500 text-sm">No recent applications found.</p>
+            </div>
+          )}
+        </div>
+
+        {/* User Distribution */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-5">
+            <h2 className="text-lg font-medium text-gray-800">User Distribution</h2>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {isLoading ? (
+              // Using standardized skeleton loader for user distribution
+              Array(2).fill(0).map((_, index) => (
+                <SkeletonCard
+                  key={index}
+                  withHeader={true}
+                  contentLines={2}
+                  withFooter={false}
+                  withShadow={true}
+                  rounded="lg"
+                  animate={true}
+                  className="p-6"
+                />
+              ))
+            ) : error ? (
+              <div className="col-span-2 bg-white rounded-xl shadow-sm p-6">
+                <div className="flex items-center justify-center">
+                  <div className="inline-flex items-center justify-center w-10 h-10 bg-red-100 rounded-lg mb-4">
+                    <ExclamationTriangleIcon className="w-6 h-6 text-red-600" />
+                  </div>
+                </div>
+                <div className="text-center">
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">Unable to Load User Data</h3>
+                  <p className="text-gray-600 mb-4">{error}</p>
+                  <button 
+                    onClick={() => {
+                      setError(null);
+                      window.location.reload();
+                    }}
+                    className="inline-flex items-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                  >
+                    <ArrowPathIcon className="w-4 h-4 mr-2" />
+                    Try Again
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                {/* Active Users */}
+                <div className="bg-white rounded-xl shadow-sm p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-sm font-medium text-gray-500">Active Users</h3>
+                    <div className="flex space-x-2">
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        Total: {(dashboardData.userDistribution?.activeUsers?.cremationCenters || 0) + (dashboardData.userDistribution?.activeUsers?.furParents || 0)}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600">Cremation Centers</span>
+                      <span className="text-lg font-semibold text-gray-900">
+                        {dashboardData.userDistribution?.activeUsers?.cremationCenters || 0}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600">Fur Parents</span>
+                      <span className="text-lg font-semibold text-gray-900">
+                        {dashboardData.userDistribution?.activeUsers?.furParents || 0}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Pending Applications */}
+                <div className="bg-white rounded-xl shadow-sm p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-sm font-medium text-gray-500">Application Status</h3>
+                    <div className="flex space-x-2">
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                        This Month: {dashboardData.userDistribution?.pendingApplications?.thisMonth || 0}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600">This Month</span>
+                      <span className="text-lg font-semibold text-gray-900">
+                        {dashboardData.userDistribution?.pendingApplications?.thisMonth || 0}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600">Last Month</span>
+                      <span className="text-lg font-semibold text-gray-600">
+                        {dashboardData.userDistribution?.pendingApplications?.lastMonth || 0}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      </AdminDashboardLayout>
+    </ErrorBoundary>
   );
 }
 
