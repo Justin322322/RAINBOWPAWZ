@@ -82,7 +82,7 @@ export async function GET(request: NextRequest) {
       const hasLastLogin = columns.includes('last_login');
 
       // Build the query dynamically based on available columns
-      let selectFields = 'user_id, first_name, last_name, email, phone, address, gender, created_at, updated_at, is_otp_verified, status, is_verified';
+      let selectFields = 'user_id, first_name, last_name, email, phone, address, gender, profile_picture, created_at, updated_at, is_otp_verified, status, is_verified';
 
       if (hasRole) selectFields += ', role';
       if (hasUserType) selectFields += ', user_type';

@@ -27,6 +27,11 @@ export const clearBusinessVerificationCache = (): void => {
       sessionStorage.removeItem(CACHE_KEYS.VERIFIED_BUSINESS);
       sessionStorage.removeItem(CACHE_KEYS.USER_DATA);
     }
+
+    // Also clear localStorage profile picture
+    if (typeof localStorage !== 'undefined') {
+      localStorage.removeItem('cremation_profile_picture');
+    }
   } catch (error) {
     console.error('Error clearing business verification cache:', error);
   }
@@ -152,6 +157,11 @@ export const updateCachedProfilePicture = (profilePicturePath: string): void => 
       const user = JSON.parse(userData);
       user.profile_picture = profilePicturePath;
       sessionStorage.setItem(CACHE_KEYS.USER_DATA, JSON.stringify(user));
+    }
+
+    // Store in localStorage for persistence across sessions
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('cremation_profile_picture', profilePicturePath);
     }
 
     // Also dispatch event to update navbar immediately

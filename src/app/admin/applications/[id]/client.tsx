@@ -20,6 +20,7 @@ import ConfirmationModal from '@/components/ConfirmationModal';
 import DeclineModal from '@/components/DeclineModal';
 import DocumentViewerModal from '@/components/modals/DocumentViewerModal';
 import SectionLoader from '@/components/ui/SectionLoader';
+import { getAuthToken } from '@/utils/auth';
 
 interface ApplicationDetailContentProps {
   id: string;
@@ -294,11 +295,20 @@ function ApplicationDetailContent({ id }: ApplicationDetailContentProps) {
     try {
       setIsProcessing(true);
 
+      // Get auth token for the request
+      const authToken = getAuthToken();
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+
+      // Add authorization header if token exists
+      if (authToken) {
+        headers['Authorization'] = `Bearer ${authToken}`;
+      }
+
       const response = await fetch(`/api/businesses/applications/${id}/approve`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify({ notes: note }),
       });
 
@@ -343,11 +353,20 @@ function ApplicationDetailContent({ id }: ApplicationDetailContentProps) {
     try {
       setIsProcessing(true);
 
+      // Get auth token for the request
+      const authToken = getAuthToken();
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+
+      // Add authorization header if token exists
+      if (authToken) {
+        headers['Authorization'] = `Bearer ${authToken}`;
+      }
+
       const response = await fetch(`/api/businesses/applications/${id}/decline`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify({
           note,
           requestDocuments,
@@ -405,8 +424,6 @@ function ApplicationDetailContent({ id }: ApplicationDetailContentProps) {
       setIsProcessing(false);
     }
   };
-
-
 
   // Render the application details
   const renderApplicationDetails = () => {
@@ -744,13 +761,14 @@ function ApplicationDetailContent({ id }: ApplicationDetailContentProps) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[10000]"
+            className="fixed top-0 left-0 right-0 bottom-0 bg-black bg-opacity-50 flex items-center justify-center z-[10000]"
+            style={{ margin: 0, padding: 0 }}
           >
             <motion.div
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.8, opacity: 0 }}
-              className="bg-white rounded-xl p-8 max-w-md w-full text-center"
+              className="bg-white rounded-xl p-8 max-w-md w-full text-center mx-4 md:mx-6"
             >
               <motion.div
                 className="w-20 h-20 mx-auto rounded-full bg-green-100 flex items-center justify-center mb-6"
@@ -781,13 +799,14 @@ function ApplicationDetailContent({ id }: ApplicationDetailContentProps) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[10000]"
+            className="fixed top-0 left-0 right-0 bottom-0 bg-black bg-opacity-50 flex items-center justify-center z-[10000]"
+            style={{ margin: 0, padding: 0 }}
           >
             <motion.div
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.8, opacity: 0 }}
-              className="bg-white rounded-xl p-8 max-w-md w-full text-center"
+              className="bg-white rounded-xl p-8 max-w-md w-full text-center mx-4 md:mx-6"
             >
               <motion.div
                 className="w-20 h-20 mx-auto rounded-full bg-red-100 flex items-center justify-center mb-6"

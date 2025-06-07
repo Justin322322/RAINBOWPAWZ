@@ -177,7 +177,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
               ? `Your business application for ${business.business_name || business.name} requires additional documents. Please check your email for details.`
               : `Your business application for ${business.business_name || business.name} has been declined. Reason: ${note.trim().substring(0, 100)}${note.trim().length > 100 ? '...' : ''}`,
             requestDocuments ? 'warning' : 'error',
-            '/business/profile',
+            requestDocuments ? '/business/profile' : null,
             0
           ]);
         }

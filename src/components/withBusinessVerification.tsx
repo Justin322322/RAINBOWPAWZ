@@ -51,6 +51,20 @@ const withBusinessVerification = <P extends object>(
               verified: true,
               userData: cachedVerification.userData
             };
+
+            // Ensure profile picture is in localStorage when loading from cache
+            if (cachedVerification.userData.profile_picture && typeof localStorage !== 'undefined') {
+              try {
+                const existingProfilePicture = localStorage.getItem('cremation_profile_picture');
+                if (!existingProfilePicture || existingProfilePicture !== cachedVerification.userData.profile_picture) {
+                  localStorage.setItem('cremation_profile_picture', cachedVerification.userData.profile_picture);
+                  console.log('Profile picture synced to localStorage from cache:', cachedVerification.userData.profile_picture);
+                }
+              } catch (error) {
+                console.warn('Error syncing profile picture to localStorage:', error);
+              }
+            }
+
             setIsLoading(false);
             return;
           }
@@ -131,6 +145,16 @@ const withBusinessVerification = <P extends object>(
               verified: true,
               userData: completeUserData
             };
+
+            // Store profile picture in localStorage for persistence across sessions
+            if (user.profile_picture && typeof localStorage !== 'undefined') {
+              try {
+                localStorage.setItem('cremation_profile_picture', user.profile_picture);
+                console.log('Profile picture cached in localStorage during verification:', user.profile_picture);
+              } catch (error) {
+                console.warn('Error caching profile picture in localStorage:', error);
+              }
+            }
 
           } else if (applicationStatus === 'restricted') {
             // Business is restricted, redirect to restricted page

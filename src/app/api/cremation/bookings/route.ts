@@ -221,50 +221,31 @@ export async function GET(request: NextRequest) {
       return total;
     }, 0);
 
-    // Fetch add-ons for each booking
-    const bookingIds = bookings.map((booking: any) => booking.id);
-    let bookingAddOns: Record<number, any[]> = {};
-
-    if (bookingIds.length > 0) {
-      try {
-        // Check if booking_addons table exists
-        const addonsTableCheck = await query(
-          "SELECT COUNT(*) as count FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'booking_addons'"
-        ) as any[];
-
-        if (addonsTableCheck && addonsTableCheck[0].count > 0) {
-          // Fetch add-ons for all bookings in one query
-          if (bookingIds.length > 0) {
-            // Create placeholders for each booking ID
-            const bookingPlaceholders = bookingIds.map(() => '?').join(',');
-
-            const addOnsQuery = `
-              SELECT booking_id, addon_name, addon_price, is_selected
-              FROM booking_addons
-              WHERE booking_id IN (${bookingPlaceholders})
-              AND is_selected = 1
-            `;
-
-            const addOns = await query(addOnsQuery, bookingIds) as any[];
-
-            // Group add-ons by booking_id
-            bookingAddOns = addOns.reduce((acc: Record<number, any[]>, addon: any) => {
-              if (!acc[addon.booking_id]) {
-                acc[addon.booking_id] = [];
-              }
-              acc[addon.booking_id].push({
-                name: addon.addon_name,
-                price: parseFloat(addon.addon_price) || 0
+    // Parse add-ons from special_requests field - since booking_addons table doesn't exist in new schema
+    const bookingAddOns: Record<number, any[]> = {};
+    
+    bookings.forEach((booking: any) => {
+      bookingAddOns[booking.id] = [];
+      
+      // Try to extract add-ons from special_requests
+      if (booking.special_requests) {
+        const addOnsMatch = booking.special_requests.match(/Selected Add-ons:\s*(.+)/);
+        if (addOnsMatch) {
+          const addOnsText = addOnsMatch[1];
+          const addOnItems = addOnsText.split(',').map((item: string) => item.trim());
+          
+          addOnItems.forEach((item: string) => {
+            const priceMatch = item.match(/(.+?)\s*\(₱([\d,]+)\)/);
+            if (priceMatch) {
+              bookingAddOns[booking.id].push({
+                name: priceMatch[1].trim(),
+                price: parseFloat(priceMatch[2].replace(/,/g, '')) || 0
               });
-              return acc;
-            }, {});
-          }
+            }
+          });
         }
-      } catch (error) {
-        // Continue without add-ons if there's an error
-        console.error('Error fetching booking add-ons:', error);
       }
-    }
+    });
 
     // Format the bookings data for response
     const formattedBookings = bookings.map((booking: any) => {
@@ -574,49 +555,25 @@ export async function POST(request: NextRequest) {
 
     const bookingId = result.insertId;
 
-    // Insert selected add-ons if any
+    // Insert selected add-ons if any - since booking_addons table doesn't exist in new schema,
+    // we'll store them in special_requests field as text
     if (selectedAddOns && selectedAddOns.length > 0) {
       try {
-        // Check if booking_addons table exists
-        const addonsTableCheck = await query(
-          "SELECT COUNT(*) as count FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'booking_addons'"
-        ) as any[];
+        const addOnsText = selectedAddOns.map((addon: any) =>
+          `${addon.name} (₱${addon.price.toLocaleString()})`
+        ).join(', ');
 
-        if (addonsTableCheck && addonsTableCheck[0].count > 0) {
-          // booking_addons table exists, insert add-ons
-          for (const addOn of selectedAddOns) {
-            await query(`
-              INSERT INTO booking_addons (
-                booking_id,
-                addon_name,
-                addon_price,
-                is_selected
-              ) VALUES (?, ?, ?, ?)
-            `, [
-              bookingId,
-              addOn.name,
-              addOn.price,
-              1 // is_selected = true
-            ]);
-          }
-        } else {
-          // Store add-ons as a JSON string in special_requests if booking_addons table doesn't exist
-          const addOnsText = selectedAddOns.map((addon: any) =>
-            `${addon.name} (₱${addon.price.toLocaleString()})`
-          ).join(', ');
+        const updatedSpecialRequests = specialRequests
+          ? `${specialRequests}\n\nSelected Add-ons: ${addOnsText}`
+          : `Selected Add-ons: ${addOnsText}`;
 
-          const updatedSpecialRequests = specialRequests
-            ? `${specialRequests}\n\nSelected Add-ons: ${addOnsText}`
-            : `Selected Add-ons: ${addOnsText}`;
-
-          await query(
-            'UPDATE service_bookings SET special_requests = ? WHERE id = ?',
-            [updatedSpecialRequests, bookingId]
-          );
-        }
+        await query(
+          'UPDATE service_bookings SET special_requests = ? WHERE id = ?',
+          [updatedSpecialRequests, bookingId]
+        );
       } catch (addOnError) {
         // Continue with the booking process even if add-ons fail
-        console.error('Error inserting add-ons:', addOnError);
+        console.error('Error storing add-ons in special_requests:', addOnError);
       }
     }
 

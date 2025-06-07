@@ -1,75 +1,49 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
-import { getAuthTokenFromRequest, parseAuthTokenAsync } from '@/utils/auth';
-import * as fs from 'fs';
+import fs from 'fs';
 import { join } from 'path';
-import { getImagePath } from '@/utils/imagePathUtils';
+
+function getImagePath(relativePath: string) {
+  if (relativePath.startsWith('/')) {
+    return relativePath;
+  }
+  return `/uploads/${relativePath}`;
+}
 
 export async function GET(request: NextRequest) {
   try {
     const url = new URL(request.url);
-    const packageIdParam = url.searchParams.get('packageId');
+    const packageId = url.searchParams.get('id');
     const providerId = url.searchParams.get('providerId');
-    const page = +url.searchParams.get('page')! || 1;
-    const limit = +url.searchParams.get('limit')! || 10;
-    const offset = (page - 1) * limit;
-    const includeInactive = url.searchParams.get('includeInactive') === 'true';
-
-    // Build the WHERE clause based on providerId and includeInactive parameters
-    let whereClause = '';
-
-    if (providerId) {
-      whereClause = `WHERE sp.provider_id = ${parseInt(providerId)}`;
-      if (!includeInactive) {
-        whereClause += ' AND sp.is_active = 1';
-      }
-    } else if (!includeInactive) {
-      whereClause = 'WHERE sp.is_active = 1';
+    
+    if (packageId) {
+      return await getPackageById(parseInt(packageId), providerId || undefined);
     }
 
-    if (packageIdParam) {
-      return getPackageById(+packageIdParam, providerId || undefined);
-    }
-
-    const rows = (await query(
-      `
+    let sql = `
       SELECT
-        sp.package_id as id,
-        sp.name,
-        sp.description,
-        sp.category,
-        sp.cremation_type    AS cremationType,
-        sp.processing_time   AS processingTime,
-        sp.price,
-        sp.conditions,
-        sp.is_active         AS isActive,
-        svp.provider_id      AS providerId,
-        svp.name             AS providerName
+        sp.*,
+        svp.provider_id AS providerId,
+        svp.name AS providerName
       FROM service_packages sp
       JOIN service_providers svp
         ON sp.provider_id = svp.provider_id
-      ${whereClause}
-      ORDER BY sp.created_at DESC
-      LIMIT ? OFFSET ?
-      `,
-      [limit, offset]
-    )) as any[];
+      WHERE sp.is_active = 1
+    `;
 
-    const countRows = (await query(
-      `
-      SELECT COUNT(*) AS total
-      FROM service_packages sp
-      ${whereClause}
-      `
-    )) as any[];
-    const total = +(countRows[0]?.total || 0);
+    const params: any[] = [];
 
+    if (providerId) {
+      sql += ` AND sp.provider_id = ?`;
+      params.push(parseInt(providerId));
+    }
+
+    sql += ` ORDER BY sp.created_at DESC`;
+
+    const rows = (await query(sql, params)) as any[];
     const packages = await enhancePackagesWithDetails(rows);
 
-    return NextResponse.json({
-      packages,
-      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
-    });
+    return NextResponse.json({ packages });
   } catch (err) {
     console.error(err);
     return NextResponse.json(
@@ -81,43 +55,33 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const authToken = getAuthTokenFromRequest(request);
-    if (!authToken) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    // Get user ID from headers
+    const userId = request.headers.get('X-User-ID');
+    if (!userId) {
+      return NextResponse.json({ error: 'User ID not found' }, { status: 401 });
     }
 
-    // Parse auth token to handle both JWT and old formats
-    const authData = await parseAuthTokenAsync(authToken);
-    if (!authData) {
-      return NextResponse.json({ error: 'Invalid authentication token' }, { status: 401 });
-    }
-
-    const { userId, accountType } = authData;
-
-    if (accountType !== 'business') {
-      return NextResponse.json(
-        { error: 'Only business accounts can create packages' },
-        { status: 403 }
-      );
-    }
-
-    const prov = (await query(
+    // Get provider ID
+    const providerResult = await query(
       'SELECT provider_id as id FROM service_providers WHERE user_id = ?',
-      [userId]
-    )) as any[];
-    if (prov.length === 0) {
-      return NextResponse.json({ error: 'Service provider not found' }, { status: 404 });
+      [parseInt(userId)]
+    ) as any[];
+
+    if (!providerResult.length) {
+      return NextResponse.json({ error: 'Provider not found' }, { status: 404 });
     }
-    const providerId = prov[0].id;
+
+    const providerId = providerResult[0].id;
 
     const {
       name,
       description,
-      category,
-      cremationType,
-      processingTime,
+      category = 'Private',
+      cremationType = 'Standard',
+      processingTime = '1-2 days',
       price,
-      conditions,
+      deliveryFeePerKm = 0,
+      conditions = '',
       inclusions = [],
       addOns = [],
       images = [],
@@ -129,84 +93,44 @@ export async function POST(request: NextRequest) {
 
     await query('START TRANSACTION');
     try {
+      // Process inclusions - convert array to JSON
+      const inclusionsJson = JSON.stringify(inclusions.filter((x: any) => x));
+      
+      // Process images - move to package folder first, then store as JSON
+      const moved = await moveImagesToPackageFolder(images, 'temp'); // We'll update with real ID after insert
+      const imagesJson = JSON.stringify(moved);
+
       const pkgRes = (await query(
         `
         INSERT INTO service_packages
           (provider_id, name, description, category, cremation_type,
-           processing_time, price, conditions, is_active)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, TRUE)
+           processing_time, price, delivery_fee_per_km, conditions, inclusions, images, is_active)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE)
         `,
-        [providerId, name, description, category, cremationType, processingTime, price, conditions]
+        [providerId, name, description, category, cremationType, processingTime, price, deliveryFeePerKm, conditions, inclusionsJson, imagesJson]
       )) as any;
       const packageId = pkgRes.insertId;
 
-      // inclusions
-      for (const incDesc of inclusions.filter((x: any) => x)) {
-        await query(
-          'INSERT INTO package_inclusions (package_id, description) VALUES (?, ?)',
-          [packageId, incDesc]
-        );
-      }
+      // Now move images to correct folder with package ID
+      const finalImages = await moveImagesToPackageFolder(images, packageId);
+      const finalImagesJson = JSON.stringify(finalImages);
+      
+      // Update package with correct image paths
+      await query(
+        'UPDATE service_packages SET images = ? WHERE package_id = ?',
+        [finalImagesJson, packageId]
+      );
 
-      // add-ons
-      for (const raw of addOns) {
-        let desc: string;
-        let cost: number | null = null;
-
-        if (typeof raw === 'string') {
-          desc = raw.replace(/\s*\(\+₱[\d,]+\)/, '').trim();
-          const m = raw.match(/\(\+₱([\d,]+)\)/);
-          cost = m ? +m[1].replace(/,/g, '') : null;
-        } else {
-          desc = raw.name;
-          const num = parseFloat(String(raw.price));
-          cost = isNaN(num) ? null : num;
-        }
-        if (!desc) continue;
-
-        const colInfo = (await query(
-          `
-          SELECT EXTRA
-          FROM INFORMATION_SCHEMA.COLUMNS
-          WHERE TABLE_SCHEMA = DATABASE()
-            AND TABLE_NAME = 'package_addons'
-            AND COLUMN_NAME = 'id'
-          `
-        )) as any[];
-        const hasAI = colInfo[0]?.EXTRA.includes('auto_increment');
-
-        if (hasAI) {
-          await query(
-            'INSERT INTO package_addons (package_id, description, price) VALUES (?, ?, ?)',
-            [packageId, desc, cost]
-          );
-        } else {
-          const maxRow = (await query(
-            'SELECT MAX(id) AS maxId FROM package_addons'
-          )) as any[];
-          const nextId = (maxRow[0]?.maxId || 0) + 1;
-          await query(
-            'INSERT INTO package_addons (id, package_id, description, price) VALUES (?, ?, ?, ?)',
-            [nextId, packageId, desc, cost]
-          );
-        }
-      }
-
-      // images
-      const moved = await moveImagesToPackageFolder(images, pkgRes.insertId);
-      for (let i = 0; i < moved.length; i++) {
-        await query(
-          'INSERT INTO package_images (package_id, image_path, display_order) VALUES (?, ?, ?)',
-          [packageId, moved[i], i]
-        );
-      }
+      // Handle add-ons - since there's no package_addons table, we'll store them as JSON in a new field if needed
+      // For now, we'll skip add-ons as they're not in the new schema
+      // If you need add-ons, we should add an 'addons' JSON field to service_packages table
 
       await query('COMMIT');
       return NextResponse.json({
         success: true,
         packageId,
         message: 'Package created successfully',
-        images: moved,
+        images: finalImages,
       });
     } catch (innerErr) {
       await query('ROLLBACK');
@@ -260,56 +184,65 @@ async function getPackageById(packageId: number, providerId?: string) {
 
 async function enhancePackagesWithDetails(pkgs: any[]) {
   if (!pkgs.length) return [];
-  const ids = pkgs.map((p) => p.id);
-  const [incs, adds, imgs] = await Promise.all([
-    query(`SELECT package_id, description FROM package_inclusions WHERE package_id IN (?)`, [ids]),
-    query(`SELECT package_id, addon_id as id, description, price FROM package_addons WHERE package_id IN (?)`, [ids]),
-    query(`SELECT package_id, image_path, display_order FROM package_images WHERE package_id IN (?) ORDER BY display_order`, [ids]),
-  ]) as any[][];
-
-  const groupBy = (arr: any[], key: string) =>
-    arr.reduce((acc, cur) => {
-      (acc[cur[key]] = acc[cur[key]] || []).push(cur);
-      return acc;
-    }, {} as Record<string, any[]>);
-
-  const incMap = groupBy(incs, 'package_id');
-  const addMap = groupBy(adds, 'package_id');
-  const imgMap = groupBy(imgs, 'package_id');
 
   return pkgs.map((p: any) => {
-    const inclusions = (incMap[p.id] || []).map((i: any) => i.description);
-    const addOns = (addMap[p.id] || []).map((a: any) => ({
-      id: a.id,
-      name: a.description,
-      price: a.price != null ? +a.price : 0,
-      displayText: a.price != null ? `${a.description} (+₱${(+a.price).toLocaleString()})` : a.description
-    }));
-    const images = (imgMap[p.id] || [])
-      .map((i: any) => {
-        const path = i.image_path;
+    // Parse inclusions from JSON
+    let inclusions = [];
+    try {
+      inclusions = p.inclusions ? JSON.parse(p.inclusions) : [];
+    } catch (e) {
+      console.error('Error parsing inclusions JSON:', e);
+      inclusions = [];
+    }
+
+    // Parse images from JSON
+    let images = [];
+    try {
+      images = p.images ? JSON.parse(p.images) : [];
+    } catch (e) {
+      console.error('Error parsing images JSON:', e);
+      images = [];
+    }
+
+    // Process image paths
+    images = images
+      .map((path: string) => {
         if (!path || path.startsWith('blob:')) return null;
         return path.startsWith('http') ? path : getImagePath(path);
       })
       .filter(Boolean);
+
     if (!images.length) {
-      images.push(`/images/sample-package-${(p.id % 5) + 1}.jpg`);
+      images.push(`/images/sample-package-${(p.package_id % 5) + 1}.jpg`);
     }
-    return { ...p, inclusions, addOns, images };
+
+    // For addOns, since they're not in the new schema, we'll return empty array
+    // If you need add-ons functionality, you should add an 'addons' JSON field to service_packages
+    const addOns: any[] = [];
+
+    return { 
+      ...p, 
+      id: p.package_id, // Ensure compatibility with frontend
+      inclusions, 
+      addOns, 
+      images 
+    };
   });
 }
 
-async function moveImagesToPackageFolder(paths: string[], packageId: number) {
+async function moveImagesToPackageFolder(paths: string[], packageId: number | string) {
   if (!paths.length) return [];
-  const base = join(process.cwd(), 'public', 'uploads', 'packages', String(packageId));
+  
+  const packageIdStr = packageId.toString();
+  const base = join(process.cwd(), 'public', 'uploads', 'packages', packageIdStr);
   if (!fs.existsSync(base)) fs.mkdirSync(base, { recursive: true });
 
   return Promise.all(
     paths.map((rel: string) => {
-      if (rel.includes(`/uploads/packages/${packageId}/`)) return rel;
+      if (rel.includes(`/uploads/packages/${packageIdStr}/`)) return rel;
       const filename = rel.split('/').pop()!;
       const src = join(process.cwd(), 'public', rel);
-      const destRel = `/uploads/packages/${packageId}/${filename}`;
+      const destRel = `/uploads/packages/${packageIdStr}/${filename}`;
       const dest = join(process.cwd(), 'public', destRel);
       if (!fs.existsSync(src)) return rel;
       fs.copyFileSync(src, dest);

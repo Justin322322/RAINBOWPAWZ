@@ -83,7 +83,8 @@ export async function GET(request: NextRequest) {
         last_name: user.last_name,
         email: user.email,
         role: user.role,
-        is_verified: user.is_verified
+        is_verified: user.is_verified,
+        profile_picture: user.profile_picture
       },
       serviceProvider: serviceProvider ? {
         provider_id: serviceProvider.provider_id,

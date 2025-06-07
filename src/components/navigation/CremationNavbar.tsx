@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
@@ -21,7 +21,6 @@ import {
 import { clearAuthToken } from '@/utils/auth';
 import LogoutModal from '@/components/LogoutModal';
 import NotificationBell from '@/components/ui/NotificationBell';
-import { useSupressHydrationWarning } from '@/hooks/useSupressHydrationWarning';
 import { getProfilePictureUrl, handleImageError } from '@/utils/imageUtils';
 
 interface CremationNavbarProps {
@@ -37,7 +36,6 @@ export default function CremationNavbar({
 }: CremationNavbarProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const isMounted = useSupressHydrationWarning();
 
   // Navigation and UI state - moved to top
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -46,182 +44,181 @@ export default function CremationNavbar({
   const [isNavigating, setIsNavigating] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 
-  // Always initialize with the default value for server-side rendering to avoid hydration mismatch
-  const [userName, setUserName] = useState('Cremation Provider');
-
-  // Initialize profile picture from cache immediately (client-side only)
-  const getInitialProfilePicture = () => {
-    if (typeof window === 'undefined' || typeof sessionStorage === 'undefined') return null;
-
-    try {
-      // Check business verification cache first
-      const businessCache = sessionStorage.getItem('business_verification_cache');
-      if (businessCache) {
-        const cache = JSON.parse(businessCache);
-        if (cache.userData?.profile_picture) {
-          return cache.userData.profile_picture;
+  // Simplified state management to match admin navbar
+  const [userName, setUserName] = useState(propUserName);
+  const [profilePicture, setProfilePicture] = useState<string | null>(() => {
+    // Initialize immediately from storage like AdminNavbar does
+    if (typeof window !== 'undefined') {
+      // Priority 1: Check localStorage first for persistence
+      try {
+        const localProfilePicture = localStorage.getItem('cremation_profile_picture');
+        if (localProfilePicture && localProfilePicture.trim() !== '') {
+          return localProfilePicture;
         }
+      } catch (error) {
+        console.warn('Error accessing localStorage during initialization:', error);
       }
 
-      // Fallback to legacy user data cache
-      const userData = sessionStorage.getItem('user_data');
-      if (userData) {
-        const user = JSON.parse(userData);
-        if (user.profile_picture) {
-          return user.profile_picture;
+      // Priority 2: Check business verification cache
+      try {
+        const businessCache = sessionStorage.getItem('business_verification_cache');
+        if (businessCache) {
+          const cache = JSON.parse(businessCache);
+          if (cache.userData?.profile_picture) {
+            return cache.userData.profile_picture;
+          }
         }
+      } catch (error) {
+        console.warn('Error accessing business cache during initialization:', error);
       }
-    } catch (error) {
-      console.error('Error reading cached profile picture:', error);
+
+      // Priority 3: Check legacy user data cache
+      try {
+        const userData = sessionStorage.getItem('user_data');
+        if (userData) {
+          const user = JSON.parse(userData);
+          if (user.profile_picture) {
+            return user.profile_picture;
+          }
+        }
+      } catch (error) {
+        console.warn('Error accessing user data during initialization:', error);
+      }
     }
-
     return null;
-  };
+  });
 
-  const [profilePicture, setProfilePicture] = useState<string | null>(null);
 
-  // Load cached profile picture immediately on mount (before hydration check)
-  useEffect(() => {
-    const cachedProfilePicture = getInitialProfilePicture();
-    if (cachedProfilePicture) {
-      setProfilePicture(cachedProfilePicture);
-    }
-  }, []);
 
-  // Function to get profile picture from cache or API
-  const fetchProfilePicture = useCallback(async () => {
-    // Prevent profile picture updates during navigation to reduce flickering
-    if (isNavigating) {
-      return;
-    }
+    // Enhanced profile picture loading from multiple storage sources
+  const updateProfilePictureFromStorage = () => {
+    if (typeof window === 'undefined') return;
 
     try {
-      // First, try to get profile picture from cached business verification data
-      const businessCache = sessionStorage.getItem('business_verification_cache');
-      if (businessCache) {
-        const cache = JSON.parse(businessCache);
-        if (cache.userData?.profile_picture) {
-          setProfilePicture(cache.userData.profile_picture);
-          return; // Use cached data, no need for API call
+      let foundProfilePicture: string | null = null;
+
+      // Priority 1: Check localStorage first for persistence (most reliable)
+      try {
+        const localProfilePicture = localStorage.getItem('cremation_profile_picture');
+        if (localProfilePicture && localProfilePicture.trim() !== '') {
+          foundProfilePicture = localProfilePicture;
         }
+      } catch (localStorageError) {
+        console.warn('Error accessing localStorage:', localStorageError);
       }
 
-      // Fallback: check legacy user data cache
-      const userData = sessionStorage.getItem('user_data');
-      if (userData) {
-        const user = JSON.parse(userData);
-        if (user.profile_picture) {
-          setProfilePicture(user.profile_picture);
-          return; // Use cached data, no need for API call
-        }
-      }
-
-      // Only make API call if no cached profile picture found and not navigating
-      if (!isNavigating) {
-        const response = await fetch('/api/cremation/profile', {
-          headers: {
-            'Cache-Control': 'no-cache',
-            'Pragma': 'no-cache'
-          }
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          if (data.profile?.profilePicturePath && !isNavigating) {
-            setProfilePicture(data.profile.profilePicturePath);
-
-            // Update both caches with the fetched profile picture
-            if (businessCache) {
-              const cache = JSON.parse(businessCache);
-              if (cache.userData) {
-                cache.userData.profile_picture = data.profile.profilePicturePath;
-                sessionStorage.setItem('business_verification_cache', JSON.stringify(cache));
-              }
-            }
-
-            // Also update user data cache
-            const userDataCache = sessionStorage.getItem('user_data');
-            if (userDataCache) {
-              const user = JSON.parse(userDataCache);
-              user.profile_picture = data.profile.profilePicturePath;
-              sessionStorage.setItem('user_data', JSON.stringify(user));
-            }
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Failed to fetch profile picture:', error);
-    }
-  }, [isNavigating]);
-
-  // Use useEffect to update the username on the client side only after hydration
-  useEffect(() => {
-    if (isMounted) {
-      // Get stored username from multiple sources in order of preference
-      const sessionUserName = sessionStorage.getItem('user_full_name');
-      const localUserName = localStorage.getItem('cremation_user_name');
-
-      // Use the best available name source (session > local > prop)
-      const bestUserName = sessionUserName || localUserName || propUserName;
-      setUserName(bestUserName);
-
-      // Load profile picture from cache immediately, then fetch if needed
-      const cachedProfilePicture = getInitialProfilePicture();
-      if (cachedProfilePicture) {
-        setProfilePicture(cachedProfilePicture);
-      } else {
-        // Only fetch from API if no cached profile picture
-        fetchProfilePicture();
-      }
-    }
-  }, [propUserName, isMounted, fetchProfilePicture]);
-
-  // Listen for profile picture updates
-  useEffect(() => {
-    const handleProfilePictureUpdate = (event: CustomEvent) => {
-      // Prevent profile picture updates during navigation to reduce flickering
-      if (isNavigating) {
-        return;
-      }
-
-      if (event.detail?.profilePicturePath) {
-        setProfilePicture(event.detail.profilePicturePath);
-
-        // Also update caches immediately
+      // Priority 2: Check business verification cache (most up-to-date when session is active)
+      if (!foundProfilePicture) {
         try {
           const businessCache = sessionStorage.getItem('business_verification_cache');
           if (businessCache) {
             const cache = JSON.parse(businessCache);
-            if (cache.userData) {
-              cache.userData.profile_picture = event.detail.profilePicturePath;
-              sessionStorage.setItem('business_verification_cache', JSON.stringify(cache));
+            if (cache.userData?.profile_picture) {
+              foundProfilePicture = cache.userData.profile_picture;
+              // Update localStorage with this value for persistence
+              if (foundProfilePicture) {
+                try {
+                  localStorage.setItem('cremation_profile_picture', foundProfilePicture);
+                } catch (localStorageError) {
+                  console.warn('Error updating localStorage:', localStorageError);
+                }
+              }
             }
           }
+        } catch (sessionStorageError) {
+          console.warn('Error accessing business verification cache:', sessionStorageError);
+        }
+      }
 
+      // Priority 3: Check legacy user data cache
+      if (!foundProfilePicture) {
+        try {
           const userData = sessionStorage.getItem('user_data');
           if (userData) {
             const user = JSON.parse(userData);
-            user.profile_picture = event.detail.profilePicturePath;
-            sessionStorage.setItem('user_data', JSON.stringify(user));
+            if (user.profile_picture) {
+              foundProfilePicture = user.profile_picture;
+              // Update localStorage with this value for persistence
+              if (foundProfilePicture) {
+                try {
+                  localStorage.setItem('cremation_profile_picture', foundProfilePicture);
+                } catch (localStorageError) {
+                  console.warn('Error updating localStorage:', localStorageError);
+                }
+              }
+            }
           }
+        } catch (userDataError) {
+          console.warn('Error accessing user data cache:', userDataError);
+        }
+      }
+
+      // Update state if we found a profile picture and it's different from current
+      if (foundProfilePicture && foundProfilePicture !== profilePicture) {
+        setProfilePicture(foundProfilePicture);
+      } else if (!foundProfilePicture && profilePicture) {
+        // Only clear if we're sure there's no profile picture anywhere
+        setProfilePicture(null);
+      }
+    } catch (error) {
+      console.error('Error reading cached profile picture:', error);
+    }
+  };
+
+  // Listen for profile picture updates from other components (like AdminNavbar does)
+  useEffect(() => {
+    const handleProfilePictureUpdate = (event: CustomEvent) => {
+      console.log('Profile picture update event received:', event.detail);
+      if (event.detail?.profilePicturePath) {
+        const newProfilePicture = event.detail.profilePicturePath;
+        setProfilePicture(newProfilePicture);
+        
+        // Store in localStorage for persistence
+        try {
+          localStorage.setItem('cremation_profile_picture', newProfilePicture);
+          console.log('Profile picture saved to localStorage:', newProfilePicture);
         } catch (error) {
-          console.error('Error updating caches:', error);
+          console.warn('Error saving profile picture to localStorage:', error);
         }
       } else {
-        // Refetch from API if no path provided (but only if not navigating)
-        if (!isNavigating) {
-          fetchProfilePicture();
-        }
+        // Reload from storage if no path provided
+        updateProfilePictureFromStorage();
       }
     };
 
     // Listen for custom event when profile picture is updated
     window.addEventListener('profilePictureUpdated', handleProfilePictureUpdate as EventListener);
 
+    // Also listen for storage events (when localStorage is updated from other tabs)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'cremation_profile_picture' || e.key === 'user_data') {
+        updateProfilePictureFromStorage();
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+
+    // Poll for session storage changes (since storage event doesn't fire for sessionStorage in same tab)
+    const pollForChanges = () => {
+      updateProfilePictureFromStorage();
+    };
+
+    const interval = setInterval(pollForChanges, 2000); // Check every 2 seconds
+
     return () => {
       window.removeEventListener('profilePictureUpdated', handleProfilePictureUpdate as EventListener);
+      window.removeEventListener('storage', handleStorageChange);
+      clearInterval(interval);
     };
-  }, [fetchProfilePicture, isNavigating]);
+  }, []);
+
+  // Update username when prop changes
+  useEffect(() => {
+    if (propUserName && propUserName !== 'Cremation Provider') {
+      setUserName(propUserName);
+    }
+  }, [propUserName]);
+
+
 
   // Handle navigation item click
   const handleNavItemClick = (id: string) => {
@@ -344,14 +341,14 @@ export default function CremationNavbar({
     <header className="bg-[var(--primary-green)] shadow-[0_4px_10px_rgba(0,0,0,0.3)] relative z-50 w-full">
       <div className="w-full px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 md:h-20">
-          <div className="flex items-center">
+          <div className="flex items-center min-w-0 flex-1">
             {/* Mobile menu button */}
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 setIsMobileMenuOpen(!isMobileMenuOpen);
               }}
-              className="lg:hidden text-white p-2 rounded-lg hover:bg-white/20 transition-colors duration-300 mr-2"
+              className="lg:hidden text-white p-2 rounded-lg hover:bg-white/20 transition-colors duration-300 mr-2 flex-shrink-0"
             >
               {isMobileMenuOpen ? (
                 <XMarkIcon className="h-6 w-6" />
@@ -360,25 +357,25 @@ export default function CremationNavbar({
               )}
             </button>
 
-            <h1 className="text-white text-lg md:text-xl font-semibold ml-2">Cremation Center Dashboard</h1>
+            <h1 className="text-white text-lg md:text-xl font-semibold ml-2 truncate">Cremation Center Dashboard</h1>
           </div>
 
-          <div className="flex items-center space-x-2 md:space-x-4">          
+                    <div className="flex items-center space-x-2 md:space-x-4 flex-shrink-0">
             {/* Notification Bell - visible on all screen sizes */}
-            <div data-notification-bell>
+            <div data-notification-bell className="flex-shrink-0">
               <NotificationBell />
             </div>
 
-            <div className="relative">
+            <div className="relative flex-shrink-0">
               <button
                 onClick={(e) => {
                   e.stopPropagation();
                   setIsDropdownOpen(!isDropdownOpen);
                   setIsMobileMenuOpen(false); // Close mobile menu when user dropdown opens
                 }}
-                className="flex items-center space-x-1 md:space-x-2 text-white focus:outline-none border border-white/30 rounded-full px-2 py-1 md:px-4 md:py-2 hover:bg-white/20 transition-all duration-300"
+                className="flex items-center space-x-1 md:space-x-2 text-white focus:outline-none border border-white/30 rounded-full px-2 py-1 md:px-4 md:py-2 hover:bg-white/20 transition-all duration-300 min-w-0"
               >
-                <div className="bg-white rounded-full h-6 w-6 md:h-8 md:w-8 flex items-center justify-center mr-1 md:mr-2 overflow-hidden">
+                <div className="bg-white rounded-full h-6 w-6 md:h-8 md:w-8 flex items-center justify-center mr-1 md:mr-2 overflow-hidden flex-shrink-0">
                   {profilePicture ? (
                     <Image
                       src={getProfilePictureUrl(profilePicture)}
@@ -390,14 +387,16 @@ export default function CremationNavbar({
                         handleImageError(e, '/bg_4.png');
                         // Also clear the profile picture state to show UserIcon
                         setProfilePicture(null);
+                        // Remove from localStorage as well
+                        localStorage.removeItem('cremation_profile_picture');
                       }}
                     />
                   ) : (
                     <UserIcon className="h-3 w-3 md:h-5 md:w-5 text-[var(--primary-green)]" />
                   )}
                 </div>
-                <span className="modern-text font-medium tracking-wide text-xs md:text-sm hidden sm:block">
-                  {isMounted ? userName : 'Cremation Provider'}
+                <span className="modern-text font-medium tracking-wide text-xs md:text-sm hidden sm:block min-w-0 truncate">
+                  {userName}
                 </span>
                 <ChevronDownIcon className="h-3 w-3 md:h-4 md:w-4 ml-1 md:ml-2" />
               </button>
@@ -513,7 +512,7 @@ export default function CremationNavbar({
       <LogoutModal
         isOpen={showLogoutModal}
         onClose={() => setShowLogoutModal(false)}
-        userName={isMounted ? userName : 'Cremation Provider'}
+        userName={userName}
       />
     </header>
   );

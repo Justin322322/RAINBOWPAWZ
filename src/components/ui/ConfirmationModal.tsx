@@ -114,13 +114,14 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
             key="buttons"
             initial={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="mt-5 sm:mt-6 sm:grid sm:grid-cols-2 sm:gap-3"
+            className="mt-5 sm:mt-6 flex flex-col-reverse sm:flex-row sm:justify-end gap-3"
           >
             <Button
               variant="secondary"
               onClick={onClose}
               disabled={isLoading}
               fullWidth
+              className="sm:w-auto sm:min-w-[100px]"
             >
               {cancelText}
             </Button>
@@ -129,6 +130,7 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
               onClick={handleConfirm}
               isLoading={isLoading}
               fullWidth
+              className="sm:w-auto sm:min-w-[120px]"
             >
               {confirmText}
             </Button>

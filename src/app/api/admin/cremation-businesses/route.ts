@@ -222,6 +222,11 @@ export async function GET(request: NextRequest) {
         'u.email'
       ];
 
+      // Add profile picture field if it exists in users table
+      if (userColumnNames.includes('profile_picture')) {
+        selectFields.push('u.profile_picture');
+      }
+
       // Add owner name field based on available columns in users table
       if (userColumnNames.includes('full_name')) {
         selectFields.push('u.full_name as owner');
@@ -289,13 +294,19 @@ export async function GET(request: NextRequest) {
           ownerField = "CONCAT(u.first_name, ' ', u.last_name) as owner";
         }
 
+        // Add profile picture field if available
+        let profilePictureField = '';
+        if (userColumnNames.includes('profile_picture')) {
+          profilePictureField = ', u.profile_picture';
+        }
+
         // Use a minimal query that should work in most cases
         const fallbackQueryString = `
           SELECT
             bp.provider_id as id,
             bp.name as business_name,
             ${ownerField},
-            u.email
+            u.email${profilePictureField}
           FROM ${tableName} bp
           JOIN users u ON bp.user_id = u.user_id
           WHERE bp.provider_type = 'cremation'
@@ -406,7 +417,8 @@ export async function GET(request: NextRequest) {
           businessHours: business.business_hours || 'Not specified',
           permitNumber: business.bp_permit_number || '',
           taxIdNumber: business.tax_id_number || '',
-          documentPath: business.document_path || ''
+          documentPath: business.document_path || '',
+          profile_picture: business.profile_picture || null
         };
       } catch (formatError) {
         // Return a simplified record if formatting fails
