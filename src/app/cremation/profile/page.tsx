@@ -447,7 +447,31 @@ function CremationProfilePage({ userData }: { userData: any }) {
         throw new Error('Authentication required');
       }
 
-      const [userId] = authToken.split('_');
+      let userId: string;
+
+      // Check if it's a JWT token or old format
+      if (authToken.includes('.')) {
+        // JWT token format
+        try {
+          const { decodeTokenUnsafe } = await import('@/lib/jwt');
+          const payload = decodeTokenUnsafe(authToken);
+          userId = payload?.userId || '';
+          if (!userId) {
+            throw new Error('Invalid JWT token');
+          }
+        } catch (jwtError) {
+          console.error('Invalid JWT token:', jwtError);
+          throw new Error('Invalid authentication token');
+        }
+      } else {
+        // Old format fallback
+        const [extractedUserId] = authToken.split('_');
+        userId = extractedUserId;
+      }
+
+      if (!userId) {
+        throw new Error('Could not extract user ID from token');
+      }
 
       const formData = new FormData();
       formData.append('profilePicture', profilePicture);

@@ -761,13 +761,14 @@ function ApplicationDetailContent({ id }: ApplicationDetailContentProps) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[10000]"
+            className="fixed top-0 left-0 right-0 bottom-0 bg-black bg-opacity-50 flex items-center justify-center z-[10000]"
+            style={{ margin: 0, padding: 0 }}
           >
             <motion.div
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.8, opacity: 0 }}
-              className="bg-white rounded-xl p-8 max-w-md w-full text-center"
+              className="bg-white rounded-xl p-8 max-w-md w-full text-center mx-4 md:mx-6"
             >
               <motion.div
                 className="w-20 h-20 mx-auto rounded-full bg-green-100 flex items-center justify-center mb-6"
@@ -798,13 +799,14 @@ function ApplicationDetailContent({ id }: ApplicationDetailContentProps) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[10000]"
+            className="fixed top-0 left-0 right-0 bottom-0 bg-black bg-opacity-50 flex items-center justify-center z-[10000]"
+            style={{ margin: 0, padding: 0 }}
           >
             <motion.div
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.8, opacity: 0 }}
-              className="bg-white rounded-xl p-8 max-w-md w-full text-center"
+              className="bg-white rounded-xl p-8 max-w-md w-full text-center mx-4 md:mx-6"
             >
               <motion.div
                 className="w-20 h-20 mx-auto rounded-full bg-red-100 flex items-center justify-center mb-6"

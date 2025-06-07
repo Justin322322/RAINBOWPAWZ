@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pet Cremation App DFD</title>
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({ startOnLoad: true });
+  </script>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 20px;
+      background: #f0f4f7;
+      color: #333;
+    }
+    .container {
+      max-width: 1800px; /* Give the diagram ample space */
+      margin: 0 auto;
+    }
+    .mermaid {
+      background: white;
+      border-radius: 8px;
+      padding: 2rem; /* Increased padding for more breathing room */
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      overflow-x: auto; /* Allow horizontal scrolling if needed on small screens */
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <h1>Data Flow Diagram: Pet Cremation App</h1>
+    <div class="mermaid">
+    %% Main fix: Changed graph TD to graph LR for a horizontal layout
+    graph LR
+
+        subgraph "Actors"
+            User["⬜ Pet Owner (User)"]
+            Provider["⬜ Service Provider"]
+            Admin["⬜ Administrator"]
+        end
+
+        subgraph "System Processes"
+            Proc1("🔵 1.0<br>Manage User<br>& Pet Profiles")
+            Proc2("🔵 2.0<br>Manage Provider<br>Profile & Services")
+            Proc3("🔵 3.0<br>Search &<br>Discovery")
+            Proc4("🔵 4.0<br>Handle Booking<br>Process")
+            Proc5("🔵 5.0<br>Process<br>Payments")
+            Proc6("🔵 6.0<br>Manage<br>Reviews")
+            Proc7("🔵 7.0<br>Send<br>Notifications")
+            Proc8("🔵 8.0<br>Admin & System<br>Management")
+        end
+
+        subgraph "External Systems"
+            Gateway["⬜ Payment Gateway"]
+            EmailSys["⬜ Email Delivery System"]
+        end
+
+        subgraph "Data Stores"
+            DS1["▱ D1: Users & Pets"]
+            DS2["▱ D2: Service Providers & Services"]
+            DS3["▱ D3: Bookings"]
+            DS4["▱ D4: Payments & Refunds"]
+            DS5["▱ D5: Reviews"]
+            DS6["▱ D6: Notifications & Logs"]
+            DS7["▱ D7: Auth & System Data"]
+        end
+
+        %% --- User & Profile Flows ---
+        User -- "Registration/Login<br>Details" --> Proc1
+        User -- "Pet Info" --> Proc1
+        Proc1 -- "Writes User/Pet Data" --> DS1
+        User -- "Password Reset Request" --> Proc1
+        Proc1 -- "Token Generation<br>Request" --> Proc7
+        Proc1 -- "Reads User Data" --> DS1
+
+        %% --- Provider & Service Flows ---
+        Provider -- "Business/Service<br>Details" --> Proc2
+        Proc2 -- "Writes Provider<br>& Service Data" --> DS2
+        Proc2 -- "Reads Provider Data" --> DS2
+        Admin -- "Provider Verification" --> Proc8
+        Proc8 -- "Updates Provider Status" --> DS2
+
+        %% --- Search & Booking Flows ---
+        User -- "Search Criteria" --> Proc3
+        Proc3 -- "Reads Service/<br>Provider Data" --> DS2
+        Proc3 -- "Service Listings" --> User
+        User -- "Booking Request<br>(Pet, Package, Addons)" --> Proc4
+        Proc4 -- "Reads User/Pet Data" --> DS1
+        Proc4 -- "Reads Service/<br>Provider Data" --> DS2
+        Proc4 -- "Writes New<br>Booking Data" --> DS3
+        Proc4 -- "Booking Confirmation<br>Details" --> User
+        Proc4 -- "New Booking<br>Notification" --> Provider
+        Provider -- "Booking Status Update<br>(e.g., Completed)" --> Proc4
+        Proc4 -- "Updates Booking Record" --> DS3
+
+        %% --- Payment Flows ---
+        Proc4 -- "Payment Details<br>(Amount, Booking ID)" --> Proc5
+        Proc5 -- "Payment Request" --> Gateway
+        Gateway -- "Payment Status<br>(Success/Fail)" --> Proc5
+        Proc5 -- "Writes Transaction<br>Record" --> DS4
+        Proc5 -- "Updates Payment<br>Status in Booking" --> DS3
+        Proc8 -- "Refund Request" --> Proc5
+        Proc5 -- "Refund API Call" --> Gateway
+        Proc5 -- "Writes Refund<br>Processed" --> DS4
+
+        %% --- Review Flows ---
+        User -- "Review Submission" --> Proc6
+        Proc6 -- "Writes New<br>Review Data" --> DS5
+        Proc6 -- "Reads Booking Info<br>for Verification" --> DS3
+        Proc6 -- "Updates Provider<br>Avg Rating" --> DS2
+        Provider -- "Review Response" --> Proc6
+        Proc6 -- "Writes Response Data" --> DS5
+
+        %% --- Notification Flows ---
+        Proc4 -- "Status Update<br>Notification" --> Proc7
+        Proc4 -- "Booking Notification<br>Data" --> Proc7
+        Proc6 -- "New Review<br>Notification Data" --> Proc7
+        Proc8 -- "Admin Notification<br>Data" --> Proc7
+        Proc7 -- "Writes Notification<br>Record" --> DS6
+        Proc7 -- "Password Reset<br>Email Content" --> EmailSys
+        EmailSys -- "Sends Email" --> User & Provider
+
+        %% --- Admin Flows ---
+        Admin -- "Management Actions<br>(e.g., edit user, process refund)" --> Proc8
+        Proc8 -- "Reads/Writes<br>All Data Stores" --> DS1 & DS2 & DS3 & DS4 & DS5 & DS6 & DS7
+        Proc8 -- "Writes Admin<br>Activity Data" --> DS6
+
+        %% --- Styling Classes ---
+        classDef entity fill:#fff,stroke:#333,stroke-width:2px;
+        classDef process fill:#e6f3ff,stroke:#0066cc,stroke-width:2px;
+        classDef datastore fill:#f5f5f5,stroke:#555,stroke-width:2px,stroke-dasharray: 5 5;
+
+        class User,Provider,Admin,Gateway,EmailSys entity;
+        class Proc1,Proc2,Proc3,Proc4,Proc5,Proc6,Proc7,Proc8 process;
+        class DS1,DS2,DS3,DS4,DS5,DS6,DS7 datastore;
+    </div>
+  </div>
+
+</body>
+</html>

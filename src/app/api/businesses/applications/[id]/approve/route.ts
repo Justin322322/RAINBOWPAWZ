@@ -126,7 +126,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
           'Application Approved',
           `Your business application for ${business.business_name || business.name} has been approved. You can now start offering services.`,
           'success',
-          '/login',
+          null,
           0
         ]);
       }
@@ -189,7 +189,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
             'Application Approved',
             `Your business application for ${business.business_name || business.name} has been approved.`,
             'success',
-            '/login'
+            null
           ]
         );
         console.log('Notification created for user:', business.user_id);

@@ -161,12 +161,12 @@ function AdminApplicationsContent() {
 
       {/* Applications Table */}
       <div className="bg-white shadow-sm rounded-xl overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+        <div className="px-6 py-4 border-b border-gray-200 flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-2 sm:space-y-0">
           <h2 className="text-lg font-medium text-gray-800">
             {statusFilter === 'pending' ? 'Pending Applications' : 'Business Applications'}
           </h2>
           {statusFilter === 'pending' && (
-            <span className="px-2 py-1 text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+            <span className="px-2 py-1 text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800 self-start sm:self-auto">
               Showing pending applications
             </span>
           )}

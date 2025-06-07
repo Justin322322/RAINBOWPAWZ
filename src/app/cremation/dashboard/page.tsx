@@ -25,7 +25,6 @@ import { PackageImage } from '@/components/packages/PackageImage';
 import AvailabilityCalendar from '@/components/booking/AvailabilityCalendar';
 import { useRouter } from 'next/navigation';
 import StatCard from '@/components/ui/StatCard';
-import { SkeletonCard } from '@/components/ui/SkeletonLoader';
 
 // The actual component that will be wrapped by withBusinessVerification HOC
 function CremationDashboardPage({ userData }: { userData: any }) {
@@ -181,20 +180,7 @@ function CremationDashboardPage({ userData }: { userData: any }) {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {isLoading ? (
-          // Using standardized skeleton loader - exact same as admin
-          Array(4).fill(0).map((_, index) => (
-            <SkeletonCard
-              key={index}
-              withHeader={true}
-              contentLines={1}
-              withFooter={false}
-              withShadow={true}
-              rounded="lg"
-              animate={true}
-            />
-          ))
-        ) : error ? (
+        {error ? (
           // Error state - exact same as admin
           <div className="col-span-4 bg-white rounded-xl shadow-sm p-6">
             <div className="flex items-center justify-center">
@@ -255,12 +241,7 @@ function CremationDashboardPage({ userData }: { userData: any }) {
               View all
             </button>
           </div>
-          {isLoading ? (
-            <div className="flex flex-col justify-center items-center h-64">
-              <div className="animate-spin rounded-full h-10 w-10 border-4 border-gray-200 border-t-[var(--primary-green)]"></div>
-              <p className="mt-4 text-gray-600 text-sm">Loading bookings...</p>
-            </div>
-          ) : dashboardData.recentBookings?.length > 0 ? (
+          {dashboardData.recentBookings?.length > 0 ? (
             <ul className="divide-y divide-gray-200">
               {dashboardData.recentBookings.slice(0, 3).map((booking: any, index: number) => (
                 <li key={booking.id} className="px-6 py-4 hover:bg-gray-50">
@@ -326,12 +307,7 @@ function CremationDashboardPage({ userData }: { userData: any }) {
               View all
             </button>
           </div>
-          {isLoading ? (
-            <div className="flex flex-col justify-center items-center h-64">
-              <div className="animate-spin rounded-full h-10 w-10 border-4 border-gray-200 border-t-[var(--primary-green)]"></div>
-              <p className="mt-4 text-gray-600 text-sm">Loading reviews...</p>
-            </div>
-          ) : dashboardData.detailedStats?.avgRating === '0.0' ? (
+          {dashboardData.detailedStats?.avgRating === '0.0' ? (
             <div className="p-6 text-center">
               <StarIcon className="h-12 w-12 text-gray-300 mx-auto mb-3" />
               <p className="text-gray-500 text-sm">No reviews yet. Reviews will appear here when customers rate their experience.</p>

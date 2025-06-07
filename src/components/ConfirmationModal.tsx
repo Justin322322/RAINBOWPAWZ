@@ -33,8 +33,8 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
     <AnimatePresence>
       {isOpen && (
         <div
-          className="fixed inset-0 flex items-center justify-center p-4 md:p-6"
-          style={{ zIndex: 9999 }}
+          className="fixed top-0 left-0 right-0 bottom-0 flex items-center justify-center"
+          style={{ zIndex: 9999, margin: 0, padding: 0 }}
           role="dialog"
           aria-modal="true"
         >
@@ -43,7 +43,7 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm"
+            className="fixed top-0 left-0 right-0 bottom-0 bg-black/60 backdrop-blur-sm"
             onClick={onClose}
           />
 
@@ -52,7 +52,7 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.95, opacity: 0 }}
             transition={{ duration: 0.2, ease: "easeOut" }}
-            className="relative bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden"
+            className="relative bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden mx-4 md:mx-6"
           >
             <div className="flex justify-between items-center px-6 py-4 border-b border-gray-200">
               <h3 className="text-lg font-medium text-gray-900">{title}</h3>
