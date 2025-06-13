@@ -368,13 +368,13 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
       setAvailabilityData([]);
       setAvailablePackages([]);
     }
-  }, [providerId]); // Removed fetchAvailabilityData and fetchProviderPackages to prevent infinite loops
+  }, [providerId, fetchAvailabilityData, fetchProviderPackages]);
 
   useEffect(() => {
     if (providerId && providerId > 0) {
       fetchAvailabilityData(false); // Don't clear existing data
     }
-  }, [currentMonth, providerId]); // Removed fetchAvailabilityData to prevent infinite loops
+  }, [currentMonth, providerId, fetchAvailabilityData]);
 
   useEffect(() => {
     if (showSuccessMessage) {
@@ -396,7 +396,7 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
     }, 60000); // Refresh every 60 seconds
 
     return () => clearInterval(refreshInterval);
-  }, [providerId]); // Removed fetchAvailabilityData to prevent infinite loops
+  }, [providerId, fetchAvailabilityData]);
 
   // Add effect to cache data whenever it changes
   useEffect(() => {
