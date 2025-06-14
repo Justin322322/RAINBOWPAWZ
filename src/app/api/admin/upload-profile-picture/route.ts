@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
-import { getAuthTokenFromRequest } from '@/utils/auth';
+import { getAuthTokenFromRequest, parseAuthToken } from '@/utils/auth';
 import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
 import { existsSync } from 'fs';
@@ -52,7 +52,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const [tokenUserId, accountType] = authToken.split('_');
+    // Use parseAuthToken to handle both JWT and legacy token formats
+    const tokenData = parseAuthToken(authToken);
+    if (!tokenData) {
+      return NextResponse.json({ error: 'Invalid authentication token' }, { status: 401 });
+    }
+
+    const { userId: tokenUserId, accountType } = tokenData;
+    
     if (accountType !== 'admin') {
       return NextResponse.json({ error: 'Unauthorized - Admin access required' }, { status: 403 });
     }

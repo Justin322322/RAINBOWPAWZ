@@ -240,7 +240,7 @@ const PersonalAccountModal: React.FC<PersonalAccountModalProps> = ({ isOpen, onC
               onChange={handleChange}
               placeholder="Enter your first name"
               required
-              rounded="full"
+              rounded="default"
               size="lg"
               labelClassName="font-light"
             />
@@ -254,7 +254,7 @@ const PersonalAccountModal: React.FC<PersonalAccountModalProps> = ({ isOpen, onC
               onChange={handleChange}
               placeholder="Enter your last name"
               required
-              rounded="full"
+              rounded="default"
               size="lg"
               labelClassName="font-light"
             />
@@ -269,7 +269,7 @@ const PersonalAccountModal: React.FC<PersonalAccountModalProps> = ({ isOpen, onC
             onChange={handleChange}
             placeholder="Enter your email address"
             required
-            rounded="full"
+            rounded="default"
             size="lg"
             labelClassName="font-light"
           />
@@ -299,7 +299,7 @@ const PersonalAccountModal: React.FC<PersonalAccountModalProps> = ({ isOpen, onC
             value={formData.address}
             onChange={handleChange}
             placeholder="Enter your address"
-            rounded="full"
+            rounded="default"
             size="lg"
             labelClassName="font-light"
           />
@@ -310,7 +310,7 @@ const PersonalAccountModal: React.FC<PersonalAccountModalProps> = ({ isOpen, onC
             label="Phone Number"
             value={formData.phoneNumber}
             onChange={(value) => setFormData({...formData, phoneNumber: value})}
-            className="w-full px-4 py-3 bg-white border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-[var(--primary-green)] focus:border-transparent transition-all duration-200 font-light"
+            className="w-full px-4 py-3 bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--primary-green)] focus:border-transparent transition-all duration-200 font-light"
           />
 
           <div>
@@ -323,7 +323,7 @@ const PersonalAccountModal: React.FC<PersonalAccountModalProps> = ({ isOpen, onC
               onChange={handleChange}
               placeholder="Create a strong password"
               required
-              rounded="full"
+              rounded="default"
               size="lg"
               labelClassName="font-light"
               rightIcon={
@@ -392,7 +392,7 @@ const PersonalAccountModal: React.FC<PersonalAccountModalProps> = ({ isOpen, onC
             onChange={handleChange}
             placeholder="Confirm your password"
             required
-            rounded="full"
+            rounded="default"
             size="lg"
             labelClassName="font-light"
             error={formData.password && formData.confirmPassword && formData.password !== formData.confirmPassword ? "Passwords do not match" : undefined}
@@ -457,7 +457,7 @@ const PersonalAccountModal: React.FC<PersonalAccountModalProps> = ({ isOpen, onC
             isLoading={isLoading}
             fullWidth
             size="lg"
-            rounded="full"
+            rounded="default"
             className="font-light tracking-wide text-lg"
           >
             {isLoading ? 'Registering...' : 'Register Fur Parent Account'}

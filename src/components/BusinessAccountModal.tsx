@@ -6,6 +6,7 @@ import { sendWelcomeEmail } from '@/lib/emailService';
 import PrivacyPolicyModal from '@/components/PrivacyPolicyModal';
 import { useToast } from '@/context/ToastContext';
 import PhilippinePhoneInput from '@/components/ui/PhilippinePhoneInput';
+import { SelectInput } from '@/components/ui/SelectInput';
 
 type BusinessAccountModalProps = {
   isOpen: boolean;
@@ -250,7 +251,7 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
     }
   };
 
-  const inputClasses = "w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--primary-green)] focus:border-transparent transition-all duration-200 font-light";
+  const inputClasses = "w-full px-4 py-3 bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--primary-green)] focus:border-transparent transition-all duration-200 font-light";
   const labelClasses = "block text-sm font-light text-gray-700 mb-2";
 
   return (
@@ -313,25 +314,22 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
             />
           </div>
 
-          <div>
-            <label htmlFor="sex" className={labelClasses}>
-              Sex
-            </label>
-            <select
-              id="sex"
-              name="sex"
-              value={formData.sex}
-              onChange={handleChange}
-              className={inputClasses}
-              required
-            >
-              <option value="">Select Sex</option>
-              <option value="male">Male</option>
-              <option value="female">Female</option>
-              <option value="other">Other</option>
-              <option value="prefer-not-to-say">Prefer not to say</option>
-            </select>
-          </div>
+          <SelectInput
+            id="sex"
+            name="sex"
+            label="Sex"
+            value={formData.sex}
+            onChange={(value) => setFormData({...formData, sex: value})}
+            options={[
+              { value: "", label: "Select Sex" },
+              { value: "male", label: "Male" },
+              { value: "female", label: "Female" },
+              { value: "other", label: "Other" },
+              { value: "prefer-not-to-say", label: "Prefer not to say" }
+            ]}
+            required
+            labelClassName="font-light"
+          />
 
           <div>
             <label htmlFor="businessName" className={labelClasses}>
@@ -684,7 +682,7 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
             type="submit"
             disabled={isLoading}
             className={`
-              w-full bg-[var(--primary-green)] text-white py-4 px-8 rounded-full
+              w-full bg-[var(--primary-green)] text-white py-4 px-8 rounded-md
               hover:bg-[var(--primary-green-hover)] focus:outline-none focus:ring-2
               focus:ring-offset-2 focus:ring-[var(--primary-green)] transition-all duration-200
               font-light tracking-wide text-lg flex items-center justify-center

@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import CremationDashboardLayout from '@/components/navigation/CremationDashboardLayout';
 import withBusinessVerification from '@/components/withBusinessVerification';
-import { useToast } from '@/context/ToastContext';
+import { useToast } from '@/hooks/useToast';
 import {
   KeyIcon,
   HomeIcon,
@@ -24,6 +24,7 @@ import { LoadingSpinner } from '@/app/admin/services/client';
 import { getImagePath } from '@/utils/imageUtils';
 import PhilippinePhoneInput from '@/components/ui/PhilippinePhoneInput';
 import Image from 'next/image';
+import { decodeTokenUnsafe } from '@/lib/jwt';
 
 function CremationProfilePage({ userData }: { userData: any }) {
   // Password states
@@ -447,7 +448,24 @@ function CremationProfilePage({ userData }: { userData: any }) {
         throw new Error('Authentication required');
       }
 
-      const [userId] = authToken.split('_');
+      let userId: string;
+      
+      // Check if it's a JWT token or old format
+      if (authToken.includes('.')) {
+        // JWT token format
+        const payload = decodeTokenUnsafe(authToken);
+        if (!payload || !payload.userId) {
+          throw new Error('Invalid authentication token');
+        }
+        userId = payload.userId;
+      } else {
+        // Old format fallback
+        const parts = authToken.split('_');
+        if (parts.length !== 2) {
+          throw new Error('Invalid authentication token');
+        }
+        userId = parts[0];
+      }
 
       const formData = new FormData();
       formData.append('profilePicture', profilePicture);

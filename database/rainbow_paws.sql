@@ -501,7 +501,6 @@ ALTER TABLE `admin_logs`
 -- Indexes for table `admin_notifications`
 --
 ALTER TABLE `admin_notifications`
-  ADD PRIMARY KEY (`id`),
   ADD KEY `type` (`type`),
   ADD KEY `is_read` (`is_read`),
   ADD KEY `created_at` (`created_at`);
@@ -533,7 +532,6 @@ ALTER TABLE `email_queue`
 -- Indexes for table `notifications`
 --
 ALTER TABLE `notifications`
-  ADD PRIMARY KEY (`id`),
   ADD KEY `user_id` (`user_id`);
 
 --
@@ -606,33 +604,18 @@ ALTER TABLE `pets`
 --
 -- Indexes for table `provider_availability`
 --
-ALTER TABLE `provider_availability`
-  ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `provider_date_unique` (`provider_id`,`date`);
 
 --
 -- Indexes for table `provider_time_slots`
 --
-ALTER TABLE `provider_time_slots`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `provider_id` (`provider_id`,`date`);
 
 --
 -- Indexes for table `rate_limits`
 --
-ALTER TABLE `rate_limits`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `idx_identifier_action` (`identifier`,`action`),
-  ADD KEY `idx_window_start` (`window_start`);
 
 --
 -- Indexes for table `refunds`
 --
-ALTER TABLE `refunds`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `idx_booking_id` (`booking_id`),
-  ADD KEY `idx_status` (`status`),
-  ADD KEY `idx_created_at` (`created_at`);
 
 --
 -- Indexes for table `reviews`
@@ -918,4 +901,4 @@ COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
-/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */; 
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;

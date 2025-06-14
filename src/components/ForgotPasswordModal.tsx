@@ -117,7 +117,7 @@ const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({ isOpen, onClo
             onChange={(e) => setEmail(e.target.value)}
             placeholder="Enter your email address"
             required
-            rounded="full"
+            rounded="default"
             size="lg"
             labelClassName="font-light"
           />
@@ -128,7 +128,7 @@ const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({ isOpen, onClo
             isLoading={isLoading}
             fullWidth
             size="lg"
-            rounded="full"
+            rounded="default"
             className="font-light tracking-wide text-lg"
           >
             {isLoading ? 'Sending...' : 'Send Reset Instructions'}

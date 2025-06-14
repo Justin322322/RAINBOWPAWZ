@@ -207,7 +207,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onShowSignup }
               onChange={(e) => setEmail(e.target.value)}
               placeholder="Enter your email or username"
               required
-              rounded="full"
+              rounded="default"
               size="lg"
               labelClassName="font-light"
             />
@@ -220,7 +220,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onShowSignup }
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Enter your password"
               required
-              rounded="full"
+              rounded="default"
               size="lg"
               labelClassName="font-light"
               rightIcon={
@@ -260,7 +260,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onShowSignup }
               isLoading={isLoading}
               fullWidth
               size="lg"
-              rounded="full"
+              rounded="default"
               className="font-light tracking-wide text-lg"
             >
               {isLoading ? 'Logging in...' : 'Login'}
