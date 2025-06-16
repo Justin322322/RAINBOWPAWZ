@@ -38,6 +38,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
           bp.address as business_address,
           bp.provider_type as business_type,
           bp.hours as business_hours,
+          bp.description as service_description,
           bp.application_status,
           bp.application_status as verification_status, /* For backward compatibility */
           u.status as account_status
@@ -61,6 +62,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
           bp.address as business_address,
           bp.provider_type as business_type,
           bp.hours as business_hours,
+          bp.description as service_description,
           'pending' as application_status, /* Default fallback status */
           'pending' as verification_status, /* For backward compatibility */
           u.status as account_status
@@ -132,11 +134,10 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       owner: `${business.contact_first_name} ${business.contact_last_name}`,
       email: business.email,
       phone: business.business_phone || 'Not provided',
-      address: business.business_address
-        ? `${business.business_address}, ${business.city || ''}, ${business.province || ''}, ${business.zip || ''}`
-        : 'Not provided',
+      address: business.business_address || 'Not provided',
       businessType: business.business_type,
-      description: business.service_description || 'No description provided',
+      description: business.service_description || business.description || 'No description provided',
+      businessHours: business.business_hours || business.hours || 'Not specified',
       submitDate,
       status: applicationStatus, // For backward compatibility
       applicationStatus: applicationStatus, // New primary status field
@@ -152,7 +153,6 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       city: business.city,
       province: business.province,
       zip: business.zip,
-      businessHours: business.business_hours,
       businessPermitNumber: business.business_permit_number,
       taxIdNumber: business.tax_id_number,
       websiteUrl: business.website_url,

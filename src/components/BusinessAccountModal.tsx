@@ -23,9 +23,6 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
     sex: '',
     businessName: '',
     businessAddress: '',
-    businessProvince: '',
-    businessCity: '',
-    businessZip: '',
     businessPhone: '',
     businessEmail: '',
     businessDescription: '',
@@ -154,9 +151,6 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
         businessType: 'cremation', // Set fixed business type for cremation centers
         businessPhone: formData.businessPhone,
         businessAddress: formData.businessAddress,
-        businessProvince: formData.businessProvince || null,
-        businessCity: formData.businessCity || null,
-        businessZip: formData.businessZip || null,
         businessHours: formData.businessHours || null,
         serviceDescription: formData.businessDescription || null,
         account_type: 'business' as const
@@ -362,57 +356,6 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
               required
             />
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div>
-              <label htmlFor="businessCity" className={labelClasses}>
-                City
-              </label>
-              <input
-                type="text"
-                id="businessCity"
-                name="businessCity"
-                value={formData.businessCity}
-                onChange={handleChange}
-                className={inputClasses}
-                placeholder="Enter city"
-                required
-              />
-            </div>
-
-            <div>
-              <label htmlFor="businessProvince" className={labelClasses}>
-                Province
-              </label>
-              <input
-                type="text"
-                id="businessProvince"
-                name="businessProvince"
-                value={formData.businessProvince}
-                onChange={handleChange}
-                className={inputClasses}
-                placeholder="Enter province"
-                required
-              />
-            </div>
-
-            <div>
-              <label htmlFor="businessZip" className={labelClasses}>
-                ZIP Code
-              </label>
-              <input
-                type="text"
-                id="businessZip"
-                name="businessZip"
-                value={formData.businessZip}
-                onChange={handleChange}
-                className={inputClasses}
-                placeholder="Enter ZIP code"
-                required
-              />
-            </div>
-          </div>
-
 
           <div>
             <label htmlFor="businessHours" className={labelClasses}>

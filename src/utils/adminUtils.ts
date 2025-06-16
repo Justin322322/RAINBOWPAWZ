@@ -13,14 +13,38 @@ export const getAdminIdFromRequest = async (request: NextRequest): Promise<numbe
     const authToken = getAuthTokenFromRequest(request);
 
     if (!authToken) {
+      console.log('No auth token found in request');
       return null;
     }
 
     // Parse the token
-    const [userId, accountType] = authToken.split('_');
+    let userId: string | null = null;
+    let accountType: string | null = null;
+
+    // Check if it's a JWT token or old format
+    if (authToken.includes('.')) {
+      // JWT token format
+      try {
+        const { decodeTokenUnsafe } = await import('@/lib/jwt');
+        const payload = decodeTokenUnsafe(authToken);
+        userId = payload?.userId?.toString() || null;
+        accountType = payload?.accountType || null;
+      } catch (error) {
+        console.error('Error decoding JWT token:', error);
+        return null;
+      }
+    } else {
+      // Old format fallback
+      const parts = authToken.split('_');
+      if (parts.length === 2) {
+        userId = parts[0];
+        accountType = parts[1];
+      }
+    }
 
     // Check if this is an admin account
     if (!userId || accountType !== 'admin') {
+      console.log(`User is not admin. UserId: ${userId}, AccountType: ${accountType}`);
       return null;
     }
 
@@ -31,9 +55,11 @@ export const getAdminIdFromRequest = async (request: NextRequest): Promise<numbe
     ) as any[];
 
     if (!userData || userData.length === 0) {
+      console.log('No admin user found in database for ID:', userId);
       return null;
     }
 
+    console.log('Admin authorization successful for ID:', userId);
     return parseInt(userData[0].user_id);
   } catch (error) {
     console.error('Error getting admin ID from request:', error);

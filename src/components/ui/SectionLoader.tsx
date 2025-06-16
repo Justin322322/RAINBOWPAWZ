@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { motion } from 'framer-motion';
+import { motion, Easing } from 'framer-motion';
 import Spinner from '@/components/ui/Spinner';
 import { cn } from '@/utils/classNames';
 
@@ -39,7 +39,7 @@ export const SectionLoader: React.FC<SectionLoaderProps> = ({
         initial: { opacity: 0 },
         animate: { opacity: 1 },
         exit: { opacity: 0 },
-        transition: { duration: 0.15, ease: "easeOut" }
+        transition: { duration: 0.15, ease: "easeOut" as Easing }
       }
     : {};
 

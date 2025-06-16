@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import CremationDashboardLayout from '@/components/navigation/CremationDashboardLayout';
 import withBusinessVerification from '@/components/withBusinessVerification';
-import { useToast } from '@/hooks/useToast';
+import { useToast } from '@/context/ToastContext';
 import {
   KeyIcon,
   HomeIcon,

@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Image from 'next/image';
-import { motion } from 'framer-motion';
+import { motion, Easing } from 'framer-motion';
 import Spinner from '@/components/ui/Spinner';
 import { cn } from '@/utils/classNames';
 
@@ -36,7 +36,7 @@ export const PageLoader: React.FC<PageLoaderProps> = ({
         initial: { opacity: 0 },
         animate: { opacity: 1 },
         exit: { opacity: 0 },
-        transition: { duration: 0.2, ease: "easeOut" }
+        transition: { duration: 0.2, ease: "easeOut" as Easing }
       }
     : {};
 

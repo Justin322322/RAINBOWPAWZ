@@ -286,9 +286,6 @@ export async function POST(request: Request) {
                             contact_last_name = ?,
                             phone = ?,
                             address = ?,
-                            province = ?,
-                            city = ?,
-                            zip = ?,
                             hours = ?,
                             description = ?,
                             application_status = ?`;
@@ -302,9 +299,6 @@ export async function POST(request: Request) {
               lastName: data.lastName,
               phone: businessData.businessPhone,
               address: businessData.businessAddress,
-              province: businessData.businessProvince || null,
-              city: businessData.businessCity || null,
-              zip: businessData.businessZip || null,
               hours: businessData.businessHours || null,
               description: businessData.serviceDescription || null
             });
@@ -320,9 +314,6 @@ export async function POST(request: Request) {
               data.lastName,
               formattedBusinessPhone,
               businessData.businessAddress,
-              businessData.businessProvince || null, // province
-              businessData.businessCity || null, // city
-              businessData.businessZip || null, // zip
               businessData.businessHours || null,
               businessData.serviceDescription || null,
               'pending'

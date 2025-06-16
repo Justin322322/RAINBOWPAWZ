@@ -79,9 +79,6 @@ CREATE TABLE `service_providers` (
   `contact_last_name` varchar(50) DEFAULT NULL,
   `phone` varchar(20) DEFAULT NULL,
   `address` text DEFAULT NULL,
-  `province` varchar(50) DEFAULT NULL,
-  `city` varchar(50) DEFAULT NULL,
-  `zip` varchar(20) DEFAULT NULL,
   `hours` text DEFAULT NULL,
   `description` text DEFAULT NULL,
   `application_status` enum('pending','declined','approved','restricted') DEFAULT 'pending',
@@ -902,3 +899,9 @@ COMMIT;
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+
+-- Remove city, province, and zip columns from service_providers table
+ALTER TABLE `service_providers` 
+DROP COLUMN `province`,
+DROP COLUMN `city`,
+DROP COLUMN `zip`;
