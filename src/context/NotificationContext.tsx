@@ -67,7 +67,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       const isAdmin = userType === 'admin';
       const isBusiness = userType === 'business';
 
-      if (!userId || userId <= 0) {
+      if (!userId || (typeof userId === 'number' && userId <= 0) || (typeof userId === 'string' && userId === '')) {
         throw new Error('User ID not available. Please log in again.');
       }
 
@@ -78,15 +78,19 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       } else if (isBusiness) {
         apiUrl = `/api/cremation/notifications`;
       } else {
-        apiUrl = '/api/notifications';
+        apiUrl = '/api/user/notifications';
       }
 
-      // Add cache-busting parameter to prevent stale data
-      const separator = apiUrl.includes('?') ? '&' : '?';
+      // Add query parameters properly
+      const params = new URLSearchParams();
       if (unreadOnly) {
-        apiUrl += `${separator}unread_only=true`;
+        params.append('unread_only', 'true');
       }
-      apiUrl += `&t=${Date.now()}`;
+      // Add cache-busting parameter to prevent stale data
+      params.append('t', Date.now().toString());
+      
+      // Construct the final URL with proper query string
+      apiUrl += `?${params.toString()}`;
 
       // Use timeout to prevent hanging requests
       const controller = new AbortController();

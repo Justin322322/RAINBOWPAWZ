@@ -156,7 +156,7 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
         },
         body: JSON.stringify({
           userId,
-          userEmail
+          email: userEmail
         }),
       });
 
