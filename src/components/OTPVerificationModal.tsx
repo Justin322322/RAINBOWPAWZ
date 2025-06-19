@@ -44,6 +44,9 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
   
   // Track critical timeouts that should not be cleared during success flows
   const criticalTimeoutIdsRef = useRef<NodeJS.Timeout[]>([]);
+  
+  // Track if verification success callback has been executed to prevent premature cleanup
+  const successCallbackExecutedRef = useRef(false);
 
   // Helper function to add timeout with tracking
   const addTrackedTimeout = (callback: () => void, delay: number): NodeJS.Timeout => {
@@ -225,6 +228,9 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
     if (isOpen && !hasInitializedRef.current) {
       // Set the ref immediately to prevent double calls during this render cycle
       hasInitializedRef.current = true;
+      
+      // Reset success callback flag when modal opens
+      successCallbackExecutedRef.current = false;
 
       // Check both global and session storage
       const initialOtpAlreadySent = hasOtpBeenSentGlobally() || hasInitialOtpBeenSent();
@@ -298,6 +304,22 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
     };
   }, [verificationStatus, onClose]);
 
+  // Clean up critical timeouts after success callback has executed
+  useEffect(() => {
+    if (verificationStatus === 'success' && successCallbackExecutedRef.current && criticalTimeoutIdsRef.current.length > 0) {
+      // Add a small delay to ensure all success operations complete, then clean up
+      const cleanupTimer = setTimeout(() => {
+        criticalTimeoutIdsRef.current.forEach(timeoutId => clearTimeout(timeoutId));
+        criticalTimeoutIdsRef.current = [];
+      }, 100);
+
+      return () => clearTimeout(cleanupTimer);
+    }
+    
+    // Return undefined for the else case to satisfy TypeScript
+    return undefined;
+  }, [verificationStatus]); // Use verificationStatus instead of ref for dependency
+
   // Cleanup timeouts when modal closes or component unmounts
   useEffect(() => {
     if (!isOpen) {
@@ -311,8 +333,14 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
     
     return () => {
       // On component unmount, clear all timeouts including critical ones
-      // This ensures no memory leaks when component is completely removed
-      clearAllTimeoutsIncludingCritical();
+      // BUT only if the success callback has already been executed or verification failed
+      // This prevents premature cancellation of the success callback
+      if (successCallbackExecutedRef.current || verificationStatus !== 'success') {
+        clearAllTimeoutsIncludingCritical();
+      } else {
+        // If success callback hasn't executed yet, only clear non-critical timeouts
+        clearAllTimeouts();
+      }
     };
   }, [isOpen, verificationStatus]);
 
@@ -366,6 +394,8 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
       return;
     }
 
+    // Reset success callback flag when starting new verification
+    successCallbackExecutedRef.current = false;
     setIsLoading(true);
     setVerificationStatus('loading');
 
@@ -452,15 +482,9 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
       // all state updates have propagated
       // Use critical timeout to prevent premature clearing when modal closes
       addCriticalTimeout(() => {
+        successCallbackExecutedRef.current = true;
         onVerificationSuccess();
-
-        // Clear all critical timeouts after success callback completes
-        // This prevents memory leaks while ensuring the callback executes
-        // Use addCriticalTimeout to properly track this timeout as well
-        addCriticalTimeout(() => {
-          criticalTimeoutIdsRef.current = [];
-        }, 100);
-
+        
         // The modal will be closed by the animation effect
       }, 1000);
     } catch (error) {
