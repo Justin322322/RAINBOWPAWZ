@@ -49,7 +49,13 @@ const finalConfig = process.env.NODE_ENV === 'production'
   ? productionConfig
   : dbConfig;
 
-
+// Connection pool monitoring
+interface PoolStats {
+  totalConnections: number;
+  activeConnections: number;
+  idleConnections: number;
+  queuedRequests: number;
+}
 
 try {
   pool = mysql.createPool(finalConfig);
@@ -86,6 +92,55 @@ try {
   }
 }
 
+// **🔥 NEW: Connection Pool Health Monitoring**
+export function getPoolStats(): PoolStats {
+  const poolConfig = pool.config;
+  return {
+    totalConnections: poolConfig.connectionLimit,
+    activeConnections: (pool as any)._allConnections?.length || 0,
+    idleConnections: (pool as any)._freeConnections?.length || 0,
+    queuedRequests: (pool as any)._connectionQueue?.length || 0
+  };
+}
+
+// **🔥 NEW: Database Health Check Endpoint**
+export async function getDatabaseHealth(): Promise<{
+  isConnected: boolean;
+  poolStats: PoolStats;
+  responseTime: number;
+  errors: string[];
+}> {
+  const startTime = Date.now();
+  const errors: string[] = [];
+  let isConnected = false;
+
+  try {
+    await query('SELECT 1 as health_check');
+    isConnected = true;
+  } catch (error) {
+    errors.push(error instanceof Error ? error.message : 'Unknown connection error');
+  }
+
+  const responseTime = Date.now() - startTime;
+  const poolStats = getPoolStats();
+
+  // Check for potential issues
+  if (poolStats.queuedRequests > 5) {
+    errors.push('High number of queued requests detected');
+  }
+
+  if (poolStats.idleConnections === 0 && poolStats.activeConnections > 0) {
+    errors.push('No idle connections available');
+  }
+
+  return {
+    isConnected,
+    poolStats,
+    responseTime,
+    errors
+  };
+}
+
 // Helper function to execute SQL queries
 export async function query(sql: string, params: any[] = []): Promise<QueryResult> {
   let connection: mysql.PoolConnection;
@@ -98,7 +153,7 @@ export async function query(sql: string, params: any[] = []): Promise<QueryResul
       const [results] = await connection.query(sql, params);
       return results as QueryResult;
     } finally {
-      // Release the connection back to the pool
+      // **🔥 CRITICAL: Always release the connection back to the pool**
       connection.release();
     }
   } catch (error) {
@@ -136,6 +191,107 @@ export async function query(sql: string, params: any[] = []): Promise<QueryResul
       console.error('MySQL connection timeout. The server may be overloaded.');
     }
 
+    throw error;
+  }
+}
+
+// **🔥 NEW: Proper Transaction Management Class**
+export class DatabaseTransaction {
+  private connection: mysql.PoolConnection | null = null;
+  private isActive = false;
+
+  async begin(): Promise<void> {
+    if (this.isActive) {
+      throw new Error('Transaction already active');
+    }
+
+    try {
+      // Get a dedicated connection for this transaction
+      this.connection = await pool.getConnection();
+      await this.connection.query('START TRANSACTION');
+      this.isActive = true;
+    } catch (error) {
+      // Release connection if we got one but failed to start transaction
+      if (this.connection) {
+        this.connection.release();
+        this.connection = null;
+      }
+      throw error;
+    }
+  }
+
+  async query(sql: string, params: any[] = []): Promise<QueryResult> {
+    if (!this.isActive || !this.connection) {
+      throw new Error('Transaction not active or connection not available');
+    }
+
+    try {
+      const [results] = await this.connection.query(sql, params);
+      return results as QueryResult;
+    } catch (error) {
+      console.error('Transaction query error:', {
+        sql: sql.substring(0, 100) + (sql.length > 100 ? '...' : ''),
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+      throw error;
+    }
+  }
+
+  async commit(): Promise<void> {
+    if (!this.isActive || !this.connection) {
+      throw new Error('No active transaction to commit');
+    }
+
+    try {
+      await this.connection.query('COMMIT');
+    } finally {
+      this.cleanup();
+    }
+  }
+
+  async rollback(): Promise<void> {
+    if (!this.isActive || !this.connection) {
+      throw new Error('No active transaction to rollback');
+    }
+
+    try {
+      await this.connection.query('ROLLBACK');
+    } catch (rollbackError) {
+      console.error('Failed to rollback transaction:', rollbackError);
+    } finally {
+      this.cleanup();
+    }
+  }
+
+  private cleanup(): void {
+    if (this.connection) {
+      this.connection.release();
+      this.connection = null;
+    }
+    this.isActive = false;
+  }
+
+  // **🔥 CRITICAL: Ensure cleanup happens even if not explicitly called**
+  async [Symbol.asyncDispose](): Promise<void> {
+    if (this.isActive) {
+      await this.rollback();
+    }
+  }
+}
+
+// **🔥 NEW: Utility function for running transactions safely**
+export async function withTransaction<T>(
+  operation: (transaction: DatabaseTransaction) => Promise<T>
+): Promise<T> {
+  const transaction = new DatabaseTransaction();
+  
+  try {
+    await transaction.begin();
+    const result = await operation(transaction);
+    await transaction.commit();
+    return result;
+  } catch (error) {
+    await transaction.rollback();
     throw error;
   }
 }
