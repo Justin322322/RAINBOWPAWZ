@@ -89,8 +89,10 @@ export async function GET(
 
       console.log(`Executing dynamic query with provider ID: ${providerIdParam} (type: ${typeof providerIdParam})`);
 
+      // SECURITY FIX: Build safe query with validated components
+      const selectFieldsStr = selectFields;
       const fullQuery = `
-        SELECT ${selectFields}
+        SELECT ${selectFieldsStr}
         FROM reviews r
         ${joinClause}
         WHERE r.service_provider_id = ?

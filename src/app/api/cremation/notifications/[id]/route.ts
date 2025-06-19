@@ -67,10 +67,16 @@ export async function DELETE(
     }
 
     // Check if the notification exists and belongs to the cremation provider
-    const notificationResult = await query(
-      `SELECT ${idColumn} FROM notifications WHERE ${idColumn} = ? AND user_id = ?`,
-      [notificationId, parseInt(userId)]
-    ) as any[];
+    let selectQuery, deleteQuery;
+    if (idColumn === 'notification_id') {
+      selectQuery = 'SELECT notification_id FROM notifications WHERE notification_id = ? AND user_id = ?';
+      deleteQuery = 'DELETE FROM notifications WHERE notification_id = ? AND user_id = ?';
+    } else {
+      selectQuery = 'SELECT id FROM notifications WHERE id = ? AND user_id = ?';
+      deleteQuery = 'DELETE FROM notifications WHERE id = ? AND user_id = ?';
+    }
+
+    const notificationResult = await query(selectQuery, [notificationId, parseInt(userId)]) as any[];
 
     if (!notificationResult || notificationResult.length === 0) {
       return NextResponse.json({
@@ -79,10 +85,7 @@ export async function DELETE(
     }
 
     // Delete the notification
-    await query(`DELETE FROM notifications WHERE ${idColumn} = ? AND user_id = ?`, [
-      notificationId,
-      parseInt(userId)
-    ]);
+    await query(deleteQuery, [notificationId, parseInt(userId)]);
 
     return NextResponse.json({
       success: true,
@@ -162,10 +165,16 @@ export async function PATCH(
     }
 
     // Check if the notification exists and belongs to the cremation provider
-    const notificationResult = await query(
-      `SELECT ${idColumn} FROM notifications WHERE ${idColumn} = ? AND user_id = ?`,
-      [notificationId, parseInt(userId)]
-    ) as any[];
+    let selectQuery, updateQuery;
+    if (idColumn === 'notification_id') {
+      selectQuery = 'SELECT notification_id FROM notifications WHERE notification_id = ? AND user_id = ?';
+      updateQuery = 'UPDATE notifications SET is_read = 1 WHERE notification_id = ? AND user_id = ?';
+    } else {
+      selectQuery = 'SELECT id FROM notifications WHERE id = ? AND user_id = ?';
+      updateQuery = 'UPDATE notifications SET is_read = 1 WHERE id = ? AND user_id = ?';
+    }
+
+    const notificationResult = await query(selectQuery, [notificationId, parseInt(userId)]) as any[];
 
     if (!notificationResult || notificationResult.length === 0) {
       return NextResponse.json({
@@ -174,10 +183,7 @@ export async function PATCH(
     }
 
     // Mark the notification as read
-    await query(`UPDATE notifications SET is_read = 1 WHERE ${idColumn} = ? AND user_id = ?`, [
-      notificationId,
-      parseInt(userId)
-    ]);
+    await query(updateQuery, [notificationId, parseInt(userId)]);
 
     return NextResponse.json({
       success: true,

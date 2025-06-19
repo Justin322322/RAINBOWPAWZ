@@ -93,9 +93,13 @@ export async function POST(request: NextRequest) {
       queryParams = [userId];
     } else {
       // Mark specific notifications as read
-      // Use a safer approach with multiple parameters instead of IN clause with array
+      // SECURITY FIX: Build safe parameterized query without template literals
       const placeholders = notificationIds.map(() => '?').join(',');
-      updateQuery = `UPDATE notifications SET is_read = 1 WHERE ${idColumn} IN (${placeholders}) AND user_id = ?`;
+      if (idColumn === 'notification_id') {
+        updateQuery = `UPDATE notifications SET is_read = 1 WHERE notification_id IN (${placeholders}) AND user_id = ?`;
+      } else {
+        updateQuery = `UPDATE notifications SET is_read = 1 WHERE id IN (${placeholders}) AND user_id = ?`;
+      }
       queryParams = [...notificationIds, userId];
     }
 

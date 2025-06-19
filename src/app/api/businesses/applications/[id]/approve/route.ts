@@ -1,21 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
+import { sendBusinessVerificationEmail } from '@/lib/consolidatedEmailService';
+import { logAdminAction, getAdminIdFromRequest } from '@/utils/adminUtils';
 import mysql from 'mysql2/promise';
 
-// Import the consolidated email service
-import { sendBusinessVerificationEmail } from '@/lib/consolidatedEmailService';
-// Import admin utilities
-import { getAdminIdFromRequest, logAdminAction } from '@/utils/adminUtils';
-
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
-  // Extract ID from params
-  const { id } = params;
-
   try {
-    // Get the admin ID from the request
+    const { id } = params;
+
+    // Verify admin authentication
     const adminId = await getAdminIdFromRequest(request);
 
-    // If no admin ID is found, return unauthorized
     if (!adminId) {
       return NextResponse.json({
         message: 'Unauthorized. Admin access required.'
@@ -51,17 +46,29 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       }, { status: 500 });
     }
 
-    // Use the appropriate table name
-    const tableName = useServiceProvidersTable ? 'service_providers' : 'business_profiles';
-    const updateResult = await query(
-      `UPDATE ${tableName}
-       SET application_status = 'approved',
-           verification_date = NOW(),
-           verification_notes = ?,
-           updated_at = NOW()
-       WHERE provider_id = ?`,
-      [notes || 'Application approved', businessId]
-    ) as unknown as mysql.ResultSetHeader;
+    // SECURITY FIX: Use validated table names instead of template literals
+    let updateResult;
+    if (useServiceProvidersTable) {
+      updateResult = await query(
+        `UPDATE service_providers
+         SET application_status = 'approved',
+             verification_date = NOW(),
+             verification_notes = ?,
+             updated_at = NOW()
+         WHERE provider_id = ?`,
+        [notes || 'Application approved', businessId]
+      ) as unknown as mysql.ResultSetHeader;
+    } else {
+      updateResult = await query(
+        `UPDATE business_profiles
+         SET application_status = 'approved',
+             verification_date = NOW(),
+             verification_notes = ?,
+             updated_at = NOW()
+         WHERE provider_id = ?`,
+        [notes || 'Application approved', businessId]
+      ) as unknown as mysql.ResultSetHeader;
+    }
 
     if (updateResult.affectedRows === 0) {
       return NextResponse.json({ message: 'Business profile not found' }, { status: 404 });
@@ -96,13 +103,23 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     const business = businessResult[0];
 
     // Update the user's verification status as well
-    await query(
-      `UPDATE users u
-       JOIN ${tableName} bp ON u.user_id = bp.user_id
-       SET u.is_verified = 1
-       WHERE bp.provider_id = ?`,
-      [businessId]
-    );
+    if (useServiceProvidersTable) {
+      await query(
+        `UPDATE users u
+         JOIN service_providers bp ON u.user_id = bp.user_id
+         SET u.is_verified = 1
+         WHERE bp.provider_id = ?`,
+        [businessId]
+      );
+    } else {
+      await query(
+        `UPDATE users u
+         JOIN business_profiles bp ON u.user_id = bp.user_id
+         SET u.is_verified = 1
+         WHERE bp.provider_id = ?`,
+        [businessId]
+      );
+    }
 
     // Create a notification for the business owner
     try {
@@ -137,6 +154,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     // Log the admin action using the utility function
     try {
       const ipAddress = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip');
+      const tableName = useServiceProvidersTable ? 'service_providers' : 'business_profiles';
       await logAdminAction(
         adminId,
         'approve_business',

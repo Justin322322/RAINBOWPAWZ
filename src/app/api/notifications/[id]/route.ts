@@ -51,11 +51,19 @@ export async function DELETE(
       console.warn('Could not describe notifications table:', describeError);
     }
 
-    // Check if the notification exists and belongs to the user
-    const notificationResult = await query(
-      `SELECT ${idColumn}, user_id FROM notifications WHERE ${idColumn} = ?`,
-      [notificationId]
-    ) as any[];
+    // SECURITY FIX: Check if the notification exists and belongs to the user
+    let notificationResult;
+    if (idColumn === 'notification_id') {
+      notificationResult = await query(
+        'SELECT notification_id, user_id FROM notifications WHERE notification_id = ?',
+        [notificationId]
+      ) as any[];
+    } else {
+      notificationResult = await query(
+        'SELECT id, user_id FROM notifications WHERE id = ?',
+        [notificationId]
+      ) as any[];
+    }
 
     if (!notificationResult || notificationResult.length === 0) {
       return NextResponse.json(
@@ -75,7 +83,14 @@ export async function DELETE(
     }
 
     // Delete the notification
-    await query(`DELETE FROM notifications WHERE ${idColumn} = ?`, [notificationId]);
+    let deleteQuery;
+    if (idColumn === 'notification_id') {
+      deleteQuery = 'DELETE FROM notifications WHERE notification_id = ?';
+    } else {
+      deleteQuery = 'DELETE FROM notifications WHERE id = ?';
+    }
+    
+    await query(deleteQuery, [notificationId]);
 
     return NextResponse.json(
       createStandardSuccessResponse(

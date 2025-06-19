@@ -98,8 +98,18 @@ export async function GET(request: NextRequest) {
     // Check for is_active column
     const hasIsActive = columnNames.includes('is_active');
 
-    // Build the SQL query based on available columns
-    let sql = `SELECT * FROM service_packages WHERE ${providerIdColumn} = ?`;
+    // SECURITY FIX: Build the SQL query based on validated column names
+    let sql;
+    if (providerIdColumn === 'service_provider_id') {
+      sql = 'SELECT * FROM service_packages WHERE service_provider_id = ?';
+    } else if (providerIdColumn === 'provider_id') {
+      sql = 'SELECT * FROM service_packages WHERE provider_id = ?';
+    } else {
+      return NextResponse.json({
+        error: 'Invalid provider ID column',
+        success: false
+      }, { status: 500 });
+    }
 
     if (hasIsActive) {
       sql += ' ORDER BY is_active DESC';

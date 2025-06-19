@@ -6,62 +6,49 @@ export async function POST(request: NextRequest) {
   try {
     // Verify admin authentication
     const authToken = getAuthTokenFromRequest(request);
-
-    // In development mode, we'll allow requests without auth token for testing
-    const isDevelopment = process.env.NODE_ENV === 'development';
-    let isAuthenticated = false;
-
-    if (authToken) {
-      // If we have a token, validate it
-      const tokenParts = authToken.split('_');
-      if (tokenParts.length === 2) {
-        const accountType = tokenParts[1];
-        isAuthenticated = accountType === 'admin';
-      }
-    } else if (isDevelopment) {
-      // In development, allow requests without auth for testing
-      isAuthenticated = true;
-    }
-
-    // Check authentication result
-    if (!isAuthenticated) {
+    if (!authToken) {
       return NextResponse.json({
         error: 'Unauthorized',
-        details: 'Admin access required',
         success: false
       }, { status: 401 });
     }
 
-    // Get request body
+    // Extract user ID and account type
+    const [_tokenUserId, accountType] = authToken.split('_');
+    if (accountType !== 'admin') {
+      return NextResponse.json({
+        error: 'Unauthorized - Admin access required',
+        success: false
+      }, { status: 403 });
+    }
+
+    // Parse request body
     const body = await request.json();
     const { userId, userType, businessId } = body;
 
-
+    // Validate required fields
     if (!userId || !userType) {
       return NextResponse.json({
-        error: 'Missing required parameters',
+        error: 'User ID and user type are required',
+        success: false
+      }, { status: 400 });
+    }
+
+    // Validate user type
+    if (!['personal', 'cremation_center'].includes(userType)) {
+      return NextResponse.json({
+        error: 'Invalid user type. Must be "personal" or "cremation_center"',
         success: false
       }, { status: 400 });
     }
 
     try {
-      // Handle user based on user type
-      if (userType === 'pet_parent') {
-
-        // First check if the user exists
-        const userExists = await query('SELECT user_id FROM users WHERE user_id = ?', [userId]) as any[];
-        if (!userExists || userExists.length === 0) {
-          return NextResponse.json({
-            error: `User with ID ${userId} not found`,
-            success: false
-          }, { status: 404 });
-        }
-
-        // Update user status to active
+      if (userType === 'personal') {
+        // For personal users, simply update their status in users table
         await query(`
           UPDATE users
           SET status = 'active', updated_at = NOW()
-          WHERE id = ?
+          WHERE user_id = ?
         `, [userId]);
 
         // Update any existing restrictions to inactive
@@ -80,7 +67,6 @@ export async function POST(request: NextRequest) {
           }, { status: 400 });
         }
 
-
         // Check which table exists: business_profiles or service_providers
         const tableCheckResult = await query(`
           SELECT table_name
@@ -91,127 +77,158 @@ export async function POST(request: NextRequest) {
 
         const tableNames = tableCheckResult.map((row: any) => row.table_name);
         const useServiceProvidersTable = tableNames.includes('service_providers');
-        const tableName = useServiceProvidersTable ? 'service_providers' : 'business_profiles';
-
-
-        // First check if the business profile exists
-        const idColumn = tableName === 'service_providers' ? 'provider_id' : 'id';
-        const businessExists = await query(`SELECT ${idColumn}, user_id FROM ${tableName} WHERE ${idColumn} = ?`, [businessId]) as any[];
-        if (!businessExists || businessExists.length === 0) {
-          return NextResponse.json({
-            error: `Service provider with ID ${businessId} not found`,
-            success: false
-          }, { status: 404 });
-        }
-
-        const businessUserId = businessExists[0].user_id;
-
-        // Check what columns exist in the table
-        const columnsResult = await query(`SHOW COLUMNS FROM ${tableName}`) as any[];
-        const columnNames = columnsResult.map((col: any) => col.Field);
-
-        // Check for required columns
-        const hasVerificationStatus = columnNames.includes('verification_status');
-        const hasApplicationStatus = columnNames.includes('application_status');
-
-        // Build dynamic update query based on available columns
-        let updateParts = [];
-        let updateParams = [];
-
-        // Update verification_status if it exists
-        if (hasVerificationStatus) {
-          updateParts.push('verification_status = ?');
-          updateParams.push('verified');
-        }
-
-        // Update application_status if it exists (preferred)
-        if (hasApplicationStatus) {
-          updateParts.push('application_status = ?');
-          updateParams.push('approved');
-        }
-
-        // Add verification_date if the column exists
-        if (columnNames.includes('verification_date')) {
-          updateParts.push('verification_date = NOW()');
-        }
-
-        // Clear restriction fields
-        if (columnNames.includes('restriction_reason')) {
-          updateParts.push('restriction_reason = NULL');
-        }
-        if (columnNames.includes('restriction_date')) {
-          updateParts.push('restriction_date = NULL');
-        }
-        if (columnNames.includes('restriction_duration')) {
-          updateParts.push('restriction_duration = NULL');
-        }
-
-        // Always add updated timestamp
-        if (columnNames.includes('updated_at')) {
-          updateParts.push('updated_at = NOW()');
-        }
-
-        // Add parameters
-        updateParams.push(businessId);
-
-        // Execute the update
-        await query(`
-          UPDATE ${tableName}
-          SET ${updateParts.join(', ')}
-          WHERE ${idColumn} = ?
-        `, updateParams);
-
-
-        // Verify the update was successful
-        const verifyResult = await query(`
-          SELECT ${hasVerificationStatus ? 'verification_status' : ''}, ${hasApplicationStatus ? 'application_status' : ''}
-          FROM ${tableName} WHERE ${idColumn} = ?
-        `, [businessId]) as any[];
-
-        if (verifyResult && verifyResult.length > 0) {
-
-          // Check for mismatch in statuses and retry if needed
-          let statusMismatch = false;
-
-          if (hasVerificationStatus && verifyResult[0].verification_status !== 'verified') {
-            statusMismatch = true;
+        
+        // SECURITY FIX: Use validated table names instead of template literals
+        if (useServiceProvidersTable) {
+          // Handle service_providers table
+          const businessExists = await query(
+            'SELECT provider_id, user_id FROM service_providers WHERE provider_id = ?', 
+            [businessId]
+          ) as any[];
+          
+          if (!businessExists || businessExists.length === 0) {
+            return NextResponse.json({
+              error: `Service provider with ID ${businessId} not found`,
+              success: false
+            }, { status: 404 });
           }
 
-          if (hasApplicationStatus && verifyResult[0].application_status !== 'approved') {
-            statusMismatch = true;
+          const businessUserId = businessExists[0].user_id;
+
+          // Check available columns safely
+          const columnsResult = await query('SHOW COLUMNS FROM service_providers') as any[];
+          const columnNames = columnsResult.map((col: any) => col.Field);
+
+          // Build safe update query for service_providers
+          const updateParts = [];
+          const updateParams = [];
+
+          if (columnNames.includes('verification_status')) {
+            updateParts.push('verification_status = ?');
+            updateParams.push('verified');
           }
 
-          if (statusMismatch) {
-            // Try to update again with a simplified query
-            try {
-              await query(
-                `UPDATE ${tableName}
-                SET ${hasVerificationStatus ? "verification_status = 'verified'" : ''}
-                  ${hasVerificationStatus && hasApplicationStatus ? ',' : ''}
-                  ${hasApplicationStatus ? "application_status = 'approved'" : ''}
-                WHERE ${idColumn} = ?`,
-                [businessId]
-              );
-            } catch (_retryError) {
-              // Continue even if retry fails, since the initial update might have been partially successful
-            }
+          if (columnNames.includes('application_status')) {
+            updateParts.push('application_status = ?');
+            updateParams.push('approved');
           }
+
+          if (columnNames.includes('verification_date')) {
+            updateParts.push('verification_date = NOW()');
+          }
+
+          if (columnNames.includes('restriction_reason')) {
+            updateParts.push('restriction_reason = NULL');
+          }
+
+          if (columnNames.includes('restriction_date')) {
+            updateParts.push('restriction_date = NULL');
+          }
+
+          if (columnNames.includes('restriction_duration')) {
+            updateParts.push('restriction_duration = NULL');
+          }
+
+          if (columnNames.includes('updated_at')) {
+            updateParts.push('updated_at = NOW()');
+          }
+
+          updateParams.push(businessId);
+
+          if (updateParts.length > 0) {
+            const updateQuery = `UPDATE service_providers SET ${updateParts.join(', ')} WHERE provider_id = ?`;
+            await query(updateQuery, updateParams);
+          }
+
+          // Update user status
+          await query(`
+            UPDATE users
+            SET status = 'active', updated_at = NOW()
+            WHERE user_id = ?
+          `, [businessUserId]);
+
+          // Update restrictions
+          await query(`
+            UPDATE user_restrictions
+            SET is_active = 0
+            WHERE user_id = ? AND is_active = 1
+          `, [businessUserId]);
+
         } else {
+          // Handle business_profiles table
+          const businessExists = await query(
+            'SELECT id, user_id FROM business_profiles WHERE id = ?', 
+            [businessId]
+          ) as any[];
+          
+          if (!businessExists || businessExists.length === 0) {
+            return NextResponse.json({
+              error: `Business profile with ID ${businessId} not found`,
+              success: false
+            }, { status: 404 });
+          }
+
+          const businessUserId = businessExists[0].user_id;
+
+          // Check available columns safely
+          const columnsResult = await query('SHOW COLUMNS FROM business_profiles') as any[];
+          const columnNames = columnsResult.map((col: any) => col.Field);
+
+          // Build safe update query for business_profiles
+          const updateParts = [];
+          const updateParams = [];
+
+          if (columnNames.includes('verification_status')) {
+            updateParts.push('verification_status = ?');
+            updateParams.push('verified');
+          }
+
+          if (columnNames.includes('application_status')) {
+            updateParts.push('application_status = ?');
+            updateParams.push('approved');
+          }
+
+          if (columnNames.includes('verification_date')) {
+            updateParts.push('verification_date = NOW()');
+          }
+
+          if (columnNames.includes('restriction_reason')) {
+            updateParts.push('restriction_reason = NULL');
+          }
+
+          if (columnNames.includes('restriction_date')) {
+            updateParts.push('restriction_date = NULL');
+          }
+
+          if (columnNames.includes('restriction_duration')) {
+            updateParts.push('restriction_duration = NULL');
+          }
+
+          if (columnNames.includes('updated_at')) {
+            updateParts.push('updated_at = NOW()');
+          }
+
+          updateParams.push(businessId);
+
+          if (updateParts.length > 0) {
+            const updateQuery = `UPDATE business_profiles SET ${updateParts.join(', ')} WHERE id = ?`;
+            await query(updateQuery, updateParams);
+          }
+
+          // Update user status
+          await query(`
+            UPDATE users
+            SET status = 'active', updated_at = NOW()
+            WHERE user_id = ?
+          `, [businessUserId]);
+
+          // Update restrictions
+          await query(`
+            UPDATE user_restrictions
+            SET is_active = 0
+            WHERE user_id = ? AND is_active = 1
+          `, [businessUserId]);
         }
-
-        // Also update the user's status
-        await query(`
-          UPDATE users
-          SET status = 'active', updated_at = NOW()
-          WHERE user_id = ?
-        `, [businessUserId]);
-
-        // Update any existing restrictions to inactive
-        await query(`
-          UPDATE user_restrictions
-          SET is_active = 0
-          WHERE user_id = ? AND is_active = 1
-        `, [businessUserId]);
       } else {
         return NextResponse.json({
           error: 'Invalid user type',
@@ -231,7 +248,6 @@ export async function POST(request: NextRequest) {
       message: 'User restored successfully'
     });
   } catch (error) {
-
     // Provide more detailed error information
     let errorMessage = 'Failed to restore user';
     let errorDetails = error instanceof Error ? error.message : 'Unknown error';

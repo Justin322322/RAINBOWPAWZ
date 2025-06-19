@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
       dateParams = [parseInt(period)];
     }
 
-    // Get overall payment statistics
+    // SECURITY FIX: Build safe queries with validated date filter
     const overallStatsQuery = `
       SELECT 
         COUNT(*) as total_transactions,

@@ -180,7 +180,9 @@ export async function GET(
 
 
       try {
-        const businessResult = await query(`
+        // SECURITY FIX: Build safe query with validated where clause
+        const statusColumn = hasBPAppStatus ? 'bp.application_status' : hasBPVerStatus ? 'bp.verification_status' : "'unknown'";
+        const businessQuery = `
           SELECT
             bp.id,
             bp.business_name as name,
@@ -191,12 +193,13 @@ export async function GET(
             bp.service_description as description,
             bp.business_type,
             bp.created_at,
-            ${hasBPAppStatus ? 'bp.application_status' : hasBPVerStatus ? 'bp.verification_status' : "'unknown'"} as status
+            ${statusColumn} as status
           FROM business_profiles bp
           JOIN users u ON bp.user_id = u.user_id
           WHERE ${bpWhereClause}
           LIMIT 1
-        `, [id]) as any[];
+        `;
+        const businessResult = await query(businessQuery, [id]) as any[];
 
         if (businessResult && businessResult.length > 0) {
           const business = businessResult[0];

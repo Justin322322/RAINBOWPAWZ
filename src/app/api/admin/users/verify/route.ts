@@ -91,15 +91,23 @@ export async function POST(request: NextRequest) {
             }, { status: 500 });
           }
 
-          // Use the appropriate table name
-          const tableName = useServiceProvidersTable ? 'service_providers' : 'business_profiles';
-
-          // Check if the business exists
-          const idColumn = tableName === 'service_providers' ? 'provider_id' : 'id';
-          const businessExists = await query(`SELECT ${idColumn}, verification_status, application_status, user_id FROM ${tableName} WHERE ${idColumn} = ?`, [businessId]) as any[];
+          // SECURITY FIX: Use validated table names instead of template literals
+          let businessExists;
+          if (useServiceProvidersTable) {
+            businessExists = await query(
+              'SELECT provider_id, verification_status, application_status, user_id FROM service_providers WHERE provider_id = ?', 
+              [businessId]
+            ) as any[];
+          } else {
+            businessExists = await query(
+              'SELECT id, verification_status, application_status, user_id FROM business_profiles WHERE id = ?', 
+              [businessId]
+            ) as any[];
+          }
           if (!businessExists || businessExists.length === 0) {
+            const tableType = useServiceProvidersTable ? 'service_providers' : 'business_profiles';
             return NextResponse.json({
-              error: `Business profile with ID ${businessId} not found in ${tableName} table`,
+              error: `Business profile with ID ${businessId} not found in ${tableType} table`,
               success: false
             }, { status: 404 });
           }
@@ -115,44 +123,75 @@ export async function POST(request: NextRequest) {
             updatedStatus = 'restricted';
           }
 
-          // Check if the table has application_status column
-          const columnsResult = await query(`
-            SHOW COLUMNS FROM ${tableName} LIKE 'application_status'
-          `) as any[];
+          // SECURITY FIX: Check columns and update safely for each table type
+          if (useServiceProvidersTable) {
+            // Check if service_providers has application_status column
+            const columnsResult = await query('SHOW COLUMNS FROM service_providers LIKE ?', ['application_status']) as any[];
+            const hasApplicationStatus = columnsResult.length > 0;
 
-          const hasApplicationStatus = columnsResult.length > 0;
-
-          // Update the business profile
-          if (hasApplicationStatus) {
-            // Use application_status as the primary status field
-            await query(`
-              UPDATE ${tableName}
-              SET application_status = ?,
-                  verification_status = ?, -- Keep for backward compatibility
-                  verification_date = NOW(),
-                  verification_notes = ?,
-                  updated_at = NOW()
-              WHERE ${idColumn} = ?
-            `, [
-              updatedStatus,
-              updatedStatus === 'approved' ? 'verified' : updatedStatus, // Convert 'approved' to 'verified' for backward compatibility
-              notes || (currentStatus === 'restricted' ? 'Verified by admin but still restricted' : 'Verified by admin'),
-              businessId
-            ]);
+            if (hasApplicationStatus) {
+              await query(`
+                UPDATE service_providers
+                SET application_status = ?,
+                    verification_status = ?,
+                    verification_date = NOW(),
+                    verification_notes = ?,
+                    updated_at = NOW()
+                WHERE provider_id = ?
+              `, [
+                updatedStatus,
+                updatedStatus === 'approved' ? 'verified' : updatedStatus,
+                notes || (currentStatus === 'restricted' ? 'Verified by admin but still restricted' : 'Verified by admin'),
+                businessId
+              ]);
+            } else {
+              await query(`
+                UPDATE service_providers
+                SET verification_status = ?,
+                    verification_date = NOW(),
+                    verification_notes = ?,
+                    updated_at = NOW()
+                WHERE provider_id = ?
+              `, [
+                updatedStatus === 'approved' ? 'verified' : updatedStatus,
+                notes || (currentStatus === 'restricted' ? 'Verified by admin but still restricted' : 'Verified by admin'),
+                businessId
+              ]);
+            }
           } else {
-            // Fallback to using only verification_status
-            await query(`
-              UPDATE ${tableName}
-              SET verification_status = ?,
-                  verification_date = NOW(),
-                  verification_notes = ?,
-                  updated_at = NOW()
-              WHERE ${idColumn} = ?
-            `, [
-              updatedStatus === 'approved' ? 'verified' : updatedStatus, // Convert 'approved' to 'verified' for older schema
-              notes || (currentStatus === 'restricted' ? 'Verified by admin but still restricted' : 'Verified by admin'),
-              businessId
-            ]);
+            // Check if business_profiles has application_status column
+            const columnsResult = await query('SHOW COLUMNS FROM business_profiles LIKE ?', ['application_status']) as any[];
+            const hasApplicationStatus = columnsResult.length > 0;
+
+            if (hasApplicationStatus) {
+              await query(`
+                UPDATE business_profiles
+                SET application_status = ?,
+                    verification_status = ?,
+                    verification_date = NOW(),
+                    verification_notes = ?,
+                    updated_at = NOW()
+                WHERE id = ?
+              `, [
+                updatedStatus,
+                updatedStatus === 'approved' ? 'verified' : updatedStatus,
+                notes || (currentStatus === 'restricted' ? 'Verified by admin but still restricted' : 'Verified by admin'),
+                businessId
+              ]);
+            } else {
+              await query(`
+                UPDATE business_profiles
+                SET verification_status = ?,
+                    verification_date = NOW(),
+                    verification_notes = ?,
+                    updated_at = NOW()
+                WHERE id = ?
+              `, [
+                updatedStatus === 'approved' ? 'verified' : updatedStatus,
+                notes || (currentStatus === 'restricted' ? 'Verified by admin but still restricted' : 'Verified by admin'),
+                businessId
+              ]);
+            }
           }
 
 
