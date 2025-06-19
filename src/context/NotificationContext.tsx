@@ -67,8 +67,14 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       const isAdmin = userType === 'admin';
       const isBusiness = userType === 'business';
 
-      if (!userId || (typeof userId === 'number' && userId <= 0) || (typeof userId === 'string' && userId === '')) {
-        throw new Error('User ID not available. Please log in again.');
+      // Simplified user ID validation - only check for null/undefined since getUserId() returns string | null
+      // The API relies on authentication headers for user identity, so we don't need strict ID validation
+      if (!userId) {
+        // Don't throw an error, just set empty data and return gracefully
+        // This makes the application more resilient to authentication edge cases
+        setNotifications([]);
+        setUnreadCount(0);
+        return { notifications: [], unreadCount: 0 };
       }
 
       // Use the appropriate API endpoint based on user type
@@ -86,6 +92,12 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       if (unreadOnly) {
         params.append('unread_only', 'true');
       }
+      
+      // Add limit parameter for non-admin endpoints to prevent unlimited results
+      if (!isAdmin) {
+        params.append('limit', '50');
+      }
+      
       // Add cache-busting parameter to prevent stale data
       params.append('t', Date.now().toString());
       

@@ -25,7 +25,7 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
   const [isResending, setIsResending] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
   const [verificationStatus, setVerificationStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
-  const [hasInitialized, setHasInitialized] = useState(false);
+  const [, setHasInitialized] = useState(false);
 
   const inputRefs = useRef<(HTMLInputElement | null)[]>(Array(6).fill(null));
 
@@ -41,6 +41,9 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
 
   // Track all timeout IDs for proper cleanup
   const timeoutIdsRef = useRef<NodeJS.Timeout[]>([]);
+  
+  // Track critical timeouts that should not be cleared during success flows
+  const criticalTimeoutIdsRef = useRef<NodeJS.Timeout[]>([]);
 
   // Helper function to add timeout with tracking
   const addTrackedTimeout = (callback: () => void, delay: number): NodeJS.Timeout => {
@@ -49,16 +52,27 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
     return timeoutId;
   };
 
-  // Helper function to clear tracked timeout
-  const clearTrackedTimeout = (timeoutId: NodeJS.Timeout) => {
-    clearTimeout(timeoutId);
-    timeoutIdsRef.current = timeoutIdsRef.current.filter(id => id !== timeoutId);
+  // Helper function to add critical timeout that persists through modal closure during success
+  const addCriticalTimeout = (callback: () => void, delay: number): NodeJS.Timeout => {
+    const timeoutId = setTimeout(callback, delay);
+    criticalTimeoutIdsRef.current.push(timeoutId);
+    return timeoutId;
   };
 
-  // Cleanup all timeouts
+
+
+  // Cleanup all non-critical timeouts
   const clearAllTimeouts = () => {
     timeoutIdsRef.current.forEach(timeoutId => clearTimeout(timeoutId));
     timeoutIdsRef.current = [];
+  };
+
+  // Cleanup all timeouts including critical ones (for complete cleanup)
+  const clearAllTimeoutsIncludingCritical = () => {
+    timeoutIdsRef.current.forEach(timeoutId => clearTimeout(timeoutId));
+    timeoutIdsRef.current = [];
+    criticalTimeoutIdsRef.current.forEach(timeoutId => clearTimeout(timeoutId));
+    criticalTimeoutIdsRef.current = [];
   };
 
   // Check if we've already sent the initial OTP for this user
@@ -70,15 +84,7 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
     }
   }, [initialOtpSentKey]);
 
-  // Mark that we've sent the initial OTP
-  const markInitialOtpSent = useCallback((): void => {
-    try {
-      // Store in both session storage (for current session) and local storage (for persistence)
-      sessionStorage.setItem(initialOtpSentKey, 'true');
-      window.localStorage.setItem(globalOtpSentKey, 'true');
-    } catch (_error) {
-    }
-  }, [initialOtpSentKey, globalOtpSentKey]);
+
 
   const getStoredCooldownEndTime = useCallback((): number | null => {
     try {
@@ -189,7 +195,7 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
       // Reset the flag to allow future OTP generation
       isGeneratingOtpRef.current = false;
     }
-  }, [userId, userEmail, setStoredCooldownEndTime, markInitialOtpSent]);
+  }, [userId, userEmail, setStoredCooldownEndTime]);
 
   // Initialize OTP sending (only once after login)
   // Using a ref to track initialization across renders
@@ -295,13 +301,20 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
   // Cleanup timeouts when modal closes or component unmounts
   useEffect(() => {
     if (!isOpen) {
-      clearAllTimeouts();
+      // Don't clear timeouts if verification was successful and we're still
+      // showing the success animation or waiting for the success callback
+      // This prevents clearing the critical onVerificationSuccess timeout
+      if (verificationStatus !== 'success') {
+        clearAllTimeouts();
+      }
     }
     
     return () => {
-      clearAllTimeouts();
+      // On component unmount, clear all timeouts including critical ones
+      // This ensures no memory leaks when component is completely removed
+      clearAllTimeoutsIncludingCritical();
     };
-  }, [isOpen]);
+  }, [isOpen, verificationStatus]);
 
   const handleInputChange = (index: number, value: string) => {
     // Only allow numbers
@@ -408,16 +421,19 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
               // @ts-ignore
               globalUserAuthState.userData = userData;
             }
-          } catch (_e) {
+          } catch {
+            // Ignore global state errors
           }
 
           // Also update localStorage as an extra backup
           try {
             localStorage.setItem('user_verified', 'true');
-          } catch (_e) {
+          } catch {
+            // Ignore localStorage errors
           }
         }
-      } catch (_e) {
+      } catch {
+        // Ignore userData parsing errors
       }
 
       // Clear the persistence flags for OTP generation
@@ -425,7 +441,8 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
       try {
         sessionStorage.removeItem(initialOtpSentKey);
         window.localStorage.removeItem(globalOtpSentKey);
-      } catch (_e) {
+      } catch {
+        // Ignore storage errors
       }
 
       // Set success state to trigger animation
@@ -433,8 +450,15 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
 
       // Call the success callback directly but with a delay to ensure
       // all state updates have propagated
-      addTrackedTimeout(() => {
+      // Use critical timeout to prevent premature clearing when modal closes
+      addCriticalTimeout(() => {
         onVerificationSuccess();
+
+        // Clear all critical timeouts after success callback completes
+        // This prevents memory leaks while ensuring the callback executes
+        setTimeout(() => {
+          criticalTimeoutIdsRef.current = [];
+        }, 100);
 
         // The modal will be closed by the animation effect
       }, 1000);
