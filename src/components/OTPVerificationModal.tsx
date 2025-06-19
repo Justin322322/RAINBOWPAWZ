@@ -456,7 +456,8 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
 
         // Clear all critical timeouts after success callback completes
         // This prevents memory leaks while ensuring the callback executes
-        setTimeout(() => {
+        // Use addCriticalTimeout to properly track this timeout as well
+        addCriticalTimeout(() => {
           criticalTimeoutIdsRef.current = [];
         }, 100);
 
