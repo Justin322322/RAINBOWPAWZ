@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react';
 import { useToast } from './ToastContext';
 import { isAuthenticated, getUserId, getAccountType } from '@/utils/auth';
 
@@ -41,22 +41,17 @@ interface NotificationProviderProps {
 
 export function NotificationProvider({ children }: NotificationProviderProps) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [loading, setLoading] = useState(false);
+  const [unreadCount, setUnreadCount] = useState<number>(0);
+  const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [_isHydrated, setIsHydrated] = useState(false);
   const { showToast } = useToast();
 
-  // Handle hydration properly
-  useEffect(() => {
-    setIsHydrated(true);
-  }, []);
+  // Track timeout for proper cleanup
+  const timeoutIdRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Fetch notifications from the API
   const fetchNotifications = async (unreadOnly = false) => {
-    // Check if user is authenticated before making the API call
+    // Check if user is authenticated
     if (typeof window !== 'undefined' && !isAuthenticated()) {
-      // If not authenticated, just return empty data without making the API call
       setNotifications([]);
       setUnreadCount(0);
       return { notifications: [], unreadCount: 0 };
@@ -66,36 +61,39 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       setLoading(true);
       setError(null);
 
-      // Determine user type from auth token
-      const _userId = getUserId();
+      // Determine user type
+      const userId = getUserId();
       const userType = getAccountType();
       const isAdmin = userType === 'admin';
       const isBusiness = userType === 'business';
 
-
+      if (!userId || userId <= 0) {
+        throw new Error('User ID not available. Please log in again.');
+      }
 
       // Use the appropriate API endpoint based on user type
       let apiUrl = '';
       if (isAdmin) {
-        apiUrl = `/api/admin/notifications?unread_only=${unreadOnly}`;
+        apiUrl = '/api/admin/notifications';
       } else if (isBusiness) {
-        // Cremation business users use the dedicated cremation notification endpoint
-        apiUrl = `/api/cremation/notifications?limit=50`;
+        apiUrl = `/api/cremation/notifications`;
       } else {
-        // Regular fur parent users
-        apiUrl = `/api/user/notifications?limit=50`;
+        apiUrl = '/api/notifications';
       }
 
-      // Add cache-busting parameter to avoid stale data
+      // Add cache-busting parameter to prevent stale data
+      const separator = apiUrl.includes('?') ? '&' : '?';
+      if (unreadOnly) {
+        apiUrl += `${separator}unread_only=true`;
+      }
       apiUrl += `&t=${Date.now()}`;
-
-
-
-
 
       // Use timeout to prevent hanging requests
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 8000);
+      
+      // Track timeout for cleanup
+      timeoutIdRef.current = timeoutId;
 
       const response = await fetch(apiUrl, {
         headers: {
@@ -105,12 +103,13 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
         signal: controller.signal
       });
 
+      // Clear timeout since request completed
       clearTimeout(timeoutId);
+      timeoutIdRef.current = null;
 
       if (!response.ok) {
         // If unauthorized or any other error, just set empty data without throwing an error
         // This makes the application more resilient to authentication issues
-
 
         // For database connection errors, show a fallback message
         if (response.status === 500) {
@@ -141,8 +140,6 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
 
       try {
         const data = await response.json();
-
-
 
         // Ensure data has the expected structure
         if (!data || typeof data !== 'object') {
@@ -451,11 +448,17 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       }, 120000); // 2 minutes
     }
 
-    // Clean up interval on component unmount
+    // Clean up interval and any pending timeouts on component unmount
     return () => {
       if (intervalId) {
         clearInterval(intervalId);
         intervalId = null;
+      }
+      
+      // Clear any pending timeout from fetchNotifications
+      if (timeoutIdRef.current) {
+        clearTimeout(timeoutIdRef.current);
+        timeoutIdRef.current = null;
       }
     };
   }, []); // Empty dependency array to run only once on mount

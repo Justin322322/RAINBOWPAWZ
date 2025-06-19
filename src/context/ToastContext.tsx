@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useRef, useEffect } from 'react';
 import ToastContainer, { ToastMessage, ToastType } from '@/components/ui/ToastContainer';
 
 interface ToastContextType {
@@ -24,6 +24,8 @@ export function useToast() {
 
 export function ToastProvider({ children }: ToastProviderProps) {
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
+  // Track all timeout IDs for proper cleanup
+  const timeoutIdsRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
 
   const showToast = (message: string, type: ToastType = 'info', duration: number = 4000) => {
     // Check if a similar toast already exists to prevent duplicates
@@ -48,17 +50,38 @@ export function ToastProvider({ children }: ToastProviderProps) {
 
     // Auto-remove toast after specified duration (default 4 seconds)
     if (typeof window !== 'undefined') {
-      setTimeout(() => {
+      const timeoutId = setTimeout(() => {
         hideToast(id);
       }, duration);
+      
+      // Track timeout for cleanup
+      timeoutIdsRef.current.set(id, timeoutId);
     }
 
     return id;
   };
 
   const hideToast = (id: string) => {
+    // Clear associated timeout if it exists
+    const timeoutId = timeoutIdsRef.current.get(id);
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+      timeoutIdsRef.current.delete(id);
+    }
+    
     setToasts((prev) => prev.filter((toast) => toast.id !== id));
   };
+
+  // Cleanup all timeouts on component unmount
+  useEffect(() => {
+    return () => {
+      // Clear all pending timeouts
+      timeoutIdsRef.current.forEach((timeoutId) => {
+        clearTimeout(timeoutId);
+      });
+      timeoutIdsRef.current.clear();
+    };
+  }, []);
 
   return (
     <ToastContext.Provider value={{ showToast, hideToast }}>

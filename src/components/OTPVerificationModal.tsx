@@ -25,7 +25,7 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
   const [isResending, setIsResending] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
   const [verificationStatus, setVerificationStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
-  const [_hasInitialized, setHasInitialized] = useState(false);
+  const [hasInitialized, setHasInitialized] = useState(false);
 
   const inputRefs = useRef<(HTMLInputElement | null)[]>(Array(6).fill(null));
 
@@ -38,6 +38,28 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
   // Global variable to track if OTP has been sent for this user across all instances
   // This helps prevent duplicate OTPs when multiple components are mounted/unmounted
   const globalOtpSentKey = `global_otp_sent_${userId}`;
+
+  // Track all timeout IDs for proper cleanup
+  const timeoutIdsRef = useRef<NodeJS.Timeout[]>([]);
+
+  // Helper function to add timeout with tracking
+  const addTrackedTimeout = (callback: () => void, delay: number): NodeJS.Timeout => {
+    const timeoutId = setTimeout(callback, delay);
+    timeoutIdsRef.current.push(timeoutId);
+    return timeoutId;
+  };
+
+  // Helper function to clear tracked timeout
+  const clearTrackedTimeout = (timeoutId: NodeJS.Timeout) => {
+    clearTimeout(timeoutId);
+    timeoutIdsRef.current = timeoutIdsRef.current.filter(id => id !== timeoutId);
+  };
+
+  // Cleanup all timeouts
+  const clearAllTimeouts = () => {
+    timeoutIdsRef.current.forEach(timeoutId => clearTimeout(timeoutId));
+    timeoutIdsRef.current = [];
+  };
 
   // Check if we've already sent the initial OTP for this user
   const hasInitialOtpBeenSent = useCallback((): boolean => {
@@ -118,18 +140,15 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
 
   // Memoize the OTP generation function to avoid recreating it on every render
   const generateOTP = useCallback(async () => {
-    // Prevent duplicate calls
+    // Prevent duplicate OTP generation
     if (isGeneratingOtpRef.current) {
       return;
     }
 
+    isGeneratingOtpRef.current = true;
+    setIsResending(true);
+
     try {
-      // Set flag to prevent duplicate calls
-      isGeneratingOtpRef.current = true;
-
-      setIsResending(true);
-      setErrorMessage('');
-
       const response = await fetch('/api/auth/otp/generate', {
         method: 'POST',
         headers: {
@@ -137,26 +156,20 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
         },
         body: JSON.stringify({
           userId,
-          email: userEmail
+          userEmail
         }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || data.error || 'Failed to generate OTP');
+        throw new Error(data.error || 'Failed to send verification code');
       }
 
-      // Set the cooldown and store the end time in sessionStorage
-      const cooldownDuration = 60; // 60 seconds cooldown
+      // Set the cooldown period from the server response (usually 60 seconds)
+      const cooldownDuration = data.cooldownDuration || 60;
       setResendCooldown(cooldownDuration);
       setStoredCooldownEndTime(cooldownDuration);
-
-      // Mark that initial OTP has been sent for this user
-      markInitialOtpSent();
-
-      // Show success message
-      setErrorMessage('');
 
       // Show a success message
       const successElement = document.getElementById('success-message');
@@ -164,8 +177,8 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
         successElement.textContent = data.message || 'Verification code sent successfully. Please check your email.';
         successElement.classList.remove('hidden');
 
-        // Hide the success message after 5 seconds
-        setTimeout(() => {
+        // Hide the success message after 5 seconds with tracking
+        addTrackedTimeout(() => {
           successElement.classList.add('hidden');
         }, 5000);
       }
@@ -216,17 +229,13 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
         // Mark as sent before generating to prevent race conditions
         markOtpSentGlobally();
 
-        // Set a short debounce before sending OTP to prevent duplicate generation
-        // This allows time for other potential OTPVerificationModal instances to recognize
-        // that OTP generation has already been initiated
-        setTimeout(() => {
+        // Set a short debounce before sending OTP to prevent duplicate generation with tracking
+        addTrackedTimeout(() => {
           // Double-check no other component has generated an OTP in the meantime
           if (!isGeneratingOtpRef.current && hasOtpBeenSentGlobally()) {
             generateOTP();
-          } else {
           }
         }, 500); // Extended delay to prevent race conditions
-      } else {
       }
 
       // Mark as initialized in state too
@@ -282,6 +291,17 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
       }
     };
   }, [verificationStatus, onClose]);
+
+  // Cleanup timeouts when modal closes or component unmounts
+  useEffect(() => {
+    if (!isOpen) {
+      clearAllTimeouts();
+    }
+    
+    return () => {
+      clearAllTimeouts();
+    };
+  }, [isOpen]);
 
   const handleInputChange = (index: number, value: string) => {
     // Only allow numbers
@@ -413,7 +433,7 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
 
       // Call the success callback directly but with a delay to ensure
       // all state updates have propagated
-      setTimeout(() => {
+      addTrackedTimeout(() => {
         onVerificationSuccess();
 
         // The modal will be closed by the animation effect
