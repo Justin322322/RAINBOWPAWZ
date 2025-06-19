@@ -82,20 +82,18 @@ export function middleware(request: NextRequest) {
         // (verification will be done server-side when needed)
         const payload = decodeJWTPayload(decodedValue);
         if (!payload) {
-          // If we can't decode the JWT, let the request through
-          // The API endpoints will handle proper JWT verification
-          console.log('[Middleware] Could not decode JWT, allowing request to pass through');
-          return NextResponse.next();
+          // If we can't decode the JWT, redirect to login
+          console.log('[Middleware] Could not decode JWT, redirecting to login');
+          return NextResponse.redirect(new URL('/', request.url));
         }
         
         userId = payload.userId || payload.sub;
         accountType = payload.accountType || payload.account_type;
         
-        // If we can't get basic info from JWT, let it through
-        // The API endpoints will handle proper verification and error handling
+        // If we can't get basic info from JWT, redirect to login
         if (!userId || !accountType) {
-          console.log('[Middleware] Missing userId or accountType in JWT, allowing request to pass through');
-          return NextResponse.next();
+          console.log('[Middleware] Missing userId or accountType in JWT, redirecting to login');
+          return NextResponse.redirect(new URL('/', request.url));
         }
       } else {
         // Old format fallback

@@ -188,7 +188,7 @@ export function useDataFetching<T = any>({
     if (skipInitialFetch) {
       initialFetchPerformedRef.current = '';
     }
-  }, [dependencyKey, skipInitialFetch]);
+  }, [dependencyKey, skipInitialFetch, fetchData]);
 
   return { data, isLoading, error, fetchData, setData };
 }

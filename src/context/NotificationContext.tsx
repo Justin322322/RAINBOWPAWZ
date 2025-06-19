@@ -2,7 +2,6 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { isAuthenticated } from '@/utils/auth';
-import { showToast } from '@/utils/toast';
 import { useToast } from './ToastContext';
 
 export interface Notification {
