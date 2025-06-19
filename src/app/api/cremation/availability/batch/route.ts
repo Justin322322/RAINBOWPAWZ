@@ -203,7 +203,14 @@ export async function POST(request: NextRequest) {
         } catch (dayError) {
           console.error(`Error processing day ${dayData.date}:`, dayError);
           errors.push(`${dayData.date}: ${dayError instanceof Error ? dayError.message : String(dayError)}`);
+          // Continue processing other days even if this one failed
+          continue;
         }
+      }
+
+      // Restore original behavior: rollback if no days succeeded
+      if (successCount === 0) {
+        throw new Error('No days were successfully processed');
       }
 
       return { successCount, errors };

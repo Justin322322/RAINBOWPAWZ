@@ -96,7 +96,7 @@ try {
 export function getPoolStats(): PoolStats {
   const poolConfig = pool.config;
   return {
-    totalConnections: poolConfig.connectionLimit,
+    totalConnections: poolConfig.connectionLimit || 10,
     activeConnections: (pool as any)._allConnections?.length || 0,
     idleConnections: (pool as any)._freeConnections?.length || 0,
     queuedRequests: (pool as any)._connectionQueue?.length || 0
@@ -251,13 +251,17 @@ export class DatabaseTransaction {
 
   async rollback(): Promise<void> {
     if (!this.isActive || !this.connection) {
-      throw new Error('No active transaction to rollback');
+      // Don't throw error - just log and cleanup
+      console.warn('Attempted to rollback inactive transaction or missing connection');
+      this.cleanup();
+      return;
     }
 
     try {
       await this.connection.query('ROLLBACK');
     } catch (rollbackError) {
       console.error('Failed to rollback transaction:', rollbackError);
+      // Don't throw the rollback error - just log it
     } finally {
       this.cleanup();
     }
@@ -271,8 +275,8 @@ export class DatabaseTransaction {
     this.isActive = false;
   }
 
-  // **🔥 CRITICAL: Ensure cleanup happens even if not explicitly called**
-  async [Symbol.asyncDispose](): Promise<void> {
+  // **🔥 NEW: Manual cleanup method for environments without Symbol.asyncDispose**
+  async dispose(): Promise<void> {
     if (this.isActive) {
       await this.rollback();
     }
@@ -290,9 +294,27 @@ export async function withTransaction<T>(
     const result = await operation(transaction);
     await transaction.commit();
     return result;
-  } catch (error) {
-    await transaction.rollback();
-    throw error;
+  } catch (originalError) {
+    // Store the original error to ensure it's preserved
+    let errorToThrow = originalError;
+    
+    try {
+      await transaction.rollback();
+    } catch (rollbackError) {
+      // Log rollback error but don't let it mask the original error
+      console.error('Error during transaction rollback (original error will be thrown):', rollbackError);
+      
+      // Only replace the error if the original error was specifically about the transaction state
+      // and the rollback error provides more meaningful information
+      if (originalError instanceof Error && 
+          originalError.message.includes('Transaction not active') &&
+          rollbackError instanceof Error) {
+        errorToThrow = rollbackError;
+      }
+    }
+    
+    // Always throw the original error (or meaningful replacement)
+    throw errorToThrow;
   }
 }
 
