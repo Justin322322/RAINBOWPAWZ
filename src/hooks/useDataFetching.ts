@@ -38,7 +38,7 @@ export function useDataFetching<T = any>({
   
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  const { setLoading, setLoadingMessage, setLoadingSection, _clearAllLoading } = useLoading();
+  const { setLoading, setLoadingMessage, setLoadingSection, clearAllLoading } = useLoading();
 
   const onSuccessRef = useRef(onSuccess);
   const onErrorRef = useRef(onError);
@@ -144,18 +144,27 @@ export function useDataFetching<T = any>({
     };
   }, []);
 
-  const hasInitialFetchRef = useRef(false);
+  // Track if initial fetch has been performed for the current set of dependencies
+  const initialFetchPerformedRef = useRef<string>('');
+  
+  // Create a stable key from dependencies to track when they change
+  const dependencyKey = JSON.stringify([...dependencies, skipInitialFetch]);
 
   useEffect(() => {
-    if (!skipInitialFetch && !hasInitialFetchRef.current) {
-      hasInitialFetchRef.current = true;
+    // Only perform initial fetch if:
+    // 1. skipInitialFetch is false
+    // 2. We haven't already fetched for this exact set of dependencies
+    if (!skipInitialFetch && initialFetchPerformedRef.current !== dependencyKey) {
+      initialFetchPerformedRef.current = dependencyKey;
       fetchData();
     }
-  }, [...dependencies, skipInitialFetch]);
-
-  useEffect(() => {
-    hasInitialFetchRef.current = false;
-  }, [...dependencies]);
+    
+    // If skipInitialFetch becomes true, reset the ref so that when it becomes false again,
+    // we can fetch even if other dependencies haven't changed
+    if (skipInitialFetch) {
+      initialFetchPerformedRef.current = '';
+    }
+  }, [dependencyKey, skipInitialFetch, fetchData]);
 
   return { data, isLoading, error, fetchData, setData };
 }
