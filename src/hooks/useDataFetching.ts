@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useLoading } from '@/contexts/LoadingContext';
 
 interface FetchOptions {
@@ -16,6 +16,26 @@ interface FetchOptions {
   onError?: (error: any) => void;
   dependencies?: any[];
   skipInitialFetch?: boolean;
+}
+
+// Helper function to create a stable hash from dependencies
+function createDependencyHash(deps: any[]): string {
+  return deps.map((dep, index) => {
+    if (dep === null || dep === undefined) {
+      return `${index}:${dep}`;
+    }
+    if (typeof dep === 'function') {
+      return `${index}:function:${dep.name || 'anonymous'}`;
+    }
+    if (typeof dep === 'object') {
+      try {
+        return `${index}:object:${JSON.stringify(dep)}`;
+      } catch {
+        return `${index}:object:non-serializable`;
+      }
+    }
+    return `${index}:${typeof dep}:${String(dep)}`;
+  }).join('|');
 }
 
 export function useDataFetching<T = any>({
@@ -147,8 +167,12 @@ export function useDataFetching<T = any>({
   // Track if initial fetch has been performed for the current set of dependencies
   const initialFetchPerformedRef = useRef<string>('');
   
-  // Create a stable key from dependencies to track when they change
-  const dependencyKey = JSON.stringify([...dependencies, skipInitialFetch]);
+  // Create a stable, memoized dependency key that includes core fetch parameters
+  const dependencyKey = useMemo(() => {
+    const coreDeps = [url, method, body, headers];
+    const allDeps = [...coreDeps, ...dependencies, skipInitialFetch];
+    return createDependencyHash(allDeps);
+  }, [url, method, body, headers, dependencies, skipInitialFetch]);
 
   useEffect(() => {
     // Only perform initial fetch if:
@@ -164,7 +188,7 @@ export function useDataFetching<T = any>({
     if (skipInitialFetch) {
       initialFetchPerformedRef.current = '';
     }
-  }, [dependencyKey, skipInitialFetch, fetchData]);
+  }, [dependencyKey, skipInitialFetch]);
 
   return { data, isLoading, error, fetchData, setData };
 }
