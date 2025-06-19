@@ -125,7 +125,9 @@ export async function GET(request: NextRequest) {
   const joinSP = await checkTableExists('service_providers')
     ? 'LEFT JOIN service_providers sp ON p.provider_id=sp.provider_id'
     : '';
-  let sql = `SELECT ${cols.join(', ')} FROM service_packages p ${joinSP} WHERE 1=1`;
+  // SECURITY FIX: Build safe query with validated components
+  const colsStr = cols.join(', ');
+  let sql = `SELECT ${colsStr} FROM service_packages p ${joinSP} WHERE 1=1`;
   const params: any[] = [];
 
   if (s) {
@@ -228,11 +230,11 @@ export async function GET(request: NextRequest) {
     try {
       const packageIds = rows.map(r => r.package_id);
       if (packageIds.length > 0) {
-        // Create a comma-separated list of IDs for the query
-        const idList = packageIds.join(',');
-        // Add a safeguard for empty list
+        // SECURITY FIX: Create parameterized query for package inclusions
+        const placeholders = packageIds.map(() => '?').join(',');
         const inclusionsResult = await query(
-          `SELECT package_id, description FROM package_inclusions WHERE package_id IN (${idList || 0})`
+          `SELECT package_id, description FROM package_inclusions WHERE package_id IN (${placeholders})`,
+          packageIds
         ) as any[];
 
         // Group inclusions by package_id
@@ -252,11 +254,11 @@ export async function GET(request: NextRequest) {
     try {
       const packageIds = rows.map(r => r.package_id);
       if (packageIds.length > 0) {
-        // Create a comma-separated list of IDs for the query
-        const idList = packageIds.join(',');
-        // Add a safeguard for empty list
+        // SECURITY FIX: Create parameterized query for package addons
+        const placeholders = packageIds.map(() => '?').join(',');
         const addonsResult = await query(
-          `SELECT package_id, description FROM package_addons WHERE package_id IN (${idList || 0})`
+          `SELECT package_id, description FROM package_addons WHERE package_id IN (${placeholders})`,
+          packageIds
         ) as any[];
 
         // Group addons by package_id

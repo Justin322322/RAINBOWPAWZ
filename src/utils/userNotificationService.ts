@@ -112,13 +112,17 @@ export async function getUserNotifications(userId: number, limit: number = 10): 
       console.warn('Could not describe notifications table:', describeError);
     }
     
-    const notifications = await query(`
-      SELECT ${idColumn} as id, user_id, title, message, type, is_read, link, created_at 
-      FROM notifications 
-      WHERE user_id = ? 
-      ORDER BY created_at DESC 
-      LIMIT ?
-    `, [userId, limit]) as any[];
+    // SECURITY FIX: Build safe query without template literals
+    let selectQuery;
+    if (idColumn === 'notification_id') {
+      selectQuery = `SELECT notification_id as id, user_id, title, message, type, is_read, link, created_at 
+                     FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT ?`;
+    } else {
+      selectQuery = `SELECT id, user_id, title, message, type, is_read, link, created_at 
+                     FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT ?`;
+    }
+    
+    const notifications = await query(selectQuery, [userId, limit]) as any[];
 
     return notifications || [];
   } catch (error) {
@@ -146,11 +150,15 @@ export async function markNotificationAsRead(notificationId: number, userId: num
       console.warn('Could not describe notifications table:', describeError);
     }
 
-    await query(`
-      UPDATE notifications 
-      SET is_read = TRUE 
-      WHERE ${idColumn} = ? AND user_id = ?
-    `, [notificationId, userId]);
+    // SECURITY FIX: Build safe query without template literals
+    let updateQuery;
+    if (idColumn === 'notification_id') {
+      updateQuery = 'UPDATE notifications SET is_read = TRUE WHERE notification_id = ? AND user_id = ?';
+    } else {
+      updateQuery = 'UPDATE notifications SET is_read = TRUE WHERE id = ? AND user_id = ?';
+    }
+    
+    await query(updateQuery, [notificationId, userId]);
 
     return true;
   } catch (error) {

@@ -74,13 +74,10 @@ export async function POST(request: Request) {
 
     const user = userCheck[0];
 
-    // Check if we should use service_providers table
-    const useServiceProvidersTable = true; // Default to service_providers table
-    const tableName = useServiceProvidersTable ? 'service_providers' : 'business_profiles';
-
-    // Check if a business profile exists for this user
+    // SECURITY FIX: Use hardcoded table name instead of dynamic template
+    // Check if a business profile exists for this user in service_providers table
     let businessCheck = await query(
-      `SELECT provider_id, name, application_status FROM ${tableName} WHERE user_id = ?`,
+      'SELECT provider_id, name, application_status FROM service_providers WHERE user_id = ?',
       [userIdStr]
     ) as any[];
 
@@ -97,9 +94,8 @@ export async function POST(request: Request) {
 
         // Insert a new service provider record
         const insertResult = await query(
-          `INSERT INTO ${tableName} (user_id, name, provider_type, application_status)
-           VALUES (?, ?, 'cremation', 'pending')`,
-          [userIdStr, providerName]
+          'INSERT INTO service_providers (user_id, name, provider_type, application_status) VALUES (?, ?, ?, ?)',
+          [userIdStr, providerName, 'cremation', 'pending']
         ) as any;
 
 
@@ -108,7 +104,7 @@ export async function POST(request: Request) {
         } else {
           // Fetch the newly created record if insertId not available
           const newBusinessCheck = await query(
-            `SELECT provider_id FROM ${tableName} WHERE user_id = ?`,
+            'SELECT provider_id FROM service_providers WHERE user_id = ?',
             [userIdStr]
           ) as any[];
 
@@ -162,8 +158,8 @@ export async function POST(request: Request) {
       }, { status: 400 });
     }
 
-    // Check columns in the target table
-    const columnsResult = await query(`SHOW COLUMNS FROM ${tableName}`) as any[];
+    // Check columns in the service_providers table
+    const columnsResult = await query('SHOW COLUMNS FROM service_providers') as any[];
     const columns = columnsResult.map((col: any) => col.Field);
 
     // Update business record with document paths
@@ -212,7 +208,7 @@ export async function POST(request: Request) {
       console.log("Update values:", updateValues);
       console.log("Business profile ID:", businessProfileId);
 
-      const updateQuery = `UPDATE ${tableName} SET ${updateFields.join(', ')} WHERE provider_id = ?`;
+      const updateQuery = `UPDATE service_providers SET ${updateFields.join(', ')} WHERE provider_id = ?`;
 
       try {
         const updateResult = await query(
@@ -224,7 +220,7 @@ export async function POST(request: Request) {
 
         // Verify if the update was successful
         const verifyResult = await query(
-          `SELECT provider_id, business_permit_path, bir_certificate_path, government_id_path FROM ${tableName} WHERE provider_id = ?`,
+          'SELECT provider_id, business_permit_path, bir_certificate_path, government_id_path FROM service_providers WHERE provider_id = ?',
           [businessProfileId]
         ) as any[];
 
@@ -234,7 +230,7 @@ export async function POST(request: Request) {
 
       } catch (updateError) {
         return NextResponse.json({
-          error: `Failed to update ${tableName} record`,
+          error: 'Failed to update service provider record',
           details: updateError instanceof Error ? updateError.message : 'Unknown error'
         }, { status: 500 });
       }

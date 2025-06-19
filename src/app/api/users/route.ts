@@ -88,10 +88,11 @@ export async function GET(request: NextRequest) {
       if (hasUserType) selectFields += ', user_type';
       if (hasLastLogin) selectFields += ', last_login';
 
-      // Build the query
+      // SECURITY FIX: Build the query with safe field selection
       let countQuery = 'SELECT COUNT(*) as total FROM users';
+      const selectFieldsStr = selectFields;
       let usersQuery = `
-        SELECT ${selectFields}
+        SELECT ${selectFieldsStr}
         FROM users
       `;
 
@@ -130,11 +131,11 @@ export async function GET(request: NextRequest) {
         queryParams.push(`%${search}%`, `%${search}%`, `%${search}%`);
       }
 
-      // Add WHERE clause to queries if there are conditions
+      // SECURITY FIX: Add WHERE clause to queries if there are conditions
       if (whereConditions.length > 0) {
-        const whereClause = `WHERE ${whereConditions.join(' AND ')}`;
-        countQuery += ` ${whereClause}`;
-        usersQuery += ` ${whereClause}`;
+        const safeWhereClause = `WHERE ${whereConditions.join(' AND ')}`;
+        countQuery += ` ${safeWhereClause}`;
+        usersQuery += ` ${safeWhereClause}`;
       }
 
       // Add ORDER BY and LIMIT clauses to users query

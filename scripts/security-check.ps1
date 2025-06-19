@@ -1,5 +1,5 @@
-# RainbowPaws Security Verification Script (PowerShell)
-# This script checks for common security issues in the codebase
+# RainbowPaws Security Verification Script
+# Compatible with PowerShell 5.1+
 
 Write-Host "Running RainbowPaws Security Verification..." -ForegroundColor Cyan
 Write-Host "================================================" -ForegroundColor Cyan
@@ -8,48 +8,48 @@ Write-Host "================================================" -ForegroundColor C
 $issuesFound = 0
 $warningsFound = 0
 
-# Function to report issues
-function Report-Issue {
+# Functions
+function Write-SecurityIssue {
     param($message)
     Write-Host "X $message" -ForegroundColor Red
     $script:issuesFound++
 }
 
-function Report-Warning {
+function Write-SecurityWarning {
     param($message)
     Write-Host "! $message" -ForegroundColor Yellow
     $script:warningsFound++
 }
 
-function Report-Success {
+function Write-SecuritySuccess {
     param($message)
-    Write-Host "✓ $message" -ForegroundColor Green
+    Write-Host "v $message" -ForegroundColor Green
 }
 
-# Check 1: Hardcoded secrets and credentials
+# Check 1: Hardcoded secrets
 Write-Host "`nChecking for hardcoded secrets..." -ForegroundColor White
 Write-Host "--------------------------------" -ForegroundColor White
 
 $secretPatterns = @(
-    "password\s*=\s*['\"].*['\"]",
-    "secret\s*=\s*['\"].*['\"]",
-    "token\s*=\s*['\"].*['\"]",
-    "api_key\s*=\s*['\"].*['\"]"
+    'password\s*=\s*[''"].*[''"]',
+    'secret\s*=\s*[''"].*[''"]',
+    'token\s*=\s*[''"].*[''"]',
+    'api_key\s*=\s*[''"].*[''"]'
 )
 
-$foundSecrets = $false
+$secretsDetected = 0
 foreach ($pattern in $secretPatterns) {
-    $results = Select-String -Path "src\*.ts", "src\*.tsx", "src\*.js", "src\*.jsx" -Pattern $pattern -Recurse -ErrorAction SilentlyContinue
-    if ($results) {
-        $foundSecrets = $true
-        foreach ($result in $results) {
-            Report-Issue "Potential hardcoded secret in $($result.Filename):$($result.LineNumber)"
+    Get-ChildItem -Path "src" -Include "*.ts", "*.tsx", "*.js", "*.jsx" -Recurse -ErrorAction SilentlyContinue | ForEach-Object {
+        $content = Get-Content $_.FullName -ErrorAction SilentlyContinue | Out-String
+        if ($content -match $pattern) {
+            $secretsDetected++
+            Write-SecurityIssue "Potential hardcoded secret in $($_.Name)"
         }
     }
 }
 
-if (-not $foundSecrets) {
-    Report-Success "No obvious hardcoded secrets found"
+if ($secretsDetected -eq 0) {
+    Write-SecuritySuccess "No obvious hardcoded secrets found"
 }
 
 # Check 2: JWT Implementation
@@ -57,14 +57,14 @@ Write-Host "`nChecking JWT implementation..." -ForegroundColor White
 Write-Host "------------------------------" -ForegroundColor White
 
 if (Test-Path "src\lib\jwt.ts") {
-    $jwtContent = Get-Content "src\lib\jwt.ts" -Raw
-    if ($jwtContent -match "secret.*=.*['\"].*['\"]" -and $jwtContent -notmatch "process\.env") {
-        Report-Issue "JWT secret appears to be hardcoded in jwt.ts"
+    $jwtContent = Get-Content "src\lib\jwt.ts" -ErrorAction SilentlyContinue | Out-String
+    if ($jwtContent -and $jwtContent -match 'secret.*=.*[''"].*[''"]' -and $jwtContent -notmatch 'process\.env') {
+        Write-SecurityIssue "JWT secret appears to be hardcoded in jwt.ts"
     } else {
-        Report-Success "JWT secret appears to use environment variables"
+        Write-SecuritySuccess "JWT secret appears to use environment variables"
     }
 } else {
-    Report-Warning "JWT file not found at expected location"
+    Write-SecurityWarning "JWT file not found at expected location"
 }
 
 # Check 3: Environment variables
@@ -72,40 +72,60 @@ Write-Host "`nChecking environment configuration..." -ForegroundColor White
 Write-Host "------------------------------------" -ForegroundColor White
 
 if (Test-Path ".env.example") {
-    Report-Success ".env.example file exists"
+    Write-SecuritySuccess ".env.example file exists"
 } else {
-    Report-Warning ".env.example file missing"
+    Write-SecurityWarning ".env.example file missing"
 }
 
 if (Test-Path ".env") {
-    Report-Warning ".env file exists (should be in .gitignore)"
+    Write-SecurityWarning ".env file exists (should be in .gitignore)"
 } else {
-    Report-Success "No .env file in repository"
+    Write-SecuritySuccess "No .env file in repository"
 }
 
-# Check 4: SQL Injection prevention
-Write-Host "`nChecking for SQL injection vulnerabilities..." -ForegroundColor White
-Write-Host "--------------------------------------------" -ForegroundColor White
-
-$sqlConcatenation = Select-String -Path "src\*.ts", "src\*.tsx", "src\*.js", "src\*.jsx" -Pattern "\`SELECT.*\$\{|\`INSERT.*\$\{|\`UPDATE.*\$\{|\`DELETE.*\$\{" -Recurse -ErrorAction SilentlyContinue
-if ($sqlConcatenation) {
-    foreach ($result in $sqlConcatenation) {
-        Report-Issue "Possible SQL injection vulnerability in $($result.Filename):$($result.LineNumber)"
-    }
-} else {
-    Report-Success "No obvious SQL injection vulnerabilities found"
-}
-
-# Check 5: Console.log statements
+# Check 4: Console.log statements
 Write-Host "`nChecking for console.log statements..." -ForegroundColor White
 Write-Host "-------------------------------------" -ForegroundColor White
 
-$consoleLogs = Select-String -Path "src\*.ts", "src\*.tsx", "src\*.js", "src\*.jsx" -Pattern "console\.log" -Recurse -ErrorAction SilentlyContinue
-if ($consoleLogs) {
-    $logCount = ($consoleLogs | Measure-Object).Count
-    Report-Warning "Found $logCount console.log statements (should be removed in production)"
+$consoleLogCount = 0
+Get-ChildItem -Path "src" -Include "*.ts", "*.tsx", "*.js", "*.jsx" -Recurse -ErrorAction SilentlyContinue | ForEach-Object {
+    $content = Get-Content $_.FullName -ErrorAction SilentlyContinue | Out-String
+    if ($content) {
+        $regexMatches = [regex]::Matches($content, 'console\.log')
+        if ($regexMatches.Count -gt 0) {
+            $consoleLogCount += $regexMatches.Count
+        }
+    }
+}
+
+if ($consoleLogCount -gt 0) {
+    Write-SecurityWarning "Found $consoleLogCount console.log statements (should be removed in production)"
 } else {
-    Report-Success "No console.log statements found"
+    Write-SecuritySuccess "No console.log statements found"
+}
+
+# Check 5: SQL Injection patterns
+Write-Host "`nChecking for SQL injection vulnerabilities..." -ForegroundColor White
+Write-Host "--------------------------------------------" -ForegroundColor White
+
+$sqlInjectionCount = 0
+$sqlPatterns = @('SELECT.*\$\{', 'INSERT.*\$\{', 'UPDATE.*\$\{', 'DELETE.*\$\{')
+
+Get-ChildItem -Path "src" -Include "*.ts", "*.tsx", "*.js", "*.jsx" -Recurse -ErrorAction SilentlyContinue | ForEach-Object {
+    $content = Get-Content $_.FullName -ErrorAction SilentlyContinue | Out-String
+    if ($content) {
+        foreach ($sqlPattern in $sqlPatterns) {
+            $patternMatches = [regex]::Matches($content, $sqlPattern)
+            if ($patternMatches.Count -gt 0) {
+                $sqlInjectionCount += $patternMatches.Count
+                Write-SecurityIssue "Potential SQL injection in $($_.Name)"
+            }
+        }
+    }
+}
+
+if ($sqlInjectionCount -eq 0) {
+    Write-SecuritySuccess "No obvious SQL injection vulnerabilities found"
 }
 
 # Summary
@@ -124,4 +144,4 @@ if ($issuesFound -gt 0) {
 } else {
     Write-Host "`nEXCELLENT: No critical security issues detected" -ForegroundColor Green
     exit 0
-} 
+}

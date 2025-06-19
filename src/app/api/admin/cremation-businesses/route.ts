@@ -167,9 +167,10 @@ export async function GET(request: NextRequest) {
     let _hasBusinessTypeColumn = false;
     let _businessTypeColumn = 'provider_type';
 
+    // SECURITY FIX: Use validated table name instead of template literal
     // First check if the businesses table exists and has the right structure
     try {
-      const _tableCheck = await query(`SELECT COUNT(*) as count FROM ${tableName}`);
+      const _tableCheck = await query('SELECT COUNT(*) as count FROM service_providers');
     } catch (tableError) {
       return NextResponse.json({
         error: 'Database schema issue',
@@ -181,14 +182,15 @@ export async function GET(request: NextRequest) {
     // Check if the table has the provider_type column
     try {
       // Check if the table has the provider_type column
-      const tableStructure = await query(`
-        SHOW COLUMNS FROM ${tableName} WHERE Field = 'provider_type'
-      `);
+      const tableStructure = await query(
+        'SHOW COLUMNS FROM service_providers WHERE Field = ?',
+        ['provider_type']
+      );
 
       if (!Array.isArray(tableStructure) || tableStructure.length === 0) {
         return NextResponse.json({
           error: 'Database schema issue',
-          details: `The ${tableName} table is missing the provider_type column. Database schema may need to be updated.`,
+          details: 'The service_providers table is missing the provider_type column. Database schema may need to be updated.',
           success: false
         }, { status: 500 });
       }
@@ -196,7 +198,7 @@ export async function GET(request: NextRequest) {
     } catch (structureError) {
       return NextResponse.json({
         error: 'Database schema issue',
-        details: `Could not verify the ${tableName} table structure. ` +
+        details: 'Could not verify the service_providers table structure. ' +
                 (structureError instanceof Error ? structureError.message : 'Unknown error'),
         success: false
       }, { status: 500 });
@@ -206,13 +208,13 @@ export async function GET(request: NextRequest) {
     let businesses;
     try {
       // Use a more defensive query that handles potential missing columns
-      // First check the table structure to determine available columns
-      const bpColumns = await query(`SHOW COLUMNS FROM ${tableName}`);
+      // SECURITY FIX: First check the table structure to determine available columns
+      const bpColumns = await query('SHOW COLUMNS FROM service_providers');
       const columnNames = bpColumns.map((col: any) => col.Field);
 
 
       // Also check the users table structure
-      const userColumns = await query(`SHOW COLUMNS FROM users`);
+      const userColumns = await query('SHOW COLUMNS FROM users');
       const userColumnNames = userColumns.map((col: any) => col.Field);
 
       // Build a dynamic query based on available columns
@@ -261,24 +263,25 @@ export async function GET(request: NextRequest) {
         typeCondition = "bp.provider_type = 'cremation'";
       }
 
-      // Log the query for debugging
-      const queryString = `
+      // SECURITY FIX: Build safe query with validated table names
+      const selectFieldsStr = selectFields.join(',\n          ');
+      const safeQueryString = `
         SELECT
-          ${selectFields.join(',\n          ')}
-        FROM ${tableName} bp
+          ${selectFieldsStr}
+        FROM service_providers bp
         JOIN users u ON bp.user_id = u.user_id
         WHERE ${typeCondition}
         ORDER BY bp.provider_id DESC
         LIMIT 100
       `;
 
-      businesses = await query(queryString);
+      businesses = await query(safeQueryString);
     } catch (_queryError) {
 
       // Try a more basic query if the first one fails
       try {
 
-        const userColumns = await query(`SHOW COLUMNS FROM users`);
+        const userColumns = await query('SHOW COLUMNS FROM users');
         const userColumnNames = userColumns.map((col: any) => col.Field);
 
         // Build a minimal owner field based on available columns in users table
@@ -289,21 +292,21 @@ export async function GET(request: NextRequest) {
           ownerField = "CONCAT(u.first_name, ' ', u.last_name) as owner";
         }
 
-        // Use a minimal query that should work in most cases
-        const fallbackQueryString = `
+        // SECURITY FIX: Use a minimal query with validated table name
+        const safeFallbackQuery = `
           SELECT
             bp.provider_id as id,
             bp.name as business_name,
             ${ownerField},
             u.email
-          FROM ${tableName} bp
+          FROM service_providers bp
           JOIN users u ON bp.user_id = u.user_id
           WHERE bp.provider_type = 'cremation'
           ORDER BY bp.provider_id DESC
           LIMIT 100
         `;
 
-        businesses = await query(fallbackQueryString);
+        businesses = await query(safeFallbackQuery);
 
       } catch (_fallbackError) {
 
@@ -566,10 +569,8 @@ export async function POST(request: NextRequest) {
     // we'll use only the service_providers table
     const tableName = 'service_providers';
 
-    // Check the table structure to determine available columns
-    const tableStructure = await query(`
-      SHOW COLUMNS FROM ${tableName}
-    `) as any[];
+    // SECURITY FIX: Check the table structure to determine available columns
+    const tableStructure = await query('SHOW COLUMNS FROM service_providers') as any[];
 
     const _columnNames = tableStructure.map(col => col.Field);
 
@@ -587,7 +588,7 @@ export async function POST(request: NextRequest) {
     // Use the provider_type column for cremation type
     const typeCondition = "bp.provider_type = 'cremation'";
 
-    // Get the business details with a simple query
+    // SECURITY FIX: Get the business details with a safe query
     const businessResults = await query(`
       SELECT
         bp.provider_id as id,
@@ -608,9 +609,9 @@ export async function POST(request: NextRequest) {
         '' as tax_id_number,
         bp.created_at,
         bp.updated_at
-      FROM ${tableName} bp
+      FROM service_providers bp
       JOIN users u ON bp.user_id = u.user_id
-      WHERE bp.provider_id = ? AND ${typeCondition}
+      WHERE bp.provider_id = ? AND bp.provider_type = 'cremation'
     `, [businessId]);
 
     if (!businessResults || businessResults.length === 0) {

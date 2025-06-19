@@ -15,11 +15,14 @@ export async function GET(request: NextRequest) {
     const offset = (page - 1) * limit;
     const includeInactive = url.searchParams.get('includeInactive') === 'true';
 
-    // Build the WHERE clause based on providerId and includeInactive parameters
+    // SECURITY FIX: Build the WHERE clause safely with parameters
     let whereClause = '';
+    const queryParams = [];
 
     if (providerId) {
-      whereClause = `WHERE sp.provider_id = ${parseInt(providerId)}`;
+      const providerIdInt = parseInt(providerId);
+      whereClause = 'WHERE sp.provider_id = ?';
+      queryParams.push(providerIdInt);
       if (!includeInactive) {
         whereClause += ' AND sp.is_active = 1';
       }
@@ -31,8 +34,8 @@ export async function GET(request: NextRequest) {
       return getPackageById(+packageIdParam, providerId || undefined);
     }
 
-    const rows = (await query(
-      `
+    // SECURITY FIX: Use parameterized query with safe WHERE clause
+    const mainQuery = `
       SELECT
         sp.package_id as id,
         sp.name,
@@ -51,17 +54,16 @@ export async function GET(request: NextRequest) {
       ${whereClause}
       ORDER BY sp.created_at DESC
       LIMIT ? OFFSET ?
-      `,
-      [limit, offset]
-    )) as any[];
+    `;
+    const rows = (await query(mainQuery, [...queryParams, limit, offset])) as any[];
 
-    const countRows = (await query(
-      `
+    // SECURITY FIX: Use parameterized count query
+    const countQuery = `
       SELECT COUNT(*) AS total
       FROM service_packages sp
       ${whereClause}
-      `
-    )) as any[];
+    `;
+    const countRows = (await query(countQuery, queryParams)) as any[];
     const total = +(countRows[0]?.total || 0);
 
     const packages = await enhancePackagesWithDetails(rows);

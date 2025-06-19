@@ -16,10 +16,11 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     // we'll use only the service_providers table
     const tableName = 'service_providers';
 
-    // Check if application_status column exists
-    const columnsResult = await query(`
-      SHOW COLUMNS FROM ${tableName} LIKE 'application_status'
-    `) as any[];
+    // SECURITY FIX: Check if application_status column exists
+    const columnsResult = await query(
+      'SHOW COLUMNS FROM service_providers LIKE ?',
+      ['application_status']
+    ) as any[];
 
     const hasApplicationStatus = columnsResult.length > 0;
 

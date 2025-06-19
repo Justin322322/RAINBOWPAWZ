@@ -1,21 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
+import { getAuthTokenFromRequest } from '@/utils/auth';
+import { sendBusinessVerificationEmail, sendApplicationDeclineEmail } from '@/lib/consolidatedEmailService';
+import { logAdminAction } from '@/utils/adminUtils';
 import mysql from 'mysql2/promise';
 
-// Import the consolidated email service
-import { sendBusinessVerificationEmail, sendApplicationDeclineEmail } from '@/lib/consolidatedEmailService';
-// Import admin utilities
-import { getAdminIdFromRequest, logAdminAction } from '@/utils/adminUtils';
-
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
-  // Extract ID from params
-  const { id } = params;
-
   try {
-    // Get the admin ID from the request
-    const adminId = await getAdminIdFromRequest(request);
+    const { id } = params;
 
-    // If no admin ID is found, return unauthorized
+    // Verify admin authentication
+    const authToken = getAuthTokenFromRequest(request);
+    const adminId = authToken?.split('_')[0];
+
     if (!adminId) {
       return NextResponse.json({
         message: 'Unauthorized. Admin access required.'
@@ -36,7 +33,9 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
         { message: 'Please provide a detailed reason for declining (minimum 10 characters)' },
         { status: 400 }
       );
-    }    // With the updated schema, we only have 'declined' as the status for declined applications
+    }
+
+    // With the updated schema, we only have 'declined' as the status for declined applications
     // No separate 'documents_required' status in the enum
     const applicationStatus = 'declined';
 
@@ -60,26 +59,37 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       }, { status: 500 });
     }
 
-    // Use the appropriate table name
-    const tableName = useServiceProvidersTable ? 'service_providers' : 'business_profiles';
+    // SECURITY FIX: Check columns and update safely for each table type
+    let updateResult;
+    if (useServiceProvidersTable) {
+      // Check if service_providers has the application_status column
+      const columnsResult = await query('SHOW COLUMNS FROM service_providers LIKE ?', ['application_status']) as any[];
+      const _hasApplicationStatus = columnsResult.length > 0;
 
-    // Check if the table has the application_status column
-    const columnsResult = await query(`
-      SHOW COLUMNS FROM ${tableName} LIKE 'application_status'
-    `) as any[];
+      updateResult = await query(
+        `UPDATE service_providers
+         SET application_status = ?,
+             verification_notes = ?,
+             verification_date = NOW(),
+             updated_at = NOW()
+         WHERE provider_id = ?`,
+        [applicationStatus, note.trim(), businessId]
+      ) as unknown as mysql.ResultSetHeader;
+    } else {
+      // Check if business_profiles has the application_status column
+      const columnsResult = await query('SHOW COLUMNS FROM business_profiles LIKE ?', ['application_status']) as any[];
+      const _hasApplicationStatus = columnsResult.length > 0;
 
-    const _hasApplicationStatus = columnsResult.length > 0;
-
-    // Use the appropriate status field
-    const updateResult = await query(
-      `UPDATE ${tableName}
-       SET application_status = ?,
-           verification_notes = ?,
-           verification_date = NOW(),
-           updated_at = NOW()
-       WHERE provider_id = ?`,
-      [applicationStatus, note.trim(), businessId]
-    ) as unknown as mysql.ResultSetHeader;
+      updateResult = await query(
+        `UPDATE business_profiles
+         SET application_status = ?,
+             verification_notes = ?,
+             verification_date = NOW(),
+             updated_at = NOW()
+         WHERE provider_id = ?`,
+        [applicationStatus, note.trim(), businessId]
+      ) as unknown as mysql.ResultSetHeader;
+    }
 
     if (updateResult.affectedRows === 0) {
       return NextResponse.json({ message: 'Business profile not found' }, { status: 404 });
@@ -97,15 +107,15 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
           u.last_name,
           bp.name as business_name
          FROM service_providers bp
-         JOIN users u ON bp.user_id = u.id
-         WHERE bp.id = ?`,
+         JOIN users u ON bp.user_id = u.user_id
+         WHERE bp.provider_id = ?`,
         [businessId]
       ) as any[];
     } else {
       businessResult = await query(
         `SELECT bp.*, u.email, u.first_name, u.last_name
          FROM business_profiles bp
-         JOIN users u ON bp.user_id = u.id
+         JOIN users u ON bp.user_id = u.user_id
          WHERE bp.id = ?`,
         [businessId]
       ) as any[];
@@ -189,6 +199,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     // Log the admin action using the utility function
     try {
       const ipAddress = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip');
+      const tableName = useServiceProvidersTable ? 'service_providers' : 'business_profiles';
       await logAdminAction(
         adminId,
         requestDocuments ? 'request_documents' : 'decline_business',

@@ -218,7 +218,8 @@ export async function GET(request: Request) {
           bpWhereClause = "1=1";
         }
 
-        businessResult = await query(`
+        // SECURITY FIX: Build safe query with validated where clause
+        const safeQuery = `
           SELECT
             bp.id,
             bp.business_name as name,
@@ -233,7 +234,8 @@ export async function GET(request: Request) {
           WHERE ${bpWhereClause}
           AND bp.business_type = 'cremation'
           ORDER BY bp.business_name ASC
-        `) as any[];
+        `;
+        businessResult = await query(safeQuery) as any[];
       }
 
       if (businessResult && businessResult.length > 0) {

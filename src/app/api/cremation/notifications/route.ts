@@ -173,8 +173,13 @@ export async function PATCH(request: NextRequest) {
       queryParams = [parseInt(userId)];
     } else if (notificationIds && Array.isArray(notificationIds) && notificationIds.length > 0) {
       // Mark specific notifications as read
+      // SECURITY FIX: Build safe parameterized query without template literals
       const placeholders = notificationIds.map(() => '?').join(',');
-      updateQuery = `UPDATE notifications SET is_read = 1 WHERE ${idColumn} IN (${placeholders}) AND user_id = ?`;
+      if (idColumn === 'notification_id') {
+        updateQuery = `UPDATE notifications SET is_read = 1 WHERE notification_id IN (${placeholders}) AND user_id = ?`;
+      } else {
+        updateQuery = `UPDATE notifications SET is_read = 1 WHERE id IN (${placeholders}) AND user_id = ?`;
+      }
       queryParams = [...notificationIds, parseInt(userId)];
     } else {
       return NextResponse.json({
@@ -262,8 +267,13 @@ export async function DELETE(request: NextRequest) {
       queryParams = [parseInt(userId)];
     } else if (notificationIds && Array.isArray(notificationIds) && notificationIds.length > 0) {
       // Delete specific notifications
+      // SECURITY FIX: Build safe parameterized query without template literals
       const placeholders = notificationIds.map(() => '?').join(',');
-      deleteQuery = `DELETE FROM notifications WHERE ${idColumn} IN (${placeholders}) AND user_id = ?`;
+      if (idColumn === 'notification_id') {
+        deleteQuery = `DELETE FROM notifications WHERE notification_id IN (${placeholders}) AND user_id = ?`;
+      } else {
+        deleteQuery = `DELETE FROM notifications WHERE id IN (${placeholders}) AND user_id = ?`;
+      }
       queryParams = [...notificationIds, parseInt(userId)];
     } else {
       return NextResponse.json({

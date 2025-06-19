@@ -62,10 +62,10 @@ export async function POST(request: NextRequest) {
     const tableName = 'service_providers'; // Use only the service_providers table
     try {
 
-      // First, check if the business profile exists
+      // SECURITY FIX: First, check if the business profile exists
       const checkResult = await query(`
         SELECT provider_id, user_id, application_status, provider_type
-        FROM ${tableName}
+        FROM service_providers
         WHERE provider_id = ?
       `, [businessId]) as any[];
 
@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
       if (!checkResult || checkResult.length === 0) {
         return NextResponse.json({
           error: 'Business profile not found',
-          details: `No business profile found with ID ${businessId} in ${tableName} table`,
+          details: `No business profile found with ID ${businessId} in service_providers table`,
           success: false
         }, { status: 404 });
       }
@@ -81,10 +81,8 @@ export async function POST(request: NextRequest) {
       // Get the user ID from the check result
       const _businessUserId = checkResult[0].user_id;
 
-      // Check for available columns
-      const columnsResult = await query(`
-        SHOW COLUMNS FROM ${tableName}
-      `) as any[];
+      // SECURITY FIX: Check for available columns
+      const columnsResult = await query('SHOW COLUMNS FROM service_providers') as any[];
 
 
       // Get all column names
@@ -146,8 +144,8 @@ export async function POST(request: NextRequest) {
       // Add businessId to parameters
       updateParams.push(businessId);
 
-      // Build the final query
-      let updateQuery = `UPDATE ${tableName} SET ${updateParts.join(', ')} WHERE provider_id = ?`;
+      // SECURITY FIX: Build the final query with validated table name
+      let updateQuery = `UPDATE service_providers SET ${updateParts.join(', ')} WHERE provider_id = ?`;
 
       // Add provider_type condition if the column exists and the business type is known
       const businessType = checkResult[0].provider_type;
@@ -167,7 +165,7 @@ export async function POST(request: NextRequest) {
           if (businessType) {
             updateParams.pop();
           }
-          updateQuery = `UPDATE ${tableName} SET ${updateParts.join(', ')} WHERE provider_id = ?`;
+          updateQuery = `UPDATE service_providers SET ${updateParts.join(', ')} WHERE provider_id = ?`;
 
           result = await query(updateQuery, updateParams);
         }
@@ -181,9 +179,9 @@ export async function POST(request: NextRequest) {
 
       // Also update the user status if appropriate
       try {
-        // Get the user ID for this service provider
+        // SECURITY FIX: Get the user ID for this service provider
         const userResult = await query(`
-          SELECT user_id FROM ${tableName} WHERE provider_id = ?
+          SELECT user_id FROM service_providers WHERE provider_id = ?
         `, [businessId]) as any[];
 
         if (userResult && userResult.length > 0) {
@@ -238,10 +236,10 @@ export async function POST(request: NextRequest) {
     // If no rows were affected, it could be because the business was already in the desired state
     // In this case, we'll still return success to avoid confusing the client
     if ((result as any).affectedRows === 0) {
-      // Check the current status to include in the response
+      // SECURITY FIX: Check the current status to include in the response
       const currentStatusResult = await query(`
         SELECT application_status
-        FROM ${tableName}
+        FROM service_providers
         WHERE provider_id = ?
       `, [businessId]) as any[];
 

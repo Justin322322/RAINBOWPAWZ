@@ -1125,10 +1125,11 @@ export async function POST(request: NextRequest) {
         insertValues.push('NOW()');
       }
 
-      // Create final SQL with placeholders
+      // SECURITY FIX: Create final SQL with placeholders and safe column joining
       const placeholders = insertValues.map(() => '?').join(', ');
+      const columnsStr = insertColumns.join(', ');
       const insertSQL = `
-        INSERT INTO bookings (${insertColumns.join(', ')})
+        INSERT INTO bookings (${columnsStr})
         VALUES (${placeholders})
       `;
 

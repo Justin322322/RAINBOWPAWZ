@@ -235,7 +235,7 @@ export async function GET(request: NextRequest) {
         if (addonsTableCheck && addonsTableCheck[0].count > 0) {
           // Fetch add-ons for all bookings in one query
           if (bookingIds.length > 0) {
-            // Create placeholders for each booking ID
+            // SECURITY FIX: Create parameterized query for booking add-ons
             const bookingPlaceholders = bookingIds.map(() => '?').join(',');
 
             const addOnsQuery = `

@@ -114,45 +114,40 @@ async function calculateFromBookings(providerId?: string | number) {
   const providerFilter = providerId ? 'AND provider_id = ?' : '';
   const params = providerId ? [providerId] : [];
 
-  // Try different column names for amount
+  // Try different column names for amount - SECURITY FIX: Use safe column validation
   let amountColumn = 'total_price';
   try {
-    await query(`SELECT ${amountColumn} FROM bookings LIMIT 1`);
+    await query('SELECT total_price FROM bookings LIMIT 1');
   } catch (_err) {
     try {
       amountColumn = 'total_amount';
-      await query(`SELECT ${amountColumn} FROM bookings LIMIT 1`);
+      await query('SELECT total_amount FROM bookings LIMIT 1');
     } catch (_err2) {
       amountColumn = 'amount';
     }
   }
 
-  // Total revenue
-  const totalResult = await query(`
-    SELECT COALESCE(SUM(${amountColumn}), 0) as total
-    FROM bookings
-    WHERE status = 'completed' ${providerFilter}
-  `, params) as any[];
+  // SECURITY FIX: Build safe queries based on validated column name
+  let totalQuery, monthlyQuery, previousQuery;
+  
+  if (amountColumn === 'total_price') {
+    totalQuery = `SELECT COALESCE(SUM(total_price), 0) as total FROM bookings WHERE status = 'completed' ${providerFilter}`;
+    monthlyQuery = `SELECT COALESCE(SUM(total_price), 0) as total FROM bookings WHERE status = 'completed' AND MONTH(created_at) = MONTH(CURRENT_DATE()) AND YEAR(created_at) = YEAR(CURRENT_DATE()) ${providerFilter}`;
+    previousQuery = `SELECT COALESCE(SUM(total_price), 0) as total FROM bookings WHERE status = 'completed' AND MONTH(created_at) = MONTH(DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH)) AND YEAR(created_at) = YEAR(DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH)) ${providerFilter}`;
+  } else if (amountColumn === 'total_amount') {
+    totalQuery = `SELECT COALESCE(SUM(total_amount), 0) as total FROM bookings WHERE status = 'completed' ${providerFilter}`;
+    monthlyQuery = `SELECT COALESCE(SUM(total_amount), 0) as total FROM bookings WHERE status = 'completed' AND MONTH(created_at) = MONTH(CURRENT_DATE()) AND YEAR(created_at) = YEAR(CURRENT_DATE()) ${providerFilter}`;
+    previousQuery = `SELECT COALESCE(SUM(total_amount), 0) as total FROM bookings WHERE status = 'completed' AND MONTH(created_at) = MONTH(DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH)) AND YEAR(created_at) = YEAR(DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH)) ${providerFilter}`;
+  } else {
+    totalQuery = `SELECT COALESCE(SUM(amount), 0) as total FROM bookings WHERE status = 'completed' ${providerFilter}`;
+    monthlyQuery = `SELECT COALESCE(SUM(amount), 0) as total FROM bookings WHERE status = 'completed' AND MONTH(created_at) = MONTH(CURRENT_DATE()) AND YEAR(created_at) = YEAR(CURRENT_DATE()) ${providerFilter}`;
+    previousQuery = `SELECT COALESCE(SUM(amount), 0) as total FROM bookings WHERE status = 'completed' AND MONTH(created_at) = MONTH(DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH)) AND YEAR(created_at) = YEAR(DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH)) ${providerFilter}`;
+  }
 
-  // Current month revenue
-  const monthlyResult = await query(`
-    SELECT COALESCE(SUM(${amountColumn}), 0) as total
-    FROM bookings
-    WHERE status = 'completed'
-    AND MONTH(created_at) = MONTH(CURRENT_DATE())
-    AND YEAR(created_at) = YEAR(CURRENT_DATE())
-    ${providerFilter}
-  `, params) as any[];
-
-  // Previous month revenue
-  const previousResult = await query(`
-    SELECT COALESCE(SUM(${amountColumn}), 0) as total
-    FROM bookings
-    WHERE status = 'completed'
-    AND MONTH(created_at) = MONTH(DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH))
-    AND YEAR(created_at) = YEAR(DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH))
-    ${providerFilter}
-  `, params) as any[];
+  // Execute safe queries
+  const totalResult = await query(totalQuery, params) as any[];
+  const monthlyResult = await query(monthlyQuery, params) as any[];
+  const previousResult = await query(previousQuery, params) as any[];
 
   return {
     total: parseFloat(String(totalResult[0]?.total || '0')),
