@@ -1,48 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
-import { getAuthTokenFromRequest } from '@/utils/auth';
-import { decodeTokenUnsafe } from '@/lib/jwt';
+import { verifySecureAuth } from '@/lib/secureAuth';
 
 export async function GET(request: NextRequest) {
   try {
-    // Get auth token from request
-    const authToken = getAuthTokenFromRequest(request);
+    // Use secure authentication
+    const user = verifySecureAuth(request);
 
-    if (!authToken) {
+    if (!user) {
       return NextResponse.json({
         success: false,
-        error: 'No authentication token found'
-      }, { status: 401 });
-    }
-
-    // Parse the token to get user ID and account type
-    let userId: string | null = null;
-    let accountType: string | null = null;
-
-    // Check if it's a JWT token or old format
-    if (authToken.includes('.')) {
-      // JWT token format
-      const payload = decodeTokenUnsafe(authToken);
-      userId = payload?.userId || null;
-      accountType = payload?.accountType || null;
-    } else {
-      // Old format fallback
-      const parts = authToken.split('_');
-      if (parts.length === 2) {
-        userId = parts[0];
-        accountType = parts[1];
-      }
-    }
-
-    if (!userId || !accountType) {
-      return NextResponse.json({
-        success: false,
-        error: 'Invalid authentication token format'
+        error: 'Authentication required'
       }, { status: 401 });
     }
 
     // Check if this is a business user
-    if (accountType !== 'business') {
+    if (user.accountType !== 'business') {
       return NextResponse.json({
         success: false,
         error: 'Not a business user'
@@ -52,7 +25,7 @@ export async function GET(request: NextRequest) {
     // Get user data
     const userResult = await query(
       'SELECT * FROM users WHERE user_id = ?',
-      [userId]
+      [user.userId]
     ) as any[];
 
     if (!userResult || userResult.length === 0) {
@@ -62,12 +35,12 @@ export async function GET(request: NextRequest) {
       }, { status: 404 });
     }
 
-    const user = userResult[0];
+    const userData = userResult[0];
 
     // Get service provider data
     const serviceProviderResult = await query(
       'SELECT * FROM service_providers WHERE user_id = ?',
-      [user.user_id]
+      [userData.user_id]
     ) as any[];
 
     let serviceProvider = null;
@@ -78,12 +51,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       user: {
-        user_id: user.user_id,
-        first_name: user.first_name,
-        last_name: user.last_name,
-        email: user.email,
-        role: user.role,
-        is_verified: user.is_verified
+        user_id: userData.user_id,
+        first_name: userData.first_name,
+        last_name: userData.last_name,
+        email: userData.email,
+        role: userData.role,
+        user_type: userData.role === 'fur_parent' ? 'fur_parent' : userData.role,
+        is_verified: userData.is_verified
       },
       serviceProvider: serviceProvider ? {
         provider_id: serviceProvider.provider_id,

@@ -191,7 +191,20 @@ export const getUserId = (): string | null => {
   const token = getAuthToken();
   if (!token) return null;
 
-  // Check if it's a JWT token
+  // For client-side, avoid JWT decoding for security
+  if (typeof window !== 'undefined') {
+    // Check if it's a JWT token - if so, we can't decode it safely on client
+    if (token.includes('.')) {
+      // For JWT tokens on client-side, we should use API calls instead
+      // Return null to force components to use checkAuthStatus() API call
+      return null;
+    }
+    
+    // Old format fallback (still safe on client)
+    return token.split('_')[0];
+  }
+
+  // Server-side: we can decode JWT safely
   if (token.includes('.')) {
     const payload = decodeTokenUnsafe(token);
     return payload?.userId || null;
@@ -206,7 +219,20 @@ export const getAccountType = (): string | null => {
   const token = getAuthToken();
   if (!token) return null;
 
-  // Check if it's a JWT token
+  // For client-side, avoid JWT decoding for security
+  if (typeof window !== 'undefined') {
+    // Check if it's a JWT token - if so, we can't decode it safely on client
+    if (token.includes('.')) {
+      // For JWT tokens on client-side, we should use API calls instead
+      // Return null to force components to use checkAuthStatus() API call
+      return null;
+    }
+    
+    // Old format fallback (still safe on client)
+    return token.split('_')[1];
+  }
+
+  // Server-side: we can decode JWT safely
   if (token.includes('.')) {
     const payload = decodeTokenUnsafe(token);
     return payload?.accountType || null;
@@ -369,14 +395,17 @@ export const checkAuthStatus = async (): Promise<{
 
       // Check if it's a JWT token or old format
       if (authToken.includes('.')) {
-        // JWT token format
-        const payload = decodeTokenUnsafe(authToken);
-        if (payload) {
-          userId = payload.userId;
-          accountType = payload.accountType;
-        }
+        // For JWT tokens on client-side, don't decode - just verify with server
+        // This is more secure and avoids client-side JWT decoding
+        const response = await fetch('/api/auth/check');
+        const data = await response.json();
+        return {
+          authenticated: data.authenticated,
+          userId: data.userId,
+          accountType: data.accountType
+        };
       } else {
-        // Old format fallback
+        // Old format fallback (still safe on client)
         const parts = authToken.split('_');
         if (parts.length === 2) {
           userId = parts[0];
@@ -459,14 +488,18 @@ export const fastAuthCheck = (): {
 
     // Check if it's a JWT token or old format
     if (authToken.includes('.')) {
-      // JWT token format
-      const payload = decodeTokenUnsafe(authToken);
-      if (payload) {
-        userId = payload.userId;
-        accountType = payload.accountType;
-      }
+      // For JWT tokens on client-side, we can't safely decode them
+      // Instead, return authenticated status based on token presence
+      // and let components use API calls for user details
+      return {
+        authenticated: true,
+        userId: null, // Don't try to decode client-side
+        accountType: null, // Don't try to decode client-side
+        userData: userData,
+        adminData: adminData
+      };
     } else {
-      // Old format fallback
+      // Old format fallback (still safe on client)
       const parts = authToken.split('_');
       if (parts.length === 2) {
         userId = parts[0];
@@ -474,7 +507,16 @@ export const fastAuthCheck = (): {
       }
     }
 
-    if (!userId || !accountType) return defaultState;
+    if (!userId || !accountType) {
+      // If we have a token but can't decode it safely, still return authenticated
+      return {
+        authenticated: true,
+        userId: null,
+        accountType: null,
+        userData: userData,
+        adminData: adminData
+      };
+    }
 
     // Return the appropriate data based on account type
     if (accountType === 'admin') {

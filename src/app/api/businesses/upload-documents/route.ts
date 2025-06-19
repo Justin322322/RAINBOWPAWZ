@@ -3,6 +3,7 @@ import { query } from '@/lib/db';
 import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
 import { existsSync } from 'fs';
+import { verifySecureAuth } from '@/lib/secureAuth';
 
 // Function to save file to disk
 async function saveFile(file: File, userId: string, documentType: string): Promise<string> {
@@ -43,22 +44,33 @@ async function saveFile(file: File, userId: string, documentType: string): Promi
 }
 
 export async function POST(request: Request) {
-
   try {
+    // Verify authentication using secure JWT
+    const authResult = await verifySecureAuth(request);
+    if (!authResult) {
+      return NextResponse.json({
+        error: 'Authentication required'
+      }, { status: 401 });
+    }
+
+    // Use the authenticated user ID from JWT token instead of form data
+    const authenticatedUserId = authResult.userId;
+
     // Parse the multipart form data
     const formData = await request.formData();
 
-    // Get user ID from form data
-    const userId = formData.get('userId');
+    // Get user ID from form data for validation (optional)
+    const formUserId = formData.get('userId');
 
-    if (!userId) {
+    // Security check: ensure the form user ID matches the authenticated user ID
+    if (formUserId && formUserId.toString() !== authenticatedUserId.toString()) {
       return NextResponse.json({
-        error: 'No user ID provided'
-      }, { status: 400 });
+        error: 'User ID mismatch. Please try logging in again.'
+      }, { status: 403 });
     }
 
-    // Convert userId to string if it's not already
-    const userIdStr = userId.toString();
+    // Use the authenticated user ID
+    const userIdStr = authenticatedUserId.toString();
 
     // Verify user exists
     const userCheck = await query(

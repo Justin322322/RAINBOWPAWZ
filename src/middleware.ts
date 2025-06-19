@@ -58,8 +58,11 @@ export function middleware(request: NextRequest) {
 
     // If no auth token exists, redirect to login page
     if (!authCookie) {
+
       return NextResponse.redirect(new URL('/', request.url));
     }
+
+
 
     try {
       // Try to decode the cookie value if it's URI encoded
@@ -78,11 +81,20 @@ export function middleware(request: NextRequest) {
         // JWT token format - decode without verification in middleware
         // (verification will be done server-side when needed)
         const payload = decodeJWTPayload(decodedValue);
-        if (!payload || !payload.userId || !payload.accountType) {
+        if (!payload) {
+          // If we can't decode the JWT, redirect to login
+          console.log('[Middleware] Could not decode JWT, redirecting to login');
           return NextResponse.redirect(new URL('/', request.url));
         }
-        userId = payload.userId;
-        accountType = payload.accountType;
+        
+        userId = payload.userId || payload.sub;
+        accountType = payload.accountType || payload.account_type;
+        
+        // If we can't get basic info from JWT, redirect to login
+        if (!userId || !accountType) {
+          console.log('[Middleware] Missing userId or accountType in JWT, redirecting to login');
+          return NextResponse.redirect(new URL('/', request.url));
+        }
       } else {
         // Old format fallback
         const parts = decodedValue.split('_');
@@ -95,16 +107,21 @@ export function middleware(request: NextRequest) {
 
       // Validate account type based on the path
       if (isAdminPath && accountType !== 'admin') {
+
         return NextResponse.redirect(new URL('/', request.url));
       }
 
       if (isCremationPath && accountType !== 'business') {
+
         return NextResponse.redirect(new URL('/', request.url));
       }
 
       if (isUserPath && accountType !== 'user') {
+
         return NextResponse.redirect(new URL('/', request.url));
       }
+
+
 
       // Add the user info to headers for the client components
       const requestHeaders = new Headers(request.headers);
@@ -117,8 +134,9 @@ export function middleware(request: NextRequest) {
           headers: requestHeaders,
         },
       });
-    } catch (_error) {
+    } catch (error) {
       // If there's an error processing the token, redirect to home
+
       return NextResponse.redirect(new URL('/', request.url));
     }
   }

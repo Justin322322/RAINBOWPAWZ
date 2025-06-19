@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Modal, Input, Button, Checkbox, Alert } from '@/components/ui';
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 import ForgotPasswordModal from './ForgotPasswordModal';
-import { setAuthToken, redirectToDashboard } from '@/utils/auth';
+import { redirectToDashboard } from '@/utils/auth';
 import { useToast } from '@/context/ToastContext';
 
 type LoginModalProps = {
@@ -94,7 +94,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onShowSignup }
       // Get user ID and account type from response
       const userId = data.user.id;
       const accountType = data.account_type;
-      const token = data.token; // JWT token from server
+      // Note: No token in response - using secure httpOnly cookies instead
       const firstName = data.user.first_name || '';
       const lastName = data.user.last_name || '';
 
@@ -102,12 +102,9 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onShowSignup }
         throw new Error('User ID missing from login response');
       }
 
-      if (!token) {
-        throw new Error('Authentication token missing from login response');
-      }
-
-      // Set the auth token cookie with a 30-day expiration
-      setAuthToken(userId.toString(), accountType, 30, token);
+      // With secure authentication, we don't need to handle tokens client-side
+      // The server has already set secure httpOnly cookies for us
+      // We can just proceed with the user data
 
       // Set success state and user name for the success animation
       setUserName(firstName ? `${firstName} ${lastName}` : email.split('@')[0]);

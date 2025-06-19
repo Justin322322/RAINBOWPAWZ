@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useToast } from '@/context/ToastContext';
 import { PackageData } from '@/types/packages';
 
@@ -17,6 +17,15 @@ export function usePackages({ userData }: UsePackagesProps) {
   const [packageToDelete, setPackageToDelete] = useState<number | null>(null);
   const [toggleLoading, setToggleLoading] = useState<number | null>(null);
   const { showToast } = useToast();
+  
+  // **🔥 FIX: Use useRef to prevent infinite re-renders**
+  const showToastRef = useRef(showToast);
+  
+  // Update ref when showToast changes
+  useEffect(() => {
+    showToastRef.current = showToast;
+  }, [showToast]);
+  
   // Fetch packages function - stabilize the dependency on userData.business_id
   const providerId = userData?.business_id || userData?.provider_id || 999; // Fallback to 999 for demo
 
@@ -84,10 +93,13 @@ export function usePackages({ userData }: UsePackagesProps) {
 
       setPackages(processedPackages);
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Failed to fetch packages', 'error');
+      // **🔥 FIX: Use ref to avoid dependency issues**
+      if (showToastRef.current) {
+        showToastRef.current(error instanceof Error ? error.message : 'Failed to fetch packages', 'error');
+      }
       setPackages([]);
     }
-  }, [providerId, showToast]);
+  }, [providerId]); // **🔥 FIX: Removed showToast from dependencies**
 
   // Handle package deletion
   const handleDeleteClick = useCallback((packageId: number) => {
@@ -119,12 +131,15 @@ export function usePackages({ userData }: UsePackagesProps) {
         // Return a resolved promise for ConfirmationModal
         return Promise.resolve();
       } catch (error) {
-        showToast(error instanceof Error ? error.message : 'Failed to delete package', 'error');
+        // **🔥 FIX: Use ref to avoid dependency issues**
+        if (showToastRef.current) {
+          showToastRef.current(error instanceof Error ? error.message : 'Failed to delete package', 'error');
+        }
         // Re-throw the error to let the ConfirmationModal know it failed
         throw error;
       }
     }
-  }, [packageToDelete, showToast]);
+  }, [packageToDelete]); // **🔥 FIX: Removed showToast from dependencies**
 
   const handleToggleActive = useCallback(async (packageId: number, currentActiveState: boolean) => {
     setToggleLoading(packageId);
@@ -151,24 +166,31 @@ export function usePackages({ userData }: UsePackagesProps) {
         )
       );
 
-      showToast(
-        result.message || `Package ${!currentActiveState ? 'activated' : 'deactivated'} successfully`,
-        'success'
-      );
+      // **🔥 FIX: Use ref to avoid dependency issues**
+      if (showToastRef.current) {
+        showToastRef.current(
+          result.message || `Package ${!currentActiveState ? 'activated' : 'deactivated'} successfully`,
+          'success'
+        );
+      }
     } catch (error) {
       console.error('Package toggle error:', error);
-      showToast(
-        error instanceof Error ? error.message : 'Failed to update package status. Please try again later.', 
-        'error'
-      );
+      // **🔥 FIX: Use ref to avoid dependency issues**
+      if (showToastRef.current) {
+        showToastRef.current(
+          error instanceof Error ? error.message : 'Failed to update package status. Please try again later.', 
+          'error'
+        );
+      }
     } finally {
       setToggleLoading(null);
     }
-  }, [showToast]);
-  // Load packages only on component mount or if providerId changes
+  }, []); // **🔥 FIX: Removed showToast from dependencies**
+  
+  // **🔥 FIX: Load packages only when providerId changes, not when fetchPackages changes**
   useEffect(() => {
     fetchPackages();
-  }, [fetchPackages]);
+  }, [providerId]); // **🔥 FIX: Changed from [fetchPackages] to [providerId]**
 
   // Filter packages based on search term and category (memoized)
   const filteredPackages = useCallback(() => {

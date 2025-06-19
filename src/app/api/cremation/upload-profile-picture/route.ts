@@ -4,7 +4,7 @@ import { join } from 'path';
 import { existsSync } from 'fs';
 import { query } from '@/lib/db';
 import { cleanupOldFiles } from '@/utils/fileSystemUtils';
-import { getAuthTokenFromRequest, parseAuthToken } from '@/utils/auth';
+import { verifySecureAuth } from '@/lib/secureAuth';
 
 // Function to save profile picture to disk
 async function saveProfilePicture(file: File, userId: string): Promise<string> {
@@ -46,22 +46,14 @@ async function saveProfilePicture(file: File, userId: string): Promise<string> {
 
 export async function POST(request: NextRequest) {
   try {
-    // Get auth token to verify the user
-    const authToken = getAuthTokenFromRequest(request);
-    if (!authToken) {
+    // Use secure authentication
+    const user = verifySecureAuth(request);
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Use parseAuthToken to handle both JWT and legacy token formats
-    const tokenData = parseAuthToken(authToken);
-    if (!tokenData) {
-      return NextResponse.json({ error: 'Invalid authentication token' }, { status: 401 });
-    }
-
-    const { userId: tokenUserId, accountType } = tokenData;
-    
     // Only allow business accounts to use this endpoint
-    if (accountType !== 'business') {
+    if (user.accountType !== 'business') {
       return NextResponse.json({ error: 'Unauthorized - Business access required' }, { status: 403 });
     }
 
@@ -77,7 +69,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Only allow users to update their own profile picture
-    if (tokenUserId !== userId.toString()) {
+    if (user.userId !== userId.toString()) {
       return NextResponse.json({ 
         error: 'You are not authorized to update this profile picture' 
       }, { status: 403 });

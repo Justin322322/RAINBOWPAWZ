@@ -1,38 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthTokenFromRequest } from '@/utils/auth';
+import { verifySecureAuth } from '@/lib/secureAuth';
 import { query } from '@/lib/db';
-import { decodeTokenUnsafe } from '@/lib/jwt';
 
 /**
  * GET - Fetch cremation provider notifications
  */
 export async function GET(request: NextRequest) {
   try {
-    // Verify cremation provider authentication
-    const authToken = getAuthTokenFromRequest(request);
-    if (!authToken) {
+    // Use secure authentication
+    const user = verifySecureAuth(request);
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    let userId: string | null = null;
-    let accountType: string | null = null;
-
-    // Check if it's a JWT token or old format
-    if (authToken.includes('.')) {
-      // JWT token format
-      const payload = decodeTokenUnsafe(authToken);
-      userId = payload?.userId || null;
-      accountType = payload?.accountType || null;
-    } else {
-      // Old format fallback
-      const parts = authToken.split('_');
-      if (parts.length === 2) {
-        userId = parts[0];
-        accountType = parts[1];
-      }
-    }
-
-    if (!userId || !accountType || accountType !== 'business') {
+    if (user.accountType !== 'business') {
       return NextResponse.json({
         error: 'Unauthorized - Business access required'
       }, { status: 403 });
@@ -71,14 +52,14 @@ export async function GET(request: NextRequest) {
       WHERE user_id = ? 
       ORDER BY created_at DESC 
       LIMIT ? OFFSET ?
-    `, [parseInt(userId), limit, offset]) as any[];
+    `, [parseInt(user.userId), limit, offset]) as any[];
 
     // Get total count
     const countResult = await query(`
       SELECT COUNT(*) as total 
       FROM notifications 
       WHERE user_id = ?
-    `, [parseInt(userId)]) as any[];
+    `, [parseInt(user.userId)]) as any[];
 
     const total = countResult[0]?.total || 0;
 
@@ -87,7 +68,7 @@ export async function GET(request: NextRequest) {
       SELECT COUNT(*) as unread 
       FROM notifications 
       WHERE user_id = ? AND is_read = 0
-    `, [parseInt(userId)]) as any[];
+    `, [parseInt(user.userId)]) as any[];
 
     const unreadCount = unreadResult[0]?.unread || 0;
 
@@ -117,31 +98,13 @@ export async function GET(request: NextRequest) {
  */
 export async function PATCH(request: NextRequest) {
   try {
-    // Verify cremation provider authentication
-    const authToken = getAuthTokenFromRequest(request);
-    if (!authToken) {
+    // Use secure authentication
+    const user = verifySecureAuth(request);
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    let userId: string | null = null;
-    let accountType: string | null = null;
-
-    // Check if it's a JWT token or old format
-    if (authToken.includes('.')) {
-      // JWT token format
-      const payload = decodeTokenUnsafe(authToken);
-      userId = payload?.userId || null;
-      accountType = payload?.accountType || null;
-    } else {
-      // Old format fallback
-      const parts = authToken.split('_');
-      if (parts.length === 2) {
-        userId = parts[0];
-        accountType = parts[1];
-      }
-    }
-
-    if (!userId || !accountType || accountType !== 'business') {
+    if (user.accountType !== 'business') {
       return NextResponse.json({
         error: 'Unauthorized - Business access required'
       }, { status: 403 });
@@ -170,7 +133,7 @@ export async function PATCH(request: NextRequest) {
     if (markAll) {
       // Mark all notifications as read for this cremation provider
       updateQuery = 'UPDATE notifications SET is_read = 1 WHERE user_id = ? AND is_read = 0';
-      queryParams = [parseInt(userId)];
+      queryParams = [parseInt(user.userId)];
     } else if (notificationIds && Array.isArray(notificationIds) && notificationIds.length > 0) {
       // Mark specific notifications as read
       // SECURITY FIX: Build safe parameterized query without template literals
@@ -180,7 +143,7 @@ export async function PATCH(request: NextRequest) {
       } else {
         updateQuery = `UPDATE notifications SET is_read = 1 WHERE id IN (${placeholders}) AND user_id = ?`;
       }
-      queryParams = [...notificationIds, parseInt(userId)];
+      queryParams = [...notificationIds, parseInt(user.userId)];
     } else {
       return NextResponse.json({
         error: 'Either provide notification IDs or set markAll to true'
@@ -211,31 +174,13 @@ export async function PATCH(request: NextRequest) {
  */
 export async function DELETE(request: NextRequest) {
   try {
-    // Verify cremation provider authentication
-    const authToken = getAuthTokenFromRequest(request);
-    if (!authToken) {
+    // Use secure authentication
+    const user = verifySecureAuth(request);
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    let userId: string | null = null;
-    let accountType: string | null = null;
-
-    // Check if it's a JWT token or old format
-    if (authToken.includes('.')) {
-      // JWT token format
-      const payload = decodeTokenUnsafe(authToken);
-      userId = payload?.userId || null;
-      accountType = payload?.accountType || null;
-    } else {
-      // Old format fallback
-      const parts = authToken.split('_');
-      if (parts.length === 2) {
-        userId = parts[0];
-        accountType = parts[1];
-      }
-    }
-
-    if (!userId || !accountType || accountType !== 'business') {
+    if (user.accountType !== 'business') {
       return NextResponse.json({
         error: 'Unauthorized - Business access required'
       }, { status: 403 });
@@ -264,7 +209,7 @@ export async function DELETE(request: NextRequest) {
     if (deleteAll) {
       // Delete all notifications for this cremation provider
       deleteQuery = 'DELETE FROM notifications WHERE user_id = ?';
-      queryParams = [parseInt(userId)];
+      queryParams = [parseInt(user.userId)];
     } else if (notificationIds && Array.isArray(notificationIds) && notificationIds.length > 0) {
       // Delete specific notifications
       // SECURITY FIX: Build safe parameterized query without template literals
@@ -274,7 +219,7 @@ export async function DELETE(request: NextRequest) {
       } else {
         deleteQuery = `DELETE FROM notifications WHERE id IN (${placeholders}) AND user_id = ?`;
       }
-      queryParams = [...notificationIds, parseInt(userId)];
+      queryParams = [...notificationIds, parseInt(user.userId)];
     } else {
       return NextResponse.json({
         error: 'Either provide notification IDs or set deleteAll to true'

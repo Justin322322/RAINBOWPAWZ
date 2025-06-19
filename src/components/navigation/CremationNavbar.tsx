@@ -125,14 +125,16 @@ export default function CremationNavbar({
 
         if (response.ok) {
           const data = await response.json();
-          if (data.profile?.profilePicturePath && !isNavigating) {
-            setProfilePicture(data.profile.profilePicturePath);
+          // Fix: API returns profile_picture, not profilePicturePath
+          const profilePicture = data.profile?.profile_picture || data.profile?.profilePicturePath;
+          if (profilePicture && !isNavigating) {
+            setProfilePicture(profilePicture);
 
             // Update both caches with the fetched profile picture
             if (businessCache) {
               const cache = JSON.parse(businessCache);
               if (cache.userData) {
-                cache.userData.profile_picture = data.profile.profilePicturePath;
+                cache.userData.profile_picture = profilePicture;
                 sessionStorage.setItem('business_verification_cache', JSON.stringify(cache));
               }
             }
@@ -141,7 +143,7 @@ export default function CremationNavbar({
             const userDataCache = sessionStorage.getItem('user_data');
             if (userDataCache) {
               const user = JSON.parse(userDataCache);
-              user.profile_picture = data.profile.profilePicturePath;
+              user.profile_picture = profilePicture;
               sessionStorage.setItem('user_data', JSON.stringify(user));
             }
           }
@@ -167,8 +169,10 @@ export default function CremationNavbar({
       const cachedProfilePicture = getInitialProfilePicture();
       if (cachedProfilePicture) {
         setProfilePicture(cachedProfilePicture);
+        // Still try to fetch fresh data in background to ensure consistency after server restart
+        fetchProfilePicture();
       } else {
-        // Only fetch from API if no cached profile picture
+        // Fetch from API if no cached profile picture
         fetchProfilePicture();
       }
     }

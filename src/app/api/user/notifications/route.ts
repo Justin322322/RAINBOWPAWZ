@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthTokenFromRequest } from '@/utils/auth';
+import { verifySecureAuth } from '@/lib/secureAuth';
 import { getUserNotifications, markNotificationAsRead, markAllNotificationsAsRead } from '@/utils/userNotificationService';
 
 /**
@@ -7,37 +7,14 @@ import { getUserNotifications, markNotificationAsRead, markAllNotificationsAsRea
  */
 export async function GET(request: NextRequest) {
   try {
-    // Verify user authentication
-    const authToken = getAuthTokenFromRequest(request);
-    if (!authToken) {
+    // Use secure authentication
+    const user = verifySecureAuth(request);
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    let userId: string | null = null;
-    let accountType: string | null = null;
-
-    // Check if it's a JWT token or old format
-    if (authToken.includes('.')) {
-      // JWT token format
-      const { decodeTokenUnsafe } = await import('@/lib/jwt');
-      const payload = decodeTokenUnsafe(authToken);
-      userId = payload?.userId || null;
-      accountType = payload?.accountType || null;
-    } else {
-      // Old format fallback
-      const parts = authToken.split('_');
-      if (parts.length === 2) {
-        userId = parts[0];
-        accountType = parts[1];
-      }
-    }
-
-    if (!userId || !accountType) {
-      return NextResponse.json({ error: 'Invalid authentication token' }, { status: 401 });
-    }
-
     // Allow both regular users and business users (service providers) to access notifications
-    if (accountType !== 'user' && accountType !== 'business') {
+    if (user.accountType !== 'user' && user.accountType !== 'business') {
       return NextResponse.json({
         error: 'Unauthorized - User or business access required'
       }, { status: 403 });
@@ -48,7 +25,7 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '10');
 
     // Fetch notifications
-    const notifications = await getUserNotifications(parseInt(userId), limit);
+    const notifications = await getUserNotifications(parseInt(user.userId), limit);
 
     return NextResponse.json({
       success: true,
@@ -69,37 +46,14 @@ export async function GET(request: NextRequest) {
  */
 export async function PATCH(request: NextRequest) {
   try {
-    // Verify user authentication
-    const authToken = getAuthTokenFromRequest(request);
-    if (!authToken) {
+    // Use secure authentication
+    const user = verifySecureAuth(request);
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    let userId: string | null = null;
-    let accountType: string | null = null;
-
-    // Check if it's a JWT token or old format
-    if (authToken.includes('.')) {
-      // JWT token format
-      const { decodeTokenUnsafe } = await import('@/lib/jwt');
-      const payload = decodeTokenUnsafe(authToken);
-      userId = payload?.userId || null;
-      accountType = payload?.accountType || null;
-    } else {
-      // Old format fallback
-      const parts = authToken.split('_');
-      if (parts.length === 2) {
-        userId = parts[0];
-        accountType = parts[1];
-      }
-    }
-
-    if (!userId || !accountType) {
-      return NextResponse.json({ error: 'Invalid authentication token' }, { status: 401 });
-    }
-
     // Allow both regular users and business users (service providers) to mark notifications as read
-    if (accountType !== 'user' && accountType !== 'business') {
+    if (user.accountType !== 'user' && user.accountType !== 'business') {
       return NextResponse.json({
         error: 'Unauthorized - User or business access required'
       }, { status: 403 });
@@ -110,7 +64,7 @@ export async function PATCH(request: NextRequest) {
 
     if (markAll) {
       // Mark all notifications as read
-      const success = await markAllNotificationsAsRead(parseInt(userId));
+      const success = await markAllNotificationsAsRead(parseInt(user.userId));
       
       if (success) {
         return NextResponse.json({
@@ -124,7 +78,7 @@ export async function PATCH(request: NextRequest) {
       }
     } else if (notificationId) {
       // Mark specific notification as read
-      const success = await markNotificationAsRead(notificationId, parseInt(userId));
+      const success = await markNotificationAsRead(notificationId, parseInt(user.userId));
       
       if (success) {
         return NextResponse.json({
