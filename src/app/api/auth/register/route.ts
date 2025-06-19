@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { query, testConnection, checkTableExists } from '@/lib/db';
+import { query, testConnection, checkTableExists, withTransaction } from '@/lib/db';
 import bcrypt from 'bcryptjs';
 import { generateOtp } from '@/lib/otpService';
 import { createAdminNotification } from '@/utils/adminNotificationService';
@@ -162,11 +162,8 @@ export async function POST(request: Request) {
 
     // Function to handle the registration process with transaction
     const registerUser = async () => {
-
-      // Start a transaction to ensure data consistency
-      await query('START TRANSACTION');
-
-      try {
+      // **🔥 FIX: Use proper transaction management to prevent connection leaks**
+      return await withTransaction(async (transaction) => {
         // Hash the password
         const hashedPassword = await bcrypt.hash(data.password, 10);
 
@@ -178,7 +175,7 @@ export async function POST(request: Request) {
         // Register in users table
         try {
           // Check users table structure
-          const usersTableColumns = await query(`
+          const usersTableColumns = await transaction.query(`
             SELECT COLUMN_NAME
             FROM INFORMATION_SCHEMA.COLUMNS
             WHERE TABLE_SCHEMA = DATABASE()
@@ -238,8 +235,7 @@ export async function POST(request: Request) {
             role
           });
 
-
-          const userResult = await query(sql, values) as any;
+          const userResult = await transaction.query(sql, values) as any;
           userId = userResult.insertId;
         } catch (insertError) {
           throw insertError;
@@ -247,7 +243,6 @@ export async function POST(request: Request) {
 
         // If it's a business account, also create an entry in the service_providers table
         if (data.account_type === 'business' && userId) {
-
           try {
             // Insert service provider with simplified query
             const businessData = data as BusinessRegistrationData;
@@ -264,7 +259,7 @@ export async function POST(request: Request) {
             console.log("Attempting to insert into service_providers table");
 
             // Check if the service_providers table exists and get its columns
-            const tableCheckResult = await query(`
+            const tableCheckResult = await transaction.query(`
               SELECT COLUMN_NAME
               FROM INFORMATION_SCHEMA.COLUMNS
               WHERE TABLE_SCHEMA = DATABASE()
@@ -319,10 +314,9 @@ export async function POST(request: Request) {
               'pending'
             ];
 
-
             let result;
             try {
-              result = await query(sql, values) as any;
+              result = await transaction.query(sql, values) as any;
               console.log("Service provider insertion successful, result:", result);
             } catch (queryError) {
               console.error("Error executing service provider insertion query:", queryError);
@@ -365,15 +359,8 @@ export async function POST(request: Request) {
           }
         }
 
-        // Commit the transaction
-        await query('COMMIT');
-
         return userId;
-      } catch (error) {
-        // Rollback the transaction in case of error
-        await query('ROLLBACK');
-        throw error;
-      }
+      });
     };
 
     // Execute the registration process

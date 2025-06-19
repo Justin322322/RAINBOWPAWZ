@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { query } from '@/lib/db';
+import { query, withTransaction } from '@/lib/db';
 import { createBookingNotification, scheduleBookingReminders } from '@/utils/comprehensiveNotificationService';
 
 export async function GET(request: NextRequest) {
@@ -376,8 +376,6 @@ export async function POST(request: NextRequest) {
     if (!bookingDate) requiredFields.push('bookingDate');
     if (!bookingTime) requiredFields.push('bookingTime');
 
-    // Log the userId for debugging
-
     if (requiredFields.length > 0) {
       return NextResponse.json({
         error: `Missing required fields: ${requiredFields.join(', ')} are required`,
@@ -535,7 +533,6 @@ export async function POST(request: NextRequest) {
       values.push(deliveryFee || 0);
     }
 
-    // Set default status as pending
     if (columns.includes('status')) {
       availableColumns.push('status');
       placeholders.push('?');
@@ -549,79 +546,67 @@ export async function POST(request: NextRequest) {
       ) VALUES (${placeholders.join(', ')})
     `;
 
-    // Start a transaction with better error handling
-    try {
-      await query('START TRANSACTION');
-    } catch (transactionError) {
-      console.error('Failed to start transaction:', transactionError);
-      return NextResponse.json({
-        error: 'Database transaction failed',
-        message: 'Unable to start database transaction. Please try again.',
-        details: transactionError instanceof Error ? transactionError.message : String(transactionError)
-      }, { status: 500 });
-    }
+    // **🔥 FIX: Use proper transaction management to prevent connection leaks**
+    const result = await withTransaction(async (transaction) => {
+      const bookingResult = await transaction.query(insertQuery, values) as any;
 
-    const result = await query(insertQuery, values) as any;
-
-    if (!result.insertId) {
-      try {
-        await query('ROLLBACK');
-      } catch (rollbackError) {
-        console.error('Failed to rollback transaction:', rollbackError);
+      if (!bookingResult.insertId) {
+        throw new Error('Failed to insert booking record');
       }
-      throw new Error('Failed to insert booking record');
-    }
 
-    const bookingId = result.insertId;
+      const bookingId = bookingResult.insertId;
 
-    // Insert selected add-ons if any
-    if (selectedAddOns && selectedAddOns.length > 0) {
-      try {
-        // Check if booking_addons table exists
-        const addonsTableCheck = await query(
-          "SELECT COUNT(*) as count FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'booking_addons'"
-        ) as any[];
+      // Insert selected add-ons if any
+      if (selectedAddOns && selectedAddOns.length > 0) {
+        try {
+          // Check if booking_addons table exists
+          const addonsTableCheck = await transaction.query(
+            "SELECT COUNT(*) as count FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'booking_addons'"
+          ) as any[];
 
-        if (addonsTableCheck && addonsTableCheck[0].count > 0) {
-          // booking_addons table exists, insert add-ons
-          for (const addOn of selectedAddOns) {
-            await query(`
-              INSERT INTO booking_addons (
-                booking_id,
-                addon_name,
-                addon_price,
-                is_selected
-              ) VALUES (?, ?, ?, ?)
-            `, [
-              bookingId,
-              addOn.name,
-              addOn.price,
-              1 // is_selected = true
-            ]);
+          if (addonsTableCheck && addonsTableCheck[0].count > 0) {
+            // booking_addons table exists, insert add-ons
+            for (const addOn of selectedAddOns) {
+              await transaction.query(`
+                INSERT INTO booking_addons (
+                  booking_id,
+                  addon_name,
+                  addon_price,
+                  is_selected
+                ) VALUES (?, ?, ?, ?)
+              `, [
+                bookingId,
+                addOn.name,
+                addOn.price,
+                1 // is_selected = true
+              ]);
+            }
+          } else {
+            // Store add-ons as a JSON string in special_requests if booking_addons table doesn't exist
+            const addOnsText = selectedAddOns.map((addon: any) =>
+              `${addon.name} (₱${addon.price.toLocaleString()})`
+            ).join(', ');
+
+            const updatedSpecialRequests = specialRequests
+              ? `${specialRequests}\n\nSelected Add-ons: ${addOnsText}`
+              : `Selected Add-ons: ${addOnsText}`;
+
+            await transaction.query(
+              'UPDATE service_bookings SET special_requests = ? WHERE id = ?',
+              [updatedSpecialRequests, bookingId]
+            );
           }
-        } else {
-          // Store add-ons as a JSON string in special_requests if booking_addons table doesn't exist
-          const addOnsText = selectedAddOns.map((addon: any) =>
-            `${addon.name} (₱${addon.price.toLocaleString()})`
-          ).join(', ');
-
-          const updatedSpecialRequests = specialRequests
-            ? `${specialRequests}\n\nSelected Add-ons: ${addOnsText}`
-            : `Selected Add-ons: ${addOnsText}`;
-
-          await query(
-            'UPDATE service_bookings SET special_requests = ? WHERE id = ?',
-            [updatedSpecialRequests, bookingId]
-          );
+        } catch (addOnError) {
+          // Continue with the booking process even if add-ons fail
+          console.error('Error inserting add-ons:', addOnError);
         }
-      } catch (addOnError) {
-        // Continue with the booking process even if add-ons fail
-        console.error('Error inserting add-ons:', addOnError);
       }
-    }
 
-    // Commit the transaction
-    await query('COMMIT');
+      return { bookingId };
+    });
+
+    // **🔥 FIX: Handle external operations outside transaction to avoid conflicts**
+    const bookingId = result.bookingId;
 
     // Remove the booked time slot from availability to prevent double booking
     try {
@@ -676,14 +661,8 @@ export async function POST(request: NextRequest) {
       message: 'Booking created successfully',
       bookingId: bookingId
     }, { status: 201 });
-  } catch (error) {
-    // Rollback transaction if it was started
-    try {
-      await query('ROLLBACK');
-    } catch (rollbackError) {
-      console.error('Failed to rollback transaction:', rollbackError);
-    }
 
+  } catch (error) {
     console.error('Error in POST /api/cremation/bookings:', error);
 
     // Check for specific database errors
@@ -744,12 +723,20 @@ export async function POST(request: NextRequest) {
           code: mysqlError.code
         }, { status: 500 });
       }
+
+      // For any other database errors, return a generic response
+      return NextResponse.json({
+        error: 'Database operation failed',
+        message: error.message || 'An unexpected database error occurred. Please try again.',
+        code: mysqlError.code || 'UNKNOWN_ERROR'
+      }, { status: 500 });
     }
 
-    // Generic error response
+    // For non-database errors
     return NextResponse.json({
       error: 'Failed to create booking',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: 'An unexpected error occurred while creating the booking. Please try again.',
+      details: error instanceof Error ? error.message : String(error)
     }, { status: 500 });
   }
 }

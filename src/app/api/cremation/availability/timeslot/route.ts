@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { query } from '@/lib/db';
+import { query, withTransaction } from '@/lib/db';
 
 export async function DELETE(request: NextRequest) {
   try {
@@ -25,10 +25,8 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid Provider ID' }, { status: 400 });
     }
 
-    try {
-      // Start transaction
-      await query('START TRANSACTION');
-
+    // **🔥 FIX: Use proper transaction management to prevent connection leaks**
+    const result = await withTransaction(async (transaction) => {
       // First, check if the time slot exists (without provider constraint for debugging)
       const debugQuery = `
         SELECT
@@ -40,7 +38,7 @@ export async function DELETE(request: NextRequest) {
         FROM provider_time_slots
         WHERE id = ?
       `;
-      const debugResult = await query(debugQuery, [slotId]) as any[];
+      const debugResult = await transaction.query(debugQuery, [slotId]) as any[];
       console.log('Debug query result:', debugResult);
 
       if (!debugResult || debugResult.length === 0) {
@@ -56,26 +54,21 @@ export async function DELETE(request: NextRequest) {
             WHERE provider_id = ? AND date = ?
           `;
 
-          const deleteByDateResult = await query(deleteByDateQuery, [providerIdNum, date]) as any;
+          const deleteByDateResult = await transaction.query(deleteByDateQuery, [providerIdNum, date]) as any;
           console.log('Delete by date result:', deleteByDateResult);
 
           if (deleteByDateResult && deleteByDateResult.affectedRows > 0) {
-            await query('COMMIT');
-            return NextResponse.json({
+            return {
               success: true,
               message: `Deleted ${deleteByDateResult.affectedRows} time slots for date ${date}`,
               date: date,
               remaining_slots: 0,
               method: 'delete-by-date'
-            });
+            };
           }
         }
 
-        await query('ROLLBACK');
-        return NextResponse.json({
-          error: 'Time slot not found in the database',
-          debug: { slotId, providerId: providerIdNum }
-        }, { status: 404 });
+        throw new Error('Time slot not found in the database');
       }
 
       // Get the slot details for response
@@ -96,17 +89,13 @@ export async function DELETE(request: NextRequest) {
         DELETE FROM provider_time_slots
         WHERE id = ?
       `;
-      const deleteResult = await query(deleteSlotQuery, [slotId]) as any;
+      const deleteResult = await transaction.query(deleteSlotQuery, [slotId]) as any;
       console.log('Delete result:', deleteResult);
 
       // Check if any rows were affected by the delete operation
       if (!deleteResult || deleteResult.affectedRows === 0) {
         console.error('Delete operation did not affect any rows');
-        await query('ROLLBACK');
-        return NextResponse.json({
-          error: 'Failed to delete time slot - no rows affected',
-          debug: { slotId, providerId: providerIdNum, slotDetails }
-        }, { status: 500 });
+        throw new Error('Failed to delete time slot - no rows affected');
       }
 
       // Check if there are any remaining time slots for this date
@@ -114,35 +103,24 @@ export async function DELETE(request: NextRequest) {
         SELECT COUNT(*) as count FROM provider_time_slots
         WHERE provider_id = ? AND date = ?
       `;
-      const remainingResult = await query(remainingSlotsQuery, [providerIdNum, slotDate]) as any[];
+      const remainingResult = await transaction.query(remainingSlotsQuery, [providerIdNum, slotDate]) as any[];
       const remainingCount = remainingResult[0].count;
       console.log('Remaining slots for date', slotDate, ':', remainingCount);
 
-      // Commit transaction
-      await query('COMMIT');
-
-      return NextResponse.json({
+      return {
         success: true,
         message: 'Time slot deleted successfully',
         date: slotDate,
         slotDetails,
         remaining_slots: remainingCount,
         method: 'delete-by-id'
-      });
+      };
+    });
 
-    } catch (dbError) {
-      // Rollback on error
-      console.error('Database error:', dbError);
-      await query('ROLLBACK');
-
-      return NextResponse.json({
-        error: 'Database error while deleting time slot',
-        details: dbError instanceof Error ? dbError.message : String(dbError)
-      }, { status: 500 });
-    }
+    return NextResponse.json(result);
 
   } catch (error) {
-    console.error('General error:', error);
+    console.error('Time slot deletion error:', error);
     return NextResponse.json({
       error: 'Failed to delete time slot',
       details: error instanceof Error ? error.message : String(error)

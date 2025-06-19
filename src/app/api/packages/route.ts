@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { query } from '@/lib/db';
+import { query, withTransaction } from '@/lib/db';
 import { getAuthTokenFromRequest, parseAuthTokenAsync } from '@/utils/auth';
 import * as fs from 'fs';
 import { join } from 'path';
@@ -129,9 +129,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    await query('START TRANSACTION');
-    try {
-      const pkgRes = (await query(
+    const result = await withTransaction(async (transaction) => {
+      const pkgRes = (await transaction.query(
         `
         INSERT INTO service_packages
           (provider_id, name, description, category, cremation_type,
@@ -144,7 +143,7 @@ export async function POST(request: NextRequest) {
 
       // inclusions
       for (const incDesc of inclusions.filter((x: any) => x)) {
-        await query(
+        await transaction.query(
           'INSERT INTO package_inclusions (package_id, description) VALUES (?, ?)',
           [packageId, incDesc]
         );
@@ -166,7 +165,7 @@ export async function POST(request: NextRequest) {
         }
         if (!desc) continue;
 
-        const colInfo = (await query(
+        const colInfo = (await transaction.query(
           `
           SELECT EXTRA
           FROM INFORMATION_SCHEMA.COLUMNS
@@ -178,42 +177,40 @@ export async function POST(request: NextRequest) {
         const hasAI = colInfo[0]?.EXTRA.includes('auto_increment');
 
         if (hasAI) {
-          await query(
+          await transaction.query(
             'INSERT INTO package_addons (package_id, description, price) VALUES (?, ?, ?)',
             [packageId, desc, cost]
           );
         } else {
-          const maxRow = (await query(
+          const maxRow = (await transaction.query(
             'SELECT MAX(id) AS maxId FROM package_addons'
           )) as any[];
           const nextId = (maxRow[0]?.maxId || 0) + 1;
-          await query(
+          await transaction.query(
             'INSERT INTO package_addons (id, package_id, description, price) VALUES (?, ?, ?, ?)',
             [nextId, packageId, desc, cost]
           );
         }
       }
 
-      // images
-      const moved = await moveImagesToPackageFolder(images, pkgRes.insertId);
-      for (let i = 0; i < moved.length; i++) {
-        await query(
-          'INSERT INTO package_images (package_id, image_path, display_order) VALUES (?, ?, ?)',
-          [packageId, moved[i], i]
-        );
-      }
+      // images - handle outside transaction since it involves file operations
+      return { packageId };
+    });
 
-      await query('COMMIT');
-      return NextResponse.json({
-        success: true,
-        packageId,
-        message: 'Package created successfully',
-        images: moved,
-      });
-    } catch (innerErr) {
-      await query('ROLLBACK');
-      throw innerErr;
+    // images
+    const moved = await moveImagesToPackageFolder(images, result.packageId);
+    for (let i = 0; i < moved.length; i++) {
+      await query(
+        `INSERT INTO package_images (package_id, image_path, display_order) VALUES (?,?,?)`,
+        [result.packageId, moved[i], i]
+      );
     }
+
+    return NextResponse.json({ 
+      success: true, 
+      packageId: result.packageId,
+      message: 'Package created successfully'
+    });
   } catch (err) {
     console.error(err);
     return NextResponse.json(

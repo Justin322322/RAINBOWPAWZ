@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { query, ensureAvailabilityTablesExist } from '@/lib/db';
+import { query, ensureAvailabilityTablesExist, withTransaction } from '@/lib/db';
 
 export async function GET(request: NextRequest) {
   try {
@@ -267,20 +267,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Database error: Tables not available' }, { status: 500 });
     }
 
-    try {
-      // Start transaction
-      await query('START TRANSACTION');
-
+    // **🔥 FIX: Use proper transaction management to prevent connection leaks**
+    const result = await withTransaction(async (transaction) => {
       // First, update the provider_availability record
       const upsertAvailabilityQuery = `
         INSERT INTO provider_availability (provider_id, date, is_available)
         VALUES (?, ?, ?)
         ON DUPLICATE KEY UPDATE is_available = VALUES(is_available)
       `;
-      await query(upsertAvailabilityQuery, [providerId, normalizedDate, isAvailable ? 1 : 0]);
+      await transaction.query(upsertAvailabilityQuery, [providerId, normalizedDate, isAvailable ? 1 : 0]);
 
       // Delete existing time slots for this date
-      await query('DELETE FROM provider_time_slots WHERE provider_id = ? AND date = ?', [providerId, normalizedDate]);
+      await transaction.query('DELETE FROM provider_time_slots WHERE provider_id = ? AND date = ?', [providerId, normalizedDate]);
 
       // Add new time slots if available
       if (isAvailable && timeSlots && timeSlots.length > 0) {
@@ -306,7 +304,7 @@ export async function POST(request: NextRequest) {
               (?, ?, ?, ?, ?)
           `;
 
-          await query(insertSlotQuery, [
+          await transaction.query(insertSlotQuery, [
             providerId,
             normalizedDate,
             startTime,
@@ -316,28 +314,22 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      // Commit transaction
-      await query('COMMIT');
-
-      return NextResponse.json({
+      return { 
         success: true,
-        message: 'Availability updated successfully',
-        date: normalizedDate,
-        original_date: date,
-        slots_count: timeSlots.length
-      });
+        slotsCount: timeSlots.length 
+      };
+    });
 
-    } catch (dbError) {
-      // Rollback on error
-      await query('ROLLBACK');
-
-      return NextResponse.json({
-        error: 'Database error while saving availability',
-        details: dbError instanceof Error ? dbError.message : String(dbError)
-      }, { status: 500 });
-    }
+    return NextResponse.json({
+      success: true,
+      message: 'Availability updated successfully',
+      date: normalizedDate,
+      original_date: date,
+      slots_count: result.slotsCount
+    });
 
   } catch (error) {
+    console.error('Availability update error:', error);
     return NextResponse.json({
       error: 'Failed to update availability data',
       details: error instanceof Error ? error.message : String(error)

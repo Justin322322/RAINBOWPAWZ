@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { query } from '@/lib/db';
+import { query, withTransaction } from '@/lib/db';
 import { getAuthTokenFromRequest } from '@/utils/auth';
 import bcrypt from 'bcryptjs';
 import { ensureAdminProfilesTableExists } from './ensure-table';
@@ -136,46 +136,35 @@ export async function PUT(request: NextRequest) {
     // Ensure admin_profiles table exists
     await ensureAdminProfilesTableExists();
 
-    // Start transaction
-    await query('START TRANSACTION');
-
-    try {
+    // **🔥 FIX: Use proper transaction management to prevent connection leaks**
+    const result = await withTransaction(async (transaction) => {
       // If password change is requested, verify current password
       if (new_password) {
         if (!current_password) {
-          await query('ROLLBACK');
-          return NextResponse.json(
-            { error: 'Current password is required to set a new password' },
-            { status: 400 }
-          );
+          throw new Error('Current password is required to set a new password');
         }
 
         // Get current password hash
-        const passwordResult = await query(
+        const passwordResult = await transaction.query(
           'SELECT password FROM users WHERE user_id = ?',
           [userId]
         ) as any[];
 
         if (!passwordResult || passwordResult.length === 0) {
-          await query('ROLLBACK');
-          return NextResponse.json({ error: 'User not found' }, { status: 404 });
+          throw new Error('User not found');
         }
 
         // Verify current password
         const isValidPassword = await bcrypt.compare(current_password, passwordResult[0].password);
         if (!isValidPassword) {
-          await query('ROLLBACK');
-          return NextResponse.json(
-            { error: 'Current password is incorrect' },
-            { status: 400 }
-          );
+          throw new Error('Current password is incorrect');
         }
 
         // Hash new password
         const hashedNewPassword = await bcrypt.hash(new_password, 10);
 
         // Update user with new password
-        await query(
+        await transaction.query(
           `UPDATE users
            SET first_name = ?, last_name = ?, email = ?, password = ?, updated_at = NOW()
            WHERE user_id = ?`,
@@ -183,7 +172,7 @@ export async function PUT(request: NextRequest) {
         );
       } else {
         // Update user without password change
-        await query(
+        await transaction.query(
           `UPDATE users
            SET first_name = ?, last_name = ?, email = ?, updated_at = NOW()
            WHERE user_id = ?`,
@@ -196,46 +185,77 @@ export async function PUT(request: NextRequest) {
       const full_name = `${first_name} ${last_name}`;
 
       // Check if admin profile exists
-      const existingProfileResult = await query(
+      const existingProfileResult = await transaction.query(
         'SELECT id FROM admin_profiles WHERE user_id = ?',
         [userId]
       ) as any[];
 
       if (existingProfileResult && existingProfileResult.length > 0) {
-        // Update existing profile
-        await query(
+        // Update existing admin profile
+        await transaction.query(
           `UPDATE admin_profiles
-           SET username = ?, full_name = ?
+           SET username = ?, full_name = ?, updated_at = NOW()
            WHERE user_id = ?`,
           [username, full_name, userId]
         );
       } else {
         // Create new admin profile
-        await query(
-          `INSERT INTO admin_profiles (user_id, username, full_name, admin_role)
-           VALUES (?, ?, ?, ?)`,
-          [userId, username, full_name, 'admin']
+        await transaction.query(
+          `INSERT INTO admin_profiles (user_id, username, full_name, admin_role, created_at, updated_at)
+           VALUES (?, ?, ?, 'admin', NOW(), NOW())`,
+          [userId, username, full_name]
         );
       }
 
-      // Commit transaction
-      await query('COMMIT');
+      return { success: true };
+    });
 
-      return NextResponse.json({
-        success: true,
-        message: 'Profile updated successfully'
-      });
+    // **🔥 FIX: Fetch updated profile data outside transaction**
+    const updatedAdminResult = await query(`
+      SELECT
+        u.user_id as id,
+        u.email,
+        u.first_name,
+        u.last_name,
+        u.profile_picture,
+        u.created_at,
+        u.updated_at,
+        ap.username,
+        ap.full_name,
+        ap.admin_role
+      FROM users u
+      LEFT JOIN admin_profiles ap ON u.user_id = ap.user_id
+      WHERE u.user_id = ? AND u.role = 'admin'
+    `, [userId]) as any[];
 
-    } catch (error) {
-      await query('ROLLBACK');
-      throw error;
+    if (!updatedAdminResult || updatedAdminResult.length === 0) {
+      return NextResponse.json({ error: 'Failed to retrieve updated profile' }, { status: 500 });
     }
+
+    const admin = updatedAdminResult[0];
+
+    return NextResponse.json({
+      success: true,
+      message: 'Profile updated successfully',
+      profile: {
+        id: admin.id,
+        email: admin.email,
+        first_name: admin.first_name,
+        last_name: admin.last_name,
+        username: admin.username || admin.first_name.toLowerCase(),
+        full_name: admin.full_name || `${admin.first_name} ${admin.last_name}`,
+        admin_role: admin.admin_role || 'admin',
+        profile_picture: admin.profile_picture,
+        created_at: admin.created_at,
+        updated_at: admin.updated_at
+      }
+    });
 
   } catch (error) {
     console.error('Error updating admin profile:', error);
-    return NextResponse.json(
-      { error: 'Failed to update admin profile' },
-      { status: 500 }
-    );
+    return NextResponse.json({
+      error: 'Failed to update admin profile',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 });
   }
 }
