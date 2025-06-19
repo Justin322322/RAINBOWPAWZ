@@ -7,10 +7,10 @@ export async function PUT(request: NextRequest) {
     // Extract ID from URL
     const url = new URL(request.url);
     const pathParts = url.pathname.split('/');
-    const _userId = pathParts[pathParts.length - 2]; // -2 because the last part is 'status'
+    const userId = pathParts[pathParts.length - 2]; // -2 because the last part is 'status'
 
     // Validate user ID
-    if (!_userId || isNaN(Number(_userId))) {
+    if (!userId || isNaN(Number(userId))) {
       return NextResponse.json({
         error: 'Invalid user ID'
       }, { status: 400 });
@@ -65,7 +65,7 @@ export async function PUT(request: NextRequest) {
        SET status = ?,
            updated_at = NOW()
        WHERE user_id = ?`,
-      [status, _userId]
+      [status, userId]
     ) as any;
 
     if (updateResult.affectedRows === 0) {
@@ -79,7 +79,7 @@ export async function PUT(request: NextRequest) {
       `SELECT user_id, first_name, last_name, email, phone_number, address, sex,
        created_at, updated_at, is_otp_verified, role, status, is_verified
        FROM users WHERE user_id = ? LIMIT 1`,
-      [_userId]
+      [userId]
     ) as any[];
 
     if (!userResult || userResult.length === 0) {
