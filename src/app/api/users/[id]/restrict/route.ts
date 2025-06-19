@@ -47,17 +47,20 @@ export async function PUT(request: NextRequest) {
       }, { status: 400 });
     }
 
+    // **🔥 FIX: Check if user exists before starting transaction to return proper 404**
+    const userCheckResult = await query(
+      'SELECT user_id, role FROM users WHERE user_id = ? LIMIT 1',
+      [userId]
+    ) as any[];
+
+    if (!userCheckResult || userCheckResult.length === 0) {
+      return NextResponse.json({
+        error: 'User not found'
+      }, { status: 404 });
+    }
+
     // **🔥 FIX: Use proper transaction management to prevent connection leaks**
     const result = await withTransaction(async (transaction) => {
-      // Check if user exists
-      const userResult = await transaction.query(
-        'SELECT user_id, role FROM users WHERE user_id = ? LIMIT 1',
-        [userId]
-      ) as any[];
-
-      if (!userResult || userResult.length === 0) {
-        throw new Error('User not found');
-      }
 
       // Check if user_restrictions table exists, create if not
       const tablesResult = await transaction.query(

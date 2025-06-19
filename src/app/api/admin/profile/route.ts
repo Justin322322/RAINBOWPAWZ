@@ -136,33 +136,46 @@ export async function PUT(request: NextRequest) {
     // Ensure admin_profiles table exists
     await ensureAdminProfilesTableExists();
 
+    // **🔥 FIX: Validate password change outside transaction to return proper status codes**
+    let hashedNewPassword: string | null = null;
+    if (new_password) {
+      if (!current_password) {
+        return NextResponse.json(
+          { error: 'Current password is required to set a new password' },
+          { status: 400 }
+        );
+      }
+
+      // Get current password hash
+      const passwordResult = await query(
+        'SELECT password FROM users WHERE user_id = ?',
+        [userId]
+      ) as any[];
+
+      if (!passwordResult || passwordResult.length === 0) {
+        return NextResponse.json(
+          { error: 'User not found' },
+          { status: 404 }
+        );
+      }
+
+      // Verify current password
+      const isValidPassword = await bcrypt.compare(current_password, passwordResult[0].password);
+      if (!isValidPassword) {
+        return NextResponse.json(
+          { error: 'Current password is incorrect' },
+          { status: 400 }
+        );
+      }
+
+      // Hash new password
+      hashedNewPassword = await bcrypt.hash(new_password, 10);
+    }
+
     // **🔥 FIX: Use proper transaction management to prevent connection leaks**
     const result = await withTransaction(async (transaction) => {
-      // If password change is requested, verify current password
-      if (new_password) {
-        if (!current_password) {
-          throw new Error('Current password is required to set a new password');
-        }
-
-        // Get current password hash
-        const passwordResult = await transaction.query(
-          'SELECT password FROM users WHERE user_id = ?',
-          [userId]
-        ) as any[];
-
-        if (!passwordResult || passwordResult.length === 0) {
-          throw new Error('User not found');
-        }
-
-        // Verify current password
-        const isValidPassword = await bcrypt.compare(current_password, passwordResult[0].password);
-        if (!isValidPassword) {
-          throw new Error('Current password is incorrect');
-        }
-
-        // Hash new password
-        const hashedNewPassword = await bcrypt.hash(new_password, 10);
-
+      // Update user data
+      if (hashedNewPassword) {
         // Update user with new password
         await transaction.query(
           `UPDATE users

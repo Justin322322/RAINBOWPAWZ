@@ -25,29 +25,28 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid Provider ID' }, { status: 400 });
     }
 
-    // **🔥 FIX: Use proper transaction management to prevent connection leaks**
-    const result = await withTransaction(async (transaction) => {
-      // First, check if the time slot exists (without provider constraint for debugging)
-      const debugQuery = `
-        SELECT
-          id,
-          provider_id,
-          DATE_FORMAT(date, '%Y-%m-%d') as date,
-          TIME_FORMAT(start_time, '%H:%i') as start_time,
-          TIME_FORMAT(end_time, '%H:%i') as end_time
-        FROM provider_time_slots
-        WHERE id = ?
-      `;
-      const debugResult = await transaction.query(debugQuery, [slotId]) as any[];
-      console.log('Debug query result:', debugResult);
+    // **🔥 FIX: Check if time slot exists first (outside transaction to handle 404 properly)**
+    const checkQuery = `
+      SELECT
+        id,
+        provider_id,
+        DATE_FORMAT(date, '%Y-%m-%d') as date,
+        TIME_FORMAT(start_time, '%H:%i') as start_time,
+        TIME_FORMAT(end_time, '%H:%i') as end_time
+      FROM provider_time_slots
+      WHERE id = ?
+    `;
+    const checkResult = await query(checkQuery, [slotId]) as any[];
+    console.log('Debug query result:', checkResult);
 
-      if (!debugResult || debugResult.length === 0) {
-        console.log('No slot found with ID', slotId, 'in the database');
+    if (!checkResult || checkResult.length === 0) {
+      console.log('No slot found with ID', slotId, 'in the database');
 
-        // If we have a date parameter, try to delete by date and provider instead
-        if (date) {
-          console.log('Attempting to delete by date and provider instead:', { date, providerId: providerIdNum });
+      // If we have a date parameter, try to delete by date and provider instead
+      if (date) {
+        console.log('Attempting to delete by date and provider instead:', { date, providerId: providerIdNum });
 
+        const result = await withTransaction(async (transaction) => {
           // Delete time slots for the date and provider
           const deleteByDateQuery = `
             DELETE FROM provider_time_slots
@@ -66,13 +65,24 @@ export async function DELETE(request: NextRequest) {
               method: 'delete-by-date'
             };
           }
-        }
 
-        throw new Error('Time slot not found in the database');
+          throw new Error('No time slots found for the specified date and provider');
+        });
+
+        return NextResponse.json(result);
       }
 
+      // Return 404 for time slot not found
+      return NextResponse.json(
+        { error: 'Time slot not found in the database' },
+        { status: 404 }
+      );
+    }
+
+    // **🔥 FIX: Use proper transaction management to prevent connection leaks**
+    const result = await withTransaction(async (transaction) => {
       // Get the slot details for response
-      const slotDetails = debugResult[0];
+      const slotDetails = checkResult[0];
       const slotDate = slotDetails.date;
 
       // If the slot exists but belongs to a different provider, log this information
