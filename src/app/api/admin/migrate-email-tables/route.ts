@@ -1,13 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
-import fs from 'fs';
-import path from 'path';
 
 /**
  * POST /api/admin/migrate-email-tables
  * Create email_queue and email_log tables if they don't exist
  */
-export async function POST(request: NextRequest) {
+export async function POST(_request: NextRequest) {
   try {
     console.log('Starting email tables migration...');
 

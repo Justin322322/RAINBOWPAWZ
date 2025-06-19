@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
 
 
     // Helper function to calculate percentage change
-    const calculateChange = (current: number, previous: number): string => {
+    const _calculateChange = (current: number, previous: number): string => {
       if (previous === 0) return '0';
       const change = ((current - previous) / previous) * 100;
       return change.toFixed(1);
@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
         if (!pingResult || !pingResult[0] || pingResult[0].connected !== 1) {
           throw new Error('Database connection failed');
         }
-      } catch (pingError) {
+      } catch (_pingError) {
         // Return default stats when database is unreachable
         return NextResponse.json({
           success: true,
@@ -74,7 +74,7 @@ export async function GET(request: NextRequest) {
       const now = new Date();
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(now.getDate() - 30);
-      const thirtyDaysAgoStr = thirtyDaysAgo.toISOString().split('T')[0]; // Just the date part
+      const _thirtyDaysAgoStr = thirtyDaysAgo.toISOString().split('T')[0]; // Just the date part
 
       // Check which tables and columns are available
       const tables = {
@@ -102,7 +102,7 @@ export async function GET(request: NextRequest) {
           if (row.table_name === 'pets') tables.pets = true;
           if (row.table_name === 'service_bookings') tables.serviceBookings = true;
         });
-      } catch (tablesError) {
+      } catch (_tablesError) {
       }
 
 
@@ -112,7 +112,7 @@ export async function GET(request: NextRequest) {
         try {
           const userCountResult = await query('SELECT COUNT(*) as count FROM users');
           totalUserCount = userCountResult[0]?.count || 0;
-        } catch (err) {
+        } catch (_err) {
         }
       }
 
@@ -122,7 +122,7 @@ export async function GET(request: NextRequest) {
         try {
           const businessCountResult = await query('SELECT COUNT(*) as count FROM service_providers');
           totalBusinessCount = businessCountResult[0]?.count || 0;
-        } catch (err) {
+        } catch (_err) {
         }
       }
 
@@ -152,10 +152,10 @@ export async function GET(request: NextRequest) {
               if (activeServicesResult && activeServicesResult[0]) {
                 totalServiceCount = activeServicesResult[0].count || 0;
               }
-            } catch (joinErr) {
+            } catch (_joinErr) {
             }
           }
-        } catch (err) {
+        } catch (_err) {
           // Try fallback query without is_active filter if that column might not exist
           try {
             const serviceCountResult = await query(`
@@ -163,7 +163,7 @@ export async function GET(request: NextRequest) {
               FROM service_packages
             `);
             totalServiceCount = serviceCountResult[0]?.count || 0;
-          } catch (fallbackErr) {
+          } catch (_fallbackErr) {
           }
         }
       }
@@ -186,7 +186,7 @@ export async function GET(request: NextRequest) {
             SHOW COLUMNS FROM service_providers LIKE 'application_status'
           `) as any[];
           hasApplicationStatus = columnCheck.length > 0;
-        } catch (err) {
+        } catch (_err) {
         }
 
         try {
@@ -206,7 +206,7 @@ export async function GET(request: NextRequest) {
             `);
             activeUserCounts.cremation = cremationResult[0]?.count || 0;
           }
-        } catch (err) {
+        } catch (_err) {
         }
       }
 
@@ -229,11 +229,11 @@ export async function GET(request: NextRequest) {
                 WHERE (role = 'fur_parent' OR user_type = 'user') AND status = 'active'
               `);
               activeUserCounts.furparent = fallbackResult[0]?.count || 0;
-            } catch (fallbackErr) {
+            } catch (_fallbackErr) {
               // Continue with 0 if fallback fails
             }
           }
-        } catch (err) {
+        } catch (_err) {
         }
       }
 
@@ -251,7 +251,7 @@ export async function GET(request: NextRequest) {
             SHOW COLUMNS FROM service_providers LIKE 'application_status'
           `) as any[];
           hasApplicationStatus = columnCheck.length > 0;
-        } catch (err) {
+        } catch (_err) {
         }
 
         try {
@@ -296,7 +296,7 @@ export async function GET(request: NextRequest) {
             `);
             pendingApplications.last_month = lastMonthResult[0]?.count || 0;
           }
-        } catch (err) {
+        } catch (_err) {
         }
       }
 
@@ -315,7 +315,7 @@ export async function GET(request: NextRequest) {
               SHOW COLUMNS FROM service_providers LIKE 'application_status'
             `) as any[];
             hasApplicationStatus = columnCheck.length > 0;
-          } catch (err) {
+          } catch (_err) {
           }
 
           if (hasApplicationStatus) {
@@ -333,7 +333,7 @@ export async function GET(request: NextRequest) {
             `);
             restrictedUsers.cremation = cremationResult[0]?.count || 0;
           }
-        } catch (err) {
+        } catch (_err) {
         }
       }
 
@@ -356,11 +356,11 @@ export async function GET(request: NextRequest) {
                 WHERE (role = 'fur_parent' OR user_type = 'user') AND status = 'restricted'
               `);
               restrictedUsers.furparent = fallbackResult[0]?.count || 0;
-            } catch (fallbackErr) {
+            } catch (_fallbackErr) {
               // Continue with 0 if fallback fails
             }
           }
-        } catch (err) {
+        } catch (_err) {
         }
       }
 
@@ -376,7 +376,7 @@ export async function GET(request: NextRequest) {
             FROM pets
           `);
           totalPetsRegistered = petsResult[0]?.count || 0;
-        } catch (err) {
+        } catch (_err) {
           // Continue with 0 if query fails
         }
       }
@@ -390,7 +390,7 @@ export async function GET(request: NextRequest) {
             WHERE status = 'completed'
           `);
           totalCompletedBookings = bookingsResult[0]?.count || 0;
-        } catch (err) {
+        } catch (_err) {
           // Continue with 0 if query fails
         }
       }

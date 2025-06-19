@@ -1,6 +1,5 @@
 'use client';
 
-import React from 'react';
 import {
   LoadingSpinner as CentralizedLoadingSpinner,
   StatsCardSkeleton as CentralizedStatsCardSkeleton,

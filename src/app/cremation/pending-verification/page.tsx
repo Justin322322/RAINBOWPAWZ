@@ -8,7 +8,7 @@ import { LoadingSpinner } from '@/app/cremation/components/LoadingComponents';
 
 export default function PendingVerificationPage() {
   const router = useRouter();
-  const [userId, setUserId] = useState<string | null>(null);
+  const [_userId, setUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Check verification status

@@ -14,14 +14,12 @@ import {
   CheckIcon,
   XMarkIcon,
   ClockIcon,
-  ArrowPathIcon,
-  PhoneIcon,
   EnvelopeIcon,
   FunnelIcon,
   PencilSquareIcon,
   BanknotesIcon
 } from '@heroicons/react/24/outline';
-import { LoadingSpinner, StatsCardSkeleton, TableSkeleton } from '@/app/cremation/components/LoadingComponents';
+import { LoadingSpinner, StatsCardSkeleton } from '@/app/cremation/components/LoadingComponents';
 
 function CremationBookingsPage({ userData }: { userData: any }) {
   const [searchTerm, setSearchTerm] = useState('');
@@ -85,7 +83,7 @@ function CremationBookingsPage({ userData }: { userData: any }) {
           pending: 0,
           totalRevenue: 0
         });
-      } catch (error) {
+      } catch (_error) {
         setFetchError('Failed to load bookings data. Please try again later.');
         setBookings([]);
       } finally {

@@ -10,13 +10,10 @@ import {
   XMarkIcon,
   ExclamationCircleIcon,
   ArrowPathIcon,
-  CheckIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   CalendarDaysIcon,
-  Square3Stack3DIcon,
   DocumentDuplicateIcon,
-  ClipboardDocumentListIcon,
   SparklesIcon
 } from '@heroicons/react/24/outline';
 
@@ -53,9 +50,9 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
   const { showToast } = useToast();
   const [viewMode, setViewMode] = useState<'month' | 'year'>('month');
   const [currentYear, setCurrentYear] = useState<number>(new Date().getFullYear());
-  const [showBulkActions, setShowBulkActions] = useState<boolean>(false);
+  const [_showBulkActions, _setShowBulkActions] = useState<boolean>(false);
   const [showQuickPresets, setShowQuickPresets] = useState<boolean>(false);
-  const [showCopyModal, setShowCopyModal] = useState<boolean>(false);
+  const [_showCopyModal, setShowCopyModal] = useState<boolean>(false);
   const [selectedMonthToCopy, setSelectedMonthToCopy] = useState<string>('');
   const [targetMonths, setTargetMonths] = useState<string[]>([]);
   const [selectedQuickSetupPackages, setSelectedQuickSetupPackages] = useState<number[]>([]);
@@ -69,7 +66,7 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
     if (savedMonth) {
       try {
         return new Date(savedMonth);
-      } catch (e) {
+      } catch (_e) {
         return new Date();
       }
     }
@@ -85,14 +82,14 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
         try {
           const parsed = JSON.parse(cachedData);
           return parsed;
-        } catch (e) {
+        } catch (_e) {
         }
       }
     }
     return [];
   });
   const [loading, setLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
+  const [_error, setError] = useState<string | null>(null);
   const [showTimeSlotModal, setShowTimeSlotModal] = useState<boolean>(false);
   const [timeSlotStart, setTimeSlotStart] = useState<string>("09:00");
   const [timeSlotEnd, setTimeSlotEnd] = useState<string>("10:00");
@@ -100,12 +97,12 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
   const [selectedPackages, setSelectedPackages] = useState<number[]>([]);
   const [loadingPackages, setLoadingPackages] = useState<boolean>(false);
   const [serviceSelectionError, setServiceSelectionError] = useState<string | null>(null);
-  const [dataInitialized, setDataInitialized] = useState<boolean>(false);
+  const [_dataInitialized, _setDataInitialized] = useState<boolean>(false);
   const [showSuccessMessage, setShowSuccessMessage] = useState<boolean>(false);
-  const [successMessage, setSuccessMessage] = useState<string>('Time slot updated successfully!');
+  const [_successMessage, setSuccessMessage] = useState<string>('Time slot updated successfully!');
   const [packageLoadError, setPackageLoadError] = useState<string | null>(null);
   const [showConflictMessage, setShowConflictMessage] = useState<boolean>(false);
-  const [conflictMessage, setConflictMessage] = useState<string>('');
+  const [_conflictMessage, setConflictMessage] = useState<string>('');
   const [calendarKey, setCalendarKey] = useState<number>(0);
 
   useEffect(() => {
@@ -133,7 +130,7 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
           const errorMessage = errorJson.error || errorJson.details || `Failed to fetch provider packages: ${response.status}`;
           setPackageLoadError(errorMessage);
           throw new Error(errorMessage);
-        } catch (parseError) {
+        } catch (_parseError) {
           const errorMessage = `Failed to fetch provider packages: ${response.status} - ${errorText.substring(0, 100)}`;
           setPackageLoadError(errorMessage);
           throw new Error(errorMessage);
@@ -142,7 +139,7 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
 
       const data = await response.json();
       setAvailablePackages(data.packages || []);
-    } catch (err) {
+    } catch (_err) {
       setAvailablePackages([]);
     } finally {
       setLoadingPackages(false);
@@ -164,9 +161,9 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
       const month = currentMonth.getMonth();
 
       // First day of the month
-      const firstDay = new Date(year, month, 1);
+      const _firstDay = new Date(year, month, 1);
       // Last day of the month
-      const lastDay = new Date(year, month + 1, 0);
+      const _lastDay = new Date(year, month + 1, 0);
 
       // First day shown in calendar (could be previous month)
       const firstCalendarDay = new Date(year, month, 1);
@@ -203,7 +200,7 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
         try {
           const errorData = JSON.parse(errorText);
           throw new Error(errorData.error || `Failed to fetch data: ${response.statusText}`);
-        } catch (parseError) {
+        } catch (_parseError) {
           throw new Error(`HTTP error ${response.status}: ${errorText.substring(0, 100)}`);
         }
       }
@@ -272,9 +269,9 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
         });
 
         // Log overall availability stats
-        const availableDays = validatedData.filter((day: DayAvailability) => day.isAvailable).length;
-        const daysWithTimeSlots = validatedData.filter((day: DayAvailability) => day.timeSlots && day.timeSlots.length > 0).length;
-        const totalTimeSlots = validatedData.reduce((total: number, day: DayAvailability) => total + (day.timeSlots ? day.timeSlots.length : 0), 0);
+        const _availableDays = validatedData.filter((day: DayAvailability) => day.isAvailable).length;
+        const _daysWithTimeSlots = validatedData.filter((day: DayAvailability) => day.timeSlots && day.timeSlots.length > 0).length;
+        const _totalTimeSlots = validatedData.reduce((total: number, day: DayAvailability) => total + (day.timeSlots ? day.timeSlots.length : 0), 0);
 
         setAvailabilityData(prevData => {
           // If clearExisting is true, just use the new data
@@ -305,7 +302,7 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
             return dateA.getTime() - dateB.getTime();
           });
 
-          const daysWithSlots = sortedData.filter(d => d.timeSlots.length > 0);
+          const _daysWithSlots = sortedData.filter(d => d.timeSlots.length > 0);
 
           return sortedData;
         });
@@ -463,12 +460,12 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
         try {
           const errorData = JSON.parse(errorText);
           throw new Error(errorData.error || 'Failed to save availability data');
-        } catch (parseError) {
+        } catch (_parseError) {
           throw new Error(`Failed to save: HTTP error ${response.status}`);
         }
       }
 
-      const responseData = await response.json();
+      const _responseData = await response.json();
 
       // After successfully saving to the server, force a refresh to get the latest data
       // Add a slight delay to ensure database commit
@@ -861,7 +858,7 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
   };
   
   // Copy availability functions
-  const copyMonthAvailability = async () => {
+  const _copyMonthAvailability = async () => {
     if (!selectedMonthToCopy || targetMonths.length === 0) {
       alert('Please select source month and target months');
       return;
@@ -925,7 +922,7 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
 
     // Fetch the day data directly from availabilityData
     const dateString = formatDateToString(date);
-    const dayData = availabilityData.find(day => day.date === dateString);
+    const _dayData = availabilityData.find(day => day.date === dateString);
 
     // If the selected date is not in the current month, we may need to switch months
     const selectedMonth = date.getMonth();
@@ -938,7 +935,7 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
     // Check if we have data for the selected day
   };
 
-  const toggleDayAvailability = (date: Date) => {
+  const _toggleDayAvailability = (date: Date) => {
     const dateString = formatDateToString(date);
     const existingDay = availabilityData.find(day => day.date === dateString);
 
@@ -1080,7 +1077,7 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
       }
 
       // Get response data for successful deletion
-      const responseData = await response.json();
+      const _responseData = await response.json();
 
       // After successfully deleting from the database, update the local state
       setAvailabilityData(prevData => {
@@ -1144,7 +1141,7 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
     if (serviceSelectionError) setServiceSelectionError(null);
   };
 
-  const days = getDaysInMonth();
+  const _days = getDaysInMonth();
   const selectedDayData = selectedDate ? availabilityData.find(day => day.date === formatDateToString(selectedDate)) : null;
 
   const handleRefreshData = () => {

@@ -3,10 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { motion } from 'framer-motion';
 import {
   ArrowLeftIcon,
-  CheckIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   ShoppingCartIcon
@@ -22,7 +20,7 @@ interface PackageDetailPageProps {
   userData?: any;
 }
 
-function PackageDetailPage({ userData }: PackageDetailPageProps) {
+function PackageDetailPage({ _userData }: PackageDetailPageProps) {
   const params = useParams();
   const router = useRouter();
   const providerId = params.id;
@@ -81,7 +79,7 @@ function PackageDetailPage({ userData }: PackageDetailPageProps) {
           if (verifiedImages && verifiedImages.length > 0) {
             packageData.package.images = verifiedImages;
           }
-        } catch (imgErr) {
+        } catch (_imgErr) {
         }
 
         setPackageData(packageData.package);

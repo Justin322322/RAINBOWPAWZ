@@ -25,7 +25,7 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
   const [isResending, setIsResending] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
   const [verificationStatus, setVerificationStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
-  const [hasInitialized, setHasInitialized] = useState(false);
+  const [_hasInitialized, setHasInitialized] = useState(false);
 
   const inputRefs = useRef<(HTMLInputElement | null)[]>(Array(6).fill(null));
 
@@ -43,7 +43,7 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
   const hasInitialOtpBeenSent = useCallback((): boolean => {
     try {
       return sessionStorage.getItem(initialOtpSentKey) === 'true';
-    } catch (error) {
+    } catch (_error) {
       return false;
     }
   }, [initialOtpSentKey]);
@@ -54,7 +54,7 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
       // Store in both session storage (for current session) and local storage (for persistence)
       sessionStorage.setItem(initialOtpSentKey, 'true');
       window.localStorage.setItem(globalOtpSentKey, 'true');
-    } catch (error) {
+    } catch (_error) {
     }
   }, [initialOtpSentKey, globalOtpSentKey]);
 
@@ -62,7 +62,7 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
     try {
       const stored = sessionStorage.getItem(cooldownKey);
       return stored ? parseInt(stored) : null;
-    } catch (error) {
+    } catch (_error) {
       return null;
     }
   }, [cooldownKey]);
@@ -71,14 +71,14 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
     try {
       const endTime = Date.now() + (durationInSeconds * 1000);
       sessionStorage.setItem(cooldownKey, endTime.toString());
-    } catch (error) {
+    } catch (_error) {
     }
   }, [cooldownKey]);
 
   const clearStoredCooldownEndTime = useCallback(() => {
     try {
       sessionStorage.removeItem(cooldownKey);
-    } catch (error) {
+    } catch (_error) {
     }
   }, [cooldownKey]);
 
@@ -186,7 +186,7 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
   const hasOtpBeenSentGlobally = useCallback((): boolean => {
     try {
       return window.localStorage.getItem(globalOtpSentKey) === 'true';
-    } catch (error) {
+    } catch (_error) {
       return false;
     }
   }, [globalOtpSentKey]);
@@ -197,7 +197,7 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
       window.localStorage.setItem(globalOtpSentKey, 'true');
       // Also set the session storage for backward compatibility
       sessionStorage.setItem(initialOtpSentKey, 'true');
-    } catch (error) {
+    } catch (_error) {
     }
   }, [globalOtpSentKey, initialOtpSentKey]);
 
@@ -388,16 +388,16 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
               // @ts-ignore
               globalUserAuthState.userData = userData;
             }
-          } catch (e) {
+          } catch (_e) {
           }
 
           // Also update localStorage as an extra backup
           try {
             localStorage.setItem('user_verified', 'true');
-          } catch (e) {
+          } catch (_e) {
           }
         }
-      } catch (e) {
+      } catch (_e) {
       }
 
       // Clear the persistence flags for OTP generation
@@ -405,7 +405,7 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
       try {
         sessionStorage.removeItem(initialOtpSentKey);
         window.localStorage.removeItem(globalOtpSentKey);
-      } catch (e) {
+      } catch (_e) {
       }
 
       // Set success state to trigger animation

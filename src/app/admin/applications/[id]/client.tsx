@@ -10,7 +10,6 @@ import {
   ArrowPathIcon,
   ExclamationTriangleIcon,
   ArrowLeftIcon,
-  PencilSquareIcon,
 } from '@heroicons/react/24/outline';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -68,7 +67,7 @@ function ApplicationDetailContent({ id }: ApplicationDetailContentProps) {
   // Animation states
   const [isApprovalSuccess, setIsApprovalSuccess] = useState<boolean>(false);
   const [isDeclineSuccess, setIsDeclineSuccess] = useState<boolean>(false);
-  const [isProcessing, setIsProcessing] = useState<boolean>(false);
+  const [_isProcessing, setIsProcessing] = useState<boolean>(false);
   const [successBusinessName, setSuccessBusinessName] = useState<string>('');
 
   // Helper function to safely display values
@@ -141,7 +140,7 @@ function ApplicationDetailContent({ id }: ApplicationDetailContentProps) {
           if (errorJson.message) {
             errorMessage = errorJson.message;
           }
-        } catch (e) {
+        } catch (_e) {
           // If parsing fails, use the error text directly
           if (errorText) {
             errorMessage = `Error: ${errorText}`;
@@ -167,7 +166,7 @@ function ApplicationDetailContent({ id }: ApplicationDetailContentProps) {
       try {
         const urlParams = new URLSearchParams(window.location.search);
         statusFromURL = urlParams.get('status');
-      } catch (urlError) {
+      } catch (_urlError) {
         // Error parsing URL parameters
       }
 
@@ -196,7 +195,7 @@ function ApplicationDetailContent({ id }: ApplicationDetailContentProps) {
             }
           }
         }
-      } catch (storageError) {
+      } catch (_storageError) {
         // Error accessing storage
       }
 
@@ -218,7 +217,7 @@ function ApplicationDetailContent({ id }: ApplicationDetailContentProps) {
           sessionStorage.removeItem(`application_${id}_status`);
           localStorage.removeItem(`application_${id}_status`);
           document.cookie = `application_${id}_status=; path=/; max-age=0`;
-        } catch (storageError) {
+        } catch (_storageError) {
           // Error clearing storage
         }
       } else if (verificationStatusFromDB) {
@@ -388,7 +387,7 @@ function ApplicationDetailContent({ id }: ApplicationDetailContentProps) {
 
             // Set a cookie as another backup method
             document.cookie = `application_${id}_status=${newStatus}; path=/; max-age=3600`;
-          } catch (storageError) {
+          } catch (_storageError) {
             // Failed to store status in storage
           }
 

@@ -1,13 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 import Modal from './Modal';
 import {
-  HomeIcon,
-  ShoppingBagIcon,
-  CalendarIcon,
   ArrowRightIcon,
   CheckCircleIcon
 } from '@heroicons/react/24/outline';

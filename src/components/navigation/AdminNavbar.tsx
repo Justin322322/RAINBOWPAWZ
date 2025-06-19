@@ -18,7 +18,6 @@ import {
   ArrowRightOnRectangleIcon,
   BellIcon
 } from '@heroicons/react/24/outline';
-import { clearAuthToken } from '@/utils/auth';
 import LogoutModal from '@/components/LogoutModal';
 import NotificationBell from '@/components/ui/NotificationBell';
 import { getProfilePictureUrl, handleImageError } from '@/utils/imageUtils';
@@ -29,14 +28,14 @@ interface AdminNavbarProps {
   onMenuToggle?: () => void;
 }
 
-export default function AdminNavbar({ activePage: propActivePage, userName = 'Admin', onMenuToggle }: AdminNavbarProps) {
+export default function AdminNavbar({ activePage: propActivePage, userName = 'Admin', _onMenuToggle }: AdminNavbarProps) {
   const pathname = usePathname();
-  const router = useRouter();
+  const _router = useRouter();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [activePage, setActivePage] = useState('');
   const [showLogoutModal, setShowLogoutModal] = useState(false);
-  const [isNavigating, setIsNavigating] = useState(false);
+  const [_isNavigating, setIsNavigating] = useState(false);
   const [profilePicture, setProfilePicture] = useState<string | null>(() => {
     // Initialize immediately from session storage
     if (typeof window !== 'undefined') {
@@ -87,7 +86,7 @@ export default function AdminNavbar({ activePage: propActivePage, userName = 'Ad
   };
 
   // Handle navigation item click
-  const handleNavItemClick = (id: string) => {
+  const handleNavItemClick = (_id: string) => {
     setIsNavigating(true);
     setIsDropdownOpen(false);
     // Don't set active page here, let the useEffect handle it after navigation

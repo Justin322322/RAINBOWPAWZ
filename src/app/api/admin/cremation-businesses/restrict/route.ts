@@ -20,13 +20,13 @@ export async function POST(request: NextRequest) {
       // JWT token format
       const { decodeTokenUnsafe } = await import('@/lib/jwt');
       const payload = decodeTokenUnsafe(authToken);
-      userId = payload?.userId || null;
+      _userId = payload?.userId || null;
       accountType = payload?.accountType || null;
     } else {
       // Old format fallback
       const parts = authToken.split('_');
       if (parts.length === 2) {
-        userId = parts[0];
+        _userId = parts[0];
         accountType = parts[1];
       }
     }
@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Get the user ID from the check result
-      const businessUserId = checkResult[0].user_id;
+      const _businessUserId = checkResult[0].user_id;
 
       // Check for available columns
       const columnsResult = await query(`
@@ -187,7 +187,7 @@ export async function POST(request: NextRequest) {
         `, [businessId]) as any[];
 
         if (userResult && userResult.length > 0) {
-          const userId = userResult[0].user_id;
+          const _userId = userResult[0].user_id;
 
           // Update the user's status
           await query(`
@@ -219,7 +219,7 @@ export async function POST(request: NextRequest) {
             }
           }
         }
-      } catch (userUpdateError) {
+      } catch (_userUpdateError) {
         // Non-critical error, just log it
       }
     } catch (updateError) {
@@ -283,7 +283,7 @@ export async function POST(request: NextRequest) {
         ]);
       } else {
       }
-    } catch (logError) {
+    } catch (_logError) {
       // Non-critical error, just log it
     }
 

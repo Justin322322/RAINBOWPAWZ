@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import AdminDashboardLayout from '@/components/navigation/AdminDashboardLayout';
 import {
   MagnifyingGlassIcon,
@@ -15,10 +15,8 @@ import {
   UserCircleIcon,
   CheckCircleIcon,
   XCircleIcon,
-  ExclamationTriangleIcon,
-  CheckBadgeIcon
+  ExclamationTriangleIcon
 } from '@heroicons/react/24/outline';
-import Link from 'next/link';
 import { useToast } from '@/context/ToastContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
@@ -93,7 +91,7 @@ export default function AdminCremationCentersPage() {
           try {
             const errorData = await response.json();
             errorDetails = errorData.details || errorData.error || '';
-          } catch (parseError) {
+          } catch (_parseError) {
           }
 
           throw new Error(`Failed to fetch cremation centers: ${response.status} ${response.statusText}${errorDetails ? ` - ${errorDetails}` : ''}`);
@@ -120,7 +118,7 @@ export default function AdminCremationCentersPage() {
                 }
               }
               return center.activeServices || 0;
-            } catch (error) {
+            } catch (_error) {
               return center.activeServices || 0;
             }
           };
@@ -329,12 +327,12 @@ export default function AdminCremationCentersPage() {
             handleSuccessfulUnrestrict(center);
             return;
           }
-        } catch (jsonError) {
+        } catch (_jsonError) {
           // Continue to fallback if JSON parsing fails
         }
 
         // If we get here, the primary endpoint failed, so we'll try the fallback
-      } catch (primaryError) {
+      } catch (_primaryError) {
         // Continue to fallback endpoint
       }
 
@@ -356,7 +354,7 @@ export default function AdminCremationCentersPage() {
       let fallbackData;
       try {
         fallbackData = await fallbackResponse.json();
-      } catch (jsonError) {
+      } catch (_jsonError) {
         throw new Error('Both unrestrict endpoints failed - unable to parse response data');
       }
 
@@ -659,7 +657,7 @@ export default function AdminCremationCentersPage() {
                       try {
                         const errorData = await response.json();
                         errorDetails = errorData.details || errorData.error || '';
-                      } catch (parseError) {
+                      } catch (_parseError) {
                       }
 
                       throw new Error(`Failed to fetch cremation centers: ${response.status} ${response.statusText}${errorDetails ? ` - ${errorDetails}` : ''}`);

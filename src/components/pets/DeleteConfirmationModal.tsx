@@ -1,5 +1,5 @@
 import React from 'react';
-import { XMarkIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
+import { ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 
 interface DeleteConfirmationModalProps {
   isOpen: boolean;

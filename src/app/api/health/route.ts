@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { MonitoringService } from '@/lib/monitoring';
 import { createSuccessResponse, handleApiError } from '@/lib/errorHandler';
 
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     const health = await MonitoringService.getSystemHealth();
     
@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
 }
 
 // Simple ping endpoint for basic availability checks
-export async function HEAD(request: NextRequest) {
+export async function HEAD(_request: NextRequest) {
   return new NextResponse(null, { 
     status: 200,
     headers: {

@@ -44,7 +44,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isHydrated, setIsHydrated] = useState(false);
+  const [_isHydrated, setIsHydrated] = useState(false);
   const { showToast } = useToast();
 
   // Handle hydration properly
@@ -67,7 +67,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       setError(null);
 
       // Determine user type from auth token
-      const userId = getUserId();
+      const _userId = getUserId();
       const userType = getAccountType();
       const isAdmin = userType === 'admin';
       const isBusiness = userType === 'business';
@@ -120,7 +120,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
             if (errorData.details && errorData.details.includes('Too many connections')) {
               console.warn('Database connection limit reached. Notifications temporarily unavailable.');
             }
-          } catch (e) {
+          } catch (_e) {
             // Ignore JSON parsing errors
           }
         }
@@ -133,7 +133,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       // Check the content type to ensure it's JSON
       const contentType = response.headers.get('content-type');
       if (!contentType || !contentType.includes('application/json')) {
-        const text = await response.text();
+        const _text = await response.text();
         setNotifications([]);
         setUnreadCount(0);
         return { notifications: [], unreadCount: 0 };
@@ -213,7 +213,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
         }
 
         return data;
-      } catch (jsonError) {
+      } catch (_jsonError) {
         setNotifications([]);
         setUnreadCount(0);
         return { notifications: [], unreadCount: 0 };
@@ -244,7 +244,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
 
     try {
       // Determine user type
-      const userId = getUserId();
+      const _userId = getUserId();
       const userType = getAccountType();
       const isAdmin = userType === 'admin';
       const isBusiness = userType === 'business';
@@ -306,7 +306,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
 
     try {
       // Determine user type
-      const userId = getUserId();
+      const _userId = getUserId();
       const userType = getAccountType();
       const isAdmin = userType === 'admin';
       const isBusiness = userType === 'business';
@@ -370,7 +370,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
 
     try {
       // Determine user type
-      const userId = getUserId();
+      const _userId = getUserId();
       const userType = getAccountType();
       const isAdmin = userType === 'admin';
       const isBusiness = userType === 'business';
@@ -425,7 +425,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
     // Check if user is authenticated before fetching notifications
     if (typeof window !== 'undefined' && isAuthenticated()) {
       // Initial fetch with error handling
-      fetchNotifications().catch(err => {
+      fetchNotifications().catch(_err => {
         // Don't show error toast for initial load to avoid annoying users
       });
 
@@ -436,10 +436,10 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
         if (isAuthenticated()) {
           // Wrap in try/catch to prevent unhandled promise rejections
           try {
-            fetchNotifications().catch(err => {
+            fetchNotifications().catch(_err => {
               // Silent fail for background updates
             });
-          } catch (error) {
+          } catch (_error) {
           }
         } else {
           // If no longer authenticated, clear the interval

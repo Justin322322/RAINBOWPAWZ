@@ -133,7 +133,7 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
                               setIsSuccess(false);
                             }, 300);
                           }, 1500);
-                        } catch (error) {
+                        } catch (_error) {
                           setIsLoading(false);
                           onClose();
                         }

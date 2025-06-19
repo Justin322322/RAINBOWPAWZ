@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { writeFile, mkdir } from 'fs/promises';
-import { join, dirname } from 'path';
+import { join } from 'path';
 import { getAuthTokenFromRequest, parseAuthTokenAsync } from '@/utils/auth';
 import { query } from '@/lib/db';
 import * as fs from 'fs';

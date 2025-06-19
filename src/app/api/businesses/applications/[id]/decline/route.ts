@@ -68,7 +68,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       SHOW COLUMNS FROM ${tableName} LIKE 'application_status'
     `) as any[];
 
-    const hasApplicationStatus = columnsResult.length > 0;
+    const _hasApplicationStatus = columnsResult.length > 0;
 
     // Use the appropriate status field
     const updateResult = await query(
@@ -181,7 +181,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
             0
           ]);
         }
-      } catch (notificationError) {
+      } catch (_notificationError) {
         // Non-critical error, just log it
       }
     }

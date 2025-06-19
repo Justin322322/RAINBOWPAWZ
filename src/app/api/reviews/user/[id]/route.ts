@@ -14,7 +14,7 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const [tokenUserId, accountType] = authToken.split('_');
+    const [_tokenUserId, _accountType] = authToken.split('_');
 
     // First await the entire params object
     const awaitedParams = await params;

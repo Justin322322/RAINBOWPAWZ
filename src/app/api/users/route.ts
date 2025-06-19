@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
       // Old format fallback
       const parts = authToken.split('_');
       if (parts.length === 2) {
-        tokenUserId = parts[0];
+        _tokenUserId = parts[0];
         accountType = parts[1];
       }
     }
@@ -202,7 +202,7 @@ export async function GET(request: NextRequest) {
                 user.business_id = business.id;
                 user.verification_status = business.verification_status;
               }
-            } catch (error) {
+            } catch (_error) {
               // Silently handle error and continue
             }
           }
@@ -249,7 +249,7 @@ export async function GET(request: NextRequest) {
           delete user.password;
 
           return user;
-        } catch (userProcessingError) {
+        } catch (_userProcessingError) {
           // Return the user with basic info to avoid breaking the entire list
           return {
             ...user,

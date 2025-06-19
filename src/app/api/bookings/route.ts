@@ -3,10 +3,9 @@ import { getAuthTokenFromRequest } from '@/utils/auth';
 import { query } from '@/lib/db';
 
 // Import the consolidated email service
-import { sendBookingConfirmationEmail } from '@/lib/consolidatedEmailService';
 
 // Define service types with consistent naming and descriptions
-const serviceTypes: Record<number, { name: string; description: string; price: number }> = {
+const _serviceTypes: Record<number, { name: string; description: string; price: number }> = {
   1: {
     name: 'Basic Cremation',
     description: 'Simple cremation service with standard urn',
@@ -30,7 +29,7 @@ export async function GET(request: NextRequest) {
     try {
       // Simple connection test
       await query('SELECT 1 as connection_test');
-    } catch (dbConnectionError) {
+    } catch (_dbConnectionError) {
       // If database is unavailable, return empty bookings array instead of error
       // This prevents the UI from showing an error message
       return NextResponse.json({
@@ -223,7 +222,7 @@ export async function GET(request: NextRequest) {
 
         return NextResponse.json({ bookings: formattedBookings });
       }
-    } catch (directError) {
+    } catch (_directError) {
       // Continue with the regular flow if direct query fails
     }
 
@@ -332,7 +331,7 @@ export async function GET(request: NextRequest) {
               "SELECT COUNT(*) as count FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'business_services'"
             ) as any[];
 
-            const businessServicesExists = businessServicesCheck && businessServicesCheck[0].count > 0;
+            const _businessServicesExists = businessServicesCheck && businessServicesCheck[0].count > 0;
 
             // Build query based on the structure we have
             if (petsTableExists) {
@@ -600,7 +599,7 @@ export async function GET(request: NextRequest) {
               return NextResponse.json({ bookings: formattedBookings });
             }
           }
-        } catch (fallbackError) {
+        } catch (_fallbackError) {
           // Fallback error handling
         }
 
@@ -725,7 +724,7 @@ export async function GET(request: NextRequest) {
       }));
 
       return NextResponse.json({ bookings: formattedBookings });
-    } catch (dbError) {
+    } catch (_dbError) {
       // Check if the database connection is working
       try {
         const connectionTest = await query('SELECT 1 as test');
@@ -749,7 +748,7 @@ export async function GET(request: NextRequest) {
           AND COLUMN_NAME = 'pet_id'
         `) as any[];
 
-        const hasPetIdColumn = petIdCheck.length > 0;
+        const _hasPetIdColumn = petIdCheck.length > 0;
 
         // Get bookings first
         const bookingsQuery = `
@@ -888,7 +887,7 @@ export async function GET(request: NextRequest) {
 
             return NextResponse.json({ bookings: formattedBookings });
           }
-        } catch (simpleQueryError) {
+        } catch (_simpleQueryError) {
           // Try to join with just the pets table
           try {
 
@@ -945,14 +944,14 @@ export async function GET(request: NextRequest) {
 
               return NextResponse.json({ bookings: formattedBookings });
             }
-          } catch (petsQueryError) {
+          } catch (_petsQueryError) {
             // Pets query failed
           }
         }
 
         // No fallback to mock data - if we get here, return empty array
         return NextResponse.json({ bookings: [] });
-      } catch (connectionError) {
+      } catch (_connectionError) {
         // Return empty bookings array instead of error
         return NextResponse.json({
           bookings: [],
@@ -960,7 +959,7 @@ export async function GET(request: NextRequest) {
         });
       }
     }
-  } catch (error) {
+  } catch (_error) {
     // Return empty bookings array instead of error
     return NextResponse.json({
       bookings: [],
@@ -1251,7 +1250,7 @@ async function ensurePetsTableExists() {
     }
 
     return true;
-  } catch (error) {
+  } catch (_error) {
     return false;
   }
 }

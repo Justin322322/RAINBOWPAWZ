@@ -1,8 +1,7 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Modal from '@/components/Modal';
-import { sendWelcomeEmail } from '@/lib/emailService';
 import PrivacyPolicyModal from '@/components/PrivacyPolicyModal';
 import { useToast } from '@/context/ToastContext';
 import { Button, Input, SelectInput, Checkbox } from '@/components/ui';
@@ -125,7 +124,7 @@ const PersonalAccountModal: React.FC<PersonalAccountModalProps> = ({ isOpen, onC
       // Proceed with registration
 
       // Use window.location.origin to get the current URL including port
-      const baseUrl = window.location.origin;
+      const _baseUrl = window.location.origin;
 
 
       // Call our Next.js API route for registration with a timeout
@@ -135,11 +134,11 @@ const PersonalAccountModal: React.FC<PersonalAccountModalProps> = ({ isOpen, onC
       try {
         // Create a simple test request first to check if the server is responding
         try {
-          const testResponse = await fetch(`/api/health-check`, {
+          const _testResponse = await fetch(`/api/health-check`, {
             method: 'GET',
             signal: AbortSignal.timeout(5000) // 5 second timeout
           });
-        } catch (testError) {
+        } catch (_testError) {
         }
 
         // Now send the actual registration request
@@ -164,7 +163,7 @@ const PersonalAccountModal: React.FC<PersonalAccountModalProps> = ({ isOpen, onC
         let data;
         try {
           data = JSON.parse(responseText);
-        } catch (jsonError) {
+        } catch (_jsonError) {
 
           // If we can't parse the response as JSON, check if it's an HTML error page
           if (responseText.includes('<!DOCTYPE html>')) {
@@ -217,8 +216,8 @@ const PersonalAccountModal: React.FC<PersonalAccountModalProps> = ({ isOpen, onC
     }
   };
 
-  const inputClasses = "w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--primary-green)] focus:border-transparent transition-all duration-200 font-light";
-  const labelClasses = "block text-sm font-light text-gray-700 mb-2";
+  const _inputClasses = "w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--primary-green)] focus:border-transparent transition-all duration-200 font-light";
+  const _labelClasses = "block text-sm font-light text-gray-700 mb-2";
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Fur Parent Registration" size="medium" onBack={onBack}>

@@ -107,7 +107,7 @@ export default function NotificationBell() {
 
       // Otherwise, show the date
       return format(date, 'MMM d, yyyy');
-    } catch (error) {
+    } catch (_error) {
       return 'Recently';
     }
   };

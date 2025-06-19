@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import Modal from '@/components/Modal';
 import ReviewForm from './ReviewForm';
-import { CheckCircleIcon, StarIcon } from '@heroicons/react/24/outline';
+import { CheckCircleIcon } from '@heroicons/react/24/outline';
 import { LoadingSpinner } from '@/app/cremation/components/LoadingComponents';
 
 interface ReviewModalProps {
@@ -28,7 +28,7 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
 }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [hasReview, setHasReview] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [_error, setError] = useState<string | null>(null);
 
   const checkReviewStatus = useCallback(async () => {
     setIsLoading(true);

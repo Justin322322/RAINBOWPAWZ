@@ -9,10 +9,7 @@ import {
   ArrowLeftIcon,
   CheckIcon,
   CreditCardIcon,
-  BanknotesIcon,
-  BuildingLibraryIcon,
   CalendarIcon,
-  ClockIcon,
   UserIcon,
   PaperAirplaneIcon,
   ExclamationCircleIcon,
@@ -127,8 +124,8 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
   const [deliveryDistance, setDeliveryDistance] = useState<number>(0);
   const [deliveryFee, setDeliveryFee] = useState<number>(0);
   const [petSpecialNotes, setPetSpecialNotes] = useState('');
-  const [providerData, setProviderData] = useState<any>(null);
-  const [packageData, setPackageData] = useState<any>(null);
+  const [_providerData, _setProviderData] = useState<any>(null);
+  const [_packageData, _setPackageData] = useState<any>(null);
   const [providerId, setProviderId] = useState<number | null>(null);
   const [packageId, setPackageId] = useState<number | null>(null);
   const [selectedAddOns, setSelectedAddOns] = useState<AddOn[]>([]);
@@ -138,7 +135,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
   const submissionInProgress = useRef(false);
 
   // Mock data for service providers and packages
-  const serviceProviders = [
+  const _serviceProviders = [
     {
       id: 1,
       name: "Rainbow Bridge Pet Cremation",
@@ -210,7 +207,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
   };
 
   // Clear all validation errors (useful when user starts fresh interaction)
-  const clearAllValidationErrors = () => {
+  const _clearAllValidationErrors = () => {
     setValidationErrors({ formSubmitted: false });
   };
 
@@ -490,10 +487,10 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                 setPetSpecialNotes(pet.special_notes || '');
               }
             }
-          } catch (petError) {
+          } catch (_petError) {
           }
         }
-      } catch (err) {
+      } catch (_err) {
         setError('Failed to load booking information. Please try again.');
       } finally {
         setLoading(false);
@@ -684,7 +681,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
 
             try {
               uploadData = JSON.parse(responseText);
-            } catch (parseError) {
+            } catch (_parseError) {
               throw new Error('Invalid response from image upload server');
             }
 
@@ -693,10 +690,10 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
               petImageUrl = uploadData.imagePath;
             } else {
             }
-          } catch (responseError) {
+          } catch (_responseError) {
             // Continue with booking even if image upload fails
           }
-        } catch (uploadError) {
+        } catch (_uploadError) {
           // Continue with the booking process even if image upload fails
         }
       }
@@ -732,7 +729,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
 
             try {
               petResult = JSON.parse(responseText);
-            } catch (parseError) {
+            } catch (_parseError) {
               throw new Error('Invalid response from pet saving server');
             }
 
@@ -750,10 +747,10 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
             } else {
               // Don't fail the booking if pet saving fails, just log the error
             }
-          } catch (responseError) {
+          } catch (_responseError) {
             // Continue with booking even if pet saving fails
           }
-        } catch (petError) {
+        } catch (_petError) {
           // Don't fail the booking if pet saving fails, just log the error
         }
       }
@@ -803,7 +800,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
         const responseText = await bookingResponse.text();
         try {
           responseData = JSON.parse(responseText);
-        } catch (parseError) {
+        } catch (_parseError) {
           // If JSON parsing fails, handle the error
           throw new Error('Invalid response from server. Please try again later.');
         }
@@ -852,7 +849,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
             if (searchParams.get('fromCart') === 'true') {
               try {
                 removeItem(items[0]?.id);
-              } catch (cartError) {
+              } catch (_cartError) {
                 // Don't fail the checkout if cart clearing fails
               }
             }
@@ -894,7 +891,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
       if (searchParams.get('fromCart') === 'true') {
         try {
           removeItem(items[0]?.id);
-        } catch (cartError) {
+        } catch (_cartError) {
           // Don't fail the checkout if cart clearing fails
         }
       }

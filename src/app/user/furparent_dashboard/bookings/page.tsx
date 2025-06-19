@@ -20,7 +20,6 @@ import {
   ExclamationTriangleIcon,
   BanknotesIcon,
   CreditCardIcon,
-  ArrowPathIcon,
   StarIcon,
   UserIcon,
   DocumentCheckIcon,
@@ -32,7 +31,7 @@ import ReviewModal from '@/components/reviews/ReviewModal';
 import ReviewDisplay from '@/components/reviews/ReviewDisplay';
 import CremationCertificate from '@/components/certificates/CremationCertificate';
 import BookingTimeline from '@/components/booking/BookingTimeline';
-import { RefundButton, RefundStatus } from '@/components/refund';
+import { RefundButton } from '@/components/refund';
 
 interface BookingData {
   id: number;
@@ -170,7 +169,7 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
                 errorMessage += ` - ${errorData.details}`;
               }
             }
-          } catch (parseError) {
+          } catch (_parseError) {
             // Error parsing response
           }
 
@@ -290,7 +289,7 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
         setIsLoading(true);
         setActiveFilter(activeFilter); // Force a re-fetch
       }
-    } catch (err) {
+    } catch (_err) {
       // Just retry loading the bookings without showing error details
       setError(null);
       setIsLoading(true);
@@ -339,7 +338,7 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
           if (errorData.error) {
             errorMessage = errorData.error;
           }
-        } catch (parseError) {
+        } catch (_parseError) {
         }
         throw new Error(errorMessage);
       }

@@ -305,7 +305,7 @@ export function createRateLimitHeaders(rateLimitResult: RateLimitResult): Record
  */
 export function createStandardErrorResponse(
   error: string,
-  status: number = 500,
+  _status: number = 500,
   additionalData: Record<string, any> = {}
 ): { error: string; success: boolean; timestamp: string } & Record<string, any> {
   return {

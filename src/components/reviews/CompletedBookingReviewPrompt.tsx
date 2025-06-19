@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { StarIcon, XMarkIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
+import { StarIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import ReviewModal from './ReviewModal';
 import { useToast } from '@/context/ToastContext';
 import { LoadingSpinner } from '@/app/cremation/components/LoadingComponents';
@@ -24,7 +24,7 @@ const CompletedBookingReviewPrompt: React.FC<CompletedBookingReviewPromptProps> 
   userId,
   onReviewSubmitted
 }) => {
-  const { showToast } = useToast();
+  const { _showToast } = useToast();
   const [pendingReviews, setPendingReviews] = useState<PendingReview[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -206,7 +206,7 @@ const CompletedBookingReviewPrompt: React.FC<CompletedBookingReviewPromptProps> 
         month: 'long',
         day: 'numeric'
       });
-    } catch (error) {
+    } catch (_error) {
       return dateString;
     }
   };

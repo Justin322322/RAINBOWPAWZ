@@ -68,7 +68,7 @@ export async function GET(request: NextRequest) {
           if (imagePaths.length > 0) {
             imageMap[dirPackageId] = imagePaths;
           }
-        } catch (error) {
+        } catch (_error) {
         }
       } else if (entry.isFile()) {
         // This is a file directly in the packages folder (old structure)

@@ -25,7 +25,7 @@ export default function LogoutModal({ isOpen, onClose, userName = 'User' }: Logo
 
     try {
       // Call the logout API
-      const response = await fetch('/api/auth/logout', {
+      const _response = await fetch('/api/auth/logout', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -54,7 +54,7 @@ export default function LogoutModal({ isOpen, onClose, userName = 'User' }: Logo
       setTimeout(() => {
         router.push('/');
       }, 1500);
-    } catch (error) {
+    } catch (_error) {
       // Still clear the token and redirect even if the API call fails
       clearAuthToken();
       showToast('Logged out successfully', 'success');

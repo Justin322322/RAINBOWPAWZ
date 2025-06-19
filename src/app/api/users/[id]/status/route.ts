@@ -7,7 +7,7 @@ export async function PUT(request: NextRequest) {
     // Extract ID from URL
     const url = new URL(request.url);
     const pathParts = url.pathname.split('/');
-    const userId = pathParts[pathParts.length - 2]; // -2 because the last part is 'status'
+    const _userId = pathParts[pathParts.length - 2]; // -2 because the last part is 'status'
 
     // Validate user ID
     if (!userId || isNaN(Number(userId))) {
@@ -36,7 +36,7 @@ export async function PUT(request: NextRequest) {
       // Old format fallback
       const parts = authToken.split('_');
       if (parts.length === 2) {
-        tokenUserId = parts[0];
+        _tokenUserId = parts[0];
         accountType = parts[1];
       }
     }

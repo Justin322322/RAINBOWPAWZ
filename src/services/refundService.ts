@@ -4,14 +4,12 @@
  */
 
 import { query } from '@/lib/db';
-import { createRefund as createPayMongoRefund, phpToCentavos, centavosToPHP } from '@/lib/paymongo';
+import { createRefund as createPayMongoRefund, phpToCentavos } from '@/lib/paymongo';
 import {
   Refund,
   RefundRequest,
-  RefundResponse,
   RefundEligibilityCheck,
   PayMongoRefundData,
-  REFUND_REASONS,
   REFUND_STATUS
 } from '@/types/refund';
 
@@ -85,7 +83,7 @@ export async function checkRefundEligibility(bookingId: number): Promise<RefundE
     // Calculate refund policy based on booking date
     const bookingDateTime = new Date(`${booking.booking_date} ${booking.booking_time}`);
     const now = new Date();
-    const hoursUntilBooking = (bookingDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
+    const _hoursUntilBooking = (bookingDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
 
     const refundPolicy = {
       full_refund_hours: 24,
@@ -581,7 +579,7 @@ export async function validatePaymentDataForRefund(bookingId: number): Promise<b
     if (booking.payment_intent_id || booking.source_id) {
       try {
         // Use a simulated call to our payment resolution logic
-        const transaction = {
+        const _transaction = {
           id: booking.id,
           payment_intent_id: booking.payment_intent_id,
           source_id: booking.source_id,

@@ -108,7 +108,7 @@ export async function GET(request: NextRequest) {
             pendingBookings = [...pendingBookings, ...legacyBookingsResult];
             pendingCount += legacyBookingsResult.length;
           }
-        } catch (legacyError) {
+        } catch (_legacyError) {
           // Legacy table might not exist, continue
           console.log('Legacy bookings table not found, continuing with service_bookings only');
         }

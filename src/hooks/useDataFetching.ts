@@ -38,7 +38,7 @@ export function useDataFetching<T = any>({
   const [abortController, setAbortController] = useState<AbortController | null>(null);
 
   // Get global loading context
-  const { setLoading, setLoadingMessage, setLoadingSection, clearAllLoading } = useLoading();
+  const { setLoading, setLoadingMessage, setLoadingSection, _clearAllLoading } = useLoading();
 
   const fetchData = useCallback(async (options: { silent?: boolean } = {}) => {
     const { silent = false } = options;

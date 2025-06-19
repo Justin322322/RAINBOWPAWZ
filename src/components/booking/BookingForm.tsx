@@ -5,8 +5,6 @@ import { useRouter } from 'next/navigation';
 import { useToast } from '@/context/ToastContext';
 import {
   ArrowPathIcon,
-  ExclamationCircleIcon,
-  PlusIcon,
   CloudArrowUpIcon,
   XMarkIcon,
   CheckCircleIcon,
@@ -50,7 +48,7 @@ export default function BookingForm({
   const [totalPrice, setTotalPrice] = useState(0);
   const [basePrice, setBasePrice] = useState(0);
   const [packageName, setPackageName] = useState('');
-  const [packageDesc, setPackageDesc] = useState('');
+  const [_packageDesc, setPackageDesc] = useState('');
   const [selectedPackage, setSelectedPackage] = useState<any>(null);
   const [selectedAddOns, setSelectedAddOns] = useState<AddOn[]>([]);
   const [addOnsTotalPrice, setAddOnsTotalPrice] = useState(0);
@@ -77,7 +75,7 @@ export default function BookingForm({
       setPackageName(data.name);
       setPackageDesc(data.description);
       setBasePrice(data.price || 0);
-    } catch (error) {
+    } catch (_error) {
       showToast('Error loading package details. Please try again.', 'error');
     } finally {
       setLoading(false);
@@ -100,7 +98,7 @@ export default function BookingForm({
         setPackageDesc(data.packages[0].description);
         setBasePrice(data.packages[0].price || 0);
       }
-    } catch (error) {
+    } catch (_error) {
       showToast('Error loading packages. Please try again.', 'error');
     } finally {
       setLoading(false);
@@ -209,7 +207,7 @@ export default function BookingForm({
 
       const data = await response.json();
       return data.imageUrl;
-    } catch (error) {
+    } catch (_error) {
       throw new Error('Error uploading pet image');
     } finally {
       setPetImageUploading(false);
@@ -233,7 +231,7 @@ export default function BookingForm({
 
       setDeliveryDistance(distance);
       setDeliveryFee(fee);
-    } catch (error) {
+    } catch (_error) {
       setDeliveryFee(100); // Default fee in case of error
     }
   };

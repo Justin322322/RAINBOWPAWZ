@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const [userId, accountType] = authToken.split('_');
+    const [_userId, accountType] = authToken.split('_');
     if (accountType !== 'admin') {
       return NextResponse.json(
         createStandardErrorResponse('Admin access required', 403),
@@ -89,7 +89,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const [userId, accountType] = authToken.split('_');
+    const [_userId, accountType] = authToken.split('_');
     if (accountType !== 'admin') {
       return NextResponse.json(
         createStandardErrorResponse('Admin access required', 403),

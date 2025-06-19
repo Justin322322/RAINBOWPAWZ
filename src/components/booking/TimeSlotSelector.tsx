@@ -155,7 +155,7 @@ export default function TimeSlotSelector({
 
       // If packageId is provided, filter time slots that have this package available
       if (packageId && filteredTimeSlots.length > 0) {
-        const unfilteredCount = filteredTimeSlots.length;
+        const _unfilteredCount = filteredTimeSlots.length;
         filteredTimeSlots = filteredTimeSlots.filter(slot => {
           // Special case: if availableServices is empty or null, make it available for all
           if (!slot.availableServices || slot.availableServices.length === 0) {
@@ -280,7 +280,7 @@ export default function TimeSlotSelector({
       const displayHours = hours % 12 || 12;
 
       return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`;
-    } catch (e) {
+    } catch (_e) {
       return timeString;
     }
   };
@@ -305,7 +305,7 @@ export default function TimeSlotSelector({
 
     // If packageId is provided, filter time slots that have this package available
     if (packageId && timeSlots.length > 0) {
-      const originalCount = timeSlots.length;
+      const _originalCount = timeSlots.length;
 
       timeSlots = timeSlots.filter(slot => {
         // No available services defined means all services are available

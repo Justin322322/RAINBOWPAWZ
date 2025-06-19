@@ -4,8 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import {
   ArrowPathIcon,
-  CheckBadgeIcon,
-  UserIcon
+  CheckBadgeIcon
 } from '@heroicons/react/24/outline';
 import StarRating from '@/components/ui/StarRating';
 

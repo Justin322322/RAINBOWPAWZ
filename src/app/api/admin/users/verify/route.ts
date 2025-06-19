@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const [adminUserId, accountType] = authToken.split('_');
+    const [_adminUserId, accountType] = authToken.split('_');
 
     if (accountType !== 'admin') {
       return NextResponse.json({ error: 'Forbidden: Admin access required' }, { status: 403 });

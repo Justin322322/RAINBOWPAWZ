@@ -71,7 +71,7 @@ export async function POST(request: Request) {
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
           `);
         }
-      } catch (tableError) {
+      } catch (_tableError) {
         throw new Error('Failed to ensure password reset table exists');
       }
 
@@ -81,7 +81,7 @@ export async function POST(request: Request) {
           'UPDATE password_reset_tokens SET is_used = 1 WHERE user_id = ?',
           [userId]
         );
-      } catch (updateError) {
+      } catch (_updateError) {
         // Continue even if this fails
       }
 
@@ -91,7 +91,7 @@ export async function POST(request: Request) {
           'INSERT INTO password_reset_tokens (user_id, token, expires_at, is_used) VALUES (?, ?, ?, 0)',
           [userId, resetToken, expiresAt]
         );
-      } catch (insertError) {
+      } catch (_insertError) {
         throw new Error('Failed to store reset token');
       }
 
@@ -108,13 +108,13 @@ export async function POST(request: Request) {
           success: true,
           message: 'Password reset instructions have been sent to your email.'
         });
-      } catch (emailError) {
+      } catch (_emailError) {
         // For production, be honest about the error
         return NextResponse.json({
           error: 'Failed to send password reset email. Please try again later.'
         }, { status: 500 });
       }
-    } catch (dbError) {
+    } catch (_dbError) {
       return NextResponse.json({
         error: 'Database error occurred while processing your request. Please try again later.'
       }, { status: 500 });

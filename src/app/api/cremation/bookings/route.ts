@@ -214,7 +214,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Calculate total revenue from the bookings
-    const totalRevenue = bookings.reduce((total: number, booking: any) => {
+    const _totalRevenue = bookings.reduce((total: number, booking: any) => {
       if (booking.status === 'completed') {
         return total + (booking.price || 0);
       }
@@ -626,7 +626,7 @@ export async function POST(request: NextRequest) {
     // Remove the booked time slot from availability to prevent double booking
     try {
       // Format booking time to match the time_slot format (HH:MM)
-      const formattedBookingTime = bookingTime.substring(0, 5);
+      const _formattedBookingTime = bookingTime.substring(0, 5);
       
       // Find the time slot that matches this booking
       const findTimeSlotQuery = `

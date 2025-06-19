@@ -70,7 +70,7 @@ function CartPage({ userData }: CartPageProps) {
         ];
 
         setCartItems(mockCartItems);
-      } catch (error) {
+      } catch (_error) {
       } finally {
         setLoading(false);
       }

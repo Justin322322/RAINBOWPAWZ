@@ -10,7 +10,7 @@ const formatDate = (dateString: string) => {
       month: 'long',
       day: 'numeric'
     });
-  } catch (e) {
+  } catch (_e) {
     return 'Unknown date';
   }
 };
@@ -29,7 +29,7 @@ export async function GET() {
 
       hasServiceProviders = tableNames.includes('service_providers');
       hasUsers = tableNames.includes('users');
-    } catch (err) {
+    } catch (_err) {
     }
 
     if (!hasUsers || !hasServiceProviders) {
@@ -56,7 +56,7 @@ export async function GET() {
       const spColumnsResult = await query(`SHOW COLUMNS FROM service_providers`) as any[];
       serviceProviderColumns = spColumnsResult.map(col => col.Field);
 
-    } catch (err) {
+    } catch (_err) {
     }
 
     // Use a simplified, stable query with dynamic column selection based on schema
@@ -121,7 +121,7 @@ export async function GET() {
 
     try {
       applications = await query(applicationQuery) as any[];
-    } catch (err) {
+    } catch (_err) {
 
       // Try a simplified backup query with dynamic fields
       try {
@@ -163,7 +163,7 @@ export async function GET() {
         
         
         applications = await query(backupQuery) as any[];
-      } catch (backupErr) {
+      } catch (_backupErr) {
         return NextResponse.json({
           success: false,
           applications: [],
@@ -179,7 +179,7 @@ export async function GET() {
       if (app.created_at) {
         try {
           submitDate = formatDate(app.created_at);
-        } catch (e) {
+        } catch (_e) {
         }
       }
 

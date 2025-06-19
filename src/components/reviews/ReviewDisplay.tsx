@@ -88,7 +88,7 @@ const ReviewDisplay: React.FC<ReviewDisplayProps> = ({ bookingId, userId }) => {
     try {
       const date = new Date(dateString);
       return format(date, 'MMMM d, yyyy');
-    } catch (error) {
+    } catch (_error) {
       return dateString;
     }
   };

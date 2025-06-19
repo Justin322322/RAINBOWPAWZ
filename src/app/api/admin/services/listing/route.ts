@@ -217,8 +217,8 @@ export async function GET(request: NextRequest) {
   // First, check if tables exist to avoid repeated queries for each service
   const inclusionsTableExists = await checkTableExists('package_inclusions');
   const addonsTableExists = await checkTableExists('package_addons');
-  const bookingsTableExists = await checkTableExists('bookings');
-  const reviewsTableExists = await checkTableExists('reviews');
+  const _bookingsTableExists = await checkTableExists('bookings');
+  const _reviewsTableExists = await checkTableExists('reviews');
 
   // Batch fetch inclusions and addons for all packages
   let allInclusions: Record<number, string[]> = {};

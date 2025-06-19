@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
 }
 
 // Also allow GET requests for easier testing
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     // Use a default limit of 10
     const limit = 10;

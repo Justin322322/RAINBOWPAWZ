@@ -2,7 +2,6 @@
 
 import React, { forwardRef } from 'react';
 import { cn } from '@/utils/classNames';
-import { CheckIcon } from '@heroicons/react/24/outline';
 
 export interface CheckboxProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;

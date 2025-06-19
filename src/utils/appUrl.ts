@@ -40,7 +40,7 @@ export function getAppBaseUrl(): string {
       url.port = port;
       return url.toString();
     }
-  } catch (e) {
+  } catch (_e) {
     // If URL parsing fails, return the default
   }
 

@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const [userId, accountType] = authToken.split('_');
+    const [userId, _accountType] = authToken.split('_');
 
     // Parse the form data
     const formData = await request.formData();

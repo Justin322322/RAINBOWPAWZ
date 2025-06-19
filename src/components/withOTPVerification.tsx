@@ -6,7 +6,7 @@ import OTPVerificationModal from '@/components/OTPVerificationModal';
 import GetStartedModal from '@/components/GetStartedModal';
 import { decodeTokenUnsafe } from '@/lib/jwt';
 import { fastAuthCheck } from '@/utils/auth';
-import { useAuthState, UserData } from '@/contexts/AuthStateContext';
+import { UserData } from '@/contexts/AuthStateContext';
 
 // Global state to prevent re-verification on page navigation
 let globalUserAuthState = {
@@ -151,7 +151,7 @@ const withOTPVerification = <P extends object>(
             setHasShownOTPModal(true);
           }
           return;
-        } catch (e) {
+        } catch (_e) {
           // If parsing fails, continue with normal auth
           sessionStorage.removeItem('user_data');
         }
@@ -187,7 +187,7 @@ const withOTPVerification = <P extends object>(
           let authValue: string;
           try {
             authValue = decodeURIComponent(cookieParts[1]);
-          } catch (e) {
+          } catch (_e) {
             authValue = cookieParts[1]; // Use raw value if decoding fails
           }
 
@@ -303,7 +303,7 @@ const withOTPVerification = <P extends object>(
           // 3. Additional localStorage backup
           localStorage.setItem('user_verified', 'true');
 
-        } catch (e) {
+        } catch (_e) {
         }
       }
 

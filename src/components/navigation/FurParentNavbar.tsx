@@ -15,7 +15,6 @@ import {
   CalendarDaysIcon,
   ArrowRightOnRectangleIcon
 } from '@heroicons/react/24/outline';
-import { clearAuthToken } from '@/utils/auth';
 import LogoutModal from '@/components/LogoutModal';
 import CartDropdown from '@/components/cart/CartDropdown';
 import NotificationBell from '@/components/ui/NotificationBell';
@@ -35,7 +34,7 @@ interface FurParentNavbarProps {
 
 export default function FurParentNavbar({ activePage: propActivePage, userName = 'User' }: FurParentNavbarProps) {
   const pathname = usePathname();
-  const router = useRouter();
+  const _router = useRouter();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);

@@ -34,7 +34,7 @@ export async function ensureAdminLogsTable(): Promise<boolean> {
     }
     
     return true;
-  } catch (error) {
+  } catch (_error) {
     return false;
   }
 }

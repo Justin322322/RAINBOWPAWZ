@@ -145,7 +145,7 @@ function isValidCoordinate(coord: Coordinates): boolean {
 /**
  * Format distance for display
  */
-export function formatDistance(distance: number, source?: string): string {
+export function formatDistance(distance: number, _source?: string): string {
   if (distance === 0) return 'Distance unavailable';
 
   const formatted = distance < 1

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
-import { calculateRevenue, formatRevenue } from '@/lib/revenueCalculator';
 
 export async function GET(request: NextRequest) {
   try {
@@ -136,7 +135,7 @@ export async function GET(request: NextRequest) {
 
     // 3. Get unique clients count (new clients this month)
     let newClients = 0;
-    let clientsChange = 0;
+    let _clientsChange = 0;
 
     if (hasServiceBookings) {
       const newClientsResult = await query(`
@@ -161,15 +160,15 @@ export async function GET(request: NextRequest) {
       const prevClients = prevClientsResult[0]?.count || 0;
 
       if (prevClients > 0) {
-        clientsChange = ((newClients - prevClients) / prevClients) * 100;
+        _clientsChange = ((newClients - prevClients) / prevClients) * 100;
       } else if (newClients > 0) {
-        clientsChange = 100;
+        _clientsChange = 100;
       }
     }
 
     // 4. Get average rating
     let avgRating = 0;
-    let ratingChange = 0;
+    let _ratingChange = 0;
 
     const ratingResult = await query(`
       SELECT COALESCE(AVG(rating), 0) as avg_rating, COUNT(*) as review_count

@@ -83,7 +83,7 @@ export async function GET(request: NextRequest) {
           `, [providerId]) as any[];
 
           pendingCount += legacyBookingsResult[0]?.pending_count || 0;
-        } catch (legacyError) {
+        } catch (_legacyError) {
           // Legacy table might not exist, continue
           console.log('Legacy bookings table not found, continuing with service_bookings only');
         }

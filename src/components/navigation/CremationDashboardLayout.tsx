@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import CremationNavbar from './CremationNavbar';
 import CremationSidebar from './CremationSidebar';
-import { HomeIcon, DocumentTextIcon, ArchiveBoxIcon, CalendarIcon, ClockIcon, UserCircleIcon } from '@heroicons/react/24/outline';
+import { HomeIcon, ArchiveBoxIcon, CalendarIcon, ClockIcon, UserCircleIcon } from '@heroicons/react/24/outline';
 
 interface CremationDashboardLayoutProps {
   children: React.ReactNode;
@@ -19,14 +19,14 @@ export default function CremationDashboardLayout({
   userName: propUserName = 'Cremation Provider',
   userData: propUserData
 }: CremationDashboardLayoutProps) {
-  const router = useRouter();
+  const _router = useRouter();
 
   // Since this component is wrapped by withBusinessVerification HOC,
   // we can trust that propUserData is valid and authenticated
   const userData = propUserData;
 
   // Content loading state for skeleton animation only
-  const [contentLoading, setContentLoading] = useState(false); // Set to false to disable layout skeleton
+  const [_contentLoading, setContentLoading] = useState(false); // Set to false to disable layout skeleton
 
   // Effect to simulate content loading with a short delay
   useEffect(() => {
@@ -55,7 +55,7 @@ export default function CremationDashboardLayout({
   );
 }
 
-const navigationItems = [
+const _navigationItems = [
   { name: 'Dashboard', href: '/cremation/dashboard', icon: HomeIcon },
   { name: 'Services', href: '/cremation/packages', icon: ArchiveBoxIcon },
   { name: 'Bookings', href: '/cremation/bookings', icon: CalendarIcon },

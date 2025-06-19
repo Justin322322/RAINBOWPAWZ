@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateToken, verifyToken, JWTPayload } from './jwt';
+import crypto from 'crypto';
 
 // Security configuration
 const AUTH_COOKIE_NAME = 'auth_token';
@@ -10,8 +11,8 @@ const AUTH_COOKIE_MAX_AGE = 7 * 24 * 60 * 60; // 7 days in seconds
  * Generate a secure CSRF token
  */
 function generateCSRFToken(): string {
-  // In a real implementation, use crypto.randomBytes
-  return Buffer.from(Date.now().toString() + Math.random().toString()).toString('base64');
+  // Generate 32 bytes of cryptographically secure random data
+  return crypto.randomBytes(32).toString('base64');
 }
 
 /**

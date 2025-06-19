@@ -170,7 +170,7 @@ export async function createBookingNotification(
 export async function createPaymentNotification(
   bookingId: number,
   paymentStatus: PaymentNotificationType,
-  paymentDetails?: Record<string, any>
+  _paymentDetails?: Record<string, any>
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const bookingDetails = await getBookingDetails(bookingId);
@@ -413,7 +413,7 @@ async function sendBookingEmailNotification(
 async function sendPaymentSMSNotification(
   bookingDetails: any,
   paymentStatus: PaymentNotificationType,
-  paymentDetails?: Record<string, any>
+  _paymentDetails?: Record<string, any>
 ): Promise<void> {
   try {
     // Get user phone number and SMS preferences
@@ -458,7 +458,7 @@ async function sendPaymentSMSNotification(
     }
 
     if (smsMessage) {
-      const smsResult = await sendSMS({
+      const _smsResult = await sendSMS({
         to: phone,
         message: smsMessage
       });
@@ -518,7 +518,7 @@ async function sendBookingSMSNotification(
     );
 
     // Send SMS
-    const smsResult = await sendSMS({
+    const _smsResult = await sendSMS({
       to: phone,
       message: smsMessage
     });

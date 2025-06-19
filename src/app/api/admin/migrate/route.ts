@@ -18,13 +18,13 @@ export async function POST(request: NextRequest) {
       // JWT token format
       const { decodeTokenUnsafe } = await import('@/lib/jwt');
       const payload = decodeTokenUnsafe(authToken);
-      userId = payload?.userId || null;
+      _userId = payload?.userId || null;
       accountType = payload?.accountType || null;
     } else {
       // Old format fallback
       const parts = authToken.split('_');
       if (parts.length === 2) {
-        userId = parts[0];
+        _userId = parts[0];
         accountType = parts[1];
       }
     }

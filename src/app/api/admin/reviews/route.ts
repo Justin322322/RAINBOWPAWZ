@@ -76,7 +76,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({
         reviews
       });
-    } catch (queryError) {
+    } catch (_queryError) {
       // If the JOIN fails, try a simpler query without joins
       try {
         const simpleReviews = await query(`
@@ -87,7 +87,7 @@ export async function GET(request: NextRequest) {
           reviews: simpleReviews,
           message: 'Retrieved reviews without user and provider details'
         });
-      } catch (fallbackError) {
+      } catch (_fallbackError) {
         // If even the simple query fails, return empty array
         return NextResponse.json({
           reviews: [],

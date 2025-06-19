@@ -15,10 +15,8 @@ import {
   ClockIcon,
   StarIcon,
   Cog6ToothIcon,
-  ArrowRightOnRectangleIcon,
-  BellIcon
+  ArrowRightOnRectangleIcon
 } from '@heroicons/react/24/outline';
-import { clearAuthToken } from '@/utils/auth';
 import LogoutModal from '@/components/LogoutModal';
 import NotificationBell from '@/components/ui/NotificationBell';
 import { useSupressHydrationWarning } from '@/hooks/useSupressHydrationWarning';
@@ -36,7 +34,7 @@ export default function CremationNavbar({
   onMenuToggle
 }: CremationNavbarProps) {
   const pathname = usePathname();
-  const router = useRouter();
+  const _router = useRouter();
   const isMounted = useSupressHydrationWarning();
 
   // Navigation and UI state - moved to top
@@ -224,7 +222,7 @@ export default function CremationNavbar({
   }, [fetchProfilePicture, isNavigating]);
 
   // Handle navigation item click
-  const handleNavItemClick = (id: string) => {
+  const handleNavItemClick = (_id: string) => {
     setIsNavigating(true);
     setIsDropdownOpen(false);
     setIsMobileMenuOpen(false);

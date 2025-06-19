@@ -10,14 +10,12 @@ import {
   TrashIcon,
   ExclamationTriangleIcon,
   XCircleIcon,
-  CheckCircleIcon,
 } from '@heroicons/react/24/outline';
 import AdminDashboardLayout from '@/components/navigation/AdminDashboardLayout';
 import withAdminAuth from '@/components/withAdminAuth';
 import { useToast } from '@/context/ToastContext';
 import StarRating from '@/components/ui/StarRating';
 import Modal from '@/components/Modal';
-import { motion, AnimatePresence } from 'framer-motion';
 import SectionLoader from '@/components/ui/SectionLoader';
 
 interface Review {
@@ -45,7 +43,7 @@ function AdminReviewsPage() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [reviewToDelete, setReviewToDelete] = useState<Review | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [userName, setUserName] = useState('Admin');
+  const [userName, _setUserName] = useState('Admin');
 
   useEffect(() => {
     // Flag to prevent multiple error toasts
@@ -184,7 +182,7 @@ function AdminReviewsPage() {
     try {
       const date = new Date(dateString);
       return format(date, 'MMMM d, yyyy');
-    } catch (error) {
+    } catch (_error) {
       return dateString;
     }
   };

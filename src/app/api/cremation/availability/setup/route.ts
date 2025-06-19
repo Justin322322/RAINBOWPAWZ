@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     
     // First, test if we can connect to the database at all
     try {
-      const testConnection = await query('SELECT 1 as test');
-    } catch (connectionError) {
+      const _testConnection = await query('SELECT 1 as test');
+    } catch (_connectionError) {
       
       // Since we can't connect to the database, we'll return mock data
       return NextResponse.json({

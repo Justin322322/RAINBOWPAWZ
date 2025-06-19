@@ -1,6 +1,6 @@
 import { promises as fs } from 'fs';
 import path from 'path';
-import pool, { query } from './db';
+import { query } from './db';
 
 async function initializeDatabase() {
   try {
@@ -29,7 +29,7 @@ async function initializeDatabase() {
 
 // Run the initialization if this file is executed directly
 if (require.main === module) {
-  initializeDatabase().catch(error => {
+  initializeDatabase().catch(_error => {
     process.exit(1);
   });
 }

@@ -50,7 +50,7 @@ function AdminDashboardLayout({
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   // Toggle mobile sidebar
-  const toggleMobileSidebar = () => {
+  const _toggleMobileSidebar = () => {
     setIsMobileSidebarOpen(!isMobileSidebarOpen);
   };
 

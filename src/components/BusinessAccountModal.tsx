@@ -1,8 +1,7 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Modal from '@/components/Modal';
-import { sendWelcomeEmail } from '@/lib/emailService';
 import PrivacyPolicyModal from '@/components/PrivacyPolicyModal';
 import { useToast } from '@/context/ToastContext';
 import PhilippinePhoneInput from '@/components/ui/PhilippinePhoneInput';
@@ -138,7 +137,7 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
 
     try {
       // Create FormData object for file uploads
-      const formDataObj = new FormData();
+      const _formDataObj = new FormData();
 
       // Add all the form fields
       const textData = {
@@ -214,14 +213,14 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
             body: docFormData,
           });
 
-          const docData = await docResponse.json();
+          const _docData = await docResponse.json();
 
           if (!docResponse.ok) {
             // We'll continue even if document upload fails
             // since the user account has been created
           } else {
           }
-        } catch (docError) {
+        } catch (_docError) {
           // Continue with registration even if document upload fails
         }
       }

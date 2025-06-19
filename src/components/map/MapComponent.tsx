@@ -265,7 +265,7 @@ export default function MapComponent({
         addUserMarker(coordinates);
       }
 
-    } catch (error) {
+    } catch (_error) {
       setGeocodeError("Error loading map. Please refresh the page.");
     }
   }, [addUserMarker]);

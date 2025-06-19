@@ -70,7 +70,7 @@ const PackageImage = ({ src, alt, fallbackText = 'No image available' }: Package
                 if (!response.ok) {
                 }
               })
-              .catch(fetchError => {
+              .catch(_fetchError => {
               });
           }}
         />

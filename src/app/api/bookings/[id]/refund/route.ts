@@ -2,9 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthTokenFromRequest } from '@/utils/auth';
 import {
   checkRefundEligibility,
-  createRefundRecord,
-  processPayMongoRefund,
-  completeRefund
+  createRefundRecord
 } from '@/services/refundService';
 import { REFUND_REASONS } from '@/types/refund';
 import { query } from '@/lib/db';

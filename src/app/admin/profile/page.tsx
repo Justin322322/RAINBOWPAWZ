@@ -185,7 +185,7 @@ function AdminProfilePage({ adminData }: AdminProfileProps) {
         const errorData = await response.json();
         setContactError(errorData.error || 'Failed to update contact information');
       }
-    } catch (error) {
+    } catch (_error) {
       setContactError('Failed to update contact information. Please try again.');
     } finally {
       setIsUpdatingContact(false);
@@ -231,7 +231,7 @@ function AdminProfilePage({ adminData }: AdminProfileProps) {
         const errorData = await response.json();
         setPasswordError(errorData.error || 'Failed to update password');
       }
-    } catch (error) {
+    } catch (_error) {
       setPasswordError('Failed to update password. Please try again.');
     } finally {
       setIsUpdatingPassword(false);
