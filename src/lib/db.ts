@@ -49,7 +49,13 @@ const finalConfig = process.env.NODE_ENV === 'production'
   ? productionConfig
   : dbConfig;
 
-
+// Connection pool monitoring
+interface PoolStats {
+  totalConnections: number;
+  activeConnections: number;
+  idleConnections: number;
+  queuedRequests: number;
+}
 
 try {
   pool = mysql.createPool(finalConfig);
@@ -86,6 +92,55 @@ try {
   }
 }
 
+// **🔥 NEW: Connection Pool Health Monitoring**
+export function getPoolStats(): PoolStats {
+  const poolConfig = pool.config;
+  return {
+    totalConnections: poolConfig.connectionLimit || 10,
+    activeConnections: (pool as any)._allConnections?.length || 0,
+    idleConnections: (pool as any)._freeConnections?.length || 0,
+    queuedRequests: (pool as any)._connectionQueue?.length || 0
+  };
+}
+
+// **🔥 NEW: Database Health Check Endpoint**
+export async function getDatabaseHealth(): Promise<{
+  isConnected: boolean;
+  poolStats: PoolStats;
+  responseTime: number;
+  errors: string[];
+}> {
+  const startTime = Date.now();
+  const errors: string[] = [];
+  let isConnected = false;
+
+  try {
+    await query('SELECT 1 as health_check');
+    isConnected = true;
+  } catch (error) {
+    errors.push(error instanceof Error ? error.message : 'Unknown connection error');
+  }
+
+  const responseTime = Date.now() - startTime;
+  const poolStats = getPoolStats();
+
+  // Check for potential issues
+  if (poolStats.queuedRequests > 5) {
+    errors.push('High number of queued requests detected');
+  }
+
+  if (poolStats.idleConnections === 0 && poolStats.activeConnections > 0) {
+    errors.push('No idle connections available');
+  }
+
+  return {
+    isConnected,
+    poolStats,
+    responseTime,
+    errors
+  };
+}
+
 // Helper function to execute SQL queries
 export async function query(sql: string, params: any[] = []): Promise<QueryResult> {
   let connection: mysql.PoolConnection;
@@ -98,7 +153,7 @@ export async function query(sql: string, params: any[] = []): Promise<QueryResul
       const [results] = await connection.query(sql, params);
       return results as QueryResult;
     } finally {
-      // Release the connection back to the pool
+      // **🔥 CRITICAL: Always release the connection back to the pool**
       connection.release();
     }
   } catch (error) {
@@ -137,6 +192,129 @@ export async function query(sql: string, params: any[] = []): Promise<QueryResul
     }
 
     throw error;
+  }
+}
+
+// **🔥 NEW: Proper Transaction Management Class**
+export class DatabaseTransaction {
+  private connection: mysql.PoolConnection | null = null;
+  private isActive = false;
+
+  async begin(): Promise<void> {
+    if (this.isActive) {
+      throw new Error('Transaction already active');
+    }
+
+    try {
+      // Get a dedicated connection for this transaction
+      this.connection = await pool.getConnection();
+      await this.connection.query('START TRANSACTION');
+      this.isActive = true;
+    } catch (error) {
+      // Release connection if we got one but failed to start transaction
+      if (this.connection) {
+        this.connection.release();
+        this.connection = null;
+      }
+      throw error;
+    }
+  }
+
+  async query(sql: string, params: any[] = []): Promise<QueryResult> {
+    if (!this.isActive || !this.connection) {
+      throw new Error('Transaction not active or connection not available');
+    }
+
+    try {
+      const [results] = await this.connection.query(sql, params);
+      return results as QueryResult;
+    } catch (error) {
+      console.error('Transaction query error:', {
+        sql: sql.substring(0, 100) + (sql.length > 100 ? '...' : ''),
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+      throw error;
+    }
+  }
+
+  async commit(): Promise<void> {
+    if (!this.isActive || !this.connection) {
+      throw new Error('No active transaction to commit');
+    }
+
+    try {
+      await this.connection.query('COMMIT');
+    } finally {
+      this.cleanup();
+    }
+  }
+
+  async rollback(): Promise<void> {
+    if (!this.isActive || !this.connection) {
+      // Don't throw error - just log and cleanup
+      console.warn('Attempted to rollback inactive transaction or missing connection');
+      this.cleanup();
+      return;
+    }
+
+    try {
+      await this.connection.query('ROLLBACK');
+    } catch (rollbackError) {
+      console.error('Failed to rollback transaction:', rollbackError);
+      // Don't throw the rollback error - just log it
+    } finally {
+      this.cleanup();
+    }
+  }
+
+  private cleanup(): void {
+    if (this.connection) {
+      this.connection.release();
+      this.connection = null;
+    }
+    this.isActive = false;
+  }
+
+  // **🔥 NEW: Manual cleanup method for environments without Symbol.asyncDispose**
+  async dispose(): Promise<void> {
+    if (this.isActive) {
+      await this.rollback();
+    }
+  }
+}
+
+// **🔥 NEW: Utility function for running transactions safely**
+export async function withTransaction<T>(
+  operation: (transaction: DatabaseTransaction) => Promise<T>
+): Promise<T> {
+  const transaction = new DatabaseTransaction();
+  
+  try {
+    await transaction.begin();
+    const result = await operation(transaction);
+    await transaction.commit();
+    return result;
+  } catch (originalError) {
+    // Store the original error to ensure it's preserved
+    let errorToThrow = originalError;
+    
+    try {
+      await transaction.rollback();
+    } catch (rollbackError) {
+      // Log rollback error but don't let it mask the original error
+      console.error('Error during transaction rollback (original error will be thrown):', rollbackError);
+      
+      // Only replace the error if the original error was specifically about the transaction state
+      // and the rollback error provides more meaningful information
+      if (originalError instanceof Error && 
+          originalError.message.includes('Transaction not active') &&
+          rollbackError instanceof Error) {
+        errorToThrow = rollbackError;
+      }
+    }
+    
+    // Always throw the original error (or meaningful replacement)
+    throw errorToThrow;
   }
 }
 

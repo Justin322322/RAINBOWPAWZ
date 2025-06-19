@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { query } from '@/lib/db';
+import { query, withTransaction } from '@/lib/db';
 import bcrypt from 'bcryptjs';
 
 export async function POST(request: NextRequest) {
@@ -45,13 +45,11 @@ export async function POST(request: NextRequest) {
     // Hash the password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Start a transaction
-    await query('START TRANSACTION');
-
-    try {
+    // **🔥 FIX: Use proper transaction management to prevent connection leaks**
+    const result = await withTransaction(async (transaction) => {
       // Check if user already exists
-      const existingUserResult = await query(
-        'SELECT id FROM users WHERE email = ?',
+      const existingUserResult = await transaction.query(
+        'SELECT user_id FROM users WHERE email = ?',
         [email]
       ) as any[];
 
@@ -59,14 +57,14 @@ export async function POST(request: NextRequest) {
 
       if (existingUserResult && existingUserResult.length > 0) {
         // User exists, update role
-        userId = existingUserResult[0].id;
-        await query(
-          'UPDATE users SET role = ?, is_verified = 1, is_otp_verified = 1 WHERE id = ?',
+        userId = existingUserResult[0].user_id;
+        await transaction.query(
+          'UPDATE users SET role = ?, is_verified = 1, is_otp_verified = 1 WHERE user_id = ?',
           ['admin', userId]
         );
       } else {
         // Create new user
-        const userResult = await query(
+        const userResult = await transaction.query(
           `INSERT INTO users (email, password, first_name, last_name, role, is_verified, is_otp_verified)
            VALUES (?, ?, ?, ?, ?, 1, 1)`,
           [email, hashedPassword, firstName, lastName, 'admin']
@@ -76,14 +74,14 @@ export async function POST(request: NextRequest) {
       }
 
       // Check if admin profile exists
-      const existingProfileResult = await query(
+      const existingProfileResult = await transaction.query(
         'SELECT id FROM admin_profiles WHERE user_id = ?',
         [userId]
       ) as any[];
 
       if (existingProfileResult && existingProfileResult.length > 0) {
         // Update existing profile
-        await query(
+        await transaction.query(
           `UPDATE admin_profiles
            SET username = ?, full_name = ?, admin_role = ?
            WHERE user_id = ?`,
@@ -91,7 +89,7 @@ export async function POST(request: NextRequest) {
         );
       } else {
         // Create new admin profile
-        await query(
+        await transaction.query(
           `INSERT INTO admin_profiles (user_id, username, full_name, admin_role)
            VALUES (?, ?, ?, ?)`,
           [userId, username, `${firstName} ${lastName}`, adminRole]
@@ -99,7 +97,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Check if old admins table exists
-      const tablesResult = await query(`
+      const tablesResult = await transaction.query(`
         SELECT table_name 
         FROM information_schema.tables 
         WHERE table_schema = DATABASE() AND table_name = 'admins'
@@ -107,14 +105,14 @@ export async function POST(request: NextRequest) {
 
       if (tablesResult && tablesResult.length > 0) {
         // Check if admin exists in old table
-        const existingOldAdminResult = await query(
+        const existingOldAdminResult = await transaction.query(
           'SELECT id FROM admins WHERE email = ?',
           [email]
         ) as any[];
 
         if (existingOldAdminResult && existingOldAdminResult.length > 0) {
           // Update existing admin
-          await query(
+          await transaction.query(
             `UPDATE admins
              SET username = ?, password = ?, full_name = ?, role = ?
              WHERE email = ?`,
@@ -122,7 +120,7 @@ export async function POST(request: NextRequest) {
           );
         } else {
           // Create new admin in old table
-          await query(
+          await transaction.query(
             `INSERT INTO admins (username, password, email, full_name, role)
              VALUES (?, ?, ?, ?, ?)`,
             [username, hashedPassword, email, `${firstName} ${lastName}`, adminRole]
@@ -130,27 +128,24 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      // Commit the transaction
-      await query('COMMIT');
+      return { userId };
+    });
 
-      return NextResponse.json({
-        success: true,
-        message: 'Admin user created successfully',
-        admin: {
-          id: userId,
-          email,
-          firstName,
-          lastName,
-          username,
-          role: adminRole
-        }
-      });
-    } catch (error) {
-      // Rollback the transaction if something failed
-      await query('ROLLBACK');
-      throw error;
-    }
+    return NextResponse.json({
+      success: true,
+      message: 'Admin user created successfully',
+      admin: {
+        id: result.userId,
+        email,
+        firstName,
+        lastName,
+        username,
+        role: adminRole
+      }
+    });
+
   } catch (error) {
+    console.error('Error creating admin user:', error);
     return NextResponse.json({
       success: false,
       message: 'Failed to create admin user',

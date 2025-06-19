@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { query } from '@/lib/db';
+import { query, withTransaction } from '@/lib/db';
 import { getAuthTokenFromRequest } from '@/utils/auth';
 
 // POST endpoint to create a new booking from cart
@@ -95,21 +95,17 @@ export async function POST(request: NextRequest) {
     // Default booking time (10:00 AM)
     const bookingTime = '10:00:00';
 
-    // Check which table structure to use
-    let bookingResult;
-
-    // Start a transaction
-    await query('START TRANSACTION');
-
-    try {
+    // **🔥 FIX: Use proper transaction management to prevent connection leaks**
+    const result = await withTransaction(async (transaction) => {
       // First, check if the bookings table has service_provider_id column
-      const serviceProviderCheck = await query(
+      const serviceProviderCheck = await transaction.query(
         "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'bookings' AND COLUMN_NAME = 'service_provider_id'"
       ) as any[];
 
+      let bookingResult;
       if (serviceProviderCheck && serviceProviderCheck.length > 0) {
         // Use the updated structure with service_provider_id and package_id
-        bookingResult = await query(`
+        bookingResult = await transaction.query(`
           INSERT INTO bookings (
             user_id,
             pet_id,
@@ -135,13 +131,13 @@ export async function POST(request: NextRequest) {
         ]) as any;
       } else {
         // Check if the bookings table has business_service_id column
-        const businessServiceCheck = await query(
+        const businessServiceCheck = await transaction.query(
           "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'bookings' AND COLUMN_NAME = 'business_service_id'"
         ) as any[];
 
         if (businessServiceCheck && businessServiceCheck.length > 0) {
           // Use the older structure with business_service_id
-          bookingResult = await query(`
+          bookingResult = await transaction.query(`
             INSERT INTO bookings (
               user_id,
               pet_id,
@@ -163,7 +159,7 @@ export async function POST(request: NextRequest) {
           ]) as any;
         } else {
           // If neither column exists, try a simple insert with minimal fields
-          bookingResult = await query(`
+          bookingResult = await transaction.query(`
             INSERT INTO bookings (
               user_id,
               pet_id,
@@ -190,7 +186,7 @@ export async function POST(request: NextRequest) {
       if (selectedAddOns && selectedAddOns.length > 0) {
         try {
           // Check if booking_addons table exists
-          const addonsTableCheck = await query(
+          const addonsTableCheck = await transaction.query(
             "SELECT COUNT(*) as count FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'booking_addons'"
           ) as any[];
 
@@ -207,7 +203,7 @@ export async function POST(request: NextRequest) {
                 addOnName = addOn.replace(/\s*\(\+₱[\d,]+\)/, '').trim();
               }
 
-              await query(`
+              await transaction.query(`
                 INSERT INTO booking_addons (
                   booking_id,
                   addon_name,
@@ -226,7 +222,7 @@ export async function POST(request: NextRequest) {
               ? `${specialRequests}\n\nSelected Add-ons: ${addOnsText}`
               : `Selected Add-ons: ${addOnsText}`;
 
-            await query(
+            await transaction.query(
               'UPDATE bookings SET special_requests = ? WHERE id = ?',
               [updatedSpecialRequests, bookingId]
             );
@@ -236,53 +232,50 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      // Commit the transaction
-      await query('COMMIT');
+      return { bookingId };
+    });
 
-      // Remove the booked time slot from availability to prevent double booking
-      try {
-        // Format booking time to match the time_slot format (HH:MM)
-        const formattedBookingTime = bookingTime.substring(0, 5);
-        
-        // Find the time slot that matches this booking
-        const findTimeSlotQuery = `
-          SELECT id 
-          FROM provider_time_slots 
-          WHERE provider_id = ? 
-          AND date = ? 
-          AND start_time = ?
-        `;
-        
-        const timeSlots = await query(findTimeSlotQuery, [
-          providerId, 
-          formattedDate,
-          formattedBookingTime
-        ]) as any[];
-        
-        if (timeSlots && timeSlots.length > 0) {
-          // Delete the time slot to prevent it from being booked again
-          const timeSlotId = timeSlots[0].id;
-          await query('DELETE FROM provider_time_slots WHERE id = ?', [timeSlotId]);
-          console.log(`Time slot ${timeSlotId} removed after booking ${bookingId} was created`);
-        } else {
-          console.log(`No matching time slot found for booking ${bookingId} at ${formattedDate} ${bookingTime}`);
-        }
-      } catch (timeSlotError) {
-        // Log the error but don't fail the booking creation
-        console.error('Error removing time slot after booking creation:', timeSlotError);
+    // **🔥 FIX: Handle time slot removal outside transaction to avoid conflicts**
+    try {
+      // Format booking time to match the time_slot format (HH:MM)
+      const formattedBookingTime = bookingTime.substring(0, 5);
+      
+      // Find the time slot that matches this booking
+      const findTimeSlotQuery = `
+        SELECT id 
+        FROM provider_time_slots 
+        WHERE provider_id = ? 
+        AND date = ? 
+        AND start_time = ?
+      `;
+      
+      const timeSlots = await query(findTimeSlotQuery, [
+        providerId, 
+        formattedDate,
+        formattedBookingTime
+      ]) as any[];
+      
+      if (timeSlots && timeSlots.length > 0) {
+        // Delete the time slot to prevent it from being booked again
+        const timeSlotId = timeSlots[0].id;
+        await query('DELETE FROM provider_time_slots WHERE id = ?', [timeSlotId]);
+        console.log(`Time slot ${timeSlotId} removed after booking ${result.bookingId} was created`);
+      } else {
+        console.log(`No matching time slot found for booking ${result.bookingId} at ${formattedDate} ${bookingTime}`);
       }
-
-      return NextResponse.json({
-        success: true,
-        bookingId,
-        message: 'Booking created successfully'
-      });
-    } catch (error) {
-      // Rollback the transaction on error
-      await query('ROLLBACK');
-      throw error;
+    } catch (timeSlotError) {
+      // Log the error but don't fail the booking creation
+      console.error('Error removing time slot after booking creation:', timeSlotError);
     }
+
+    return NextResponse.json({
+      success: true,
+      bookingId: result.bookingId,
+      message: 'Booking created successfully'
+    });
+
   } catch (error) {
+    console.error('Booking creation error:', error);
     return NextResponse.json({
       error: 'Failed to create booking',
       details: error instanceof Error ? error.message : 'Unknown error'

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { query } from '@/lib/db';
+import { query, withTransaction } from '@/lib/db';
 import { getAuthTokenFromRequest } from '@/utils/auth';
 
 export async function PUT(request: NextRequest) {
@@ -47,30 +47,28 @@ export async function PUT(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Start a transaction
-    await query('START TRANSACTION');
+    // **🔥 FIX: Check if user exists before starting transaction to return proper 404**
+    const userCheckResult = await query(
+      'SELECT user_id, role FROM users WHERE user_id = ? LIMIT 1',
+      [userId]
+    ) as any[];
 
-    try {
-      // Check if user exists
-      const userResult = await query(
-        'SELECT user_id, role FROM users WHERE user_id = ? LIMIT 1',
-        [userId]
-      ) as any[];
+    if (!userCheckResult || userCheckResult.length === 0) {
+      return NextResponse.json({
+        error: 'User not found'
+      }, { status: 404 });
+    }
 
-      if (!userResult || userResult.length === 0) {
-        await query('ROLLBACK');
-        return NextResponse.json({
-          error: 'User not found'
-        }, { status: 404 });
-      }
+    // **🔥 FIX: Use proper transaction management to prevent connection leaks**
+    const result = await withTransaction(async (transaction) => {
 
       // Check if user_restrictions table exists, create if not
-      const tablesResult = await query(
+      const tablesResult = await transaction.query(
         "SHOW TABLES LIKE 'user_restrictions'"
       ) as any[];
 
       if (!tablesResult || tablesResult.length === 0) {
-        await query(`
+        await transaction.query(`
           CREATE TABLE user_restrictions (
             restriction_id INT AUTO_INCREMENT PRIMARY KEY,
             user_id INT NOT NULL,
@@ -86,14 +84,14 @@ export async function PUT(request: NextRequest) {
 
       if (restricted) {
         // Check if user is already restricted
-        const restrictionResult = await query(
+        const restrictionResult = await transaction.query(
           'SELECT restriction_id FROM user_restrictions WHERE user_id = ? AND is_active = 1 LIMIT 1',
           [userId]
         ) as any[];
 
         if (restrictionResult && restrictionResult.length > 0) {
           // Update existing restriction
-          await query(
+          await transaction.query(
             `UPDATE user_restrictions
              SET reason = ?,
                  duration = ?,
@@ -104,7 +102,7 @@ export async function PUT(request: NextRequest) {
           );
         } else {
           // Create new restriction
-          await query(
+          await transaction.query(
             `INSERT INTO user_restrictions (user_id, reason, duration, report_count)
              VALUES (?, ?, ?, ?)`,
             [userId, reason, duration, reportCount]
@@ -112,7 +110,7 @@ export async function PUT(request: NextRequest) {
         }
 
         // Update user status to restricted (only use status field for now)
-        await query(
+        await transaction.query(
           `UPDATE users
            SET status = 'restricted',
                updated_at = NOW()
@@ -121,13 +119,13 @@ export async function PUT(request: NextRequest) {
         );
       } else {
         // Remove restriction
-        await query(
+        await transaction.query(
           'UPDATE user_restrictions SET is_active = 0 WHERE user_id = ? AND is_active = 1',
           [userId]
         );
 
         // Update user status to active (only use status field for now)
-        await query(
+        await transaction.query(
           `UPDATE users
            SET status = 'active',
                updated_at = NOW()
@@ -136,61 +134,59 @@ export async function PUT(request: NextRequest) {
         );
       }
 
-      // Commit the transaction
-      await query('COMMIT');
+      return { success: true };
+    });
 
-      // Get updated user data to return
-      const updatedUserResult = await query(
-        `SELECT user_id, first_name, last_name, email, phone, address, gender,
-         created_at, updated_at, is_otp_verified, role, status, is_verified
-         FROM users WHERE user_id = ? LIMIT 1`,
+    // **🔥 FIX: Get updated user data using regular query (outside transaction)**
+    const updatedUserResult = await query(
+      `SELECT user_id, first_name, last_name, email, phone, address, gender,
+       created_at, updated_at, is_otp_verified, role, status, is_verified
+       FROM users WHERE user_id = ? LIMIT 1`,
+      [userId]
+    ) as any[];
+
+    if (!updatedUserResult || updatedUserResult.length === 0) {
+      return NextResponse.json({
+        error: 'Failed to retrieve updated user data'
+      }, { status: 500 });
+    }
+
+    const user = updatedUserResult[0];
+
+    // Set user_type based on role for backward compatibility
+    if (user.role === 'fur_parent') {
+      user.user_type = 'user';
+    } else {
+      user.user_type = user.role; // 'admin' or 'business'
+    }
+
+    // Get restriction details if user is restricted
+    if (restricted) {
+      const restrictionResult = await query(
+        `SELECT restriction_id, reason, restriction_date, duration, report_count, is_active
+         FROM user_restrictions
+         WHERE user_id = ? AND is_active = 1
+         LIMIT 1`,
         [userId]
       ) as any[];
 
-      if (!updatedUserResult || updatedUserResult.length === 0) {
-        return NextResponse.json({
-          error: 'Failed to retrieve updated user data'
-        }, { status: 500 });
+      if (restrictionResult && restrictionResult.length > 0) {
+        user.restriction = restrictionResult[0];
       }
-
-      const user = updatedUserResult[0];
-
-      // Set user_type based on role for backward compatibility
-      if (user.role === 'fur_parent') {
-        user.user_type = 'user';
-      } else {
-        user.user_type = user.role; // 'admin' or 'business'
-      }
-
-      // Get restriction details if user is restricted
-      if (restricted) {
-        const restrictionResult = await query(
-          `SELECT restriction_id, reason, restriction_date, duration, report_count, is_active
-           FROM user_restrictions
-           WHERE user_id = ? AND is_active = 1
-           LIMIT 1`,
-          [userId]
-        ) as any[];
-
-        if (restrictionResult && restrictionResult.length > 0) {
-          user.restriction = restrictionResult[0];
-        }
-      }
-
-      // Remove sensitive information
-      delete user.password;
-
-      return NextResponse.json({
-        success: true,
-        message: restricted ? 'User has been restricted' : 'User restriction has been removed',
-        user
-      });
-    } catch (error) {
-      // Rollback the transaction in case of error
-      await query('ROLLBACK');
-      throw error;
     }
+
+    // Remove sensitive information
+    delete user.password;
+
+    return NextResponse.json({
+      success: true,
+      message: restricted ? 'User has been restricted' : 'User restriction has been removed',
+      user
+    });
+
   } catch (error) {
+    console.error('User restriction error:', error);
+    
     return NextResponse.json({
       error: 'Failed to update user restriction',
       message: error instanceof Error ? error.message : 'Unknown error'

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { query } from '@/lib/db';
+import { query, withTransaction } from '@/lib/db';
 import { getAuthTokenFromRequest } from '@/utils/auth';
 
 export async function PUT(request: NextRequest) {
@@ -56,27 +56,25 @@ export async function PUT(request: NextRequest) {
 
     const currentRole = currentUserResult[0].role;
 
-    // Start a transaction
-    await query('START TRANSACTION');
-
-    try {
+    // **🔥 FIX: Use proper transaction management to prevent connection leaks**
+    const result = await withTransaction(async (transaction) => {
       // Update user role in database
-      await query(
-        'UPDATE users SET role = ?, updated_at = NOW() WHERE id = ?',
+      await transaction.query(
+        'UPDATE users SET role = ?, updated_at = NOW() WHERE user_id = ?',
         [role, userId]
       );
 
       // If changing to admin role, create admin profile if it doesn't exist
       if (role === 'admin') {
         // Check if admin profile exists
-        const adminProfileResult = await query(
+        const adminProfileResult = await transaction.query(
           'SELECT id FROM admin_profiles WHERE user_id = ? LIMIT 1',
           [userId]
         ) as any[];
 
         if (!adminProfileResult || adminProfileResult.length === 0) {
           // Get user details
-          const userDetailsResult = await query(
+          const userDetailsResult = await transaction.query(
             'SELECT first_name, last_name FROM users WHERE user_id = ? LIMIT 1',
             [userId]
           ) as any[];
@@ -85,7 +83,7 @@ export async function PUT(request: NextRequest) {
             const { first_name, last_name } = userDetailsResult[0];
             
             // Create admin profile
-            await query(
+            await transaction.query(
               `INSERT INTO admin_profiles (user_id, username, full_name, admin_role)
                VALUES (?, ?, ?, ?)`,
               [userId, `${first_name.toLowerCase()}${last_name.toLowerCase()}`, `${first_name} ${last_name}`, 'admin']
@@ -100,46 +98,44 @@ export async function PUT(request: NextRequest) {
         // For now, we'll leave it in case the user is changed back to business role later
       }
 
-      // Commit the transaction
-      await query('COMMIT');
+      return { success: true };
+    });
 
-      // Get updated user data to return
-      const userResult = await query(
-        `SELECT user_id, first_name, last_name, email, phone_number, address, sex,
-         created_at, updated_at, is_otp_verified, role, status, is_verified
-         FROM users WHERE user_id = ? LIMIT 1`,
-        [userId]
-      ) as any[];
+    // **🔥 FIX: Get updated user data using regular query (outside transaction)**
+    const userResult = await query(
+      `SELECT user_id, first_name, last_name, email, phone_number, address, sex,
+       created_at, updated_at, is_otp_verified, role, status, is_verified
+       FROM users WHERE user_id = ? LIMIT 1`,
+      [userId]
+    ) as any[];
 
-      if (!userResult || userResult.length === 0) {
-        return NextResponse.json({
-          error: 'Failed to retrieve updated user data'
-        }, { status: 500 });
-      }
-
-      const user = userResult[0];
-      
-      // Set user_type based on role for backward compatibility
-      if (user.role === 'fur_parent') {
-        user.user_type = 'user';
-      } else {
-        user.user_type = user.role; // 'admin' or 'business'
-      }
-
-      // Remove sensitive information
-      delete user.password;
-
+    if (!userResult || userResult.length === 0) {
       return NextResponse.json({
-        success: true,
-        message: `User role updated to ${role}`,
-        user
-      });
-    } catch (error) {
-      // Rollback the transaction in case of error
-      await query('ROLLBACK');
-      throw error;
+        error: 'Failed to retrieve updated user data'
+      }, { status: 500 });
     }
+
+    const user = userResult[0];
+    
+    // Set user_type based on role for backward compatibility
+    if (user.role === 'fur_parent') {
+      user.user_type = 'user';
+    } else {
+      user.user_type = user.role; // 'admin' or 'business'
+    }
+
+    // Remove sensitive information
+    delete user.password;
+
+    return NextResponse.json({
+      success: true,
+      message: `User role updated to ${role}`,
+      user
+    });
+
   } catch (error) {
+    console.error('User role update error:', error);
+    
     return NextResponse.json({
       error: 'Failed to update user role',
       message: error instanceof Error ? error.message : 'Unknown error'

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { query } from '@/lib/db';
+import { query, withTransaction } from '@/lib/db';
 
 export async function POST(request: NextRequest) {
   try {
@@ -51,13 +51,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    let successCount = 0;
-    const errors = [];
+    // **🔥 FIX: Use proper transaction management to prevent connection leaks**
+    const result = await withTransaction(async (transaction) => {
+      let successCount = 0;
+      const errors = [];
 
-    // Start transaction for better consistency
-    await query('START TRANSACTION');
-
-    try {
       // Process each day in the batch
       for (const dayData of availabilityBatch) {
         try {
@@ -81,7 +79,7 @@ export async function POST(request: NextRequest) {
             // Use the provider_time_slots table structure (simpler approach)
             
             // Delete existing time slots for this date first
-            await query(
+            await transaction.query(
               'DELETE FROM provider_time_slots WHERE provider_id = ? AND date = ?',
               [providerId, date]
             );
@@ -110,7 +108,7 @@ export async function POST(request: NextRequest) {
                   ? JSON.stringify(slot.availableServices.filter((id: number) => id !== 0))
                   : null;
 
-                await query(
+                await transaction.query(
                   'INSERT INTO provider_time_slots (provider_id, date, start_time, end_time, available_services) VALUES (?, ?, ?, ?, ?)',
                   [providerId, date, slot.start, slot.end, availableServicesJson]
                 );
@@ -123,7 +121,7 @@ export async function POST(request: NextRequest) {
             let dayId;
             
             // Check if day already exists
-            const existingDay = await query(
+            const existingDay = await transaction.query(
               'SELECT id FROM provider_availability WHERE provider_id = ? AND availability_date = ?',
               [providerId, date]
             ) as any[];
@@ -131,21 +129,21 @@ export async function POST(request: NextRequest) {
             if (existingDay.length > 0) {
               // Update existing day
               dayId = existingDay[0].id;
-              await query(
+              await transaction.query(
                 'UPDATE provider_availability SET is_available = ?, updated_at = NOW() WHERE id = ?',
                 [isAvailable, dayId]
               );
 
               // Delete existing time slots for this day
               if (useAvailabilityTimeSlots) {
-                await query(
+                await transaction.query(
                   'DELETE FROM availability_time_slots WHERE availability_id = ?',
                   [dayId]
                 );
               }
             } else {
               // Insert new day
-              const dayResult = await query(
+              const dayResult = await transaction.query(
                 'INSERT INTO provider_availability (provider_id, availability_date, is_available, created_at, updated_at) VALUES (?, ?, ?, NOW(), NOW())',
                 [providerId, date, isAvailable]
               ) as any;
@@ -171,7 +169,7 @@ export async function POST(request: NextRequest) {
                   throw new Error('Start time must be before end time');
                 }
 
-                const slotResult = await query(
+                const slotResult = await transaction.query(
                   'INSERT INTO availability_time_slots (availability_id, start_time, end_time, created_at) VALUES (?, ?, ?, NOW())',
                   [dayId, slot.start, slot.end]
                 ) as any;
@@ -186,7 +184,7 @@ export async function POST(request: NextRequest) {
                     }
 
                     try {
-                      await query(
+                      await transaction.query(
                         'INSERT INTO time_slot_services (time_slot_id, service_id) VALUES (?, ?)',
                         [slotResult.insertId, serviceId]
                       );
@@ -201,57 +199,38 @@ export async function POST(request: NextRequest) {
           }
 
           successCount++;
+
         } catch (dayError) {
           console.error(`Error processing day ${dayData.date}:`, dayError);
-          errors.push({
-            date: dayData.date,
-            error: dayError instanceof Error ? dayError.message : 'Unknown error'
-          });
-          
-          // Continue processing other days instead of failing entire batch
+          errors.push(`${dayData.date}: ${dayError instanceof Error ? dayError.message : String(dayError)}`);
+          // Continue processing other days even if this one failed
           continue;
         }
       }
 
-      // Commit transaction if we have any successes
-      if (successCount > 0) {
-        await query('COMMIT');
-      } else {
-        await query('ROLLBACK');
+      // Restore original behavior: rollback if no days succeeded
+      if (successCount === 0) {
+        throw new Error('No days were successfully processed');
       }
 
-    } catch (transactionError) {
-      await query('ROLLBACK');
-      throw transactionError;
-    }
+      return { successCount, errors };
+    });
+
+    console.log(`Batch availability update completed. Success: ${result.successCount}, Errors: ${result.errors.length}`);
 
     return NextResponse.json({
       success: true,
-      message: `Batch availability updated for ${successCount} days using ${useProviderTimeSlots ? 'provider_time_slots' : 'provider_availability'} structure`,
-      successCount,
-      totalCount: availabilityBatch.length,
-      errors: errors.length > 0 ? errors : undefined,
-      errorCount: errors.length,
-      tableStructure: useProviderTimeSlots ? 'provider_time_slots' : 'provider_availability'
+      message: `Batch availability update completed. ${result.successCount} days processed successfully.`,
+      successCount: result.successCount,
+      errorCount: result.errors.length,
+      errors: result.errors
     });
 
   } catch (error) {
-    console.error('Batch availability error:', error);
-    
-    // Try to rollback if transaction is still active
-    try {
-      await query('ROLLBACK');
-    } catch (rollbackError) {
-      console.error('Rollback error:', rollbackError);
-    }
-    
-    return NextResponse.json(
-      { 
-        error: `Failed to process batch availability: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        success: false,
-        details: error instanceof Error ? error.message : 'Unknown error'
-      },
-      { status: 500 }
-    );
+    console.error('Batch availability update error:', error);
+    return NextResponse.json({
+      error: 'Failed to update availability',
+      details: error instanceof Error ? error.message : String(error)
+    }, { status: 500 });
   }
 } 
