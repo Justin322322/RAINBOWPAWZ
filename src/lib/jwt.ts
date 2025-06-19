@@ -1,8 +1,17 @@
 import jwt, { SignOptions } from 'jsonwebtoken';
 
 // JWT configuration
-const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-this-in-production';
+const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
+
+// Validate JWT secret at startup
+if (!JWT_SECRET) {
+  throw new Error('JWT_SECRET environment variable is required but not set');
+}
+
+if (JWT_SECRET.length < 32) {
+  throw new Error('JWT_SECRET must be at least 32 characters long');
+}
 
 export interface JWTPayload {
   userId: string;
@@ -22,9 +31,7 @@ export function generateToken(payload: Omit<JWTPayload, 'iat' | 'exp'>): string 
     throw new Error('generateToken is not available on the client side');
   }
 
-  if (!JWT_SECRET || JWT_SECRET === 'your-super-secret-jwt-key-change-this-in-production') {
-    console.warn('WARNING: Using default JWT secret. Set JWT_SECRET environment variable in production!');
-  }
+  // JWT_SECRET validation is now done at module initialization
 
   const options: SignOptions = {
     expiresIn: JWT_EXPIRES_IN,
@@ -48,58 +55,57 @@ export function verifyToken(token: string): JWTPayload | null {
   try {
     const decoded = jwt.verify(token, JWT_SECRET, {
       issuer: 'rainbow-paws',
-      audience: 'rainbow-paws-users'
+      audience: 'rainbow-paws-users',
+      clockTolerance: 30, // Allow 30 seconds of clock skew
+      ignoreNotBefore: false,
+      maxAge: '7d' // Maximum age validation
     }) as JWTPayload;
+
+    // Additional validation for token structure
+    if (!decoded.userId || !decoded.accountType) {
+      throw new Error('Invalid token payload structure');
+    }
 
     return decoded;
   } catch (error) {
-    // Safe error handling that works in all environments
+    // Secure error handling - log without exposing sensitive details
     if (error && typeof error === 'object' && 'name' in error) {
       if (error.name === 'JsonWebTokenError') {
-        console.error('JWT verification failed:', (error as any).message);
+        // Log error type only, not the actual token content
+        console.error('JWT verification failed: Invalid token format');
       } else if (error.name === 'TokenExpiredError') {
-        console.error('JWT token expired:', (error as any).message);
+        console.error('JWT token expired');
+      } else if (error.name === 'NotBeforeError') {
+        console.error('JWT token not active yet');
       } else {
-        console.error('JWT verification error:', error);
+        console.error('JWT verification error: Unknown error type');
       }
     } else {
-      console.error('JWT verification error:', error);
+      console.error('JWT verification error: Unexpected error format');
     }
     return null;
   }
 }
 
 /**
- * Decode a JWT token without verification (CLIENT-SAFE)
- * Use this for client-side token parsing when you don't need verification
- * This implementation doesn't use the jsonwebtoken library to avoid browser compatibility issues
+ * DEPRECATED - CLIENT-SIDE TOKEN DECODING REMOVED FOR SECURITY
+ * 
+ * Client-side JWT decoding is a security risk as it exposes sensitive user data
+ * and can be tampered with. Use server-side API endpoints to get user information.
+ * 
+ * For client-side user data, create secure API endpoints like:
+ * - GET /api/user/profile - for user information
+ * - GET /api/auth/check - for authentication status
  */
-export function decodeTokenUnsafe(token: string): JWTPayload | null {
-  try {
-    // Split the JWT token into its three parts
-    const parts = token.split('.');
-    if (parts.length !== 3) {
-      console.error('Invalid JWT token format');
-      return null;
-    }
-
-    // Decode the payload (second part)
-    const payload = parts[1];
-
-    // Add padding if needed for base64 decoding
-    const paddedPayload = payload + '='.repeat((4 - payload.length % 4) % 4);
-
-    // Decode base64
-    const decodedPayload = atob(paddedPayload);
-
-    // Parse JSON
-    const parsedPayload = JSON.parse(decodedPayload) as JWTPayload;
-
-    return parsedPayload;
-  } catch (error) {
-    console.error('JWT decode error:', error);
+export function decodeTokenUnsafe(_token: string): JWTPayload | null {
+  if (typeof window !== 'undefined') {
+    console.error('SECURITY WARNING: Client-side JWT decoding is disabled. Use server-side API endpoints instead.');
     return null;
   }
+  
+  // Still allow server-side usage but discourage it
+  console.warn('DEPRECATED: Use verifyToken() for server-side JWT processing');
+  return null;
 }
 
 /**
@@ -119,7 +125,7 @@ export function refreshToken(token: string): string | null {
   }
 
   // Remove iat and exp from payload for new token
-  const { iat, exp, ...payload } = decoded;
+  const { iat: _iat, exp: _exp, ...payload } = decoded;
   return generateToken(payload);
 }
 
@@ -149,7 +155,9 @@ export function getTokenExpiration(token: string): Date | null {
       return new Date(decoded.exp * 1000);
     }
     return null;
-  } catch (error) {
+  } catch (_error) {
+    // Log error for debugging but don't expose sensitive data
+    console.error('Token expiration check failed');
     return null;
   }
 }
