@@ -61,6 +61,7 @@ export default function MapComponent({
   
   // Refs for proper cleanup
   const buttonEventListenersRef = useRef<{ element: HTMLElement; event: string; handler: () => void }[]>([]);
+  const timeoutIdsRef = useRef<NodeJS.Timeout[]>([]);
 
   // Add user marker
   const addUserMarker = useCallback((coordinates: [number, number]) => {
@@ -291,6 +292,12 @@ export default function MapComponent({
     });
     buttonEventListenersRef.current = [];
 
+    // Clear any pending timeouts to prevent stale callbacks
+    timeoutIdsRef.current.forEach(timeoutId => {
+      clearTimeout(timeoutId);
+    });
+    timeoutIdsRef.current = [];
+
     serviceProviders.forEach(provider => {
       const coordinates = providerCoordinates.get(provider.id);
       if (!coordinates) return;
@@ -444,7 +451,7 @@ export default function MapComponent({
       });
 
       // Add button event listeners with proper cleanup tracking
-      setTimeout(() => {
+      const timeoutId = setTimeout(() => {
         // Handle "Get Directions" button
         const routeButton = document.getElementById(`route-btn-${provider.id}`);
         if (routeButton) {
@@ -480,6 +487,9 @@ export default function MapComponent({
           });
         }
       }, 100);
+
+      // Track timeout for cleanup
+      timeoutIdsRef.current.push(timeoutId);
 
       // Store marker reference
       providerMarkersRef.current.push(marker);
@@ -692,6 +702,12 @@ export default function MapComponent({
         element.removeEventListener(event, handler);
       });
       buttonEventListenersRef.current = [];
+
+      // Clear any pending timeouts
+      timeoutIdsRef.current.forEach(timeoutId => {
+        clearTimeout(timeoutId);
+      });
+      timeoutIdsRef.current = [];
 
       // Clear provider markers and their event listeners
       providerMarkersRef.current.forEach(marker => {
