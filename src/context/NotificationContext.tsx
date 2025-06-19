@@ -46,10 +46,13 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
   const [error, setError] = useState<string | null>(null);
   const { showToast } = useToast();
 
-  // Track timeout for proper cleanup
-  const timeoutIdRef = useRef<NodeJS.Timeout | null>(null);
+  // Track multiple timeouts for proper cleanup - fixes race condition
+  const timeoutIdsRef = useRef<Set<NodeJS.Timeout>>(new Set());
 
   const fetchNotifications = async (unreadOnly = false) => {
+    // Declare timeout ID at function scope to ensure cleanup works properly
+    let timeoutId: NodeJS.Timeout | null = null;
+
     // Check if user is authenticated
     if (typeof window !== 'undefined' && !isAuthenticated()) {
       setNotifications([]);
@@ -106,10 +109,10 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
 
       // Use timeout to prevent hanging requests
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 8000);
+      timeoutId = setTimeout(() => controller.abort(), 8000);
       
-      // Track timeout for cleanup
-      timeoutIdRef.current = timeoutId;
+      // Track timeout for cleanup - add to set to handle concurrent calls
+      timeoutIdsRef.current.add(timeoutId);
 
       const response = await fetch(apiUrl, {
         headers: {
@@ -119,9 +122,11 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
         signal: controller.signal
       });
 
-      // Clear timeout since request completed
-      clearTimeout(timeoutId);
-      timeoutIdRef.current = null;
+      // Clear timeout since request completed and remove from tracking set
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+        timeoutIdsRef.current.delete(timeoutId);
+      }
 
       if (!response.ok) {
         // If unauthorized or any other error, just set empty data without throwing an error
@@ -232,6 +237,12 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
         return { notifications: [], unreadCount: 0 };
       }
     } catch (err) {
+      // Clean up timeout if request fails or is aborted
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+        timeoutIdsRef.current.delete(timeoutId);
+      }
+
       // Handle AbortError specifically to avoid showing error messages for timeouts
       if (err instanceof Error && err.name === 'AbortError') {
       } else {
@@ -471,11 +482,13 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
         intervalId = null;
       }
       
-      // Clear any pending timeout from fetchNotifications
-      if (timeoutIdRef.current) {
-        clearTimeout(timeoutIdRef.current);
-        timeoutIdRef.current = null;
-      }
+      // Clear any pending timeouts from fetchNotifications
+      // Create a local copy to avoid ref value change warning
+      const currentTimeoutIds = timeoutIdsRef.current;
+      currentTimeoutIds.forEach(timeoutId => {
+        clearTimeout(timeoutId);
+      });
+      currentTimeoutIds.clear();
     };
   }, []); // Empty dependency array to run only once on mount
 

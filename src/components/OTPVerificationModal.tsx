@@ -46,6 +46,18 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
   // Track critical timeouts that should not be cleared during success flows
   const criticalTimeoutIdsRef = useRef<NodeJS.Timeout[]>([]);
   
+  // Track current state values to avoid stale closures in cleanup functions
+  const verificationStatusRef = useRef<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const successCallbackExecutedRef = useRef<boolean>(false);
+  
+  // Keep refs in sync with state to avoid stale closures
+  useEffect(() => {
+    verificationStatusRef.current = verificationStatus;
+  }, [verificationStatus]);
+
+  useEffect(() => {
+    successCallbackExecutedRef.current = successCallbackExecuted;
+  }, [successCallbackExecuted]);
 
 
   // Helper function to add timeout with tracking
@@ -329,7 +341,7 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
       // Don't clear timeouts if verification was successful and we're still
       // showing the success animation or waiting for the success callback
       // This prevents clearing the critical onVerificationSuccess timeout
-      if (verificationStatus !== 'success') {
+      if (verificationStatusRef.current !== 'success') {
         clearAllTimeouts();
       }
     }
@@ -338,14 +350,15 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
       // On component unmount, clear all timeouts including critical ones
       // BUT only if the success callback has already been executed or verification failed
       // This prevents premature cancellation of the success callback
-      if (successCallbackExecuted || verificationStatus !== 'success') {
+      // Use refs to get current values and avoid stale closures
+      if (successCallbackExecutedRef.current || verificationStatusRef.current !== 'success') {
         clearAllTimeoutsIncludingCritical();
       } else {
         // If success callback hasn't executed yet, only clear non-critical timeouts
         clearAllTimeouts();
       }
     };
-  }, [isOpen, verificationStatus, successCallbackExecuted]);
+  }, [isOpen]); // Removed verificationStatus and successCallbackExecuted from dependencies since we use refs
 
   const handleInputChange = (index: number, value: string) => {
     // Only allow numbers
