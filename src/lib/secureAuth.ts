@@ -41,7 +41,9 @@ export function setSecureAuthCookies(
     secure: process.env.NODE_ENV === 'production', // HTTPS only in production
     sameSite: 'lax',         // CSRF protection
     maxAge: AUTH_COOKIE_MAX_AGE,
-    path: '/'
+    path: '/',
+    // In development, set domain to localhost to work across ports
+    ...(process.env.NODE_ENV === 'development' && { domain: 'localhost' })
   });
 
   // Set CSRF token cookie (accessible to client for header inclusion)
@@ -50,7 +52,9 @@ export function setSecureAuthCookies(
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
     maxAge: AUTH_COOKIE_MAX_AGE,
-    path: '/'
+    path: '/',
+    // In development, set domain to localhost to work across ports
+    ...(process.env.NODE_ENV === 'development' && { domain: 'localhost' })
   });
 }
 
@@ -83,7 +87,9 @@ export function clearSecureAuthCookies(response: NextResponse): void {
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
     maxAge: 0,
-    path: '/'
+    path: '/',
+    // In development, set domain to localhost to work across ports
+    ...(process.env.NODE_ENV === 'development' && { domain: 'localhost' })
   });
 
   // Clear CSRF cookie
@@ -92,7 +98,9 @@ export function clearSecureAuthCookies(response: NextResponse): void {
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
     maxAge: 0,
-    path: '/'
+    path: '/',
+    // In development, set domain to localhost to work across ports
+    ...(process.env.NODE_ENV === 'development' && { domain: 'localhost' })
   });
 }
 

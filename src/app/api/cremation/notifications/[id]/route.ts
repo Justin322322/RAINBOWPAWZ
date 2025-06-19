@@ -1,55 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthTokenFromRequest } from '@/utils/auth';
+import { verifySecureAuth } from '@/lib/secureAuth';
 import { query } from '@/lib/db';
-import { decodeTokenUnsafe } from '@/lib/jwt';
 
 /**
- * DELETE - Remove a specific cremation provider notification
+ * GET - Get specific cremation provider notification
  */
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    // Get notification ID from params
-    const { id } = await params;
-    const notificationId = parseInt(id);
-
-    if (isNaN(notificationId)) {
-      return NextResponse.json(
-        { error: 'Invalid notification ID' },
-        { status: 400 }
-      );
-    }
-
-    // Verify cremation provider authentication
-    const authToken = getAuthTokenFromRequest(request);
-    if (!authToken) {
+    // Use secure authentication
+    const user = verifySecureAuth(request);
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    let userId: string | null = null;
-    let accountType: string | null = null;
-
-    // Check if it's a JWT token or old format
-    if (authToken.includes('.')) {
-      // JWT token format
-      const payload = decodeTokenUnsafe(authToken);
-      userId = payload?.userId || null;
-      accountType = payload?.accountType || null;
-    } else {
-      // Old format fallback
-      const parts = authToken.split('_');
-      if (parts.length === 2) {
-        userId = parts[0];
-        accountType = parts[1];
-      }
-    }
-
-    if (!userId || !accountType || accountType !== 'business') {
+    if (user.accountType !== 'business') {
       return NextResponse.json({
         error: 'Unauthorized - Business access required'
       }, { status: 403 });
+    }
+
+    const notificationId = params.id;
+
+    if (!notificationId || isNaN(parseInt(notificationId))) {
+      return NextResponse.json({
+        error: 'Invalid notification ID'
+      }, { status: 400 });
     }
 
     // Check which column name to use (id or notification_id)
@@ -66,34 +41,35 @@ export async function DELETE(
       console.warn('Could not describe notifications table:', describeError);
     }
 
-    // Check if the notification exists and belongs to the cremation provider
-    let selectQuery, deleteQuery;
-    if (idColumn === 'notification_id') {
-      selectQuery = 'SELECT notification_id FROM notifications WHERE notification_id = ? AND user_id = ?';
-      deleteQuery = 'DELETE FROM notifications WHERE notification_id = ? AND user_id = ?';
-    } else {
-      selectQuery = 'SELECT id FROM notifications WHERE id = ? AND user_id = ?';
-      deleteQuery = 'DELETE FROM notifications WHERE id = ? AND user_id = ?';
-    }
+    // Fetch the specific notification for this cremation provider
+    const notifications = await query(`
+      SELECT 
+        ${idColumn} as id,
+        title,
+        message,
+        type,
+        link,
+        is_read,
+        created_at
+      FROM notifications 
+      WHERE ${idColumn} = ? AND user_id = ?
+    `, [parseInt(notificationId), parseInt(user.userId)]) as any[];
 
-    const notificationResult = await query(selectQuery, [notificationId, parseInt(userId)]) as any[];
-
-    if (!notificationResult || notificationResult.length === 0) {
+    if (!notifications || notifications.length === 0) {
       return NextResponse.json({
-        error: 'Notification not found or access denied'
+        error: 'Notification not found'
       }, { status: 404 });
     }
 
-    // Delete the notification
-    await query(deleteQuery, [notificationId, parseInt(userId)]);
+    const notification = notifications[0];
 
     return NextResponse.json({
       success: true,
-      message: 'Notification deleted successfully'
+      notification
     });
 
   } catch (error) {
-    console.error('Delete cremation provider notification error:', error);
+    console.error('Get cremation provider notification error:', error);
     return NextResponse.json({
       error: 'Internal server error',
       details: error instanceof Error ? error.message : 'Unknown error'
@@ -102,52 +78,28 @@ export async function DELETE(
 }
 
 /**
- * PATCH - Mark a specific cremation provider notification as read
+ * PATCH - Mark specific cremation provider notification as read
  */
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    // Get notification ID from params
-    const { id } = await params;
-    const notificationId = parseInt(id);
-
-    if (isNaN(notificationId)) {
-      return NextResponse.json(
-        { error: 'Invalid notification ID' },
-        { status: 400 }
-      );
-    }
-
-    // Verify cremation provider authentication
-    const authToken = getAuthTokenFromRequest(request);
-    if (!authToken) {
+    // Use secure authentication
+    const user = verifySecureAuth(request);
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    let userId: string | null = null;
-    let accountType: string | null = null;
-
-    // Check if it's a JWT token or old format
-    if (authToken.includes('.')) {
-      // JWT token format
-      const payload = decodeTokenUnsafe(authToken);
-      userId = payload?.userId || null;
-      accountType = payload?.accountType || null;
-    } else {
-      // Old format fallback
-      const parts = authToken.split('_');
-      if (parts.length === 2) {
-        userId = parts[0];
-        accountType = parts[1];
-      }
-    }
-
-    if (!userId || !accountType || accountType !== 'business') {
+    if (user.accountType !== 'business') {
       return NextResponse.json({
         error: 'Unauthorized - Business access required'
       }, { status: 403 });
+    }
+
+    const notificationId = params.id;
+
+    if (!notificationId || isNaN(parseInt(notificationId))) {
+      return NextResponse.json({
+        error: 'Invalid notification ID'
+      }, { status: 400 });
     }
 
     // Check which column name to use (id or notification_id)
@@ -164,30 +116,22 @@ export async function PATCH(
       console.warn('Could not describe notifications table:', describeError);
     }
 
-    // Check if the notification exists and belongs to the cremation provider
-    let selectQuery, updateQuery;
-    if (idColumn === 'notification_id') {
-      selectQuery = 'SELECT notification_id FROM notifications WHERE notification_id = ? AND user_id = ?';
-      updateQuery = 'UPDATE notifications SET is_read = 1 WHERE notification_id = ? AND user_id = ?';
-    } else {
-      selectQuery = 'SELECT id FROM notifications WHERE id = ? AND user_id = ?';
-      updateQuery = 'UPDATE notifications SET is_read = 1 WHERE id = ? AND user_id = ?';
-    }
+    // Mark the specific notification as read for this cremation provider
+    const result = await query(`
+      UPDATE notifications 
+      SET is_read = 1 
+      WHERE ${idColumn} = ? AND user_id = ?
+    `, [parseInt(notificationId), parseInt(user.userId)]) as any;
 
-    const notificationResult = await query(selectQuery, [notificationId, parseInt(userId)]) as any[];
-
-    if (!notificationResult || notificationResult.length === 0) {
+    if (result.affectedRows === 0) {
       return NextResponse.json({
-        error: 'Notification not found or access denied'
+        error: 'Notification not found or already read'
       }, { status: 404 });
     }
 
-    // Mark the notification as read
-    await query(updateQuery, [notificationId, parseInt(userId)]);
-
     return NextResponse.json({
       success: true,
-      message: 'Notification marked as read successfully'
+      message: 'Notification marked as read'
     });
 
   } catch (error) {

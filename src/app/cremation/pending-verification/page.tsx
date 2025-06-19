@@ -3,32 +3,33 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import Cookies from 'js-cookie';
 import { LoadingSpinner } from '@/app/cremation/components/LoadingComponents';
 
 export default function PendingVerificationPage() {
   const router = useRouter();
-  const [_userId, setUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Check verification status
   useEffect(() => {
     const checkStatus = async () => {
       try {
-        // Get user ID from cookie
-        const authCookie = Cookies.get('auth_token');
-        if (!authCookie) {
-          // Not logged in, redirect to home
-          router.push('/');
-          return;
-        }
-
-        const [id] = authCookie.split('_');
-        setUserId(id);
+        // With JWT authentication, we don't need to parse cookies client-side
+        // Just make the API call and let the server handle authentication
 
         // Use our new business status API endpoint
-        const response = await fetch('/api/auth/check-business-status');
+        const response = await fetch('/api/auth/check-business-status', {
+          credentials: 'include', // Include httpOnly cookies
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+
         if (!response.ok) {
+          // If unauthorized, redirect to home
+          if (response.status === 401) {
+            router.push('/');
+            return;
+          }
           setLoading(false);
           return;
         }

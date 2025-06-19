@@ -4,13 +4,16 @@ import jwt, { SignOptions } from 'jsonwebtoken';
 const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
 
-// Validate JWT secret at startup
-if (!JWT_SECRET) {
-  throw new Error('JWT_SECRET environment variable is required but not set');
-}
+// Validate JWT secret at startup - SERVER SIDE ONLY
+if (typeof window === 'undefined') {
+  // Only validate on server side
+  if (!JWT_SECRET) {
+    throw new Error('JWT_SECRET environment variable is required but not set');
+  }
 
-if (JWT_SECRET.length < 32) {
-  throw new Error('JWT_SECRET must be at least 32 characters long');
+  if (JWT_SECRET.length < 32) {
+    throw new Error('JWT_SECRET must be at least 32 characters long');
+  }
 }
 
 export interface JWTPayload {
@@ -31,7 +34,14 @@ export function generateToken(payload: Omit<JWTPayload, 'iat' | 'exp'>): string 
     throw new Error('generateToken is not available on the client side');
   }
 
-  // JWT_SECRET validation is now done at module initialization
+  // Server-side JWT_SECRET validation
+  if (!JWT_SECRET) {
+    throw new Error('JWT_SECRET environment variable is required but not set');
+  }
+
+  if (JWT_SECRET.length < 32) {
+    throw new Error('JWT_SECRET must be at least 32 characters long');
+  }
 
   const options: SignOptions = {
     expiresIn: JWT_EXPIRES_IN,
@@ -50,6 +60,11 @@ export function verifyToken(token: string): JWTPayload | null {
   if (typeof window !== 'undefined') {
     console.error('verifyToken should not be called on the client side. Use decodeTokenUnsafe for client-side token parsing.');
     return null;
+  }
+
+  // Server-side JWT_SECRET validation
+  if (!JWT_SECRET) {
+    throw new Error('JWT_SECRET environment variable is required but not set');
   }
 
   try {

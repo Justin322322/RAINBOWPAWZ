@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
-import { getAuthTokenFromRequest } from '@/utils/auth';
-import { decodeTokenUnsafe } from '@/lib/jwt';
+import { verifySecureAuth } from '@/lib/secureAuth';
 
 /**
  * API endpoint to check for new pending bookings for cremation businesses
@@ -9,52 +8,25 @@ import { decodeTokenUnsafe } from '@/lib/jwt';
  */
 export async function GET(request: NextRequest) {
   try {
-    // Get auth token to verify user is authenticated
-    const authToken = getAuthTokenFromRequest(request);
-
-    if (!authToken) {
+    // Use secure authentication
+    const user = verifySecureAuth(request);
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    let userId: string | null = null;
-    let accountType: string | null = null;
-
-    // Check if it's a JWT token or old format
-    if (authToken.includes('.')) {
-      // JWT token format
-      const payload = decodeTokenUnsafe(authToken);
-      userId = payload?.userId || null;
-      accountType = payload?.accountType || null;
-    } else {
-      // Old format fallback
-      const parts = authToken.split('_');
-      if (parts.length === 2) {
-        userId = parts[0];
-        accountType = parts[1];
-      }
-    }
-
-    // Verify this is a business account
-    if (!userId || !accountType || accountType !== 'business') {
-      return NextResponse.json({ error: 'Forbidden: Business access required' }, { status: 403 });
+    if (user.accountType !== 'business') {
+      return NextResponse.json({ error: 'Unauthorized - Business access required' }, { status: 403 });
     }
 
     // Get business/provider ID from the user
     let providerId: number | null = null;
 
     try {
-      // Try to get provider ID from businesses table
-      const businessResult = await query('SELECT id FROM businesses WHERE user_id = ?', [userId]) as any[];
+      // Try to get provider ID from service_providers table
+      const providerResult = await query('SELECT provider_id FROM service_providers WHERE user_id = ?', [user.userId]) as any[];
       
-      if (businessResult && businessResult.length > 0) {
-        providerId = businessResult[0].id;
-      } else {
-        // Try service_providers table
-        const providerResult = await query('SELECT provider_id FROM service_providers WHERE user_id = ?', [userId]) as any[];
-        
-        if (providerResult && providerResult.length > 0) {
-          providerId = providerResult[0].provider_id;
-        }
+      if (providerResult && providerResult.length > 0) {
+        providerId = providerResult[0].provider_id;
       }
 
       if (!providerId) {
@@ -73,20 +45,6 @@ export async function GET(request: NextRequest) {
         `, [providerId]) as any[];
 
         pendingCount = serviceBookingsResult[0]?.pending_count || 0;
-
-        // Also check legacy bookings table if it exists
-        try {
-          const legacyBookingsResult = await query(`
-            SELECT COUNT(*) as pending_count
-            FROM bookings
-            WHERE provider_id = ? AND status = 'pending'
-          `, [providerId]) as any[];
-
-          pendingCount += legacyBookingsResult[0]?.pending_count || 0;
-        } catch (_legacyError) {
-          // Legacy table might not exist, continue
-          console.log('Legacy bookings table not found, continuing with service_bookings only');
-        }
 
       } catch (error) {
         console.error('Error fetching pending bookings:', error);
@@ -148,34 +106,14 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    // Get auth token to verify user is authenticated
-    const authToken = getAuthTokenFromRequest(request);
-
-    if (!authToken) {
+    // Use secure authentication
+    const user = verifySecureAuth(request);
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    let userId: string | null = null;
-    let accountType: string | null = null;
-
-    // Check if it's a JWT token or old format
-    if (authToken.includes('.')) {
-      // JWT token format
-      const payload = decodeTokenUnsafe(authToken);
-      userId = payload?.userId || null;
-      accountType = payload?.accountType || null;
-    } else {
-      // Old format fallback
-      const parts = authToken.split('_');
-      if (parts.length === 2) {
-        userId = parts[0];
-        accountType = parts[1];
-      }
-    }
-
-    // Verify this is a business account
-    if (!userId || !accountType || accountType !== 'business') {
-      return NextResponse.json({ error: 'Forbidden: Business access required' }, { status: 403 });
+    if (user.accountType !== 'business') {
+      return NextResponse.json({ error: 'Unauthorized - Business access required' }, { status: 403 });
     }
 
     const body = await request.json();

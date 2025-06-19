@@ -184,7 +184,7 @@ export async function POST(request: Request) {
               // Check service_providers table first (new structure)
               let businessResult = await query(
                 `SELECT provider_id, name as business_name, provider_type as business_type, phone as business_phone,
-                 address as business_address, province, city, zip, application_status as verification_status
+                 address as business_address, application_status as verification_status
                  FROM service_providers WHERE user_id = ? LIMIT 1`,
                 [user.user_id]
               ) as any[];
@@ -209,9 +209,10 @@ export async function POST(request: Request) {
                   business_type: business.business_type,
                   business_phone: business.business_phone,
                   business_address: business.business_address,
-                  province: business.province,
-                  city: business.city,
-                  zip: business.zip,
+                  // Only include these fields if they exist (from legacy business_profiles table)
+                  province: business.province || null,
+                  city: business.city || null,
+                  zip: business.zip || null,
                   business_id: business.provider_id || business.id,
                   user_type: 'business', // For backward compatibility
                   verification_status: business.verification_status || 'approved', // Use the status from DB or default

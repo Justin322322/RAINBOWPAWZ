@@ -1,8 +1,9 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { isAuthenticated } from '@/utils/auth';
+import { showToast } from '@/utils/toast';
 import { useToast } from './ToastContext';
-import { isAuthenticated, getUserId, getAccountType } from '@/utils/auth';
 
 export interface Notification {
   id: number;
@@ -66,32 +67,13 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       setLoading(true);
       setError(null);
 
-      // Determine user type from auth token
-      const _userId = getUserId();
-      const userType = getAccountType();
-      const isAdmin = userType === 'admin';
-      const isBusiness = userType === 'business';
-
-
-
-      // Use the appropriate API endpoint based on user type
-      let apiUrl = '';
-      if (isAdmin) {
-        apiUrl = `/api/admin/notifications?unread_only=${unreadOnly}`;
-      } else if (isBusiness) {
-        // Cremation business users use the dedicated cremation notification endpoint
-        apiUrl = `/api/cremation/notifications?limit=50`;
-      } else {
-        // Regular fur parent users
-        apiUrl = `/api/user/notifications?limit=50`;
-      }
-
+      // Instead of trying to determine user type on client-side,
+      // let the server determine the appropriate endpoint based on the auth cookie
+      // We'll try the generic notifications endpoint first
+      let apiUrl = `/api/user/notifications?limit=50`;
+      
       // Add cache-busting parameter to avoid stale data
       apiUrl += `&t=${Date.now()}`;
-
-
-
-
 
       // Use timeout to prevent hanging requests
       const controller = new AbortController();
@@ -110,7 +92,6 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       if (!response.ok) {
         // If unauthorized or any other error, just set empty data without throwing an error
         // This makes the application more resilient to authentication issues
-
 
         // For database connection errors, show a fallback message
         if (response.status === 500) {
@@ -142,8 +123,6 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       try {
         const data = await response.json();
 
-
-
         // Ensure data has the expected structure
         if (!data || typeof data !== 'object') {
           setNotifications([]);
@@ -152,35 +131,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
         }
 
         // Set notifications with fallback to empty array if missing
-        // For admin notifications, the structure is slightly different
-        if (isAdmin && Array.isArray(data.notifications)) {
-          const mappedNotifications = data.notifications.map((notif: any) => {
-            // Convert is_read to ensure consistency (it might be TINYINT(1), BOOLEAN, or 0/1)
-            const isRead = typeof notif.is_read === 'boolean' 
-              ? (notif.is_read ? 1 : 0)
-              : (notif.is_read ? 1 : 0);
-              
-            return {
-              ...notif,
-              // Ensure we have the correct structure for all notification types
-              id: notif.id,
-              title: notif.title || 'Notification',
-              message: notif.message || '',
-              type: notif.type || 'info',
-              is_read: isRead,
-              link: notif.link || null,
-              created_at: notif.created_at || new Date().toISOString()
-            };
-          });
-          
-          setNotifications(mappedNotifications);
-          
-          // Calculate unread count consistently
-          setUnreadCount(data.notifications.filter((n: any) => {
-            return n.is_read === false || n.is_read === 0;
-          }).length);
-        } else if (Array.isArray(data.notifications)) {
-          // Regular users - user notification API response
+        if (Array.isArray(data.notifications)) {
           const mappedNotifications = data.notifications.map((notif: any) => {
             // Convert is_read to ensure consistency (it might be TINYINT(1), BOOLEAN, or 0/1)
             const isRead = typeof notif.is_read === 'boolean' 
@@ -243,38 +194,19 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
     }
 
     try {
-      // Determine user type
-      const _userId = getUserId();
-      const userType = getAccountType();
-      const isAdmin = userType === 'admin';
-      const isBusiness = userType === 'business';
-
-      // Use the appropriate API endpoint based on user type
-      let apiUrl = '';
-      let requestBody = {};
-
-      if (isAdmin) {
-        apiUrl = '/api/admin/notifications';
-        requestBody = { notificationIds: [notificationId] };
-      } else if (isBusiness) {
-        apiUrl = `/api/cremation/notifications/${notificationId}`;
-        requestBody = {}; // PATCH request doesn't need body for single notification
-      } else {
-        apiUrl = '/api/user/notifications';
-        requestBody = { notificationId: notificationId };
-      }
-
-      const response = await fetch(apiUrl, {
-        method: isAdmin ? 'POST' : 'PATCH',
+      // Use a generic endpoint and let the server determine the user type
+      const response = await fetch('/api/user/notifications', {
+        method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(requestBody),
+        body: JSON.stringify({ notificationId: notificationId }),
       });
 
       if (!response.ok) {
         // If any error occurs, just log it and continue without throwing
         if (process.env.NODE_ENV === 'development') {
+          console.warn('Failed to mark notification as read:', response.status);
         }
         return;
       }
@@ -305,38 +237,19 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
     }
 
     try {
-      // Determine user type
-      const _userId = getUserId();
-      const userType = getAccountType();
-      const isAdmin = userType === 'admin';
-      const isBusiness = userType === 'business';
-
-      // Use the appropriate API endpoint based on user type
-      let apiUrl = '';
-      let requestBody = {};
-
-      if (isAdmin) {
-        apiUrl = '/api/admin/notifications';
-        requestBody = { markAll: true };
-      } else if (isBusiness) {
-        apiUrl = '/api/cremation/notifications';
-        requestBody = { markAll: true };
-      } else {
-        apiUrl = '/api/user/notifications';
-        requestBody = { markAll: true };
-      }
-
-      const response = await fetch(apiUrl, {
-        method: isAdmin ? 'POST' : 'PATCH',
+      // Use a generic endpoint and let the server determine the user type
+      const response = await fetch('/api/user/notifications', {
+        method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(requestBody),
+        body: JSON.stringify({ markAll: true }),
       });
 
       if (!response.ok) {
         // If any error occurs, just log it and continue without throwing
         if (process.env.NODE_ENV === 'development') {
+          console.warn('Failed to mark all notifications as read:', response.status);
         }
         return;
       }
@@ -369,23 +282,8 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
     }
 
     try {
-      // Determine user type
-      const _userId = getUserId();
-      const userType = getAccountType();
-      const isAdmin = userType === 'admin';
-      const isBusiness = userType === 'business';
-
-      // Use the appropriate API endpoint based on user type
-      let apiUrl = '';
-      if (isAdmin) {
-        apiUrl = `/api/admin/notifications/${notificationId}`;
-      } else if (isBusiness) {
-        apiUrl = `/api/cremation/notifications/${notificationId}`;
-      } else {
-        apiUrl = `/api/user/notifications/${notificationId}`;
-      }
-
-      const response = await fetch(apiUrl, {
+      // Use a generic endpoint and let the server determine the user type
+      const response = await fetch(`/api/user/notifications/${notificationId}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',

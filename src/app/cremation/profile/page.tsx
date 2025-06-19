@@ -23,7 +23,6 @@ import { LoadingSpinner } from '@/app/admin/services/client';
 import { getImagePath } from '@/utils/imageUtils';
 import PhilippinePhoneInput from '@/components/ui/PhilippinePhoneInput';
 import Image from 'next/image';
-import { decodeTokenUnsafe } from '@/lib/jwt';
 
 function CremationProfilePage({ userData }: { userData: any }) {
   // Password states
@@ -35,11 +34,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
 
   // Address states
   const [address, setAddress] = useState({
-    street: '',
-    city: '',
-    state: '',
-    zipCode: '',
-    country: ''
+    street: ''
   });
   const [addressSuccess, setAddressSuccess] = useState('');
 
@@ -71,6 +66,11 @@ function CremationProfilePage({ userData }: { userData: any }) {
   const [profilePicture, setProfilePicture] = useState<File | null>(null);
   const [profilePicturePreview, setProfilePicturePreview] = useState<string | null>(null);
   const [uploadingProfilePicture, setUploadingProfilePicture] = useState(false);
+  const [profilePictureTimestamp, setProfilePictureTimestamp] = useState<number>(Date.now());
+
+  // Document preview modal states
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [previewImage, setPreviewImage] = useState<{ url: string; title: string } | null>(null);
 
   const fileInputRefs = {
     businessPermit: useRef<HTMLInputElement>(null),
@@ -85,59 +85,8 @@ function CremationProfilePage({ userData }: { userData: any }) {
   // Define fetchProfileData function outside useEffect so it can be called elsewhere
   const fetchProfileData = useCallback(async (forceLoading = true) => {
     try {
-      // Check authentication before making the API call
-      const authToken = getAuthToken();
-      if (!authToken || !isBusiness()) {
-        // Create a dummy profile with the correct data structure
-        const dummyProfile = {
-          id: 4,
-          name: 'Rainbow Paws Cremation Center',
-          email: 'justinmarlosibonga@gmail.com',
-          phone: '09123456789',
-          contactPerson: 'Justin Sibonga',
-          address: {
-            street: 'Samal Bataan',
-            city: 'Samal',
-            state: 'Bataan',
-            zipCode: '2113',
-            country: 'Philippines'
-          },
-          description: 'Professional pet cremation services with care and respect.',
-          website: '8:00 AM - 5:00 PM, Monday to Saturday',
-          logoPath: null,
-          profilePicturePath: null,
-          verified: true,
-          createdAt: '2025-05-23T02:43:36.000Z',
-          documents: {
-            businessPermitPath: '/uploads/documents/business_permit.jpg',
-            birCertificatePath: '/uploads/documents/bir_certificate.jpg',
-            governmentIdPath: '/uploads/documents/government_id.jpg'
-          }
-        };
-
-        setProfileData(dummyProfile);
-
-        // Update form states with dummy data
-        setAddress({
-          street: dummyProfile.address.street || '',
-          city: dummyProfile.address.city || '',
-          state: dummyProfile.address.state || '',
-          zipCode: dummyProfile.address.zipCode || '',
-          country: dummyProfile.address.country || 'Philippines'
-        });
-
-        // Set contact info from dummy profile data
-        const nameParts = dummyProfile.contactPerson.split(' ');
-        setContactInfo({
-          firstName: nameParts[0] || '',
-          lastName: nameParts.slice(1).join(' ') || '',
-          email: dummyProfile.email || '',
-          phone: dummyProfile.phone || ''
-        });
-
-        setInitialLoading(false);
-        return;
-      }
+      // For secure JWT authentication, always try to fetch from server
+      // Don't rely on client-side authentication checks
 
       // Only set loading state if explicitly requested (for initial load)
       if (forceLoading) {
@@ -174,25 +123,39 @@ function CremationProfilePage({ userData }: { userData: any }) {
         }
       }
 
-      setProfileData(data.profile);
+      // Map API response to expected structure
+      const mappedProfile = {
+        ...data.profile,
+        profilePicturePath: data.profile.profile_picture || null, // Map profile_picture to profilePicturePath
+        name: data.profile.business_name || `${data.profile.first_name} ${data.profile.last_name}`,
+        contactPerson: `${data.profile.first_name} ${data.profile.last_name}`,
+        address: {
+          street: data.profile.business_address || data.profile.address || ''
+        },
+        // Use documents from API response
+        documents: data.profile.documents || {
+          businessPermitPath: null,
+          birCertificatePath: null,
+          governmentIdPath: null
+        }
+      };
+
+      setProfileData(mappedProfile);
 
       // Update form states with fetched data
       if (data.profile) {
+        // Parse address if it's a string
+        const addressString = data.profile.business_address || data.profile.address || '';
         setAddress({
-          street: data.profile.address.street || '',
-          city: data.profile.address.city || '',
-          state: data.profile.address.state || '',
-          zipCode: data.profile.address.zipCode || '',
-          country: data.profile.address.country || 'Philippines'
+          street: addressString
         });
 
         // Set contact info from profile data
-        const nameParts = data.profile.contactPerson.split(' ');
         setContactInfo({
-          firstName: nameParts[0] || '',
-          lastName: nameParts.slice(1).join(' ') || '',
+          firstName: data.profile.first_name || '',
+          lastName: data.profile.last_name || '',
           email: data.profile.email || '',
-          phone: data.profile.phone || ''
+          phone: data.profile.business_phone || data.profile.phone || ''
         });
       }
 
@@ -298,11 +261,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
           const updatedProfile = {
             ...profileData,
             address: {
-              street: address.street,
-              city: address.city,
-              state: address.state,
-              zipCode: address.zipCode,
-              country: address.country
+              street: address.street
             }
           };
 
@@ -372,16 +331,38 @@ function CremationProfilePage({ userData }: { userData: any }) {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: keyof typeof documents) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
+      
+      // Validate file type and size
+      const validTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
+      if (!validTypes.includes(file.type)) {
+        showToast('Please select a valid file (PDF, JPG, or PNG)', 'error');
+        return;
+      }
+
+      // Validate file size (max 10MB)
+      const maxSize = 10 * 1024 * 1024;
+      if (file.size > maxSize) {
+        showToast('File size must be less than 10MB', 'error');
+        return;
+      }
+
       const reader = new FileReader();
 
       reader.onload = (event) => {
+        const result = event.target?.result as string;
+        console.log(`File loaded for ${type}:`, result ? 'Success' : 'Failed');
         setDocuments(prev => ({
           ...prev,
           [type]: {
             file,
-            preview: event.target?.result as string
+            preview: result
           }
         }));
+      };
+
+      reader.onerror = (error) => {
+        console.error('FileReader error:', error);
+        showToast('Failed to read file. Please try again.', 'error');
       };
 
       reader.readAsDataURL(file);
@@ -428,6 +409,10 @@ function CremationProfilePage({ userData }: { userData: any }) {
         setProfilePicturePreview(event.target?.result as string);
         setProfilePicture(file);
       };
+      reader.onerror = (error) => {
+        console.error('FileReader error:', error);
+        showToast('Failed to read file', 'error');
+      };
       reader.readAsDataURL(file);
     }
   };
@@ -441,38 +426,19 @@ function CremationProfilePage({ userData }: { userData: any }) {
     setUploadingProfilePicture(true);
 
     try {
-      // Get the actual user ID from auth token
-      const authToken = getAuthToken();
-      if (!authToken) {
-        throw new Error('Authentication required');
-      }
-
-      let userId: string;
-      
-      // Check if it's a JWT token or old format
-      if (authToken.includes('.')) {
-        // JWT token format
-        const payload = decodeTokenUnsafe(authToken);
-        if (!payload || !payload.userId) {
-          throw new Error('Invalid authentication token');
-        }
-        userId = payload.userId;
-      } else {
-        // Old format fallback
-        const parts = authToken.split('_');
-        if (parts.length !== 2) {
-          throw new Error('Invalid authentication token');
-        }
-        userId = parts[0];
+      // Use userData from the secure authentication system
+      if (!userData?.user_id) {
+        throw new Error('User ID not available');
       }
 
       const formData = new FormData();
       formData.append('profilePicture', profilePicture);
-      formData.append('userId', userId);
+      formData.append('userId', userData.user_id.toString());
 
       const response = await fetch('/api/cremation/upload-profile-picture', {
         method: 'POST',
         body: formData,
+        credentials: 'include', // Include cookies for authentication
       });
 
       if (!response.ok) {
@@ -482,7 +448,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
 
       const data = await response.json();
 
-      // Update profile data with new profile picture path
+      // Update profile data with new profile picture path and add cache busting
       if (profileData) {
         const updatedProfile = {
           ...profileData,
@@ -490,6 +456,12 @@ function CremationProfilePage({ userData }: { userData: any }) {
         };
         setProfileData(updatedProfile);
       }
+
+      // Update timestamp to force image refresh
+      setProfilePictureTimestamp(Date.now());
+
+      // Refresh profile data from server to ensure we have the latest information
+      await fetchProfileData(false); // Don't show loading indicator
 
       showToast('Profile picture updated successfully!', 'success');
       setProfilePicture(null);
@@ -521,9 +493,22 @@ function CremationProfilePage({ userData }: { userData: any }) {
     }
   };
 
+  const openPreviewModal = (imagePath: string, title: string) => {
+    setPreviewImage({ url: getImagePath(imagePath), title });
+    setShowPreviewModal(true);
+  };
+
+  const closePreviewModal = () => {
+    setShowPreviewModal(false);
+    setPreviewImage(null);
+  };
+
   const handleDocumentsUpload = async () => {
-    // Use the correct user ID from the database
-    const userId = 3; // This matches the user_id in your database
+    // Use the authenticated user ID from the secure authentication system
+    if (!userData?.user_id) {
+      setUploadError('User ID not available. Please try logging in again.');
+      return;
+    }
 
     // Check if at least one file is selected
     const hasFiles = Object.values(documents).some(doc => doc.file !== null);
@@ -537,7 +522,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
 
     try {
       const formData = new FormData();
-      formData.append('userId', userId.toString());
+      formData.append('userId', userData.user_id.toString());
 
       // Append files that exist
       if (documents.businessPermit.file) {
@@ -556,6 +541,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
       const response = await fetch('/api/businesses/upload-documents', {
         method: 'POST',
         body: formData,
+        credentials: 'include', // Include cookies for authentication
       });
 
       if (!response.ok) {
@@ -568,8 +554,11 @@ function CremationProfilePage({ userData }: { userData: any }) {
       showToast('Documents uploaded successfully!', 'success');
       hideDocumentsModal();
 
-      // Update the profile data with the new document paths from the API response
-      if (profileData) {
+      // Refresh profile data from server to get the latest document paths
+      await fetchProfileData(false); // Don't show loading indicator
+
+      // Also update the profile data locally with the new document paths from the API response
+      if (profileData && data.filePaths) {
         const updatedProfile = {
           ...profileData,
           documents: {
@@ -622,17 +611,24 @@ function CremationProfilePage({ userData }: { userData: any }) {
                 />
               ) : profileData?.profilePicturePath ? (
                 <Image
-                  src={getImagePath(profileData.profilePicturePath)}
+                  src={`${getImagePath(profileData.profilePicturePath)}?t=${profilePictureTimestamp}`}
                   alt="Profile Picture"
                   width={96}
                   height={96}
                   className="w-full h-full object-cover"
                   onError={(e) => {
                     console.error('Failed to load profile picture:', e.currentTarget.src);
-                    e.currentTarget.style.display = 'none';
-                    e.currentTarget.parentElement?.classList.add('flex', 'items-center', 'justify-center');
-                    if (e.currentTarget.parentElement) {
-                      e.currentTarget.parentElement.innerHTML = '<svg class="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>';
+                    // Try without cache busting as fallback
+                    const img = e.currentTarget as HTMLImageElement;
+                    if (img.src.includes('?t=')) {
+                      img.src = getImagePath(profileData.profilePicturePath);
+                    } else {
+                      // If still failing, show fallback icon
+                      img.style.display = 'none';
+                      img.parentElement?.classList.add('flex', 'items-center', 'justify-center');
+                      if (img.parentElement) {
+                        img.parentElement.innerHTML = '<svg class="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>';
+                      }
                     }
                   }}
                 />
@@ -657,55 +653,44 @@ function CremationProfilePage({ userData }: { userData: any }) {
               accept="image/*"
             />
 
-            {profilePicturePreview ? (
-              <div className="space-y-4">
-                <div>
-                  <p className="text-sm text-gray-600 font-medium">New profile picture preview</p>
-                  <p className="text-xs text-gray-500">Click upload to save changes</p>
-                </div>
-                <div className="flex space-x-3">
-                  <button
-                    onClick={handleProfilePictureUpload}
-                    disabled={uploadingProfilePicture}
-                    className="px-4 py-2 bg-[var(--primary-green)] hover:bg-[var(--primary-green-dark)] text-white rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    {uploadingProfilePicture ? (
-                      <>
-                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        Uploading...
-                      </>
-                    ) : 'Upload Picture'}
-                  </button>
-                  <button
-                    onClick={() => {
-                      setProfilePicture(null);
-                      setProfilePicturePreview(null);
-                      if (profilePictureInputRef.current) {
-                        profilePictureInputRef.current.value = '';
-                      }
-                    }}
-                    className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-100 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div>
+            <div className="space-y-3">
+              <button
+                type="button"
+                onClick={triggerProfilePictureInput}
+                className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none transition-colors"
+              >
+                <ArrowUpTrayIcon className="h-5 w-5 mr-2" />
+                Choose New Picture
+              </button>
+
+              {profilePicture && (
                 <button
-                  onClick={triggerProfilePictureInput}
-                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-100 transition-colors"
+                  type="button"
+                  onClick={handleProfilePictureUpload}
+                  disabled={uploadingProfilePicture}
+                  className="ml-3 inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[var(--primary-green)] hover:bg-[var(--primary-green-dark)] focus:outline-none transition-colors disabled:opacity-70"
                 >
-                  Choose New Picture
+                  {uploadingProfilePicture ? (
+                    <>
+                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Uploading...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircleIcon className="h-5 w-5 mr-2" />
+                      Upload Picture
+                    </>
+                  )}
                 </button>
-                <p className="text-sm text-gray-500 mt-2">
-                  Upload a profile picture (JPEG, PNG, GIF, or WebP, max 5MB)
-                </p>
-              </div>
-            )}
+              )}
+            </div>
+
+            <p className="mt-2 text-xs text-gray-500">
+              Upload a profile picture (JPEG, PNG, GIF, or WebP, max 5MB)
+            </p>
           </div>
         </div>
       </div>
@@ -731,7 +716,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Document Upload Reminder */}
-          {profileData &&
+          {profileData && profileData.documents &&
             (!profileData.documents.businessPermitPath &&
              !profileData.documents.birCertificatePath &&
              !profileData.documents.governmentIdPath) && (
@@ -967,7 +952,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
 
                 <div>
                   <label htmlFor="street" className="block text-sm font-medium text-gray-700 mb-1">
-                    Street Address
+                    Business Address
                   </label>
                   <input
                     type="text"
@@ -975,63 +960,8 @@ function CremationProfilePage({ userData }: { userData: any }) {
                     value={address.street}
                     onChange={(e) => setAddress({...address, street: e.target.value})}
                     className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
+                    placeholder="Enter your complete business address"
                   />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label htmlFor="city" className="block text-sm font-medium text-gray-700 mb-1">
-                      City
-                    </label>
-                    <input
-                      type="text"
-                      id="city"
-                      value={address.city}
-                      onChange={(e) => setAddress({...address, city: e.target.value})}
-                      className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
-                    />
-                  </div>
-
-                  <div>
-                    <label htmlFor="state" className="block text-sm font-medium text-gray-700 mb-1">
-                      State / Province
-                    </label>
-                    <input
-                      type="text"
-                      id="state"
-                      value={address.state}
-                      onChange={(e) => setAddress({...address, state: e.target.value})}
-                      className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label htmlFor="zipCode" className="block text-sm font-medium text-gray-700 mb-1">
-                      ZIP / Postal Code
-                    </label>
-                    <input
-                      type="text"
-                      id="zipCode"
-                      value={address.zipCode}
-                      onChange={(e) => setAddress({...address, zipCode: e.target.value})}
-                      className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
-                    />
-                  </div>
-
-                  <div>
-                    <label htmlFor="country" className="block text-sm font-medium text-gray-700 mb-1">
-                      Country
-                    </label>
-                    <input
-                      type="text"
-                      id="country"
-                      value={address.country}
-                      onChange={(e) => setAddress({...address, country: e.target.value})}
-                      className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
-                    />
-                  </div>
                 </div>
 
                 <div className="pt-2">
@@ -1072,12 +1002,16 @@ function CremationProfilePage({ userData }: { userData: any }) {
               <h3 className="font-medium text-gray-800 mb-2">Business Permit</h3>
               <div className="relative mb-3">
                 {profileData.documents.businessPermitPath ? (
-                  <div className="aspect-w-16 aspect-h-9 bg-gray-100 rounded-md overflow-hidden">
+                  <div 
+                    className="h-32 bg-gray-100 rounded-md overflow-hidden cursor-pointer hover:opacity-90 transition-opacity"
+                    onClick={() => openPreviewModal(profileData.documents.businessPermitPath, 'Business Permit')}
+                  >
                       <Image
                         src={getImagePath(profileData.documents.businessPermitPath)}
                         alt="Business Permit"
-                        fill
-                        className="object-cover"
+                        width={400}
+                        height={128}
+                        className="w-full h-full object-cover"
                         onError={(e) => {
                           console.error('Failed to load Business Permit:', e.currentTarget.src);
                           // If image fails to load, try with the API route directly
@@ -1085,7 +1019,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
                           if (!src.includes('/api/image/')) {
                             // Extract filename from path
                             const filename = src.split('/').pop();
-                            e.currentTarget.src = `/api/image/documents/3/${filename}`;
+                            e.currentTarget.src = `/api/image/documents/${userData?.user_id || '3'}/${filename}`;
 
                             // Add a second error handler for the updated URL
                             e.currentTarget.onerror = () => {
@@ -1123,29 +1057,23 @@ function CremationProfilePage({ userData }: { userData: any }) {
 
                   </div>
                 ) : (
-                  <div className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-gray-300 rounded-md">
+                  <div className="h-32 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-md">
                     <DocumentIcon className="h-12 w-12 text-gray-400 mb-2" />
                     <p className="text-sm text-gray-500">No document uploaded</p>
                   </div>
                 )}
               </div>
-              <a
-                href={profileData.documents.businessPermitPath ? getImagePath(profileData.documents.businessPermitPath) : '#'}
-                className={`w-full py-2 px-4 rounded-md text-center text-sm ${
+              <button
+                onClick={() => profileData.documents.businessPermitPath && openPreviewModal(profileData.documents.businessPermitPath, 'Business Permit')}
+                disabled={!profileData.documents.businessPermitPath}
+                className={`w-full py-2 px-4 rounded-md text-center text-sm transition-colors ${
                   profileData.documents.businessPermitPath
-                    ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                    ? 'bg-blue-100 text-blue-700 hover:bg-blue-200 cursor-pointer'
                     : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                 }`}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={(e) => {
-                  if (!profileData.documents.businessPermitPath) {
-                    e.preventDefault();
-                  }
-                }}
               >
                 {profileData.documents.businessPermitPath ? 'View Document' : 'No Document'}
-              </a>
+              </button>
             </div>
 
             {/* BIR Certificate */}
@@ -1153,12 +1081,16 @@ function CremationProfilePage({ userData }: { userData: any }) {
               <h3 className="font-medium text-gray-800 mb-2">BIR Certificate</h3>
               <div className="relative mb-3">
                 {profileData.documents.birCertificatePath ? (
-                  <div className="aspect-w-16 aspect-h-9 bg-gray-100 rounded-md overflow-hidden">
+                  <div 
+                    className="h-32 bg-gray-100 rounded-md overflow-hidden cursor-pointer hover:opacity-90 transition-opacity"
+                    onClick={() => openPreviewModal(profileData.documents.birCertificatePath, 'BIR Certificate')}
+                  >
                       <Image
                         src={getImagePath(profileData.documents.birCertificatePath)}
                         alt="BIR Certificate"
-                        fill
-                        className="object-cover"
+                        width={400}
+                        height={128}
+                        className="w-full h-full object-cover"
                         onError={(e) => {
                           console.error('Failed to load BIR Certificate:', e.currentTarget.src);
                           // If image fails to load, try with the API route directly
@@ -1166,7 +1098,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
                           if (!src.includes('/api/image/')) {
                             // Extract filename from path
                             const filename = src.split('/').pop();
-                            e.currentTarget.src = `/api/image/documents/3/${filename}`;
+                            e.currentTarget.src = `/api/image/documents/${userData?.user_id || '3'}/${filename}`;
 
                             // Add a second error handler for the updated URL
                             e.currentTarget.onerror = () => {
@@ -1210,23 +1142,17 @@ function CremationProfilePage({ userData }: { userData: any }) {
                   </div>
                 )}
               </div>
-              <a
-                href={profileData.documents.birCertificatePath ? getImagePath(profileData.documents.birCertificatePath) : '#'}
-                className={`w-full py-2 px-4 rounded-md text-center text-sm ${
+              <button
+                onClick={() => profileData.documents.birCertificatePath && openPreviewModal(profileData.documents.birCertificatePath, 'BIR Certificate')}
+                disabled={!profileData.documents.birCertificatePath}
+                className={`w-full py-2 px-4 rounded-md text-center text-sm transition-colors ${
                   profileData.documents.birCertificatePath
-                    ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                    ? 'bg-blue-100 text-blue-700 hover:bg-blue-200 cursor-pointer'
                     : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                 }`}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={(e) => {
-                  if (!profileData.documents.birCertificatePath) {
-                    e.preventDefault();
-                  }
-                }}
               >
                 {profileData.documents.birCertificatePath ? 'View Document' : 'No Document'}
-              </a>
+              </button>
             </div>
 
             {/* Government ID */}
@@ -1234,12 +1160,16 @@ function CremationProfilePage({ userData }: { userData: any }) {
               <h3 className="font-medium text-gray-800 mb-2">Government ID</h3>
               <div className="relative mb-3">
                 {profileData.documents.governmentIdPath ? (
-                  <div className="aspect-w-16 aspect-h-9 bg-gray-100 rounded-md overflow-hidden">
+                  <div 
+                    className="h-32 bg-gray-100 rounded-md overflow-hidden cursor-pointer hover:opacity-90 transition-opacity"
+                    onClick={() => openPreviewModal(profileData.documents.governmentIdPath, 'Government ID')}
+                  >
                       <Image
                         src={getImagePath(profileData.documents.governmentIdPath)}
                         alt="Government ID"
-                        fill
-                        className="object-cover"
+                        width={400}
+                        height={128}
+                        className="w-full h-full object-cover"
                         onError={(e) => {
                           console.error('Failed to load Government ID:', e.currentTarget.src);
                           // If image fails to load, try with the API route directly
@@ -1247,7 +1177,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
                           if (!src.includes('/api/image/')) {
                             // Extract filename from path
                             const filename = src.split('/').pop();
-                            e.currentTarget.src = `/api/image/documents/3/${filename}`;
+                            e.currentTarget.src = `/api/image/documents/${userData?.user_id || '3'}/${filename}`;
 
                             // Add a second error handler for the updated URL
                             e.currentTarget.onerror = () => {
@@ -1291,23 +1221,17 @@ function CremationProfilePage({ userData }: { userData: any }) {
                   </div>
                 )}
               </div>
-              <a
-                href={profileData.documents.governmentIdPath ? getImagePath(profileData.documents.governmentIdPath) : '#'}
-                className={`w-full py-2 px-4 rounded-md text-center text-sm ${
+              <button
+                onClick={() => profileData.documents.governmentIdPath && openPreviewModal(profileData.documents.governmentIdPath, 'Government ID')}
+                disabled={!profileData.documents.governmentIdPath}
+                className={`w-full py-2 px-4 rounded-md text-center text-sm transition-colors ${
                   profileData.documents.governmentIdPath
-                    ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                    ? 'bg-blue-100 text-blue-700 hover:bg-blue-200 cursor-pointer'
                     : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                 }`}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={(e) => {
-                  if (!profileData.documents.governmentIdPath) {
-                    e.preventDefault();
-                  }
-                }}
               >
                 {profileData.documents.governmentIdPath ? 'View Document' : 'No Document'}
-              </a>
+              </button>
             </div>
           </div>
         )}
@@ -1372,18 +1296,25 @@ function CremationProfilePage({ userData }: { userData: any }) {
 
                   {documents.businessPermit.preview ? (
                     <div className="relative mb-3">
-                      <div className="aspect-w-16 aspect-h-9 bg-gray-100 rounded-md overflow-hidden">
+                      <div className="w-full h-32 bg-gray-100 rounded-md overflow-hidden relative">
                         {documents.businessPermit.preview.startsWith('data:image') ? (
-                          <Image src={documents.businessPermit.preview} alt="Preview" fill className="object-cover" />
+                          <Image 
+                            src={documents.businessPermit.preview} 
+                            alt="Business Permit Preview" 
+                            fill 
+                            className="object-cover"
+                            sizes="(max-width: 768px) 100vw, 33vw"
+                          />
                         ) : (
-                          <div className="flex items-center justify-center h-full">
-                            <DocumentIcon className="h-12 w-12 text-gray-400" />
+                          <div className="flex flex-col items-center justify-center h-full">
+                            <DocumentIcon className="h-8 w-8 text-gray-400 mb-1" />
+                            <span className="text-xs text-gray-500">PDF File</span>
                           </div>
                         )}
                       </div>
                       <button
                         onClick={() => handleRemoveFile('businessPermit')}
-                        className="absolute top-2 right-2 bg-white rounded-full p-1 shadow-md"
+                        className="absolute top-2 right-2 bg-white rounded-full p-1 shadow-md hover:bg-gray-50"
                       >
                         <XMarkIcon className="h-4 w-4 text-gray-500" />
                       </button>
@@ -1414,18 +1345,25 @@ function CremationProfilePage({ userData }: { userData: any }) {
 
                   {documents.birCertificate.preview ? (
                     <div className="relative mb-3">
-                      <div className="aspect-w-16 aspect-h-9 bg-gray-100 rounded-md overflow-hidden">
+                      <div className="w-full h-32 bg-gray-100 rounded-md overflow-hidden relative">
                         {documents.birCertificate.preview.startsWith('data:image') ? (
-                          <Image src={documents.birCertificate.preview} alt="Preview" fill className="object-cover" />
+                          <Image 
+                            src={documents.birCertificate.preview} 
+                            alt="BIR Certificate Preview" 
+                            fill 
+                            className="object-cover"
+                            sizes="(max-width: 768px) 100vw, 33vw"
+                          />
                         ) : (
-                          <div className="flex items-center justify-center h-full">
-                            <DocumentIcon className="h-12 w-12 text-gray-400" />
+                          <div className="flex flex-col items-center justify-center h-full">
+                            <DocumentIcon className="h-8 w-8 text-gray-400 mb-1" />
+                            <span className="text-xs text-gray-500">PDF File</span>
                           </div>
                         )}
                       </div>
                       <button
                         onClick={() => handleRemoveFile('birCertificate')}
-                        className="absolute top-2 right-2 bg-white rounded-full p-1 shadow-md"
+                        className="absolute top-2 right-2 bg-white rounded-full p-1 shadow-md hover:bg-gray-50"
                       >
                         <XMarkIcon className="h-4 w-4 text-gray-500" />
                       </button>
@@ -1456,18 +1394,25 @@ function CremationProfilePage({ userData }: { userData: any }) {
 
                   {documents.governmentId.preview ? (
                     <div className="relative mb-3">
-                      <div className="aspect-w-16 aspect-h-9 bg-gray-100 rounded-md overflow-hidden">
+                      <div className="w-full h-32 bg-gray-100 rounded-md overflow-hidden relative">
                         {documents.governmentId.preview.startsWith('data:image') ? (
-                          <Image src={documents.governmentId.preview} alt="Preview" fill className="object-cover" />
+                          <Image 
+                            src={documents.governmentId.preview} 
+                            alt="Government ID Preview" 
+                            fill 
+                            className="object-cover"
+                            sizes="(max-width: 768px) 100vw, 33vw"
+                          />
                         ) : (
-                          <div className="flex items-center justify-center h-full">
-                            <DocumentIcon className="h-12 w-12 text-gray-400" />
+                          <div className="flex flex-col items-center justify-center h-full">
+                            <DocumentIcon className="h-8 w-8 text-gray-400 mb-1" />
+                            <span className="text-xs text-gray-500">PDF File</span>
                           </div>
                         )}
                       </div>
                       <button
                         onClick={() => handleRemoveFile('governmentId')}
-                        className="absolute top-2 right-2 bg-white rounded-full p-1 shadow-md"
+                        className="absolute top-2 right-2 bg-white rounded-full p-1 shadow-md hover:bg-gray-50"
                       >
                         <XMarkIcon className="h-4 w-4 text-gray-500" />
                       </button>
@@ -1511,6 +1456,62 @@ function CremationProfilePage({ userData }: { userData: any }) {
                   ) : 'Upload Documents'}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Document Preview Modal */}
+      {showPreviewModal && previewImage && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+          <div className="relative bg-white rounded-lg max-w-4xl max-h-[90vh] w-full overflow-hidden">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-4 border-b border-gray-200">
+              <h3 className="text-lg font-medium text-gray-900">{previewImage.title}</h3>
+              <button
+                onClick={closePreviewModal}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <XMarkIcon className="h-6 w-6" />
+              </button>
+            </div>
+            
+            {/* Modal Content */}
+            <div className="p-4 overflow-auto max-h-[calc(90vh-80px)]">
+              <div className="flex justify-center">
+                <Image
+                  src={previewImage.url}
+                  alt={previewImage.title}
+                  width={800}
+                  height={600}
+                  className="max-w-full h-auto rounded-lg shadow-lg"
+                  onError={(e) => {
+                    // Show error message if image fails to load
+                    const container = e.currentTarget.parentElement;
+                    if (container) {
+                      container.innerHTML = `
+                        <div class="flex flex-col items-center justify-center p-8 text-gray-500">
+                          <svg class="h-16 w-16 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                          <p class="text-lg font-medium">Unable to load document</p>
+                          <p class="text-sm text-gray-400">The document file could not be found or loaded.</p>
+                        </div>
+                      `;
+                    }
+                  }}
+                />
+              </div>
+            </div>
+            
+            {/* Modal Footer */}
+            <div className="flex justify-end p-4 border-t border-gray-200 bg-gray-50">
+              <button
+                onClick={closePreviewModal}
+                className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>

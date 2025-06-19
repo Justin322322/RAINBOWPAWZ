@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
-import { getAuthTokenFromRequest } from '@/utils/auth';
-import { decodeTokenUnsafe } from '@/lib/jwt';
+import { verifySecureAuth } from '@/lib/secureAuth';
 
 // Helper function to ensure notification preference columns exist
 async function ensureNotificationColumns() {
@@ -44,31 +43,13 @@ async function ensureNotificationColumns() {
 // GET - Retrieve cremation provider's notification preferences
 export async function GET(request: NextRequest) {
   try {
-    // Verify cremation provider authentication
-    const authToken = getAuthTokenFromRequest(request);
-    if (!authToken) {
+    // Use secure authentication
+    const user = verifySecureAuth(request);
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    let userId: string | null = null;
-    let accountType: string | null = null;
-
-    // Check if it's a JWT token or old format
-    if (authToken.includes('.')) {
-      // JWT token format
-      const payload = decodeTokenUnsafe(authToken);
-      userId = payload?.userId || null;
-      accountType = payload?.accountType || null;
-    } else {
-      // Old format fallback
-      const parts = authToken.split('_');
-      if (parts.length === 2) {
-        userId = parts[0];
-        accountType = parts[1];
-      }
-    }
-
-    if (!userId || !accountType || accountType !== 'business') {
+    if (user.accountType !== 'business') {
       return NextResponse.json({ error: 'Unauthorized - Cremation provider access required' }, { status: 403 });
     }
 
@@ -78,7 +59,7 @@ export async function GET(request: NextRequest) {
     // Get cremation provider's current notification preferences
     const providerResult = await query(
       'SELECT sms_notifications, email_notifications FROM users WHERE user_id = ? AND role = ?',
-      [userId, 'business']
+      [user.userId, 'business']
     );
 
     if (!providerResult || providerResult.length === 0) {
@@ -110,31 +91,13 @@ export async function GET(request: NextRequest) {
 // PUT - Update cremation provider's notification preferences
 export async function PUT(request: NextRequest) {
   try {
-    // Verify cremation provider authentication
-    const authToken = getAuthTokenFromRequest(request);
-    if (!authToken) {
+    // Use secure authentication
+    const user = verifySecureAuth(request);
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    let userId: string | null = null;
-    let accountType: string | null = null;
-
-    // Check if it's a JWT token or old format
-    if (authToken.includes('.')) {
-      // JWT token format
-      const payload = decodeTokenUnsafe(authToken);
-      userId = payload?.userId || null;
-      accountType = payload?.accountType || null;
-    } else {
-      // Old format fallback
-      const parts = authToken.split('_');
-      if (parts.length === 2) {
-        userId = parts[0];
-        accountType = parts[1];
-      }
-    }
-
-    if (!userId || !accountType || accountType !== 'business') {
+    if (user.accountType !== 'business') {
       return NextResponse.json({ error: 'Unauthorized - Cremation provider access required' }, { status: 403 });
     }
 
@@ -156,7 +119,7 @@ export async function PUT(request: NextRequest) {
     // Update cremation provider's notification preferences
     await query(
       'UPDATE users SET sms_notifications = ?, email_notifications = ?, updated_at = NOW() WHERE user_id = ? AND role = ?',
-      [sms_notifications, email_notifications, userId, 'business']
+      [sms_notifications, email_notifications, user.userId, 'business']
     );
 
     return NextResponse.json({
