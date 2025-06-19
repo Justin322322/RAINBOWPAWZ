@@ -43,7 +43,7 @@ export const LoadingProvider: React.FC<LoadingProviderProps> = ({ children }) =>
     }
   }, []);
 
-  const startLoading = useCallback((message?: string, priority: 'low' | 'medium' | 'high' = 'medium') => {
+  const startLoading = useCallback((message?: string, _priority: 'low' | 'medium' | 'high' = 'medium') => {
     setIsLoading(true);
     if (message) {
       setLoadingMessage(message);

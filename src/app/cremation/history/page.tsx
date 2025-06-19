@@ -11,7 +11,6 @@ import {
   MagnifyingGlassIcon,
   ChartBarIcon,
   ArrowDownTrayIcon,
-  FunnelIcon,
   CalendarDaysIcon,
   ArrowPathIcon,
   CurrencyDollarIcon,
@@ -40,7 +39,7 @@ function CremationHistoryPage({ userData }: { userData: any }) {
     averageRating: 0
   });
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [itemsPerPage, _setItemsPerPage] = useState(10);
   const [retryCount, setRetryCount] = useState(0);
   const { showToast } = useToast();
 
@@ -187,7 +186,7 @@ function CremationHistoryPage({ userData }: { userData: any }) {
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-    } catch (error) {
+    } catch (_error) {
       showToast('Failed to export CSV', 'error');
     }
   };

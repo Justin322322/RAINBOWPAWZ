@@ -10,10 +10,7 @@ import {
   TrashIcon,
   ArrowPathIcon,
   ViewColumnsIcon,
-  TableCellsIcon,
-  PencilIcon,
-  EyeIcon,
-  EyeSlashIcon
+  TableCellsIcon
 } from '@heroicons/react/24/outline';
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 import { toast } from 'react-hot-toast';
@@ -24,7 +21,7 @@ import { PackageList } from '@/components/packages/PackageList';
 import { PackageCards } from '@/components/packages/PackageCards';
 import { EmptyState } from '@/components/packages/EmptyState';
 import { usePackages } from '@/hooks/usePackages';
-import { ViewMode, PackageData } from '@/types/packages';
+import { ViewMode } from '@/types/packages';
 interface PackagesPageProps {
   userData?: any;
 }
@@ -50,7 +47,7 @@ function PackagesPage({ userData }: PackagesPageProps) {
     toggleLoading,
     handleToggleActive,
     filteredPackages,
-    setIsLoading,
+    _setIsLoading,
   } = usePackages({ userData });
 
   // Navigation handler for edit

@@ -35,7 +35,7 @@ export async function GET(
 
     // Check if it's a JWT token or old format
     let userId = null;
-    let accountType = null;
+    let _accountType = null;
 
     if (authToken.includes('.')) {
       // JWT token format
@@ -43,7 +43,7 @@ export async function GET(
         const { decodeTokenUnsafe } = await import('@/lib/jwt');
         const payload = decodeTokenUnsafe(authToken);
         userId = payload?.userId?.toString() || null;
-        accountType = payload?.accountType || null;
+        _accountType = payload?.accountType || null;
       } catch (error) {
         console.error('Error decoding JWT token:', error);
         return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
@@ -53,7 +53,7 @@ export async function GET(
       const parts = authToken.split('_');
       if (parts.length === 2) {
         userId = parts[0];
-        accountType = parts[1];
+        _accountType = parts[1];
       }
     }
 

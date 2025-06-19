@@ -11,7 +11,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { useCart } from '@/contexts/CartContext';
 
-interface CartItem {
+interface _CartItem {
   id: number;
   providerId: number;
   providerName: string;

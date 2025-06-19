@@ -29,7 +29,7 @@ export async function DELETE(
       );
     }
 
-    const [userId, accountType] = authToken.split('_');
+    const [userId, _accountType] = authToken.split('_');
     if (!userId) {
       return NextResponse.json(
         createStandardErrorResponse('Invalid authentication token', 401),

@@ -63,7 +63,7 @@ const withAdminAuth = <P_Original extends object>(
             adminData: parsedData
           };
           return;
-        } catch (e) {
+        } catch (_e) {
           sessionStorage.removeItem('admin_data');
         }
       }
@@ -82,7 +82,7 @@ const withAdminAuth = <P_Original extends object>(
               let authValue;
               try {
                 authValue = decodeURIComponent(cookieParts[1]);
-              } catch (e) {
+              } catch (_e) {
                 authValue = cookieParts[1];
               }
 
@@ -139,7 +139,7 @@ const withAdminAuth = <P_Original extends object>(
                   return;
                 }
               }
-            } catch (e) {
+            } catch (_e) {
             }
           }
 
@@ -172,7 +172,7 @@ const withAdminAuth = <P_Original extends object>(
 
           // If we get here, no valid auth token was found
           router.replace('/');
-        } catch (error) {
+        } catch (_error) {
           router.replace('/');
         }
       };
@@ -186,8 +186,8 @@ const withAdminAuth = <P_Original extends object>(
 
             // Try to get the error message
             try {
-              const errorData = await response.json();
-            } catch (parseError) {
+              const _errorData = await response.json();
+            } catch (_parseError) {
             }
 
             router.replace('/');
@@ -205,7 +205,7 @@ const withAdminAuth = <P_Original extends object>(
           setIsAuthenticated(true);
           sessionStorage.setItem('admin_data', JSON.stringify(fetchedAdminData));
           globalAdminAuthState = { verified: true, adminData: fetchedAdminData };
-        } catch (fetchError) {
+        } catch (_fetchError) {
           router.replace('/');
         }
       };

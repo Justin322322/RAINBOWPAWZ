@@ -68,7 +68,7 @@ function BookingDetailsPage({ userData }: BookingDetailsProps) {
   const [error, setError] = useState<string | null>(null);
   const [updating, setUpdating] = useState(false);
   const [showCertificate, setShowCertificate] = useState(false);
-  const [previousStatus, setPreviousStatus] = useState<string | null>(null);
+  const [_previousStatus, setPreviousStatus] = useState<string | null>(null);
   const [lastUpdateTime, setLastUpdateTime] = useState<number>(0);
   const [updateSuccess, setUpdateSuccess] = useState(false);
 

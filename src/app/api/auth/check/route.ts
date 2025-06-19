@@ -1,46 +1,26 @@
-import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
+import { NextRequest, NextResponse } from 'next/server';
+import { getSecureUserInfo } from '@/lib/secureAuth';
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
-    // Get the auth token cookie
-    const cookiesStore = await cookies();
-    const authCookie = cookiesStore.get('auth_token');
+    // Get user information from secure authentication
+    const userInfo = getSecureUserInfo(request);
 
-    if (!authCookie || !authCookie.value) {
+    if (!userInfo.isAuthenticated) {
       return NextResponse.json({
         authenticated: false,
-        message: 'No authentication token found'
+        message: 'No valid authentication found'
       });
     }
-
-    // Try to decode the cookie value
-    let decodedValue;
-    try {
-      decodedValue = decodeURIComponent(authCookie.value);
-    } catch (error) {
-      decodedValue = authCookie.value;
-    }
-
-    // Parse the token
-    const parts = decodedValue.split('_');
-
-    if (parts.length !== 2) {
-      return NextResponse.json({
-        authenticated: false,
-        message: 'Invalid authentication token format'
-      });
-    }
-
-    const userId = parts[0];
-    const accountType = parts[1];
 
     return NextResponse.json({
       authenticated: true,
-      userId,
-      accountType
+      userId: userInfo.userId,
+      accountType: userInfo.accountType,
+      email: userInfo.email
     });
   } catch (error) {
+    console.error('Auth check error:', error);
     return NextResponse.json({
       authenticated: false,
       error: 'Failed to check authentication'

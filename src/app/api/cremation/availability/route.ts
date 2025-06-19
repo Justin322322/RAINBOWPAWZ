@@ -126,7 +126,7 @@ export async function GET(request: NextRequest) {
                 parsedServices = typeof slot.available_services === 'string'
                   ? JSON.parse(slot.available_services)
                   : slot.available_services;
-              } catch (parseError) {
+              } catch (_parseError) {
                 parsedServices = [];
               }
 
@@ -144,7 +144,7 @@ export async function GET(request: NextRequest) {
               // If no services specified, all are available (represented by empty array)
               slotData.availableServices = [];
             }
-          } catch (e) {
+          } catch (_e) {
             // Silently fail
           }
 
@@ -254,7 +254,7 @@ export async function POST(request: NextRequest) {
       // Log the original and normalized dates for debugging
       console.log('Original date:', date);
       console.log('Normalized date:', normalizedDate);
-    } catch (dateError) {
+    } catch (_dateError) {
       return NextResponse.json({
         error: 'Invalid date format',
         details: 'The provided date could not be parsed correctly'

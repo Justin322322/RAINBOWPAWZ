@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { calculateDistance, getBataanCoordinates } from '@/utils/distance';
-import { calculateEnhancedDistance, formatDistance } from '@/utils/routeDistance';
+import { calculateEnhancedDistance } from '@/utils/routeDistance';
 
 export async function GET(
   request: NextRequest,
@@ -148,7 +148,7 @@ export async function GET(
           `, [provider.id]) as any[];
 
           provider.packages = packagesCount[0]?.count || 0;
-        } catch (err) {
+        } catch (_err) {
           provider.packages = 0;
         }
 
@@ -251,12 +251,12 @@ export async function GET(
               (formattedBusiness as any).distance = `${distanceValue} km away`;
               (formattedBusiness as any).distanceValue = distanceValue;
             }
-          } catch (err) {
+          } catch (_err) {
           }
 
           return NextResponse.json({ provider: formattedBusiness });
         }
-      } catch (businessError) {
+      } catch (_businessError) {
         // Continue to check for test providers
       }
 
@@ -305,7 +305,7 @@ export async function GET(
         { status: 500 }
       );
     }
-  } catch (error) {
+  } catch (_error) {
     return NextResponse.json(
       { error: 'Failed to fetch provider' },
       { status: 500 }

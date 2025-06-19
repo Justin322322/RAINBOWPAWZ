@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const [userId, accountType] = authToken.split('_');
+    const [_userId, accountType] = authToken.split('_');
 
     // Only allow admin users to run cleanup
     if (accountType !== 'admin') {

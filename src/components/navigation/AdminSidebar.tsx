@@ -11,7 +11,6 @@ import {
   UserGroupIcon,
   UserIcon,
   UsersIcon,
-  EnvelopeIcon,
   StarIcon,
   CurrencyDollarIcon
 } from '@heroicons/react/24/outline';
@@ -22,7 +21,7 @@ interface AdminSidebarProps {
 
 export default function AdminSidebar({ activePage: propActivePage }: AdminSidebarProps) {
   const pathname = usePathname();
-  const router = useRouter();
+  const _router = useRouter();
   const [activePage, setActivePage] = useState('');
   const [userManagementOpen, setUserManagementOpen] = useState(false);
   const [isNavigating, setIsNavigating] = useState(false);

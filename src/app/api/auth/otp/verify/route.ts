@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { query } from '@/lib/db';
 import { verifyOtp } from '@/lib/otpService';
 
 export async function POST(request: Request) {

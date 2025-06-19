@@ -4,7 +4,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { format } from 'date-fns';
 import {
   StarIcon,
-  ArrowPathIcon,
   FunnelIcon,
   MagnifyingGlassIcon,
   ExclamationTriangleIcon,
@@ -209,7 +208,7 @@ function ReviewsPage({ userData }: ReviewsPageProps) {
     try {
       const date = new Date(dateString);
       return format(date, 'MMMM d, yyyy');
-    } catch (error) {
+    } catch (_error) {
       return dateString;
     }
   };

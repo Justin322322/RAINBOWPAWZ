@@ -4,14 +4,10 @@ import { useState, useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import { motion } from 'framer-motion';
 import {
   ArrowLeftIcon,
-  CalendarIcon,
   ClockIcon,
   MapPinIcon,
-  PhoneIcon,
-  EnvelopeIcon,
   CheckCircleIcon,
   XCircleIcon,
   ChevronLeftIcon,
@@ -20,10 +16,9 @@ import {
 } from '@heroicons/react/24/outline';
 
 import FurParentPageSkeleton from '@/components/ui/FurParentPageSkeleton';
-import { getPackageImageUrl, handleImageError } from '@/utils/imageUtils';
-import TimeSlotSelector from '@/components/booking/TimeSlotSelector';
+import { handleImageError } from '@/utils/imageUtils';
 import ReviewsList from '@/components/reviews/ReviewsList';
-import { getUserLocation, geocodeAddress, LocationData } from '@/utils/geolocation';
+import { geocodeAddress, LocationData } from '@/utils/geolocation';
 
 interface ServiceDetailPageProps {
   userData?: any;
@@ -43,12 +38,12 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
   const [bookingTime, setBookingTime] = useState('');
   const [specialRequests, setSpecialRequests] = useState('');
   const [pets, setPets] = useState<any[]>([]);
-  const [showBookingForm, setShowBookingForm] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [bookingSuccess, setBookingSuccess] = useState(false);
-  const [bookingError, setBookingError] = useState<string | null>(null);
-  const [selectedDate, setSelectedDate] = useState<string | undefined>(undefined);
-  const [selectedTimeSlot, setSelectedTimeSlot] = useState<any | null>(null);
+  const [_showBookingForm, setShowBookingForm] = useState(false);
+  const [_isSubmitting, setIsSubmitting] = useState(false);
+  const [_bookingSuccess, setBookingSuccess] = useState(false);
+  const [_bookingError, setBookingError] = useState<string | null>(null);
+  const [_selectedDate, setSelectedDate] = useState<string | undefined>(undefined);
+  const [_selectedTimeSlot, setSelectedTimeSlot] = useState<any | null>(null);
 
   // Will fetch real data from API
 
@@ -208,7 +203,7 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
               }
 
               return pkg;
-            } catch (error) {
+            } catch (_error) {
               return pkg;
             }
           })
@@ -232,10 +227,10 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
             // Fallback to mock pets if API fails
             setPets(mockPets);
           }
-        } catch (petError) {
+        } catch (_petError) {
           setPets(mockPets);
         }
-      } catch (err) {
+      } catch (_err) {
         setError('Failed to load provider details');
       } finally {
         setLoading(false);
@@ -269,7 +264,7 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
     router.push(`/user/furparent_dashboard/services/${providerId}/packages/${packageId}`);
   };
 
-  const handleSubmitBooking = async (e: React.FormEvent) => {
+  const _handleSubmitBooking = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!selectedService || !selectedPet || !bookingDate || !bookingTime) {
@@ -282,7 +277,7 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
 
     try {
       // Get the selected service details
-      const service = provider.services.find((s: any) => s.id === selectedService);
+      const _service = provider.services.find((s: any) => s.id === selectedService);
       const pet = pets.find(p => p.id === selectedPet);
 
       // Prepare booking data
@@ -326,14 +321,14 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
       } else {
         setBookingError(data.error || 'Failed to create booking');
       }
-    } catch (error) {
+    } catch (_error) {
       setBookingError('An error occurred while creating your booking');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleDateTimeSelected = (date: string, timeSlot: any | null) => {
+  const _handleDateTimeSelected = (date: string, timeSlot: any | null) => {
     setSelectedDate(date);
     setSelectedTimeSlot(timeSlot);
   };

@@ -2,10 +2,9 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { XMarkIcon, ArrowPathIcon, CheckIcon } from '@heroicons/react/24/outline';
+import { CheckIcon } from '@heroicons/react/24/outline';
 import { Modal } from './Modal';
 import { Button } from './Button';
-import { cn } from '@/utils/classNames';
 
 export interface ConfirmationModalProps {
   isOpen: boolean;
@@ -57,7 +56,7 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
           setIsSuccess(false);
         }, 300);
       }, 1500);
-    } catch (error) {
+    } catch (_error) {
       setIsLoading(false);
       onClose();
     }

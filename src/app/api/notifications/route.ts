@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const [userId, accountType] = authToken.split('_');
+    const [userId, _accountType] = authToken.split('_');
     if (!userId) {
       return NextResponse.json(
         createStandardErrorResponse('Invalid authentication token', 401, {
@@ -266,7 +266,7 @@ async function ensureNotificationsTable() {
     // First check if we can connect to the database
     try {
       await query('SELECT 1 as test');
-    } catch (connectionError) {
+    } catch (_connectionError) {
       // Return without throwing to allow the API to continue with empty results
       // rather than crashing with a 500 error
       return false;
@@ -309,14 +309,14 @@ async function ensureNotificationsTable() {
             FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
           ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         `);
-      } catch (createError) {
+      } catch (_createError) {
         return false;
       }
     } else {
     }
 
     return true;
-  } catch (error) {
+  } catch (_error) {
     // Return false instead of throwing to allow the API to continue
     return false;
   }

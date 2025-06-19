@@ -83,7 +83,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     }
 
     // Get the business name (could be in business_name or name field)
-    const businessName = businessResult[0].business_name || businessResult[0].name || 'Unknown';
+    const _businessName = businessResult[0].business_name || businessResult[0].name || 'Unknown';
 
     const business = businessResult[0];
 

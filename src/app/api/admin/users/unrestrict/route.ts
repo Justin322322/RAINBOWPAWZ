@@ -192,7 +192,7 @@ export async function POST(request: NextRequest) {
                 WHERE ${idColumn} = ?`,
                 [businessId]
               );
-            } catch (retryError) {
+            } catch (_retryError) {
               // Continue even if retry fails, since the initial update might have been partially successful
             }
           }

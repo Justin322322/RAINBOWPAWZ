@@ -16,7 +16,7 @@ export const SimplePackageImage: React.FC<SimplePackageImageProps> = ({
   className = '',
   size = 'large'
 }) => {
-  const [imageError, setImageError] = useState(false);
+  const [imageError, _setImageError] = useState(false);
 
   // Determine if we have valid images
   const hasValidImages = images && Array.isArray(images) && images.length > 0 && images[0];

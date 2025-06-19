@@ -6,7 +6,6 @@ import withBusinessVerification from '@/components/withBusinessVerification';
 import { useToast } from '@/context/ToastContext';
 import {
   KeyIcon,
-  HomeIcon,
   CheckCircleIcon,
   XCircleIcon,
   UserIcon,
@@ -160,7 +159,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
       let data;
       try {
         data = await response.json();
-      } catch (jsonError) {
+      } catch (_jsonError) {
         throw new Error('Failed to parse server response');
       }
 

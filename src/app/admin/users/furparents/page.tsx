@@ -7,22 +7,17 @@ import {
   FunnelIcon,
   UserCircleIcon,
   XMarkIcon,
-  ShieldCheckIcon,
   ShieldExclamationIcon,
   MapPinIcon,
   PhoneIcon,
   EnvelopeIcon,
   CheckCircleIcon,
   XCircleIcon,
-  ExclamationTriangleIcon,
-  EllipsisVerticalIcon,
-  PencilIcon
+  ExclamationTriangleIcon
 } from '@heroicons/react/24/outline';
-import Link from 'next/link';
 import { useToast } from '@/context/ToastContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
-import Image from 'next/image';
 import { Badge, Button, Input } from '@/components/ui';
 
 // Types and interfaces
@@ -73,7 +68,7 @@ export default function AdminFurParentsPage() {
     total: 0,
     totalPages: 0
   });
-  const [isRetrying, setIsRetrying] = useState(false);
+  const [_isRetrying, setIsRetrying] = useState(false);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -117,7 +112,7 @@ export default function AdminFurParentsPage() {
           try {
             const errorData = await response.json();
             errorDetails = errorData.details || errorData.error || '';
-          } catch (parseError) {
+          } catch (_parseError) {
             // Ignore parsing error
           }
 
@@ -195,7 +190,7 @@ export default function AdminFurParentsPage() {
   };
 
   // Function to toggle dropdown
-  const toggleDropdown = (id: string | number) => {
+  const _toggleDropdown = (id: string | number) => {
     setOpenDropdownId(openDropdownId === id ? null : id);
   };
 

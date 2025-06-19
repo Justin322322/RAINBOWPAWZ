@@ -7,8 +7,6 @@ import {
   XMarkIcon,
   EyeIcon,
   QueueListIcon,
-  FunnelIcon,
-  TagIcon,
   FireIcon,
   ShieldCheckIcon,
   BanknotesIcon,
@@ -18,7 +16,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import Select from '@/components/ui/Select';
 import { PackageImage } from '@/components/packages/PackageImage';
-import { LoadingSpinner, EmptyState } from './client';
+import { LoadingSpinner } from './client';
 import StarRating from '@/components/ui/StarRating';
 import StatCard from '@/components/ui/StatCard';
 
@@ -95,9 +93,9 @@ function useServices(params: {
   const { search, status, category, page, limit, onError, shouldFetch } = params;
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [_error, setError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
-  const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [_isInitialLoad, setIsInitialLoad] = useState(true);
   const [stats, setStats] = useState<Stats>({
     activeServices: 0,
     totalBookings: 0,
@@ -112,7 +110,7 @@ function useServices(params: {
   });
 
   // Memoize the error handler to prevent unnecessary re-renders
-  const handleError = useCallback((message: string) => {
+  const _handleError = useCallback((message: string) => {
     onError(message);
   }, [onError]);
 
@@ -243,7 +241,7 @@ export default function AdminServicesPage() {
   const debouncedSearch = useDebounce(searchTerm, 300);
 
   // Create a cache key based on the current filters
-  const cacheKey = `${debouncedSearch}_${statusFilter}_${categoryFilter}_${page}_${limit}`;
+  const _cacheKey = `${debouncedSearch}_${statusFilter}_${categoryFilter}_${page}_${limit}`;
 
   // Only fetch new data if filters change or if it's been more than 30 seconds
   const shouldFetch = useCallback(() => {
@@ -843,7 +841,7 @@ function ServiceDetailsModal({
   );
 }
 
-function DetailSection({ title, content }: { title: string; content: string }) {
+function _DetailSection({ title, content }: { title: string; content: string }) {
   return (
     <div className="mb-4">
       <p className="text-sm font-medium text-gray-500 mb-2">{title}</p>
@@ -852,7 +850,7 @@ function DetailSection({ title, content }: { title: string; content: string }) {
   );
 }
 
-function DetailList({ title, items }: { title: string; items: string[] }) {
+function _DetailList({ title, items }: { title: string; items: string[] }) {
   return (
     <div className="mb-4">
       <p className="text-sm font-medium text-gray-500 mb-2">{title}</p>

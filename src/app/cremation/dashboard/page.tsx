@@ -1,22 +1,14 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import Image from 'next/image';
-import Link from 'next/link';
+import { useState, useEffect } from 'react';
 import CremationDashboardLayout from '@/components/navigation/CremationDashboardLayout';
 import withBusinessVerification from '@/components/withBusinessVerification';
 import {
-  ArrowUpIcon,
-  ArrowDownIcon,
-  CurrencyDollarIcon,
-  UsersIcon,
   CalendarIcon,
   StarIcon,
   CheckCircleIcon,
   ClockIcon,
-  UserGroupIcon,
   ExclamationCircleIcon,
-  FireIcon,
   BanknotesIcon,
   ArchiveBoxIcon
 } from '@heroicons/react/24/outline';
@@ -30,7 +22,7 @@ import { SkeletonCard } from '@/components/ui/SkeletonLoader';
 // The actual component that will be wrapped by withBusinessVerification HOC
 function CremationDashboardPage({ userData }: { userData: any }) {
   const router = useRouter();
-  const userName = userData?.business_name || userData?.first_name || 'Cremation Provider';
+  const _userName = userData?.business_name || userData?.first_name || 'Cremation Provider';
   const [isLoading, setIsLoading] = useState(true);
   const [dashboardData, setDashboardData] = useState<any>({
     stats: [
@@ -142,7 +134,7 @@ function CremationDashboardPage({ userData }: { userData: any }) {
           setAvailabilitySetupNeeded(false);
           setAvailabilityError(null);
         }
-      } catch (error) {
+      } catch (_error) {
         setAvailabilitySetupNeeded(true);
         setAvailabilityError('Could not check if availability tables exist.');
       }
@@ -152,7 +144,7 @@ function CremationDashboardPage({ userData }: { userData: any }) {
   }, [userData, isLoading]);
 
   // Handle availability changes (called when calendar data is fetched or updated)
-  const handleAvailabilityChange = (availability: any) => {
+  const handleAvailabilityChange = (_availability: any) => {
     // DO NOT show toast here, as this is called on initial load too.
     // Toast will be triggered by a more specific onSaveSuccess callback.
   };
@@ -262,7 +254,7 @@ function CremationDashboardPage({ userData }: { userData: any }) {
             </div>
           ) : dashboardData.recentBookings?.length > 0 ? (
             <ul className="divide-y divide-gray-200">
-              {dashboardData.recentBookings.slice(0, 3).map((booking: any, index: number) => (
+              {dashboardData.recentBookings.slice(0, 3).map((booking: any, _index: number) => (
                 <li key={booking.id} className="px-6 py-4 hover:bg-gray-50">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center">

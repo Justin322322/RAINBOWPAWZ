@@ -34,7 +34,7 @@ export default function withAuth<P extends object>(
           }
 
           setIsAuthenticated(true);
-        } catch (error) {
+        } catch (_error) {
           router.replace('/');
         } finally {
           setIsLoading(false);

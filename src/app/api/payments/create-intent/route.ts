@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const [userId, accountType] = authToken.split('_');
+    const [_userId, _accountType] = authToken.split('_');
 
     // Parse request body
     const body = await request.json();

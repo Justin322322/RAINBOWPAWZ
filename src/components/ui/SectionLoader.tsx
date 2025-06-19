@@ -30,7 +30,7 @@ export const SectionLoader: React.FC<SectionLoaderProps> = ({
   withBorder = false,
   withShadow = false,
   rounded = true,
-  sectionId, // Optional section ID for conflict prevention
+  _sectionId, // Optional section ID for conflict prevention
 }) => {
   const Container = withAnimation ? motion.div : 'div';
   

@@ -114,7 +114,7 @@ export async function getPackageImageUrl(packageId: number | string, imageIndex:
 
     // Fallback to a reliable fallback image
     return `/bg_4.png`;
-  } catch (error) {
+  } catch (_error) {
     // Default fallback
     return `/bg_4.png`;
   }
@@ -139,7 +139,7 @@ export async function getAllPackageImages(packageId: number | string): Promise<s
 
     // Fallback to a reliable fallback image
     return [`/bg_4.png`];
-  } catch (error) {
+  } catch (_error) {
     // Default fallback
     return [`/bg_4.png`];
   }
@@ -151,7 +151,7 @@ export async function getAllPackageImages(packageId: number | string): Promise<s
  * @param userId Optional user ID for fallback
  * @returns The profile picture URL without cache busting
  */
-export function getProfilePictureUrl(profilePicturePath: string | null | undefined, userId?: string | number): string {
+export function getProfilePictureUrl(profilePicturePath: string | null | undefined, _userId?: string | number): string {
   if (!profilePicturePath) {
     return '/bg_4.png'; // Default fallback
   }

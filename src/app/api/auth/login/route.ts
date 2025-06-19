@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
 import { query, testConnection } from '@/lib/db';
 import bcrypt from 'bcryptjs';
-import { generateToken } from '@/lib/jwt';
+import { setSecureAuthCookies } from '@/lib/secureAuth';
 
 // Types for our response
-interface LoginResponse {
+interface _LoginResponse {
   success: boolean;
   message: string;
   user?: any;
@@ -156,25 +156,24 @@ export async function POST(request: Request) {
                     id: user.user_id // Ensure id field is present
                   };
 
-                  // Generate JWT token
-                  const token = generateToken({
-                    userId: user.user_id.toString(),
-                    accountType: 'admin',
-                    email: user.email
-                  });
-
-                  return NextResponse.json({
+                  // Create secure response with httpOnly cookies
+                  const response = NextResponse.json({
                     success: true,
                     message: 'Login successful',
                     user: adminUser,
-                    account_type: 'admin',
-                    token
+                    account_type: 'admin'
+                    // No token in response body - using secure cookies instead
                   }, {
                     headers
                   });
+
+                  // Set secure authentication cookies
+                  setSecureAuthCookies(response, user.user_id.toString(), 'admin', user.email);
+                  
+                  return response;
                 }
               }
-            } catch (adminError) {
+            } catch (_adminError) {
               // Continue with basic user data if admin details can't be fetched
             }
           }
@@ -219,24 +218,23 @@ export async function POST(request: Request) {
                   id: user.user_id // Ensure id field is present
                 };
 
-                // Generate JWT token
-                const token = generateToken({
-                  userId: user.user_id.toString(),
-                  accountType: 'business',
-                  email: user.email
-                });
-
-                return NextResponse.json({
+                // Create secure response with httpOnly cookies
+                const response = NextResponse.json({
                   success: true,
                   message: 'Login successful',
                   user: businessUser,
-                  account_type: 'business',
-                  token
+                  account_type: 'business'
+                  // No token in response body - using secure cookies instead
                 }, {
                   headers
                 });
+
+                // Set secure authentication cookies
+                setSecureAuthCookies(response, user.user_id.toString(), 'business', user.email);
+                
+                return response;
               }
-            } catch (businessError) {
+            } catch (_businessError) {
               // Continue with basic user data if business details can't be fetched
             }
           }
@@ -244,23 +242,22 @@ export async function POST(request: Request) {
           // Add user_type for backward compatibility
           user.user_type = user.role === 'fur_parent' ? 'fur_parent' : user.role;
 
-          // Generate JWT token
-          const token = generateToken({
-            userId: user.user_id.toString(),
-            accountType: accountType as 'user' | 'admin' | 'business',
-            email: user.email
-          });
-
-          // Return user data for personal accounts or if profile details couldn't be fetched
-          return NextResponse.json({
+          // Create secure response with httpOnly cookies
+          const response = NextResponse.json({
             success: true,
             message: 'Login successful',
             user,
-            account_type: accountType,
-            token
+            account_type: accountType
+            // No token in response body - using secure cookies instead
           }, {
             headers
           });
+
+          // Set secure authentication cookies
+          setSecureAuthCookies(response, user.user_id.toString(), accountType as 'user' | 'admin' | 'business', user.email);
+          
+          // Return user data for personal accounts or if profile details couldn't be fetched
+          return response;
         } else {
           // Password is incorrect for this user
           return NextResponse.json({
@@ -271,7 +268,7 @@ export async function POST(request: Request) {
             headers
           });
         }
-      } catch (bcryptError) {
+      } catch (_bcryptError) {
         return NextResponse.json({
           error: 'Authentication error',
           message: 'An error occurred during authentication. Please try again.'

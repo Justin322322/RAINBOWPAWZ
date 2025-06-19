@@ -36,7 +36,7 @@ async function ensurePetsTableExists() {
     }
 
     return true;
-  } catch (error) {
+  } catch (_error) {
     return false;
   }
 }
@@ -55,7 +55,7 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const [userId, accountType] = authToken.split('_');
+    const [userId, _accountType] = authToken.split('_');
 
     // Ensure pets table exists
     await ensurePetsTableExists();
@@ -110,7 +110,7 @@ export async function PUT(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const [userId, accountType] = authToken.split('_');
+    const [userId, _accountType] = authToken.split('_');
 
     // Ensure pets table exists
     await ensurePetsTableExists();
@@ -219,7 +219,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const [userId, accountType] = authToken.split('_');
+    const [userId, _accountType] = authToken.split('_');
 
     // Ensure pets table exists
     await ensurePetsTableExists();

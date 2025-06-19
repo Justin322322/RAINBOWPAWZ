@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
     if (cronSecret && cronSecret === process.env.CRON_SECRET) {
       isAuthorized = true;
     } else if (authToken) {
-      const [userId, accountType] = authToken.split('_');
+      const [_userId, accountType] = authToken.split('_');
       if (accountType === 'admin') {
         isAuthorized = true;
       }
@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const [userId, accountType] = authToken.split('_');
+    const [_userId, accountType] = authToken.split('_');
     if (accountType !== 'admin') {
       return NextResponse.json(
         createStandardErrorResponse('Admin access required', 403),

@@ -81,7 +81,7 @@ export async function cleanupOldFiles(
  * @param userId User ID to get profile picture for
  * @returns Promise resolving to the profile picture path or null
  */
-export async function getCurrentProfilePicturePath(userId: string): Promise<string | null> {
+export async function getCurrentProfilePicturePath(_userId: string): Promise<string | null> {
   try {
     // This function would require database access, so it's left as a placeholder
     // In a real implementation, you would query the database for the user's profile picture path

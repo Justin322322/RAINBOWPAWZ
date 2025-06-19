@@ -3,7 +3,6 @@
 import React, { useState } from 'react';
 import Modal from '@/components/Modal';
 import { motion } from 'framer-motion';
-import { sendPasswordResetEmail } from '@/lib/emailService';
 import { Button, Input } from '@/components/ui';
 
 type ForgotPasswordModalProps = {

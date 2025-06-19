@@ -2,7 +2,7 @@
  * Enhanced routing service with multiple providers and caching
  */
 
-import { cacheManager, RoutingCacheData } from '@/utils/cache';
+import { cacheManager } from '@/utils/cache';
 
 export interface RouteStep {
   instruction: string;
@@ -202,7 +202,7 @@ class RoutingService {
   private async routeWithOSRM(
     start: [number, number], 
     end: [number, number],
-    options: { trafficAware?: boolean } = {}
+    _options: { trafficAware?: boolean } = {}
   ): Promise<RoutingResult> {
     const url = `https://router.project-osrm.org/route/v1/driving/${start[1]},${start[0]};${end[1]},${end[0]}?overview=full&geometries=geojson&steps=true&annotations=true`;
 

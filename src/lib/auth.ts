@@ -1,8 +1,6 @@
-import { cookies } from 'next/headers';
 import { query } from './db';
-import type { ReadonlyRequestCookies } from 'next/dist/server/web/spec-extension/adapters/request-cookies';
 
-interface Session {
+interface _Session {
   userId: string;
   accountType: string;
   isAdmin: boolean;
@@ -35,7 +33,7 @@ export const getServerSession = async () => {
     let decodedValue;
     try {
       decodedValue = decodeURIComponent(authCookie.value);
-    } catch (error) {
+    } catch (_error) {
       decodedValue = authCookie.value;
     }
 
@@ -47,7 +45,7 @@ export const getServerSession = async () => {
     }
 
     const userId = parts[0];
-    const accountType = parts[1];
+    const _accountType = parts[1];
 
     // Get user data from database
     const userData = await query(

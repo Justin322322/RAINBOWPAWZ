@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { BellIcon, ExclamationTriangleIcon, InformationCircleIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
+import { ExclamationTriangleIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 
 interface ReminderStats {
   pendingReminders: number;
@@ -86,7 +86,7 @@ export default function NotificationManagement() {
           type: 'error'
         });
       }
-    } catch (error) {
+    } catch (_error) {
       setMessage({
         text: 'Error processing reminders',
         type: 'error'
@@ -151,7 +151,7 @@ export default function NotificationManagement() {
           type: 'error'
         });
       }
-    } catch (error) {
+    } catch (_error) {
       setMessage({
         text: 'Error sending notification',
         type: 'error'

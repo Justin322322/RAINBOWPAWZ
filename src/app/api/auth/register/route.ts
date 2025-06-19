@@ -96,7 +96,7 @@ export async function POST(request: Request) {
     let data;
     try {
       data = await request.json() as RegistrationData;
-    } catch (parseError) {
+    } catch (_parseError) {
       return NextResponse.json({
         error: 'Invalid request body',
         message: 'The request body could not be parsed as JSON.'

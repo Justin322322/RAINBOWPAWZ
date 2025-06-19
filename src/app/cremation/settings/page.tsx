@@ -80,14 +80,14 @@ function CremationSettingsPage({ userData }: CremationSettingsProps) {
         const errorData = await response.json();
         setMessage({ text: errorData.error || 'Failed to save settings', type: 'error' });
       }
-    } catch (error) {
+    } catch (_error) {
       setMessage({ text: 'Failed to save settings. Please try again.', type: 'error' });
     } finally {
       setIsSaving(false);
     }
   };
 
-  const businessName = userData?.business_name || 
+  const _businessName = userData?.business_name || 
     (userData?.first_name ? `${userData.first_name} ${userData.last_name}` : 'Cremation Provider');
 
   return (

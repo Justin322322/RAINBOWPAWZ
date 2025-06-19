@@ -64,7 +64,7 @@ export async function PUT(request: NextRequest) {
       `UPDATE users
        SET status = ?,
            updated_at = NOW()
-       WHERE id = ?`,
+       WHERE user_id = ?`,
       [status, userId]
     ) as any;
 

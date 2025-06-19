@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const [userId, accountType] = authToken.split('_');
+    const [_userId, accountType] = authToken.split('_');
 
     // Only allow in development or for admin users
     const isDevelopment = process.env.NODE_ENV === 'development';

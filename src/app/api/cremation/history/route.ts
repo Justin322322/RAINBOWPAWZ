@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
         } else {
         }
       }
-    } catch (authError) {
+    } catch (_authError) {
     }
 
     if (!providerId) {

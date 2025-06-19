@@ -110,7 +110,7 @@ export class MonitoringService {
   static async checkDiskSpace(): Promise<HealthCheckResult> {
     try {
       // This is a simplified check - in production, you'd want to check actual disk usage
-      const stats = await import('fs').then(fs => fs.promises.stat('.'));
+      const _stats = await import('fs').then(fs => fs.promises.stat('.'));
       
       return {
         service: 'disk',
@@ -209,7 +209,7 @@ export class MonitoringService {
 }
 
 // Performance monitoring decorator
-export function monitored(operation: string) {
+export function monitored(_operation: string) {
   return function (target: any, propertyName: string, descriptor: PropertyDescriptor) {
     const method = descriptor.value;
 

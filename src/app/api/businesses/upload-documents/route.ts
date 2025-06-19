@@ -121,7 +121,7 @@ export async function POST(request: Request) {
 
           businessProfileId = newBusinessCheck[0].provider_id;
         }
-      } catch (err) {
+      } catch (_err) {
         return NextResponse.json({
           error: 'Failed to create service provider record'
         }, { status: 500 });
@@ -249,7 +249,7 @@ export async function POST(request: Request) {
           `UPDATE users SET role = 'business' WHERE user_id = ?`,
           [userIdStr]
         );
-      } catch (roleUpdateError) {
+      } catch (_roleUpdateError) {
       }
     }
 

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import {
@@ -20,11 +20,11 @@ interface CartPageProps {
 
 function CartPage({ userData }: CartPageProps) {
   const router = useRouter();
-  const { items, removeItem, totalPrice, clearCart } = useCart();
-  const { showToast } = useToast();
-  const [isLoading, setIsLoading] = useState(false);
-  const [checkoutSuccess, setCheckoutSuccess] = useState(false);
-  const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const { items, removeItem, totalPrice, _clearCart } = useCart();
+  const { _showToast } = useToast();
+  const [_isLoading, _setIsLoading] = useState(false);
+  const [checkoutSuccess, _setCheckoutSuccess] = useState(false);
+  const [checkoutError, _setCheckoutError] = useState<string | null>(null);
 
   // Handle checkout
   const handleCheckout = () => {

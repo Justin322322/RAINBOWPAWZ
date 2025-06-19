@@ -29,7 +29,7 @@ export default function GCashPayment({
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentUrl, setPaymentUrl] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
-  const [lastError, setLastError] = useState<string | null>(null);
+  const [_lastError, setLastError] = useState<string | null>(null);
   const maxRetries = 3;
 
   const handlePayment = async (isRetry = false) => {
@@ -113,11 +113,11 @@ export default function GCashPayment({
     }
   };
 
-  const handleRetry = () => {
+  const _handleRetry = () => {
     handlePayment(true);
   };
 
-  const handleCancel = () => {
+  const _handleCancel = () => {
     if (onCancel) {
       onCancel();
     }

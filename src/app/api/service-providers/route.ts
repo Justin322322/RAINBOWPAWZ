@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { calculateDistance, getBataanCoordinates } from '@/utils/distance';
-import { calculateEnhancedDistance, formatDistance } from '@/utils/routeDistance';
+import { calculateEnhancedDistance } from '@/utils/routeDistance';
 
 export async function GET(request: Request) {
   // Extract user location from query parameters
@@ -113,7 +113,7 @@ export async function GET(request: Request) {
 
         // Add detailed logging to see what's happening with the query
         if (providersResult.length > 0) {
-          providersResult.forEach(provider => {
+          providersResult.forEach(_provider => {
           });
         }
       } else {
@@ -182,7 +182,7 @@ export async function GET(request: Request) {
               provider.distance = `${distanceValue} km away`;
               provider.distanceValue = distanceValue;
             }
-          } catch (error) {
+          } catch (_error) {
             provider.packages = 0;
             provider.distance = 'Distance unavailable';
           }
@@ -320,7 +320,7 @@ export async function GET(request: Request) {
               (business as any).distance = `${distanceValue} km away`;
               (business as any).distanceValue = distanceValue;
             }
-          } catch (error) {
+          } catch (_error) {
           }
         }
 
@@ -331,10 +331,10 @@ export async function GET(request: Request) {
 
       // No test providers - all data comes from database
       return NextResponse.json({ providers: [] });
-    } catch (dbError) {
+    } catch (_dbError) {
       return NextResponse.json({ providers: [], error: 'Database error' });
     }
-  } catch (error) {
+  } catch (_error) {
     return NextResponse.json(
       { error: 'Failed to fetch service providers' },
       { status: 500 }

@@ -31,7 +31,7 @@ async function migratePackageImages() {
 
       // Skip images that are already in package ID folders
       if (currentPath.match(/\/uploads\/packages\/\d+\//)) {
-        skipped++;
+        _skipped++;
         continue;
       }
 
@@ -45,7 +45,7 @@ async function migratePackageImages() {
         // Check if the source file exists
         const sourcePath = path.join(process.cwd(), 'public', currentPath);
         if (!fs.existsSync(sourcePath)) {
-          failed++;
+          _failed++;
           continue;
         }
 
@@ -65,16 +65,16 @@ async function migratePackageImages() {
           [newRelativePath, image.id]
         );
 
-        migrated++;
-      } catch (error) {
-        failed++;
+        _migrated++;
+      } catch (_error) {
+        _failed++;
       }
     }
 
 
     // Migration completed
 
-  } catch (error) {
+  } catch (_error) {
     // Migration failed
   }
 }

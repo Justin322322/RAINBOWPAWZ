@@ -8,7 +8,7 @@ function PaymentFailedContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
-  const [paymentDetails, setPaymentDetails] = useState<any>(null);
+  const [_paymentDetails, setPaymentDetails] = useState<any>(null);
 
   const bookingId = searchParams.get('booking_id');
   const error = searchParams.get('error');

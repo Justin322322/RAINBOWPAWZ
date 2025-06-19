@@ -118,11 +118,11 @@ async function calculateFromBookings(providerId?: string | number) {
   let amountColumn = 'total_price';
   try {
     await query(`SELECT ${amountColumn} FROM bookings LIMIT 1`);
-  } catch (err) {
+  } catch (_err) {
     try {
       amountColumn = 'total_amount';
       await query(`SELECT ${amountColumn} FROM bookings LIMIT 1`);
-    } catch (err2) {
+    } catch (_err2) {
       amountColumn = 'amount';
     }
   }

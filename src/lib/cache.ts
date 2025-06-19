@@ -5,10 +5,10 @@ const DEFAULT_TTL = 300; // 5 minutes
 const CHECK_PERIOD = 120; // Check for expired keys every 2 minutes
 
 // Create cache instances for different data types
-const userCache = new NodeCache({ stdTTL: DEFAULT_TTL, checkperiod: CHECK_PERIOD });
-const packageCache = new NodeCache({ stdTTL: 600, checkperiod: CHECK_PERIOD }); // 10 minutes for packages
-const providerCache = new NodeCache({ stdTTL: 600, checkperiod: CHECK_PERIOD }); // 10 minutes for providers
-const configCache = new NodeCache({ stdTTL: 1800, checkperiod: CHECK_PERIOD }); // 30 minutes for config
+const _userCache = new NodeCache({ stdTTL: DEFAULT_TTL, checkperiod: CHECK_PERIOD });
+const _packageCache = new NodeCache({ stdTTL: 600, checkperiod: CHECK_PERIOD }); // 10 minutes for packages
+const _providerCache = new NodeCache({ stdTTL: 600, checkperiod: CHECK_PERIOD }); // 10 minutes for providers
+const _configCache = new NodeCache({ stdTTL: 1800, checkperiod: CHECK_PERIOD }); // 30 minutes for config
 
 export interface CacheOptions {
   ttl?: number;

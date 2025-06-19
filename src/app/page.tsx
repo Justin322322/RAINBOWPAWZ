@@ -8,8 +8,7 @@ import LoginModal from '@/components/LoginModal';
 import SignupOptionModal from '@/components/SignupOptionModal';
 import PersonalAccountModal from '@/components/PersonalAccountModal';
 import BusinessAccountModal from '@/components/BusinessAccountModal';
-import { ChevronRightIcon, SparklesIcon, CalendarIcon, UserGroupIcon, HeartIcon, HomeIcon, CheckIcon, MapPinIcon, Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline';
-import { CalendarIcon as CalendarIconSolid, HeartIcon as HeartIconSolid, SparklesIcon as SparklesIconSolid } from '@heroicons/react/24/solid';
+import { SparklesIcon, CalendarIcon, HeartIcon, HomeIcon, CheckIcon, MapPinIcon, Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline';
 
 export default function Home() {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
@@ -90,10 +89,10 @@ export default function Home() {
 
 
   // Style for navigation links and buttons
-  const navLinkStyle = "text-base font-medium text-gray-100 hover:text-white transition-all duration-300 relative after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-[var(--primary-green)] after:transition-all after:duration-300 hover:after:w-full cursor-pointer";
+  const _navLinkStyle = "text-base font-medium text-gray-100 hover:text-white transition-all duration-300 relative after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-[var(--primary-green)] after:transition-all after:duration-300 hover:after:w-full cursor-pointer";
   const buttonBaseStyle = "px-6 py-2.5 rounded-full text-sm font-medium transition-all duration-300 ease-in-out focus:outline-none border shadow-md hover:shadow-lg transform hover:-translate-y-0.5";
-  const primaryButtonStyle = `${buttonBaseStyle} bg-gradient-to-r from-[var(--primary-green)] to-[var(--primary-green-light)] hover:from-[var(--primary-green-hover)] hover:to-[var(--primary-green)] text-white border-transparent`;
-  const secondaryButtonStyle = `${buttonBaseStyle} bg-white/10 backdrop-blur-md text-white hover:bg-white/20 border-white/30`;
+  const _primaryButtonStyle = `${buttonBaseStyle} bg-gradient-to-r from-[var(--primary-green)] to-[var(--primary-green-light)] hover:from-[var(--primary-green-hover)] hover:to-[var(--primary-green)] text-white border-transparent`;
+  const _secondaryButtonStyle = `${buttonBaseStyle} bg-white/10 backdrop-blur-md text-white hover:bg-white/20 border-white/30`;
 
   return (
     <div className="min-h-screen flex flex-col font-sans bg-gradient-to-b from-stone-50 to-white text-gray-800">

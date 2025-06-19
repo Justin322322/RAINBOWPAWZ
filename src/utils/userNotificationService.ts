@@ -17,7 +17,7 @@ export async function createUserNotification({
   type,
   title,
   message,
-  entityType,
+  _entityType,
   entityId
 }: UserNotificationData): Promise<boolean> {
   try {
@@ -38,7 +38,7 @@ export async function createUserNotification({
     }
 
     // Insert the notification
-    const result = await query(
+    const _result = await query(
       `INSERT INTO notifications (user_id, title, message, type, link)
        VALUES (?, ?, ?, ?, ?)`,
       [userId, title, message, type, link]

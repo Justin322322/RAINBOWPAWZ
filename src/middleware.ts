@@ -16,7 +16,7 @@ function decodeJWTPayload(token: string): any | null {
     const paddedPayload = payload + '='.repeat((4 - payload.length % 4) % 4);
     const decodedPayload = atob(paddedPayload);
     return JSON.parse(decodedPayload);
-  } catch (error) {
+  } catch (_error) {
     return null;
   }
 }
@@ -44,7 +44,7 @@ export function middleware(request: NextRequest) {
   const isAdminPath = pathname.startsWith('/admin') && pathname !== '/admin';
 
   // Exclude diagnostic pages from protection
-  const isDiagnosePath = pathname.includes('/cremation/packages/diagnose/');
+  const _isDiagnosePath = pathname.includes('/cremation/packages/diagnose/');
 
   // Define cremation paths that require business authentication
   const isCremationPath = pathname.startsWith('/cremation') && pathname !== '/cremation';
@@ -66,7 +66,7 @@ export function middleware(request: NextRequest) {
       let decodedValue;
       try {
         decodedValue = decodeURIComponent(authCookie);
-      } catch (error) {
+      } catch (_error) {
         decodedValue = authCookie;
       }
 
@@ -117,7 +117,7 @@ export function middleware(request: NextRequest) {
           headers: requestHeaders,
         },
       });
-    } catch (error) {
+    } catch (_error) {
       // If there's an error processing the token, redirect to home
       return NextResponse.redirect(new URL('/', request.url));
     }

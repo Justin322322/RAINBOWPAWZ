@@ -36,7 +36,7 @@ async function ensurePetsTableExists() {
     }
 
     return true;
-  } catch (error) {
+  } catch (_error) {
     return false;
   }
 }
@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const [userId, accountType] = authToken.split('_');
+    const [userId, _accountType] = authToken.split('_');
 
     // Allow any account type to fetch pets for now (for testing)
     // In production, you would want to restrict this to fur_parent or user accounts
@@ -128,14 +128,14 @@ export async function POST(request: NextRequest) {
     const species = body.species;
     const breed = body.breed;
     const gender = body.gender;
-    const age = body.age;
+    const _age = body.age;
     const weight = body.weight;
 
     // Support multiple field names for image path
     const imagePath = body.imagePath || body.image_url || body.photoPath || body.imageUrl;
 
     // Support multiple field names for special notes
-    const specialNotes = body.specialNotes || body.special_notes || body.notes;
+    const _specialNotes = body.specialNotes || body.special_notes || body.notes;
 
     // Validate required fields
     if (!name || !species) {

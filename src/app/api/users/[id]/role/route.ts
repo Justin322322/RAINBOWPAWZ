@@ -22,7 +22,7 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const [tokenUserId, accountType] = authToken.split('_');
+    const [_tokenUserId, accountType] = authToken.split('_');
     
     // Only allow admins to update user roles
     if (accountType !== 'admin') {

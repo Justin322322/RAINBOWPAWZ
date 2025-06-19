@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const [userId, accountType] = authToken.split('_');
+    const [_userId, accountType] = authToken.split('_');
     
     // Only allow admins to run migrations
     if (accountType !== 'admin') {

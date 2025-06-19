@@ -93,11 +93,11 @@ export async function GET(request: NextRequest) {
 
     // Format revenue for display
     const formattedMonthlyRevenue = formatRevenue(actualMonthlyRevenue);
-    const formattedTotalRevenue = formatRevenue(actualTotalRevenue);
+    const _formattedTotalRevenue = formatRevenue(actualTotalRevenue);
 
     // Calculate revenue change percentage properly using the revenueCalculator utility
     const previousMonthRevenue = revenueData.previousMonthRevenue || 0; // Ensure it's never null
-    const revenueChange = calculatePercentageChange(actualMonthlyRevenue, previousMonthRevenue);
+    const _revenueChange = calculatePercentageChange(actualMonthlyRevenue, previousMonthRevenue);
 
     // Get recent applications from service_providers table
     let recentApplications: any[] = [];
@@ -128,7 +128,7 @@ export async function GET(request: NextRequest) {
         })
       }));
 
-    } catch (error) {
+    } catch (_error) {
       // Attempt fallback query with fewer joins if the main one fails
       try {
         recentApplications = await query(`
@@ -169,7 +169,7 @@ export async function GET(request: NextRequest) {
     `);
 
     // Get pets count
-    let totalPetsCount = 0;
+    let _totalPetsCount = 0;
     try {
       // Check if pets table exists
       const petsTableExists = await safeQuery(`
@@ -181,15 +181,15 @@ export async function GET(request: NextRequest) {
         const petsResult = await safeQuery(`
           SELECT COUNT(*) as count FROM pets
         `);
-        totalPetsCount = petsResult[0]?.count || 0;
+        _totalPetsCount = petsResult[0]?.count || 0;
       }
     } catch (error) {
       console.error('Failed to fetch pets count:', error);
-      totalPetsCount = 0;
+      _totalPetsCount = 0;
     }
 
     // Get completed bookings count
-    let completedBookingsCount = 0;
+    let _completedBookingsCount = 0;
     try {
       // Check if service_bookings table exists
       const bookingsTableExists = await safeQuery(`
@@ -201,11 +201,11 @@ export async function GET(request: NextRequest) {
         const bookingsResult = await safeQuery(`
           SELECT COUNT(*) as count FROM service_bookings WHERE status = 'completed'
         `);
-        completedBookingsCount = bookingsResult[0]?.count || 0;
+        _completedBookingsCount = bookingsResult[0]?.count || 0;
       }
     } catch (error) {
       console.error('Failed to fetch completed bookings count:', error);
-      completedBookingsCount = 0;
+      _completedBookingsCount = 0;
     }
 
     // Get pending applications count
@@ -291,7 +291,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Current month revenue is already calculated in revenueData
-    const previousMonthRevenueObj = [{ total: previousMonthRevenue }];
+    const _previousMonthRevenueObj = [{ total: previousMonthRevenue }];
 
     // Calculate percentage changes
     const calculateChange = (current: number, previous: number) => {

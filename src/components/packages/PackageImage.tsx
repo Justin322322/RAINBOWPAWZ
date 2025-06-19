@@ -128,7 +128,7 @@ export const PackageImage: React.FC<PackageImageProps> = ({
     ? "flex-shrink-0 h-12 w-12 bg-gray-200 rounded-md overflow-hidden relative"
     : "h-full w-full relative";
 
-  const handleImageError = () => {
+  const _handleImageError = () => {
     if (imageFailed) return;
 
 

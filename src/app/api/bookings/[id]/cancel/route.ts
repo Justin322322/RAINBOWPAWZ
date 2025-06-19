@@ -9,9 +9,7 @@ import { sendEmail } from '@/lib/consolidatedEmailService';
 // Import refund services
 import {
   checkRefundEligibility,
-  createRefundRecord,
-  processPayMongoRefund,
-  completeRefund
+  createRefundRecord
 } from '@/services/refundService';
 import { REFUND_REASONS } from '@/types/refund';
 import { createAdminNotification } from '@/utils/adminNotificationService';
@@ -221,7 +219,7 @@ export async function POST(request: NextRequest) {
             notes: 'Your booking has been cancelled as requested.'
           };
         }
-      } catch (dbError) {
+      } catch (_dbError) {
         // Continue with mock data if we can't get real data
       }
 
@@ -251,7 +249,7 @@ export async function POST(request: NextRequest) {
               notes: 'Your booking has been cancelled as requested.'
             };
           }
-        } catch (userError) {
+        } catch (_userError) {
         }
       }
 
@@ -304,10 +302,10 @@ export async function POST(request: NextRequest) {
         } else {
           // Continue with the cancellation process even if the email fails
         }
-      } catch (emailSendError) {
+      } catch (_emailSendError) {
         // Continue with the cancellation process even if the email fails
       }
-    } catch (emailError) {
+    } catch (_emailError) {
       // Continue with the cancellation process even if the email fails
     }
 
@@ -326,7 +324,7 @@ export async function POST(request: NextRequest) {
         message: refundInfo.message
       } : null
     });
-  } catch (error) {
+  } catch (_error) {
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }

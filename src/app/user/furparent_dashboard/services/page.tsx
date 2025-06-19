@@ -7,15 +7,12 @@ import {
   ChevronRightIcon,
   MapPinIcon,
   HomeIcon,
-  CalendarIcon,
-  ArrowPathIcon
+  CalendarIcon
 } from '@heroicons/react/24/outline';
 import dynamic from 'next/dynamic';
-import FurParentPageSkeleton from '@/components/ui/FurParentPageSkeleton';
 import SectionLoader from '@/components/ui/SectionLoader';
-import { Skeleton } from '@/components/ui/SkeletonLoader';
 import { motion } from 'framer-motion';
-import { getUserLocation, geocodeAddress, LocationData } from '@/utils/geolocation';
+import { geocodeAddress, LocationData } from '@/utils/geolocation';
 import { cacheManager } from '@/utils/cache';
 
 // Import the map component with dynamic loading and standardized loading indicator
@@ -47,7 +44,7 @@ function ServicesPage({ userData }: ServicesPageProps) {
   });
   const [isLoadingLocation, setIsLoadingLocation] = useState(true);
   const [isMapVisible, setIsMapVisible] = useState(false);
-  const [isMapLoaded, setIsMapLoaded] = useState(false);
+  const [_isMapLoaded, _setIsMapLoaded] = useState(false);
   const [selectedProviderId, setSelectedProviderId] = useState<number | null>(null);
 
   // Ref to hold map section element to scroll to when showing directions
@@ -215,7 +212,7 @@ function ServicesPage({ userData }: ServicesPageProps) {
         setServiceProviders(sortedProviders);
         // Reset to first page when providers change
         setCurrentPage(1);
-      } catch (error) {
+      } catch (_error) {
         // Fallback to empty array if fetch fails
         setServiceProviders([]);
       } finally {

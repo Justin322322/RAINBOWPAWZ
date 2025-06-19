@@ -22,7 +22,7 @@ export default function CremationSidebar({
   activePage: propActivePage
 }: CremationSidebarProps) {
   const pathname = usePathname();
-  const router = useRouter();
+  const _router = useRouter();
   const [activePage, setActivePage] = useState('');
   const [isNavigating, setIsNavigating] = useState(false);
   const [currentYear, setCurrentYear] = useState<number>(2024); // Default to prevent hydration mismatch
@@ -78,7 +78,7 @@ export default function CremationSidebar({
   ];
 
   // Handle navigation item click
-  const handleNavItemClick = (id: string) => {
+  const handleNavItemClick = (_id: string) => {
     setIsNavigating(true);
   };
 

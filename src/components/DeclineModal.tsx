@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { XMarkIcon, ExclamationTriangleIcon, ArrowPathIcon, CheckIcon, XCircleIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon, ArrowPathIcon, CheckIcon, XCircleIcon } from '@heroicons/react/24/outline';
 
 interface DeclineModalProps {
   isOpen: boolean;
@@ -47,7 +47,7 @@ const DeclineModal: React.FC<DeclineModalProps> = ({
           setRequestDocuments(false);
         }, 300);
       }, 1500);
-    } catch (error) {
+    } catch (_error) {
       setIsLoading(false);
       setError('An error occurred. Please try again.');
     }

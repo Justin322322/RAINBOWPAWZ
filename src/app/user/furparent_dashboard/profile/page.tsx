@@ -110,7 +110,7 @@ function ProfilePage({ userData }: ProfilePageProps) {
       let authValue: string;
       try {
         authValue = decodeURIComponent(cookieParts[1]);
-      } catch (e) {
+      } catch (_e) {
         authValue = cookieParts[1];
       }
 

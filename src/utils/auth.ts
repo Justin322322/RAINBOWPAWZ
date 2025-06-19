@@ -30,7 +30,7 @@ export const parseAuthToken = (authToken: string): { userId: string; accountType
     }
 
     return { userId, accountType };
-  } catch (error) {
+  } catch (_error) {
     return null;
   }
 };
@@ -67,7 +67,7 @@ export const parseAuthTokenAsync = async (authToken: string): Promise<{ userId: 
     }
 
     return { userId, accountType };
-  } catch (error) {
+  } catch (_error) {
     return null;
   }
 };
@@ -121,7 +121,7 @@ export const getAuthTokenFromRequest = (request: NextRequest): string | null => 
     }
 
     return null;
-  } catch (error) {
+  } catch (_error) {
     return null;
   }
 };
@@ -156,7 +156,7 @@ export const getAuthToken = (): string | null => {
         if (localStorageToken && (localStorageToken.includes('.') || localStorageToken.includes('_'))) {
           return localStorageToken;
         }
-      } catch (e) {
+      } catch (_e) {
         // Silently fail if localStorage is not available
       }
     }
@@ -181,7 +181,7 @@ export const getAuthToken = (): string | null => {
 
     // If all else fails, return null
     return null;
-  } catch (error) {
+  } catch (_error) {
     return null;
   }
 };
@@ -288,7 +288,7 @@ export const setAuthToken = (userId: string, accountType: string, expirationDays
     try {
       // Store the token in localStorage as a backup specifically for port 3000
       localStorage.setItem('auth_token_3000', tokenValue);
-    } catch (e) {
+    } catch (_e) {
       // Silently fail if localStorage is not available
     }
   }
@@ -312,7 +312,7 @@ export const clearAuthToken = async (): Promise<void> => {
   // Clear localStorage backups
   try {
     localStorage.removeItem('auth_token_3000');
-  } catch (e) {
+  } catch (_e) {
     // Silently fail if localStorage is not available
   }
 
@@ -419,7 +419,7 @@ export const checkAuthStatus = async (): Promise<{
       userId: data.userId,
       accountType: data.accountType
     };
-  } catch (error) {
+  } catch (_error) {
     return { authenticated: false };
   }
 };
@@ -525,7 +525,7 @@ export const fastAuthCheck = (): {
       userData: null,
       adminData: null
     };
-  } catch (error) {
+  } catch (_error) {
     return defaultState;
   }
 };
