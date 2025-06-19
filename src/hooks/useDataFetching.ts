@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useLoading } from '@/contexts/LoadingContext';
 
 interface FetchOptions {
@@ -35,34 +35,41 @@ export function useDataFetching<T = any>({
   const [data, setData] = useState<T | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
-  const [abortController, setAbortController] = useState<AbortController | null>(null);
+  
+  const abortControllerRef = useRef<AbortController | null>(null);
 
-  // Get global loading context
   const { setLoading, setLoadingMessage, setLoadingSection, _clearAllLoading } = useLoading();
+
+  const onSuccessRef = useRef(onSuccess);
+  const onErrorRef = useRef(onError);
+  
+  useEffect(() => {
+    onSuccessRef.current = onSuccess;
+  }, [onSuccess]);
+  
+  useEffect(() => {
+    onErrorRef.current = onError;
+  }, [onError]);
 
   const fetchData = useCallback(async (options: { silent?: boolean } = {}) => {
     const { silent = false } = options;
 
-    // Cancel any existing request
-    if (abortController) {
-      abortController.abort();
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
     }
 
-    // Create new abort controller for this request
     const newAbortController = new AbortController();
-    setAbortController(newAbortController);
+    abortControllerRef.current = newAbortController;
 
     if (!silent) {
       setIsLoading(true);
       setError(null);
 
-      // Prevent overlapping global loaders
       if (showGlobalLoading) {
         setLoading(true);
         setLoadingMessage(loadingMessage);
       }
 
-      // Prevent overlapping section loaders
       if (showSectionLoading) {
         setLoadingSection(sectionId);
       }
@@ -75,7 +82,7 @@ export function useDataFetching<T = any>({
           'Content-Type': 'application/json',
           ...headers,
         },
-        signal: newAbortController.signal, // Add abort signal
+        signal: newAbortController.signal,
       };
 
       if (body && method !== 'GET') {
@@ -91,13 +98,12 @@ export function useDataFetching<T = any>({
       const result = await response.json();
       setData(result);
 
-      if (onSuccess) {
-        onSuccess(result);
+      if (onSuccessRef.current) {
+        onSuccessRef.current(result);
       }
 
       return result;
     } catch (err) {
-      // Don't set error if request was aborted
       if (err instanceof Error && err.name === 'AbortError') {
         return null;
       }
@@ -105,19 +111,19 @@ export function useDataFetching<T = any>({
       const error = err instanceof Error ? err : new Error(String(err));
       setError(error);
 
-      if (onError) {
-        onError(error);
+      if (onErrorRef.current) {
+        onErrorRef.current(error);
       }
 
       return null;
     } finally {
-      // Clear abort controller
-      setAbortController(null);
+      if (abortControllerRef.current === newAbortController) {
+        abortControllerRef.current = null;
+      }
 
       if (!silent) {
         setIsLoading(false);
 
-        // Ensure loading states are properly cleared
         if (showGlobalLoading) {
           setLoading(false);
         }
@@ -127,23 +133,29 @@ export function useDataFetching<T = any>({
         }
       }
     }
-  }, [url, method, body, headers, loadingMessage, showGlobalLoading, showSectionLoading, sectionId, onSuccess, onError, setLoading, setLoadingMessage, setLoadingSection, abortController]);
+  }, [url, method, body, headers, loadingMessage, showGlobalLoading, showSectionLoading, sectionId, setLoading, setLoadingMessage, setLoadingSection]);
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (abortController) {
-        abortController.abort();
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
       }
     };
-  }, [abortController]);
+  }, []);
+
+  const hasInitialFetchRef = useRef(false);
 
   useEffect(() => {
-    if (!skipInitialFetch) {
+    if (!skipInitialFetch && !hasInitialFetchRef.current) {
+      hasInitialFetchRef.current = true;
       fetchData();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [...dependencies, skipInitialFetch, fetchData]);
+  }, [...dependencies, skipInitialFetch]);
+
+  useEffect(() => {
+    hasInitialFetchRef.current = false;
+  }, [...dependencies]);
 
   return { data, isLoading, error, fetchData, setData };
 }
