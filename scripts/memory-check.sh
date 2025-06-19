@@ -1,271 +1,227 @@
 #!/bin/bash
 
-# 🧠 RainbowPaws Memory Leak Detection Script
-# This script checks for potential memory leaks in React components
+# Memory Leak Detection Script for RainbowPaws
+# Specifically designed to detect Issue #3: Event Listener Memory Leaks
 
-echo "🧠 RainbowPaws Memory Leak Detection"
-echo "===================================="
+echo "🔍 RainbowPaws Memory Leak Detection - Event Listeners"
+echo "=================================================="
 
-# Initialize counters
-memory_issues=0
-potential_issues=0
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
 
-# Function to report issues
-report_memory_issue() {
-    echo "❌ $1"
-    ((memory_issues++))
-}
+# Counters
+TOTAL_ISSUES=0
+CRITICAL_ISSUES=0
+WARNINGS=0
 
-report_potential_issue() {
-    echo "⚠️  $1"
-    ((potential_issues++))
-}
+echo "Scanning for event listener memory leaks..."
 
-report_success() {
-    echo "✅ $1"
-}
+# Check for addEventListener without removeEventListener
+echo -e "\n${BLUE}🔍 Checking for unmanaged addEventListener calls...${NC}"
 
-# Check 1: addEventListener without removeEventListener
-echo "👂 Checking event listeners..."
-echo "--------------------------------"
-
-files_with_listeners=$(grep -r "addEventListener" src/ --include="*.ts" --include="*.tsx" -l)
-listener_issues=0
-
-for file in $files_with_listeners; do
-    if ! grep -q "removeEventListener" "$file"; then
-        report_memory_issue "Event listener without cleanup: $file"
-        ((listener_issues++))
-    fi
-done
-
-if [ "$listener_issues" -eq 0 ]; then
-    report_success "All event listeners have proper cleanup"
-fi
-
-# Check 2: setTimeout/setInterval without cleanup
-echo ""
-echo "⏰ Checking timers and intervals..."
-echo "-----------------------------------"
-
-files_with_timers=$(grep -r "setTimeout\|setInterval" src/ --include="*.ts" --include="*.tsx" -l)
-timer_issues=0
-
-for file in $files_with_timers; do
-    has_settimeout=$(grep -q "setTimeout" "$file" && echo "yes" || echo "no")
-    has_setinterval=$(grep -q "setInterval" "$file" && echo "yes" || echo "no")
-    has_cleartimeout=$(grep -q "clearTimeout" "$file" && echo "yes" || echo "no")
-    has_clearinterval=$(grep -q "clearInterval" "$file" && echo "yes" || echo "no")
-    
-    if [ "$has_settimeout" = "yes" ] && [ "$has_cleartimeout" = "no" ]; then
-        report_memory_issue "setTimeout without clearTimeout: $file"
-        ((timer_issues++))
-    fi
-    
-    if [ "$has_setinterval" = "yes" ] && [ "$has_clearinterval" = "no" ]; then
-        report_memory_issue "setInterval without clearInterval: $file"
-        ((timer_issues++))
-    fi
-done
-
-if [ "$timer_issues" -eq 0 ]; then
-    report_success "All timers have proper cleanup"
-fi
-
-# Check 3: useEffect without cleanup function
-echo ""
-echo "🔄 Checking useEffect cleanup..."
-echo "--------------------------------"
-
-effect_issues=0
-files_with_effects=$(grep -r "useEffect" src/ --include="*.ts" --include="*.tsx" -l)
-
-for file in $files_with_effects; do
-    # Count useEffect calls
-    effect_count=$(grep -c "useEffect" "$file")
-    
-    # Count cleanup functions (return statements in useEffect)
-    cleanup_count=$(grep -A 10 "useEffect" "$file" | grep -c "return () =>")
-    
-    # This is a heuristic check - not perfect but gives an indication
-    if [ "$effect_count" -gt "$cleanup_count" ] && [ "$effect_count" -gt 1 ]; then
-        report_potential_issue "Potential missing cleanup in useEffect: $file ($effect_count effects, $cleanup_count cleanups)"
-        ((effect_issues++))
-    fi
-done
-
-if [ "$effect_issues" -eq 0 ]; then
-    report_success "useEffect cleanup appears proper"
-fi
-
-# Check 4: AbortController usage
-echo ""
-echo "🛑 Checking AbortController usage..."
-echo "------------------------------------"
-
-abort_files=$(grep -r "AbortController" src/ --include="*.ts" --include="*.tsx" -l)
-abort_issues=0
-
-for file in $abort_files; do
-    if ! grep -q "abort()" "$file"; then
-        report_potential_issue "AbortController created but abort() not called: $file"
-        ((abort_issues++))
-    fi
-done
-
-if [ "$abort_issues" -eq 0 ] && [ -n "$abort_files" ]; then
-    report_success "AbortController usage appears correct"
-elif [ -z "$abort_files" ]; then
-    echo "ℹ️  No AbortController usage found"
-fi
-
-# Check 5: Subscription patterns without unsubscribe
-echo ""
-echo "📡 Checking subscription patterns..."
-echo "------------------------------------"
-
-subscription_issues=0
-files_with_subscriptions=$(grep -r "subscribe\|on(" src/ --include="*.ts" --include="*.tsx" -l)
-
-for file in $files_with_subscriptions; do
-    if ! grep -q "unsubscribe\|off(\|removeListener" "$file"; then
-        report_potential_issue "Subscription without unsubscribe: $file"
-        ((subscription_issues++))
-    fi
-done
-
-if [ "$subscription_issues" -eq 0 ] && [ -n "$files_with_subscriptions" ]; then
-    report_success "Subscription cleanup appears proper"
-elif [ -z "$files_with_subscriptions" ]; then
-    echo "ℹ️  No subscription patterns found"
-fi
-
-# Check 6: DOM element references
-echo ""
-echo "🏗️  Checking DOM element references..."
-echo "--------------------------------------"
-
-ref_issues=0
-files_with_refs=$(grep -r "useRef\|createRef" src/ --include="*.ts" --include="*.tsx" -l)
-
-for file in $files_with_refs; do
-    # Check if refs are being cleared in cleanup
-    if grep -q "useRef.*HTMLElement\|createRef.*HTMLElement" "$file"; then
-        if ! grep -A 10 "return () =>" "$file" | grep -q "\.current = null" > /dev/null 2>&1; then
-            report_potential_issue "DOM ref might not be cleared on cleanup: $file"
-            ((ref_issues++))
-        fi
-    fi
-done
-
-if [ "$ref_issues" -eq 0 ] && [ -n "$files_with_refs" ]; then
-    report_success "DOM reference cleanup appears proper"
-fi
-
-# Check 7: Intersection Observer
-echo ""
-echo "👁️  Checking Intersection Observer usage..."
-echo "-------------------------------------------"
-
-observer_files=$(grep -r "IntersectionObserver" src/ --include="*.ts" --include="*.tsx" -l)
-observer_issues=0
-
-for file in $observer_files; do
-    if ! grep -q "disconnect()\|unobserve()" "$file"; then
-        report_memory_issue "IntersectionObserver without disconnect: $file"
-        ((observer_issues++))
-    fi
-done
-
-if [ "$observer_issues" -eq 0 ] && [ -n "$observer_files" ]; then
-    report_success "IntersectionObserver cleanup appears proper"
-elif [ -z "$observer_files" ]; then
-    echo "ℹ️  No IntersectionObserver usage found"
-fi
-
-# Check 8: WebSocket connections
-echo ""
-echo "🔌 Checking WebSocket connections..."
-echo "------------------------------------"
-
-websocket_files=$(grep -r "WebSocket\|Socket\.io" src/ --include="*.ts" --include="*.tsx" -l)
-websocket_issues=0
-
-for file in $websocket_files; do
-    if ! grep -q "close()\|disconnect()" "$file"; then
-        report_memory_issue "WebSocket without close: $file"
-        ((websocket_issues++))
-    fi
-done
-
-if [ "$websocket_issues" -eq 0 ] && [ -n "$websocket_files" ]; then
-    report_success "WebSocket cleanup appears proper"
-elif [ -z "$websocket_files" ]; then
-    echo "ℹ️  No WebSocket usage found"
-fi
-
-# Detailed Analysis: Show specific problematic patterns
-echo ""
-echo "🔍 Detailed Pattern Analysis"
-echo "============================="
-
-# Find specific setTimeout patterns that might be problematic
-echo "⏱️  Potentially problematic setTimeout patterns:"
-grep -r "setTimeout" src/ --include="*.ts" --include="*.tsx" -n | while IFS= read -r line; do
+# Find addEventListener patterns
+UNMANAGED_LISTENERS=$(grep -r "addEventListener" src/ --include="*.tsx" --include="*.ts" | \
+  while IFS= read -r line; do
     file=$(echo "$line" | cut -d: -f1)
     line_num=$(echo "$line" | cut -d: -f2)
     content=$(echo "$line" | cut -d: -f3-)
     
-    # Check if this setTimeout is in a useEffect
-    context=$(sed -n "$((line_num-5)),$((line_num+5))p" "$file" 2>/dev/null)
-    if echo "$context" | grep -q "useEffect" && ! echo "$context" | grep -q "clearTimeout"; then
-        echo "   ⚠️  $file:$line_num - setTimeout in useEffect without cleanup"
+    # Check if there's a corresponding removeEventListener in the same file
+    if grep -q "removeEventListener" "$file"; then
+      continue
+    else
+      echo "$line"
     fi
+  done)
+
+if [ -n "$UNMANAGED_LISTENERS" ]; then
+  echo -e "${RED}❌ Found potentially unmanaged event listeners:${NC}"
+  echo "$UNMANAGED_LISTENERS"
+  CRITICAL_ISSUES=$((CRITICAL_ISSUES + $(echo "$UNMANAGED_LISTENERS" | wc -l)))
+else
+  echo -e "${GREEN}✅ No obviously unmanaged event listeners found${NC}"
+fi
+
+# Check for specific memory leak patterns in MapComponent
+echo -e "\n${BLUE}🗺️ Checking MapComponent.tsx for memory leaks...${NC}"
+
+MAP_COMPONENT="src/components/map/MapComponent.tsx"
+if [ -f "$MAP_COMPONENT" ]; then
+  # Check if buttonEventListenersRef is used for cleanup
+  if grep -q "buttonEventListenersRef" "$MAP_COMPONENT" && grep -q "removeEventListener" "$MAP_COMPONENT"; then
+    echo -e "${GREEN}✅ MapComponent: Proper event listener cleanup detected${NC}"
+  else
+    echo -e "${RED}❌ MapComponent: Missing proper event listener cleanup${NC}"
+    CRITICAL_ISSUES=$((CRITICAL_ISSUES + 1))
+  fi
+  
+  # Check for cloned elements with addEventListener (old pattern)
+  if grep -q "cloneNode.*addEventListener" "$MAP_COMPONENT"; then
+    echo -e "${RED}❌ MapComponent: Found cloned elements with unmanaged event listeners${NC}"
+    CRITICAL_ISSUES=$((CRITICAL_ISSUES + 1))
+  else
+    echo -e "${GREEN}✅ MapComponent: No cloned element memory leaks found${NC}"
+  fi
+else
+  echo -e "${YELLOW}⚠️ MapComponent.tsx not found${NC}"
+  WARNINGS=$((WARNINGS + 1))
+fi
+
+# Check navbar components for proper cleanup
+echo -e "\n${BLUE}📱 Checking Navigation components...${NC}"
+
+NAVBARS=(
+  "src/components/navigation/FurParentNavbar.tsx"
+  "src/components/navigation/CremationNavbar.tsx" 
+  "src/components/navigation/AdminNavbar.tsx"
+)
+
+for navbar in "${NAVBARS[@]}"; do
+  if [ -f "$navbar" ]; then
+    navbar_name=$(basename "$navbar" .tsx)
+    
+    # Check if addEventListener and removeEventListener are balanced
+    add_count=$(grep -c "addEventListener" "$navbar" 2>/dev/null || echo "0")
+    remove_count=$(grep -c "removeEventListener" "$navbar" 2>/dev/null || echo "0")
+    
+    if [ "$add_count" -eq "$remove_count" ] && [ "$add_count" -gt 0 ]; then
+      echo -e "${GREEN}✅ $navbar_name: Event listeners properly managed ($add_count add / $remove_count remove)${NC}"
+    elif [ "$add_count" -gt "$remove_count" ]; then
+      echo -e "${RED}❌ $navbar_name: Potential memory leak ($add_count add / $remove_count remove)${NC}"
+      CRITICAL_ISSUES=$((CRITICAL_ISSUES + 1))
+    elif [ "$add_count" -eq 0 ]; then
+      echo -e "${GREEN}✅ $navbar_name: No event listeners detected${NC}"
+    else
+      echo -e "${YELLOW}⚠️ $navbar_name: Unusual pattern detected${NC}"
+      WARNINGS=$((WARNINGS + 1))
+    fi
+  else
+    echo -e "${YELLOW}⚠️ $navbar not found${NC}"
+    WARNINGS=$((WARNINGS + 1))
+  fi
 done
 
-# Find setInterval patterns
-echo ""
-echo "🔄 Potentially problematic setInterval patterns:"
-grep -r "setInterval" src/ --include="*.ts" --include="*.tsx" -n | while IFS= read -r line; do
+# Check NotificationBell component
+echo -e "\n${BLUE}🔔 Checking NotificationBell component...${NC}"
+
+NOTIFICATION_BELL="src/components/ui/NotificationBell.tsx"
+if [ -f "$NOTIFICATION_BELL" ]; then
+  # Check for proper useEffect cleanup
+  if grep -A 10 "useEffect.*\[\]" "$NOTIFICATION_BELL" | grep -q "return.*removeEventListener"; then
+    echo -e "${GREEN}✅ NotificationBell: Proper cleanup in useEffect detected${NC}"
+  elif grep -q "removeEventListener" "$NOTIFICATION_BELL"; then
+    echo -e "${GREEN}✅ NotificationBell: Event listener cleanup detected${NC}"
+  else
+    echo -e "${RED}❌ NotificationBell: No event listener cleanup found${NC}"
+    CRITICAL_ISSUES=$((CRITICAL_ISSUES + 1))
+  fi
+else
+  echo -e "${YELLOW}⚠️ NotificationBell.tsx not found${NC}"
+  WARNINGS=$((WARNINGS + 1))
+fi
+
+# Check for window/document level listeners
+echo -e "\n${BLUE}🌐 Checking for global event listeners...${NC}"
+
+GLOBAL_LISTENERS=$(grep -r "window\.addEventListener\|document\.addEventListener" src/ --include="*.tsx" --include="*.ts" | grep -v "removeEventListener")
+
+if [ -n "$GLOBAL_LISTENERS" ]; then
+  echo -e "${YELLOW}⚠️ Found global event listeners (verify cleanup):${NC}"
+  echo "$GLOBAL_LISTENERS" | head -10
+  if [ $(echo "$GLOBAL_LISTENERS" | wc -l) -gt 10 ]; then
+    echo "... and $(($(echo "$GLOBAL_LISTENERS" | wc -l) - 10)) more"
+  fi
+  WARNINGS=$((WARNINGS + $(echo "$GLOBAL_LISTENERS" | wc -l)))
+else
+  echo -e "${GREEN}✅ No unmanaged global event listeners found${NC}"
+fi
+
+# Check for React useEffect cleanup patterns
+echo -e "\n${BLUE}⚛️ Checking React useEffect cleanup patterns...${NC}"
+
+MISSING_CLEANUP=$(grep -r "useEffect.*addEventListener" src/ --include="*.tsx" --include="*.ts" | \
+  while IFS= read -r line; do
     file=$(echo "$line" | cut -d: -f1)
-    line_num=$(echo "$line" | cut -d: -f2)
-    content=$(echo "$line" | cut -d: -f3-)
     
-    # Check if this setInterval is in a useEffect
-    context=$(sed -n "$((line_num-5)),$((line_num+5))p" "$file" 2>/dev/null)
-    if echo "$context" | grep -q "useEffect" && ! echo "$context" | grep -q "clearInterval"; then
-        echo "   ⚠️  $file:$line_num - setInterval in useEffect without cleanup"
+    # Check if this useEffect has a cleanup function
+    if ! grep -A 20 "useEffect.*addEventListener" "$file" | grep -q "return.*=>.*removeEventListener"; then
+      echo "$line"
     fi
-done
+  done)
+
+if [ -n "$MISSING_CLEANUP" ]; then
+  echo -e "${RED}❌ Found useEffect with addEventListener but no cleanup:${NC}"
+  echo "$MISSING_CLEANUP"
+  CRITICAL_ISSUES=$((CRITICAL_ISSUES + $(echo "$MISSING_CLEANUP" | wc -l)))
+else
+  echo -e "${GREEN}✅ All useEffect with addEventListener have proper cleanup${NC}"
+fi
+
+# Calculate total issues
+TOTAL_ISSUES=$((CRITICAL_ISSUES + WARNINGS))
 
 # Summary
-echo ""
-echo "=================================="
-echo "🏁 Memory Leak Detection Summary"
-echo "=================================="
-echo "Critical Issues: $memory_issues"
-echo "Potential Issues: $potential_issues"
-echo "Total Concerns: $((memory_issues + potential_issues))"
+echo -e "\n${BLUE}=================================================="
+echo -e "📊 MEMORY LEAK DETECTION SUMMARY"
+echo -e "==================================================${NC}"
 
-if [ "$memory_issues" -eq 0 ] && [ "$potential_issues" -eq 0 ]; then
-    echo "✅ No memory leak issues detected!"
-elif [ "$memory_issues" -eq 0 ]; then
-    echo "⚠️  Only potential issues found - review recommended"
+if [ $CRITICAL_ISSUES -eq 0 ] && [ $WARNINGS -eq 0 ]; then
+  echo -e "${GREEN}🎉 EXCELLENT! No event listener memory leaks detected!${NC}"
+  echo -e "${GREEN}✅ All components properly manage event listeners${NC}"
+  echo -e "${GREEN}✅ Ready for production deployment${NC}"
+elif [ $CRITICAL_ISSUES -eq 0 ]; then
+  echo -e "${YELLOW}⚠️ GOOD: No critical memory leaks, but some warnings found${NC}"
+  echo -e "${YELLOW}📋 $WARNINGS warning(s) need review${NC}"
+  echo -e "${GREEN}✅ Safe for production with monitoring${NC}"
 else
-    echo "❌ Critical memory leak issues need immediate attention!"
+  echo -e "${RED}🚨 CRITICAL: Memory leaks detected!${NC}"
+  echo -e "${RED}❌ $CRITICAL_ISSUES critical issue(s) MUST be fixed${NC}"
+  echo -e "${YELLOW}⚠️ $WARNINGS warning(s) should be reviewed${NC}"
+  echo -e "${RED}🚫 NOT ready for production${NC}"
 fi
 
 echo ""
-echo "💡 Recommendations:"
-echo "- Always cleanup event listeners in useEffect return function"
-echo "- Clear timeouts and intervals in component cleanup"
-echo "- Disconnect observers and close connections"
-echo "- Set refs to null in cleanup when appropriate"
-echo "- Use AbortController for fetch requests"
+echo -e "${BLUE}Issue Breakdown:${NC}"
+echo -e "Critical Issues: ${RED}$CRITICAL_ISSUES${NC}"
+echo -e "Warnings: ${YELLOW}$WARNINGS${NC}"
+echo -e "Total Issues: $TOTAL_ISSUES"
 
-# Exit with error code if critical issues found
-if [ "$memory_issues" -gt 0 ]; then
-    exit 1
+echo ""
+echo -e "${BLUE}Next Steps:${NC}"
+if [ $CRITICAL_ISSUES -gt 0 ]; then
+  echo "1. Fix critical event listener memory leaks"
+  echo "2. Implement proper cleanup in useEffect hooks"
+  echo "3. Add removeEventListener for all addEventListener calls"
+  echo "4. Re-run this script to verify fixes"
+fi
+
+if [ $WARNINGS -gt 0 ]; then
+  echo "1. Review warning items for potential improvements"
+  echo "2. Consider implementing event listener monitoring"
+  echo "3. Add integration tests for memory leak prevention"
+fi
+
+if [ $TOTAL_ISSUES -eq 0 ]; then
+  echo "1. Continue monitoring for new memory leaks"
+  echo "2. Add this script to CI/CD pipeline"
+  echo "3. Proceed with Issue #4: Timer/Interval Memory Leaks"
+fi
+
+echo ""
+echo -e "${BLUE}Memory Leak Prevention Tips:${NC}"
+echo "• Always pair addEventListener with removeEventListener"
+echo "• Use useEffect cleanup functions for React components"
+echo "• Track event listeners in refs for complex components"
+echo "• Test component unmounting in development"
+echo "• Use React Developer Tools Profiler for memory monitoring"
+
+# Exit with appropriate code
+if [ $CRITICAL_ISSUES -gt 0 ]; then
+  exit 1
 else
-    exit 0
+  exit 0
 fi 

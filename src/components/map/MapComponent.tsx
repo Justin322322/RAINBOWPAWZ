@@ -58,6 +58,9 @@ export default function MapComponent({
   const [mapLoaded, setMapLoaded] = useState(false);
   const [isMapLocked, setIsMapLocked] = useState(true); // Map is locked by default
   const [isRouting, setIsRouting] = useState(false);
+  
+  // Refs for proper cleanup
+  const buttonEventListenersRef = useRef<{ element: HTMLElement; event: string; handler: () => void }[]>([]);
 
   // Add user marker
   const addUserMarker = useCallback((coordinates: [number, number]) => {
@@ -270,93 +273,213 @@ export default function MapComponent({
     }
   }, [addUserMarker]);
 
-  // Function to add provider markers
+  // Add provider markers to map with enhanced error handling and memory management
   const addProviderMarkers = useCallback(() => {
-    if (!mapRef.current) return;
+    if (!mapRef.current || providerCoordinates.size === 0) return;
 
-    // Clear existing provider markers
+    // Clear existing provider markers and their event listeners
     providerMarkersRef.current.forEach(marker => {
-      if (mapRef.current) marker.removeFrom(mapRef.current);
+      if (mapRef.current) {
+        marker.removeFrom(mapRef.current);
+      }
     });
     providerMarkersRef.current = [];
 
-    // Add provider markers for geocoded providers
+    // Clear existing button event listeners
+    buttonEventListenersRef.current.forEach(({ element, event, handler }) => {
+      element.removeEventListener(event, handler);
+    });
+    buttonEventListenersRef.current = [];
+
     serviceProviders.forEach(provider => {
       const coordinates = providerCoordinates.get(provider.id);
-      if (!coordinates) return; // Skip if coordinates not yet available
+      if (!coordinates) return;
 
-      // Create provider icon with circular backdrop (Rainbow Paws logo) and name label above
-      const providerIcon = L.divIcon({
-        className: 'custom-provider-icon',
+      // Create custom icon with enhanced design
+      const customIcon = L.divIcon({
+        className: 'custom-provider-marker',
         html: `
-          <div style="position: relative; width: 70px; height: 70px;">
-            <div style="position: absolute; width: 70px; height: 70px; border-radius: 50%; background-color: #2F7B5F; box-shadow: 0 3px 10px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center;">
-              <img src="/logo.png" style="width: 64px; height: 64px; border-radius: 50%; object-fit: cover;" />
+          <div class="provider-marker-container" style="
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transform: translate(-50%, -100%);
+          ">
+            <!-- Marker Pin -->
+            <div style="
+              background: linear-gradient(135deg, #2F7B5F 0%, #1a5a42 100%);
+              width: 40px;
+              height: 40px;
+              border-radius: 50% 50% 50% 0;
+              transform: rotate(-45deg);
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              box-shadow: 0 3px 10px rgba(47, 123, 95, 0.4);
+              border: 3px solid white;
+              position: relative;
+              z-index: 10;
+            ">
+              <!-- Icon -->
+              <div style="
+                transform: rotate(45deg);
+                width: 20px;
+                height: 20px;
+                background-image: url('/icons/pet-center.png');
+                background-size: contain;
+                background-repeat: no-repeat;
+                background-position: center;
+              "></div>
             </div>
-            <div style="position: absolute; top: -30px; left: 50%; transform: translateX(-50%); background-color: rgba(255,255,255,0.9); padding: 3px 8px; border-radius: 4px; white-space: nowrap; font-weight: bold; font-size: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.2); max-width: 150px; text-overflow: ellipsis; overflow: hidden;">${provider.name}</div>
+            
+            <!-- Provider Info Card -->
+            <div class="provider-info-card" style="
+              background: white;
+              border-radius: 12px;
+              padding: 12px;
+              margin-top: 8px;
+              box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+              border: 1px solid #e5e7eb;
+              min-width: 200px;
+              max-width: 250px;
+              position: relative;
+              opacity: 0;
+              transform: translateY(-10px);
+              transition: all 0.3s ease;
+              pointer-events: none;
+              z-index: 1000;
+            ">
+              <!-- Arrow pointing up to marker -->
+              <div style="
+                position: absolute;
+                top: -6px;
+                left: 50%;
+                transform: translateX(-50%);
+                width: 0;
+                height: 0;
+                border-left: 6px solid transparent;
+                border-right: 6px solid transparent;
+                border-bottom: 6px solid white;
+              "></div>
+              
+              <!-- Provider Info -->
+              <div style="text-align: center;">
+                <h3 style="
+                  color: #2F7B5F;
+                  font-size: 14px;
+                  font-weight: 600;
+                  margin: 0 0 8px 0;
+                  line-height: 1.2;
+                ">${provider.name}</h3>
+                <p style="
+                  color: #6b7280;
+                  font-size: 12px;
+                  margin: 0 0 12px 0;
+                  line-height: 1.3;
+                ">${provider.address}</p>
+                
+                <!-- Action Buttons -->
+                <div style="display: flex; gap: 8px; justify-content: center;">
+                  <button id="route-btn-${provider.id}" style="
+                    background: #2F7B5F;
+                    color: white;
+                    border: none;
+                    padding: 6px 12px;
+                    border-radius: 6px;
+                    font-size: 11px;
+                    font-weight: 500;
+                    cursor: pointer;
+                    transition: background 0.2s;
+                    flex: 1;
+                  " onmouseover="this.style.background='#1a5a42'" onmouseout="this.style.background='#2F7B5F'">
+                    Get Directions
+                  </button>
+                  <button id="view-services-btn-${provider.id}" style="
+                    background: #f3f4f6;
+                    color: #374151;
+                    border: 1px solid #d1d5db;
+                    padding: 6px 12px;
+                    border-radius: 6px;
+                    font-size: 11px;
+                    font-weight: 500;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                    flex: 1;
+                  " onmouseover="this.style.background='#e5e7eb'" onmouseout="this.style.background='#f3f4f6'">
+                    View Services
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         `,
-        iconSize: [70, 70],
-        iconAnchor: [35, 35],
-        popupAnchor: [0, -35]
+        iconSize: [250, 100],
+        iconAnchor: [125, 100],
+        popupAnchor: [0, -40]
       });
 
-      // Create popup content with unique IDs for both buttons
-      const popupContent = `
-        <div style="font-family: Arial, sans-serif; line-height: 1.6; min-width: 200px;">
-          <strong style="font-size: 1.1em; margin-bottom: 8px; display: block; color: #2F7B5F;">${provider.name}</strong>
-          <span style="font-size: 0.9em; color: #555; display: block; margin-bottom: 12px;">${provider.address}</span>
-          <div style="display: flex; justify-content: space-between; gap: 8px;">
-            <button id="view-services-btn-${provider.id}" class="view-services-btn" style="background-color: #2F7B5F; color: white; padding: 8px 12px; border: none; border-radius: 4px; cursor: pointer; font-size: 0.9em; flex: 1; font-weight: bold;">View Services</button>
-            <button id="route-button-${provider.id}" class="route-button" style="background-color: #555; color: white; padding: 8px 12px; border: none; border-radius: 4px; cursor: pointer; font-size: 0.9em; flex: 1; font-weight: bold;">Get Directions</button>
-          </div>
-        </div>
-      `;
-
-      // Add marker with lower zIndex to ensure user location stays on top
+      // Create marker
       const marker = L.marker([coordinates[0], coordinates[1]], {
-        icon: providerIcon,
-        zIndexOffset: 100 // Lower than user marker
-      })
-        .addTo(mapRef.current!)
-        .bindPopup(popupContent, { maxWidth: 300 });
+        icon: customIcon
+      }).addTo(mapRef.current!);
 
-      // Add click handlers for both buttons when popup opens
-      marker.on('popupopen', () => {
-        setTimeout(() => {
-          // Handle "Get Directions" button
-          const routeButton = document.getElementById(`route-button-${provider.id}`);
-          if (routeButton) {
-            // Remove previous event listeners first to avoid duplicates
-            const newRouteButton = routeButton.cloneNode(true);
-            if (routeButton.parentNode) {
-              routeButton.parentNode.replaceChild(newRouteButton, routeButton);
-            }
-
-            newRouteButton.addEventListener('click', () => {
-              setSelectedProviderName(provider.name);
-              // Use the current function reference to avoid dependency issues
-              displayRouteToProviderEnhanced(coordinates, provider.name);
-            });
-          }
-
-          // Handle "View Services" button
-          const viewServicesButton = document.getElementById(`view-services-btn-${provider.id}`);
-          if (viewServicesButton) {
-            // Remove previous event listeners first to avoid duplicates
-            const newViewServicesButton = viewServicesButton.cloneNode(true);
-            if (viewServicesButton.parentNode) {
-              viewServicesButton.parentNode.replaceChild(newViewServicesButton, viewServicesButton);
-            }
-
-            // Add click event listener to navigate to provider details page
-            newViewServicesButton.addEventListener('click', () => {
-              // Use window.location to navigate to the provider details page
-              window.location.href = `/user/furparent_dashboard/services/${provider.id}`;
-            });
-          }
-        }, 100);
+      // Add hover effects for the info card
+      marker.on('mouseover', function() {
+        const infoCard = document.querySelector(`#route-btn-${provider.id}`)?.closest('.provider-info-card') as HTMLElement;
+        if (infoCard) {
+          infoCard.style.opacity = '1';
+          infoCard.style.transform = 'translateY(0)';
+          infoCard.style.pointerEvents = 'auto';
+        }
       });
+
+      marker.on('mouseout', function() {
+        const infoCard = document.querySelector(`#route-btn-${provider.id}`)?.closest('.provider-info-card') as HTMLElement;
+        if (infoCard) {
+          infoCard.style.opacity = '0';
+          infoCard.style.transform = 'translateY(-10px)';
+          infoCard.style.pointerEvents = 'none';
+        }
+      });
+
+      // Add button event listeners with proper cleanup tracking
+      setTimeout(() => {
+        // Handle "Get Directions" button
+        const routeButton = document.getElementById(`route-btn-${provider.id}`);
+        if (routeButton) {
+          const handleRouteClick = () => {
+            setSelectedProviderName(provider.name);
+            displayRouteToProviderEnhanced(coordinates, provider.name);
+          };
+
+          routeButton.addEventListener('click', handleRouteClick);
+          
+          // Track for cleanup
+          buttonEventListenersRef.current.push({
+            element: routeButton,
+            event: 'click',
+            handler: handleRouteClick
+          });
+        }
+
+        // Handle "View Services" button
+        const viewServicesButton = document.getElementById(`view-services-btn-${provider.id}`);
+        if (viewServicesButton) {
+          const handleViewServicesClick = () => {
+            window.location.href = `/user/furparent_dashboard/services/${provider.id}`;
+          };
+
+          viewServicesButton.addEventListener('click', handleViewServicesClick);
+          
+          // Track for cleanup
+          buttonEventListenersRef.current.push({
+            element: viewServicesButton,
+            event: 'click',
+            handler: handleViewServicesClick
+          });
+        }
+      }, 100);
 
       // Store marker reference
       providerMarkersRef.current.push(marker);
@@ -526,10 +649,6 @@ export default function MapComponent({
     }
   }, [selectedProviderId, providerCoordinates, mapLoaded, serviceProviders, displayRouteToProviderEnhanced]);
 
-
-
-
-
   // Initialize cache cleanup on component mount
   useEffect(() => {
     // Clean up expired cache entries on component mount
@@ -567,6 +686,20 @@ export default function MapComponent({
       // Remove event listeners
       document.removeEventListener('keydown', handleKeyDown);
       document.removeEventListener('keyup', handleKeyUp);
+
+      // Clean up button event listeners to prevent memory leaks
+      buttonEventListenersRef.current.forEach(({ element, event, handler }) => {
+        element.removeEventListener(event, handler);
+      });
+      buttonEventListenersRef.current = [];
+
+      // Clear provider markers and their event listeners
+      providerMarkersRef.current.forEach(marker => {
+        if (mapRef.current) {
+          marker.removeFrom(mapRef.current);
+        }
+      });
+      providerMarkersRef.current = [];
 
       // Clear route instructions
       setRouteInstructions(null);
