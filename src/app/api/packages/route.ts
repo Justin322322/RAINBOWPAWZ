@@ -193,18 +193,19 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      // images - handle outside transaction since it involves file operations
+      // Handle images within transaction for atomicity
+      if (images.length > 0) {
+        const movedImagePaths = await moveImagesToPackageFolder(images, packageId);
+        for (let i = 0; i < movedImagePaths.length; i++) {
+          await transaction.query(
+            'INSERT INTO package_images (package_id, image_path, display_order) VALUES (?, ?, ?)',
+            [packageId, movedImagePaths[i], i]
+          );
+        }
+      }
+
       return { packageId };
     });
-
-    // images
-    const moved = await moveImagesToPackageFolder(images, result.packageId);
-    for (let i = 0; i < moved.length; i++) {
-      await query(
-        `INSERT INTO package_images (package_id, image_path, display_order) VALUES (?,?,?)`,
-        [result.packageId, moved[i], i]
-      );
-    }
 
     return NextResponse.json({ 
       success: true, 
