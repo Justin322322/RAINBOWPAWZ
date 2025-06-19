@@ -10,7 +10,7 @@ export async function PUT(request: NextRequest) {
     const _userId = pathParts[pathParts.length - 2]; // -2 because the last part is 'status'
 
     // Validate user ID
-    if (!userId || isNaN(Number(userId))) {
+    if (!_userId || isNaN(Number(_userId))) {
       return NextResponse.json({
         error: 'Invalid user ID'
       }, { status: 400 });
@@ -36,7 +36,7 @@ export async function PUT(request: NextRequest) {
       // Old format fallback
       const parts = authToken.split('_');
       if (parts.length === 2) {
-        _tokenUserId = parts[0];
+        tokenUserId = parts[0];
         accountType = parts[1];
       }
     }
@@ -64,8 +64,8 @@ export async function PUT(request: NextRequest) {
       `UPDATE users
        SET status = ?,
            updated_at = NOW()
-       WHERE id = ?`,
-      [status, userId]
+       WHERE user_id = ?`,
+      [status, _userId]
     ) as any;
 
     if (updateResult.affectedRows === 0) {
@@ -79,7 +79,7 @@ export async function PUT(request: NextRequest) {
       `SELECT user_id, first_name, last_name, email, phone_number, address, sex,
        created_at, updated_at, is_otp_verified, role, status, is_verified
        FROM users WHERE user_id = ? LIMIT 1`,
-      [userId]
+      [_userId]
     ) as any[];
 
     if (!userResult || userResult.length === 0) {
