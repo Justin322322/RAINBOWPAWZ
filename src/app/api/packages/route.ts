@@ -193,19 +193,30 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      // Handle images within transaction for atomicity
-      if (images.length > 0) {
-        const movedImagePaths = await moveImagesToPackageFolder(images, packageId);
-        for (let i = 0; i < movedImagePaths.length; i++) {
-          await transaction.query(
-            'INSERT INTO package_images (package_id, image_path, display_order) VALUES (?, ?, ?)',
-            [packageId, movedImagePaths[i], i]
-          );
-        }
-      }
-
       return { packageId };
     });
+
+    // Handle images after transaction commits successfully to maintain atomicity
+    // File operations cannot be rolled back, so we do them after DB operations succeed
+    if (images.length > 0) {
+      try {
+        const movedImagePaths = await moveImagesToPackageFolder(images, result.packageId);
+        
+        // Insert image records using a separate transaction
+        await withTransaction(async (transaction) => {
+          for (let i = 0; i < movedImagePaths.length; i++) {
+            await transaction.query(
+              'INSERT INTO package_images (package_id, image_path, display_order) VALUES (?, ?, ?)',
+              [result.packageId, movedImagePaths[i], i]
+            );
+          }
+        });
+      } catch (imageError) {
+        console.error('Failed to process images for package:', result.packageId, imageError);
+        // Note: We don't fail the entire operation since the package was created successfully
+        // The package exists without images, which is a valid state
+      }
+    }
 
     return NextResponse.json({ 
       success: true, 
