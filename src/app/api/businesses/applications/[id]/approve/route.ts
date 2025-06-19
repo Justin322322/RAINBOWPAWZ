@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
-import { getAuthTokenFromRequest } from '@/utils/auth';
 import { sendBusinessVerificationEmail } from '@/lib/consolidatedEmailService';
-import { logAdminAction } from '@/utils/adminUtils';
+import { logAdminAction, getAdminIdFromRequest } from '@/utils/adminUtils';
 import mysql from 'mysql2/promise';
 
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
@@ -10,8 +9,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     const { id } = params;
 
     // Verify admin authentication
-    const authToken = getAuthTokenFromRequest(request);
-    const adminId = authToken?.split('_')[0];
+    const adminId = await getAdminIdFromRequest(request);
 
     if (!adminId) {
       return NextResponse.json({
