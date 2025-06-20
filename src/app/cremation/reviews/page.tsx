@@ -208,7 +208,7 @@ function ReviewsPage({ userData }: ReviewsPageProps) {
     try {
       const date = new Date(dateString);
       return format(date, 'MMMM d, yyyy');
-    } catch (_error) {
+    } catch {
       return dateString;
     }
   };

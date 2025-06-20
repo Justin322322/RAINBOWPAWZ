@@ -52,7 +52,7 @@ export const parseAuthToken = async (authToken: string): Promise<{ userId: strin
     }
 
     return { userId, accountType, email };
-  } catch (_error) {
+  } catch {
     return null;
   }
 };
@@ -85,7 +85,7 @@ export const parseAuthTokenSync = (authToken: string): { userId: string; account
     }
 
     return { userId, accountType, email };
-  } catch (_error) {
+  } catch {
     return null;
   }
 };
@@ -142,7 +142,7 @@ export const getAuthTokenFromRequest = (request: NextRequest): string | null => 
     }
 
     return null;
-  } catch (_error) {
+  } catch {
     return null;
   }
 };
@@ -177,7 +177,7 @@ export const getAuthToken = (): string | null => {
         if (localStorageToken && (localStorageToken.includes('.') || localStorageToken.includes('_'))) {
           return localStorageToken;
         }
-      } catch (_e) {
+      } catch {
         // Silently fail if localStorage is not available
       }
     }
@@ -202,7 +202,7 @@ export const getAuthToken = (): string | null => {
 
     // If all else fails, return null
     return null;
-  } catch (_error) {
+  } catch {
     return null;
   }
 };
@@ -415,7 +415,7 @@ export const setAuthToken = (userId: string, accountType: string, expirationDays
     try {
       // Store the token in localStorage as a backup specifically for port 3000
       localStorage.setItem('auth_token_3000', tokenValue);
-    } catch (_e) {
+    } catch {
       // Silently fail if localStorage is not available
     }
   }
@@ -439,7 +439,7 @@ export const clearAuthToken = async (): Promise<void> => {
   // Clear localStorage backups
   try {
     localStorage.removeItem('auth_token_3000');
-  } catch (_e) {
+  } catch {
     // Silently fail if localStorage is not available
   }
 
@@ -549,7 +549,7 @@ export const checkAuthStatus = async (): Promise<{
       userId: data.userId,
       accountType: data.accountType
     };
-  } catch (_error) {
+  } catch {
     return { authenticated: false };
   }
 };
@@ -668,7 +668,7 @@ export const fastAuthCheck = (): {
       userData: null,
       adminData: null
     };
-  } catch (_error) {
+  } catch {
     return defaultState;
   }
 };

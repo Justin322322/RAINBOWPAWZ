@@ -280,7 +280,7 @@ export default function TimeSlotSelector({
       const displayHours = hours % 12 || 12;
 
       return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`;
-    } catch (_e) {
+    } catch {
       return timeString;
     }
   };

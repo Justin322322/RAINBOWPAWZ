@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
         ADD INDEX idx_refund_id (refund_id)
       `;
       await query(addRefundIdColumn);
-    } catch (_error) {
+    } catch {
       // Column might already exist, ignore error
       console.log('Refund_id column might already exist in service_bookings');
     }
@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
         ADD INDEX idx_refund_id (refund_id)
       `;
       await query(addRefundTrackingColumns);
-    } catch (_error) {
+    } catch {
       // Columns might already exist, ignore error
       console.log('Refund tracking columns might already exist in payment_transactions');
     }

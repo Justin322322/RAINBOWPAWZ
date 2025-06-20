@@ -22,7 +22,7 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    let tokenUserId: string | null = null;
+    let _tokenUserId: string | null = null;
     let accountType: string | null = null;
 
     // Check if it's a JWT token or old format
@@ -30,13 +30,13 @@ export async function PUT(request: NextRequest) {
       // JWT token format
       const { decodeTokenUnsafe } = await import('@/lib/jwt');
       const payload = decodeTokenUnsafe(authToken);
-      tokenUserId = payload?.userId || null;
+      _tokenUserId = payload?.userId || null;
       accountType = payload?.accountType || null;
     } else {
       // Old format fallback
       const parts = authToken.split('_');
       if (parts.length === 2) {
-        tokenUserId = parts[0];
+        _tokenUserId = parts[0];
         accountType = parts[1];
       }
     }

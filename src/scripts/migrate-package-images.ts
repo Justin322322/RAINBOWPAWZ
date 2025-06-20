@@ -20,9 +20,9 @@ async function migratePackageImages() {
       fs.mkdirSync(baseDir, { recursive: true });
     }
 
-    let migrated = 0;
-    let failed = 0;
-    let skipped = 0;
+    let _migrated = 0;
+    let _failed = 0;
+    let _skipped = 0;
 
     // Process each image
     for (const image of images) {
@@ -66,7 +66,7 @@ async function migratePackageImages() {
         );
 
         _migrated++;
-      } catch (_error) {
+      } catch {
         _failed++;
       }
     }
@@ -74,7 +74,7 @@ async function migratePackageImages() {
 
     // Migration completed
 
-  } catch (_error) {
+  } catch {
     // Migration failed
   }
 }

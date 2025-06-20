@@ -3,12 +3,13 @@
 
 interface DashboardLoaderProps {
   message?: string;
-  userName?: string;
+  _message?: string;
+  _userName?: string;
 }
 
 export default function DashboardLoader({
   _message = 'Loading your dashboard',
-  userName
+  _userName
 }: DashboardLoaderProps) {
   // Return null instead of showing a loading animation
   return null;

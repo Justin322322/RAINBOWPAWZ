@@ -212,7 +212,7 @@ function ServicesPage({ userData }: ServicesPageProps) {
         setServiceProviders(sortedProviders);
         // Reset to first page when providers change
         setCurrentPage(1);
-      } catch (_error) {
+      } catch {
         // Fallback to empty array if fetch fails
         setServiceProviders([]);
       } finally {

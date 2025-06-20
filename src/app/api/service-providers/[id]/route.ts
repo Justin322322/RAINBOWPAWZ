@@ -148,7 +148,7 @@ export async function GET(
           `, [provider.id]) as any[];
 
           provider.packages = packagesCount[0]?.count || 0;
-        } catch (_err) {
+        } catch {
           provider.packages = 0;
         }
 
@@ -254,12 +254,12 @@ export async function GET(
               (formattedBusiness as any).distance = `${distanceValue} km away`;
               (formattedBusiness as any).distanceValue = distanceValue;
             }
-          } catch (_err) {
+          } catch {
           }
 
           return NextResponse.json({ provider: formattedBusiness });
         }
-      } catch (_businessError) {
+      } catch {
         // Continue to check for test providers
       }
 
@@ -308,7 +308,7 @@ export async function GET(
         { status: 500 }
       );
     }
-  } catch (_error) {
+  } catch {
     return NextResponse.json(
       { error: 'Failed to fetch provider' },
       { status: 500 }

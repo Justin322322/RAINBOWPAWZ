@@ -186,7 +186,7 @@ function CremationHistoryPage({ userData }: { userData: any }) {
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-    } catch (_error) {
+    } catch {
       showToast('Failed to export CSV', 'error');
     }
   };

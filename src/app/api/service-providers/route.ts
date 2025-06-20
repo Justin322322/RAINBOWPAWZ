@@ -182,7 +182,7 @@ export async function GET(request: Request) {
               provider.distance = `${distanceValue} km away`;
               provider.distanceValue = distanceValue;
             }
-          } catch (_error) {
+          } catch {
             provider.packages = 0;
             provider.distance = 'Distance unavailable';
           }
@@ -322,7 +322,7 @@ export async function GET(request: Request) {
               (business as any).distance = `${distanceValue} km away`;
               (business as any).distanceValue = distanceValue;
             }
-          } catch (_error) {
+          } catch {
           }
         }
 
@@ -333,10 +333,10 @@ export async function GET(request: Request) {
 
       // No test providers - all data comes from database
       return NextResponse.json({ providers: [] });
-    } catch (_dbError) {
+    } catch {
       return NextResponse.json({ providers: [], error: 'Database error' });
     }
-  } catch (_error) {
+  } catch {
     return NextResponse.json(
       { error: 'Failed to fetch service providers' },
       { status: 500 }

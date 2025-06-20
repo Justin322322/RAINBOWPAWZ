@@ -170,7 +170,7 @@ export function getTokenExpiration(token: string): Date | null {
       return new Date(decoded.exp * 1000);
     }
     return null;
-  } catch (_error) {
+  } catch {
     // Log error for debugging but don't expose sensitive data
     console.error('Token expiration check failed');
     return null;

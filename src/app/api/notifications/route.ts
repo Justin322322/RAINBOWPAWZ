@@ -266,7 +266,7 @@ async function ensureNotificationsTable() {
     // First check if we can connect to the database
     try {
       await query('SELECT 1 as test');
-    } catch (_connectionError) {
+    } catch {
       // Return without throwing to allow the API to continue with empty results
       // rather than crashing with a 500 error
       return false;
@@ -309,14 +309,14 @@ async function ensureNotificationsTable() {
             FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
           ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         `);
-      } catch (_createError) {
+      } catch {
         return false;
       }
     } else {
     }
 
     return true;
-  } catch (_error) {
+  } catch {
     // Return false instead of throwing to allow the API to continue
     return false;
   }

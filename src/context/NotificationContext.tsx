@@ -125,7 +125,8 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       // Clear timeout since request completed and remove from tracking set
       if (timeoutId) {
         clearTimeout(timeoutId);
-        timeoutIdsRef.current.delete(timeoutId);
+        const currentTimeoutIds = timeoutIdsRef.current;
+        currentTimeoutIds.delete(timeoutId);
       }
 
       if (!response.ok) {
@@ -140,7 +141,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
             if (errorData.details && errorData.details.includes('Too many connections')) {
               console.warn('Database connection limit reached. Notifications temporarily unavailable.');
             }
-          } catch (_e) {
+          } catch {
             // Ignore JSON parsing errors
           }
         }
@@ -203,7 +204,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
         }
 
         return data;
-      } catch (_jsonError) {
+      } catch {
         setNotifications([]);
         setUnreadCount(0);
         return { notifications: [], unreadCount: 0 };
@@ -212,7 +213,8 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       // Clean up timeout if request fails or is aborted
       if (timeoutId) {
         clearTimeout(timeoutId);
-        timeoutIdsRef.current.delete(timeoutId);
+        const currentTimeoutIds = timeoutIdsRef.current;
+        currentTimeoutIds.delete(timeoutId);
       }
 
       // Handle AbortError specifically to avoid showing error messages for timeouts
@@ -364,6 +366,8 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
   useEffect(() => {
     // Prevent multiple interval instances
     let intervalId: NodeJS.Timeout | null = null;
+    // Capture ref value at the beginning of the effect to avoid ref warnings
+    const timeoutIds = timeoutIdsRef.current;
 
     // Check if user is authenticated before fetching notifications
     if (typeof window !== 'undefined' && isAuthenticated()) {
@@ -382,7 +386,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
             fetchNotifications().catch(_err => {
               // Silent fail for background updates
             });
-          } catch (_error) {
+          } catch {
           }
         } else {
           // If no longer authenticated, clear the interval
@@ -402,12 +406,11 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       }
       
       // Clear any pending timeouts from fetchNotifications
-      // Create a local copy to avoid ref value change warning
-      const currentTimeoutIds = timeoutIdsRef.current;
-      currentTimeoutIds.forEach(timeoutId => {
+      // Use the captured ref value to avoid ref value change warning
+      timeoutIds.forEach(timeoutId => {
         clearTimeout(timeoutId);
       });
-      currentTimeoutIds.clear();
+      timeoutIds.clear();
     };
   }, []); // Empty dependency array to run only once on mount
 

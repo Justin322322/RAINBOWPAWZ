@@ -128,7 +128,7 @@ export async function GET(request: NextRequest) {
         })
       }));
 
-    } catch (_error) {
+    } catch {
       // Attempt fallback query with fewer joins if the main one fails
       try {
         recentApplications = await query(`

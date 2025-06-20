@@ -116,7 +116,7 @@ export const reverseGeocode = async (coordinates: [number, number]): Promise<str
     }
 
     return address || 'Unknown location';
-  } catch (_error) {
+  } catch {
     return 'Unknown location';
   }
 };

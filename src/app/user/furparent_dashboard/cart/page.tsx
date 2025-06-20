@@ -12,7 +12,6 @@ import {
 import { useCart } from '@/contexts/CartContext';
 import FurParentNavbar from '@/components/navigation/FurParentNavbar';
 import withOTPVerification from '@/components/withOTPVerification';
-import { useToast } from '@/context/ToastContext';
 
 interface CartPageProps {
   userData?: any;
@@ -20,8 +19,7 @@ interface CartPageProps {
 
 function CartPage({ userData }: CartPageProps) {
   const router = useRouter();
-  const { items, removeItem, totalPrice, _clearCart } = useCart();
-  const { _showToast } = useToast();
+  const { items, removeItem, totalPrice } = useCart();
   const [_isLoading, _setIsLoading] = useState(false);
   const [checkoutSuccess, _setCheckoutSuccess] = useState(false);
   const [checkoutError, _setCheckoutError] = useState<string | null>(null);

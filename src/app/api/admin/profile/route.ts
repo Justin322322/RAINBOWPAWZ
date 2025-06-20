@@ -173,7 +173,7 @@ export async function PUT(request: NextRequest) {
     }
 
     // **🔥 FIX: Use proper transaction management to prevent connection leaks**
-    const result = await withTransaction(async (transaction) => {
+    const _result = await withTransaction(async (transaction) => {
       // Update user data
       if (hashedNewPassword) {
         // Update user with new password

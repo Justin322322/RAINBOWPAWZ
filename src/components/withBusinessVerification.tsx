@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { fastAuthCheck } from '@/utils/auth';
+// import { fastAuthCheck } from '@/utils/auth';
 import {
   getCachedBusinessVerification,
   setCachedBusinessVerification,
@@ -78,7 +78,7 @@ const withBusinessVerification = <P extends object>(
               try {
                 const errorText = await response.text();
                 console.log('[withBusinessVerification] Error response:', errorText);
-              } catch (e) {
+              } catch {
                 console.log('[withBusinessVerification] Could not read error response');
               }
             }
@@ -203,7 +203,8 @@ const withBusinessVerification = <P extends object>(
       };
 
       checkBusinessVerification();
-    }, []); // Remove all dependencies to prevent infinite loops - authentication should only be checked once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []); // Authentication should only be checked once on mount to prevent infinite loops
 
     // Show loading state while checking verification
     if (isLoading) {

@@ -114,7 +114,7 @@ export async function getPackageImageUrl(packageId: number | string, imageIndex:
 
     // Fallback to a reliable fallback image
     return `/bg_4.png`;
-  } catch (_error) {
+  } catch {
     // Default fallback
     return `/bg_4.png`;
   }
@@ -139,7 +139,7 @@ export async function getAllPackageImages(packageId: number | string): Promise<s
 
     // Fallback to a reliable fallback image
     return [`/bg_4.png`];
-  } catch (_error) {
+  } catch {
     // Default fallback
     return [`/bg_4.png`];
   }

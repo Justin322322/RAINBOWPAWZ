@@ -31,7 +31,7 @@ async function sendOtpEmail(email: string, otp: string): Promise<boolean> {
     }
 
     return true;
-  } catch (_error) {
+  } catch {
     return false;
   }
 }
@@ -184,7 +184,7 @@ export async function generateOtp({
         'INSERT INTO otp_attempts (user_id, attempt_type, ip_address) VALUES (?, ?, ?)',
         [userId, 'generate', ipAddress]
       );
-    } catch (_dbError) {
+    } catch {
       return {
         success: false,
         error: 'Failed to generate verification code. Please try again.',

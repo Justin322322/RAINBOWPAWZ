@@ -216,7 +216,7 @@ export async function getUnreadNotificationCount(userId: number): Promise<number
     ) as any[];
 
     return result[0].count || 0;
-  } catch (_error) {
+  } catch {
     return 0;
   }
 }

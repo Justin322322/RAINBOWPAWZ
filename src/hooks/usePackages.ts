@@ -187,10 +187,10 @@ export function usePackages({ userData }: UsePackagesProps) {
     }
   }, []); // **🔥 FIX: Removed showToast from dependencies**
   
-  // **🔥 FIX: Load packages only when providerId changes, not when fetchPackages changes**
+  // Load packages when fetchPackages function changes
   useEffect(() => {
     fetchPackages();
-  }, [providerId]); // **🔥 FIX: Changed from [fetchPackages] to [providerId]**
+  }, [fetchPackages]); // Include fetchPackages to satisfy exhaustive-deps
 
   // Filter packages based on search term and category (memoized)
   const filteredPackages = useCallback(() => {

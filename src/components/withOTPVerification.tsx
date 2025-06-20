@@ -151,7 +151,7 @@ const withOTPVerification = <P extends object>(
             setHasShownOTPModal(true);
           }
           return;
-        } catch (_e) {
+        } catch {
           // If parsing fails, continue with normal auth
           sessionStorage.removeItem('user_data');
         }
@@ -187,7 +187,7 @@ const withOTPVerification = <P extends object>(
           let authValue: string;
           try {
             authValue = decodeURIComponent(cookieParts[1]);
-          } catch (_e) {
+          } catch {
             authValue = cookieParts[1]; // Use raw value if decoding fails
           }
 
@@ -303,7 +303,7 @@ const withOTPVerification = <P extends object>(
           // 3. Additional localStorage backup
           localStorage.setItem('user_verified', 'true');
 
-        } catch (_e) {
+        } catch {
         }
       }
 

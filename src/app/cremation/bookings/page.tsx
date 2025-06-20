@@ -83,7 +83,7 @@ function CremationBookingsPage({ userData }: { userData: any }) {
           pending: 0,
           totalRevenue: 0
         });
-      } catch (_error) {
+      } catch {
         setFetchError('Failed to load bookings data. Please try again later.');
         setBookings([]);
       } finally {

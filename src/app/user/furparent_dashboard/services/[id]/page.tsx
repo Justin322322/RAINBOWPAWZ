@@ -203,7 +203,7 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
               }
 
               return pkg;
-            } catch (_error) {
+            } catch {
               return pkg;
             }
           })
@@ -227,10 +227,10 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
             // Fallback to mock pets if API fails
             setPets(mockPets);
           }
-        } catch (_petError) {
+        } catch {
           setPets(mockPets);
         }
-      } catch (_err) {
+      } catch {
         setError('Failed to load provider details');
       } finally {
         setLoading(false);
@@ -321,7 +321,7 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
       } else {
         setBookingError(data.error || 'Failed to create booking');
       }
-    } catch (_error) {
+    } catch {
       setBookingError('An error occurred while creating your booking');
     } finally {
       setIsSubmitting(false);

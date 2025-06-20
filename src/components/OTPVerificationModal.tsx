@@ -94,7 +94,7 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
   const hasInitialOtpBeenSent = useCallback((): boolean => {
     try {
       return sessionStorage.getItem(initialOtpSentKey) === 'true';
-    } catch (_error) {
+    } catch {
       return false;
     }
   }, [initialOtpSentKey]);
@@ -105,7 +105,7 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
     try {
       const stored = sessionStorage.getItem(cooldownKey);
       return stored ? parseInt(stored) : null;
-    } catch (_error) {
+    } catch {
       return null;
     }
   }, [cooldownKey]);
@@ -114,14 +114,14 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
     try {
       const endTime = Date.now() + (durationInSeconds * 1000);
       sessionStorage.setItem(cooldownKey, endTime.toString());
-    } catch (_error) {
+    } catch {
     }
   }, [cooldownKey]);
 
   const clearStoredCooldownEndTime = useCallback(() => {
     try {
       sessionStorage.removeItem(cooldownKey);
-    } catch (_error) {
+    } catch {
     }
   }, [cooldownKey]);
 
@@ -220,7 +220,7 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
   const hasOtpBeenSentGlobally = useCallback((): boolean => {
     try {
       return window.localStorage.getItem(globalOtpSentKey) === 'true';
-    } catch (_error) {
+    } catch {
       return false;
     }
   }, [globalOtpSentKey]);
@@ -231,7 +231,7 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
       window.localStorage.setItem(globalOtpSentKey, 'true');
       // Also set the session storage for backward compatibility
       sessionStorage.setItem(initialOtpSentKey, 'true');
-    } catch (_error) {
+    } catch {
     }
   }, [globalOtpSentKey, initialOtpSentKey]);
 

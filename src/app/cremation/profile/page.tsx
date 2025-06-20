@@ -18,7 +18,7 @@ import {
   ArrowUpTrayIcon,
   ExclamationTriangleIcon
 } from '@heroicons/react/24/outline';
-import { getAuthToken, isBusiness } from '@/utils/auth';
+// import { getAuthToken, isBusiness } from '@/utils/auth';
 import { LoadingSpinner } from '@/app/admin/services/client';
 import { getImagePath } from '@/utils/imageUtils';
 import PhilippinePhoneInput from '@/components/ui/PhilippinePhoneInput';
@@ -108,7 +108,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
       let data;
       try {
         data = await response.json();
-      } catch (_jsonError) {
+      } catch {
         throw new Error('Failed to parse server response');
       }
 

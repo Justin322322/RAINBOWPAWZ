@@ -17,6 +17,7 @@ export interface SectionLoaderProps {
   withShadow?: boolean;
   rounded?: boolean;
   sectionId?: string; // Optional section ID for conflict prevention
+  _sectionId?: string; // Optional section ID for conflict prevention
 }
 
 export const SectionLoader: React.FC<SectionLoaderProps> = ({

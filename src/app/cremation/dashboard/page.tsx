@@ -134,7 +134,7 @@ function CremationDashboardPage({ userData }: { userData: any }) {
           setAvailabilitySetupNeeded(false);
           setAvailabilityError(null);
         }
-      } catch (_error) {
+      } catch {
         setAvailabilitySetupNeeded(true);
         setAvailabilityError('Could not check if availability tables exist.');
       }

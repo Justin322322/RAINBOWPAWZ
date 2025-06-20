@@ -16,7 +16,7 @@ function decodeJWTPayload(token: string): any | null {
     const paddedPayload = payload + '='.repeat((4 - payload.length % 4) % 4);
     const decodedPayload = atob(paddedPayload);
     return JSON.parse(decodedPayload);
-  } catch (_error) {
+  } catch {
     return null;
   }
 }
@@ -69,7 +69,7 @@ export function middleware(request: NextRequest) {
       let decodedValue;
       try {
         decodedValue = decodeURIComponent(authCookie);
-      } catch (_error) {
+      } catch {
         decodedValue = authCookie;
       }
 
@@ -134,7 +134,7 @@ export function middleware(request: NextRequest) {
           headers: requestHeaders,
         },
       });
-    } catch (error) {
+    } catch {
       // If there's an error processing the token, redirect to home
 
       return NextResponse.redirect(new URL('/', request.url));

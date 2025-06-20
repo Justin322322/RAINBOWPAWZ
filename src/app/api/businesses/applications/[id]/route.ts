@@ -14,7 +14,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 
     // Since you've migrated from business_profiles to service_providers,
     // we'll use only the service_providers table
-    const tableName = 'service_providers';
+    const _tableName = 'service_providers';
 
     // SECURITY FIX: Check if application_status column exists
     const columnsResult = await query(

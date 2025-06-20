@@ -81,7 +81,7 @@ async function checkDatabaseSetup() {
     }
 
     return true;
-  } catch (_error) {
+  } catch {
     return false;
   }
 }
@@ -118,7 +118,7 @@ export async function GET(request: NextRequest) {
         }
 
         const _initResult = await initResponse.json();
-      } catch (_initError) {
+      } catch {
         return NextResponse.json({
           error: 'Database initialization failed',
           details: 'Failed to initialize database automatically. You may need to run the database setup manually.',
@@ -134,7 +134,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    let userId: string | null = null;
+    let _userId: string | null = null;
     let accountType: string | null = null;
 
     // Check if it's a JWT token or old format
@@ -159,7 +159,7 @@ export async function GET(request: NextRequest) {
 
     // Since you've migrated from business_profiles to service_providers,
     // we'll use only the service_providers table
-    const tableName = 'service_providers';
+    const _tableName = 'service_providers';
 
     // Define these variables at a higher scope so they're available throughout the function
     // Since we're using service_providers table, we know the column names
@@ -276,7 +276,7 @@ export async function GET(request: NextRequest) {
       `;
 
       businesses = await query(safeQueryString);
-    } catch (_queryError) {
+    } catch {
 
       // Try a more basic query if the first one fails
       try {
@@ -308,7 +308,7 @@ export async function GET(request: NextRequest) {
 
         businesses = await query(safeFallbackQuery);
 
-      } catch (_fallbackError) {
+      } catch {
 
         // Return empty data instead of error
         return NextResponse.json({
@@ -340,7 +340,7 @@ export async function GET(request: NextRequest) {
               day: 'numeric'
             });
           }
-        } catch (_dateError) {
+        } catch {
         }
 
         // Combine first and last name with null checks
@@ -411,7 +411,7 @@ export async function GET(request: NextRequest) {
           taxIdNumber: business.tax_id_number || '',
           documentPath: business.document_path || ''
         };
-      } catch (_formatError) {
+      } catch {
         // Return a simplified record if formatting fails
         return {
           id: business.id || 0,
@@ -457,7 +457,7 @@ export async function GET(request: NextRequest) {
           } else {
             business.activeServices = 0;
           }
-        } catch (_serviceError) {
+        } catch {
           // Set default if query fails
           business.activeServices = 0;
         }
@@ -484,7 +484,7 @@ export async function GET(request: NextRequest) {
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2
               })}`;
-            } catch (_parseError) {
+            } catch {
               // Set defaults if parsing fails
               business.totalBookings = 0;
               business.revenue = '₱0.00';
@@ -494,13 +494,13 @@ export async function GET(request: NextRequest) {
             business.totalBookings = 0;
             business.revenue = '₱0.00';
           }
-        } catch (_bookingError) {
+        } catch {
           // Set defaults if query fails
           business.totalBookings = 0;
           business.revenue = '₱0.00';
         }
       }
-    } catch (_statsError) {
+    } catch {
       // We continue even if statistics fail, as we have the basic business data
     }
 
@@ -534,7 +534,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized', success: false }, { status: 401 });
     }
 
-    let userId: string | null = null;
+    let _userId: string | null = null;
     let accountType: string | null = null;
 
     // Check if it's a JWT token or old format
@@ -567,7 +567,7 @@ export async function POST(request: NextRequest) {
 
     // Since you've migrated from business_profiles to service_providers,
     // we'll use only the service_providers table
-    const tableName = 'service_providers';
+    const _tableName = 'service_providers';
 
     // SECURITY FIX: Check the table structure to determine available columns
     const tableStructure = await query('SHOW COLUMNS FROM service_providers') as any[];
@@ -586,7 +586,7 @@ export async function POST(request: NextRequest) {
     const _hoursColumn = 'hours';
 
     // Use the provider_type column for cremation type
-    const typeCondition = "bp.provider_type = 'cremation'";
+    const _typeCondition = "bp.provider_type = 'cremation'";
 
     // SECURITY FIX: Get the business details with a safe query
     const businessResults = await query(`
@@ -629,7 +629,7 @@ export async function POST(request: NextRequest) {
           path: business.document_path,
           uploadDate: new Date(business.updated_at).toLocaleDateString('en-US')
         });
-      } catch (_error) {
+      } catch {
       }
     }
 
@@ -694,7 +694,7 @@ export async function POST(request: NextRequest) {
       if (services) {
         formattedBusiness.services = services;
       }
-    } catch (_servicesError) {
+    } catch {
       // We continue even if service fetch fails
       formattedBusiness.services = [];
     }
@@ -727,7 +727,7 @@ export async function POST(request: NextRequest) {
             : '₱0.00'
         };
       }
-    } catch (_statsError) {
+    } catch {
       // We continue even if statistics fail, set defaults
       formattedBusiness.bookingStats = {
         totalBookings: 0,

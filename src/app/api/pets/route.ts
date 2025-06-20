@@ -36,7 +36,7 @@ async function ensurePetsTableExists() {
     }
 
     return true;
-  } catch (_error) {
+  } catch {
     return false;
   }
 }

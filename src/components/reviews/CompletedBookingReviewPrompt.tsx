@@ -24,7 +24,7 @@ const CompletedBookingReviewPrompt: React.FC<CompletedBookingReviewPromptProps> 
   userId,
   onReviewSubmitted
 }) => {
-  const { _showToast } = useToast();
+  const { showToast: _showToast } = useToast();
   const [pendingReviews, setPendingReviews] = useState<PendingReview[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -206,7 +206,7 @@ const CompletedBookingReviewPrompt: React.FC<CompletedBookingReviewPromptProps> 
         month: 'long',
         day: 'numeric'
       });
-    } catch (_error) {
+    } catch {
       return dateString;
     }
   };

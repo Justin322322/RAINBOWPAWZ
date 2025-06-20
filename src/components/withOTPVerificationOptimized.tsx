@@ -103,7 +103,7 @@ const withOTPVerificationOptimized = <P extends object>(
           let authValue: string;
           try {
             authValue = decodeURIComponent(cookieParts[1]);
-          } catch (_e) {
+          } catch {
             authValue = cookieParts[1];
           }
 

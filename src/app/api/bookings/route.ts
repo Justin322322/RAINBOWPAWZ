@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
     try {
       // Simple connection test
       await query('SELECT 1 as connection_test');
-    } catch (_dbConnectionError) {
+    } catch {
       // If database is unavailable, return empty bookings array instead of error
       // This prevents the UI from showing an error message
       return NextResponse.json({
@@ -222,7 +222,7 @@ export async function GET(request: NextRequest) {
 
         return NextResponse.json({ bookings: formattedBookings });
       }
-    } catch (_directError) {
+    } catch {
       // Continue with the regular flow if direct query fails
     }
 
@@ -599,7 +599,7 @@ export async function GET(request: NextRequest) {
               return NextResponse.json({ bookings: formattedBookings });
             }
           }
-        } catch (_fallbackError) {
+        } catch {
           // Fallback error handling
         }
 
@@ -724,7 +724,7 @@ export async function GET(request: NextRequest) {
       }));
 
       return NextResponse.json({ bookings: formattedBookings });
-    } catch (_dbError) {
+    } catch {
       // Check if the database connection is working
       try {
         const connectionTest = await query('SELECT 1 as test');
@@ -887,7 +887,7 @@ export async function GET(request: NextRequest) {
 
             return NextResponse.json({ bookings: formattedBookings });
           }
-        } catch (_simpleQueryError) {
+        } catch {
           // Try to join with just the pets table
           try {
 
@@ -944,14 +944,14 @@ export async function GET(request: NextRequest) {
 
               return NextResponse.json({ bookings: formattedBookings });
             }
-          } catch (_petsQueryError) {
+          } catch {
             // Pets query failed
           }
         }
 
         // No fallback to mock data - if we get here, return empty array
         return NextResponse.json({ bookings: [] });
-      } catch (_connectionError) {
+      } catch {
         // Return empty bookings array instead of error
         return NextResponse.json({
           bookings: [],
@@ -959,7 +959,7 @@ export async function GET(request: NextRequest) {
         });
       }
     }
-  } catch (_error) {
+  } catch {
     // Return empty bookings array instead of error
     return NextResponse.json({
       bookings: [],
@@ -1251,7 +1251,7 @@ async function ensurePetsTableExists() {
     }
 
     return true;
-  } catch (_error) {
+  } catch {
     return false;
   }
 }

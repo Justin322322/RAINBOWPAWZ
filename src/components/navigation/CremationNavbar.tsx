@@ -25,13 +25,13 @@ import { getProfilePictureUrl, handleImageError } from '@/utils/imageUtils';
 interface CremationNavbarProps {
   activePage?: string;
   userName?: string;
-  onMenuToggle?: () => void;
+  _onMenuToggle?: () => void;
 }
 
 export default function CremationNavbar({
   activePage: propActivePage,
   userName: propUserName = 'Cremation Provider',
-  onMenuToggle
+  _onMenuToggle
 }: CremationNavbarProps) {
   const pathname = usePathname();
   const _router = useRouter();

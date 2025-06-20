@@ -66,7 +66,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onShowSignup }
 
       try {
         data = JSON.parse(responseText);
-      } catch (_parseError) {
+      } catch {
         throw new Error(`Invalid response format: ${responseText.substring(0, 100)}...`);
       }
 

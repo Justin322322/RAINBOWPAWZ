@@ -47,7 +47,7 @@ const DeclineModal: React.FC<DeclineModalProps> = ({
           setRequestDocuments(false);
         }, 300);
       }, 1500);
-    } catch (_error) {
+    } catch {
       setIsLoading(false);
       setError('An error occurred. Please try again.');
     }

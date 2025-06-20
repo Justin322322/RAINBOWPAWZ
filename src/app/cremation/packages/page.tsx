@@ -47,7 +47,6 @@ function PackagesPage({ userData }: PackagesPageProps) {
     toggleLoading,
     handleToggleActive,
     filteredPackages,
-    _setIsLoading,
   } = usePackages({ userData });
 
   // Navigation handler for edit

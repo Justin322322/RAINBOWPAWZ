@@ -20,7 +20,7 @@ interface PackageDetailPageProps {
   userData?: any;
 }
 
-function PackageDetailPage({ _userData }: PackageDetailPageProps) {
+function PackageDetailPage({ userData: _userData }: PackageDetailPageProps) {
   const params = useParams();
   const router = useRouter();
   const providerId = params.id;
@@ -79,7 +79,7 @@ function PackageDetailPage({ _userData }: PackageDetailPageProps) {
           if (verifiedImages && verifiedImages.length > 0) {
             packageData.package.images = verifiedImages;
           }
-        } catch (_imgErr) {
+        } catch {
         }
 
         setPackageData(packageData.package);

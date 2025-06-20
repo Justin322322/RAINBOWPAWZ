@@ -140,7 +140,7 @@ function ApplicationDetailContent({ id }: ApplicationDetailContentProps) {
           if (errorJson.message) {
             errorMessage = errorJson.message;
           }
-        } catch (_e) {
+        } catch {
           // If parsing fails, use the error text directly
           if (errorText) {
             errorMessage = `Error: ${errorText}`;
@@ -166,7 +166,7 @@ function ApplicationDetailContent({ id }: ApplicationDetailContentProps) {
       try {
         const urlParams = new URLSearchParams(window.location.search);
         statusFromURL = urlParams.get('status');
-      } catch (_urlError) {
+      } catch {
         // Error parsing URL parameters
       }
 
@@ -195,7 +195,7 @@ function ApplicationDetailContent({ id }: ApplicationDetailContentProps) {
             }
           }
         }
-      } catch (_storageError) {
+      } catch {
         // Error accessing storage
       }
 
@@ -217,7 +217,7 @@ function ApplicationDetailContent({ id }: ApplicationDetailContentProps) {
           sessionStorage.removeItem(`application_${id}_status`);
           localStorage.removeItem(`application_${id}_status`);
           document.cookie = `application_${id}_status=; path=/; max-age=0`;
-        } catch (_storageError) {
+        } catch {
           // Error clearing storage
         }
       } else if (verificationStatusFromDB) {
@@ -387,7 +387,7 @@ function ApplicationDetailContent({ id }: ApplicationDetailContentProps) {
 
             // Set a cookie as another backup method
             document.cookie = `application_${id}_status=${newStatus}; path=/; max-age=3600`;
-          } catch (_storageError) {
+          } catch {
             // Failed to store status in storage
           }
 
