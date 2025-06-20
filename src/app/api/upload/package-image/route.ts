@@ -128,11 +128,11 @@ export async function POST(request: NextRequest) {
         if (!isNaN(packageIdInt)) {
           // Check if package belongs to this provider
           const packageResult = await query(
-            'SELECT service_provider_id FROM service_packages WHERE id = ?',
+            'SELECT provider_id FROM service_packages WHERE package_id = ?',
             [packageIdInt]
           ) as any[];
 
-          if (packageResult && packageResult.length > 0 && packageResult[0].service_provider_id === providerId) {
+          if (packageResult && packageResult.length > 0 && packageResult[0].provider_id === providerId) {
 
             // Get the current max display order
             const orderResult = await query(
