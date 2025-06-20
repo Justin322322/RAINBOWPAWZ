@@ -55,16 +55,40 @@ function CremationBookingsPage({ userData }: { userData: any }) {
       }
 
       setLoading(true);
+      setFetchError(null);
+
       try {
-        // Build query parameters
-        const params = new URLSearchParams({
-          providerId: userData.business_id.toString(),
-          status: statusFilter,
-          search: searchTerm,
-          paymentStatus: paymentFilter
+        // Add minimum loading delay for better UX (same as admin)
+        const minLoadingTime = new Promise(resolve => setTimeout(resolve, 600));
+        
+        const providerId = userData?.business_id || userData?.provider_id || 999;
+        
+        // Build query parameters including search and filter terms
+        const queryParams = new URLSearchParams({
+          providerId: providerId.toString()
+        });
+        
+        if (searchTerm.trim()) {
+          queryParams.append('searchTerm', searchTerm.trim());
+        }
+        
+        if (statusFilter && statusFilter !== 'all') {
+          queryParams.append('statusFilter', statusFilter);
+        }
+        
+        if (paymentFilter && paymentFilter !== 'all') {
+          queryParams.append('paymentFilter', paymentFilter);
+        }
+        
+        const dataPromise = fetch(`/api/cremation/bookings?${queryParams.toString()}`, {
+          method: 'GET',
+          headers: {
+            'Cache-Control': 'no-cache'
+          }
         });
 
-        const response = await fetch(`/api/cremation/bookings?${params.toString()}`);
+        // Wait for both the minimum time and the data
+        const [, response] = await Promise.all([minLoadingTime, dataPromise]);
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));

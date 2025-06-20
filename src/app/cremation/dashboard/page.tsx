@@ -75,16 +75,22 @@ function CremationDashboardPage({ userData }: { userData: any }) {
       setError(null);
 
       try {
+        // Add minimum loading delay for better UX (same as admin)
+        const minLoadingTime = new Promise(resolve => setTimeout(resolve, 800));
+        
         // Add the required providerId parameter like the original code
         const providerId = userData?.business_id || userData?.provider_id || 999;
         
         // Simplified API call with providerId
-        const response = await fetch(`/api/cremation/dashboard?providerId=${providerId}`, {
+        const dataPromise = fetch(`/api/cremation/dashboard?providerId=${providerId}`, {
           method: 'GET',
           headers: {
             'Cache-Control': 'no-cache'
           }
         });
+
+        // Wait for both the minimum time and the data
+        const [, response] = await Promise.all([minLoadingTime, dataPromise]);
 
         if (!response.ok) {
           throw new Error(`Failed to fetch dashboard data: ${response.status}`);
@@ -248,9 +254,16 @@ function CremationDashboardPage({ userData }: { userData: any }) {
             </button>
           </div>
           {isLoading ? (
-            <div className="flex flex-col justify-center items-center h-64">
-              <div className="animate-spin rounded-full h-10 w-10 border-4 border-gray-200 border-t-[var(--primary-green)]"></div>
-              <p className="mt-4 text-gray-600 text-sm">Loading bookings...</p>
+            <div className="p-6">
+              <SkeletonCard
+                withHeader={false}
+                contentLines={4}
+                withFooter={false}
+                withShadow={false}
+                rounded="lg"
+                animate={true}
+                className="h-48"
+              />
             </div>
           ) : dashboardData.recentBookings?.length > 0 ? (
             <ul className="divide-y divide-gray-200">
@@ -319,16 +332,18 @@ function CremationDashboardPage({ userData }: { userData: any }) {
             </button>
           </div>
           {isLoading ? (
-            <div className="flex flex-col justify-center items-center h-64">
-              <div className="animate-spin rounded-full h-10 w-10 border-4 border-gray-200 border-t-[var(--primary-green)]"></div>
-              <p className="mt-4 text-gray-600 text-sm">Loading reviews...</p>
+            <div className="p-6">
+              <SkeletonCard
+                withHeader={false}
+                contentLines={4}
+                withFooter={false}
+                withShadow={false}
+                rounded="lg"
+                animate={true}
+                className="h-48"
+              />
             </div>
-          ) : dashboardData.detailedStats?.avgRating === '0.0' ? (
-            <div className="p-6 text-center">
-              <StarIcon className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-              <p className="text-gray-500 text-sm">No reviews yet. Reviews will appear here when customers rate their experience.</p>
-            </div>
-          ) : (
+          ) : dashboardData.detailedStats?.avgRating && parseFloat(dashboardData.detailedStats.avgRating) > 0 ? (
             <div className="p-6">
               <div className="flex items-center justify-center mb-4">
                 <div className="flex items-center bg-yellow-100 px-4 py-2 rounded-full">
@@ -347,6 +362,11 @@ function CremationDashboardPage({ userData }: { userData: any }) {
                   View All Reviews
                 </button>
               </div>
+            </div>
+          ) : (
+            <div className="p-6 text-center">
+              <StarIcon className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+              <p className="text-gray-500 text-sm">No reviews yet. Reviews will appear here when customers rate their experience.</p>
             </div>
           )}
         </div>

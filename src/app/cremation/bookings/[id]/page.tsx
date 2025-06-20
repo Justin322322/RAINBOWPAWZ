@@ -23,6 +23,7 @@ import CremationDashboardLayout from '@/components/navigation/CremationDashboard
 import withBusinessVerification from '@/components/withBusinessVerification';
 import { useToast } from '@/context/ToastContext';
 import CremationCertificate from '@/components/certificates/CremationCertificate';
+import { SkeletonCard } from '@/components/ui/SkeletonLoader';
 
 interface BookingDetailsProps {
   userData?: any;
@@ -512,14 +513,31 @@ function BookingDetailsPage({ userData }: BookingDetailsProps) {
 
   SimpleProgressTimeline.displayName = 'SimpleProgressTimeline';
 
-
-
-
   if (loading) {
     return (
       <CremationDashboardLayout activePage="bookings" userData={userData}>
-        <div className="flex items-center justify-center min-h-[400px]">
-          <div className="animate-spin rounded-full h-12 w-12 border-4 border-gray-200 border-t-[var(--primary-green)]"></div>
+        <div className="space-y-6">
+          {/* Back button skeleton */}
+          <SkeletonCard
+            withHeader={false}
+            contentLines={1}
+            withFooter={false}
+            withShadow={false}
+            rounded="lg"
+            animate={true}
+            className="w-32 h-8"
+          />
+          
+          {/* Main content skeleton */}
+          <SkeletonCard
+            withHeader={true}
+            contentLines={8}
+            withFooter={false}
+            withShadow={true}
+            rounded="lg"
+            animate={true}
+            className="min-h-[400px]"
+          />
         </div>
       </CremationDashboardLayout>
     );

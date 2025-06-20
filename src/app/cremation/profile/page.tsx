@@ -19,10 +19,10 @@ import {
   ExclamationTriangleIcon
 } from '@heroicons/react/24/outline';
 // import { getAuthToken, isBusiness } from '@/utils/auth';
-import { LoadingSpinner } from '@/app/admin/services/client';
 import { getImagePath } from '@/utils/imageUtils';
 import PhilippinePhoneInput from '@/components/ui/PhilippinePhoneInput';
 import Image from 'next/image';
+import { SkeletonCard } from '@/components/ui/SkeletonLoader';
 
 function CremationProfilePage({ userData }: { userData: any }) {
   // Password states
@@ -696,7 +696,51 @@ function CremationProfilePage({ userData }: { userData: any }) {
       </div>
 
       {initialLoading ? (
-        <LoadingSpinner className="h-64" />
+        <div className="space-y-6">
+          {/* Profile header skeleton */}
+          <SkeletonCard
+            withHeader={true}
+            contentLines={1}
+            withFooter={false}
+            withShadow={true}
+            rounded="lg"
+            animate={true}
+            className="p-6"
+          />
+          
+          {/* Account information skeleton */}
+          <SkeletonCard
+            withHeader={true}
+            contentLines={3}
+            withFooter={false}
+            withShadow={true}
+            rounded="lg"
+            animate={true}
+            className="p-6"
+          />
+          
+          {/* Contact information skeleton */}
+          <SkeletonCard
+            withHeader={true}
+            contentLines={6}
+            withFooter={false}
+            withShadow={true}
+            rounded="lg"
+            animate={true}
+            className="p-6"
+          />
+          
+          {/* Password change skeleton */}
+          <SkeletonCard
+            withHeader={true}
+            contentLines={4}
+            withFooter={false}
+            withShadow={true}
+            rounded="lg"
+            animate={true}
+            className="p-6"
+          />
+        </div>
       ) : error ? (
         <div className="bg-white rounded-xl shadow-sm p-8 text-center">
           <div className="text-red-500 mb-4">

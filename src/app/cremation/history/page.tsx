@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import CremationDashboardLayout from '@/components/navigation/CremationDashboardLayout';
@@ -20,7 +20,7 @@ import {
   CheckCircleIcon,
   XCircleIcon
 } from '@heroicons/react/24/outline';
-import { LoadingSpinner } from '@/app/admin/services/client';
+import { StatsCardSkeleton, TableSkeleton } from '@/app/cremation/components/LoadingComponents';
 
 function CremationHistoryPage({ userData }: { userData: any }) {
   const [searchTerm, setSearchTerm] = useState('');
@@ -40,7 +40,7 @@ function CremationHistoryPage({ userData }: { userData: any }) {
   });
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, _setItemsPerPage] = useState(10);
-  const [retryCount, setRetryCount] = useState(0);
+  const retryCountRef = useRef(0);
   const { showToast } = useToast();
 
   // Effect to filter bookings whenever search term, date filter, or status filter changes
@@ -66,68 +66,86 @@ function CremationHistoryPage({ userData }: { userData: any }) {
 
   // Function to fetch booking history with retry logic - wrapped in useCallback
   const fetchBookingHistory = useCallback(async (retry = false) => {
+    setLoading(true);
+    setError(null);
+    
     try {
-      setLoading(true);
-      setError(null); // Clear any previous errors
-
-      // Make sure we're using the correct period format based on the dateFilter value
-      let periodParam = dateFilter;
-      if (dateFilter === 'last7days') periodParam = 'last7days';
-      else if (dateFilter === 'last30days') periodParam = 'last30days';
-      else if (dateFilter === 'last90days') periodParam = 'last90days';
-      else if (dateFilter === 'last6months') periodParam = 'last6months';
-      else if (dateFilter === 'thisyear') periodParam = 'thisyear';
-      else periodParam = 'all';
-
-      const response = await fetch(`/api/cremation/history?period=${periodParam}&t=${Date.now()}`, {
+      // Add minimum loading delay for better UX (same as admin)
+      const minLoadingTime = new Promise(resolve => setTimeout(resolve, 600));
+      
+      const providerId = userData?.business_id || userData?.provider_id || 999;
+      
+      // Build query parameters including filters
+      const queryParams = new URLSearchParams({
+        providerId: providerId.toString()
+      });
+      
+      // Add period filter (maps dateFilter to API's expected 'period' parameter)
+      if (dateFilter && dateFilter !== 'all') {
+        queryParams.append('period', dateFilter);
+      }
+      
+      const dataPromise = fetch(`/api/cremation/history?${queryParams.toString()}`, {
         method: 'GET',
         headers: {
-          'Cache-Control': 'no-cache',
-          'Pragma': 'no-cache'
+          'Cache-Control': 'no-cache'
         }
       });
 
-      // Parse the JSON response regardless of status code
-      const data = await response.json();
+      // Wait for both the minimum time and the data
+      const [, response] = await Promise.all([minLoadingTime, dataPromise]);
 
-      if (!response.ok) {
-        // Use the specific error message from the API if available
-        const errorMessage = data.message || data.error || 'Failed to fetch booking history';
-        throw new Error(errorMessage);
+      // Parse the JSON response regardless of status code
+      let data;
+      try {
+        data = await response.json();
+      } catch {
+        throw new Error('Invalid response format from server');
       }
 
+      if (!response.ok) {
+        // Extract error message from the response data
+        let errorMessage = `Server error: ${response.status}`;
+        if (data && data.error) {
+          errorMessage = data.error;
+          if (data.details) {
+            errorMessage += ` - ${data.details}`;
+          }
+        }
+        
+        throw new Error(errorMessage);
+      }
 
       setBookings(data.bookings || []);
       setStats(data.stats || {
         totalBookings: 0,
         completedBookings: 0,
         cancelledBookings: 0,
-        totalRevenue: 0,
-        averageRevenue: 0,
-        averageRating: 0
+        totalRevenue: 0
       });
-
-      // Reset retry count on success
-      setRetryCount(0);
-    } catch (error) {
-      setError(error instanceof Error ? error.message : 'An error occurred while fetching data');
-
-      // Only show toast once per fetch attempt
-      if (!retry) {
-        showToast(error instanceof Error ? error.message : 'Failed to load booking history. Please try again.', 'error');
+      
+      // Only reset retry count on successful fetch
+      if (retryCountRef.current > 0) {
+        retryCountRef.current = 0;
       }
-
-      // Auto-retry logic (max 2 retries)
-      if (retry && retryCount < 2) {
-        setRetryCount((prev) => prev + 1);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to fetch booking history';
+      setError(errorMessage);
+      
+      showToast(`Error: ${errorMessage}`, 'error');
+      
+      // Implement retry logic with exponential backoff
+      if (retry && retryCountRef.current < 3) {
+        const retryDelay = Math.pow(2, retryCountRef.current) * 1000; // 1s, 2s, 4s
         setTimeout(() => {
+          retryCountRef.current += 1;
           fetchBookingHistory(true);
-        }, 2000); // Wait 2 seconds before retrying
+        }, retryDelay);
       }
     } finally {
       setLoading(false);
     }
-  }, [dateFilter, retryCount, showToast]);
+  }, [userData, showToast, dateFilter]);
 
   // Fetch booking history when component mounts or date filter changes
   useEffect(() => {
@@ -352,20 +370,8 @@ function CremationHistoryPage({ userData }: { userData: any }) {
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {loading ? (
-          // Loading skeleton for stats
-          Array(4).fill(0).map((_, index) => (
-            <div key={index} className="bg-white rounded-xl shadow-sm p-6">
-              <div className="flex items-center">
-                <div className="p-3 rounded-full bg-gray-200 mr-4 animate-pulse">
-                  <div className="h-6 w-6"></div>
-                </div>
-                <div className="w-full">
-                  <div className="h-4 bg-gray-200 rounded w-3/4 mb-2 animate-pulse"></div>
-                  <div className="h-6 bg-gray-200 rounded w-1/2 animate-pulse"></div>
-                </div>
-              </div>
-            </div>
-          ))
+          // Using standardized stats card skeleton - same as admin
+          <StatsCardSkeleton count={4} />
         ) : (
           <>
             <StatCard
@@ -468,7 +474,7 @@ function CremationHistoryPage({ userData }: { userData: any }) {
         </div>
 
         {loading ? (
-          <LoadingSpinner className="h-64" />
+          <TableSkeleton rows={5} />
         ) : error ? (
           <div className="p-6 text-center">
             <p className="text-red-500">{error}</p>
