@@ -226,7 +226,7 @@ export async function createPaymentNotification(
 
     // Send SMS notification for important payment events
     if (['payment_confirmed', 'payment_failed'].includes(paymentStatus)) {
-      await sendPaymentSMSNotification(bookingDetails, paymentStatus, undefined);
+      await sendPaymentSMSNotification(bookingDetails, paymentStatus, _paymentDetails);
     }
 
     return notificationResult;
