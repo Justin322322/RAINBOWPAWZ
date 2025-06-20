@@ -176,7 +176,7 @@ export async function sendEmail(emailData: EmailData): Promise<{ success: boolea
         // Record the successful email in the database
         try {
           await recordEmailSent(emailData.to, emailData.subject, info.messageId);
-        } catch (_recordError) {
+        } catch {
           // Continue even if recording fails
         }
 
@@ -191,7 +191,7 @@ export async function sendEmail(emailData: EmailData): Promise<{ success: boolea
             if (queueResult.success) {
               return { success: true, messageId: `queued-${queueResult.queueId}` };
             }
-          } catch (_queueError) {
+          } catch {
             // If queueing fails, continue with the original error
           }
 

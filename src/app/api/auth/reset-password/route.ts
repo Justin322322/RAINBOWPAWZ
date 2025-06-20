@@ -39,7 +39,7 @@ export async function POST(request: Request) {
             error: 'Invalid token. Please request a new password reset.'
           }, { status: 400 });
         }
-      } catch (_tableError) {
+      } catch {
         return NextResponse.json({
           error: 'An error occurred while validating your token. Please try again later.'
         }, { status: 500 });
@@ -100,7 +100,7 @@ export async function POST(request: Request) {
         success: true,
         message: 'Password has been reset successfully'
       });
-    } catch (_dbError) {
+    } catch {
 
       // In a production environment, we should not simulate success on database errors
       // Instead, return a proper error message

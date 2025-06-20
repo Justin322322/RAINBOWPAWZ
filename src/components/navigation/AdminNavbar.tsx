@@ -28,7 +28,7 @@ interface AdminNavbarProps {
   onMenuToggle?: () => void;
 }
 
-export default function AdminNavbar({ activePage: propActivePage, userName = 'Admin', _onMenuToggle }: AdminNavbarProps) {
+export default function AdminNavbar({ activePage: propActivePage, userName = 'Admin', onMenuToggle: _onMenuToggle }: AdminNavbarProps) {
   const pathname = usePathname();
   const _router = useRouter();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);

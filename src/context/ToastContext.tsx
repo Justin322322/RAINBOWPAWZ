@@ -3,6 +3,9 @@
 import React, { createContext, useContext, useState, ReactNode, useRef, useEffect } from 'react';
 import ToastContainer, { ToastMessage, ToastType } from '@/components/ui/ToastContainer';
 
+// Re-export ToastType for external use
+export type { ToastType };
+
 interface ToastContextType {
   showToast: (message: string, type: ToastType, duration?: number) => void;
   hideToast: (id: string) => void;
@@ -74,12 +77,15 @@ export function ToastProvider({ children }: ToastProviderProps) {
 
   // Cleanup all timeouts on component unmount
   useEffect(() => {
+    // Capture ref value at the beginning of the effect to avoid ref warnings
+    const timeoutIds = timeoutIdsRef.current;
+    
     return () => {
-      // Clear all pending timeouts
-      timeoutIdsRef.current.forEach((timeoutId) => {
+      // Clear all pending timeouts using captured value
+      timeoutIds.forEach((timeoutId) => {
         clearTimeout(timeoutId);
       });
-      timeoutIdsRef.current.clear();
+      timeoutIds.clear();
     };
   }, []);
 

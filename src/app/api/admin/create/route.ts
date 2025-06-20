@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { query, withTransaction } from '@/lib/db';
+import { withTransaction } from '@/lib/db';
 import bcrypt from 'bcryptjs';
 
 export async function POST(request: NextRequest) {

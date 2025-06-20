@@ -77,7 +77,7 @@ function SettingsPage({ userData }: SettingsPageProps) {
         const errorData = await response.json();
         setMessage({ text: errorData.error || 'Failed to save settings', type: 'error' });
       }
-    } catch (_error) {
+    } catch {
       setMessage({ text: 'Failed to save settings. Please try again.', type: 'error' });
     } finally {
       setIsSaving(false);

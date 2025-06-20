@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    let userId: string | null = null;
+    let _userId: string | null = null;
     let accountType: string | null = null;
 
     // Check if it's a JWT token or old format
@@ -185,7 +185,7 @@ export async function POST(request: NextRequest) {
         `, [businessId]) as any[];
 
         if (userResult && userResult.length > 0) {
-          const _userId = userResult[0].user_id;
+          const userId = userResult[0].user_id;
 
           // Update the user's status
           await query(`
@@ -217,7 +217,7 @@ export async function POST(request: NextRequest) {
             }
           }
         }
-      } catch (_userUpdateError) {
+      } catch {
         // Non-critical error, just log it
       }
     } catch (updateError) {
@@ -281,7 +281,7 @@ export async function POST(request: NextRequest) {
         ]);
       } else {
       }
-    } catch (_logError) {
+    } catch {
       // Non-critical error, just log it
     }
 

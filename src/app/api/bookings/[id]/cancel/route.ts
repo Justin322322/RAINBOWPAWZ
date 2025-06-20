@@ -219,7 +219,7 @@ export async function POST(request: NextRequest) {
             notes: 'Your booking has been cancelled as requested.'
           };
         }
-      } catch (_dbError) {
+      } catch {
         // Continue with mock data if we can't get real data
       }
 
@@ -249,7 +249,7 @@ export async function POST(request: NextRequest) {
               notes: 'Your booking has been cancelled as requested.'
             };
           }
-        } catch (_userError) {
+        } catch {
         }
       }
 
@@ -302,10 +302,10 @@ export async function POST(request: NextRequest) {
         } else {
           // Continue with the cancellation process even if the email fails
         }
-      } catch (_emailSendError) {
+      } catch {
         // Continue with the cancellation process even if the email fails
       }
-    } catch (_emailError) {
+    } catch {
       // Continue with the cancellation process even if the email fails
     }
 
@@ -324,7 +324,7 @@ export async function POST(request: NextRequest) {
         message: refundInfo.message
       } : null
     });
-  } catch (_error) {
+  } catch {
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }

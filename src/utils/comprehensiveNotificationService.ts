@@ -170,7 +170,7 @@ export async function createBookingNotification(
 export async function createPaymentNotification(
   bookingId: number,
   paymentStatus: PaymentNotificationType,
-  _paymentDetails?: Record<string, any>
+  paymentDetails?: Record<string, any>
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const bookingDetails = await getBookingDetails(bookingId);

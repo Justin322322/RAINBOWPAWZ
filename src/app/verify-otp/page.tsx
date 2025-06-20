@@ -26,7 +26,7 @@ export default function VerifyOTPPage() {
     try {
       const parsedData = JSON.parse(userDataStr);
       setUserData(parsedData);
-    } catch (_e) {
+    } catch {
       // If parsing fails, redirect to home
       router.replace('/');
       return;
@@ -59,7 +59,7 @@ export default function VerifyOTPPage() {
             // @ts-ignore
             globalUserAuthState.userData = updatedUserData;
           }
-        } catch (_e) {
+        } catch {
         }
         
         // 3. Additional localStorage backup
@@ -70,7 +70,7 @@ export default function VerifyOTPPage() {
         setTimeout(() => {
           router.push('/user/furparent_dashboard');
         }, 100);
-      } catch (_e) {
+      } catch {
         // If there's an error, still try to redirect
         router.push('/user/furparent_dashboard');
       }

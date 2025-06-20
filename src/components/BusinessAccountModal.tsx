@@ -220,7 +220,7 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
             // since the user account has been created
           } else {
           }
-        } catch (_docError) {
+        } catch {
           // Continue with registration even if document upload fails
         }
       }

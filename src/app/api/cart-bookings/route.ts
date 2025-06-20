@@ -227,7 +227,7 @@ export async function POST(request: NextRequest) {
               [updatedSpecialRequests, bookingId]
             );
           }
-        } catch (_addOnError) {
+        } catch {
           // Continue with the booking process even if add-ons fail
         }
       }

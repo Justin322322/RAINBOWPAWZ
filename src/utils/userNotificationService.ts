@@ -6,6 +6,7 @@ export interface UserNotificationData {
   title: string;
   message: string;
   entityType?: string;
+  _entityType?: string;
   entityId?: number;
 }
 

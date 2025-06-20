@@ -7,7 +7,7 @@ export async function GET(_request: NextRequest) {
     // First, test if we can connect to the database at all
     try {
       const _testConnection = await query('SELECT 1 as test');
-    } catch (_connectionError) {
+    } catch {
       
       // Since we can't connect to the database, we'll return mock data
       return NextResponse.json({

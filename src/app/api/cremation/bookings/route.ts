@@ -432,9 +432,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Build the insert query dynamically based on the available columns
-    const availableColumns = [];
-    const placeholders = [];
-    const values = [];
+    const availableColumns: string[] = [];
+    const placeholders: string[] = [];
+    const values: any[] = [];
 
     // Always include these required fields - using consistent table structure
     availableColumns.push('user_id', 'provider_id', 'package_id', 'booking_date', 'booking_time', 'price');

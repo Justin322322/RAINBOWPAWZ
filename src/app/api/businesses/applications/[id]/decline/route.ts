@@ -189,7 +189,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
             0
           ]);
         }
-      } catch (_notificationError) {
+      } catch {
         // Non-critical error, just log it
       }
     }

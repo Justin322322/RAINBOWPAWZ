@@ -56,7 +56,7 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
           setIsSuccess(false);
         }, 300);
       }, 1500);
-    } catch (_error) {
+    } catch {
       setIsLoading(false);
       onClose();
     }

@@ -58,7 +58,7 @@ export function useDataFetching<T = any>({
   
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  const { setLoading, setLoadingMessage, setLoadingSection, clearAllLoading } = useLoading();
+  const { setLoading, setLoadingMessage, setLoadingSection } = useLoading();
 
   const onSuccessRef = useRef(onSuccess);
   const onErrorRef = useRef(onError);

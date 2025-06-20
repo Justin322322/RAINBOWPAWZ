@@ -112,7 +112,7 @@ export default function AdminFurParentsPage() {
           try {
             const errorData = await response.json();
             errorDetails = errorData.details || errorData.error || '';
-          } catch (_parseError) {
+          } catch {
             // Ignore parsing error
           }
 

@@ -357,7 +357,7 @@ export async function DELETE(
     return NextResponse.json({ error: 'Invalid authentication token' }, { status: 401 });
   }
 
-  const { userId, accountType } = authData;
+  const { userId: _userId, accountType } = authData;
 
   if (accountType !== 'business') {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });

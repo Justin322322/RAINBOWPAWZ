@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    let tokenUserId: string | null = null;
+    let _tokenUserId: string | null = null;
     let accountType: string | null = null;
 
     // Check if it's a JWT token or old format
@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
       // JWT token format
       const { decodeTokenUnsafe } = await import('@/lib/jwt');
       const payload = decodeTokenUnsafe(authToken);
-      tokenUserId = payload?.userId || null;
+      _tokenUserId = payload?.userId || null;
       accountType = payload?.accountType || null;
     } else {
       // Old format fallback
@@ -203,7 +203,7 @@ export async function GET(request: NextRequest) {
                 user.business_id = business.id;
                 user.verification_status = business.verification_status;
               }
-            } catch (_error) {
+            } catch {
               // Silently handle error and continue
             }
           }
@@ -250,7 +250,7 @@ export async function GET(request: NextRequest) {
           delete user.password;
 
           return user;
-        } catch (_userProcessingError) {
+        } catch {
           // Return the user with basic info to avoid breaking the entire list
           return {
             ...user,

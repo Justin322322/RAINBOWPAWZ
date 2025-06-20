@@ -74,7 +74,7 @@ const DirectImageWithFallback = ({
       }
 
       return null;
-    } catch (_error) {
+    } catch {
       return null;
     }
   };
@@ -206,7 +206,7 @@ const DirectImageWithFallback = ({
             setError(false);
             return;
           }
-        } catch (_err) {
+        } catch {
           // Silently fail
         }
       }

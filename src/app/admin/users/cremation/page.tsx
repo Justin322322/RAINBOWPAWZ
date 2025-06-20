@@ -91,7 +91,7 @@ export default function AdminCremationCentersPage() {
           try {
             const errorData = await response.json();
             errorDetails = errorData.details || errorData.error || '';
-          } catch (_parseError) {
+          } catch {
           }
 
           throw new Error(`Failed to fetch cremation centers: ${response.status} ${response.statusText}${errorDetails ? ` - ${errorDetails}` : ''}`);
@@ -118,7 +118,7 @@ export default function AdminCremationCentersPage() {
                 }
               }
               return center.activeServices || 0;
-            } catch (_error) {
+            } catch {
               return center.activeServices || 0;
             }
           };
@@ -327,12 +327,12 @@ export default function AdminCremationCentersPage() {
             handleSuccessfulUnrestrict(center);
             return;
           }
-        } catch (_jsonError) {
+        } catch {
           // Continue to fallback if JSON parsing fails
         }
 
         // If we get here, the primary endpoint failed, so we'll try the fallback
-      } catch (_primaryError) {
+      } catch {
         // Continue to fallback endpoint
       }
 
@@ -354,7 +354,7 @@ export default function AdminCremationCentersPage() {
       let fallbackData;
       try {
         fallbackData = await fallbackResponse.json();
-      } catch (_jsonError) {
+      } catch {
         throw new Error('Both unrestrict endpoints failed - unable to parse response data');
       }
 
@@ -657,7 +657,7 @@ export default function AdminCremationCentersPage() {
                       try {
                         const errorData = await response.json();
                         errorDetails = errorData.details || errorData.error || '';
-                      } catch (_parseError) {
+                      } catch {
                       }
 
                       throw new Error(`Failed to fetch cremation centers: ${response.status} ${response.statusText}${errorDetails ? ` - ${errorDetails}` : ''}`);

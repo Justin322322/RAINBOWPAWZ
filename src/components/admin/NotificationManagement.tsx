@@ -86,7 +86,7 @@ export default function NotificationManagement() {
           type: 'error'
         });
       }
-    } catch (_error) {
+    } catch {
       setMessage({
         text: 'Error processing reminders',
         type: 'error'
@@ -151,7 +151,7 @@ export default function NotificationManagement() {
           type: 'error'
         });
       }
-    } catch (_error) {
+    } catch {
       setMessage({
         text: 'Error sending notification',
         type: 'error'

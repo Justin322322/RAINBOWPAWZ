@@ -169,7 +169,7 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
                 errorMessage += ` - ${errorData.details}`;
               }
             }
-          } catch (_parseError) {
+          } catch {
             // Error parsing response
           }
 
@@ -289,7 +289,7 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
         setIsLoading(true);
         setActiveFilter(activeFilter); // Force a re-fetch
       }
-    } catch (_err) {
+    } catch {
       // Just retry loading the bookings without showing error details
       setError(null);
       setIsLoading(true);
@@ -338,7 +338,7 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
           if (errorData.error) {
             errorMessage = errorData.error;
           }
-        } catch (_parseError) {
+        } catch {
         }
         throw new Error(errorMessage);
       }

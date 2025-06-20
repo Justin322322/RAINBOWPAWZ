@@ -33,7 +33,7 @@ export const getServerSession = async () => {
     let decodedValue;
     try {
       decodedValue = decodeURIComponent(authCookie.value);
-    } catch (_error) {
+    } catch {
       decodedValue = authCookie.value;
     }
 

@@ -65,7 +65,7 @@ try {
     try {
       const connection = await pool.getConnection();
       connection.release();
-    } catch (_testError) {
+    } catch {
     }
   })();
 
@@ -80,7 +80,7 @@ try {
   // Create a fallback pool with default values
   try {
     pool = mysql.createPool(productionConfig);
-  } catch (_fallbackError) {
+  } catch {
     // Create a minimal pool as last resort using environment variables
     pool = mysql.createPool({
       host: process.env.DB_HOST || 'localhost',
@@ -323,7 +323,7 @@ export async function testConnection() {
   try {
     await query('SELECT 1 as test');
     return true;
-  } catch (_error) {
+  } catch {
     // Try to connect directly without using the pool
     try {
       const connection = await mysql.createConnection({
@@ -340,7 +340,7 @@ export async function testConnection() {
       pool = mysql.createPool(finalConfig);
 
       return true;
-    } catch (_directError) {
+    } catch {
       return false;
     }
   }
@@ -416,7 +416,7 @@ export async function ensureAvailabilityTablesExist(): Promise<boolean> {
     }
 
     return true;
-  } catch (_error) {
+  } catch {
     return false;
   }
 }
@@ -427,7 +427,7 @@ export async function checkTableExists(tableName: string): Promise<boolean> {
     // Use parameterized query to prevent SQL injection
     const result = await query('SHOW TABLES LIKE ?', [tableName]);
     return result.length > 0;
-  } catch (_err) {
+  } catch {
     return false;
   }
 }

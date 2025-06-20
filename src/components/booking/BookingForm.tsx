@@ -75,7 +75,7 @@ export default function BookingForm({
       setPackageName(data.name);
       setPackageDesc(data.description);
       setBasePrice(data.price || 0);
-    } catch (_error) {
+    } catch {
       showToast('Error loading package details. Please try again.', 'error');
     } finally {
       setLoading(false);
@@ -98,7 +98,7 @@ export default function BookingForm({
         setPackageDesc(data.packages[0].description);
         setBasePrice(data.packages[0].price || 0);
       }
-    } catch (_error) {
+    } catch {
       showToast('Error loading packages. Please try again.', 'error');
     } finally {
       setLoading(false);
@@ -212,7 +212,7 @@ export default function BookingForm({
 
       const data = await response.json();
       return data.imageUrl;
-    } catch (_error) {
+    } catch {
       throw new Error('Error uploading pet image');
     } finally {
       setPetImageUploading(false);
@@ -236,7 +236,7 @@ export default function BookingForm({
 
       setDeliveryDistance(distance);
       setDeliveryFee(fee);
-    } catch (_error) {
+    } catch {
       setDeliveryFee(100); // Default fee in case of error
     }
   };

@@ -151,7 +151,7 @@ export const logAdminAction = async (
     );
 
     return true;
-  } catch (_error) {
+  } catch {
     // Error logging admin action
     return false;
   }

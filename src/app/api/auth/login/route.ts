@@ -173,7 +173,7 @@ export async function POST(request: Request) {
                   return response;
                 }
               }
-            } catch (_adminError) {
+            } catch {
               // Continue with basic user data if admin details can't be fetched
             }
           }
@@ -235,7 +235,7 @@ export async function POST(request: Request) {
                 
                 return response;
               }
-            } catch (_businessError) {
+            } catch {
               // Continue with basic user data if business details can't be fetched
             }
           }
@@ -269,7 +269,7 @@ export async function POST(request: Request) {
             headers
           });
         }
-      } catch (_bcryptError) {
+      } catch {
         return NextResponse.json({
           error: 'Authentication error',
           message: 'An error occurred during authentication. Please try again.'

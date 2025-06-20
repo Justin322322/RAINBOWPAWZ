@@ -66,7 +66,7 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
     if (savedMonth) {
       try {
         return new Date(savedMonth);
-      } catch (_e) {
+      } catch {
         return new Date();
       }
     }
@@ -82,7 +82,7 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
         try {
           const parsed = JSON.parse(cachedData);
           return parsed;
-        } catch (_e) {
+        } catch {
         }
       }
     }
@@ -130,7 +130,7 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
           const errorMessage = errorJson.error || errorJson.details || `Failed to fetch provider packages: ${response.status}`;
           setPackageLoadError(errorMessage);
           throw new Error(errorMessage);
-        } catch (_parseError) {
+        } catch {
           const errorMessage = `Failed to fetch provider packages: ${response.status} - ${errorText.substring(0, 100)}`;
           setPackageLoadError(errorMessage);
           throw new Error(errorMessage);
@@ -139,7 +139,7 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
 
       const data = await response.json();
       setAvailablePackages(data.packages || []);
-    } catch (_err) {
+    } catch {
       setAvailablePackages([]);
     } finally {
       setLoadingPackages(false);
@@ -200,7 +200,7 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
         try {
           const errorData = JSON.parse(errorText);
           throw new Error(errorData.error || `Failed to fetch data: ${response.statusText}`);
-        } catch (_parseError) {
+        } catch {
           throw new Error(`HTTP error ${response.status}: ${errorText.substring(0, 100)}`);
         }
       }
@@ -460,7 +460,7 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
         try {
           const errorData = JSON.parse(errorText);
           throw new Error(errorData.error || 'Failed to save availability data');
-        } catch (_parseError) {
+        } catch {
           throw new Error(`Failed to save: HTTP error ${response.status}`);
         }
       }

@@ -269,7 +269,7 @@ export default function MapComponent({
         addUserMarker(coordinates);
       }
 
-    } catch (_error) {
+    } catch {
       setGeocodeError("Error loading map. Please refresh the page.");
     }
   }, [addUserMarker]);

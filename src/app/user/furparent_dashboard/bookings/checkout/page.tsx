@@ -487,10 +487,10 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                 setPetSpecialNotes(pet.special_notes || '');
               }
             }
-          } catch (_petError) {
+          } catch {
           }
         }
-      } catch (_err) {
+      } catch {
         setError('Failed to load booking information. Please try again.');
       } finally {
         setLoading(false);
@@ -681,7 +681,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
 
             try {
               uploadData = JSON.parse(responseText);
-            } catch (_parseError) {
+            } catch {
               throw new Error('Invalid response from image upload server');
             }
 
@@ -690,10 +690,10 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
               petImageUrl = uploadData.imagePath;
             } else {
             }
-          } catch (_responseError) {
+          } catch {
             // Continue with booking even if image upload fails
           }
-        } catch (_uploadError) {
+        } catch {
           // Continue with the booking process even if image upload fails
         }
       }
@@ -729,7 +729,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
 
             try {
               petResult = JSON.parse(responseText);
-            } catch (_parseError) {
+            } catch {
               throw new Error('Invalid response from pet saving server');
             }
 
@@ -747,10 +747,10 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
             } else {
               // Don't fail the booking if pet saving fails, just log the error
             }
-          } catch (_responseError) {
+          } catch {
             // Continue with booking even if pet saving fails
           }
-        } catch (_petError) {
+        } catch {
           // Don't fail the booking if pet saving fails, just log the error
         }
       }
@@ -800,7 +800,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
         const responseText = await bookingResponse.text();
         try {
           responseData = JSON.parse(responseText);
-        } catch (_parseError) {
+        } catch {
           // If JSON parsing fails, handle the error
           throw new Error('Invalid response from server. Please try again later.');
         }
@@ -849,7 +849,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
             if (searchParams.get('fromCart') === 'true') {
               try {
                 removeItem(items[0]?.id);
-              } catch (_cartError) {
+              } catch {
                 // Don't fail the checkout if cart clearing fails
               }
             }
@@ -891,7 +891,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
       if (searchParams.get('fromCart') === 'true') {
         try {
           removeItem(items[0]?.id);
-        } catch (_cartError) {
+        } catch {
           // Don't fail the checkout if cart clearing fails
         }
       }

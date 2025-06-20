@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
@@ -43,7 +43,7 @@ async function saveFile(file: File, userId: string, documentType: string): Promi
   }
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
     // Verify authentication using secure JWT
     const authResult = await verifySecureAuth(request);
@@ -129,7 +129,7 @@ export async function POST(request: Request) {
 
           businessProfileId = newBusinessCheck[0].provider_id;
         }
-      } catch (_err) {
+      } catch {
         return NextResponse.json({
           error: 'Failed to create service provider record'
         }, { status: 500 });
@@ -257,7 +257,7 @@ export async function POST(request: Request) {
           `UPDATE users SET role = 'business' WHERE user_id = ?`,
           [userIdStr]
         );
-      } catch (_roleUpdateError) {
+      } catch {
       }
     }
 

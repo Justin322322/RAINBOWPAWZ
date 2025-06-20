@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    let userId: string | null = null;
+    let _userId: string | null = null;
     let accountType: string | null = null;
 
     // Check if it's a JWT token or old format

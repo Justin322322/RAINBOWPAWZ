@@ -57,7 +57,7 @@ export async function PUT(request: NextRequest) {
     const currentRole = currentUserResult[0].role;
 
     // **🔥 FIX: Use proper transaction management to prevent connection leaks**
-    const result = await withTransaction(async (transaction) => {
+    const _result = await withTransaction(async (transaction) => {
       // Update user role in database
       await transaction.query(
         'UPDATE users SET role = ?, updated_at = NOW() WHERE user_id = ?',

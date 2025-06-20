@@ -138,7 +138,7 @@ const PersonalAccountModal: React.FC<PersonalAccountModalProps> = ({ isOpen, onC
             method: 'GET',
             signal: AbortSignal.timeout(5000) // 5 second timeout
           });
-        } catch (_testError) {
+        } catch {
         }
 
         // Now send the actual registration request
@@ -163,7 +163,7 @@ const PersonalAccountModal: React.FC<PersonalAccountModalProps> = ({ isOpen, onC
         let data;
         try {
           data = JSON.parse(responseText);
-        } catch (_jsonError) {
+        } catch {
 
           // If we can't parse the response as JSON, check if it's an HTML error page
           if (responseText.includes('<!DOCTYPE html>')) {
