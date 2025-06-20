@@ -61,6 +61,12 @@ export const PackageCards: React.FC<PackageCardsProps> = ({
                   Inactive
                 </div>
               )}
+              
+              {pkg.isActive && (
+                <div className="absolute top-2 right-2 bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded">
+                  Active
+                </div>
+              )}
             </div>
 
             <div className="p-4">

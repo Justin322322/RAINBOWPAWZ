@@ -3,7 +3,6 @@ import { query } from '@/lib/db';
 import { verifySecureAuth } from '@/lib/secureAuth';
 import { testPhoneNumberFormatting } from '@/lib/smsService';
 import bcrypt from 'bcryptjs';
-import { decodeTokenUnsafe } from '@/lib/jwt';
 
 // GET - Retrieve cremation provider profile
 export async function GET(request: NextRequest) {

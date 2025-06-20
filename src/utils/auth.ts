@@ -2,7 +2,7 @@
  * Authentication utility functions
  */
 import { NextRequest } from 'next/server';
-import { decodeTokenUnsafe, extractTokenFromHeader, type JWTPayload } from '@/lib/jwt';
+import { extractTokenFromHeader, type JWTPayload } from '@/lib/jwt';
 
 // Parse auth token and extract user info (for API routes)
 export const parseAuthToken = (authToken: string): { userId: string; accountType: string } | null => {
@@ -13,7 +13,8 @@ export const parseAuthToken = (authToken: string): { userId: string; accountType
     // Check if it's a JWT token or old format
     if (authToken.includes('.')) {
       // JWT token format
-      const payload = decodeTokenUnsafe(authToken);
+      const { verifyToken } = require('@/lib/jwt');
+      const payload = verifyToken(authToken);
       userId = payload?.userId?.toString() || null;
       accountType = payload?.accountType || null;
     } else {
@@ -45,12 +46,12 @@ export const parseAuthTokenAsync = async (authToken: string): Promise<{ userId: 
     if (authToken.includes('.')) {
       // JWT token format
       try {
-        const { decodeTokenUnsafe } = await import('@/lib/jwt');
-        const payload = decodeTokenUnsafe(authToken);
+        const { verifyToken } = await import('@/lib/jwt');
+        const payload = verifyToken(authToken);
         userId = payload?.userId?.toString() || null;
         accountType = payload?.accountType || null;
       } catch (error) {
-        console.error('Error decoding JWT token:', error);
+        console.error('Error verifying JWT token:', error);
         return null;
       }
     } else {
@@ -204,9 +205,10 @@ export const getUserId = (): string | null => {
     return token.split('_')[0];
   }
 
-  // Server-side: we can decode JWT safely
+  // Server-side: we can verify JWT safely
   if (token.includes('.')) {
-    const payload = decodeTokenUnsafe(token);
+    const { verifyToken } = require('@/lib/jwt');
+    const payload = verifyToken(token);
     return payload?.userId || null;
   }
 
@@ -247,7 +249,14 @@ export const getJWTPayload = (): JWTPayload | null => {
   const token = getAuthToken();
   if (!token || !token.includes('.')) return null;
 
-  return decodeTokenUnsafe(token);
+  // Only allow server-side usage
+  if (typeof window !== 'undefined') {
+    console.error('getJWTPayload should not be called on the client side. Use API calls instead.');
+    return null;
+  }
+
+  const { verifyToken } = require('@/lib/jwt');
+  return verifyToken(token);
 };
 
 // Check if user is authenticated

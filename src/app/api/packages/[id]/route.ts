@@ -2,7 +2,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { query, withTransaction } from '@/lib/db';
-import { getAuthTokenFromRequest } from '@/utils/auth';
+import { getAuthTokenFromRequest, parseAuthTokenAsync } from '@/utils/auth';
 import * as fs from 'fs';
 import { join } from 'path';
 import { getImagePath } from '@/utils/imageUtils';
@@ -93,26 +93,15 @@ export async function PATCH(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    let userId: string | null = null;
-    let accountType: string | null = null;
-
-    // Check if it's a JWT token or old format
-    if (authToken.includes('.')) {
-      // JWT token format
-      const { decodeTokenUnsafe } = await import('@/lib/jwt');
-      const payload = decodeTokenUnsafe(authToken);
-      userId = payload?.userId || null;
-      accountType = payload?.accountType || null;
-    } else {
-      // Old format fallback
-      const parts = authToken.split('_');
-      if (parts.length === 2) {
-        userId = parts[0];
-        accountType = parts[1];
-      }
+    // Parse auth token to handle both JWT and old formats
+    const authData = await parseAuthTokenAsync(authToken);
+    if (!authData) {
+      return NextResponse.json({ error: 'Invalid authentication token' }, { status: 401 });
     }
 
-    if (!userId || !accountType || accountType !== 'business') {
+    const { userId, accountType } = authData;
+
+    if (accountType !== 'business') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -239,6 +228,53 @@ export async function PATCH(
           }
         }
 
+        // Handle image updates
+        if (body.images && Array.isArray(body.images)) {
+          // Get current images from database
+          const currentImages = await transaction.query(
+            'SELECT image_path FROM package_images WHERE package_id = ?',
+            [packageId]
+          ) as any[];
+          
+          const currentImagePaths = currentImages.map(img => img.image_path);
+          const newImagePaths = body.images;
+
+          // Find images to remove (in current but not in new)
+          const imagesToRemove = currentImagePaths.filter(path => !newImagePaths.includes(path));
+          
+          // Remove images that are no longer needed
+          for (const imagePath of imagesToRemove) {
+            await transaction.query(
+              'DELETE FROM package_images WHERE package_id = ? AND image_path = ?',
+              [packageId, imagePath]
+            );
+            
+            // Also delete the physical file
+            try {
+              const fullPath = join(process.cwd(), 'public', imagePath);
+              if (fs.existsSync(fullPath)) {
+                fs.unlinkSync(fullPath);
+                console.log(`Deleted unused image file: ${fullPath}`);
+              }
+            } catch (fileError) {
+              console.error('Error deleting unused file:', fileError);
+            }
+          }
+
+          // Add new images (in new but not in current)
+          const imagesToAdd = newImagePaths.filter(path => !currentImagePaths.includes(path));
+          
+          for (let i = 0; i < imagesToAdd.length; i++) {
+            const imagePath = imagesToAdd[i];
+            const displayOrder = currentImagePaths.length + i + 1;
+            
+            await transaction.query(
+              'INSERT INTO package_images (package_id, image_path, display_order) VALUES (?, ?, ?)',
+              [packageId, imagePath, displayOrder]
+            );
+          }
+        }
+
         return { success: true };
       });
 
@@ -296,26 +332,15 @@ export async function DELETE(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  let userId: string | null = null;
-  let accountType: string | null = null;
-
-  // Check if it's a JWT token or old format
-  if (authToken.includes('.')) {
-    // JWT token format
-    const { decodeTokenUnsafe } = await import('@/lib/jwt');
-    const payload = decodeTokenUnsafe(authToken);
-    userId = payload?.userId || null;
-    accountType = payload?.accountType || null;
-  } else {
-    // Old format fallback
-    const parts = authToken.split('_');
-    if (parts.length === 2) {
-      userId = parts[0];
-      accountType = parts[1];
-    }
+  // Parse auth token to handle both JWT and old formats
+  const authData = await parseAuthTokenAsync(authToken);
+  if (!authData) {
+    return NextResponse.json({ error: 'Invalid authentication token' }, { status: 401 });
   }
 
-  if (!userId || !accountType || accountType !== 'business') {
+  const { userId, accountType } = authData;
+
+  if (accountType !== 'business') {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
@@ -324,7 +349,7 @@ export async function DELETE(
 }
 
 /** Helper to move images */
-async function moveImagesToPackageFolder(images: string[], packageId: number) {
+async function _moveImagesToPackageFolder(images: string[], packageId: number) {
   const base = join(process.cwd(), 'public', 'uploads', 'packages');
   const dir = join(base, String(packageId));
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
