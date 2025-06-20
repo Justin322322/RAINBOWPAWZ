@@ -5,15 +5,14 @@ import { useRouter, useParams } from 'next/navigation';
 import CremationDashboardLayout from '@/components/navigation/CremationDashboardLayout';
 import withBusinessVerification from '@/components/withBusinessVerification';
 import { useToast } from '@/context/ToastContext';
-import {
-  ArrowLeftIcon,
-  PlusIcon,
-  XMarkIcon,
-  PhotoIcon,
-  CheckIcon,
-  ExclamationCircleIcon
-} from '@heroicons/react/24/outline';
-import { ProductionSafeImage } from '@/components/ui/ProductionSafeImage';
+  import {
+    ArrowLeftIcon,
+    PlusIcon,
+    XMarkIcon,
+    CheckIcon,
+    ExclamationCircleIcon
+  } from '@heroicons/react/24/outline';
+import { ImageUploader } from '@/components/packages/ImageUploader';
 
 interface AddOn {
   name: string;
@@ -66,6 +65,9 @@ function EditPackagePage({ userData }: EditPackagePageProps) {
     conditions: '',
     images: []
   });
+
+  // Add state for individual image loading
+  const [uploadingImages, setUploadingImages] = useState<Set<string>>(new Set());
 
   // No mock data needed anymore as we're using the API
 
@@ -258,11 +260,21 @@ function EditPackagePage({ userData }: EditPackagePageProps) {
   // Handle image upload
   const handleImageUpload = async (e: ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      // Show loading indicator
-      showToast('Uploading images...', 'info');
+      const files = Array.from(e.target.files);
+      
+      // Create unique identifiers for each uploading file
+      const uploadIds = files.map(file => `${file.name}_${Date.now()}_${Math.random()}`);
+      
+      // Add uploading states
+      setUploadingImages(prev => {
+        const newSet = new Set(prev);
+        uploadIds.forEach(id => newSet.add(id));
+        return newSet;
+      });
 
       // Upload each file to the server
-      const uploadPromises = Array.from(e.target.files).map(async (file) => {
+      const uploadPromises = files.map(async (file, index) => {
+        const uploadId = uploadIds[index];
         const formData = new FormData();
         formData.append('file', file);
 
@@ -303,10 +315,15 @@ function EditPackagePage({ userData }: EditPackagePageProps) {
           console.log('Image upload successful:', data);
           return data.filePath; // Return the file path from the server
         } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : `Failed to upload ${file.name}`;
-          showToast(errorMessage, 'error');
           console.error('Image upload error:', error);
           return null;
+        } finally {
+          // Remove loading state for this upload
+          setUploadingImages(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(uploadId);
+            return newSet;
+          });
         }
       });
 
@@ -322,10 +339,7 @@ function EditPackagePage({ userData }: EditPackagePageProps) {
         images: [...prev.images, ...validPaths]
       }));
 
-      // Show success toast
-      if (validPaths.length > 0) {
-        showToast(`${validPaths.length} images uploaded successfully`, 'success');
-      }
+      // Successfully uploaded images (no toast notification needed)
     }
   };
 
@@ -375,10 +389,10 @@ function EditPackagePage({ userData }: EditPackagePageProps) {
         images: prev.images.filter((_, i) => i !== index)
       }));
 
-      showToast('Image deleted successfully', 'success');
+      // Image deleted successfully (no toast notification needed)
     } catch (error) {
       console.error('Error deleting image:', error);
-      showToast(error instanceof Error ? error.message : 'Failed to delete image', 'error');
+      // Error handled in console, no toast notification needed
     }
   };
 
@@ -569,58 +583,13 @@ function EditPackagePage({ userData }: EditPackagePageProps) {
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
         <form onSubmit={handleSubmit} className="p-6 max-w-4xl mx-auto">
           {/* Package Images */}
-          <div className="mb-8">
-            <h2 className="text-lg font-medium text-gray-800 mb-4">Package Images</h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-              {formData.images.length > 0 ? (
-                formData.images.map((image, index) => (
-                  <div
-                    key={index}
-                    className="aspect-square bg-gray-100 rounded-md relative overflow-hidden"
-                  >
-                    <div className="h-full w-full relative">
-                      <ProductionSafeImage
-                        src={image}
-                        alt={`Package image ${index + 1}`}
-                        className="h-full w-full object-cover"
-                        fallbackSrc="/images/placeholder-image.jpg"
-                        fill
-                      />
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveImage(index)}
-                      className="absolute top-2 right-2 bg-white p-1 rounded-full shadow-md hover:bg-red-50"
-                    >
-                      <XMarkIcon className="h-5 w-5 text-red-500" />
-                    </button>
-                  </div>
-                ))
-              ) : (
-                <div className="aspect-square bg-gray-100 rounded-md flex flex-col items-center justify-center border-2 border-dashed border-gray-300">
-                  <PhotoIcon className="h-12 w-12 text-gray-400 mb-2" />
-                  <span className="text-sm text-gray-500 text-center px-2">No images yet</span>
-                  <span className="text-xs text-gray-400 text-center px-2 mt-1">Click "Add Image" to upload</span>
-                </div>
-              )}
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="aspect-square border-2 border-dashed border-gray-300 rounded-md flex flex-col items-center justify-center hover:border-[var(--primary-green)] hover:bg-gray-50 transition-colors"
-              >
-                <PhotoIcon className="h-8 w-8 text-gray-400" />
-                <span className="mt-2 text-sm text-gray-500">Add Image</span>
-              </button>
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleImageUpload}
-                accept="image/*"
-                className="hidden"
-                multiple
-              />
-            </div>
-          </div>
+          <ImageUploader
+            images={formData.images}
+            uploadingImages={uploadingImages}
+            fileInputRef={fileInputRef}
+            onUpload={handleImageUpload}
+            onRemove={handleRemoveImage}
+          />
 
           {/* Basic Information */}
           <div className="mb-8">

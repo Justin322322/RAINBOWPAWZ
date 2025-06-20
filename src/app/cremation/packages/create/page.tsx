@@ -5,16 +5,16 @@ import { useRouter } from 'next/navigation';
 import { AppRouterInstance } from 'next/dist/shared/lib/app-router-context.shared-runtime';
 import CremationDashboardLayout from '@/components/navigation/CremationDashboardLayout';
 import withBusinessVerification from '@/components/withBusinessVerification';
-import { useToast } from '@/context/ToastContext';
-import { ToastType } from '@/components/ui/ToastContainer';
+import { useToast, ToastType } from '@/context/ToastContext';
 import {
   ArrowLeftIcon,
   PlusIcon,
   XMarkIcon,
-  PhotoIcon,
+
   CheckIcon,
   ExclamationCircleIcon
 } from '@heroicons/react/24/outline';
+import { ImageUploader } from '@/components/packages/ImageUploader';
 
 // Types
 interface AddOn {
@@ -97,58 +97,7 @@ const MultiEntryField: React.FC<MultiEntryFieldProps> = ({ label, items, newItem
   </div>
 );
 
-// ImageUploader: Handles file selection and preview grid
-interface ImageUploaderProps {
-  images: string[];
-  fileInputRef: React.RefObject<HTMLInputElement | null>;
-  onUpload: (e: ChangeEvent<HTMLInputElement>) => Promise<void>;
-  onRemove: (index: number) => void;
-}
-// Import ProductionSafeImage at the top of your file
-import { ProductionSafeImage } from '@/components/ui/ProductionSafeImage';
 
-const ImageUploader: React.FC<ImageUploaderProps> = ({ images, fileInputRef, onUpload, onRemove }) => (
-  <div className="mb-8">
-    <h2 className="text-lg font-medium text-gray-800 mb-4">Images</h2>
-    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-      {images.map((img, i) => (
-        <div key={i} className="aspect-square bg-gray-100 rounded-md relative overflow-hidden">
-          <ProductionSafeImage
-            src={img}
-            alt={`Package image ${i + 1}`}
-            className="h-full w-full object-cover"
-            fallbackSrc="/images/placeholder-image.jpg"
-            fill
-          />
-          <button
-            type="button"
-            onClick={() => onRemove(i)}
-            className="absolute top-2 right-2 bg-white p-1 rounded-full shadow-md hover:bg-red-50"
-          >
-            <XMarkIcon className="h-5 w-5 text-red-500" />
-          </button>
-        </div>
-      ))}
-
-      <button
-        type="button"
-        onClick={() => fileInputRef.current?.click()}
-        className="aspect-square border-2 border-dashed border-gray-300 rounded-md flex flex-col items-center justify-center hover:border-[var(--primary-green)] hover:bg-gray-50"
-      >
-        <PhotoIcon className="h-8 w-8 text-gray-400" />
-        <span className="mt-2 text-sm text-gray-500">Add Image</span>
-      </button>
-      <input
-        type="file"
-        ref={fileInputRef}
-        onChange={onUpload}
-        accept="image/*"
-        className="hidden"
-        multiple
-      />
-    </div>
-  </div>
-);
 
 // Hook: usePackageForm
 function usePackageForm(router: AppRouterInstance, showToast: {
@@ -164,6 +113,9 @@ function usePackageForm(router: AppRouterInstance, showToast: {
   const [newAddOn, setNewAddOn] = useState('');
   const [newAddOnPrice, setNewAddOnPrice] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Add state for individual image loading
+  const [uploadingImages, setUploadingImages] = useState<Set<string>>(new Set());
 
   const handleInputChange = useCallback((e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -210,9 +162,19 @@ function usePackageForm(router: AppRouterInstance, showToast: {
   const handleImageUpload = useCallback(async (e: ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files) return;
     const files = Array.from(e.target.files);
-    showToast('Uploading images...', 'info');
+    
+    // Create unique identifiers for each uploading file
+    const uploadIds = files.map(file => `${file.name}_${Date.now()}_${Math.random()}`);
+    
+    // Add uploading states
+    setUploadingImages(prev => {
+      const newSet = new Set(prev);
+      uploadIds.forEach(id => newSet.add(id));
+      return newSet;
+    });
 
-    const uploadPromises = files.map(async file => {
+    const uploadPromises = files.map(async (file, index) => {
+      const uploadId = uploadIds[index];
       const payload = new FormData();
       payload.append('file', file);
 
@@ -252,22 +214,26 @@ function usePackageForm(router: AppRouterInstance, showToast: {
         const data = await res.json();
         console.log('Image upload successful:', data);
         return data.filePath as string;
-      } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : `Failed to upload ${file.name}`;
-        showToast(errorMessage, 'error');
-        console.error('Image upload error:', err);
-        return null;
+              } catch (err) {
+          console.error('Image upload error:', err);
+          return null;
+      } finally {
+        // Remove loading state for this upload
+        setUploadingImages(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(uploadId);
+          return newSet;
+        });
       }
     });
 
     const paths = (await Promise.all(uploadPromises)).filter(p => p) as string[];
     if (paths.length) {
       setFormData(prev => ({ ...prev, images: [...prev.images, ...paths] }));
-      showToast(`${paths.length} images uploaded successfully`, 'success');
-    } else if (files.length > 0) {
-      showToast('No images were uploaded successfully. Please check the errors above.', 'error');
+      // Images uploaded successfully (no toast notification needed)
     }
-  }, [showToast, formData.packageId]);
+    // Failed uploads are handled in console.error above
+      }, [formData.packageId]);
 
   const handleRemoveImage = useCallback((idx: number) => {
     setFormData(prev => ({ ...prev, images: prev.images.filter((_, i) => i !== idx) }));
@@ -336,7 +302,7 @@ function usePackageForm(router: AppRouterInstance, showToast: {
   return {
     formData, errors, newInclusion, setNewInclusion,
     newAddOn, setNewAddOn, newAddOnPrice, setNewAddOnPrice,
-    isSubmitting, fileInputRef,
+    isSubmitting, fileInputRef, uploadingImages,
     handleInputChange, handleAddInclusion, handleRemoveInclusion,
     handleAddAddOn, handleRemoveAddOn, handleImageUpload,
     handleRemoveImage, handleSubmit
@@ -351,7 +317,7 @@ const CreatePackagePage: React.FC<{ userData?: any }> = ({ userData }) => {
   const {
     formData, errors, newInclusion, setNewInclusion,
     newAddOn, setNewAddOn, newAddOnPrice, setNewAddOnPrice,
-    isSubmitting, fileInputRef,
+    isSubmitting, fileInputRef, uploadingImages,
     handleInputChange, handleAddInclusion, handleRemoveInclusion,
     handleAddAddOn, handleRemoveAddOn, handleImageUpload,
     handleRemoveImage, handleSubmit
@@ -375,7 +341,13 @@ const CreatePackagePage: React.FC<{ userData?: any }> = ({ userData }) => {
       {/* Form */}
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
         <form onSubmit={handleSubmit} className="p-6 max-w-4xl mx-auto">
-          <ImageUploader images={formData.images} fileInputRef={fileInputRef} onUpload={handleImageUpload} onRemove={handleRemoveImage} />
+          <ImageUploader 
+            images={formData.images} 
+            uploadingImages={uploadingImages}
+            fileInputRef={fileInputRef} 
+            onUpload={handleImageUpload} 
+            onRemove={handleRemoveImage} 
+          />
 
           {/* Basic Info */}
           <div className="mb-8">
