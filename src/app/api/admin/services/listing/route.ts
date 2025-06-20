@@ -2,7 +2,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { query, checkTableExists } from '@/lib/db';
-import { getAuthTokenFromRequest } from '@/utils/auth';
+import { verifySecureAuth } from '@/lib/secureAuth';
 import { calculateRevenue, formatRevenue } from '@/lib/revenueCalculator';
 import fs from 'fs';
 import path from 'path';
@@ -64,32 +64,13 @@ async function listImagePaths(packageId: number): Promise<string[]> {
 
 export async function GET(request: NextRequest) {
   // --- Authentication ---
-  const dev = process.env.NODE_ENV !== 'production';
-  let isAuth = false;
-  const token = getAuthTokenFromRequest(request);
-
-  if (token) {
-    let accountType: string | null = null;
-
-    // Check if it's a JWT token or old format
-    if (token.includes('.')) {
-      // JWT token format
-      const { decodeTokenUnsafe } = await import('@/lib/jwt');
-      const payload = decodeTokenUnsafe(token);
-      accountType = payload?.accountType || null;
-    } else {
-      // Old format fallback
-      const parts = token.split('_');
-      accountType = parts.length === 2 ? parts[1] : null;
-    }
-
-    isAuth = accountType === 'admin';
-  } else if (dev) {
-    isAuth = true;
+  const user = verifySecureAuth(request);
+  if (!user) {
+    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   }
 
-  if (!isAuth) {
-    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+  if (user.accountType !== 'admin') {
+    return NextResponse.json({ success: false, error: 'Forbidden: Admin access required' }, { status: 403 });
   }
 
   // --- Query params ---

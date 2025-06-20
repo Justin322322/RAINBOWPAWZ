@@ -1,21 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
-import { getAuthTokenFromRequest } from '@/utils/auth';
+import { verifySecureAuth } from '@/lib/secureAuth';
 
 export async function POST(request: NextRequest) {
   try {
-    // Verify admin authentication
-    const authToken = getAuthTokenFromRequest(request);
-    if (!authToken) {
+    // Verify admin authentication using secure auth
+    const user = verifySecureAuth(request);
+    if (!user) {
       return NextResponse.json({
         error: 'Unauthorized',
         success: false
       }, { status: 401 });
     }
 
-    // Extract user ID and account type
-    const [_tokenUserId, accountType] = authToken.split('_');
-    if (accountType !== 'admin') {
+    if (user.accountType !== 'admin') {
       return NextResponse.json({
         error: 'Unauthorized - Admin access required',
         success: false

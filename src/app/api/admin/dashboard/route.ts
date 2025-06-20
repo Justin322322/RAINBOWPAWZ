@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
-import { getAuthTokenFromRequest } from '@/utils/auth';
-import { decodeTokenUnsafe } from '@/lib/jwt';
+import { verifySecureAuth } from '@/lib/secureAuth';
 import { calculateRevenue, formatRevenue, calculatePercentageChange } from '@/lib/revenueCalculator';
 
 // Safely execute a database query with error handling
@@ -16,33 +15,14 @@ async function safeQuery(queryString: string, params: any[] = []): Promise<any[]
 
 export async function GET(request: NextRequest) {
   try {
-    // Verify admin authentication
-    const authToken = getAuthTokenFromRequest(request);
-
-    // In development mode, we'll allow requests without auth token for testing
-    const isDevelopment = process.env.NODE_ENV === 'development';
-
-    if (!authToken && !isDevelopment) {
+    // Verify admin authentication using secure auth
+    const user = verifySecureAuth(request);
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    if (authToken) {
-      let accountType: string | null = null;
-
-      // Check if it's a JWT token or old format
-      if (authToken.includes('.')) {
-        // JWT token format
-        const payload = decodeTokenUnsafe(authToken);
-        accountType = payload?.accountType || null;
-      } else {
-        // Old format fallback
-        const parts = authToken.split('_');
-        accountType = parts.length === 2 ? parts[1] : null;
-      }
-
-      if (accountType !== 'admin' && !isDevelopment) {
-        return NextResponse.json({ error: 'Unauthorized - Admin access required' }, { status: 403 });
-      }
+    if (user.accountType !== 'admin') {
+      return NextResponse.json({ error: 'Unauthorized - Admin access required' }, { status: 403 });
     }
 
     // Fetch dashboard data with proper typing

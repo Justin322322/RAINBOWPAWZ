@@ -572,40 +572,40 @@ export const fastAuthCheck = (): {
   };
 
   try {
-    if (typeof window === 'undefined' || typeof sessionStorage === 'undefined') {
+    if (typeof window === 'undefined') {
       return defaultState;
     }
 
     // First try to get from session storage (fastest)
-    const userData = JSON.parse(sessionStorage.getItem('user_data') || 'null');
-    const adminData = JSON.parse(sessionStorage.getItem('admin_data') || 'null');
+    const userData = typeof sessionStorage !== 'undefined' ? 
+      JSON.parse(sessionStorage.getItem('user_data') || 'null') : null;
+    const adminData = typeof sessionStorage !== 'undefined' ? 
+      JSON.parse(sessionStorage.getItem('admin_data') || 'null') : null;
 
-    // Get from auth token
+    // For JWT tokens, we can't safely decode client-side
+    // Just check if we have a token and let server-side verification handle the rest
     const authToken = getAuthToken();
     if (!authToken) return defaultState;
 
-    let userId: string | null = null;
-    let accountType: string | null = null;
-
-    // Check if it's a JWT token or old format
+    // If we have JWT tokens (containing dots), don't try to decode client-side
     if (authToken.includes('.')) {
-      // For JWT tokens on client-side, we can't safely decode them
-      // Instead, return authenticated status based on token presence
-      // and let components use API calls for user details
       return {
         authenticated: true,
-        userId: null, // Don't try to decode client-side
-        accountType: null, // Don't try to decode client-side
+        userId: null, // Don't try to decode client-side for security
+        accountType: null, // Don't try to decode client-side for security
         userData: userData,
         adminData: adminData
       };
-    } else {
-      // Old format fallback (still safe on client)
-      const parts = authToken.split('_');
-      if (parts.length === 2) {
-        userId = parts[0];
-        accountType = parts[1];
-      }
+    }
+
+    // Old format fallback for backward compatibility
+    let userId: string | null = null;
+    let accountType: string | null = null;
+    
+    const parts = authToken.split('_');
+    if (parts.length === 2) {
+      userId = parts[0];
+      accountType = parts[1];
     }
 
     if (!userId || !accountType) {
@@ -621,27 +621,14 @@ export const fastAuthCheck = (): {
 
     // Return the appropriate data based on account type
     if (accountType === 'admin') {
-      if (adminData) {
-        // If we have cached admin data, use it
-        return {
-          authenticated: true,
-          userId,
-          accountType,
-          userData: null,
-          adminData
-        };
-      } else {
-        // For admin accounts without cached data, still return authenticated
-        // The withAdminAuth component will fetch the admin data
-        return {
-          authenticated: true,
-          userId,
-          accountType,
-          userData: null,
-          adminData: null
-        };
-      }
-    } else if (accountType === 'user' && userData) {
+      return {
+        authenticated: true,
+        userId,
+        accountType,
+        userData: null,
+        adminData: adminData
+      };
+    } else if (accountType === 'user') {
       return {
         authenticated: true,
         userId,
@@ -650,7 +637,6 @@ export const fastAuthCheck = (): {
         adminData: null
       };
     } else if (accountType === 'business') {
-      // For business accounts
       return {
         authenticated: true,
         userId,

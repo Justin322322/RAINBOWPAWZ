@@ -18,6 +18,14 @@ let globalBusinessAuthState = {
   userData: null as any,
 };
 
+// Function to clear global business auth state (for logout)
+export const clearGlobalBusinessAuthState = () => {
+  globalBusinessAuthState = {
+    verified: false,
+    userData: null,
+  };
+};
+
 // HOC to wrap components that require business verification
 const withBusinessVerification = <P extends object>(
   Component: React.ComponentType<P & { userData: any }>

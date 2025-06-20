@@ -1,37 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
-import { getAuthTokenFromRequest } from '@/utils/auth';
+import { verifySecureAuth } from '@/lib/secureAuth';
 
 // API endpoint to restrict or restore access to a cremation business
 export async function POST(request: NextRequest) {
   try {
-    // Verify admin authentication
-    const authToken = getAuthTokenFromRequest(request);
-
-    if (!authToken) {
+    // Verify admin authentication using secure auth
+    const user = verifySecureAuth(request);
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    let _userId: string | null = null;
-    let accountType: string | null = null;
-
-    // Check if it's a JWT token or old format
-    if (authToken.includes('.')) {
-      // JWT token format
-      const { decodeTokenUnsafe } = await import('@/lib/jwt');
-      const payload = decodeTokenUnsafe(authToken);
-      _userId = payload?.userId || null;
-      accountType = payload?.accountType || null;
-    } else {
-      // Old format fallback
-      const parts = authToken.split('_');
-      if (parts.length === 2) {
-        _userId = parts[0];
-        accountType = parts[1];
-      }
-    }
-
-    if (accountType !== 'admin') {
+    if (user.accountType !== 'admin') {
       return NextResponse.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
     }
 

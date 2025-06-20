@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation';
 import { clearAuthToken } from '@/utils/auth';
 import { useToast } from '@/context/ToastContext';
 import { clearBusinessVerificationCache } from '@/utils/businessVerificationCache';
+import { clearGlobalAdminAuthState } from '@/components/withAdminAuth';
+import { clearGlobalBusinessAuthState } from '@/components/withBusinessVerification';
 import Modal from './Modal';
 
 interface LogoutModalProps {
@@ -43,12 +45,24 @@ export default function LogoutModal({ isOpen, onClose, userName = 'User' }: Logo
 
       // Clear business verification cache
       clearBusinessVerificationCache();
+      
+      // Clear global admin auth state
+      clearGlobalAdminAuthState();
+      
+      // Clear global business auth state
+      clearGlobalBusinessAuthState();
 
       // Clear session storage
       sessionStorage.removeItem('user_data');
+      sessionStorage.removeItem('admin_data');
       sessionStorage.removeItem('otp_verified');
       sessionStorage.removeItem('auth_user_id');
       sessionStorage.removeItem('auth_account_type');
+      
+      // Clear any localStorage auth tokens (for development)
+      if (typeof localStorage !== 'undefined') {
+        localStorage.removeItem('auth_token_3000');
+      }
 
       // Redirect to home page after a short delay
       setTimeout(() => {
