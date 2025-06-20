@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Use parseAuthToken to handle both JWT and legacy token formats
-    const tokenData = parseAuthToken(authToken);
+    const tokenData = await parseAuthToken(authToken);
     if (!tokenData) {
       return NextResponse.json({ error: 'Invalid authentication token' }, { status: 401 });
     }

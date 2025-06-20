@@ -1,51 +1,24 @@
 /**
  * Authentication utility functions
+ * 
+ * MIGRATION NOTICE: 
+ * Fixed JWT import issues that were causing silent authentication failures in ES module environments.
+ * - parseAuthToken is now async and uses dynamic imports
+ * - Added async versions: getUserIdAsync, getAccountTypeAsync, getJWTPayload (now async)
+ * - Sync versions of getUserId/getAccountType warn when JWT tokens are encountered and return null
+ * 
+ * For API routes and server-side code:
+ * - Use parseAuthToken (now async) instead of parseAuthTokenSync
+ * - Use getUserIdAsync/getAccountTypeAsync for proper JWT verification
+ * - Use getJWTPayload (now async) for full JWT payload access
+ * 
+ * Client-side code can continue using getUserId/getAccountType sync versions
  */
 import { NextRequest } from 'next/server';
 import { extractTokenFromHeader, type JWTPayload } from '@/lib/jwt';
 
 // Parse auth token and extract user info (for API routes)
-export const parseAuthToken = (authToken: string): { userId: string; accountType: string; email?: string } | null => {
-  try {
-    let userId: string | null = null;
-    let accountType: string | null = null;
-    let email: string | undefined = undefined;
-
-    // Check if it's a JWT token or old format
-    if (authToken.includes('.')) {
-      // JWT token format
-      try {
-        const { verifyToken } = require('@/lib/jwt');
-        const payload = verifyToken(authToken);
-        userId = payload?.userId?.toString() || null;
-        accountType = payload?.accountType || null;
-        email = payload?.email || undefined;
-      } catch (error) {
-        console.error('Error verifying JWT token:', error);
-        return null;
-      }
-    } else {
-      // Old format fallback
-      const parts = authToken.split('_');
-      if (parts.length === 2) {
-        userId = parts[0];
-        accountType = parts[1];
-        // Old format doesn't have email
-      }
-    }
-
-    if (!userId || !accountType) {
-      return null;
-    }
-
-    return { userId, accountType, email };
-  } catch (_error) {
-    return null;
-  }
-};
-
-// Enhanced version that also handles async JWT import for API routes
-export const parseAuthTokenAsync = async (authToken: string): Promise<{ userId: string; accountType: string; email?: string } | null> => {
+export const parseAuthToken = async (authToken: string): Promise<{ userId: string; accountType: string; email?: string } | null> => {
   try {
     let userId: string | null = null;
     let accountType: string | null = null;
@@ -83,6 +56,42 @@ export const parseAuthTokenAsync = async (authToken: string): Promise<{ userId: 
     return null;
   }
 };
+
+// Synchronous version for backward compatibility - handles import errors gracefully
+export const parseAuthTokenSync = (authToken: string): { userId: string; accountType: string; email?: string } | null => {
+  try {
+    let userId: string | null = null;
+    let accountType: string | null = null;
+    let email: string | undefined = undefined;
+
+    // Check if it's a JWT token or old format
+    if (authToken.includes('.')) {
+      // JWT token format - for sync version, we can't safely verify JWT
+      // Return null to force use of async version or API calls
+      console.warn('JWT token detected in sync parseAuthToken - use parseAuthTokenAsync for proper verification');
+      return null;
+    } else {
+      // Old format fallback
+      const parts = authToken.split('_');
+      if (parts.length === 2) {
+        userId = parts[0];
+        accountType = parts[1];
+        // Old format doesn't have email
+      }
+    }
+
+    if (!userId || !accountType) {
+      return null;
+    }
+
+    return { userId, accountType, email };
+  } catch (_error) {
+    return null;
+  }
+};
+
+// Enhanced version that also handles async JWT import for API routes (alias for compatibility)
+export const parseAuthTokenAsync = parseAuthToken;
 
 // Get auth token from server request (for API routes)
 export const getAuthTokenFromRequest = (request: NextRequest): string | null => {
@@ -216,14 +225,42 @@ export const getUserId = (): string | null => {
     return token.split('_')[0];
   }
 
+  // Server-side: handle JWT tokens
+  if (token.includes('.')) {
+    // For server-side JWT verification, we should use the async version
+    console.warn('JWT token detected in sync getUserId - use getUserIdAsync for proper server-side verification');
+    return null;
+  }
+
+  // Old format fallback
+  return token.split('_')[0];
+};
+
+// Async version for proper server-side JWT verification
+export const getUserIdAsync = async (): Promise<string | null> => {
+  const token = getAuthToken();
+  if (!token) return null;
+
+  // For client-side, avoid JWT decoding for security
+  if (typeof window !== 'undefined') {
+    // Check if it's a JWT token - if so, we can't decode it safely on client
+    if (token.includes('.')) {
+      // For JWT tokens on client-side, we should use API calls instead
+      return null;
+    }
+    
+    // Old format fallback (still safe on client)
+    return token.split('_')[0];
+  }
+
   // Server-side: we can verify JWT safely
   if (token.includes('.')) {
     try {
-      const { verifyToken } = require('@/lib/jwt');
+      const { verifyToken } = await import('@/lib/jwt');
       const payload = verifyToken(token);
       return payload?.userId || null;
     } catch (error) {
-      console.error('Error verifying JWT token in getUserId:', error);
+      console.error('Error verifying JWT token in getUserIdAsync:', error);
       return null;
     }
   }
@@ -250,14 +287,42 @@ export const getAccountType = (): string | null => {
     return token.split('_')[1];
   }
 
+  // Server-side: handle JWT tokens
+  if (token.includes('.')) {
+    // For server-side JWT verification, we should use the async version
+    console.warn('JWT token detected in sync getAccountType - use getAccountTypeAsync for proper server-side verification');
+    return null;
+  }
+
+  // Old format fallback
+  return token.split('_')[1];
+};
+
+// Async version for proper server-side JWT verification
+export const getAccountTypeAsync = async (): Promise<string | null> => {
+  const token = getAuthToken();
+  if (!token) return null;
+
+  // For client-side, avoid JWT decoding for security
+  if (typeof window !== 'undefined') {
+    // Check if it's a JWT token - if so, we can't decode it safely on client
+    if (token.includes('.')) {
+      // For JWT tokens on client-side, we should use API calls instead
+      return null;
+    }
+    
+    // Old format fallback (still safe on client)
+    return token.split('_')[1];
+  }
+
   // Server-side: we can decode JWT safely
   if (token.includes('.')) {
     try {
-      const { verifyToken } = require('@/lib/jwt');
+      const { verifyToken } = await import('@/lib/jwt');
       const payload = verifyToken(token);
       return payload?.accountType || null;
     } catch (error) {
-      console.error('Error verifying JWT token in getAccountType:', error);
+      console.error('Error verifying JWT token in getAccountTypeAsync:', error);
       return null;
     }
   }
@@ -267,7 +332,7 @@ export const getAccountType = (): string | null => {
 };
 
 // Get JWT payload from token
-export const getJWTPayload = (): JWTPayload | null => {
+export const getJWTPayload = async (): Promise<JWTPayload | null> => {
   const token = getAuthToken();
   if (!token || !token.includes('.')) return null;
 
@@ -278,7 +343,7 @@ export const getJWTPayload = (): JWTPayload | null => {
   }
 
   try {
-    const { verifyToken } = require('@/lib/jwt');
+    const { verifyToken } = await import('@/lib/jwt');
     return verifyToken(token);
   } catch (error) {
     console.error('Error verifying JWT token in getJWTPayload:', error);
