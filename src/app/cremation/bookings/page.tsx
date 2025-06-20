@@ -55,16 +55,23 @@ function CremationBookingsPage({ userData }: { userData: any }) {
       }
 
       setLoading(true);
+      setFetchError(null);
+
       try {
-        // Build query parameters
-        const params = new URLSearchParams({
-          providerId: userData.business_id.toString(),
-          status: statusFilter,
-          search: searchTerm,
-          paymentStatus: paymentFilter
+        // Add minimum loading delay for better UX (same as admin)
+        const minLoadingTime = new Promise(resolve => setTimeout(resolve, 600));
+        
+        const providerId = userData?.business_id || userData?.provider_id || 999;
+        
+        const dataPromise = fetch(`/api/cremation/bookings?providerId=${providerId}`, {
+          method: 'GET',
+          headers: {
+            'Cache-Control': 'no-cache'
+          }
         });
 
-        const response = await fetch(`/api/cremation/bookings?${params.toString()}`);
+        // Wait for both the minimum time and the data
+        const [, response] = await Promise.all([minLoadingTime, dataPromise]);
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
@@ -92,7 +99,7 @@ function CremationBookingsPage({ userData }: { userData: any }) {
     };
 
     fetchBookings();
-  }, [userData, searchTerm, statusFilter, paymentFilter]);
+  }, [userData]);
 
   // Show toast when fetchError changes
   useEffect(() => {

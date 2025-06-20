@@ -45,46 +45,36 @@ export default function CremationNavbar({
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   // Always initialize with the default value for server-side rendering to avoid hydration mismatch
-  const [userName, setUserName] = useState('Cremation Provider');
+  const [userName, setUserName] = useState(propUserName || 'Cremation Provider');
 
   // Initialize profile picture from cache immediately (client-side only)
-  const getInitialProfilePicture = () => {
-    if (typeof window === 'undefined' || typeof sessionStorage === 'undefined') return null;
-
-    try {
-      // Check business verification cache first
-      const businessCache = sessionStorage.getItem('business_verification_cache');
-      if (businessCache) {
-        const cache = JSON.parse(businessCache);
-        if (cache.userData?.profile_picture) {
-          return cache.userData.profile_picture;
+  const [profilePicture, setProfilePicture] = useState<string | null>(() => {
+    // Initialize immediately from session storage to prevent layout shift
+    if (typeof window !== 'undefined') {
+      try {
+        // Check business verification cache first
+        const businessCache = sessionStorage.getItem('business_verification_cache');
+        if (businessCache) {
+          const cache = JSON.parse(businessCache);
+          if (cache.userData?.profile_picture) {
+            return cache.userData.profile_picture;
+          }
         }
-      }
 
-      // Fallback to legacy user data cache
-      const userData = sessionStorage.getItem('user_data');
-      if (userData) {
-        const user = JSON.parse(userData);
-        if (user.profile_picture) {
-          return user.profile_picture;
+        // Fallback to legacy user data cache
+        const userData = sessionStorage.getItem('user_data');
+        if (userData) {
+          const user = JSON.parse(userData);
+          if (user.profile_picture) {
+            return user.profile_picture;
+          }
         }
+      } catch (error) {
+        console.error('Error reading cached profile picture:', error);
       }
-    } catch (error) {
-      console.error('Error reading cached profile picture:', error);
     }
-
     return null;
-  };
-
-  const [profilePicture, setProfilePicture] = useState<string | null>(null);
-
-  // Load cached profile picture immediately on mount (before hydration check)
-  useEffect(() => {
-    const cachedProfilePicture = getInitialProfilePicture();
-    if (cachedProfilePicture) {
-      setProfilePicture(cachedProfilePicture);
-    }
-  }, []);
+  });
 
   // Function to get profile picture from cache or API
   const fetchProfilePicture = useCallback(async () => {
@@ -165,16 +155,8 @@ export default function CremationNavbar({
       const bestUserName = sessionUserName || localUserName || propUserName;
       setUserName(bestUserName);
 
-      // Load profile picture from cache immediately, then fetch if needed
-      const cachedProfilePicture = getInitialProfilePicture();
-      if (cachedProfilePicture) {
-        setProfilePicture(cachedProfilePicture);
-        // Still try to fetch fresh data in background to ensure consistency after server restart
-        fetchProfilePicture();
-      } else {
-        // Fetch from API if no cached profile picture
-        fetchProfilePicture();
-      }
+      // Fetch fresh profile picture data in background to ensure consistency
+      fetchProfilePicture();
     }
   }, [propUserName, isMounted, fetchProfilePicture]);
 
@@ -399,7 +381,7 @@ export default function CremationNavbar({
                   )}
                 </div>
                 <span className="modern-text font-medium tracking-wide text-xs md:text-sm hidden sm:block">
-                  {isMounted ? userName : 'Cremation Provider'}
+                  {userName}
                 </span>
                 <ChevronDownIcon className="h-3 w-3 md:h-4 md:w-4 ml-1 md:ml-2" />
               </button>
@@ -515,7 +497,7 @@ export default function CremationNavbar({
       <LogoutModal
         isOpen={showLogoutModal}
         onClose={() => setShowLogoutModal(false)}
-        userName={isMounted ? userName : 'Cremation Provider'}
+        userName={userName}
       />
     </header>
   );

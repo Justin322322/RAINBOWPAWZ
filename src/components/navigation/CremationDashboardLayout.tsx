@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import CremationNavbar from './CremationNavbar';
 import CremationSidebar from './CremationSidebar';
 import { HomeIcon, ArchiveBoxIcon, CalendarIcon, ClockIcon, UserCircleIcon } from '@heroicons/react/24/outline';
+import DashboardSkeleton from '@/components/ui/DashboardSkeleton';
 
 interface CremationDashboardLayoutProps {
   children: React.ReactNode;
@@ -26,12 +27,23 @@ export default function CremationDashboardLayout({
   const userData = propUserData;
 
   // Content loading state for skeleton animation only
-  const [_contentLoading, setContentLoading] = useState(false); // Set to false to disable layout skeleton
+  const [contentLoading, setContentLoading] = useState(true);
 
   // Effect to simulate content loading with a short delay
   useEffect(() => {
-    // Disable the layout-level skeleton completely
-    setContentLoading(false);
+    let timer: NodeJS.Timeout | null = null;
+
+    if (userData) {
+      timer = setTimeout(() => {
+        setContentLoading(false);
+      }, 300);
+    }
+
+    return () => {
+      if (timer) {
+        clearTimeout(timer);
+      }
+    };
   }, [userData]);
 
   // Get display name from user data
@@ -48,7 +60,11 @@ export default function CremationDashboardLayout({
           userName={displayName}
         />
         <main className="p-4 md:p-6"> {/* Match admin padding */}
-          {children}
+          {contentLoading ? (
+            <DashboardSkeleton type="cremation" />
+          ) : (
+            children
+          )}
         </main>
       </div>
     </div>
