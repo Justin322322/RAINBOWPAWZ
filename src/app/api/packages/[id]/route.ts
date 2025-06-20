@@ -264,17 +264,24 @@ export async function PATCH(
           // Add new images (in new but not in current)
           const imagesToAdd = newImagePaths.filter((path: string) => !currentImagePaths.includes(path));
           
-          // Calculate the correct starting display order based on remaining images after deletions
-          const remainingImagesCount = currentImagePaths.length - imagesToRemove.length;
-          
-          for (let i = 0; i < imagesToAdd.length; i++) {
-            const imagePath = imagesToAdd[i];
-            const displayOrder = remainingImagesCount + i + 1;
+          if (imagesToAdd.length > 0) {
+            // Find the maximum display_order among remaining images to avoid duplicates
+            const maxOrderResult = await transaction.query(
+              'SELECT COALESCE(MAX(display_order), 0) as max_order FROM package_images WHERE package_id = ?',
+              [packageId]
+            ) as any[];
             
-            await transaction.query(
-              'INSERT INTO package_images (package_id, image_path, display_order) VALUES (?, ?, ?)',
-              [packageId, imagePath, displayOrder]
-            );
+            const maxDisplayOrder = maxOrderResult[0]?.max_order || 0;
+            
+            for (let i = 0; i < imagesToAdd.length; i++) {
+              const imagePath = imagesToAdd[i];
+              const displayOrder = maxDisplayOrder + i + 1;
+              
+              await transaction.query(
+                'INSERT INTO package_images (package_id, image_path, display_order) VALUES (?, ?, ?)',
+                [packageId, imagePath, displayOrder]
+              );
+            }
           }
         }
 

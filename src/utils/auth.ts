@@ -13,10 +13,15 @@ export const parseAuthToken = (authToken: string): { userId: string; accountType
     // Check if it's a JWT token or old format
     if (authToken.includes('.')) {
       // JWT token format
-      const { verifyToken } = require('@/lib/jwt');
-      const payload = verifyToken(authToken);
-      userId = payload?.userId?.toString() || null;
-      accountType = payload?.accountType || null;
+      try {
+        const { verifyToken } = require('@/lib/jwt');
+        const payload = verifyToken(authToken);
+        userId = payload?.userId?.toString() || null;
+        accountType = payload?.accountType || null;
+      } catch (error) {
+        console.error('Error verifying JWT token:', error);
+        return null;
+      }
     } else {
       // Old format fallback
       const parts = authToken.split('_');
@@ -207,9 +212,14 @@ export const getUserId = (): string | null => {
 
   // Server-side: we can verify JWT safely
   if (token.includes('.')) {
-    const { verifyToken } = require('@/lib/jwt');
-    const payload = verifyToken(token);
-    return payload?.userId || null;
+    try {
+      const { verifyToken } = require('@/lib/jwt');
+      const payload = verifyToken(token);
+      return payload?.userId || null;
+    } catch (error) {
+      console.error('Error verifying JWT token in getUserId:', error);
+      return null;
+    }
   }
 
   // Old format fallback
@@ -236,8 +246,14 @@ export const getAccountType = (): string | null => {
 
   // Server-side: we can decode JWT safely
   if (token.includes('.')) {
-    const payload = decodeTokenUnsafe(token);
-    return payload?.accountType || null;
+    try {
+      const { verifyToken } = require('@/lib/jwt');
+      const payload = verifyToken(token);
+      return payload?.accountType || null;
+    } catch (error) {
+      console.error('Error verifying JWT token in getAccountType:', error);
+      return null;
+    }
   }
 
   // Old format fallback
@@ -255,8 +271,13 @@ export const getJWTPayload = (): JWTPayload | null => {
     return null;
   }
 
-  const { verifyToken } = require('@/lib/jwt');
-  return verifyToken(token);
+  try {
+    const { verifyToken } = require('@/lib/jwt');
+    return verifyToken(token);
+  } catch (error) {
+    console.error('Error verifying JWT token in getJWTPayload:', error);
+    return null;
+  }
 };
 
 // Check if user is authenticated
