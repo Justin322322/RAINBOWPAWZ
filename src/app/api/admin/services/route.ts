@@ -1,40 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
-import { getAuthTokenFromRequest } from '@/utils/auth';
-import { decodeTokenUnsafe } from '@/lib/jwt';
+import { verifySecureAuth } from '@/lib/secureAuth';
 
 export async function GET(request: NextRequest) {
   try {
-    // Verify admin authentication
-    let isAuthenticated = false;
-
-    const authToken = getAuthTokenFromRequest(request);
-
-    if (authToken) {
-      // If we have a token, validate it
-      let accountType: string | null = null;
-
-      // Check if it's a JWT token or old format
-      if (authToken.includes('.')) {
-        // JWT token format
-        const payload = decodeTokenUnsafe(authToken);
-        accountType = payload?.accountType || null;
-      } else {
-        // Old format fallback
-        const parts = authToken.split('_');
-        accountType = parts.length === 2 ? parts[1] : null;
-      }
-
-      isAuthenticated = accountType === 'admin';
+    // Verify admin authentication using secure auth
+    const user = verifySecureAuth(request);
+    if (!user) {
+      return NextResponse.json({
+        error: 'Unauthorized',
+        details: 'Authentication required',
+        success: false
+      }, { status: 401 });
     }
 
-    // Check authentication result
-    if (!isAuthenticated) {
+    if (user.accountType !== 'admin') {
       return NextResponse.json({
         error: 'Unauthorized',
         details: 'Admin access required',
         success: false
-      }, { status: 401 });
+      }, { status: 403 });
     }
 
     // Get provider ID from query parameter

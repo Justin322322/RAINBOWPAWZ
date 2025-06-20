@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query, testConnection } from '@/lib/db';
-import { getAuthTokenFromRequest } from '@/utils/auth';
+import { verifySecureAuth } from '@/lib/secureAuth';
 
 // Helper function to check if the database is properly set up
 async function checkDatabaseSetup() {
@@ -127,33 +127,13 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Verify admin authentication
-    const authToken = getAuthTokenFromRequest(request);
-
-    if (!authToken) {
+    // Verify admin authentication using secure auth
+    const user = verifySecureAuth(request);
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    let _userId: string | null = null;
-    let accountType: string | null = null;
-
-    // Check if it's a JWT token or old format
-    if (authToken.includes('.')) {
-      // JWT token format
-      const { decodeTokenUnsafe } = await import('@/lib/jwt');
-      const payload = decodeTokenUnsafe(authToken);
-      _userId = payload?.userId || null;
-      accountType = payload?.accountType || null;
-    } else {
-      // Old format fallback
-      const parts = authToken.split('_');
-      if (parts.length === 2) {
-        _userId = parts[0];
-        accountType = parts[1];
-      }
-    }
-
-    if (accountType !== 'admin') {
+    if (user.accountType !== 'admin') {
       return NextResponse.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
     }
 
@@ -527,33 +507,13 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
 
-    // Verify admin authentication
-    const authToken = getAuthTokenFromRequest(request);
-
-    if (!authToken) {
+    // Verify admin authentication using secure auth
+    const user = verifySecureAuth(request);
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized', success: false }, { status: 401 });
     }
 
-    let _userId: string | null = null;
-    let accountType: string | null = null;
-
-    // Check if it's a JWT token or old format
-    if (authToken.includes('.')) {
-      // JWT token format
-      const { decodeTokenUnsafe } = await import('@/lib/jwt');
-      const payload = decodeTokenUnsafe(authToken);
-      _userId = payload?.userId || null;
-      accountType = payload?.accountType || null;
-    } else {
-      // Old format fallback
-      const parts = authToken.split('_');
-      if (parts.length === 2) {
-        _userId = parts[0];
-        accountType = parts[1];
-      }
-    }
-
-    if (accountType !== 'admin') {
+    if (user.accountType !== 'admin') {
       return NextResponse.json({ error: 'Unauthorized - Admin access required', success: false }, { status: 403 });
     }
 

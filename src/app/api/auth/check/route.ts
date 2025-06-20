@@ -1,33 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthTokenFromRequest, parseAuthTokenAsync } from '@/utils/auth';
+import { verifySecureAuth } from '@/lib/secureAuth';
 
 export async function GET(request: NextRequest) {
   try {
-    // Get auth token from request
-    const authToken = getAuthTokenFromRequest(request);
+    // Use secure authentication verification
+    const user = verifySecureAuth(request);
     
-    if (!authToken) {
+    if (!user) {
       return NextResponse.json({
         authenticated: false,
-        message: 'No authentication token found'
-      });
-    }
-
-    // Parse auth token to get user info
-    const authData = await parseAuthTokenAsync(authToken);
-    
-    if (!authData) {
-      return NextResponse.json({
-        authenticated: false,
-        message: 'Invalid authentication token'
-      });
+        message: 'No valid authentication found'
+      }, { status: 401 });
     }
 
     return NextResponse.json({
       authenticated: true,
-      userId: authData.userId,
-      accountType: authData.accountType,
-      email: authData.email
+      userId: user.userId,
+      accountType: user.accountType,
+      email: user.email
     });
   } catch (error) {
     console.error('Auth check error:', error);

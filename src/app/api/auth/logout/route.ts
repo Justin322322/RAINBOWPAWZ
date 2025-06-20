@@ -6,7 +6,9 @@ export async function POST() {
     // Create response
     const response = NextResponse.json({
       success: true,
-      message: 'Logged out successfully'
+      message: 'Logged out successfully',
+      // Signal client to clear any cached auth data
+      clearClientCache: true
     });
 
     // Clear all secure authentication cookies (auth token + CSRF token)

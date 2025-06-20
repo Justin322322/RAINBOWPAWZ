@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
-import { getAuthTokenFromRequest } from '@/utils/auth';
+import { verifySecureAuth } from '@/lib/secureAuth';
 
 // Helper function to ensure notification preference columns exist
 async function ensureNotificationColumns() {
@@ -43,32 +43,13 @@ async function ensureNotificationColumns() {
 // GET - Retrieve admin's notification preferences
 export async function GET(request: NextRequest) {
   try {
-    // Verify admin authentication
-    const authToken = getAuthTokenFromRequest(request);
-    if (!authToken) {
+    // Verify admin authentication using secure auth
+    const user = verifySecureAuth(request);
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    let userId: string | null = null;
-    let accountType: string | null = null;
-
-    // Check if it's a JWT token or old format
-    if (authToken.includes('.')) {
-      // JWT token format
-      const { decodeTokenUnsafe } = await import('@/lib/jwt');
-      const payload = decodeTokenUnsafe(authToken);
-      userId = payload?.userId || null;
-      accountType = payload?.accountType || null;
-    } else {
-      // Old format fallback
-      const parts = authToken.split('_');
-      if (parts.length === 2) {
-        userId = parts[0];
-        accountType = parts[1];
-      }
-    }
-
-    if (accountType !== 'admin') {
+    if (user.accountType !== 'admin') {
       return NextResponse.json({ error: 'Unauthorized - Admin access required' }, { status: 403 });
     }
 
@@ -78,7 +59,7 @@ export async function GET(request: NextRequest) {
     // Get admin's current notification preferences
     const adminResult = await query(
       'SELECT sms_notifications, email_notifications FROM users WHERE user_id = ? AND role = ?',
-      [userId, 'admin']
+      [user.userId, 'admin']
     );
 
     if (!adminResult || adminResult.length === 0) {
@@ -110,32 +91,13 @@ export async function GET(request: NextRequest) {
 // PUT - Update admin's notification preferences
 export async function PUT(request: NextRequest) {
   try {
-    // Verify admin authentication
-    const authToken = getAuthTokenFromRequest(request);
-    if (!authToken) {
+    // Verify admin authentication using secure auth
+    const user = verifySecureAuth(request);
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    let userId: string | null = null;
-    let accountType: string | null = null;
-
-    // Check if it's a JWT token or old format
-    if (authToken.includes('.')) {
-      // JWT token format
-      const { decodeTokenUnsafe } = await import('@/lib/jwt');
-      const payload = decodeTokenUnsafe(authToken);
-      userId = payload?.userId || null;
-      accountType = payload?.accountType || null;
-    } else {
-      // Old format fallback
-      const parts = authToken.split('_');
-      if (parts.length === 2) {
-        userId = parts[0];
-        accountType = parts[1];
-      }
-    }
-
-    if (accountType !== 'admin') {
+    if (user.accountType !== 'admin') {
       return NextResponse.json({ error: 'Unauthorized - Admin access required' }, { status: 403 });
     }
 
@@ -157,7 +119,7 @@ export async function PUT(request: NextRequest) {
     // Update admin's notification preferences
     await query(
       'UPDATE users SET sms_notifications = ?, email_notifications = ?, updated_at = NOW() WHERE user_id = ? AND role = ?',
-      [sms_notifications, email_notifications, userId, 'admin']
+      [sms_notifications, email_notifications, user.userId, 'admin']
     );
 
     return NextResponse.json({

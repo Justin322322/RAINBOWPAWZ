@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query, withTransaction } from '@/lib/db';
-import { getAuthTokenFromRequest } from '@/utils/auth';
+import { verifySecureAuth } from '@/lib/secureAuth';
 
 export async function PUT(request: NextRequest) {
   try {
@@ -16,16 +16,14 @@ export async function PUT(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Get auth token to verify admin access
-    const authToken = getAuthTokenFromRequest(request);
-    if (!authToken) {
+    // Verify admin authentication using secure auth
+    const authUser = verifySecureAuth(request);
+    if (!authUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const [_tokenUserId, accountType] = authToken.split('_');
-
     // Only allow admins to restrict/unrestrict users
-    if (accountType !== 'admin') {
+    if (authUser.accountType !== 'admin') {
       return NextResponse.json({
         error: 'You are not authorized to restrict/unrestrict users'
       }, { status: 403 });

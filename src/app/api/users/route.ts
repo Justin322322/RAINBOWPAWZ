@@ -1,37 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
-import { getAuthTokenFromRequest } from '@/utils/auth';
+import { verifySecureAuth } from '@/lib/secureAuth';
 
 // GET endpoint to fetch users with filtering and pagination
 export async function GET(request: NextRequest) {
   try {
-    // Get auth token to verify admin access
-    const authToken = getAuthTokenFromRequest(request);
-    if (!authToken) {
+    // Verify admin authentication using secure auth
+    const user = verifySecureAuth(request);
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    let _tokenUserId: string | null = null;
-    let accountType: string | null = null;
-
-    // Check if it's a JWT token or old format
-    if (authToken.includes('.')) {
-      // JWT token format
-      const { decodeTokenUnsafe } = await import('@/lib/jwt');
-      const payload = decodeTokenUnsafe(authToken);
-      _tokenUserId = payload?.userId || null;
-      accountType = payload?.accountType || null;
-    } else {
-      // Old format fallback
-      const parts = authToken.split('_');
-      if (parts.length === 2) {
-        _tokenUserId = parts[0];
-        accountType = parts[1];
-      }
-    }
-
     // Only allow admins to access this endpoint
-    if (accountType !== 'admin') {
+    if (user.accountType !== 'admin') {
       return NextResponse.json({
         error: 'You are not authorized to access this resource'
       }, { status: 403 });
