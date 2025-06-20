@@ -162,7 +162,7 @@ export async function PATCH(
     console.log('Update data:', JSON.stringify(body, null, 2));
 
     try {
-      await withTransaction(async (transaction) => {
+      const result = await withTransaction(async (transaction) => {
         // Validate required fields
         if (!body.name || !body.description || !body.price) {
           console.error('Missing required fields:', { name: body.name, description: body.description, price: body.price });
@@ -229,6 +229,7 @@ export async function PATCH(
         }
 
         // Handle image updates
+        let filesToDelete: string[] = [];
         if (body.images && Array.isArray(body.images)) {
           // Get current images from database
           const currentImages = await transaction.query(
@@ -242,23 +243,15 @@ export async function PATCH(
           // Find images to remove (in current but not in new)
           const imagesToRemove = currentImagePaths.filter((path: string) => !newImagePaths.includes(path));
           
-          // Remove images that are no longer needed
+          // Store files to delete for later (after transaction commits)
+          filesToDelete = imagesToRemove.slice();
+          
+          // Remove image records from database only
           for (const imagePath of imagesToRemove) {
             await transaction.query(
               'DELETE FROM package_images WHERE package_id = ? AND image_path = ?',
               [packageId, imagePath]
             );
-            
-            // Also delete the physical file
-            try {
-              const fullPath = join(process.cwd(), 'public', imagePath);
-              if (fs.existsSync(fullPath)) {
-                fs.unlinkSync(fullPath);
-                console.log(`Deleted unused image file: ${fullPath}`);
-              }
-            } catch (fileError) {
-              console.error('Error deleting unused file:', fileError);
-            }
           }
 
           // Add new images (in new but not in current)
@@ -285,10 +278,26 @@ export async function PATCH(
           }
         }
 
-        return { success: true };
+        return { success: true, filesToDelete };
       });
 
       console.log('Package update transaction completed successfully');
+
+      // Delete physical files only after transaction commits successfully
+      if (result.filesToDelete && result.filesToDelete.length > 0) {
+        for (const imagePath of result.filesToDelete) {
+          try {
+            const fullPath = join(process.cwd(), 'public', imagePath);
+            if (fs.existsSync(fullPath)) {
+              fs.unlinkSync(fullPath);
+              console.log(`Deleted unused image file: ${fullPath}`);
+            }
+          } catch (fileError) {
+            console.error('Error deleting unused file:', fileError);
+            // Note: This is not critical since the database is already consistent
+          }
+        }
+      }
 
       // **🔥 FIX: Fetch updated package data outside transaction using regular query**
       const updatedPackage = await query(
