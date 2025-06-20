@@ -240,7 +240,7 @@ export async function PATCH(
           const newImagePaths = body.images;
 
           // Find images to remove (in current but not in new)
-          const imagesToRemove = currentImagePaths.filter(path => !newImagePaths.includes(path));
+          const imagesToRemove = currentImagePaths.filter((path: string) => !newImagePaths.includes(path));
           
           // Remove images that are no longer needed
           for (const imagePath of imagesToRemove) {
@@ -262,11 +262,14 @@ export async function PATCH(
           }
 
           // Add new images (in new but not in current)
-          const imagesToAdd = newImagePaths.filter(path => !currentImagePaths.includes(path));
+          const imagesToAdd = newImagePaths.filter((path: string) => !currentImagePaths.includes(path));
+          
+          // Calculate the correct starting display order based on remaining images after deletions
+          const remainingImagesCount = currentImagePaths.length - imagesToRemove.length;
           
           for (let i = 0; i < imagesToAdd.length; i++) {
             const imagePath = imagesToAdd[i];
-            const displayOrder = currentImagePaths.length + i + 1;
+            const displayOrder = remainingImagesCount + i + 1;
             
             await transaction.query(
               'INSERT INTO package_images (package_id, image_path, display_order) VALUES (?, ?, ?)',
