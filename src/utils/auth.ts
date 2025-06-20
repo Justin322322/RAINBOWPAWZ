@@ -5,10 +5,11 @@ import { NextRequest } from 'next/server';
 import { extractTokenFromHeader, type JWTPayload } from '@/lib/jwt';
 
 // Parse auth token and extract user info (for API routes)
-export const parseAuthToken = (authToken: string): { userId: string; accountType: string } | null => {
+export const parseAuthToken = (authToken: string): { userId: string; accountType: string; email?: string } | null => {
   try {
     let userId: string | null = null;
     let accountType: string | null = null;
+    let email: string | undefined = undefined;
 
     // Check if it's a JWT token or old format
     if (authToken.includes('.')) {
@@ -18,6 +19,7 @@ export const parseAuthToken = (authToken: string): { userId: string; accountType
         const payload = verifyToken(authToken);
         userId = payload?.userId?.toString() || null;
         accountType = payload?.accountType || null;
+        email = payload?.email || undefined;
       } catch (error) {
         console.error('Error verifying JWT token:', error);
         return null;
@@ -28,6 +30,7 @@ export const parseAuthToken = (authToken: string): { userId: string; accountType
       if (parts.length === 2) {
         userId = parts[0];
         accountType = parts[1];
+        // Old format doesn't have email
       }
     }
 
@@ -35,17 +38,18 @@ export const parseAuthToken = (authToken: string): { userId: string; accountType
       return null;
     }
 
-    return { userId, accountType };
+    return { userId, accountType, email };
   } catch (_error) {
     return null;
   }
 };
 
 // Enhanced version that also handles async JWT import for API routes
-export const parseAuthTokenAsync = async (authToken: string): Promise<{ userId: string; accountType: string } | null> => {
+export const parseAuthTokenAsync = async (authToken: string): Promise<{ userId: string; accountType: string; email?: string } | null> => {
   try {
     let userId: string | null = null;
     let accountType: string | null = null;
+    let email: string | undefined = undefined;
 
     // Check if it's a JWT token or old format
     if (authToken.includes('.')) {
@@ -55,6 +59,7 @@ export const parseAuthTokenAsync = async (authToken: string): Promise<{ userId: 
         const payload = verifyToken(authToken);
         userId = payload?.userId?.toString() || null;
         accountType = payload?.accountType || null;
+        email = payload?.email || undefined;
       } catch (error) {
         console.error('Error verifying JWT token:', error);
         return null;
@@ -65,6 +70,7 @@ export const parseAuthTokenAsync = async (authToken: string): Promise<{ userId: 
       if (parts.length === 2) {
         userId = parts[0];
         accountType = parts[1];
+        // Old format doesn't have email
       }
     }
 
@@ -72,7 +78,7 @@ export const parseAuthTokenAsync = async (authToken: string): Promise<{ userId: 
       return null;
     }
 
-    return { userId, accountType };
+    return { userId, accountType, email };
   } catch (_error) {
     return null;
   }

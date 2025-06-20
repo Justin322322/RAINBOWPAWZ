@@ -26,7 +26,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       authenticated: true,
       userId: authData.userId,
-      accountType: authData.accountType
+      accountType: authData.accountType,
+      email: authData.email
     });
   } catch (error) {
     console.error('Auth check error:', error);

@@ -51,15 +51,15 @@ export async function DELETE(
     
     const { imagePath } = body;
     console.log('Image path to delete (from frontend):', imagePath);
-    
-    // Convert API path to database path
-    const dbImagePath = convertApiPathToDbPath(imagePath);
-    console.log('Converted database path:', dbImagePath);
 
     if (!imagePath) {
       console.log('No image path provided in request');
       return NextResponse.json({ error: 'Image path is required' }, { status: 400 });
     }
+    
+    // Convert API path to database path
+    const dbImagePath = convertApiPathToDbPath(imagePath);
+    console.log('Converted database path:', dbImagePath);
 
     // Authenticate user
     const authToken = getAuthTokenFromRequest(request);
