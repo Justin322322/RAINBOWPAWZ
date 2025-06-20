@@ -170,7 +170,7 @@ export async function createBookingNotification(
 export async function createPaymentNotification(
   bookingId: number,
   paymentStatus: PaymentNotificationType,
-  _paymentDetails?: Record<string, any>
+  paymentDetails?: Record<string, any>
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const bookingDetails = await getBookingDetails(bookingId);
@@ -226,7 +226,7 @@ export async function createPaymentNotification(
 
     // Send SMS notification for important payment events
     if (['payment_confirmed', 'payment_failed'].includes(paymentStatus)) {
-      await sendPaymentSMSNotification(bookingDetails, paymentStatus, _paymentDetails);
+      await sendPaymentSMSNotification(bookingDetails, paymentStatus, paymentDetails);
     }
 
     return notificationResult;
