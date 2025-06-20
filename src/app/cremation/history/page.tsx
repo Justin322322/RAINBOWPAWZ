@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import CremationDashboardLayout from '@/components/navigation/CremationDashboardLayout';
@@ -40,7 +40,7 @@ function CremationHistoryPage({ userData }: { userData: any }) {
   });
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, _setItemsPerPage] = useState(10);
-  const [retryCount, setRetryCount] = useState(0);
+  const retryCountRef = useRef(0);
   const { showToast } = useToast();
 
   // Effect to filter bookings whenever search term, date filter, or status filter changes
@@ -125,8 +125,8 @@ function CremationHistoryPage({ userData }: { userData: any }) {
       });
       
       // Only reset retry count on successful fetch
-      if (retryCount > 0) {
-        setRetryCount(0);
+      if (retryCountRef.current > 0) {
+        retryCountRef.current = 0;
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to fetch booking history';
@@ -135,17 +135,17 @@ function CremationHistoryPage({ userData }: { userData: any }) {
       showToast(`Error: ${errorMessage}`, 'error');
       
       // Implement retry logic with exponential backoff
-      if (retry && retryCount < 3) {
-        const retryDelay = Math.pow(2, retryCount) * 1000; // 1s, 2s, 4s
+      if (retry && retryCountRef.current < 3) {
+        const retryDelay = Math.pow(2, retryCountRef.current) * 1000; // 1s, 2s, 4s
         setTimeout(() => {
-          setRetryCount(prev => prev + 1);
+          retryCountRef.current += 1;
           fetchBookingHistory(true);
         }, retryDelay);
       }
     } finally {
       setLoading(false);
     }
-  }, [userData, retryCount, showToast, dateFilter]);
+  }, [userData, showToast, dateFilter]);
 
   // Fetch booking history when component mounts or date filter changes
   useEffect(() => {
