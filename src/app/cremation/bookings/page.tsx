@@ -63,7 +63,24 @@ function CremationBookingsPage({ userData }: { userData: any }) {
         
         const providerId = userData?.business_id || userData?.provider_id || 999;
         
-        const dataPromise = fetch(`/api/cremation/bookings?providerId=${providerId}`, {
+        // Build query parameters including search and filter terms
+        const queryParams = new URLSearchParams({
+          providerId: providerId.toString()
+        });
+        
+        if (searchTerm.trim()) {
+          queryParams.append('searchTerm', searchTerm.trim());
+        }
+        
+        if (statusFilter && statusFilter !== 'all') {
+          queryParams.append('statusFilter', statusFilter);
+        }
+        
+        if (paymentFilter && paymentFilter !== 'all') {
+          queryParams.append('paymentFilter', paymentFilter);
+        }
+        
+        const dataPromise = fetch(`/api/cremation/bookings?${queryParams.toString()}`, {
           method: 'GET',
           headers: {
             'Cache-Control': 'no-cache'
@@ -99,7 +116,7 @@ function CremationBookingsPage({ userData }: { userData: any }) {
     };
 
     fetchBookings();
-  }, [userData]);
+  }, [userData, searchTerm, statusFilter, paymentFilter]);
 
   // Show toast when fetchError changes
   useEffect(() => {

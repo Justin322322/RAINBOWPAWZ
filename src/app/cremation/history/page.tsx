@@ -75,7 +75,17 @@ function CremationHistoryPage({ userData }: { userData: any }) {
       
       const providerId = userData?.business_id || userData?.provider_id || 999;
       
-      const dataPromise = fetch(`/api/cremation/history?providerId=${providerId}`, {
+      // Build query parameters including filters
+      const queryParams = new URLSearchParams({
+        providerId: providerId.toString()
+      });
+      
+      // Add period filter (maps dateFilter to API's expected 'period' parameter)
+      if (dateFilter && dateFilter !== 'all') {
+        queryParams.append('period', dateFilter);
+      }
+      
+      const dataPromise = fetch(`/api/cremation/history?${queryParams.toString()}`, {
         method: 'GET',
         headers: {
           'Cache-Control': 'no-cache'
@@ -135,7 +145,7 @@ function CremationHistoryPage({ userData }: { userData: any }) {
     } finally {
       setLoading(false);
     }
-  }, [userData, retryCount, showToast]);
+  }, [userData, retryCount, showToast, dateFilter]);
 
   // Fetch booking history when component mounts or date filter changes
   useEffect(() => {
