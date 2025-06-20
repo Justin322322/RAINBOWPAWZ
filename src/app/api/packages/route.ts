@@ -303,9 +303,10 @@ async function enhancePackagesWithDetails(pkgs: any[]) {
         return path.startsWith('http') ? path : getImagePath(path);
       })
       .filter(Boolean);
-    if (!images.length) {
-      images.push(`/images/sample-package-${(p.id % 5) + 1}.jpg`);
-    }
+    // Don't add sample images - let the frontend handle placeholders
+    // if (!images.length) {
+    //   images.push(`/images/sample-package-${(p.id % 5) + 1}.jpg`);
+    // }
     return { ...p, inclusions, addOns, images };
   });
 }

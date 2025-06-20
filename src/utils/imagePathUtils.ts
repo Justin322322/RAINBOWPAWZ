@@ -43,6 +43,15 @@ export function getFilenameFromPath(path: string): string {
  */
 export function getPlaceholderImage(type: 'package' | 'pet' | 'user' = 'package', id?: number): string {
   const baseUrl = getAppBaseUrl();
-  const index = id ? (id % 5) + 1 : Math.floor(Math.random() * 5) + 1;
-  return `${baseUrl}/images/sample-${type}-${index}.jpg`;
+  
+  // Use existing SVG placeholders or fallback to bg_4.png
+  if (type === 'package') {
+    const index = id ? (id % 5) + 1 : Math.floor(Math.random() * 5) + 1;
+    return `${baseUrl}/images/sample-package-${index}.svg`;
+  } else if (type === 'pet') {
+    return `${baseUrl}/images/pet-placeholder.svg`;
+  } else {
+    // For user or any other type, use the reliable fallback
+    return `${baseUrl}/bg_4.png`;
+  }
 }

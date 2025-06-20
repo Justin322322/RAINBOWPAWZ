@@ -160,7 +160,7 @@ function PackageDetailPage({ _userData }: PackageDetailPageProps) {
                         alt={packageData.name}
                         fill
                         className="object-cover"
-                        onError={(e) => handleImageError(e, `/images/sample-package-${(parseInt(packageId as string) % 5) + 1}.jpg`)}
+                        onError={(e) => handleImageError(e, `/bg_4.png`)}
                       />
                       {packageData.images.length > 1 && (
                         <>

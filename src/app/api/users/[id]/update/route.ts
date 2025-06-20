@@ -24,7 +24,7 @@ export async function PUT(request: NextRequest) {
     }
 
     // Parse auth token to get user ID and account type
-    const authData = parseAuthToken(authToken);
+    const authData = await parseAuthToken(authToken);
     if (!authData) {
       return NextResponse.json({ error: 'Invalid authentication token' }, { status: 401 });
     }
