@@ -6,9 +6,18 @@ import { calculateEnhancedDistance } from '@/utils/routeDistance';
 export async function GET(request: Request) {
   // Extract user location from query parameters
   const { searchParams } = new URL(request.url);
-  const userLocation = searchParams.get('location') || 'Balanga City, Bataan';
+  const userLocation = searchParams.get('location');
   const userLat = searchParams.get('lat');
   const userLng = searchParams.get('lng');
+
+  // Validate that we have location information
+  if (!userLocation && (!userLat || !userLng)) {
+    return NextResponse.json({
+      success: false,
+      error: 'User location is required',
+      providers: []
+    });
+  }
 
   // Get coordinates for the user's location
   let userCoordinates;
@@ -23,12 +32,19 @@ export async function GET(request: Request) {
       console.log('🎯 [API] Using provided coordinates:', userCoordinates);
     } else {
       console.warn('⚠️ [API] Invalid coordinates provided, falling back to geocoding');
-      userCoordinates = getBataanCoordinates(userLocation);
+      userCoordinates = getBataanCoordinates(userLocation || '');
     }
-  } else {
+  } else if (userLocation) {
     // Priority 2: Fallback to address-based lookup
     console.log('📍 [API] No coordinates provided, using address lookup for:', userLocation);
     userCoordinates = getBataanCoordinates(userLocation);
+  } else {
+    // No location information available
+    return NextResponse.json({
+      success: false,
+      error: 'Unable to determine user location',
+      providers: []
+    });
   }
   try {
 
@@ -54,6 +70,13 @@ export async function GET(request: Request) {
       let providersResult;
 
       if (useServiceProvidersTable) {
+        // Debug: Check if we have any providers at all
+        const totalProvidersCount = await query(`
+          SELECT COUNT(*) as count FROM service_providers WHERE provider_type = 'cremation'
+        `) as any[];
+        
+        console.log('🔍 [Service Providers API] Total cremation providers in database:', totalProvidersCount[0]?.count || 0);
+        
         // First check which status columns exist in the service_providers table
         const columnsResult = await query(`
           SELECT COLUMN_NAME
@@ -71,12 +94,13 @@ export async function GET(request: Request) {
         let whereClause = '';
 
         // Primary condition: application_status = 'approved' (new schema)
+        // Make more lenient for development - allow pending and approved
         if (hasApplicationStatus) {
-          whereClause = "(application_status = 'approved' OR application_status = 'verified')";
+          whereClause = "(application_status = 'approved' OR application_status = 'verified' OR application_status = 'pending')";
         }
         // Fallback to verification_status if application_status doesn't exist
         else if (hasVerificationStatus) {
-          whereClause = "verification_status = 'verified'";
+          whereClause = "(verification_status = 'verified' OR verification_status = 'pending')";
         }
         // If neither exists, use a default condition that always passes
         else {
@@ -94,12 +118,17 @@ export async function GET(request: Request) {
         }
 
         // Fetch from service_providers table with dynamic WHERE clause, including user profile picture
+        // Use COALESCE to fallback to user address if provider address is null
+        // Create business name logic: use sp.name if it's clearly a business name, otherwise create one
         providersResult = await query(`
           SELECT
             sp.provider_id as id,
-            sp.name,
-            sp.address,
-            sp.phone,
+            CASE 
+              WHEN sp.name LIKE '%Cremation%' OR sp.name LIKE '%Memorial%' OR sp.name LIKE '%Pet%' OR sp.name LIKE '%Service%' OR sp.name LIKE '%Center%' OR sp.name LIKE '%Care%' THEN sp.name
+              ELSE CONCAT(COALESCE(NULLIF(TRIM(sp.name), ''), CONCAT(u.first_name, ' ', u.last_name)), ' Pet Cremation Services')
+            END as name,
+            COALESCE(sp.address, u.address) as address,
+            COALESCE(sp.phone, u.phone) as phone,
             sp.description,
             sp.provider_type as type,
             sp.created_at,
@@ -111,11 +140,8 @@ export async function GET(request: Request) {
           ORDER BY sp.name ASC
         `) as any[];
 
-        // Add detailed logging to see what's happening with the query
-        if (providersResult.length > 0) {
-          providersResult.forEach(_provider => {
-          });
-        }
+        // Log successful query results
+        console.log('✅ [Service Providers API] Successfully fetched', providersResult.length, 'cremation providers');
       } else {
         // Use business_profiles table
         providersResult = [];
@@ -329,9 +355,12 @@ export async function GET(request: Request) {
         return NextResponse.json({ providers: formattedBusinesses });
       }
 
-      // If no providers found in either table, create test providers
-
-      // No test providers - all data comes from database
+      // If no providers found in either table, log and return empty
+      console.log('⚠️ [Service Providers API] No providers found in database - this could mean:');
+      console.log('  1. No cremation services are registered');
+      console.log('  2. All services have restrictive application_status');
+      console.log('  3. Database connection issues');
+      
       return NextResponse.json({ providers: [] });
     } catch {
       return NextResponse.json({ providers: [], error: 'Database error' });

@@ -160,7 +160,7 @@ export default function CremationNavbar({
     }
   }, [propUserName, isMounted, fetchProfilePicture]);
 
-  // Listen for profile picture updates
+  // Listen for profile picture updates and handle global auth state changes
   useEffect(() => {
     const handleProfilePictureUpdate = (event: CustomEvent) => {
       // Prevent profile picture updates during navigation to reduce flickering
@@ -199,11 +199,32 @@ export default function CremationNavbar({
       }
     };
 
+    // Handle global auth state changes (like logout)
+    const handleAuthStateChange = () => {
+      // Check if business verification cache has been cleared (indicates logout)
+      const businessCache = sessionStorage.getItem('business_verification_cache');
+      const userData = sessionStorage.getItem('user_data');
+      
+      if (!businessCache && !userData) {
+        // Auth has been cleared, reset component state
+        setProfilePicture(null);
+        setUserName('Cremation Provider');
+      }
+    };
+
     // Listen for custom event when profile picture is updated
     window.addEventListener('profilePictureUpdated', handleProfilePictureUpdate as EventListener);
+    
+    // Listen for storage changes (when other tabs/windows clear auth data)
+    window.addEventListener('storage', handleAuthStateChange);
+    
+    // Also check periodically for auth state changes
+    const authCheckInterval = setInterval(handleAuthStateChange, 1000);
 
     return () => {
       window.removeEventListener('profilePictureUpdated', handleProfilePictureUpdate as EventListener);
+      window.removeEventListener('storage', handleAuthStateChange);
+      clearInterval(authCheckInterval);
     };
   }, [fetchProfilePicture, isNavigating]);
 

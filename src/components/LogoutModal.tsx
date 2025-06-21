@@ -8,6 +8,7 @@ import { useToast } from '@/context/ToastContext';
 import { clearBusinessVerificationCache } from '@/utils/businessVerificationCache';
 import { clearGlobalAdminAuthState } from '@/components/withAdminAuth';
 import { clearGlobalBusinessAuthState } from '@/components/withBusinessVerification';
+import { clearGlobalUserAuthState } from '@/components/withUserAuth';
 import Modal from './Modal';
 
 interface LogoutModalProps {
@@ -51,17 +52,27 @@ export default function LogoutModal({ isOpen, onClose, userName = 'User' }: Logo
       
       // Clear global business auth state
       clearGlobalBusinessAuthState();
+      
+      // Clear global user auth state
+      clearGlobalUserAuthState();
 
-      // Clear session storage
+      // Clear session storage - be more thorough for cremation users
       sessionStorage.removeItem('user_data');
       sessionStorage.removeItem('admin_data');
       sessionStorage.removeItem('otp_verified');
       sessionStorage.removeItem('auth_user_id');
       sessionStorage.removeItem('auth_account_type');
       
+      // Clear cremation-specific session storage keys
+      sessionStorage.removeItem('business_verification_cache');
+      sessionStorage.removeItem('verified_business');
+      sessionStorage.removeItem('cremation_user_name');
+      sessionStorage.removeItem('user_full_name');
+      
       // Clear any localStorage auth tokens (for development)
       if (typeof localStorage !== 'undefined') {
         localStorage.removeItem('auth_token_3000');
+        localStorage.removeItem('cremation_user_name');
       }
 
       // Redirect to home page after a short delay
@@ -71,6 +82,13 @@ export default function LogoutModal({ isOpen, onClose, userName = 'User' }: Logo
     } catch {
       // Still clear the token and redirect even if the API call fails
       clearAuthToken();
+      
+      // Clear business verification cache even on error
+      clearBusinessVerificationCache();
+      clearGlobalAdminAuthState();
+      clearGlobalBusinessAuthState();
+      clearGlobalUserAuthState();
+      
       showToast('Logged out successfully', 'success');
       router.push('/');
     }

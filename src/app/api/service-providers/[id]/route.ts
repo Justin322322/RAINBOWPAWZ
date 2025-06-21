@@ -10,28 +10,30 @@ export async function GET(
   try {
     const { id } = await params;
 
-    // Extract user location from query parameters
+    // Extract user location from query parameters (optional)
     const { searchParams } = new URL(request.url);
-    const userLocation = searchParams.get('location') || 'Balanga City, Bataan';
+    const userLocation = searchParams.get('location');
     const userLat = searchParams.get('lat');
     const userLng = searchParams.get('lng');
 
-    // Get coordinates for the user's location
-    let userCoordinates;
+    // Get coordinates for the user's location (if available)
+    let userCoordinates = null;
 
-    // Priority 1: Use provided coordinates if available
-    if (userLat && userLng) {
-      const lat = parseFloat(userLat);
-      const lng = parseFloat(userLng);
+    if (userLocation || (userLat && userLng)) {
+      // Priority 1: Use provided coordinates if available
+      if (userLat && userLng) {
+        const lat = parseFloat(userLat);
+        const lng = parseFloat(userLng);
 
-      if (!isNaN(lat) && !isNaN(lng)) {
-        userCoordinates = { lat, lng };
-      } else {
+        if (!isNaN(lat) && !isNaN(lng)) {
+          userCoordinates = { lat, lng };
+        } else if (userLocation) {
+          userCoordinates = getBataanCoordinates(userLocation);
+        }
+      } else if (userLocation) {
+        // Priority 2: Fallback to address-based lookup
         userCoordinates = getBataanCoordinates(userLocation);
       }
-    } else {
-      // Priority 2: Fallback to address-based lookup
-      userCoordinates = getBataanCoordinates(userLocation);
     }
 
     if (!id) {
@@ -80,7 +82,6 @@ export async function GET(
         SELECT
           sp.provider_id as id,
           sp.name,
-          sp.city,
           sp.address,
           sp.phone,
           sp.description,
@@ -117,26 +118,32 @@ export async function GET(
         // Add rating to provider object
         provider.rating = avgRating;
 
-        // Calculate actual distance based on coordinates
-        const providerCoordinates = getBataanCoordinates(provider.address || provider.city || 'Bataan');
+        // Calculate actual distance based on coordinates (if user location available)
+        if (userCoordinates && provider.address) {
+          const providerCoordinates = getBataanCoordinates(provider.address);
 
-        try {
-          // Use enhanced distance calculation with real routing
-          const distanceResult = await calculateEnhancedDistance(userCoordinates, providerCoordinates);
-          provider.distance = distanceResult.formattedDistance;
-          provider.distanceValue = distanceResult.distance;
+          try {
+            // Use enhanced distance calculation with real routing
+            const distanceResult = await calculateEnhancedDistance(userCoordinates, providerCoordinates);
+            provider.distance = distanceResult.formattedDistance;
+            provider.distanceValue = distanceResult.distance;
 
-          console.log('📍 [Distance] Real routing calculation for provider', provider.name, ':', {
-            distance: distanceResult.distance,
-            formatted: distanceResult.formattedDistance,
-            source: distanceResult.source
-          });
-        } catch (error) {
-          console.error('Real routing calculation failed, using fallback:', error);
-          // Fallback to simple calculation
-          const distanceValue = calculateDistance(userCoordinates, providerCoordinates);
-          provider.distance = `${distanceValue} km away`;
-          provider.distanceValue = distanceValue;
+            console.log('📍 [Distance] Real routing calculation for provider', provider.name, ':', {
+              distance: distanceResult.distance,
+              formatted: distanceResult.formattedDistance,
+              source: distanceResult.source
+            });
+          } catch (error) {
+            console.error('Real routing calculation failed, using fallback:', error);
+            // Fallback to simple calculation
+            const distanceValue = calculateDistance(userCoordinates, providerCoordinates);
+            provider.distance = `${distanceValue} km away`;
+            provider.distanceValue = distanceValue;
+          }
+        } else {
+          // No user location available
+          provider.distance = 'Distance not available';
+          provider.distanceValue = null;
         }
 
         // Get package count
@@ -186,7 +193,6 @@ export async function GET(
           SELECT
             bp.id,
             bp.business_name as name,
-            bp.city,
             bp.business_address as address,
             bp.business_phone as phone,
             u.email,
@@ -212,13 +218,13 @@ export async function GET(
           const formattedBusiness = {
             id: business.id,
             name: business.name,
-            city: formattedAddress ? formattedAddress.split(',')[0] : (business.city || 'Bataan'),
+            city: formattedAddress ? formattedAddress.split(',')[0] : '',
             address: formattedAddress,
             phone: business.phone,
             email: business.email,
             description: business.description || 'Pet cremation services',
             type: 'Pet Cremation Services',
-            distance: '0.0 km away', // Will be updated below with actual distance
+            distance: null, // Will be updated below with actual distance if available
             created_at: business.created_at,
             packages: 0 // Default value, will be updated if possible
           };
@@ -233,8 +239,9 @@ export async function GET(
 
             formattedBusiness.packages = packagesCount[0]?.count || 0;
 
-            // Calculate actual distance based on coordinates
-            const businessCoordinates = getBataanCoordinates(formattedBusiness.address || formattedBusiness.city || 'Bataan');
+            // Calculate actual distance based on coordinates (only if address is available)
+            if (userCoordinates && (formattedBusiness.address || formattedBusiness.city)) {
+              const businessCoordinates = getBataanCoordinates(formattedBusiness.address || formattedBusiness.city);
 
             try {
               // Use enhanced distance calculation with real routing
@@ -253,6 +260,11 @@ export async function GET(
               const distanceValue = calculateDistance(userCoordinates, businessCoordinates);
               (formattedBusiness as any).distance = `${distanceValue} km away`;
               (formattedBusiness as any).distanceValue = distanceValue;
+            }
+            } else {
+              // No coordinates available for distance calculation
+              (formattedBusiness as any).distance = 'Distance not available';
+              (formattedBusiness as any).distanceValue = null;
             }
           } catch {
           }

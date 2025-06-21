@@ -23,9 +23,21 @@ export const clearBusinessVerificationCache = (): void => {
     memoryCache = null;
 
     if (typeof sessionStorage !== 'undefined') {
+      // Clear primary cache keys
       sessionStorage.removeItem(CACHE_KEYS.BUSINESS_VERIFICATION);
       sessionStorage.removeItem(CACHE_KEYS.VERIFIED_BUSINESS);
       sessionStorage.removeItem(CACHE_KEYS.USER_DATA);
+      
+      // Clear additional cremation-related keys that might exist
+      sessionStorage.removeItem('cremation_user_name');
+      sessionStorage.removeItem('user_full_name');
+      sessionStorage.removeItem('business_data');
+      sessionStorage.removeItem('service_provider_data');
+    }
+    
+    // Also clear localStorage cremation-specific items
+    if (typeof localStorage !== 'undefined') {
+      localStorage.removeItem('cremation_user_name');
     }
   } catch (error) {
     console.error('Error clearing business verification cache:', error);

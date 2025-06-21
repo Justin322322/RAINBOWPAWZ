@@ -47,6 +47,14 @@ function CremationProfilePage({ userData }: { userData: any }) {
   });
   const [contactSuccess, setContactSuccess] = useState('');
 
+  // Business info states
+  const [businessInfo, setBusinessInfo] = useState({
+    businessName: '',
+    description: '',
+    hours: ''
+  });
+  const [businessSuccess, setBusinessSuccess] = useState('');
+
   // Profile data state
   const [profileData, setProfileData] = useState<any>(null);
   const [initialLoading, setInitialLoading] = useState(true); // Only for initial page load
@@ -157,6 +165,13 @@ function CremationProfilePage({ userData }: { userData: any }) {
           email: data.profile.email || '',
           phone: data.profile.business_phone || data.profile.phone || ''
         });
+
+        // Set business info from profile data
+        setBusinessInfo({
+          businessName: data.profile.business_name || '',
+          description: data.profile.description || '',
+          hours: data.profile.hours || ''
+        });
       }
 
       setError(null);
@@ -253,62 +268,131 @@ function CremationProfilePage({ userData }: { userData: any }) {
   const handleAddressUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (!address.street.trim()) {
+      showToast('Please enter a valid address', 'error');
+      return;
+    }
+
     try {
-      // Simulate a successful address update
+      // Call the real API to update the address
+      const response = await fetch('/api/cremation/profile', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          address: {
+            street: address.street.trim()
+          }
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update address');
+      }
+
+      await response.json();
+
+      // Update the profile data with the new address
+      if (profileData) {
+        const updatedProfile = {
+          ...profileData,
+          business_address: address.street.trim(),
+          address: {
+            street: address.street.trim()
+          }
+        };
+
+        setProfileData(updatedProfile);
+      }
+
+      setAddressSuccess('Address updated successfully');
+      showToast('Address updated successfully', 'success');
+
+      // Clear success message after 3 seconds
       setTimeout(() => {
-        // Update the profile data with the new address
-        if (profileData) {
-          const updatedProfile = {
-            ...profileData,
-            address: {
-              street: address.street
-            }
-          };
+        setAddressSuccess('');
+      }, 3000);
 
-          setProfileData(updatedProfile);
-        }
-
-        setAddressSuccess('Address updated successfully');
-        showToast('Address updated successfully', 'success');
-
-        // Clear success message after 3 seconds
-        setTimeout(() => {
-          setAddressSuccess('');
-        }, 3000);
-      }, 500);
+      // Refresh profile data to get the latest from server
+      await fetchProfileData(false);
     } catch (error) {
+      console.error('Address update error:', error);
       showToast(error instanceof Error ? error.message : 'Failed to update address', 'error');
     }
   };
 
   const handleContactUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
+    setContactSuccess('');
 
     try {
-      // Simulate a successful contact update
-      setTimeout(() => {
-        // Update the profile data with the new contact info
-        if (profileData) {
-          const updatedProfile = {
-            ...profileData,
-            email: contactInfo.email,
-            phone: contactInfo.phone,
-            contactPerson: `${contactInfo.firstName} ${contactInfo.lastName}`
-          };
+      const response = await fetch('/api/cremation/profile', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          contactInfo: contactInfo
+        }),
+        credentials: 'include'
+      });
 
-          setProfileData(updatedProfile);
-        }
+      const data = await response.json();
 
-        setContactSuccess('Contact information updated successfully');
-        showToast('Contact information updated successfully', 'success');
-
+      if (response.ok) {
+        setContactSuccess('Contact information updated successfully!');
+        // Refresh profile data to show updated info
+        await fetchProfileData(false);
         // Clear success message after 3 seconds
-        setTimeout(() => {
-          setContactSuccess('');
-        }, 3000);
-      }, 500);
+        setTimeout(() => setContactSuccess(''), 3000);
+      } else {
+        showToast(data.error || 'Failed to update contact information', 'error');
+      }
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Failed to update contact information', 'error');
+      console.error('Error updating contact information:', error);
+      showToast('Failed to update contact information. Please try again.', 'error');
+    }
+  };
+
+  const handleBusinessUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusinessSuccess('');
+
+    try {
+      const response = await fetch('/api/cremation/profile', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          business_name: businessInfo.businessName,
+          description: businessInfo.description,
+          hours: businessInfo.hours,
+          // Include current contact info to prevent overwriting
+          first_name: contactInfo.firstName,
+          last_name: contactInfo.lastName,
+          phone: contactInfo.phone,
+          address: address.street
+        }),
+        credentials: 'include'
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setBusinessSuccess('Business information updated successfully!');
+        // Refresh profile data to show updated info
+        await fetchProfileData(false);
+        // Clear success message after 3 seconds
+        setTimeout(() => setBusinessSuccess(''), 3000);
+      } else {
+        showToast(data.error || 'Failed to update business information', 'error');
+      }
+    } catch (error) {
+      console.error('Error updating business information:', error);
+      showToast('Failed to update business information. Please try again.', 'error');
     }
   };
 
@@ -794,6 +878,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
           <div className="lg:col-span-3 bg-white rounded-xl shadow-sm overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-200">
               <h2 className="text-lg font-medium text-gray-800">Account Information</h2>
+              <p className="text-sm text-gray-500 mt-1">Read-only information for reference</p>
             </div>
             <div className="p-6">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -802,7 +887,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
                     <UserIcon className="h-5 w-5 text-gray-500 mr-2" />
                     <h3 className="text-sm font-medium text-gray-500">Business Name</h3>
                   </div>
-                  <p className="text-base font-semibold text-gray-900">{profileData?.name || 'Not available'}</p>
+                  <p className="text-base font-semibold text-gray-900">{profileData?.business_name || profileData?.name || 'Not available'}</p>
                 </div>
                 <div className="bg-gray-50 rounded-lg p-4">
                   <div className="flex items-center mb-2">
@@ -816,9 +901,79 @@ function CremationProfilePage({ userData }: { userData: any }) {
                     <PhoneIcon className="h-5 w-5 text-gray-500 mr-2" />
                     <h3 className="text-sm font-medium text-gray-500">Phone Number</h3>
                   </div>
-                  <p className="text-base font-semibold text-gray-900">{profileData?.phone || 'Not available'}</p>
+                  <p className="text-base font-semibold text-gray-900">{profileData?.business_phone || profileData?.phone || 'Not available'}</p>
                 </div>
               </div>
+            </div>
+          </div>
+
+          {/* Business Information Panel */}
+          <div className="lg:col-span-3 bg-white rounded-xl shadow-sm overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-200 flex items-center">
+              <BuildingStorefrontIcon className="h-5 w-5 text-gray-500 mr-2" />
+              <h2 className="text-lg font-medium text-gray-800">Business Information</h2>
+            </div>
+            <div className="p-6">
+              <form onSubmit={handleBusinessUpdate} className="space-y-4 max-w-xl">
+                {businessSuccess && (
+                  <div className="bg-green-50 text-green-800 p-3 rounded-lg flex items-start">
+                    <CheckCircleIcon className="h-5 w-5 text-green-500 mr-2 mt-0.5" />
+                    <p className="text-sm">{businessSuccess}</p>
+                  </div>
+                )}
+
+                <div>
+                  <label htmlFor="businessName" className="block text-sm font-medium text-gray-700 mb-1">
+                    Business Name *
+                  </label>
+                  <input
+                    type="text"
+                    id="businessName"
+                    value={businessInfo.businessName}
+                    onChange={(e) => setBusinessInfo({...businessInfo, businessName: e.target.value})}
+                    className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
+                    placeholder="Enter your business name"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
+                    Business Description
+                  </label>
+                  <textarea
+                    id="description"
+                    value={businessInfo.description}
+                    onChange={(e) => setBusinessInfo({...businessInfo, description: e.target.value})}
+                    rows={4}
+                    className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
+                    placeholder="Describe your cremation services, specialties, and what makes your business unique..."
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="hours" className="block text-sm font-medium text-gray-700 mb-1">
+                    Business Hours
+                  </label>
+                  <input
+                    type="text"
+                    id="hours"
+                    value={businessInfo.hours}
+                    onChange={(e) => setBusinessInfo({...businessInfo, hours: e.target.value})}
+                    className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
+                    placeholder="e.g., Monday-Friday: 9AM-6PM, Saturday: 9AM-3PM"
+                  />
+                </div>
+
+                <div className="pt-2">
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-[var(--primary-green)] text-white rounded-lg hover:bg-opacity-90 transition-all duration-300"
+                  >
+                    Update Business Information
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
 
@@ -840,7 +995,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-1">
-                      First Name
+                      First Name *
                     </label>
                     <input
                       type="text"
@@ -848,11 +1003,12 @@ function CremationProfilePage({ userData }: { userData: any }) {
                       value={contactInfo.firstName}
                       onChange={(e) => setContactInfo({...contactInfo, firstName: e.target.value})}
                       className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
+                      required
                     />
                   </div>
                   <div>
                     <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-1">
-                      Last Name
+                      Last Name *
                     </label>
                     <input
                       type="text"
@@ -860,13 +1016,14 @@ function CremationProfilePage({ userData }: { userData: any }) {
                       value={contactInfo.lastName}
                       onChange={(e) => setContactInfo({...contactInfo, lastName: e.target.value})}
                       className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
+                      required
                     />
                   </div>
                 </div>
 
                 <div>
                   <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                    Email Address
+                    Email Address *
                   </label>
                   <input
                     type="email"
@@ -874,6 +1031,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
                     value={contactInfo.email}
                     onChange={(e) => setContactInfo({...contactInfo, email: e.target.value})}
                     className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
+                    required
                   />
                 </div>
 

@@ -461,3 +461,18 @@
   -webkit-line-clamp: 3;
   line-clamp: 3;
 }
+
+/* Ensure the custom provider markers are visible */
+.custom-provider-marker {
+  background: transparent !important;
+  border: none !important;
+}
+
+.custom-provider-marker * {
+  pointer-events: none;
+}
+
+/* Ensure user location marker has proper z-index */
+.custom-user-icon {
+  z-index: 1000 !important;
+}

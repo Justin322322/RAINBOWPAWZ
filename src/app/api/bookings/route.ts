@@ -51,8 +51,8 @@ export async function GET(request: NextRequest) {
     // Check if it's a JWT token or old format
     if (authToken.includes('.')) {
       // JWT token format
-      const { decodeTokenUnsafe } = await import('@/lib/jwt');
-      const payload = decodeTokenUnsafe(authToken);
+      const { verifyToken } = await import('@/lib/jwt');
+      const payload = verifyToken(authToken);
 
       if (!payload || !payload.userId || !payload.accountType) {
         return NextResponse.json({ error: 'Invalid token' }, { status: 401 });

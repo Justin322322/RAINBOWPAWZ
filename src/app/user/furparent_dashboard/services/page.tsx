@@ -37,11 +37,7 @@ interface ServicesPageProps {
 
 function ServicesPage({ userData }: ServicesPageProps) {
   const [currentPage, setCurrentPage] = useState(1);
-  const defaultAddress = 'Balanga City, 2100 Bataan, Philippines';
-  const [userLocation, setUserLocation] = useState<LocationData>({
-    address: defaultAddress,
-    source: 'default'
-  });
+  const [userLocation, setUserLocation] = useState<LocationData | null>(null);
   const [isLoadingLocation, setIsLoadingLocation] = useState(true);
   const [isMapVisible, setIsMapVisible] = useState(false);
   const [_isMapLoaded, _setIsMapLoaded] = useState(false);
@@ -107,29 +103,24 @@ function ServicesPage({ userData }: ServicesPageProps) {
             console.log('⚠️ Using fallback location without coordinates:', location);
           }
         } else {
-          location = {
-            address: defaultAddress,
-            source: 'default' as const
-          };
-          console.log('⚠️ Using default address (no user address found):', defaultAddress);
+          console.log('⚠️ No user address found in profile');
           console.log('User data address was:', userDataToUse?.address);
+          // Don't set a location if user hasn't provided one
+          location = null;
         }
 
         setUserLocation(location);
       } catch (error) {
         console.error('Error getting user location:', error);
-        // Fall back to default address
-        setUserLocation({
-          address: defaultAddress,
-          source: 'default' as const
-        });
+        // Don't fall back to a hardcoded address
+        setUserLocation(null);
       } finally {
         setIsLoadingLocation(false);
       }
     };
 
     getLocation();
-  }, [userData, defaultAddress]);
+  }, [userData]);
 
   // Load map after component mounts and location is determined
   useEffect(() => {
@@ -177,6 +168,13 @@ function ServicesPage({ userData }: ServicesPageProps) {
         // Wait for location loading to complete to ensure we have coordinates if available
         if (isLoadingLocation) {
           console.log('⏳ [Frontend] Waiting for location loading to complete...');
+          return;
+        }
+
+        // Check if we have user location
+        if (!userLocation) {
+          console.log('❌ [Frontend] No user location available');
+          setServiceProviders([]);
           return;
         }
 
@@ -333,7 +331,7 @@ function ServicesPage({ userData }: ServicesPageProps) {
                     </div>
                   </div>
                 </>
-              ) : (
+              ) : userLocation ? (
                 <>
                   <h2 className="text-lg md:text-xl text-[var(--primary-green)] text-center mb-6 modern-heading">
                     Based on your location, we&apos;ve found these nearby cremation centers:
@@ -344,11 +342,21 @@ function ServicesPage({ userData }: ServicesPageProps) {
                       <span className="modern-text text-sm text-gray-600 flex items-center">
                         <HomeIcon className="h-4 w-4 mr-1 text-[var(--primary-green)]" />
                         Your location: {userLocation.address}
-                        {userLocation.source === 'default' && (
-                          <span className="ml-2 text-xs px-2 py-0.5 bg-yellow-100 text-yellow-800 rounded-full">
-                            Default location (update your profile to change)
-                          </span>
-                        )}
+                      </span>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <h2 className="text-lg md:text-xl text-[var(--primary-green)] text-center mb-6 modern-heading">
+                    Pet Cremation Services
+                  </h2>
+
+                  <div className="flex flex-col gap-4 items-center justify-center">
+                    <div className="flex items-center justify-center w-full mb-2">
+                      <span className="modern-text text-sm text-gray-600 flex items-center">
+                        <MapPinIcon className="h-4 w-4 mr-1 text-[var(--primary-green)]" />
+                        Please update your address in your profile to see nearby services
                       </span>
                     </div>
                   </div>
@@ -364,7 +372,7 @@ function ServicesPage({ userData }: ServicesPageProps) {
                     withBackground={true}
                     rounded={true}
                   />
-                ) : isMapVisible && serviceProviders.length > 0 ? (
+                ) : isMapVisible && serviceProviders.length > 0 && userLocation ? (
                   <MapComponent
                     userAddress={userLocation.address}
                     userCoordinates={userLocation.coordinates}
@@ -375,11 +383,16 @@ function ServicesPage({ userData }: ServicesPageProps) {
                     }))}
                     selectedProviderId={selectedProviderId}
                   />
-                ) : serviceProviders.length === 0 ? (
+                ) : serviceProviders.length === 0 || !userLocation ? (
                   <div className="w-full h-full flex items-center justify-center bg-gray-100 rounded-lg text-center p-8">
                     <div>
                       <MapPinIcon className="h-12 w-12 mx-auto text-gray-300 mb-4" />
-                      <p className="text-gray-600">No service providers found to display on map</p>
+                      <p className="text-gray-600">
+                        {!userLocation 
+                          ? "Please update your address in your profile to see nearby services on the map"
+                          : "No service providers found to display on map"
+                        }
+                      </p>
                     </div>
                   </div>
                 ) : (
@@ -399,14 +412,13 @@ function ServicesPage({ userData }: ServicesPageProps) {
                   <div className="h-4 bg-gray-200 rounded-md w-3/4 mx-auto mb-1 animate-pulse" />
                   <div className="h-3 bg-gray-200 rounded-md w-1/2 mx-auto animate-pulse" />
                 </div>
-              ) : (
+              ) : userLocation ? (
                 <p className="modern-caption mt-2 text-center">
                   Showing cremation services near your location in {userLocation.address}.
-                  {userLocation.source === 'default' && (
-                    <span className="block text-xs text-gray-500 mt-1">
-                      To use your actual location, please update your address in your profile.
-                    </span>
-                  )}
+                </p>
+              ) : (
+                <p className="modern-caption mt-2 text-center">
+                  Update your address in your profile to see cremation services near you.
                 </p>
               )}
             </div>

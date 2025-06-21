@@ -114,6 +114,7 @@ CREATE TABLE `service_packages` (
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+
 -- --------------------------------------------------------
 
 --
@@ -905,3 +906,4 @@ ALTER TABLE `service_providers`
 DROP COLUMN `province`,
 DROP COLUMN `city`,
 DROP COLUMN `zip`;
+

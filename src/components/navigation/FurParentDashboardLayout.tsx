@@ -3,13 +3,13 @@
 import React, { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import FurParentNavbar from './FurParentNavbar';
-import withOTPVerification from '@/components/withOTPVerification';
+import withUserAuth, { UserData } from '@/components/withUserAuth';
 
 interface FurParentDashboardLayoutProps {
   children: React.ReactNode;
   activePage?: string;
   userName?: string;
-  userData?: any;
+  userData?: UserData;
 }
 
 function FurParentDashboardLayout({
@@ -17,10 +17,10 @@ function FurParentDashboardLayout({
   activePage: propActivePage,
   userName = 'Pet Parent',
   userData
-}: FurParentDashboardLayoutProps) {
+}: FurParentDashboardLayoutProps & { userData: UserData }) {
   const pathname = usePathname();
   const [activePage, setActivePage] = useState('');
-  const [currentUserData, setCurrentUserData] = useState(userData);
+  const [currentUserData, setCurrentUserData] = useState<UserData | undefined>(userData);
 
   // Listen for user data updates
   useEffect(() => {
@@ -87,5 +87,5 @@ function FurParentDashboardLayout({
   );
 }
 
-// Export the component wrapped with OTP verification
-export default withOTPVerification(FurParentDashboardLayout);
+// Export the component wrapped with user authentication
+export default withUserAuth(FurParentDashboardLayout);
