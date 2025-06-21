@@ -41,15 +41,15 @@ const withBusinessVerification = <P extends object>(
     useEffect(() => {
       // If global state has been cleared (e.g., after logout), reset local state
       if (!globalBusinessAuthState.verified && !globalBusinessAuthState.userData) {
-        if (isAuthenticated) setIsAuthenticated(false);
-        if (userData) setUserData(null);
-        if (!isLoading) setIsLoading(true);
+        setIsAuthenticated(false);
+        setUserData(null);
+        setIsLoading(true);
       }
 
       // If we already have global state, use it immediately
       if (globalBusinessAuthState.verified && globalBusinessAuthState.userData) {
-        if (!userData) setUserData(globalBusinessAuthState.userData);
-        if (!isAuthenticated) setIsAuthenticated(globalBusinessAuthState.verified);
+        setUserData(globalBusinessAuthState.userData);
+        setIsAuthenticated(globalBusinessAuthState.verified);
         setIsLoading(false);
         return;
       }
@@ -232,6 +232,8 @@ const withBusinessVerification = <P extends object>(
 
       checkBusinessVerification();
     }, [router]); // Only depend on router to avoid infinite re-render loop
+    // Note: isAuthenticated, isLoading, and userData are intentionally not included
+    // in dependencies to prevent infinite re-renders in this auth verification pattern
 
     // Show loading state while checking verification
     if (isLoading) {

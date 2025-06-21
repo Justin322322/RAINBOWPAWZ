@@ -27,10 +27,10 @@ export async function GET(
 
         if (!isNaN(lat) && !isNaN(lng)) {
           userCoordinates = { lat, lng };
-        } else if (userLocation) {
+        } else if (userLocation && userLocation.trim() !== '') {
           userCoordinates = getBataanCoordinates(userLocation);
         }
-      } else if (userLocation) {
+      } else if (userLocation && userLocation.trim() !== '') {
         // Priority 2: Fallback to address-based lookup
         userCoordinates = getBataanCoordinates(userLocation);
       }

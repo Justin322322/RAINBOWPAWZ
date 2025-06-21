@@ -32,7 +32,17 @@ export async function GET(request: Request) {
       console.log('🎯 [API] Using provided coordinates:', userCoordinates);
     } else {
       console.warn('⚠️ [API] Invalid coordinates provided, falling back to geocoding');
-      userCoordinates = getBataanCoordinates(userLocation || '');
+      // Only fallback to geocoding if we have a valid location string
+      if (userLocation && userLocation.trim() !== '') {
+        userCoordinates = getBataanCoordinates(userLocation);
+      } else {
+        // No valid location data available
+        return NextResponse.json({
+          success: false,
+          error: 'Invalid coordinates provided and no valid location address available',
+          providers: []
+        });
+      }
     }
   } else if (userLocation) {
     // Priority 2: Fallback to address-based lookup
