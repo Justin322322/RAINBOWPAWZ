@@ -146,7 +146,8 @@ class GeocodingService {
    */
   private async geocodeWithGoogle(address: string): Promise<GeocodingResult> {
     const cleanAddress = this.cleanAddress(address);
-    const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(cleanAddress)}&region=ph&key=${this.GOOGLE_MAPS_API_KEY}`;
+    // Enhanced parameters for better accuracy in Philippines
+    const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(cleanAddress)}&region=ph&bounds=14.0,120.0|15.0,121.0&language=en&key=${this.GOOGLE_MAPS_API_KEY}`;
 
     const response = await fetch(url);
     
@@ -184,7 +185,8 @@ class GeocodingService {
    */
   private async geocodeWithNominatim(address: string): Promise<GeocodingResult> {
     const cleanAddress = this.cleanAddress(address);
-    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(cleanAddress)}&countrycodes=ph&viewbox=120.3,14.5,120.7,14.8&bounded=1&limit=1&addressdetails=1`;
+    // Enhanced bounds for better coverage of Bataan and surrounding areas
+    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(cleanAddress)}&countrycodes=ph&viewbox=119.8,14.0,121.5,15.5&bounded=1&limit=3&addressdetails=1&dedupe=1`;
 
     const response = await fetch(url, {
       headers: {
@@ -206,14 +208,24 @@ class GeocodingService {
       return this.trySimplifiedNominatim(address);
     }
 
-    const result = data[0];
+    // Pick the best result based on confidence and relevance
+    let bestResult = data[0];
+    let bestConfidence = this.calculateNominatimConfidence(bestResult);
+
+    for (let i = 1; i < data.length; i++) {
+      const confidence = this.calculateNominatimConfidence(data[i]);
+      if (confidence > bestConfidence) {
+        bestResult = data[i];
+        bestConfidence = confidence;
+      }
+    }
     
     return {
-      coordinates: [parseFloat(result.lat), parseFloat(result.lon)],
-      formattedAddress: result.display_name,
-      confidence: this.calculateNominatimConfidence(result),
+      coordinates: [parseFloat(bestResult.lat), parseFloat(bestResult.lon)],
+      formattedAddress: bestResult.display_name,
+      confidence: bestConfidence,
       provider: 'nominatim',
-      accuracy: this.getAccuracyFromConfidence(this.calculateNominatimConfidence(result))
+      accuracy: this.getAccuracyFromConfidence(bestConfidence)
     };
   }
 
@@ -262,17 +274,45 @@ class GeocodingService {
   private cleanAddress(address: string): string {
     let cleaned = address
       .replace(/\s+/g, ' ')
+      .replace(/[,\s]*,+[,\s]*/g, ', ') // Fix multiple commas
       .trim();
+
+    // Standardize common abbreviations
+    cleaned = cleaned
+      .replace(/\bSt\.\s/gi, 'Street ')
+      .replace(/\bAve\.\s/gi, 'Avenue ')
+      .replace(/\bRd\.\s/gi, 'Road ')
+      .replace(/\bBlvd\.\s/gi, 'Boulevard ')
+      .replace(/\bBrgy\.\s/gi, 'Barangay ')
+      .replace(/\bSubd\.\s/gi, 'Subdivision ');
 
     // Add Philippines if not present
     if (!cleaned.toLowerCase().includes('philippines')) {
       cleaned = `${cleaned}, Philippines`;
     }
 
-    // Add postal code for Bataan if not present
-    if (!cleaned.match(/\b21\d{2}\b/) && cleaned.toLowerCase().includes('bataan')) {
-      cleaned = cleaned.replace('Philippines', '2100 Philippines');
+    // Add more specific location details for better accuracy
+    if (cleaned.toLowerCase().includes('bataan')) {
+      // Add postal code for Bataan if not present
+      if (!cleaned.match(/\b21\d{2}\b/)) {
+        cleaned = cleaned.replace('Philippines', '2100 Philippines');
+      }
+      
+      // Add region for better context
+      if (!cleaned.toLowerCase().includes('region') && !cleaned.toLowerCase().includes('central luzon')) {
+        cleaned = cleaned.replace('Philippines', 'Central Luzon, Philippines');
+      }
     }
+
+    // Handle common city variations and add more specific location context
+    cleaned = cleaned
+      .replace(/\bBalanga\s+City\b/gi, 'Balanga, Bataan')
+      .replace(/\bManila\s+City\b/gi, 'Manila, Metro Manila')
+      .replace(/\bQuezon\s+City\b/gi, 'Quezon City, Metro Manila')
+      .replace(/\bSamal,?\s*Bataan\b/gi, 'Samal, Bataan, Central Luzon')
+      .replace(/\bAbucay,?\s*Bataan\b/gi, 'Abucay, Bataan, Central Luzon')
+      .replace(/\bBagac,?\s*Bataan\b/gi, 'Bagac, Bataan, Central Luzon')
+      .replace(/\bHermosa,?\s*Bataan\b/gi, 'Hermosa, Bataan, Central Luzon');
 
     return cleaned;
   }
@@ -297,15 +337,26 @@ class GeocodingService {
   private calculateNominatimConfidence(result: any): number {
     const importance = parseFloat(result.importance) || 0;
     const type = result.type || '';
+    const addressType = result.addresstype || '';
     
     let confidence = Math.min(0.9, importance * 2);
     
-    // Adjust based on place type
-    if (type === 'house' || type === 'building') confidence += 0.1;
-    else if (type === 'road' || type === 'street') confidence += 0.05;
-    else if (type === 'city' || type === 'town') confidence -= 0.1;
+    // Adjust based on place type for better accuracy
+    if (type === 'house' || type === 'building' || addressType === 'house') confidence += 0.15;
+    else if (type === 'amenity' || type === 'shop' || type === 'office') confidence += 0.1;
+    else if (type === 'road' || type === 'street' || addressType === 'road') confidence += 0.05;
+    else if (type === 'suburb' || type === 'neighbourhood') confidence += 0.02;
+    else if (type === 'city' || type === 'town' || type === 'municipality') confidence -= 0.05;
+    else if (type === 'state' || type === 'region') confidence -= 0.2;
     
-    return Math.max(0.1, Math.min(0.9, confidence));
+    // Boost confidence for Philippine locations with detailed address components
+    if (result.address && result.address.country_code === 'ph') {
+      if (result.address.house_number) confidence += 0.1;
+      if (result.address.road) confidence += 0.05;
+      if (result.address.suburb || result.address.village) confidence += 0.03;
+    }
+    
+    return Math.max(0.1, Math.min(0.95, confidence));
   }
 
   /**

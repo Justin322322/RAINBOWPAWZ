@@ -176,7 +176,7 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          userId,
+          userId: userId.toString(),
           email: userEmail
         }),
       });
@@ -422,7 +422,7 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          userId,
+          userId: userId.toString(),
           otpCode: otpString
         }),
       });

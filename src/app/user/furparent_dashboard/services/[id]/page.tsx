@@ -18,7 +18,7 @@ import {
 import FurParentPageSkeleton from '@/components/ui/FurParentPageSkeleton';
 import { handleImageError } from '@/utils/imageUtils';
 import ReviewsList from '@/components/reviews/ReviewsList';
-import { geocodeAddress, LocationData } from '@/utils/geolocation';
+import { LocationData } from '@/utils/geolocation';
 
 interface ServiceDetailPageProps {
   userData?: any;
@@ -58,11 +58,8 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
   const [sortBy, setSortBy] = useState('all');
 
   // Get user location from profile with coordinates support
-  const defaultAddress = 'Balanga City, 2100 Bataan, Philippines';
-  const [userLocation, setUserLocation] = useState<LocationData>({
-    address: defaultAddress,
-    source: 'default'
-  });
+  // Remove hardcoded default address
+  const [userLocation, setUserLocation] = useState<LocationData | null>(null);
   const [isLoadingLocation, setIsLoadingLocation] = useState(true);
 
   useEffect(() => {
@@ -87,39 +84,24 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
         let location: LocationData;
 
         if (userDataToUse?.address && userDataToUse.address.trim() !== '') {
-          console.log('✅ Using user profile address for service detail:', userDataToUse.address);
-
-          try {
-            // Geocode the user's profile address to get coordinates
-            const geocodedLocation = await geocodeAddress(userDataToUse.address);
-            location = {
-              address: userDataToUse.address,
-              coordinates: geocodedLocation.coordinates,
-              source: 'profile' as const
-            };
-            console.log('✅ Successfully geocoded user address to coordinates:', geocodedLocation.coordinates);
-          } catch (error) {
-            console.error('❌ Failed to geocode user address:', error);
-            // Fallback to address without coordinates
-            location = {
-              address: userDataToUse.address,
-              source: 'profile' as const
-            };
-          }
-        } else {
+          // Simply use the user's profile address
           location = {
-            address: defaultAddress,
+            address: userDataToUse.address,
+            source: 'profile' as const
+          };
+        } else {
+          // No address set in profile - use default location instead of null
+          location = {
+            address: 'Balanga City, Bataan, Philippines',
             source: 'default' as const
           };
-          console.log('⚠️ Using default address for service detail:', defaultAddress);
         }
 
         setUserLocation(location);
       } catch (error) {
         console.error('Error getting user location:', error);
-        // Fall back to default address
         setUserLocation({
-          address: defaultAddress,
+          address: 'Balanga City, Bataan, Philippines',
           source: 'default' as const
         });
       } finally {
@@ -128,7 +110,7 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
     };
 
     getLocation();
-  }, [userData, defaultAddress]);
+  }, [userData]);
 
   // Function to sort packages based on selected criteria
   const getSortedPackages = () => {
@@ -158,17 +140,12 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
 
     const fetchData = async () => {
       try {
-        // Fetch provider details with user location for accurate distance calculation
-        let apiUrl = `/api/service-providers/${providerId}?location=${encodeURIComponent(userLocation.address)}`;
-
-        // Add coordinates if available for more accurate distance calculation
-        if (userLocation.coordinates) {
-          const [lat, lng] = userLocation.coordinates;
-          apiUrl += `&lat=${lat}&lng=${lng}`;
-          console.log('🎯 [Service Detail] Sending coordinates to API:', { lat, lng });
-        } else {
-          console.log('📍 [Service Detail] No coordinates available, using address only:', userLocation.address);
-        }
+        // Fetch provider details with user location for accurate distance calculation (if available)
+        let apiUrl = `/api/service-providers/${providerId}`;
+        
+                 if (userLocation) {
+           apiUrl += `?location=${encodeURIComponent(userLocation.address)}`;
+         }
 
         const providerResponse = await fetch(apiUrl);
 
@@ -237,7 +214,7 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
       }
     };
 
-    if (providerId) {
+    if (providerId && !isLoadingLocation) {
       fetchData();
     }
   }, [providerId, userLocation, isLoadingLocation, mockPets]);
@@ -383,7 +360,9 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
                 </p>
                 <div className="mt-6">
                   <h2 className="text-xl font-semibold mb-2 text-white">Business Description:</h2>
-                  <p className="text-white/90 leading-relaxed">{provider.description}</p>
+                  <p className="text-white/90 leading-relaxed">
+                    {provider.description || 'Professional pet cremation services with care and compassion.'}
+                  </p>
                 </div>
               </div>
               <div className="relative h-64 md:h-auto overflow-hidden rounded-lg border border-white/20">
@@ -420,6 +399,8 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
               </div>
             </div>
           </div>
+
+
 
           {/* Main Content */}
           <div className="bg-gray-50 py-12">

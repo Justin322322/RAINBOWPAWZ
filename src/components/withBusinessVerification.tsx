@@ -39,10 +39,17 @@ const withBusinessVerification = <P extends object>(
     const [isLoading, setIsLoading] = useState(!globalBusinessAuthState.verified);
 
     useEffect(() => {
+      // If global state has been cleared (e.g., after logout), reset local state
+      if (!globalBusinessAuthState.verified && !globalBusinessAuthState.userData) {
+        setIsAuthenticated(false);
+        setUserData(null);
+        setIsLoading(true);
+      }
+
       // If we already have global state, use it immediately
       if (globalBusinessAuthState.verified && globalBusinessAuthState.userData) {
-        if (!userData) setUserData(globalBusinessAuthState.userData);
-        if (!isAuthenticated) setIsAuthenticated(globalBusinessAuthState.verified);
+        setUserData(globalBusinessAuthState.userData);
+        setIsAuthenticated(globalBusinessAuthState.verified);
         setIsLoading(false);
         return;
       }
@@ -91,6 +98,10 @@ const withBusinessVerification = <P extends object>(
               }
             }
             
+            // Clear any stale auth data before redirecting
+            clearBusinessVerificationCache();
+            globalBusinessAuthState = { verified: false, userData: null };
+            
             // Handle different error types
             if (response.status === 401) {
               // Unauthorized - user is not logged in
@@ -124,6 +135,9 @@ const withBusinessVerification = <P extends object>(
             if (process.env.NODE_ENV === 'development') {
               console.log('[withBusinessVerification] Failed to get business status:', result.error);
             }
+            // Clear any stale auth data before redirecting
+            clearBusinessVerificationCache();
+            globalBusinessAuthState = { verified: false, userData: null };
             router.push('/');
             return;
           }
@@ -145,6 +159,9 @@ const withBusinessVerification = <P extends object>(
             if (process.env.NODE_ENV === 'development') {
               console.log('[withBusinessVerification] User is not a business user, redirecting to home');
             }
+            // Clear any stale auth data before redirecting
+            clearBusinessVerificationCache();
+            globalBusinessAuthState = { verified: false, userData: null };
             router.push('/');
             return;
           }
@@ -204,6 +221,9 @@ const withBusinessVerification = <P extends object>(
 
         } catch (error) {
           console.error('[withBusinessVerification] Error checking business verification:', error);
+          // Clear any stale auth data before redirecting
+          clearBusinessVerificationCache();
+          globalBusinessAuthState = { verified: false, userData: null };
           router.push('/');
         } finally {
           setIsLoading(false);
@@ -211,8 +231,9 @@ const withBusinessVerification = <P extends object>(
       };
 
       checkBusinessVerification();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []); // Authentication should only be checked once on mount to prevent infinite loops
+    }, [router]); // Only depend on router to avoid infinite re-render loop
+    // Note: isAuthenticated, isLoading, and userData are intentionally not included
+    // in dependencies to prevent infinite re-renders in this auth verification pattern
 
     // Show loading state while checking verification
     if (isLoading) {

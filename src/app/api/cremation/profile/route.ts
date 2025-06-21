@@ -220,6 +220,13 @@ export async function PATCH(request: NextRequest) {
       // Handle contact info update
       const { firstName, lastName, email, phone } = body.contactInfo;
 
+      // Validate required fields
+      if (!firstName || !lastName || !email) {
+        return NextResponse.json({
+          error: 'First name, last name, and email are required'
+        }, { status: 400 });
+      }
+
       // Format phone number if provided
       let formattedPhone = null;
       if (phone && phone.trim()) {
@@ -233,10 +240,9 @@ export async function PATCH(request: NextRequest) {
         }
       }
 
-      // Update user email if provided
-      if (email) {
-        await query('UPDATE users SET email = ?, updated_at = NOW() WHERE user_id = ?', [email, user.userId]);
-      }
+      // Update user info (including email)
+      await query('UPDATE users SET first_name = ?, last_name = ?, email = ?, phone = ?, updated_at = NOW() WHERE user_id = ?', 
+        [firstName, lastName, email, formattedPhone, user.userId]);
 
       // Update service provider contact info
       await query(`

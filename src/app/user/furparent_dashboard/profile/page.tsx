@@ -17,8 +17,10 @@ import { getProfilePictureUrl, handleImageError, triggerProfilePictureUpdate } f
 import PhilippinePhoneInput from '@/components/ui/PhilippinePhoneInput';
 import Image from 'next/image';
 
+import { UserData } from '@/components/withUserAuth';
+
 interface ProfilePageProps {
-  userData?: any;
+  userData?: UserData;
 }
 
 function ProfilePage({ userData }: ProfilePageProps) {

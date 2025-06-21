@@ -3,9 +3,10 @@
 import Image from 'next/image';
 import { motion } from 'framer-motion';
 import FurParentDashboardWrapper from '@/components/navigation/FurParentDashboardWrapper';
+import { UserData } from '@/components/withUserAuth';
 
 interface FurParentDashboardProps {
-  userData?: any;
+  userData?: UserData;
 }
 
 function FurParentDashboard({ userData }: FurParentDashboardProps) {
