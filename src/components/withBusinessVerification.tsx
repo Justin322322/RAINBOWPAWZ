@@ -231,7 +231,7 @@ const withBusinessVerification = <P extends object>(
       };
 
       checkBusinessVerification();
-    }, [router, isAuthenticated, userData, isLoading]); // Add dependencies to properly re-run when state changes
+    }, [router]); // Only depend on router to avoid infinite re-render loop
 
     // Show loading state while checking verification
     if (isLoading) {
