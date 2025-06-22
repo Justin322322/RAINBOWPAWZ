@@ -51,7 +51,6 @@ export async function GET(request: NextRequest) {
           'Rate limit exceeded for notification fetching',
           429,
           {
-            retryAfter: rateLimitResult.retryAfter,
             notifications: [],
             unreadCount: 0
           }
