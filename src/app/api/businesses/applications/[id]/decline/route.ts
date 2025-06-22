@@ -161,36 +161,24 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
         console.error('Error sending verification email:', emailError);
       }
 
-      // Create a notification for the business owner
+      // Create a notification for the business owner using the business notification service
       try {
-        // First check if the notifications table exists
-        const tableCheck = await query(`
-          SELECT COUNT(*) as count
-          FROM information_schema.tables
-          WHERE table_schema = ? AND table_name = 'notifications'
-        `, [process.env.DB_NAME || 'rainbow_paws']);
-
-        const tableExists = tableCheck && Array.isArray(tableCheck) &&
-                            tableCheck[0] && tableCheck[0].count > 0;
-
-        if (tableExists) {
-          // Create notification for the business owner
-          await query(`
-            INSERT INTO notifications (user_id, title, message, type, link, is_read)
-            VALUES (?, ?, ?, ?, ?, ?)
-          `, [
-            business.user_id,
-            requestDocuments ? 'Additional Documents Required' : 'Application Declined',
-            requestDocuments
-              ? `Your business application for ${business.business_name || business.name} requires additional documents. Please check your email for details.`
-              : `Your business application for ${business.business_name || business.name} has been declined. Reason: ${note.trim().substring(0, 100)}${note.trim().length > 100 ? '...' : ''}`,
-            requestDocuments ? 'warning' : 'error',
-            '/business/profile',
-            0
-          ]);
-        }
-      } catch {
+        const { createBusinessNotification } = await import('@/utils/businessNotificationService');
+        
+        await createBusinessNotification({
+          userId: business.user_id,
+          title: requestDocuments ? 'Additional Documents Required' : 'Application Declined',
+          message: requestDocuments
+            ? `Your business application for ${business.business_name || business.name} requires additional documents. Please check your email for details and upload the required documents.`
+            : `Your business application for ${business.business_name || business.name} has been declined. Reason: ${note.trim()}`,
+          type: requestDocuments ? 'warning' : 'error',
+          link: requestDocuments ? '/cremation/documents' : '/cremation/dashboard',
+          shouldSendEmail: false, // Email was already sent above
+        });
+        console.log('Business notification created for user:', business.user_id);
+      } catch (notificationError) {
         // Non-critical error, just log it
+        console.error('Error creating business notification:', notificationError);
       }
     }
 

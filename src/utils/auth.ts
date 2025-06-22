@@ -152,8 +152,21 @@ export const getAuthToken = (): string | null => {
   if (typeof document === 'undefined') return null;
 
   try {
-    // First try to get from cookies
+    // First try to get from secure cookies (new system)
     const cookies = document.cookie.split(';');
+    const secureAuthCookie = cookies.find(cookie => cookie.trim().startsWith('secure_auth_token='));
+
+    if (secureAuthCookie) {
+      const encodedToken = secureAuthCookie.split('=')[1];
+      if (encodedToken) {
+        const token = decodeURIComponent(encodedToken);
+        if (token && token.includes('.')) { // JWT tokens contain dots
+          return token;
+        }
+      }
+    }
+
+    // Fallback to legacy cookies for backward compatibility
     const authCookie = cookies.find(cookie => cookie.trim().startsWith('auth_token='));
 
     if (authCookie) {
@@ -200,7 +213,6 @@ export const getAuthToken = (): string | null => {
       }
     }
 
-    // If all else fails, return null
     return null;
   } catch {
     return null;
@@ -212,28 +224,22 @@ export const getUserId = (): string | null => {
   const token = getAuthToken();
   if (!token) return null;
 
-  // For client-side, avoid JWT decoding for security
-  if (typeof window !== 'undefined') {
-    // Check if it's a JWT token - if so, we can't decode it safely on client
-    if (token.includes('.')) {
-      // For JWT tokens on client-side, we should use API calls instead
-      // Return null to force components to use checkAuthStatus() API call
-      return null;
-    }
-    
-    // Old format fallback (still safe on client)
-    return token.split('_')[0];
-  }
-
-  // Server-side: handle JWT tokens
+  // For JWT tokens, we can't decode client-side safely
+  // Return null and let components use getUserIdAsync() for JWT tokens
   if (token.includes('.')) {
-    // For server-side JWT verification, we should use the async version
-    console.warn('JWT token detected in sync getUserId - use getUserIdAsync for proper server-side verification');
+    console.warn('JWT token detected in getUserId - use getUserIdAsync() for proper verification');
     return null;
   }
 
-  // Old format fallback
-  return token.split('_')[0];
+  // Legacy token format
+  if (token.includes('_')) {
+    const parts = token.split('_');
+    if (parts.length === 2) {
+      return parts[0];
+    }
+  }
+
+  return null;
 };
 
 // Async version for proper server-side JWT verification
@@ -274,28 +280,22 @@ export const getAccountType = (): string | null => {
   const token = getAuthToken();
   if (!token) return null;
 
-  // For client-side, avoid JWT decoding for security
-  if (typeof window !== 'undefined') {
-    // Check if it's a JWT token - if so, we can't decode it safely on client
-    if (token.includes('.')) {
-      // For JWT tokens on client-side, we should use API calls instead
-      // Return null to force components to use checkAuthStatus() API call
-      return null;
-    }
-    
-    // Old format fallback (still safe on client)
-    return token.split('_')[1];
-  }
-
-  // Server-side: handle JWT tokens
+  // For JWT tokens, we can't decode client-side safely
+  // Return null and let components use getAccountTypeAsync() for JWT tokens
   if (token.includes('.')) {
-    // For server-side JWT verification, we should use the async version
-    console.warn('JWT token detected in sync getAccountType - use getAccountTypeAsync for proper server-side verification');
+    console.warn('JWT token detected in getAccountType - use getAccountTypeAsync() for proper verification');
     return null;
   }
 
-  // Old format fallback
-  return token.split('_')[1];
+  // Legacy token format
+  if (token.includes('_')) {
+    const parts = token.split('_');
+    if (parts.length === 2) {
+      return parts[1];
+    }
+  }
+
+  return null;
 };
 
 // Async version for proper server-side JWT verification
@@ -353,7 +353,23 @@ export const getJWTPayload = async (): Promise<JWTPayload | null> => {
 
 // Check if user is authenticated
 export const isAuthenticated = (): boolean => {
-  return getAuthToken() !== null;
+  const token = getAuthToken();
+  if (!token) return false;
+  
+  // For JWT tokens, we can't safely verify client-side
+  // Just check if we have a valid-looking JWT token
+  if (token.includes('.')) {
+    // JWT token - assume valid, let server verify
+    return true;
+  }
+  
+  // Legacy token format - can verify client-side
+  if (token.includes('_')) {
+    const parts = token.split('_');
+    return parts.length === 2 && parts[0] && parts[1];
+  }
+  
+  return false;
 };
 
 // Check if user has a specific account type

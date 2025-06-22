@@ -65,7 +65,7 @@ async function ensureNotificationsTable(): Promise<boolean> {
     `) as any[];
 
     if (tableExists[0].count === 0) {
-      // Create the table if it doesn't exist (using 'id' as primary key to match main API)
+      // Create the table if it doesn't exist - Match the database schema without foreign key
       await query(`
         CREATE TABLE IF NOT EXISTS notifications (
           id INT AUTO_INCREMENT PRIMARY KEY,

@@ -3,7 +3,7 @@ import { generateToken, verifyToken, JWTPayload } from './jwt';
 import crypto from 'crypto';
 
 // Security configuration
-const AUTH_COOKIE_NAME = 'auth_token';
+const AUTH_COOKIE_NAME = 'secure_auth_token';
 const CSRF_COOKIE_NAME = 'csrf_token';
 const AUTH_COOKIE_MAX_AGE = 7 * 24 * 60 * 60; // 7 days in seconds
 

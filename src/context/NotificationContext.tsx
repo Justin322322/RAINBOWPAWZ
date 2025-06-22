@@ -194,9 +194,11 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
           setNotifications(mappedNotifications);
           
           // Calculate unread count consistently
-          setUnreadCount(data.notifications.filter((n: any) => {
+          const unreadCount = data.notifications.filter((n: any) => {
             return n.is_read === false || n.is_read === 0;
-          }).length);
+          }).length;
+          
+          setUnreadCount(unreadCount);
         } else {
           // Fallback for any other structure
           setNotifications([]);
@@ -204,27 +206,15 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
         }
 
         return data;
-      } catch {
+      } catch (parseError) {
+        console.error('NotificationContext: Error parsing JSON:', parseError);
         setNotifications([]);
         setUnreadCount(0);
         return { notifications: [], unreadCount: 0 };
       }
-    } catch (err) {
-      // Clean up timeout if request fails or is aborted
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-        const currentTimeoutIds = timeoutIdsRef.current;
-        currentTimeoutIds.delete(timeoutId);
-      }
-
-      // Handle AbortError specifically to avoid showing error messages for timeouts
-      if (err instanceof Error && err.name === 'AbortError') {
-      } else {
-        const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
-        setError(errorMessage);
-      }
-
-      // Set empty data on error
+    } catch (error) {
+      console.error('NotificationContext: Fetch error:', error);
+      // Return empty data gracefully
       setNotifications([]);
       setUnreadCount(0);
       return { notifications: [], unreadCount: 0 };
