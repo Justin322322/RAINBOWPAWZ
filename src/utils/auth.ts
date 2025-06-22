@@ -152,21 +152,10 @@ export const getAuthToken = (): string | null => {
   if (typeof document === 'undefined') return null;
 
   try {
-    // First try to get from secure cookies (new system)
+    // Get cookies - removed secure_auth_token check since it's httpOnly and not accessible client-side
     const cookies = document.cookie.split(';');
-    const secureAuthCookie = cookies.find(cookie => cookie.trim().startsWith('secure_auth_token='));
-
-    if (secureAuthCookie) {
-      const encodedToken = secureAuthCookie.split('=')[1];
-      if (encodedToken) {
-        const token = decodeURIComponent(encodedToken);
-        if (token && token.includes('.')) { // JWT tokens contain dots
-          return token;
-        }
-      }
-    }
-
-    // Fallback to legacy cookies for backward compatibility
+    
+    // Check for legacy auth_token cookie
     const authCookie = cookies.find(cookie => cookie.trim().startsWith('auth_token='));
 
     if (authCookie) {
@@ -366,7 +355,7 @@ export const isAuthenticated = (): boolean => {
   // Legacy token format - can verify client-side
   if (token.includes('_')) {
     const parts = token.split('_');
-    return parts.length === 2 && parts[0] && parts[1];
+    return parts.length === 2 && Boolean(parts[0]) && Boolean(parts[1]);
   }
   
   return false;
