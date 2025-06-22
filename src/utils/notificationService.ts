@@ -39,13 +39,35 @@ export async function createNotification({
 
     // If requested, also send an email notification
     if (shouldSendEmail) {
-      // Get user email and notification preferences
-      const userResult = await query('SELECT email, first_name, email_notifications FROM users WHERE user_id = ?', [userId]) as any[];
+      // Get user email and notification preferences - safely handle email_notifications column
+      let userResult: any[];
+      
+      try {
+        userResult = await query(`
+          SELECT 
+            email, 
+            first_name, 
+            COALESCE(email_notifications, 1) as email_notifications 
+          FROM users 
+          WHERE user_id = ?
+        `, [userId]) as any[];
+      } catch (queryError) {
+        // Fallback query without email_notifications column if it doesn't exist
+        console.warn('Error querying email_notifications, falling back to basic query:', queryError);
+        userResult = await query(`
+          SELECT 
+            email, 
+            first_name, 
+            1 as email_notifications
+          FROM users 
+          WHERE user_id = ?
+        `, [userId]) as any[];
+      }
 
       if (userResult && userResult.length > 0) {
         const { email, first_name, email_notifications } = userResult[0];
 
-        // Check if user has email notifications enabled (default to true if null)
+        // Check if user has email notifications enabled (default to true)
         const emailNotificationsEnabled = email_notifications !== null ? Boolean(email_notifications) : true;
 
         if (emailNotificationsEnabled && email) {
