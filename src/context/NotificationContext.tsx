@@ -214,6 +214,14 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       }
     } catch (error) {
       console.error('NotificationContext: Fetch error:', error);
+      
+      // Clear timeout and remove from tracking set to prevent memory leaks
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+        const currentTimeoutIds = timeoutIdsRef.current;
+        currentTimeoutIds.delete(timeoutId);
+      }
+      
       // Return empty data gracefully
       setNotifications([]);
       setUnreadCount(0);
