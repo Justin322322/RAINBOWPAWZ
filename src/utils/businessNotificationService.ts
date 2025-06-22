@@ -65,7 +65,7 @@ async function sendBusinessEmailNotification(
   try {
     // Get user email and notification preferences
     const userResult = await query(`
-      SELECT email, first_name, business_name, email_notifications
+      SELECT email, first_name, sp.name AS business_name, email_notifications
       FROM users u
       LEFT JOIN service_providers sp ON u.user_id = sp.user_id
       WHERE u.user_id = ? AND u.role = 'business'
