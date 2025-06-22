@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthTokenFromRequest } from '@/utils/auth';
+import { verifySecureAuth } from '@/lib/secureAuth';
 import { query } from '@/lib/db';
 import { RateLimiter, createRateLimitHeaders, createStandardErrorResponse, createStandardSuccessResponse } from '@/utils/rateLimitUtils';
 
 // GET endpoint to fetch notifications for the authenticated user
 export async function GET(request: NextRequest) {
   try {
-    // Get user ID from auth token
-    const authToken = getAuthTokenFromRequest(request);
-    if (!authToken) {
+    // Use secure authentication for consistency
+    const user = verifySecureAuth(request);
+    if (!user) {
       return NextResponse.json(
         createStandardErrorResponse('Unauthorized', 401, {
           notifications: [],
@@ -24,10 +24,10 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const [userId, _accountType] = authToken.split('_');
-    if (!userId) {
+    // Allow all authenticated users to access notifications
+    if (!user.userId) {
       return NextResponse.json(
-        createStandardErrorResponse('Invalid authentication token', 401, {
+        createStandardErrorResponse('Invalid user', 401, {
           notifications: [],
           unreadCount: 0
         }),
@@ -42,15 +42,19 @@ export async function GET(request: NextRequest) {
     }
 
     // Implement proper server-side rate limiting
-    const rateLimitResult = await RateLimiter.checkNotificationFetchLimit(userId);
+    const rateLimitResult = await RateLimiter.checkNotificationFetchLimit(user.userId);
     const rateLimitHeaders = createRateLimitHeaders(rateLimitResult);
 
     if (!rateLimitResult.allowed) {
       return NextResponse.json(
-        createStandardErrorResponse(rateLimitResult.error || 'Rate limit exceeded', 429, {
-          notifications: [],
-          unreadCount: 0
-        }),
+        createStandardErrorResponse(
+          'Rate limit exceeded for notification fetching',
+          429,
+          {
+            notifications: [],
+            unreadCount: 0
+          }
+        ),
         {
           status: 429,
           headers: {
@@ -63,33 +67,13 @@ export async function GET(request: NextRequest) {
     }
 
     // Get query parameters
-    const searchParams = request.nextUrl.searchParams;
-    const limit = Math.min(parseInt(searchParams.get('limit') || '10', 10), 50); // Cap at 50
-    const offset = Math.max(parseInt(searchParams.get('offset') || '0', 10), 0);
+    const { searchParams } = new URL(request.url);
+    const limit = Math.min(parseInt(searchParams.get('limit') || '10'), 50); // Cap at 50
+    const offset = Math.max(parseInt(searchParams.get('offset') || '0'), 0);
     const unreadOnly = searchParams.get('unread_only') === 'true';
 
-
-    // First, ensure the notifications table exists
-    const tableExists = await ensureNotificationsTable();
-
-    // If table check failed, return proper error instead of empty results
-    if (!tableExists) {
-      return NextResponse.json(
-        createStandardErrorResponse('Database table initialization failed', 503, {
-          notifications: [],
-          pagination: { total: 0, limit, offset, hasMore: false },
-          unreadCount: 0
-        }),
-        {
-          status: 503,
-          headers: {
-            ...rateLimitHeaders,
-            'Cache-Control': 'no-cache, no-store, must-revalidate',
-            'Pragma': 'no-cache'
-          }
-        }
-      );
-    }
+    // Ensure the notifications table exists
+    await ensureNotificationsTable();
 
     try {
       // Build the query based on parameters
@@ -99,7 +83,7 @@ export async function GET(request: NextRequest) {
         WHERE user_id = ?
       `;
 
-      const queryParams: any[] = [userId];
+      const queryParams: any[] = [user.userId];
 
       if (unreadOnly) {
         notificationsQuery += ' AND is_read = 0';
@@ -119,13 +103,13 @@ export async function GET(request: NextRequest) {
         ${unreadOnly ? 'AND is_read = 0' : ''}
       `;
 
-      const countResult = await query(countQuery, [userId]) as any[];
+      const countResult = await query(countQuery, [user.userId]) as any[];
       const total = countResult[0].total;
 
       // Get the count of unread notifications
       const unreadCountResult = await query(
         'SELECT COUNT(*) as unread FROM notifications WHERE user_id = ? AND is_read = 0',
-        [userId]
+        [user.userId]
       ) as any[];
       const unreadCount = unreadCountResult[0].unread;
 
@@ -148,15 +132,15 @@ export async function GET(request: NextRequest) {
           }
         }
       );
-    } catch (queryError) {
+    } catch (dbError) {
       // Return proper error instead of empty results
-      console.error('Database error in notifications fetch:', queryError);
+      console.error('Database error in notifications fetch:', dbError);
       return NextResponse.json(
         createStandardErrorResponse('Database query failed', 500, {
           notifications: [],
           pagination: { total: 0, limit, offset, hasMore: false },
           unreadCount: 0,
-          details: queryError instanceof Error ? queryError.message : 'Unknown database error'
+          details: dbError instanceof Error ? dbError.message : 'Unknown database error'
         }),
         {
           status: 500,
@@ -192,12 +176,11 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     // Get user ID from auth token for rate limiting (optional for POST)
-    const authToken = getAuthTokenFromRequest(request);
+    const user = verifySecureAuth(request);
     let userId: string | null = null;
 
-    if (authToken) {
-      const [tokenUserId] = authToken.split('_');
-      userId = tokenUserId;
+    if (user) {
+      userId = user.userId;
     }
 
     const body = await request.json();

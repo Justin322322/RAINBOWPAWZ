@@ -1,5 +1,6 @@
 import { query } from '@/lib/db';
 import { createNotification } from '@/utils/notificationService';
+import { createBusinessNotification } from '@/utils/businessNotificationService';
 import { sendEmail } from '@/lib/consolidatedEmailService';
 import { createBookingConfirmationEmail, createBookingStatusUpdateEmail } from '@/lib/emailTemplates';
 import { sendSMS, createBookingSMSMessage } from '@/lib/smsService';
@@ -580,12 +581,13 @@ async function createProviderNotification(
         return; // No provider notification for this type
     }
 
-    await createNotification({
+    await createBusinessNotification({
       userId: providerUserId,
       title,
       message,
       type: 'info',
-      link
+      link,
+      shouldSendEmail: true
     });
   } catch (error) {
     console.error('Error creating provider notification:', error);

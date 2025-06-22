@@ -161,14 +161,24 @@ export async function POST(request: Request) {
                     success: true,
                     message: 'Login successful',
                     user: adminUser,
-                    account_type: 'admin'
-                    // No token in response body - using secure cookies instead
+                    account_type: 'admin',
+                    // Add legacy token for frontend compatibility
+                    token: `${user.user_id}_admin`
                   }, {
                     headers
                   });
 
                   // Set secure authentication cookies
                   setSecureAuthCookies(response, user.user_id.toString(), 'admin', user.email);
+                  
+                  // Also set legacy cookie for frontend compatibility
+                  response.cookies.set('auth_token', `${user.user_id}_admin`, {
+                    httpOnly: false,
+                    secure: false,
+                    sameSite: 'lax',
+                    maxAge: 7 * 24 * 60 * 60, // 7 days
+                    path: '/'
+                  });
                   
                   return response;
                 }
@@ -224,14 +234,24 @@ export async function POST(request: Request) {
                   success: true,
                   message: 'Login successful',
                   user: businessUser,
-                  account_type: 'business'
-                  // No token in response body - using secure cookies instead
+                  account_type: 'business',
+                  // Add legacy token for frontend compatibility
+                  token: `${user.user_id}_business`
                 }, {
                   headers
                 });
 
                 // Set secure authentication cookies
                 setSecureAuthCookies(response, user.user_id.toString(), 'business', user.email);
+                
+                // Also set legacy cookie for frontend compatibility
+                response.cookies.set('auth_token', `${user.user_id}_business`, {
+                  httpOnly: false,
+                  secure: false,
+                  sameSite: 'lax',
+                  maxAge: 7 * 24 * 60 * 60, // 7 days
+                  path: '/'
+                });
                 
                 return response;
               }
@@ -248,14 +268,24 @@ export async function POST(request: Request) {
             success: true,
             message: 'Login successful',
             user,
-            account_type: accountType
-            // No token in response body - using secure cookies instead
+            account_type: accountType,
+            // Add legacy token for frontend compatibility
+            token: `${user.user_id}_${accountType}`
           }, {
             headers
           });
 
           // Set secure authentication cookies
           setSecureAuthCookies(response, user.user_id.toString(), accountType as 'user' | 'admin' | 'business', user.email);
+          
+          // Also set legacy cookie for frontend compatibility
+          response.cookies.set('auth_token', `${user.user_id}_${accountType}`, {
+            httpOnly: false,
+            secure: false,
+            sameSite: 'lax',
+            maxAge: 7 * 24 * 60 * 60, // 7 days
+            path: '/'
+          });
           
           // Return user data for personal accounts or if profile details couldn't be fetched
           return response;

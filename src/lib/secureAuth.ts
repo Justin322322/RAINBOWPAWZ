@@ -3,7 +3,7 @@ import { generateToken, verifyToken, JWTPayload } from './jwt';
 import crypto from 'crypto';
 
 // Security configuration
-const AUTH_COOKIE_NAME = 'auth_token';
+const AUTH_COOKIE_NAME = 'secure_auth_token';
 const CSRF_COOKIE_NAME = 'csrf_token';
 const AUTH_COOKIE_MAX_AGE = 7 * 24 * 60 * 60; // 7 days in seconds
 
@@ -60,13 +60,43 @@ export function setSecureAuthCookies(
 
 /**
  * Get authentication token from secure httpOnly cookie
+ * Updated to support backward compatibility with Authorization headers and legacy cookies
  */
 export function getAuthTokenFromRequest(request: NextRequest): string | null {
-  return request.cookies.get(AUTH_COOKIE_NAME)?.value || null;
+  // First try the secure auth token (new secure method)
+  const secureToken = request.cookies.get(AUTH_COOKIE_NAME)?.value;
+  if (secureToken) {
+    return secureToken;
+  }
+
+  // Fallback 1: Authorization header (for API calls with Bearer tokens)
+  const authHeader = request.headers.get('authorization');
+  if (authHeader) {
+    // Extract token from "Bearer <token>" format
+    const bearerMatch = authHeader.match(/^Bearer\s+(.+)$/i);
+    if (bearerMatch) {
+      return bearerMatch[1];
+    }
+  }
+
+  // Fallback 2: Legacy auth_token cookie (for backward compatibility)
+  const legacyToken = request.cookies.get('auth_token')?.value;
+  if (legacyToken) {
+    try {
+      // Decode the URI component if needed
+      return decodeURIComponent(legacyToken);
+    } catch {
+      // If decoding fails, return as-is
+      return legacyToken;
+    }
+  }
+
+  return null;
 }
 
 /**
  * Verify authentication from secure cookies
+ * Updated to support backward compatibility with legacy token formats
  */
 export function verifySecureAuth(request: NextRequest): JWTPayload | null {
   const token = getAuthTokenFromRequest(request);
@@ -74,7 +104,35 @@ export function verifySecureAuth(request: NextRequest): JWTPayload | null {
     return null;
   }
 
-  return verifyToken(token);
+  // Handle JWT tokens
+  if (token.includes('.')) {
+    try {
+      return verifyToken(token);
+    } catch (error) {
+      console.error('JWT verification failed:', error);
+      return null;
+    }
+  }
+
+  // Handle legacy token format (userId_accountType)
+  if (token.includes('_')) {
+    const parts = token.split('_');
+    if (parts.length === 2) {
+      const [userId, accountType] = parts;
+      if (userId && accountType) {
+        // Convert legacy format to JWTPayload format for consistency
+        return {
+          userId: userId,
+          accountType: accountType as 'user' | 'admin' | 'business',
+          email: undefined, // Legacy tokens don't have email
+          iat: Math.floor(Date.now() / 1000), // Current timestamp
+          exp: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60) // 7 days from now
+        };
+      }
+    }
+  }
+
+  return null;
 }
 
 /**

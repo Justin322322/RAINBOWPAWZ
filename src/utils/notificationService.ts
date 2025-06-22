@@ -39,19 +39,51 @@ export async function createNotification({
 
     // If requested, also send an email notification
     if (shouldSendEmail) {
-      // Get user email
-      const userResult = await query('SELECT email, first_name FROM users WHERE user_id = ?', [userId]) as any[];
+      // Get user email and notification preferences - safely handle email_notifications column
+      let userResult: any[];
+      
+      try {
+        userResult = await query(`
+          SELECT 
+            email, 
+            first_name, 
+            COALESCE(email_notifications, 1) as email_notifications 
+          FROM users 
+          WHERE user_id = ?
+        `, [userId]) as any[];
+      } catch (queryError) {
+        // Fallback query without email_notifications column if it doesn't exist
+        console.warn('Error querying email_notifications, falling back to basic query:', queryError);
+        userResult = await query(`
+          SELECT 
+            email, 
+            first_name, 
+            1 as email_notifications
+          FROM users 
+          WHERE user_id = ?
+        `, [userId]) as any[];
+      }
 
       if (userResult && userResult.length > 0) {
-        const { email, first_name } = userResult[0];
+        const { email, first_name, email_notifications } = userResult[0];
 
-        // Send the email notification
-        await sendEmail({
-          to: email,
-          subject: emailSubject || title,
-          html: createEmailHtml(first_name, title, message, type, link),
-          text: createEmailText(first_name, title, message, link)
-        });
+        // Check if user has email notifications enabled (default to true)
+        const emailNotificationsEnabled = email_notifications !== null ? Boolean(email_notifications) : true;
+
+        if (emailNotificationsEnabled && email) {
+          // Send the email notification
+          await sendEmail({
+            to: email,
+            subject: emailSubject || title,
+            html: createEmailHtml(first_name, title, message, type, link),
+            text: createEmailText(first_name, title, message, link)
+          });
+          console.log(`User email notification sent to: ${email}`);
+        } else if (!emailNotificationsEnabled) {
+          console.log(`Email notifications disabled for user ${userId}`);
+        } else if (!email) {
+          console.warn(`No email address found for user ${userId}`);
+        }
       }
     }
 
@@ -68,18 +100,97 @@ export async function createNotification({
 }
 
 /**
- * Create HTML email content for notification
+ * Create HTML email content for notification using the Rainbow Paws base template
  */
 function createEmailHtml(firstName: string, title: string, message: string, type: string, link: string | null): string {
-  // Get color based on notification type
-  const getTypeColor = () => {
-    switch (type) {
-      case 'success': return '#10B981'; // green
-      case 'error': return '#EF4444'; // red
-      case 'warning': return '#F59E0B'; // amber
-      default: return '#3B82F6'; // blue/info
+  // Use the same base template as the main email templates
+  const baseEmailTemplate = (content: string) => `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RainbowPaws Notification</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      margin: 0;
+      padding: 0;
     }
-  };
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .header {
+      background-color: #10B981;
+      padding: 20px;
+      text-align: center;
+    }
+    .header h1 {
+      color: white;
+      margin: 0;
+      font-size: 24px;
+    }
+    .content {
+      padding: 20px;
+      background-color: #fff;
+    }
+    .footer {
+      background-color: #f5f5f5;
+      padding: 15px;
+      text-align: center;
+      font-size: 12px;
+      color: #666;
+    }
+    .button {
+      display: inline-block;
+      background-color: #10B981;
+      color: white;
+      padding: 12px 24px;
+      text-decoration: none;
+      border-radius: 25px;
+      margin: 20px 0;
+      font-weight: normal;
+    }
+    .info-box {
+      background-color: #f9f9f9;
+      border: 1px solid #eee;
+      border-radius: 4px;
+      padding: 15px;
+      margin: 15px 0;
+    }
+    .notification-badge {
+      background-color: #10B981;
+      color: white;
+      padding: 6px 12px;
+      border-radius: 15px;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      display: inline-block;
+      margin-bottom: 15px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>RainbowPaws</h1>
+    </div>
+    <div class="content">
+      ${content}
+    </div>
+    <div class="footer">
+      <p>&copy; ${new Date().getFullYear()} RainbowPaws - Pet Memorial Services</p>
+      <p>This is an automated message, please do not reply to this email.</p>
+    </div>
+  </div>
+</body>
+</html>
+`;
 
   // Button text based on notification type
   const getButtonText = () => {
@@ -89,97 +200,19 @@ function createEmailHtml(firstName: string, title: string, message: string, type
     return 'View Details';
   };
 
-  // The app URL, should be replaced with environment variable in production
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-  const color = getTypeColor();
 
-  return `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="utf-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>${title}</title>
-      <style>
-        body {
-          font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-          line-height: 1.6;
-          color: #333;
-          margin: 0;
-          padding: 0;
-          background-color: #f9fafb;
-        }
-        .container {
-          max-width: 600px;
-          margin: 0 auto;
-          padding: 20px;
-          background-color: #ffffff;
-          border-radius: 8px;
-          box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
-        .header {
-          text-align: center;
-          padding-bottom: 15px;
-          border-bottom: 1px solid #e5e7eb;
-        }
-        .logo {
-          max-width: 150px;
-          margin-bottom: 15px;
-        }
-        .content {
-          padding: 20px 0;
-        }
-        .notification-badge {
-          display: inline-block;
-          padding: 5px 10px;
-          border-radius: 15px;
-          background-color: ${color};
-          color: white;
-          font-size: 14px;
-          margin-bottom: 15px;
-        }
-        .button {
-          display: inline-block;
-          background-color: ${color};
-          color: white;
-          text-decoration: none;
-          padding: 10px 20px;
-          border-radius: 5px;
-          margin-top: 20px;
-          font-weight: 500;
-        }
-        .footer {
-          margin-top: 30px;
-          text-align: center;
-          font-size: 14px;
-          color: #6b7280;
-          border-top: 1px solid #e5e7eb;
-          padding-top: 15px;
-        }
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <div class="header">
-          <img src="${appUrl}/logo.png" alt="Rainbow Paws" class="logo">
-          <h2>Rainbow Paws Notification</h2>
-        </div>
-        <div class="content">
-          <p>Hello ${firstName},</p>
-          <span class="notification-badge">${type.charAt(0).toUpperCase() + type.slice(1)}</span>
-          <h3>${title}</h3>
-          <p>${message}</p>
-          ${link ? `<a href="${appUrl}${link}" class="button">${getButtonText()}</a>` : ''}
-          <p>Thank you for using Rainbow Paws!</p>
-        </div>
-        <div class="footer">
-          <p>&copy; ${new Date().getFullYear()} Rainbow Paws. All rights reserved.</p>
-          <p>This is an automated message, please do not reply to this email.</p>
-        </div>
-      </div>
-    </body>
-    </html>
+  const content = `
+    <h2>Notification</h2>
+    <p>Hello ${firstName},</p>
+    <span class="notification-badge">${type.charAt(0).toUpperCase() + type.slice(1)}</span>
+    <h3>${title}</h3>
+    <p>${message}</p>
+    ${link ? `<div style="text-align: center;"><a href="${appUrl}${link}" class="button">${getButtonText()}</a></div>` : ''}
+    <p>Thank you for using Rainbow Paws!</p>
   `;
+
+  return baseEmailTemplate(content);
 }
 
 /**
@@ -233,7 +266,7 @@ async function ensureNotificationsTable() {
     ) as any[];
 
     if (tableExists[0].count === 0) {
-      // Create the table if it doesn't exist
+      // Create the table if it doesn't exist - Fixed foreign key to reference user_id instead of id
       await query(`
         CREATE TABLE IF NOT EXISTS notifications (
           id INT AUTO_INCREMENT PRIMARY KEY,
@@ -248,11 +281,12 @@ async function ensureNotificationsTable() {
           INDEX idx_user_id (user_id),
           INDEX idx_is_read (is_read),
           INDEX idx_created_at (created_at),
-          FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+          FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
       `);
     }
   } catch (error) {
+    console.error('Error ensuring notifications table exists:', error);
     throw error;
   }
 }

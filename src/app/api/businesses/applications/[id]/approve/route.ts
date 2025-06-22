@@ -197,23 +197,23 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
         console.error('Error sending verification email:', emailError);
       }
 
-      // Create a notification for the user (outside the try-catch for email)
+      // Create a notification for the user using the business notification service
       try {
-        await query(
-          `INSERT INTO notifications (user_id, title, message, type, link)
-           VALUES (?, ?, ?, ?, ?)`,
-          [
-            business.user_id,
-            'Application Approved',
-            `Your business application for ${business.business_name || business.name} has been approved.`,
-            'success',
-            '/login'
-          ]
-        );
-        console.log('Notification created for user:', business.user_id);
+        const { createBusinessNotification } = await import('@/utils/businessNotificationService');
+        
+        await createBusinessNotification({
+          userId: business.user_id,
+          title: 'Application Approved',
+          message: `Your business application for ${business.business_name || business.name} has been approved. You can now start managing your services and receiving bookings.`,
+          type: 'success',
+          link: '/cremation/dashboard',
+          shouldSendEmail: true,
+          emailSubject: 'Business Application Approved - Rainbow Paws'
+        });
+        console.log('Business notification created for user:', business.user_id);
       } catch (notificationError) {
         // Log the error but continue with the process
-        console.error('Error creating notification:', notificationError);
+        console.error('Error creating business notification:', notificationError);
       }
     }
 
