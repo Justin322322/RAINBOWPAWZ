@@ -14,8 +14,6 @@ const dbConfig = {
   waitForConnections: true,
   connectionLimit: process.env.NODE_ENV === 'production' ? 20 : 10, // Increased pool size
   queueLimit: 0,
-  acquireTimeout: 60000,
-  timeout: 60000,
   socketPath: undefined,
   // Removed insecureAuth for security
   // Add connection timeout and better error handling
@@ -38,8 +36,6 @@ const productionConfig = {
   waitForConnections: true,
   connectionLimit: process.env.NODE_ENV === 'production' ? 20 : 10, // Increased pool size
   queueLimit: 0,
-  acquireTimeout: 60000,
-  timeout: 60000,
   socketPath: undefined,
   // Removed insecureAuth for security
 };

@@ -5,20 +5,20 @@ import { cn } from '@/utils/classNames';
 import { cva, type VariantProps } from 'class-variance-authority';
 
 const cardVariants = cva(
-  "rounded-lg shadow-sm overflow-hidden",
+  "rounded-xl overflow-hidden",
   {
     variants: {
       variant: {
-        default: "bg-white border border-gray-200",
-        outline: "bg-white border border-gray-300",
-        filled: "bg-gray-50 border border-gray-200",
-        elevated: "bg-white shadow-md border-none",
+        default: "bg-white border border-gray-100 shadow-md",
+        outline: "bg-white border border-gray-300 shadow-md",
+        filled: "bg-gray-50 border border-gray-200 shadow-md",
+        elevated: "bg-white shadow-lg border-none",
         ghost: "bg-transparent border-none shadow-none",
       },
       hover: {
         none: "",
-        subtle: "hover:shadow-md transition-shadow duration-200",
-        lift: "hover:shadow-md hover:-translate-y-1 transition-all duration-200",
+        subtle: "hover:shadow-lg transition-shadow duration-200",
+        lift: "hover:shadow-lg hover:-translate-y-1 transition-all duration-200",
         border: "hover:border-[var(--primary-green-border)] transition-colors duration-200",
       },
       padding: {

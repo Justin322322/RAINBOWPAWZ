@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
-import { getAuthTokenFromRequest } from '@/utils/auth';
+import { verifySecureAuth } from '@/lib/secureAuth';
 
 // DELETE endpoint to remove a specific admin notification
 export async function DELETE(
@@ -19,36 +19,29 @@ export async function DELETE(
       );
     }
 
-    // Verify admin authentication
-    let isAuthenticated = false;
-    let accountType = '';
-
-    // Get auth token from request
-    const authToken = getAuthTokenFromRequest(request);
-
-    // In development mode, we'll allow requests without auth token for testing
-    const isDevelopment = process.env.NODE_ENV === 'development';
-
-    if (authToken) {
-      // If we have a token, validate it
-      const tokenParts = authToken.split('_');
-      if (tokenParts.length === 2) {
-        accountType = tokenParts[1];
-        isAuthenticated = accountType === 'admin';
-      }
-    } else if (isDevelopment) {
-      // In development, allow requests without auth for testing
-      isAuthenticated = true;
-    }
-
-    // Check authentication result
-    if (!isAuthenticated) {
+    // Use secure authentication for consistency
+    const user = verifySecureAuth(request);
+    if (!user) {
       return NextResponse.json({
         error: 'Unauthorized',
         details: 'Admin access required',
         success: false
-      }, { 
+      }, {
         status: 401,
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        }
+      });
+    }
+
+    if (user.accountType !== 'admin') {
+      return NextResponse.json({
+        error: 'Unauthorized',
+        details: 'Admin access required',
+        success: false
+      }, {
+        status: 403,
         headers: {
           'Cache-Control': 'no-cache, no-store, must-revalidate',
           'Pragma': 'no-cache'

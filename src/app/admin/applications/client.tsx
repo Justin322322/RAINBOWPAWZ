@@ -101,7 +101,7 @@ function AdminApplicationsContent() {
   return (
     <div className="space-y-6">
       {/* Header section */}
-      <div className="mb-8 bg-white rounded-xl shadow-sm p-6">
+      <div className="mb-8 bg-white rounded-xl shadow-md border border-gray-100 p-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
           <div>
             <h1 className="text-2xl font-semibold text-gray-800">Application Management</h1>
@@ -160,7 +160,7 @@ function AdminApplicationsContent() {
       </div>
 
       {/* Applications Table */}
-      <div className="bg-white shadow-sm rounded-xl overflow-hidden">
+      <div className="bg-white shadow-md border border-gray-100 rounded-xl overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
           <h2 className="text-lg font-medium text-gray-800">
             {statusFilter === 'pending' ? 'Pending Applications' : 'Business Applications'}

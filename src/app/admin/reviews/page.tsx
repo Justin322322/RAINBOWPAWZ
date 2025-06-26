@@ -191,7 +191,7 @@ function AdminReviewsPage() {
     <AdminDashboardLayout activePage="reviews" userName={userName}>
       <div className="space-y-6">
         {/* Header section */}
-        <div className="mb-8 bg-white rounded-xl shadow-sm p-6">
+        <div className="mb-8 bg-white rounded-xl shadow-md border border-gray-100 p-6">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
             <div>
               <h1 className="text-2xl font-semibold text-gray-800">Customer Reviews</h1>
@@ -250,7 +250,7 @@ function AdminReviewsPage() {
         </div>
 
         {/* Rating Filter */}
-        <div className="bg-white rounded-xl shadow-sm p-4 mb-6">
+        <div className="bg-white rounded-xl shadow-md border border-gray-100 p-4 mb-6">
           <div className="flex items-center space-x-2 mb-2">
             <StarIcon className="h-5 w-5 text-yellow-400" />
             <span className="text-sm font-medium text-gray-700">Filter by rating:</span>
@@ -282,7 +282,7 @@ function AdminReviewsPage() {
             rounded={true}
           />
         ) : error ? (
-          <div className="bg-white rounded-xl shadow-sm p-6">
+          <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6">
             <div className="px-6 py-8 text-center">
               <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-red-100 text-red-600 mb-4">
                 <XCircleIcon className="h-6 w-6" />
@@ -304,7 +304,7 @@ function AdminReviewsPage() {
             </div>
           </div>
         ) : filteredReviews.length === 0 ? (
-          <div className="bg-white rounded-xl shadow-sm p-6 text-center">
+          <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 text-center">
             <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gray-100 text-gray-400 mb-4">
               <StarIcon className="h-6 w-6" />
             </div>
@@ -319,7 +319,7 @@ function AdminReviewsPage() {
             {filteredReviews.map((review) => (
               <div
                 key={review.id}
-                className="bg-white rounded-xl shadow-sm p-6"
+                className="bg-white rounded-xl shadow-md border border-gray-100 hover:shadow-lg transition-shadow duration-200 p-6"
               >
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4">
                   <div>

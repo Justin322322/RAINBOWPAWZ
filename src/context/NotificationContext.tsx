@@ -119,6 +119,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
           'Cache-Control': 'no-cache, no-store, must-revalidate',
           'Pragma': 'no-cache'
         },
+        credentials: 'include', // Include httpOnly cookies for secure auth
         signal: controller.signal
       });
 
@@ -239,12 +240,18 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
     }
 
     try {
-      // Use a generic endpoint and let the server determine the user type
-      const response = await fetch('/api/user/notifications', {
+      // Determine the correct endpoint based on user type
+      const userAccountType = getAccountType();
+      const endpoint = userAccountType === 'admin'
+        ? '/api/admin/notifications'
+        : '/api/user/notifications';
+
+      const response = await fetch(endpoint, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include', // Include httpOnly cookies for secure auth
         body: JSON.stringify({ notificationId: notificationId }),
       });
 
@@ -282,12 +289,18 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
     }
 
     try {
-      // Use a generic endpoint and let the server determine the user type
-      const response = await fetch('/api/user/notifications', {
+      // Determine the correct endpoint based on user type
+      const userAccountType = getAccountType();
+      const endpoint = userAccountType === 'admin'
+        ? '/api/admin/notifications'
+        : '/api/user/notifications';
+
+      const response = await fetch(endpoint, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include', // Include httpOnly cookies for secure auth
         body: JSON.stringify({ markAll: true }),
       });
 
@@ -327,12 +340,18 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
     }
 
     try {
-      // Use a generic endpoint and let the server determine the user type
-      const response = await fetch(`/api/user/notifications/${notificationId}`, {
+      // Determine the correct endpoint based on user type
+      const userAccountType = getAccountType();
+      const endpoint = userAccountType === 'admin'
+        ? `/api/admin/notifications/${notificationId}`
+        : `/api/user/notifications/${notificationId}`;
+
+      const response = await fetch(endpoint, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include', // Include httpOnly cookies for secure auth
       });
 
       if (!response.ok) {

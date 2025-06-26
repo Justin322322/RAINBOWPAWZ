@@ -378,7 +378,7 @@ export default function AdminFurParentsPage() {
   return (
     <AdminDashboardLayout activePage="furparents" userName={userName}>
       {/* Header section */}
-      <div className="mb-8 bg-white rounded-xl shadow-sm p-6">
+      <div className="mb-8 bg-white rounded-xl shadow-md border border-gray-100 p-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
           <div>
             <h1 className="text-2xl font-semibold text-gray-800">Fur Parents</h1>
@@ -432,7 +432,7 @@ export default function AdminFurParentsPage() {
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.8, opacity: 0 }}
-              className="bg-white rounded-xl p-8 max-w-md w-full text-center"
+              className="bg-white rounded-xl shadow-lg border border-gray-100 p-8 max-w-md w-full text-center"
             >
               <motion.div
                 className="w-20 h-20 mx-auto rounded-full bg-red-100 flex items-center justify-center mb-6"
@@ -469,7 +469,7 @@ export default function AdminFurParentsPage() {
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.8, opacity: 0 }}
-              className="bg-white rounded-xl p-8 max-w-md w-full text-center"
+              className="bg-white rounded-xl shadow-lg border border-gray-100 p-8 max-w-md w-full text-center"
             >
               <motion.div
                 className="w-20 h-20 mx-auto rounded-full bg-green-100 flex items-center justify-center mb-6"
@@ -497,7 +497,7 @@ export default function AdminFurParentsPage() {
       </AnimatePresence>
 
       {/* Users Table */}
-      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+      <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-200">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-medium text-gray-800">Fur Parent Accounts</h2>
@@ -792,7 +792,7 @@ export default function AdminFurParentsPage() {
       {/* User Details Modal */}
       {showDetailsModal && selectedUser && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[90] p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-xl shadow-xl border border-gray-100 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
             <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
               <h2 className="text-xl font-semibold text-gray-800">Fur Parent Details</h2>
               <button

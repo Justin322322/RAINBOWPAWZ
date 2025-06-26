@@ -6,11 +6,25 @@ import withAdminAuth from '@/components/withAdminAuth';
 import {
   UserIcon,
   EnvelopeIcon,
-  KeyIcon,
   CheckCircleIcon,
-  XCircleIcon
+  XCircleIcon,
+  CameraIcon,
+  ShieldCheckIcon
 } from '@heroicons/react/24/outline';
 import Image from 'next/image';
+import {
+  ProfileLayout,
+  ProfileSection,
+  ProfileCard,
+  ProfileField,
+  ProfileFormGroup,
+  ProfileGrid
+} from '@/components/ui/ProfileLayout';
+import {
+  ProfileInput,
+  ProfileButton,
+  ProfileAlert
+} from '@/components/ui/ProfileFormComponents';
 
 interface AdminProfileProps {
   adminData: any;
@@ -51,9 +65,9 @@ function AdminProfilePage({ adminData }: AdminProfileProps) {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
-  const [passwordError, setPasswordError] = useState<string | null>(null);
-  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+  const [_passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
+  const [_passwordError, setPasswordError] = useState<string | null>(null);
+  const [_isUpdatingPassword, setIsUpdatingPassword] = useState(false);
 
   // Load profile data on component mount
   useEffect(() => {
@@ -193,7 +207,7 @@ function AdminProfilePage({ adminData }: AdminProfileProps) {
   };
 
   // Handle password change
-  const handlePasswordChange = async (e: React.FormEvent) => {
+  const _handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsUpdatingPassword(true);
     setPasswordSuccess(null);
@@ -242,324 +256,228 @@ function AdminProfilePage({ adminData }: AdminProfileProps) {
 
   return (
     <AdminDashboardLayout activePage="profile" userName={userName}>
-      {/* Header section */}
-      <div className="mb-8 bg-white rounded-xl shadow-sm p-6">
-        <div className="flex items-center">
-          <div className="bg-[var(--primary-green)] rounded-full p-3 mr-4">
-            <UserIcon className="h-8 w-8 text-white" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-semibold text-gray-800">Admin Profile</h1>
-            <p className="text-gray-600 mt-1">Manage your account settings and information</p>
-          </div>
-        </div>
-      </div>
+      <ProfileLayout
+        title="Admin Profile"
+        subtitle="Manage your administrator account settings and information"
+        icon={<ShieldCheckIcon className="h-8 w-8 text-white" />}
+        className="p-6"
+      >
 
-      {/* Profile Picture Section */}
-      <div className="mb-8 bg-white rounded-xl shadow-sm p-6">
-        <h2 className="text-xl font-semibold text-gray-800 mb-4">Profile Picture</h2>
-        <div className="flex items-center space-x-6">
-          {/* Current/Preview Profile Picture */}
-          <div className="relative">
-            <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-gray-200 bg-gray-100 flex items-center justify-center">
-              {profilePicturePreview ? (
-                <Image
-                  src={profilePicturePreview}
-                  alt="Profile Picture Preview"
-                  width={96}
-                  height={96}
-                  className="w-full h-full object-cover"
-                />
-              ) : profileData?.profile_picture ? (
-                <Image
-                  src={profileData.profile_picture}
-                  alt="Profile Picture"
-                  width={96}
-                  height={96}
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    console.error('Failed to load profile picture:', e.currentTarget.src);
-                    e.currentTarget.style.display = 'none';
-                    e.currentTarget.parentElement?.classList.add('flex', 'items-center', 'justify-center');
-                    if (e.currentTarget.parentElement) {
-                      e.currentTarget.parentElement.innerHTML = '<svg class="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>';
-                    }
-                  }}
-                />
-              ) : (
-                <UserIcon className="w-12 h-12 text-gray-400" />
-              )}
-            </div>
-            {profilePicturePreview && (
-              <div className="absolute -top-2 -right-2 bg-green-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs">
-                ✓
-              </div>
-            )}
-          </div>
-
-          {/* Upload Controls */}
-          <div className="flex-1">
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleProfilePictureChange}
-              className="hidden"
-              accept="image/*"
-            />
-
-            {profilePicturePreview ? (
-              <div className="space-y-4">
-                <div>
-                  <p className="text-sm text-gray-600 font-medium">New profile picture preview</p>
-                  <p className="text-xs text-gray-500">Click upload to save changes</p>
+        {/* Profile Picture Section */}
+        <ProfileSection
+          title="Profile Picture"
+          subtitle="Upload and manage your profile picture"
+        >
+          <ProfileCard>
+            <div className="flex items-center space-x-6">
+              {/* Current/Preview Profile Picture */}
+              <div className="relative">
+                <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-gray-200 bg-gray-100 flex items-center justify-center shadow-lg">
+                  {profilePicturePreview ? (
+                    <Image
+                      src={profilePicturePreview}
+                      alt="Profile Picture Preview"
+                      width={128}
+                      height={128}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : profileData?.profile_picture ? (
+                    <Image
+                      src={profileData.profile_picture}
+                      alt="Profile Picture"
+                      width={128}
+                      height={128}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        console.error('Failed to load profile picture:', e.currentTarget.src);
+                        e.currentTarget.style.display = 'none';
+                        e.currentTarget.parentElement?.classList.add('flex', 'items-center', 'justify-center');
+                        if (e.currentTarget.parentElement) {
+                          e.currentTarget.parentElement.innerHTML = '<svg class="w-16 h-16 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>';
+                        }
+                      }}
+                    />
+                  ) : (
+                    <UserIcon className="w-16 h-16 text-gray-400" />
+                  )}
                 </div>
-                <div className="flex space-x-3">
-                  <button
-                    onClick={handleProfilePictureUpload}
-                    disabled={isUploadingPicture}
-                    className="px-4 py-2 bg-[var(--primary-green)] hover:bg-[var(--primary-green-dark)] text-white rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    {isUploadingPicture ? (
-                      <>
-                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        Uploading...
-                      </>
-                    ) : 'Upload Picture'}
-                  </button>
-                  <button
-                    onClick={() => {
-                      setProfilePicture(null);
-                      setProfilePicturePreview(null);
-                      if (fileInputRef.current) {
-                        fileInputRef.current.value = '';
-                      }
-                    }}
-                    className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-100 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div>
+                {profilePicturePreview && (
+                  <div className="absolute -top-2 -right-2 bg-emerald-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm shadow-lg">
+                    <CheckCircleIcon className="w-5 h-5" />
+                  </div>
+                )}
                 <button
-                  onClick={triggerProfilePictureInput}
-                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-100 transition-colors"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="absolute -bottom-2 -right-2 bg-[var(--primary-green)] text-white rounded-full w-10 h-10 flex items-center justify-center shadow-lg hover:bg-[var(--primary-green-hover)] transition-colors"
                 >
-                  Choose New Picture
+                  <CameraIcon className="w-5 h-5" />
                 </button>
-                <p className="text-sm text-gray-500 mt-2">
-                  Upload a profile picture (JPEG, PNG, GIF, or WebP, max 5MB)
-                </p>
               </div>
-            )}
-          </div>
-        </div>
-      </div>
 
-      {isLoading ? (
-        <div className="bg-white rounded-xl shadow-sm p-8">
-          <div className="animate-pulse space-y-4">
-            <div className="h-4 bg-gray-200 rounded w-1/4"></div>
-            <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-            <div className="h-4 bg-gray-200 rounded w-1/3"></div>
-          </div>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Account Information Panel */}
-          <div className="lg:col-span-3 bg-white rounded-xl shadow-sm overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h2 className="text-lg font-medium text-gray-800">Account Information</h2>
-            </div>
-            <div className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <div className="flex items-center mb-2">
-                    <UserIcon className="h-5 w-5 text-gray-500 mr-2" />
-                    <h3 className="text-sm font-medium text-gray-500">Full Name</h3>
+              {/* Upload Controls */}
+              <div className="flex-1 space-y-4">
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleProfilePictureChange}
+                  className="hidden"
+                  accept="image/*"
+                />
+
+                {profilePicturePreview ? (
+                  <div className="space-y-4">
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                      <p className="text-sm text-blue-800 font-medium">New profile picture preview</p>
+                      <p className="text-xs text-blue-600 mt-1">Click upload to save changes</p>
+                    </div>
+                    <div className="flex space-x-3">
+                      <ProfileButton
+                        variant="primary"
+                        onClick={handleProfilePictureUpload}
+                        loading={isUploadingPicture}
+                        icon={<CheckCircleIcon className="h-5 w-5" />}
+                      >
+                        {isUploadingPicture ? 'Uploading...' : 'Upload Picture'}
+                      </ProfileButton>
+                      <ProfileButton
+                        variant="secondary"
+                        onClick={() => {
+                          setProfilePicture(null);
+                          setProfilePicturePreview(null);
+                          if (fileInputRef.current) {
+                            fileInputRef.current.value = '';
+                          }
+                        }}
+                        icon={<XCircleIcon className="h-5 w-5" />}
+                      >
+                        Cancel
+                      </ProfileButton>
+                    </div>
                   </div>
-                  <p className="text-base font-semibold text-gray-900">
-                    {profileData ? `${profileData.first_name} ${profileData.last_name}` : 'Not available'}
-                  </p>
-                </div>
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <div className="flex items-center mb-2">
-                    <EnvelopeIcon className="h-5 w-5 text-gray-500 mr-2" />
-                    <h3 className="text-sm font-medium text-gray-500">Email Address</h3>
+                ) : (
+                  <div className="space-y-3">
+                    <ProfileButton
+                      variant="secondary"
+                      onClick={triggerProfilePictureInput}
+                      icon={<CameraIcon className="h-5 w-5" />}
+                    >
+                      Choose New Picture
+                    </ProfileButton>
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                      <p className="text-sm text-blue-800">
+                        Upload a profile picture (JPEG, PNG, GIF, or WebP, max 5MB)
+                      </p>
+                    </div>
                   </div>
-                  <p className="text-base font-semibold text-gray-900">{profileData?.email || 'Not available'}</p>
-                </div>
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <div className="flex items-center mb-2">
-                    <UserIcon className="h-5 w-5 text-gray-500 mr-2" />
-                    <h3 className="text-sm font-medium text-gray-500">Role</h3>
-                  </div>
-                  <p className="text-base font-semibold text-gray-900">{profileData?.admin_role || 'Administrator'}</p>
-                </div>
+                )}
               </div>
             </div>
-          </div>
+          </ProfileCard>
+        </ProfileSection>
 
-          {/* Contact Information Panel */}
-          <div className="lg:col-span-3 bg-white rounded-xl shadow-sm overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-200 flex items-center">
-              <UserIcon className="h-5 w-5 text-gray-500 mr-2" />
-              <h2 className="text-lg font-medium text-gray-800">Contact Information</h2>
+        {isLoading ? (
+          <ProfileCard>
+            <div className="animate-pulse space-y-4">
+              <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+              <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+              <div className="h-4 bg-gray-200 rounded w-1/3"></div>
             </div>
-            <div className="p-6">
-              <form onSubmit={handleContactUpdate} className="space-y-4 max-w-xl">
-                {contactSuccess && (
-                  <div className="bg-green-50 text-green-800 p-3 rounded-lg flex items-start">
-                    <CheckCircleIcon className="h-5 w-5 text-green-500 mr-2 mt-0.5" />
-                    <p className="text-sm">{contactSuccess}</p>
-                  </div>
-                )}
+          </ProfileCard>
+        ) : (
+          <>
+            {/* Account Information Section */}
+            <ProfileSection
+              title="Account Information"
+              subtitle="Read-only administrator account details"
+            >
+              <ProfileCard>
+                <ProfileGrid cols={3}>
+                  <ProfileField
+                    label="Full Name"
+                    value={profileData ? `${profileData.first_name} ${profileData.last_name}` : 'Not available'}
+                    icon={<UserIcon className="h-5 w-5" />}
+                  />
+                  <ProfileField
+                    label="Email Address"
+                    value={profileData?.email || 'Not available'}
+                    icon={<EnvelopeIcon className="h-5 w-5" />}
+                  />
+                  <ProfileField
+                    label="Role"
+                    value={profileData?.admin_role || 'Administrator'}
+                    icon={<ShieldCheckIcon className="h-5 w-5" />}
+                  />
+                </ProfileGrid>
+              </ProfileCard>
+            </ProfileSection>
 
-                {contactError && (
-                  <div className="bg-red-50 text-red-800 p-3 rounded-lg flex items-start">
-                    <XCircleIcon className="h-5 w-5 text-red-500 mr-2 mt-0.5" />
-                    <p className="text-sm">{contactError}</p>
-                  </div>
-                )}
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-1">
-                      First Name
-                    </label>
-                    <input
-                      type="text"
-                      id="firstName"
-                      value={contactInfo.first_name}
-                      onChange={(e) => setContactInfo({...contactInfo, first_name: e.target.value})}
-                      className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
+            {/* Contact Information Section */}
+            <ProfileSection
+              title="Contact Information"
+              subtitle="Update your personal contact details"
+            >
+              <ProfileCard>
+                <form onSubmit={handleContactUpdate} className="space-y-6">
+                  {contactSuccess && (
+                    <ProfileAlert
+                      type="success"
+                      message={contactSuccess}
+                      onClose={() => setContactSuccess(null)}
                     />
-                  </div>
-                  <div>
-                    <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-1">
-                      Last Name
-                    </label>
-                    <input
-                      type="text"
-                      id="lastName"
-                      value={contactInfo.last_name}
-                      onChange={(e) => setContactInfo({...contactInfo, last_name: e.target.value})}
-                      className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
+                  )}
+
+                  {contactError && (
+                    <ProfileAlert
+                      type="error"
+                      message={contactError}
+                      onClose={() => setContactError(null)}
                     />
-                  </div>
-                </div>
+                  )}
 
-                <div>
-                  <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                    Email Address
-                  </label>
-                  <input
-                    type="email"
-                    id="email"
-                    value={contactInfo.email}
-                    onChange={(e) => setContactInfo({...contactInfo, email: e.target.value})}
-                    className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
-                  />
-                </div>
-
-                <div className="pt-2">
-                  <button
-                    type="submit"
-                    disabled={isUpdatingContact}
-                    className="px-4 py-2 bg-[var(--primary-green)] text-white rounded-lg hover:bg-opacity-90 transition-all duration-300 disabled:opacity-50"
+                  <ProfileFormGroup
+                    title="Personal Details"
+                    subtitle="Your name and contact information"
                   >
-                    {isUpdatingContact ? 'Updating...' : 'Update Contact Information'}
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
+                    <ProfileGrid cols={2}>
+                      <ProfileInput
+                        label="First Name"
+                        value={contactInfo.first_name}
+                        onChange={(value) => setContactInfo({...contactInfo, first_name: value})}
+                        icon={<UserIcon className="h-5 w-5" />}
+                      />
+                      <ProfileInput
+                        label="Last Name"
+                        value={contactInfo.last_name}
+                        onChange={(value) => setContactInfo({...contactInfo, last_name: value})}
+                        icon={<UserIcon className="h-5 w-5" />}
+                      />
+                    </ProfileGrid>
 
-          {/* Change Password Panel */}
-          <div className="lg:col-span-3 bg-white rounded-xl shadow-sm overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-200 flex items-center">
-              <KeyIcon className="h-5 w-5 text-gray-500 mr-2" />
-              <h2 className="text-lg font-medium text-gray-800">Change Password</h2>
-            </div>
-            <div className="p-6">
-              <form onSubmit={handlePasswordChange} className="space-y-4 max-w-xl">
-                {passwordError && (
-                  <div className="bg-red-50 text-red-800 p-3 rounded-lg flex items-start">
-                    <XCircleIcon className="h-5 w-5 text-red-500 mr-2 mt-0.5" />
-                    <p className="text-sm">{passwordError}</p>
+                    <ProfileInput
+                      label="Email Address"
+                      type="email"
+                      value={contactInfo.email}
+                      onChange={(value) => setContactInfo({...contactInfo, email: value})}
+                      icon={<EnvelopeIcon className="h-5 w-5" />}
+                    />
+                  </ProfileFormGroup>
+
+                  <div className="flex justify-end pt-4 border-t border-gray-100">
+                    <ProfileButton
+                      type="submit"
+                      variant="primary"
+                      loading={isUpdatingContact}
+                      icon={<CheckCircleIcon className="h-5 w-5" />}
+                    >
+                      {isUpdatingContact ? 'Updating...' : 'Update Contact Information'}
+                    </ProfileButton>
                   </div>
-                )}
-
-                {passwordSuccess && (
-                  <div className="bg-green-50 text-green-800 p-3 rounded-lg flex items-start">
-                    <CheckCircleIcon className="h-5 w-5 text-green-500 mr-2 mt-0.5" />
-                    <p className="text-sm">{passwordSuccess}</p>
-                  </div>
-                )}
-
-                <div>
-                  <label htmlFor="current-password" className="block text-sm font-medium text-gray-700 mb-1">
-                    Current Password
-                  </label>
-                  <input
-                    type="password"
-                    id="current-password"
-                    value={currentPassword}
-                    onChange={(e) => setCurrentPassword(e.target.value)}
-                    className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
-                    placeholder="Enter your current password"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="new-password" className="block text-sm font-medium text-gray-700 mb-1">
-                    New Password
-                  </label>
-                  <input
-                    type="password"
-                    id="new-password"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
-                    placeholder="Enter new password"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Password must be at least 8 characters long and include a mix of letters, numbers, and symbols.
-                  </p>
-                </div>
-
-                <div>
-                  <label htmlFor="confirm-password" className="block text-sm font-medium text-gray-700 mb-1">
-                    Confirm New Password
-                  </label>
-                  <input
-                    type="password"
-                    id="confirm-password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
-                    placeholder="Confirm new password"
-                  />
-                </div>
-
-                <div className="pt-2">
-                  <button
-                    type="submit"
-                    disabled={isUpdatingPassword}
-                    className="px-4 py-2 bg-[var(--primary-green)] text-white rounded-lg hover:bg-opacity-90 transition-all duration-300 disabled:opacity-50"
-                  >
-                    {isUpdatingPassword ? 'Updating...' : 'Update Password'}
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
+                </form>
+              </ProfileCard>
+            </ProfileSection>
+          </>
+        )}
+      </ProfileLayout>
     </AdminDashboardLayout>
   );
 }

@@ -202,7 +202,7 @@ function AdminDashboardPage({ adminData }: { adminData: any }) {
   return (
     <AdminDashboardLayout activePage="dashboard" userName={userName}>
       {/* Header section */}
-      <div className="mb-8 bg-white rounded-xl shadow-sm p-6">
+      <div className="mb-8 bg-white rounded-xl shadow-md border border-gray-100 p-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
           <div>
             <h1 className="text-2xl font-semibold text-gray-800">Dashboard</h1>
@@ -228,7 +228,7 @@ function AdminDashboardPage({ adminData }: { adminData: any }) {
           ))
         ) : error ? (
           // Error state
-          <div className="col-span-4 bg-white rounded-xl shadow-sm p-6">
+          <div className="col-span-4 bg-white rounded-xl shadow-md border border-gray-100 p-6">
             <div className="flex items-center justify-center">
               <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-red-100 text-red-600 mb-4">
                 <XCircleIcon className="h-6 w-6" />
@@ -278,7 +278,7 @@ function AdminDashboardPage({ adminData }: { adminData: any }) {
         </div>
         {isLoading ? (
           // Using standardized skeleton loader for table
-          <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+          <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden">
             <div className="p-6">
               <SkeletonText
                 lines={1}
@@ -305,7 +305,7 @@ function AdminDashboardPage({ adminData }: { adminData: any }) {
             </div>
           </div>
         ) : error ? (
-          <div className="bg-white rounded-xl shadow-sm p-6">
+          <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6">
             <div className="flex items-center justify-center">
               <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-red-100 text-red-600 mb-4">
                 <XCircleIcon className="h-6 w-6" />
@@ -323,7 +323,7 @@ function AdminDashboardPage({ adminData }: { adminData: any }) {
             </div>
           </div>
         ) : recentApplications.length > 0 ? (
-          <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+          <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden">
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
@@ -391,7 +391,7 @@ function AdminDashboardPage({ adminData }: { adminData: any }) {
             </div>
           </div>
         ) : (
-          <div className="bg-white rounded-xl shadow-sm p-6 text-center">
+          <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 text-center">
             <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gray-100 text-gray-400 mb-4">
               <DocumentCheckIcon className="h-6 w-6" />
             </div>
@@ -421,7 +421,7 @@ function AdminDashboardPage({ adminData }: { adminData: any }) {
               />
             ))
           ) : error ? (
-            <div className="col-span-2 bg-white rounded-xl shadow-sm p-6">
+            <div className="col-span-2 bg-white rounded-xl shadow-md border border-gray-100 p-6">
               <div className="flex items-center justify-center">
                 <div className="inline-flex items-center justify-center w-10 h-10 bg-red-100 rounded-lg mb-4">
                   <ExclamationTriangleIcon className="w-6 h-6 text-red-600" />
@@ -445,7 +445,7 @@ function AdminDashboardPage({ adminData }: { adminData: any }) {
           ) : (
             <>
               {/* Active Users */}
-              <div className="bg-white rounded-xl shadow-sm p-6">
+              <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-sm font-medium text-gray-500">Active Users</h3>
                   <div className="flex space-x-2">
@@ -471,7 +471,7 @@ function AdminDashboardPage({ adminData }: { adminData: any }) {
               </div>
 
               {/* Pending Applications */}
-              <div className="bg-white rounded-xl shadow-sm p-6">
+              <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-sm font-medium text-gray-500">Application Status</h3>
                   <div className="flex space-x-2">

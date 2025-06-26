@@ -104,7 +104,7 @@
   }
 
   .service-card {
-    @apply bg-white p-8 rounded-lg shadow-sm hover:shadow-md transition-all duration-300
+    @apply bg-white p-8 rounded-xl shadow-md hover:shadow-lg transition-all duration-300
     border border-gray-100 hover:border-[var(--primary-green-border)];
   }
 
@@ -150,38 +150,206 @@
   }
 }
 
+/* Enhanced Timeline Styles */
 .timeline-dot {
-  @apply w-4 h-4 rounded-full bg-[var(--primary-green)] absolute left-1/2 -translate-x-1/2 z-10;
+  @apply w-6 h-6 rounded-full bg-[var(--primary-green)] absolute left-1/2 -translate-x-1/2 z-10
+  shadow-lg border-4 border-white transition-all duration-300;
+}
+
+.timeline-dot.active {
+  @apply ring-4 ring-[var(--primary-green)] ring-opacity-30 scale-110;
 }
 
 .timeline-line {
-  @apply w-0.5 h-full bg-[var(--primary-green)] absolute left-1/2 -translate-x-1/2 opacity-20;
+  @apply w-1 h-full bg-gradient-to-b from-[var(--primary-green)] to-gray-200
+  absolute left-1/2 -translate-x-1/2 rounded-full;
+}
+
+.timeline-line.completed {
+  @apply bg-[var(--primary-green)];
 }
 
 .timeline-card {
-  @apply bg-[var(--background-white)] rounded-xl p-6 transition-all duration-300
-  shadow-sm hover:shadow-md border border-gray-100 hover:border-[var(--primary-green-border)];
+  @apply bg-[var(--background-white)] rounded-xl p-8 transition-all duration-300
+  shadow-md hover:shadow-lg border border-gray-100 hover:border-[var(--primary-green-border)]
+  backdrop-blur-sm;
+}
+
+.timeline-card.active {
+  @apply border-[var(--primary-green)] shadow-lg ring-1 ring-[var(--primary-green)] ring-opacity-20;
 }
 
 .timeline-icon {
   @apply w-16 h-16 rounded-full bg-[var(--primary-green)] text-white flex items-center justify-center
-  text-2xl font-light hover:bg-[var(--primary-green-hover)] transition-colors duration-300;
+  text-2xl font-light hover:bg-[var(--primary-green-hover)] transition-all duration-300
+  shadow-lg border-4 border-white;
+}
+
+.timeline-icon.completed {
+  @apply bg-emerald-500 hover:bg-emerald-600;
+}
+
+.timeline-icon.current {
+  @apply ring-4 ring-[var(--primary-green)] ring-opacity-30 animate-pulse;
 }
 
 .timeline-date {
-  @apply text-[var(--primary-green)] font-medium;
+  @apply text-[var(--primary-green)] font-semibold text-sm uppercase tracking-wide;
 }
 
 .timeline-title {
-  @apply text-2xl font-light text-[var(--primary-green)] mb-4;
+  @apply text-2xl font-semibold text-gray-900 mb-3 leading-tight;
 }
 
 .timeline-description {
-  @apply text-[var(--text-secondary)] leading-relaxed font-light;
+  @apply text-gray-600 leading-relaxed font-normal;
 }
 
 .timeline-icon-small {
-  @apply w-12 h-12 rounded-full bg-[var(--primary-green-bg)] flex items-center justify-center;
+  @apply w-14 h-14 rounded-full bg-[var(--primary-green-bg)] flex items-center justify-center
+  border-2 border-[var(--primary-green)] text-[var(--primary-green)] transition-all duration-300;
+}
+
+/* Progress Bar Styles */
+.timeline-progress {
+  @apply h-2 bg-gray-100 rounded-full overflow-hidden;
+}
+
+.timeline-progress-fill {
+  @apply h-full bg-gradient-to-r from-[var(--primary-green)] to-emerald-500
+  transition-all duration-700 ease-out rounded-full;
+}
+
+/* Status Badge Styles */
+.timeline-status-badge {
+  @apply inline-flex items-center px-3 py-1 rounded-full text-sm font-medium
+  border transition-all duration-200;
+}
+
+.timeline-status-badge.pending {
+  @apply bg-amber-50 text-amber-700 border-amber-200;
+}
+
+.timeline-status-badge.confirmed {
+  @apply bg-blue-50 text-blue-700 border-blue-200;
+}
+
+.timeline-status-badge.in-progress {
+  @apply bg-purple-50 text-purple-700 border-purple-200;
+}
+
+.timeline-status-badge.completed {
+  @apply bg-emerald-50 text-emerald-700 border-emerald-200;
+}
+
+.timeline-status-badge.cancelled {
+  @apply bg-red-50 text-red-700 border-red-200;
+}
+
+/* Custom border width for timeline check marks */
+.border-3 {
+  border-width: 3px;
+}
+
+/* Enhanced timeline step animations */
+.timeline-step-completed {
+  @apply transform transition-all duration-300;
+}
+
+.timeline-step-completed:hover {
+  @apply scale-105;
+}
+
+/* Ensure check marks are properly positioned */
+.timeline-check-mark {
+  @apply absolute -top-2 -right-2 w-7 h-7 bg-emerald-500 rounded-full
+  flex items-center justify-center border-3 border-white shadow-lg z-20;
+}
+
+.timeline-check-mark-mobile {
+  @apply absolute -top-2 -right-2 w-6 h-6 bg-emerald-500 rounded-full
+  flex items-center justify-center border-2 border-white shadow-lg z-20;
+}
+
+/* Remove pulsing from completed steps */
+.timeline-step-completed {
+  animation: none !important;
+}
+
+.timeline-step-completed.animate-pulse {
+  animation: none !important;
+}
+
+/* Only current step should pulse */
+.timeline-step-current {
+  @apply animate-pulse;
+}
+
+/* Ensure completed status shows all steps as completed */
+.timeline-completed .timeline-step {
+  animation: none !important;
+}
+
+/* Enhanced timeline spacing and visual breaks */
+.timeline-step-container {
+  @apply relative;
+}
+
+.timeline-step-separator {
+  @apply w-full h-px bg-gradient-to-r from-transparent via-gray-200 to-transparent my-6;
+}
+
+/* Desktop timeline grid improvements */
+.timeline-desktop-grid {
+  @apply grid grid-cols-4 gap-8 relative;
+}
+
+/* Mobile timeline improvements */
+.timeline-mobile-container {
+  @apply space-y-8 px-4 relative;
+}
+
+.timeline-mobile-step {
+  @apply relative bg-white rounded-lg p-4 border border-gray-100 shadow-sm;
+}
+
+/* Mobile dashed vertical lines */
+.timeline-mobile-segment {
+  @apply absolute w-0.5 bg-gray-300;
+  left: 1.75rem; /* Center with the step circles */
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent,
+    transparent 6px,
+    #d1d5db 6px,
+    #d1d5db 12px
+  );
+}
+
+.timeline-mobile-segment.completed {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent,
+    transparent 6px,
+    #10b981 6px,
+    #10b981 12px
+  );
+}
+
+.timeline-mobile-step:hover {
+  @apply shadow-md border-gray-200;
+}
+
+/* Clean timeline progress line */
+.timeline-progress-line {
+  @apply absolute h-0.5 bg-gray-200 rounded-full;
+  top: 2rem; /* Center with the step circles */
+  left: 4rem; /* Start from center of first circle */
+  right: 4rem; /* End at center of last circle */
+}
+
+.timeline-progress-fill {
+  @apply h-full bg-emerald-500 rounded-full transition-all duration-700 ease-out;
 }
 
 .roadmap-container {

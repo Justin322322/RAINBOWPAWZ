@@ -5,38 +5,50 @@ import CremationDashboardLayout from '@/components/navigation/CremationDashboard
 import withBusinessVerification from '@/components/withBusinessVerification';
 import { useToast } from '@/context/ToastContext';
 import {
-  KeyIcon,
   CheckCircleIcon,
-  XCircleIcon,
   UserIcon,
   EnvelopeIcon,
   PhoneIcon,
   BuildingStorefrontIcon,
-  DocumentIcon,
   InformationCircleIcon,
-  XMarkIcon,
   ArrowUpTrayIcon,
-  ExclamationTriangleIcon
+  ExclamationTriangleIcon,
+  CameraIcon,
+  DocumentIcon,
+  XMarkIcon
 } from '@heroicons/react/24/outline';
-// import { getAuthToken, isBusiness } from '@/utils/auth';
 import { getImagePath } from '@/utils/imageUtils';
 import PhilippinePhoneInput from '@/components/ui/PhilippinePhoneInput';
 import Image from 'next/image';
 import { SkeletonCard } from '@/components/ui/SkeletonLoader';
+import {
+  ProfileLayout,
+  ProfileSection,
+  ProfileCard,
+  ProfileField,
+  ProfileFormGroup,
+  ProfileGrid
+} from '@/components/ui/ProfileLayout';
+import {
+  ProfileInput,
+  ProfileTextarea,
+  ProfileButton,
+  ProfileAlert
+} from '@/components/ui/ProfileFormComponents';
 
 function CremationProfilePage({ userData }: { userData: any }) {
   // Password states
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [passwordError, setPasswordError] = useState('');
-  const [passwordSuccess, setPasswordSuccess] = useState('');
+  const [_passwordError, setPasswordError] = useState('');
+  const [_passwordSuccess, setPasswordSuccess] = useState('');
 
   // Address states
   const [address, setAddress] = useState({
     street: ''
   });
-  const [addressSuccess, setAddressSuccess] = useState('');
+  const [_addressSuccess, setAddressSuccess] = useState('');
 
   // Contact info states
   const [contactInfo, setContactInfo] = useState({
@@ -61,7 +73,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
   const [error, setError] = useState<string | null>(null);
 
   // Document upload states
-  const [showDocumentModal, setShowDocumentModal] = useState(false);
+  const [_showDocumentModal, setShowDocumentModal] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
   const [documents, setDocuments] = useState({
@@ -177,17 +189,25 @@ function CremationProfilePage({ userData }: { userData: any }) {
       setError(null);
     } catch (error) {
       console.error('Error fetching profile data:', error);
-      setError(error instanceof Error ? error.message : 'An error occurred while fetching data');
-      // Show toast only once
-      showToast(error instanceof Error ? error.message : 'Failed to load profile data. Please try again.', 'error');
 
-      // If authentication error, redirect to login after a short delay
-      if (error instanceof Error &&
-          (error.message.includes('Authentication failed') ||
-            error.message.includes('not authorized'))) {
-        setTimeout(() => {
-          window.location.href = '/api/auth/logout';
-        }, 3000);
+      // Check if this is a logout scenario (user intentionally logged out)
+      const isLogoutScenario = window.location.pathname !== '/cremation/profile' ||
+                              document.cookie.indexOf('auth_token') === -1;
+
+      if (!isLogoutScenario) {
+        setError(error instanceof Error ? error.message : 'An error occurred while fetching data');
+        // Show toast only if not in logout scenario
+        showToast(error instanceof Error ? error.message : 'Failed to load profile data. Please try again.', 'error');
+
+        // If authentication error and not logging out, redirect to login after a short delay
+        if (error instanceof Error &&
+            (error.message.includes('Authentication failed') ||
+              error.message.includes('not authorized') ||
+              error.message.includes('Unauthorized'))) {
+          setTimeout(() => {
+            window.location.href = '/';
+          }, 2000);
+        }
       }
     } finally {
       setInitialLoading(false);
@@ -224,7 +244,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
     };
   }, [fetchProfileData]); // Include fetchProfileData dependency
 
-  const handlePasswordChange = async (e: React.FormEvent) => {
+  const _handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
     setPasswordError('');
     setPasswordSuccess('');
@@ -265,7 +285,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
     }
   };
 
-  const handleAddressUpdate = async (e: React.FormEvent) => {
+  const _handleAddressUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!address.street.trim()) {
@@ -665,1059 +685,533 @@ function CremationProfilePage({ userData }: { userData: any }) {
 
   return (
     <CremationDashboardLayout activePage="profile" userData={userData}>
-      {/* Header section */}
-      <div className="mb-8 bg-white rounded-xl shadow-sm p-6">
-        <div className="flex items-center">
-          <div className="bg-[var(--primary-green)] rounded-full p-3 mr-4">
-            <UserIcon className="h-8 w-8 text-white" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-semibold text-gray-800">My Profile</h1>
-            <p className="text-gray-600 mt-1">Manage your account settings and information</p>
-          </div>
-        </div>
-      </div>
+      <ProfileLayout
+        title="My Profile"
+        subtitle="Manage your account settings and business information"
+        icon={<UserIcon className="h-8 w-8 text-white" />}
+        className="p-6"
+      >
 
-      {/* Profile Picture Section */}
-      <div className="mb-8 bg-white rounded-xl shadow-sm p-6">
-        <h2 className="text-xl font-semibold text-gray-800 mb-4">Profile Picture</h2>
-        <div className="flex items-center space-x-6">
-          {/* Current/Preview Profile Picture */}
-          <div className="relative">
-            <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-gray-200 bg-gray-100 flex items-center justify-center">
-              {profilePicturePreview ? (
-                <Image
-                  src={profilePicturePreview}
-                  alt="Profile Picture Preview"
-                  width={96}
-                  height={96}
-                  className="w-full h-full object-cover"
-                />
-              ) : profileData?.profilePicturePath ? (
-                <Image
-                  src={`${getImagePath(profileData.profilePicturePath)}?t=${profilePictureTimestamp}`}
-                  alt="Profile Picture"
-                  width={96}
-                  height={96}
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    console.error('Failed to load profile picture:', e.currentTarget.src);
-                    // Try without cache busting as fallback
-                    const img = e.currentTarget as HTMLImageElement;
-                    if (img.src.includes('?t=')) {
-                      img.src = getImagePath(profileData.profilePicturePath);
-                    } else {
-                      // If still failing, show fallback icon
-                      img.style.display = 'none';
-                      img.parentElement?.classList.add('flex', 'items-center', 'justify-center');
-                      if (img.parentElement) {
-                        img.parentElement.innerHTML = '<svg class="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>';
-                      }
-                    }
-                  }}
-                />
-              ) : (
-                <UserIcon className="w-12 h-12 text-gray-400" />
-              )}
-            </div>
-            {profilePicturePreview && (
-              <div className="absolute -top-2 -right-2 bg-green-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs">
-                ✓
-              </div>
-            )}
-          </div>
-
-          {/* Upload Controls */}
-          <div className="flex-1">
-            <input
-              type="file"
-              ref={profilePictureInputRef}
-              onChange={handleProfilePictureChange}
-              className="hidden"
-              accept="image/*"
-            />
-
-            <div className="space-y-3">
-              <button
-                type="button"
-                onClick={triggerProfilePictureInput}
-                className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none transition-colors"
-              >
-                <ArrowUpTrayIcon className="h-5 w-5 mr-2" />
-                Choose New Picture
-              </button>
-
-              {profilePicture && (
-                <button
-                  type="button"
-                  onClick={handleProfilePictureUpload}
-                  disabled={uploadingProfilePicture}
-                  className="ml-3 inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[var(--primary-green)] hover:bg-[var(--primary-green-dark)] focus:outline-none transition-colors disabled:opacity-70"
-                >
-                  {uploadingProfilePicture ? (
-                    <>
-                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      Uploading...
-                    </>
+        {/* Profile Picture Section */}
+        <ProfileSection
+          title="Profile Picture"
+          subtitle="Upload and manage your profile picture"
+        >
+          <ProfileCard>
+            <div className="flex items-center space-x-6">
+              {/* Current/Preview Profile Picture */}
+              <div className="relative">
+                <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-gray-200 bg-gray-100 flex items-center justify-center shadow-lg">
+                  {profilePicturePreview ? (
+                    <Image
+                      src={profilePicturePreview}
+                      alt="Profile Picture Preview"
+                      width={128}
+                      height={128}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : profileData?.profilePicturePath ? (
+                    <Image
+                      src={`${getImagePath(profileData.profilePicturePath)}?t=${profilePictureTimestamp}`}
+                      alt="Profile Picture"
+                      width={128}
+                      height={128}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        console.error('Failed to load profile picture:', e.currentTarget.src);
+                        const img = e.currentTarget as HTMLImageElement;
+                        if (img.src.includes('?t=')) {
+                          img.src = getImagePath(profileData.profilePicturePath);
+                        } else {
+                          img.style.display = 'none';
+                          img.parentElement?.classList.add('flex', 'items-center', 'justify-center');
+                          if (img.parentElement) {
+                            img.parentElement.innerHTML = '<svg class="w-16 h-16 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>';
+                          }
+                        }
+                      }}
+                    />
                   ) : (
-                    <>
-                      <CheckCircleIcon className="h-5 w-5 mr-2" />
-                      Upload Picture
-                    </>
+                    <UserIcon className="w-16 h-16 text-gray-400" />
                   )}
-                </button>
-              )}
-            </div>
-
-            <p className="mt-2 text-xs text-gray-500">
-              Upload a profile picture (JPEG, PNG, GIF, or WebP, max 5MB)
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {initialLoading ? (
-        <div className="space-y-6">
-          {/* Profile header skeleton */}
-          <SkeletonCard
-            withHeader={true}
-            contentLines={1}
-            withFooter={false}
-            withShadow={true}
-            rounded="lg"
-            animate={true}
-            className="p-6"
-          />
-          
-          {/* Account information skeleton */}
-          <SkeletonCard
-            withHeader={true}
-            contentLines={3}
-            withFooter={false}
-            withShadow={true}
-            rounded="lg"
-            animate={true}
-            className="p-6"
-          />
-          
-          {/* Contact information skeleton */}
-          <SkeletonCard
-            withHeader={true}
-            contentLines={6}
-            withFooter={false}
-            withShadow={true}
-            rounded="lg"
-            animate={true}
-            className="p-6"
-          />
-          
-          {/* Password change skeleton */}
-          <SkeletonCard
-            withHeader={true}
-            contentLines={4}
-            withFooter={false}
-            withShadow={true}
-            rounded="lg"
-            animate={true}
-            className="p-6"
-          />
-        </div>
-      ) : error ? (
-        <div className="bg-white rounded-xl shadow-sm p-8 text-center">
-          <div className="text-red-500 mb-4">
-            <svg className="h-12 w-12 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </div>
-          <h3 className="text-lg font-medium text-gray-900 mb-1">Error Loading Profile</h3>
-          <p className="text-gray-500 mb-4">{error}</p>
-          <button
-            onClick={() => window.location.reload()}
-            className="px-4 py-2 bg-[var(--primary-green)] text-white rounded-md hover:bg-opacity-90"
-          >
-            Try Again
-          </button>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Document Upload Reminder */}
-          {profileData && profileData.documents &&
-            (!profileData.documents.businessPermitPath &&
-             !profileData.documents.birCertificatePath &&
-             !profileData.documents.governmentIdPath) && (
-            <div className="lg:col-span-3 bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-lg mb-4">
-              <div className="flex">
-                <div className="flex-shrink-0">
-                  <ExclamationTriangleIcon className="h-5 w-5 text-yellow-400" />
                 </div>
-                <div className="ml-3">
-                  <p className="text-sm font-medium text-yellow-800">
-                    Your business documents are missing
-                  </p>
-                  <p className="text-sm text-yellow-700 mt-1">
-                    Please upload your business documents to complete your registration.
-                    Your account will be verified by our admin team after you submit your documents.
-                  </p>
-                  <div className="mt-3">
-                    <button
-                      onClick={showDocumentsModal}
-                      className="bg-yellow-200 hover:bg-yellow-300 text-yellow-800 px-3 py-1.5 rounded-md text-sm font-medium"
-                    >
-                      Upload Documents Now
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Account Information Panel */}
-          <div className="lg:col-span-3 bg-white rounded-xl shadow-sm overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h2 className="text-lg font-medium text-gray-800">Account Information</h2>
-              <p className="text-sm text-gray-500 mt-1">Read-only information for reference</p>
-            </div>
-            <div className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <div className="flex items-center mb-2">
-                    <UserIcon className="h-5 w-5 text-gray-500 mr-2" />
-                    <h3 className="text-sm font-medium text-gray-500">Business Name</h3>
-                  </div>
-                  <p className="text-base font-semibold text-gray-900">{profileData?.business_name || profileData?.name || 'Not available'}</p>
-                </div>
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <div className="flex items-center mb-2">
-                    <EnvelopeIcon className="h-5 w-5 text-gray-500 mr-2" />
-                    <h3 className="text-sm font-medium text-gray-500">Email Address</h3>
-                  </div>
-                  <p className="text-base font-semibold text-gray-900">{profileData?.email || 'Not available'}</p>
-                </div>
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <div className="flex items-center mb-2">
-                    <PhoneIcon className="h-5 w-5 text-gray-500 mr-2" />
-                    <h3 className="text-sm font-medium text-gray-500">Phone Number</h3>
-                  </div>
-                  <p className="text-base font-semibold text-gray-900">{profileData?.business_phone || profileData?.phone || 'Not available'}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Business Information Panel */}
-          <div className="lg:col-span-3 bg-white rounded-xl shadow-sm overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-200 flex items-center">
-              <BuildingStorefrontIcon className="h-5 w-5 text-gray-500 mr-2" />
-              <h2 className="text-lg font-medium text-gray-800">Business Information</h2>
-            </div>
-            <div className="p-6">
-              <form onSubmit={handleBusinessUpdate} className="space-y-4 max-w-xl">
-                {businessSuccess && (
-                  <div className="bg-green-50 text-green-800 p-3 rounded-lg flex items-start">
-                    <CheckCircleIcon className="h-5 w-5 text-green-500 mr-2 mt-0.5" />
-                    <p className="text-sm">{businessSuccess}</p>
+                {profilePicturePreview && (
+                  <div className="absolute -top-2 -right-2 bg-emerald-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm shadow-lg">
+                    <CheckCircleIcon className="w-5 h-5" />
                   </div>
                 )}
+                <button
+                  onClick={() => profilePictureInputRef.current?.click()}
+                  className="absolute -bottom-2 -right-2 bg-[var(--primary-green)] text-white rounded-full w-10 h-10 flex items-center justify-center shadow-lg hover:bg-[var(--primary-green-hover)] transition-colors"
+                >
+                  <CameraIcon className="w-5 h-5" />
+                </button>
+              </div>
 
-                <div>
-                  <label htmlFor="businessName" className="block text-sm font-medium text-gray-700 mb-1">
-                    Business Name *
-                  </label>
-                  <input
-                    type="text"
-                    id="businessName"
+              {/* Upload Controls */}
+              <div className="flex-1 space-y-4">
+                <input
+                  type="file"
+                  ref={profilePictureInputRef}
+                  onChange={handleProfilePictureChange}
+                  className="hidden"
+                  accept="image/*"
+                />
+
+                <div className="space-y-3">
+                  <ProfileButton
+                    variant="secondary"
+                    onClick={triggerProfilePictureInput}
+                    icon={<ArrowUpTrayIcon className="h-5 w-5" />}
+                  >
+                    Choose New Picture
+                  </ProfileButton>
+
+                  {profilePicture && (
+                    <ProfileButton
+                      variant="primary"
+                      onClick={handleProfilePictureUpload}
+                      loading={uploadingProfilePicture}
+                      icon={<CheckCircleIcon className="h-5 w-5" />}
+                      className="ml-3"
+                    >
+                      {uploadingProfilePicture ? 'Uploading...' : 'Upload Picture'}
+                    </ProfileButton>
+                  )}
+                </div>
+
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                  <p className="text-sm text-blue-800">
+                    <InformationCircleIcon className="h-4 w-4 inline mr-1" />
+                    Upload a profile picture (JPEG, PNG, GIF, or WebP, max 5MB)
+                  </p>
+                </div>
+              </div>
+            </div>
+          </ProfileCard>
+        </ProfileSection>
+
+        {initialLoading ? (
+          <div className="space-y-8">
+            <ProfileCard title="Account Information">
+              <SkeletonCard contentLines={3} withHeader={false} />
+            </ProfileCard>
+            <ProfileCard title="Contact Information">
+              <SkeletonCard contentLines={6} withHeader={false} />
+            </ProfileCard>
+            <ProfileCard title="Business Information">
+              <SkeletonCard contentLines={4} withHeader={false} />
+            </ProfileCard>
+            <ProfileCard title="Security Settings">
+              <SkeletonCard contentLines={4} withHeader={false} />
+            </ProfileCard>
+          </div>
+        ) : error ? (
+          <ProfileCard>
+            <div className="text-center py-8">
+              <div className="text-red-500 mb-4">
+                <ExclamationTriangleIcon className="h-16 w-16 mx-auto" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">Error Loading Profile</h3>
+              <p className="text-gray-600 mb-6">{error}</p>
+              <ProfileButton
+                variant="primary"
+                onClick={() => window.location.reload()}
+              >
+                Try Again
+              </ProfileButton>
+            </div>
+          </ProfileCard>
+        ) : (
+          <>
+            {/* Document Upload Reminder */}
+            {profileData && profileData.documents &&
+              (!profileData.documents.businessPermitPath &&
+               !profileData.documents.birCertificatePath &&
+               !profileData.documents.governmentIdPath) && (
+              <ProfileAlert
+                type="warning"
+                message="Your business documents are missing. Please upload your business documents to complete your registration."
+                className="mb-6"
+              />
+            )}
+
+          {/* Account Information Section */}
+          <ProfileSection
+            title="Account Information"
+            subtitle="Read-only information for reference"
+          >
+            <ProfileCard>
+              <ProfileGrid cols={3}>
+                <ProfileField
+                  label="Business Name"
+                  value={profileData?.business_name || profileData?.name || 'Not available'}
+                  icon={<BuildingStorefrontIcon className="h-5 w-5" />}
+                />
+                <ProfileField
+                  label="Email Address"
+                  value={profileData?.email || 'Not available'}
+                  icon={<EnvelopeIcon className="h-5 w-5" />}
+                />
+                <ProfileField
+                  label="Phone Number"
+                  value={profileData?.business_phone || profileData?.phone || 'Not available'}
+                  icon={<PhoneIcon className="h-5 w-5" />}
+                />
+              </ProfileGrid>
+            </ProfileCard>
+          </ProfileSection>
+
+          {/* Business Information Section */}
+          <ProfileSection
+            title="Business Information"
+            subtitle="Update your business details and information"
+          >
+            <ProfileCard>
+              <form onSubmit={handleBusinessUpdate} className="space-y-6">
+                {businessSuccess && (
+                  <ProfileAlert
+                    type="success"
+                    message={businessSuccess}
+                    onClose={() => setBusinessSuccess('')}
+                  />
+                )}
+
+                <ProfileFormGroup
+                  title="Basic Information"
+                  subtitle="Essential business details"
+                >
+                  <ProfileInput
+                    label="Business Name"
                     value={businessInfo.businessName}
-                    onChange={(e) => setBusinessInfo({...businessInfo, businessName: e.target.value})}
-                    className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
+                    onChange={(value) => setBusinessInfo({...businessInfo, businessName: value})}
                     placeholder="Enter your business name"
                     required
+                    icon={<BuildingStorefrontIcon className="h-5 w-5" />}
                   />
-                </div>
 
-                <div>
-                  <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
-                    Business Description
-                  </label>
-                  <textarea
-                    id="description"
+                  <ProfileTextarea
+                    label="Business Description"
                     value={businessInfo.description}
-                    onChange={(e) => setBusinessInfo({...businessInfo, description: e.target.value})}
-                    rows={4}
-                    className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
+                    onChange={(value) => setBusinessInfo({...businessInfo, description: value})}
                     placeholder="Describe your cremation services, specialties, and what makes your business unique..."
+                    rows={4}
                   />
-                </div>
 
-                <div>
-                  <label htmlFor="hours" className="block text-sm font-medium text-gray-700 mb-1">
-                    Business Hours
-                  </label>
-                  <input
-                    type="text"
-                    id="hours"
+                  <ProfileInput
+                    label="Business Hours"
                     value={businessInfo.hours}
-                    onChange={(e) => setBusinessInfo({...businessInfo, hours: e.target.value})}
-                    className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
+                    onChange={(value) => setBusinessInfo({...businessInfo, hours: value})}
                     placeholder="e.g., Monday-Friday: 9AM-6PM, Saturday: 9AM-3PM"
                   />
-                </div>
+                </ProfileFormGroup>
 
-                <div className="pt-2">
-                  <button
+                <div className="flex justify-end pt-4 border-t border-gray-100">
+                  <ProfileButton
                     type="submit"
-                    className="px-4 py-2 bg-[var(--primary-green)] text-white rounded-lg hover:bg-opacity-90 transition-all duration-300"
+                    variant="primary"
+                    icon={<CheckCircleIcon className="h-5 w-5" />}
                   >
                     Update Business Information
-                  </button>
+                  </ProfileButton>
                 </div>
               </form>
-            </div>
-          </div>
+            </ProfileCard>
+          </ProfileSection>
 
-          {/* Contact Information Panel */}
-          <div className="lg:col-span-3 bg-white rounded-xl shadow-sm overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-200 flex items-center">
-              <UserIcon className="h-5 w-5 text-gray-500 mr-2" />
-              <h2 className="text-lg font-medium text-gray-800">Contact Information</h2>
-            </div>
-            <div className="p-6">
-              <form onSubmit={handleContactUpdate} className="space-y-4 max-w-xl">
+          {/* Contact Information Section */}
+          <ProfileSection
+            title="Contact Information"
+            subtitle="Update your personal contact details"
+          >
+            <ProfileCard>
+              <form onSubmit={handleContactUpdate} className="space-y-6">
                 {contactSuccess && (
-                  <div className="bg-green-50 text-green-800 p-3 rounded-lg flex items-start">
-                    <CheckCircleIcon className="h-5 w-5 text-green-500 mr-2 mt-0.5" />
-                    <p className="text-sm">{contactSuccess}</p>
-                  </div>
+                  <ProfileAlert
+                    type="success"
+                    message={contactSuccess}
+                    onClose={() => setContactSuccess('')}
+                  />
                 )}
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-1">
-                      First Name *
-                    </label>
-                    <input
-                      type="text"
-                      id="firstName"
+                <ProfileFormGroup
+                  title="Personal Details"
+                  subtitle="Your name and contact information"
+                >
+                  <ProfileGrid cols={2}>
+                    <ProfileInput
+                      label="First Name"
                       value={contactInfo.firstName}
-                      onChange={(e) => setContactInfo({...contactInfo, firstName: e.target.value})}
-                      className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
+                      onChange={(value) => setContactInfo({...contactInfo, firstName: value})}
                       required
+                      icon={<UserIcon className="h-5 w-5" />}
                     />
-                  </div>
-                  <div>
-                    <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-1">
-                      Last Name *
-                    </label>
-                    <input
-                      type="text"
-                      id="lastName"
+                    <ProfileInput
+                      label="Last Name"
                       value={contactInfo.lastName}
-                      onChange={(e) => setContactInfo({...contactInfo, lastName: e.target.value})}
-                      className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
+                      onChange={(value) => setContactInfo({...contactInfo, lastName: value})}
                       required
+                      icon={<UserIcon className="h-5 w-5" />}
+                    />
+                  </ProfileGrid>
+
+                  <ProfileInput
+                    label="Email Address"
+                    type="email"
+                    value={contactInfo.email}
+                    onChange={(value) => setContactInfo({...contactInfo, email: value})}
+                    required
+                    icon={<EnvelopeIcon className="h-5 w-5" />}
+                  />
+
+                  <div>
+                    <PhilippinePhoneInput
+                      id="phone"
+                      name="phone"
+                      label="Phone Number"
+                      value={contactInfo.phone}
+                      onChange={(value) => setContactInfo({...contactInfo, phone: value})}
+                      className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
                     />
                   </div>
-                </div>
+                </ProfileFormGroup>
 
-                <div>
-                  <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                    Email Address *
-                  </label>
-                  <input
-                    type="email"
-                    id="email"
-                    value={contactInfo.email}
-                    onChange={(e) => setContactInfo({...contactInfo, email: e.target.value})}
-                    className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <PhilippinePhoneInput
-                    id="phone"
-                    name="phone"
-                    label="Phone Number"
-                    value={contactInfo.phone}
-                    onChange={(value) => setContactInfo({...contactInfo, phone: value})}
-                    className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
-                  />
-                </div>
-
-                <div className="pt-2">
-                  <button
+                <div className="flex justify-end pt-4 border-t border-gray-100">
+                  <ProfileButton
                     type="submit"
-                    className="px-4 py-2 bg-[var(--primary-green)] text-white rounded-lg hover:bg-opacity-90 transition-all duration-300"
+                    variant="primary"
+                    icon={<CheckCircleIcon className="h-5 w-5" />}
                   >
                     Update Contact Information
-                  </button>
+                  </ProfileButton>
                 </div>
               </form>
-            </div>
-          </div>
+            </ProfileCard>
+          </ProfileSection>
 
-          {/* Change Password Panel */}
-          <div className="lg:col-span-3 bg-white rounded-xl shadow-sm overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-200 flex items-center">
-              <KeyIcon className="h-5 w-5 text-gray-500 mr-2" />
-              <h2 className="text-lg font-medium text-gray-800">Change Password</h2>
-            </div>
-            <div className="p-6">
-              <form onSubmit={handlePasswordChange} className="space-y-4 max-w-xl">
-                {passwordError && (
-                  <div className="bg-red-50 text-red-800 p-3 rounded-lg flex items-start">
-                    <XCircleIcon className="h-5 w-5 text-red-500 mr-2 mt-0.5" />
-                    <p className="text-sm">{passwordError}</p>
-                  </div>
-                )}
+          {/* Document Upload Section */}
+          <ProfileSection
+            title="Business Documents"
+            subtitle="Upload your business verification documents"
+          >
+            <ProfileCard>
+              {/* Document Upload Alert */}
+              {uploadError && (
+                <ProfileAlert
+                  type="error"
+                  message={uploadError}
+                  onClose={() => setUploadError('')}
+                  className="mb-6"
+                />
+              )}
 
-                {passwordSuccess && (
-                  <div className="bg-green-50 text-green-800 p-3 rounded-lg flex items-start">
-                    <CheckCircleIcon className="h-5 w-5 text-green-500 mr-2 mt-0.5" />
-                    <p className="text-sm">{passwordSuccess}</p>
-                  </div>
-                )}
-
-                <div>
-                  <label htmlFor="current-password" className="block text-sm font-medium text-gray-700 mb-1">
-                    Current Password
-                  </label>
-                  <input
-                    type="password"
-                    id="current-password"
-                    value={currentPassword}
-                    onChange={(e) => setCurrentPassword(e.target.value)}
-                    className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
-                    placeholder="Enter your current password"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="new-password" className="block text-sm font-medium text-gray-700 mb-1">
-                    New Password
-                  </label>
-                  <input
-                    type="password"
-                    id="new-password"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
-                    placeholder="Enter new password"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Password must be at least 8 characters long and include a mix of letters, numbers, and symbols.
-                  </p>
-                </div>
-
-                <div>
-                  <label htmlFor="confirm-password" className="block text-sm font-medium text-gray-700 mb-1">
-                    Confirm New Password
-                  </label>
-                  <input
-                    type="password"
-                    id="confirm-password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
-                    placeholder="Confirm new password"
-                  />
-                </div>
-
-                <div className="pt-2">
-                  <button
-                    type="submit"
-                    className="px-4 py-2 bg-[var(--primary-green)] text-white rounded-lg hover:bg-opacity-90 transition-all duration-300"
-                  >
-                    Update Password
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-
-          {/* Update Address Panel */}
-          <div className="lg:col-span-3 bg-white rounded-xl shadow-sm overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-200 flex items-center">
-              <BuildingStorefrontIcon className="h-5 w-5 text-gray-500 mr-2" />
-              <h2 className="text-lg font-medium text-gray-800">Business Address</h2>
-            </div>
-            <div className="p-6">
-              <form onSubmit={handleAddressUpdate} className="space-y-4 max-w-xl">
-                {addressSuccess && (
-                  <div className="bg-green-50 text-green-800 p-3 rounded-lg flex items-start">
-                    <CheckCircleIcon className="h-5 w-5 text-green-500 mr-2 mt-0.5" />
-                    <p className="text-sm">{addressSuccess}</p>
-                  </div>
-                )}
-
-                <div>
-                  <label htmlFor="street" className="block text-sm font-medium text-gray-700 mb-1">
-                    Business Address
-                  </label>
-                  <input
-                    type="text"
-                    id="street"
-                    value={address.street}
-                    onChange={(e) => setAddress({...address, street: e.target.value})}
-                    className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
-                    placeholder="Enter your complete business address"
-                  />
-                </div>
-
-                <div className="pt-2">
-                  <button
-                    type="submit"
-                    className="px-4 py-2 bg-[var(--primary-green)] text-white rounded-lg hover:bg-opacity-90 transition-all duration-300"
-                  >
-                    Update Address
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Documents Section */}
-      <div className="bg-white rounded-xl shadow-sm p-6 mb-8">
-        <div className="flex items-center mb-6">
-          <div className="bg-[var(--primary-green)] rounded-full p-2.5 mr-4">
-            <DocumentIcon className="h-6 w-6 text-white" />
-          </div>
-          <h2 className="text-xl font-semibold text-gray-800">Business Documents</h2>
-        </div>
-
-        <div className="flex items-center mb-6 p-4 bg-blue-50 rounded-lg border border-blue-100">
-          <InformationCircleIcon className="h-6 w-6 text-blue-500 mr-3 flex-shrink-0" />
-          <p className="text-sm text-blue-700">
-            Your business documents help us verify your cremation service. You can update these documents at any time.
-            After updating, they will be reviewed by our admin team.
-          </p>
-        </div>
-
-        {profileData && profileData.documents && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Business Permit Document */}
-            <div className="border-2 rounded-lg p-4 border-gray-200">
-              <h3 className="font-medium text-gray-800 mb-2">Business Permit</h3>
-              <div className="relative mb-3">
-                {profileData.documents.businessPermitPath ? (
-                  <div 
-                    className="h-32 bg-gray-100 rounded-md overflow-hidden cursor-pointer hover:opacity-90 transition-opacity"
-                    onClick={() => openPreviewModal(profileData.documents.businessPermitPath, 'Business Permit')}
-                  >
-                      <Image
-                        src={getImagePath(profileData.documents.businessPermitPath)}
-                        alt="Business Permit"
-                        width={400}
-                        height={128}
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          console.error('Failed to load Business Permit:', e.currentTarget.src);
-                          // If image fails to load, try with the API route directly
-                          const src = e.currentTarget.src;
-                          if (!src.includes('/api/image/')) {
-                            // Extract filename from path
-                            const filename = src.split('/').pop();
-                            e.currentTarget.src = `/api/image/documents/${userData?.user_id || '3'}/${filename}`;
-
-                            // Add a second error handler for the updated URL
-                            e.currentTarget.onerror = () => {
-                              // If it still fails, show document icon
-                              e.currentTarget.style.display = 'none';
-                              e.currentTarget.parentElement?.classList.add('flex', 'flex-col', 'items-center', 'justify-center');
-
-                              // Show fallback document icon
-                              const fallback = document.createElement('div');
-                              fallback.innerHTML = `
-                                <svg class="h-12 w-12 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                </svg>
-                                <span class="text-sm text-gray-500 mt-2">Document File</span>
-                              `;
-                              e.currentTarget.parentElement?.appendChild(fallback);
-                            };
-                          } else {
-                            // Not a relative path, show document icon
-                            e.currentTarget.style.display = 'none';
-                            e.currentTarget.parentElement?.classList.add('flex', 'flex-col', 'items-center', 'justify-center');
-
-                            // Show fallback document icon
-                            const fallback = document.createElement('div');
-                            fallback.innerHTML = `
-                              <svg class="h-12 w-12 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                              </svg>
-                              <span class="text-sm text-gray-500 mt-2">Document File</span>
-                            `;
-                            e.currentTarget.parentElement?.appendChild(fallback);
-                          }
-                        }}
+              {/* Current Documents Display */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                {/* Business Permit */}
+                <div className="space-y-3">
+                  <h4 className="font-medium text-gray-900 flex items-center">
+                    <BuildingStorefrontIcon className="h-5 w-5 mr-2 text-[var(--primary-green)]" />
+                    Business Permit
+                  </h4>
+                  {profileData?.documents?.businessPermitPath ? (
+                    <div className="relative">
+                      <div
+                        className="w-full h-32 bg-gray-100 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer hover:bg-gray-50"
+                        onClick={() => openPreviewModal(profileData.documents.businessPermitPath, 'Business Permit')}
+                      >
+                        <div className="text-center">
+                          <CheckCircleIcon className="h-8 w-8 text-green-500 mx-auto mb-2" />
+                          <p className="text-sm text-gray-600">Document Uploaded</p>
+                          <p className="text-xs text-gray-500">Click to view</p>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <input
+                        type="file"
+                        ref={fileInputRefs.businessPermit}
+                        onChange={(e) => handleFileChange(e, 'businessPermit')}
+                        className="hidden"
+                        accept=".pdf,.jpg,.jpeg,.png"
                       />
+                      <div
+                        className="w-full h-32 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer hover:bg-gray-100"
+                        onClick={() => triggerFileInput(fileInputRefs.businessPermit)}
+                      >
+                        <div className="text-center">
+                          <ArrowUpTrayIcon className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                          <p className="text-sm text-gray-600">Upload Business Permit</p>
+                          <p className="text-xs text-gray-500">PDF, JPG, PNG (Max 10MB)</p>
+                        </div>
+                      </div>
+                      {documents.businessPermit.preview && (
+                        <div className="flex items-center justify-between p-2 bg-green-50 rounded">
+                          <span className="text-sm text-green-700">File selected</span>
+                          <button
+                            onClick={() => handleRemoveFile('businessPermit')}
+                            className="text-red-500 hover:text-red-700"
+                          >
+                            <XMarkIcon className="h-4 w-4" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
 
-                  </div>
-                ) : (
-                  <div className="h-32 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-md">
-                    <DocumentIcon className="h-12 w-12 text-gray-400 mb-2" />
-                    <p className="text-sm text-gray-500">No document uploaded</p>
-                  </div>
-                )}
-              </div>
-              <button
-                onClick={() => profileData.documents.businessPermitPath && openPreviewModal(profileData.documents.businessPermitPath, 'Business Permit')}
-                disabled={!profileData.documents.businessPermitPath}
-                className={`w-full py-2 px-4 rounded-md text-center text-sm transition-colors ${
-                  profileData.documents.businessPermitPath
-                    ? 'bg-blue-100 text-blue-700 hover:bg-blue-200 cursor-pointer'
-                    : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                }`}
-              >
-                {profileData.documents.businessPermitPath ? 'View Document' : 'No Document'}
-              </button>
-            </div>
-
-            {/* BIR Certificate */}
-            <div className="border-2 rounded-lg p-4 border-gray-200">
-              <h3 className="font-medium text-gray-800 mb-2">BIR Certificate</h3>
-              <div className="relative mb-3">
-                {profileData.documents.birCertificatePath ? (
-                  <div 
-                    className="h-32 bg-gray-100 rounded-md overflow-hidden cursor-pointer hover:opacity-90 transition-opacity"
-                    onClick={() => openPreviewModal(profileData.documents.birCertificatePath, 'BIR Certificate')}
-                  >
-                      <Image
-                        src={getImagePath(profileData.documents.birCertificatePath)}
-                        alt="BIR Certificate"
-                        width={400}
-                        height={128}
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          console.error('Failed to load BIR Certificate:', e.currentTarget.src);
-                          // If image fails to load, try with the API route directly
-                          const src = e.currentTarget.src;
-                          if (!src.includes('/api/image/')) {
-                            // Extract filename from path
-                            const filename = src.split('/').pop();
-                            e.currentTarget.src = `/api/image/documents/${userData?.user_id || '3'}/${filename}`;
-
-                            // Add a second error handler for the updated URL
-                            e.currentTarget.onerror = () => {
-                              // If it still fails, show document icon
-                              e.currentTarget.style.display = 'none';
-                              e.currentTarget.parentElement?.classList.add('flex', 'flex-col', 'items-center', 'justify-center');
-
-                              // Show fallback document icon
-                              const fallback = document.createElement('div');
-                              fallback.innerHTML = `
-                                <svg class="h-12 w-12 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                </svg>
-                                <span class="text-sm text-gray-500 mt-2">Document File</span>
-                              `;
-                              e.currentTarget.parentElement?.appendChild(fallback);
-                            };
-                          } else {
-                            // Not a relative path, show document icon
-                            e.currentTarget.style.display = 'none';
-                            e.currentTarget.parentElement?.classList.add('flex', 'flex-col', 'items-center', 'justify-center');
-
-                            // Show fallback document icon
-                            const fallback = document.createElement('div');
-                            fallback.innerHTML = `
-                              <svg class="h-12 w-12 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                              </svg>
-                              <span class="text-sm text-gray-500 mt-2">Document File</span>
-                            `;
-                            e.currentTarget.parentElement?.appendChild(fallback);
-                          }
-                        }}
+                {/* BIR Certificate */}
+                <div className="space-y-3">
+                  <h4 className="font-medium text-gray-900 flex items-center">
+                    <DocumentIcon className="h-5 w-5 mr-2 text-[var(--primary-green)]" />
+                    BIR Certificate
+                  </h4>
+                  {profileData?.documents?.birCertificatePath ? (
+                    <div className="relative">
+                      <div
+                        className="w-full h-32 bg-gray-100 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer hover:bg-gray-50"
+                        onClick={() => openPreviewModal(profileData.documents.birCertificatePath, 'BIR Certificate')}
+                      >
+                        <div className="text-center">
+                          <CheckCircleIcon className="h-8 w-8 text-green-500 mx-auto mb-2" />
+                          <p className="text-sm text-gray-600">Document Uploaded</p>
+                          <p className="text-xs text-gray-500">Click to view</p>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <input
+                        type="file"
+                        ref={fileInputRefs.birCertificate}
+                        onChange={(e) => handleFileChange(e, 'birCertificate')}
+                        className="hidden"
+                        accept=".pdf,.jpg,.jpeg,.png"
                       />
+                      <div
+                        className="w-full h-32 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer hover:bg-gray-100"
+                        onClick={() => triggerFileInput(fileInputRefs.birCertificate)}
+                      >
+                        <div className="text-center">
+                          <ArrowUpTrayIcon className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                          <p className="text-sm text-gray-600">Upload BIR Certificate</p>
+                          <p className="text-xs text-gray-500">PDF, JPG, PNG (Max 10MB)</p>
+                        </div>
+                      </div>
+                      {documents.birCertificate.preview && (
+                        <div className="flex items-center justify-between p-2 bg-green-50 rounded">
+                          <span className="text-sm text-green-700">File selected</span>
+                          <button
+                            onClick={() => handleRemoveFile('birCertificate')}
+                            className="text-red-500 hover:text-red-700"
+                          >
+                            <XMarkIcon className="h-4 w-4" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
 
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-gray-300 rounded-md">
-                    <DocumentIcon className="h-12 w-12 text-gray-400 mb-2" />
-                    <p className="text-sm text-gray-500">No document uploaded</p>
-                  </div>
-                )}
-              </div>
-              <button
-                onClick={() => profileData.documents.birCertificatePath && openPreviewModal(profileData.documents.birCertificatePath, 'BIR Certificate')}
-                disabled={!profileData.documents.birCertificatePath}
-                className={`w-full py-2 px-4 rounded-md text-center text-sm transition-colors ${
-                  profileData.documents.birCertificatePath
-                    ? 'bg-blue-100 text-blue-700 hover:bg-blue-200 cursor-pointer'
-                    : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                }`}
-              >
-                {profileData.documents.birCertificatePath ? 'View Document' : 'No Document'}
-              </button>
-            </div>
-
-            {/* Government ID */}
-            <div className="border-2 rounded-lg p-4 border-gray-200">
-              <h3 className="font-medium text-gray-800 mb-2">Government ID</h3>
-              <div className="relative mb-3">
-                {profileData.documents.governmentIdPath ? (
-                  <div 
-                    className="h-32 bg-gray-100 rounded-md overflow-hidden cursor-pointer hover:opacity-90 transition-opacity"
-                    onClick={() => openPreviewModal(profileData.documents.governmentIdPath, 'Government ID')}
-                  >
-                      <Image
-                        src={getImagePath(profileData.documents.governmentIdPath)}
-                        alt="Government ID"
-                        width={400}
-                        height={128}
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          console.error('Failed to load Government ID:', e.currentTarget.src);
-                          // If image fails to load, try with the API route directly
-                          const src = e.currentTarget.src;
-                          if (!src.includes('/api/image/')) {
-                            // Extract filename from path
-                            const filename = src.split('/').pop();
-                            e.currentTarget.src = `/api/image/documents/${userData?.user_id || '3'}/${filename}`;
-
-                            // Add a second error handler for the updated URL
-                            e.currentTarget.onerror = () => {
-                              // If it still fails, show document icon
-                              e.currentTarget.style.display = 'none';
-                              e.currentTarget.parentElement?.classList.add('flex', 'flex-col', 'items-center', 'justify-center');
-
-                              // Show fallback document icon
-                              const fallback = document.createElement('div');
-                              fallback.innerHTML = `
-                                <svg class="h-12 w-12 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                </svg>
-                                <span class="text-sm text-gray-500 mt-2">Document File</span>
-                              `;
-                              e.currentTarget.parentElement?.appendChild(fallback);
-                            };
-                          } else {
-                            // Not a relative path, show document icon
-                            e.currentTarget.style.display = 'none';
-                            e.currentTarget.parentElement?.classList.add('flex', 'flex-col', 'items-center', 'justify-center');
-
-                            // Show fallback document icon
-                            const fallback = document.createElement('div');
-                            fallback.innerHTML = `
-                              <svg class="h-12 w-12 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                              </svg>
-                              <span class="text-sm text-gray-500 mt-2">Document File</span>
-                            `;
-                            e.currentTarget.parentElement?.appendChild(fallback);
-                          }
-                        }}
+                {/* Government ID */}
+                <div className="space-y-3">
+                  <h4 className="font-medium text-gray-900 flex items-center">
+                    <UserIcon className="h-5 w-5 mr-2 text-[var(--primary-green)]" />
+                    Government ID
+                  </h4>
+                  {profileData?.documents?.governmentIdPath ? (
+                    <div className="relative">
+                      <div
+                        className="w-full h-32 bg-gray-100 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer hover:bg-gray-50"
+                        onClick={() => openPreviewModal(profileData.documents.governmentIdPath, 'Government ID')}
+                      >
+                        <div className="text-center">
+                          <CheckCircleIcon className="h-8 w-8 text-green-500 mx-auto mb-2" />
+                          <p className="text-sm text-gray-600">Document Uploaded</p>
+                          <p className="text-xs text-gray-500">Click to view</p>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <input
+                        type="file"
+                        ref={fileInputRefs.governmentId}
+                        onChange={(e) => handleFileChange(e, 'governmentId')}
+                        className="hidden"
+                        accept=".pdf,.jpg,.jpeg,.png"
                       />
-
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-gray-300 rounded-md">
-                    <DocumentIcon className="h-12 w-12 text-gray-400 mb-2" />
-                    <p className="text-sm text-gray-500">No document uploaded</p>
-                  </div>
-                )}
+                      <div
+                        className="w-full h-32 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer hover:bg-gray-100"
+                        onClick={() => triggerFileInput(fileInputRefs.governmentId)}
+                      >
+                        <div className="text-center">
+                          <ArrowUpTrayIcon className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                          <p className="text-sm text-gray-600">Upload Government ID</p>
+                          <p className="text-xs text-gray-500">PDF, JPG, PNG (Max 10MB)</p>
+                        </div>
+                      </div>
+                      {documents.governmentId.preview && (
+                        <div className="flex items-center justify-between p-2 bg-green-50 rounded">
+                          <span className="text-sm text-green-700">File selected</span>
+                          <button
+                            onClick={() => handleRemoveFile('governmentId')}
+                            className="text-red-500 hover:text-red-700"
+                          >
+                            <XMarkIcon className="h-4 w-4" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
-              <button
-                onClick={() => profileData.documents.governmentIdPath && openPreviewModal(profileData.documents.governmentIdPath, 'Government ID')}
-                disabled={!profileData.documents.governmentIdPath}
-                className={`w-full py-2 px-4 rounded-md text-center text-sm transition-colors ${
-                  profileData.documents.governmentIdPath
-                    ? 'bg-blue-100 text-blue-700 hover:bg-blue-200 cursor-pointer'
-                    : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                }`}
-              >
-                {profileData.documents.governmentIdPath ? 'View Document' : 'No Document'}
-              </button>
-            </div>
-          </div>
+
+              {/* Upload Button */}
+              {(documents.businessPermit.file || documents.birCertificate.file || documents.governmentId.file) && (
+                <div className="flex justify-end pt-4 border-t border-gray-100">
+                  <ProfileButton
+                    variant="primary"
+                    onClick={handleDocumentsUpload}
+                    loading={uploading}
+                    icon={<ArrowUpTrayIcon className="h-5 w-5" />}
+                  >
+                    {uploading ? 'Uploading...' : 'Upload Documents'}
+                  </ProfileButton>
+                </div>
+              )}
+            </ProfileCard>
+          </ProfileSection>
+          </>
         )}
 
-        {/* Upload/Update Button */}
-        <div className="mt-6">
-          <button
-            onClick={() => showDocumentsModal()}
-            className="bg-[var(--primary-green)] hover:bg-[var(--primary-green-dark)] text-white py-2 px-4 rounded-md transition-colors"
-          >
-            Update Business Documents
-          </button>
-        </div>
-      </div>
-
-      {/* Document Upload Modal */}
-      {showDocumentModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b">
-              <div className="flex justify-between items-center">
-                <h2 className="text-xl font-semibold text-gray-800">Upload Business Documents</h2>
+        {/* Document Preview Modal */}
+        {showPreviewModal && previewImage && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg max-w-4xl max-h-[90vh] overflow-auto">
+              <div className="flex justify-between items-center p-4 border-b">
+                <h3 className="text-lg font-semibold">{previewImage.title}</h3>
                 <button
-                  onClick={hideDocumentsModal}
+                  onClick={closePreviewModal}
                   className="text-gray-500 hover:text-gray-700"
                 >
                   <XMarkIcon className="h-6 w-6" />
                 </button>
               </div>
-            </div>
-
-            <div className="p-6">
-              <div className="flex items-center mb-6 p-4 bg-blue-50 rounded-lg border border-blue-100">
-                <InformationCircleIcon className="h-6 w-6 text-blue-500 mr-3 flex-shrink-0" />
-                <p className="text-sm text-blue-700">
-                  These documents will be reviewed by our admin team to verify your business.
-                  Please upload clear, readable images or PDFs of your documents.
-                </p>
-              </div>
-
-              {uploadError && (
-                <div className="mb-6 p-4 bg-red-50 rounded-lg border border-red-100">
-                  <div className="flex items-center">
-                    <ExclamationTriangleIcon className="h-5 w-5 text-red-500 mr-2" />
-                    <p className="text-sm text-red-700">{uploadError}</p>
-                  </div>
-                </div>
-              )}
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {/* Business Permit Upload */}
-                <div className="border-2 rounded-lg p-4 border-gray-200">
-                  <h3 className="font-medium text-gray-800 mb-2">Business Permit</h3>
-
-                  <input
-                    type="file"
-                    ref={fileInputRefs.businessPermit}
-                    onChange={(e) => handleFileChange(e, 'businessPermit')}
-                    className="hidden"
-                    accept=".pdf,.jpg,.jpeg,.png"
-                  />
-
-                  {documents.businessPermit.preview ? (
-                    <div className="relative mb-3">
-                      <div className="w-full h-32 bg-gray-100 rounded-md overflow-hidden relative">
-                        {documents.businessPermit.preview.startsWith('data:image') ? (
-                          <Image 
-                            src={documents.businessPermit.preview} 
-                            alt="Business Permit Preview" 
-                            fill 
-                            className="object-cover"
-                            sizes="(max-width: 768px) 100vw, 33vw"
-                          />
-                        ) : (
-                          <div className="flex flex-col items-center justify-center h-full">
-                            <DocumentIcon className="h-8 w-8 text-gray-400 mb-1" />
-                            <span className="text-xs text-gray-500">PDF File</span>
-                          </div>
-                        )}
-                      </div>
-                      <button
-                        onClick={() => handleRemoveFile('businessPermit')}
-                        className="absolute top-2 right-2 bg-white rounded-full p-1 shadow-md hover:bg-gray-50"
-                      >
-                        <XMarkIcon className="h-4 w-4 text-gray-500" />
-                      </button>
-                    </div>
-                  ) : (
-                    <div
-                      onClick={() => triggerFileInput(fileInputRefs.businessPermit)}
-                      className="border-2 border-dashed border-gray-300 rounded-md p-4 text-center cursor-pointer mb-3 hover:bg-gray-50 transition-colors"
-                    >
-                      <ArrowUpTrayIcon className="h-8 w-8 mx-auto text-gray-400 mb-2" />
-                      <p className="text-sm text-gray-500">Click to upload</p>
-                      <p className="text-xs text-gray-400 mt-1">PDF, JPG, or PNG</p>
-                    </div>
-                  )}
-                </div>
-
-                {/* BIR Certificate Upload */}
-                <div className="border-2 rounded-lg p-4 border-gray-200">
-                  <h3 className="font-medium text-gray-800 mb-2">BIR Certificate</h3>
-
-                  <input
-                    type="file"
-                    ref={fileInputRefs.birCertificate}
-                    onChange={(e) => handleFileChange(e, 'birCertificate')}
-                    className="hidden"
-                    accept=".pdf,.jpg,.jpeg,.png"
-                  />
-
-                  {documents.birCertificate.preview ? (
-                    <div className="relative mb-3">
-                      <div className="w-full h-32 bg-gray-100 rounded-md overflow-hidden relative">
-                        {documents.birCertificate.preview.startsWith('data:image') ? (
-                          <Image 
-                            src={documents.birCertificate.preview} 
-                            alt="BIR Certificate Preview" 
-                            fill 
-                            className="object-cover"
-                            sizes="(max-width: 768px) 100vw, 33vw"
-                          />
-                        ) : (
-                          <div className="flex flex-col items-center justify-center h-full">
-                            <DocumentIcon className="h-8 w-8 text-gray-400 mb-1" />
-                            <span className="text-xs text-gray-500">PDF File</span>
-                          </div>
-                        )}
-                      </div>
-                      <button
-                        onClick={() => handleRemoveFile('birCertificate')}
-                        className="absolute top-2 right-2 bg-white rounded-full p-1 shadow-md hover:bg-gray-50"
-                      >
-                        <XMarkIcon className="h-4 w-4 text-gray-500" />
-                      </button>
-                    </div>
-                  ) : (
-                    <div
-                      onClick={() => triggerFileInput(fileInputRefs.birCertificate)}
-                      className="border-2 border-dashed border-gray-300 rounded-md p-4 text-center cursor-pointer mb-3 hover:bg-gray-50 transition-colors"
-                    >
-                      <ArrowUpTrayIcon className="h-8 w-8 mx-auto text-gray-400 mb-2" />
-                      <p className="text-sm text-gray-500">Click to upload</p>
-                      <p className="text-xs text-gray-400 mt-1">PDF, JPG, or PNG</p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Government ID Upload */}
-                <div className="border-2 rounded-lg p-4 border-gray-200">
-                  <h3 className="font-medium text-gray-800 mb-2">Government ID</h3>
-
-                  <input
-                    type="file"
-                    ref={fileInputRefs.governmentId}
-                    onChange={(e) => handleFileChange(e, 'governmentId')}
-                    className="hidden"
-                    accept=".pdf,.jpg,.jpeg,.png"
-                  />
-
-                  {documents.governmentId.preview ? (
-                    <div className="relative mb-3">
-                      <div className="w-full h-32 bg-gray-100 rounded-md overflow-hidden relative">
-                        {documents.governmentId.preview.startsWith('data:image') ? (
-                          <Image 
-                            src={documents.governmentId.preview} 
-                            alt="Government ID Preview" 
-                            fill 
-                            className="object-cover"
-                            sizes="(max-width: 768px) 100vw, 33vw"
-                          />
-                        ) : (
-                          <div className="flex flex-col items-center justify-center h-full">
-                            <DocumentIcon className="h-8 w-8 text-gray-400 mb-1" />
-                            <span className="text-xs text-gray-500">PDF File</span>
-                          </div>
-                        )}
-                      </div>
-                      <button
-                        onClick={() => handleRemoveFile('governmentId')}
-                        className="absolute top-2 right-2 bg-white rounded-full p-1 shadow-md hover:bg-gray-50"
-                      >
-                        <XMarkIcon className="h-4 w-4 text-gray-500" />
-                      </button>
-                    </div>
-                  ) : (
-                    <div
-                      onClick={() => triggerFileInput(fileInputRefs.governmentId)}
-                      className="border-2 border-dashed border-gray-300 rounded-md p-4 text-center cursor-pointer mb-3 hover:bg-gray-50 transition-colors"
-                    >
-                      <ArrowUpTrayIcon className="h-8 w-8 mx-auto text-gray-400 mb-2" />
-                      <p className="text-sm text-gray-500">Click to upload</p>
-                      <p className="text-xs text-gray-400 mt-1">PDF, JPG, or PNG</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <div className="p-6 border-t bg-gray-50">
-              <div className="flex justify-end gap-3">
-                <button
-                  onClick={hideDocumentsModal}
-                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-100"
-                  disabled={uploading}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleDocumentsUpload}
-                  className="px-4 py-2 bg-[var(--primary-green)] hover:bg-[var(--primary-green-dark)] text-white rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
-                  disabled={uploading}
-                >
-                  {uploading ? (
-                    <>
-                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      Uploading...
-                    </>
-                  ) : 'Upload Documents'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Document Preview Modal */}
-      {showPreviewModal && previewImage && (
-        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
-          <div className="relative bg-white rounded-lg max-w-4xl max-h-[90vh] w-full overflow-hidden">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between p-4 border-b border-gray-200">
-              <h3 className="text-lg font-medium text-gray-900">{previewImage.title}</h3>
-              <button
-                onClick={closePreviewModal}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <XMarkIcon className="h-6 w-6" />
-              </button>
-            </div>
-            
-            {/* Modal Content */}
-            <div className="p-4 overflow-auto max-h-[calc(90vh-80px)]">
-              <div className="flex justify-center">
+              <div className="p-4">
                 <Image
                   src={previewImage.url}
                   alt={previewImage.title}
                   width={800}
                   height={600}
-                  className="max-w-full h-auto rounded-lg shadow-lg"
-                  onError={(e) => {
-                    // Show error message if image fails to load
-                    const container = e.currentTarget.parentElement;
-                    if (container) {
-                      container.innerHTML = `
-                        <div class="flex flex-col items-center justify-center p-8 text-gray-500">
-                          <svg class="h-16 w-16 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                          </svg>
-                          <p class="text-lg font-medium">Unable to load document</p>
-                          <p class="text-sm text-gray-400">The document file could not be found or loaded.</p>
-                        </div>
-                      `;
-                    }
-                  }}
+                  className="max-w-full h-auto"
+                  style={{ objectFit: 'contain' }}
                 />
               </div>
             </div>
-            
-            {/* Modal Footer */}
-            <div className="flex justify-end p-4 border-t border-gray-200 bg-gray-50">
-              <button
-                onClick={closePreviewModal}
-                className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
-              >
-                Close
-              </button>
-            </div>
           </div>
-        </div>
-      )}
+        )}
+      </ProfileLayout>
     </CremationDashboardLayout>
   );
 }

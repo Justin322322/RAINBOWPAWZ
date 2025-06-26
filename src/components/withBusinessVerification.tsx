@@ -221,10 +221,19 @@ const withBusinessVerification = <P extends object>(
 
         } catch (error) {
           console.error('[withBusinessVerification] Error checking business verification:', error);
-          // Clear any stale auth data before redirecting
-          clearBusinessVerificationCache();
-          globalBusinessAuthState = { verified: false, userData: null };
-          router.push('/');
+
+          // Check if this is a logout scenario or intentional navigation away
+          const isLogoutScenario = typeof window !== 'undefined' &&
+                                  (window.location.pathname === '/' ||
+                                   document.cookie.indexOf('auth_token') === -1);
+
+          // Only show errors and redirect if not in logout scenario
+          if (!isLogoutScenario) {
+            // Clear any stale auth data before redirecting
+            clearBusinessVerificationCache();
+            globalBusinessAuthState = { verified: false, userData: null };
+            router.push('/');
+          }
         } finally {
           setIsLoading(false);
         }

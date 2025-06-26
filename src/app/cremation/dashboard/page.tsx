@@ -168,7 +168,7 @@ function CremationDashboardPage({ userData }: { userData: any }) {
   return (
     <CremationDashboardLayout activePage="dashboard" userData={userData}>
       {/* Header section */}
-      <div className="mb-8 bg-white rounded-xl shadow-sm p-6">
+      <div className="mb-8 bg-white rounded-xl shadow-md border border-gray-100 p-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
           <div>
             <h1 className="text-2xl font-semibold text-gray-800">Dashboard</h1>
@@ -194,7 +194,7 @@ function CremationDashboardPage({ userData }: { userData: any }) {
           ))
         ) : error ? (
           // Error state - exact same as admin
-          <div className="col-span-4 bg-white rounded-xl shadow-sm p-6">
+          <div className="col-span-4 bg-white rounded-xl shadow-md border border-gray-100 p-6">
             <div className="flex items-center justify-center">
               <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-red-100 text-red-600 mb-4">
                 <ExclamationCircleIcon className="h-6 w-6" />
@@ -243,7 +243,7 @@ function CremationDashboardPage({ userData }: { userData: any }) {
       {/* Main Content Grid - 2x2 Equal Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6 mb-8">
         {/* Recent Bookings */}
-        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+        <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
             <h2 className="text-lg font-medium text-gray-800">Recent Bookings</h2>
             <button
@@ -321,7 +321,7 @@ function CremationDashboardPage({ userData }: { userData: any }) {
         </div>
 
         {/* Recent Reviews */}
-        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+        <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
             <h2 className="text-lg font-medium text-gray-800">Recent Reviews</h2>
             <button
@@ -372,7 +372,7 @@ function CremationDashboardPage({ userData }: { userData: any }) {
         </div>
 
         {/* Availability Calendar */}
-        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+        <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
             <h2 className="text-lg font-medium text-gray-800">Manage Availability</h2>
             <button
@@ -436,7 +436,7 @@ function CremationDashboardPage({ userData }: { userData: any }) {
         </div>
 
         {/* Service Packages */}
-        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+        <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-200">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-medium text-gray-800">Your Service Packages</h2>
