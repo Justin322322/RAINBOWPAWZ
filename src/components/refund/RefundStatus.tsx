@@ -151,20 +151,23 @@ export default function RefundStatus({
 
           {/* Processing timeline for different statuses */}
           {status === REFUND_STATUS.PROCESSING && (
-            <div className="mt-3 text-xs text-blue-600">
-              <p>⏱️ Processing time: 5-10 business days for GCash payments</p>
+            <div className="mt-3 text-xs text-blue-600 flex items-center">
+              <ClockIcon className="h-3 w-3 mr-1" />
+              <p>Processing time: 5-10 business days for GCash payments</p>
             </div>
           )}
 
           {status === REFUND_STATUS.PROCESSED && (
-            <div className="mt-3 text-xs text-green-600">
-              <p>✅ Refund completed successfully</p>
+            <div className="mt-3 text-xs text-green-600 flex items-center">
+              <CheckCircleIcon className="h-3 w-3 mr-1" />
+              <p>Refund completed successfully</p>
             </div>
           )}
 
           {status === REFUND_STATUS.FAILED && (
-            <div className="mt-3 text-xs text-red-600">
-              <p>❌ Please contact support for assistance</p>
+            <div className="mt-3 text-xs text-red-600 flex items-center">
+              <XCircleIcon className="h-3 w-3 mr-1" />
+              <p>Please contact support for assistance</p>
             </div>
           )}
         </div>

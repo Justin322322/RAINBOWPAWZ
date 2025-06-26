@@ -17,7 +17,7 @@ export async function ensureAdminLogsTable(): Promise<boolean> {
       await query(`
         CREATE TABLE admin_logs (
           id INT AUTO_INCREMENT PRIMARY KEY,
-          admin_id INT,
+          admin_id INT NOT NULL,
           action VARCHAR(100) NOT NULL,
           entity_type VARCHAR(50) NOT NULL,
           entity_id INT NOT NULL,

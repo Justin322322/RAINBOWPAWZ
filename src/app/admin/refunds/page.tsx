@@ -364,37 +364,108 @@ function AdminRefundsPage() {
         <Modal
           isOpen={showDetailsModal}
           onClose={() => setShowDetailsModal(false)}
-          title={`Refund Details - Booking #${selectedRefund?.booking_id}`}
+          title="Refund Request Details"
+          size="small"
         >
           {selectedRefund && (
             <div className="space-y-6">
-              <RefundStatus
-                status={selectedRefund.status}
-                amount={selectedRefund.amount}
-                reason={selectedRefund.reason}
-                createdAt={selectedRefund.created_at}
-                updatedAt={selectedRefund.updated_at}
-                transactionId={selectedRefund.transaction_id}
-                notes={selectedRefund.notes}
-              />
+              {/* Refund Summary Header */}
+              <div className="bg-gray-50 rounded-lg p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    Booking #{selectedRefund.booking_id}
+                  </h3>
+                  <span className="text-lg font-bold text-[var(--primary-green)]">
+                    ₱{parseFloat(selectedRefund.amount.toString()).toFixed(2)}
+                  </span>
+                </div>
+                <p className="text-sm text-gray-600">
+                  Refund request for {selectedRefund.pet_name}&apos;s cremation service
+                </p>
+              </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                <div>
-                  <h4 className="font-medium text-gray-900 mb-2">Customer Information</h4>
-                  <div className="space-y-1 text-gray-600">
-                    <p><span className="font-medium">Name:</span> {selectedRefund.user_name}</p>
-                    <p><span className="font-medium">Email:</span> {selectedRefund.user_email}</p>
+              {/* Status Section */}
+              <div>
+                <h4 className="text-sm font-medium text-gray-700 mb-3">Current Status</h4>
+                <RefundStatus
+                  status={selectedRefund.status}
+                  amount={selectedRefund.amount}
+                  reason={selectedRefund.reason}
+                  createdAt={selectedRefund.created_at}
+                  updatedAt={selectedRefund.updated_at}
+                  transactionId={selectedRefund.transaction_id}
+                  notes={selectedRefund.notes}
+                />
+              </div>
+
+              {/* Customer Information */}
+              <div>
+                <h4 className="text-sm font-medium text-gray-700 mb-3">Customer Information</h4>
+                <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Customer Name</span>
+                    <span className="text-sm font-medium text-gray-900">{selectedRefund.user_name}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Email Address</span>
+                    <span className="text-sm font-medium text-gray-900">{selectedRefund.user_email}</span>
                   </div>
                 </div>
+              </div>
 
-                <div>
-                  <h4 className="font-medium text-gray-900 mb-2">Booking Information</h4>
-                  <div className="space-y-1 text-gray-600">
-                    <p><span className="font-medium">Pet:</span> {selectedRefund.pet_name}</p>
-                    <p><span className="font-medium">Date:</span> {selectedRefund.booking_date}</p>
-                    <p><span className="font-medium">Time:</span> {selectedRefund.booking_time}</p>
-                    <p><span className="font-medium">Payment Method:</span> {selectedRefund.payment_method?.toUpperCase()}</p>
+              {/* Booking Details */}
+              <div>
+                <h4 className="text-sm font-medium text-gray-700 mb-3">Booking Details</h4>
+                <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Pet Name</span>
+                    <span className="text-sm font-medium text-gray-900">{selectedRefund.pet_name}</span>
                   </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Service Date</span>
+                    <span className="text-sm font-medium text-gray-900">
+                      {selectedRefund.booking_date ? format(new Date(selectedRefund.booking_date), 'MMM dd, yyyy') : 'N/A'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Service Time</span>
+                    <span className="text-sm font-medium text-gray-900">{selectedRefund.booking_time}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Payment Method</span>
+                    <span className="text-sm font-medium text-gray-900">
+                      {selectedRefund.payment_method?.toUpperCase() || 'N/A'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Request Timeline */}
+              <div>
+                <h4 className="text-sm font-medium text-gray-700 mb-3">Request Timeline</h4>
+                <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Request Submitted</span>
+                    <span className="text-sm font-medium text-gray-900">
+                      {format(new Date(selectedRefund.created_at), 'MMM dd, yyyy \'at\' h:mm a')}
+                    </span>
+                  </div>
+                  {selectedRefund.updated_at && selectedRefund.updated_at !== selectedRefund.created_at && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">Last Updated</span>
+                      <span className="text-sm font-medium text-gray-900">
+                        {format(new Date(selectedRefund.updated_at), 'MMM dd, yyyy \'at\' h:mm a')}
+                      </span>
+                    </div>
+                  )}
+                  {selectedRefund.transaction_id && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">Transaction ID</span>
+                      <span className="text-sm font-medium text-gray-900 font-mono">
+                        {selectedRefund.transaction_id}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

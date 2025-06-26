@@ -15,6 +15,7 @@ import Link from 'next/link';
 import withAdminAuth from '@/components/withAdminAuth';
 import StatCard from '@/components/ui/StatCard';
 import { Skeleton, SkeletonText, SkeletonCard } from '@/components/ui/SkeletonLoader';
+import LogAnalytics from '@/components/admin/LogAnalytics';
 
 function AdminDashboardPage({ adminData }: { adminData: any }) {
   const userName = adminData?.full_name || 'System Administrator';
@@ -498,6 +499,11 @@ function AdminDashboardPage({ adminData }: { adminData: any }) {
             </>
           )}
         </div>
+      </div>
+
+      {/* System Activity Analytics */}
+      <div className="mb-8">
+        <LogAnalytics />
       </div>
     </AdminDashboardLayout>
   );

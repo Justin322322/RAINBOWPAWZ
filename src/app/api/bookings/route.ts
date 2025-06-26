@@ -187,7 +187,7 @@ export async function GET(request: NextRequest) {
           if (booking.provider_id) {
             try {
               const providerResult = await query(`
-                SELECT name, address, city
+                SELECT name, address
                 FROM service_providers
                 WHERE provider_id = ?
                 LIMIT 1
@@ -195,10 +195,7 @@ export async function GET(request: NextRequest) {
 
               if (providerResult && providerResult.length > 0) {
                 providerName = providerResult[0].name;
-                providerAddress = providerResult[0].address;
-                if (providerResult[0].city) {
-                  providerAddress += `, ${providerResult[0].city}`;
-                }
+                providerAddress = providerResult[0].address || 'Provider Address';
               }
             } catch (providerError) {
               // If provider query fails, use default values
@@ -563,18 +560,15 @@ export async function GET(request: NextRequest) {
                 if (booking.provider_id) {
                   try {
                     const providerResult = await query(`
-                      SELECT name, address, city
+                      SELECT name, address
                       FROM service_providers
-                      WHERE id = ?
+                      WHERE provider_id = ?
                       LIMIT 1
                     `, [booking.provider_id]) as any[];
 
                     if (providerResult && providerResult.length > 0) {
                       providerName = providerResult[0].name;
-                      providerAddress = providerResult[0].address;
-                      if (providerResult[0].city) {
-                        providerAddress += `, ${providerResult[0].city}`;
-                      }
+                      providerAddress = providerResult[0].address || 'Provider Address';
                     }
                   } catch (providerError) {
                     // If provider query fails, use default values
@@ -691,18 +685,15 @@ export async function GET(request: NextRequest) {
         if (booking.provider_id && (!booking.provider_name || booking.provider_name === 'Service Provider')) {
           try {
             const providerResult = await query(`
-              SELECT name, address, city
+              SELECT name, address
               FROM service_providers
-              WHERE id = ?
+              WHERE provider_id = ?
               LIMIT 1
             `, [booking.provider_id]) as any[];
 
             if (providerResult && providerResult.length > 0) {
               providerName = providerResult[0].name;
-              providerAddress = providerResult[0].address;
-              if (providerResult[0].city) {
-                providerAddress += `, ${providerResult[0].city}`;
-              }
+              providerAddress = providerResult[0].address || 'Provider Address';
             }
           } catch (providerError) {
             // If provider query fails, use default values

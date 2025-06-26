@@ -16,7 +16,8 @@ import {
   CurrencyDollarIcon,
   UsersIcon,
   ArrowRightOnRectangleIcon,
-  BellIcon
+  BellIcon,
+  DocumentTextIcon
 } from '@heroicons/react/24/outline';
 import LogoutModal from '@/components/LogoutModal';
 import NotificationBell from '@/components/ui/NotificationBell';
@@ -123,6 +124,12 @@ export default function AdminNavbar({ activePage: propActivePage, userName = 'Ad
       href: '/admin/refunds',
       icon: CurrencyDollarIcon,
       id: 'refunds'
+    },
+    {
+      name: 'Activity Monitor',
+      href: '/admin/logs',
+      icon: DocumentTextIcon,
+      id: 'logs'
     }
   ];
 

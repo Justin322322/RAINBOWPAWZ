@@ -12,7 +12,8 @@ import {
   UserIcon,
   UsersIcon,
   StarIcon,
-  CurrencyDollarIcon
+  CurrencyDollarIcon,
+  DocumentTextIcon
 } from '@heroicons/react/24/outline';
 
 interface AdminSidebarProps {
@@ -58,6 +59,12 @@ export default function AdminSidebar({ activePage: propActivePage }: AdminSideba
       href: '/admin/refunds',
       icon: CurrencyDollarIcon,
       id: 'refunds'
+    },
+    {
+      name: 'Activity Monitor',
+      href: '/admin/logs',
+      icon: DocumentTextIcon,
+      id: 'logs'
     }
   ];
 

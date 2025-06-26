@@ -82,6 +82,35 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [successBookingId, setSuccessBookingId] = useState<string | null>(null);
 
+  // Debug userData and track loading state
+  const [userDataLoaded, setUserDataLoaded] = useState(false);
+  const [currentUserData, setCurrentUserData] = useState<any>(null);
+
+  useEffect(() => {
+    console.log('🔍 [BookingsPage] userData received:', userData);
+    console.log('🔍 [BookingsPage] userData.id:', userData?.id);
+    console.log('🔍 [BookingsPage] userData.user_id:', userData?.user_id);
+    console.log('🔍 [BookingsPage] userData type:', typeof userData);
+
+    if (userData && (userData.id || userData.user_id)) {
+      setUserDataLoaded(true);
+      setCurrentUserData(userData);
+    } else {
+      // Try to get user data from session storage as fallback
+      const cachedUserData = sessionStorage.getItem('user_data');
+      if (cachedUserData) {
+        try {
+          const parsedData = JSON.parse(cachedUserData);
+          console.log('🔍 [BookingsPage] Using cached userData:', parsedData);
+          setCurrentUserData(parsedData);
+          setUserDataLoaded(true);
+        } catch (error) {
+          console.error('Error parsing cached user data:', error);
+        }
+      }
+    }
+  }, [userData]);
+
   // Check for success parameter in URL
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -709,7 +738,7 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
             bookings.map((booking) => (
               <motion.div
                 key={booking.id}
-                className="bg-white border border-gray-100 rounded-xl shadow-md hover:shadow-lg transition-shadow duration-200 overflow-hidden"
+                className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4 }}
@@ -822,7 +851,7 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
                         variant="outline"
                       />
                     )}
-                    {booking.status === 'completed' && !reviewedBookingIds.includes(booking.id) && userData?.id && (
+                    {booking.status === 'completed' && !reviewedBookingIds.includes(booking.id) && (currentUserData?.id || currentUserData?.user_id) && (
                       <button
                         onClick={() => {
                           setSelectedBooking(booking);
@@ -882,371 +911,540 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
                 leaveFrom="opacity-100 scale-100"
                 leaveTo="opacity-0 scale-95"
               >
-                <Dialog.Panel className="w-full max-w-4xl transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all max-h-[90vh] overflow-y-auto">
+                <Dialog.Panel className="w-full max-w-4xl transform overflow-hidden rounded-2xl bg-white text-left align-middle shadow-xl transition-all max-h-[90vh] overflow-y-auto">
                   {selectedBooking && (
                     <>
-                      <Dialog.Title
-                        as="h3"
-                        className="text-lg font-medium leading-6 text-gray-900 border-b pb-3 mb-4"
-                      >
-                        Booking Details
-                      </Dialog.Title>
-
-                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <div>
-                          <h4 className="text-sm font-medium text-gray-500 mb-2">Service Information</h4>
-                          <div className="bg-gray-50 p-4 rounded-lg">
-                            <p className="text-lg font-semibold text-gray-900 mb-1">{selectedBooking.service_name}</p>
-                            <p className="text-sm text-gray-600 mb-3">{selectedBooking.service_description}</p>
-                            <div className="flex flex-col space-y-1">
-                              <div className="flex justify-between">
-                                <p className="text-sm text-gray-600">Service Price:</p>
-                                <p className="text-sm font-medium text-gray-900">
-                                  ₱{((selectedBooking.service_price || selectedBooking.price || 0) as number).toLocaleString()}
-                                </p>
-                              </div>
-
-                              {/* Add-ons Section */}
-                              {(selectedBooking as any).extras && Array.isArray((selectedBooking as any).extras) && (selectedBooking as any).extras.length > 0 && (
-                                <>
-                                  <div className="mt-2 mb-1">
-                                    <p className="text-sm text-gray-600 font-medium">Add-ons:</p>
-                                  </div>
-                                  {(selectedBooking as any).extras.map((addon: any, index: number) => (
-                                    <div key={index} className="flex justify-between pl-4">
-                                      <p className="text-sm text-gray-600">{addon.name}</p>
-                                      <p className="text-sm font-medium text-gray-900">
-                                        ₱{parseFloat(addon.price).toLocaleString()}
-                                      </p>
-                                    </div>
-                                  ))}
-                                  <div className="flex justify-between pl-2 mt-1">
-                                    <p className="text-sm text-gray-600">Add-ons Subtotal:</p>
-                                    <p className="text-sm font-medium text-gray-900">
-                                      ₱{((selectedBooking as any).extras_total || (selectedBooking as any).extras?.reduce((sum: number, item: any) => sum + Number(item.price), 0) || 0).toLocaleString()}
-                                    </p>
-                                  </div>
-                                </>
-                              )}
-
-                              {selectedBooking.delivery_fee && selectedBooking.delivery_fee > 0 && (
-                                <div className="flex justify-between">
-                                  <p className="text-sm text-gray-600">Delivery Fee:</p>
-                                  <p className="text-sm font-medium text-gray-900">
-                                    ₱{selectedBooking.delivery_fee.toLocaleString()}
-                                  </p>
-                                </div>
-                              )}
-
-                              <div className="flex justify-between pt-3 border-t border-gray-300 mt-2">
-                                <p className="text-base font-semibold text-gray-900">Total Amount:</p>
-                                <p className="text-xl font-bold text-[var(--primary-green)]">
-                                  ₱{(
-                                     Number(selectedBooking.total_amount || 0) ||
-                                     (Number(selectedBooking.service_price || selectedBooking.price || 0) +
-                                      Number((selectedBooking as any).extras_total || 0) +
-                                      Number(selectedBooking.delivery_fee || 0))
-                                  ).toLocaleString()}
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-
-                          <h4 className="text-sm font-medium text-gray-500 mt-4 mb-2">Provider Information</h4>
-                          <div className="bg-gray-50 p-4 rounded-lg">
-                            <p className="text-lg font-semibold text-gray-900 mb-1">
-                              {selectedBooking.provider_name && selectedBooking.provider_name !== 'Service Provider'
-                                ? selectedBooking.provider_name
-                                : (selectedBooking.provider_name || 'Service Provider')}
+                      {/* Header */}
+                      <div className="px-6 py-4 border-b border-gray-200 bg-gray-50 rounded-t-2xl">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <Dialog.Title
+                              as="h1"
+                              className="text-xl font-semibold text-gray-900"
+                            >
+                              Booking Details
+                            </Dialog.Title>
+                            <p className="text-sm text-gray-600 mt-1">
+                              Booking #{selectedBooking.id} • {formatDateTime(selectedBooking.booking_date, selectedBooking.booking_time)}
                             </p>
-                            {selectedBooking.provider_address &&
-                             selectedBooking.provider_address !== 'Service Address' &&
-                             selectedBooking.provider_address !== 'Provider Address' ? (
-                              <div className="flex items-start mt-2">
-                                <MapPinIcon className="h-5 w-5 text-gray-400 mt-0.5 flex-shrink-0" />
-                                <p className="ml-2 text-sm text-gray-600">{selectedBooking.provider_address}</p>
-                              </div>
-                            ) : (
-                              <p className="mt-2 text-sm text-gray-600 italic">Address information not available</p>
-                            )}
                           </div>
-
-                          {(selectedBooking.payment_method || selectedBooking.delivery_option) && (
-                            <>
-                              <h4 className="text-sm font-medium text-gray-500 mt-4 mb-2">Delivery & Payment</h4>
-                              <div className="bg-gray-50 p-4 rounded-lg">
-                                {selectedBooking.delivery_option && (
-                                  <div className="mb-3">
-                                    <p className="text-sm text-gray-600 mb-1">Delivery Option</p>
-                                    <p className="text-base font-medium text-gray-900 capitalize">
-                                      {selectedBooking.delivery_option}
-                                    </p>
-
-                                    {selectedBooking.delivery_option === 'delivery' && selectedBooking.delivery_address && (
-                                      <div className="mt-2">
-                                        <p className="text-sm text-gray-600 mb-1">Delivery Address</p>
-                                        <p className="text-sm text-gray-900">{selectedBooking.delivery_address}</p>
-
-                                        {selectedBooking.delivery_distance && selectedBooking.delivery_distance > 0 && (
-                                          <p className="text-xs text-gray-500 mt-1">
-                                            Distance: {selectedBooking.delivery_distance.toFixed(1)} km
-                                          </p>
-                                        )}
-                                      </div>
-                                    )}
-                                  </div>
-                                )}
-
-                                {selectedBooking.payment_method && (
-                                  <div className="mb-3">
-                                    <p className="text-sm text-gray-600 mb-1">Payment Method</p>
-                                    <div className="flex items-center">
-                                      {selectedBooking.payment_method === 'cash' ? (
-                                        <BanknotesIcon className="h-5 w-5 text-gray-400 mr-2" />
-                                      ) : (
-                                        <CreditCardIcon className="h-5 w-5 text-gray-400 mr-2" />
-                                      )}
-                                      <p className="text-base font-medium text-gray-900 capitalize">
-                                        {selectedBooking.payment_method}
-                                      </p>
-                                    </div>
-                                  </div>
-                                )}
-
-                                {selectedBooking.payment_status && (
-                                  <div>
-                                    <p className="text-sm text-gray-600 mb-1">Payment Status</p>
-                                    <div className="flex items-center">
-                                      <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${getPaymentStatusClass(selectedBooking.payment_status)}`}>
-                                        <div className="flex items-center">
-                                          {getPaymentStatusIcon(selectedBooking.payment_status)}
-                                          <span className="ml-1 capitalize">{selectedBooking.payment_status.replace('_', ' ')}</span>
-                                        </div>
-                                      </span>
-                                    </div>
-
-                                    {selectedBooking.payment_method === 'gcash' && selectedBooking.payment_status === 'paid' && (
-                                      <p className="text-xs text-green-600 mt-2">
-                                        GCash payments are automatically marked as paid
-                                      </p>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-                            </>
-                          )}
-                        </div>
-
-                        <div>
-                          <h4 className="text-sm font-medium text-gray-500 mb-2">Booking Information</h4>
-                          <div className="bg-gray-50 p-4 rounded-lg">
-                            <div className="flex justify-between items-center mb-3">
-                              <p className="text-sm text-gray-600">Status</p>
-                              <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusClass(selectedBooking.status)}`}>
-                                <div className="flex items-center">
-                                  {getStatusIcon(selectedBooking.status)}
-                                  <span className="ml-1 capitalize">{selectedBooking.status.replace('_', ' ')}</span>
-                                </div>
-                              </span>
-                            </div>
-
-                            {/* Enhanced Booking Timeline */}
-                            <div className="my-4 pt-2 pb-3">
-                              <BookingTimeline
-                                currentStatus={selectedBooking.status as 'pending' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled'}
-                                className="border-0 bg-transparent p-0"
-                              />
-                            </div>
-
-                            <div className="flex justify-between items-center mb-3">
-                              <p className="text-sm text-gray-600">Date & Time</p>
-                              <p className="text-sm font-medium text-gray-900">
-                                {formatDateTime(selectedBooking.booking_date, selectedBooking.booking_time)}
-                              </p>
-                            </div>
-
-                            <div className="flex justify-between items-center mb-3">
-                              <p className="text-sm text-gray-600">Booking ID</p>
-                              <p className="text-sm font-medium text-gray-900">#{selectedBooking.id}</p>
-                            </div>
-
-                            <div className="flex justify-between items-center">
-                              <p className="text-sm text-gray-600">Created On</p>
-                              <p className="text-sm font-medium text-gray-900">
-                                {new Date(selectedBooking.created_at).toLocaleDateString()}
-                              </p>
-                            </div>
-                          </div>
-
-                          <h4 className="text-sm font-medium text-gray-500 mt-4 mb-2">Pet Information</h4>
-                          <div className="bg-gray-50 p-4 rounded-lg">
-                            <div className="flex items-start space-x-4">
-                              {selectedBooking.pet_image_url ? (
-                                <div className="flex-shrink-0">
-                                  <Image
-                                    src={getProductionImagePath(selectedBooking.pet_image_url)}
-                                    alt={selectedBooking.pet_name || 'Pet'}
-                                    width={96}
-                                    height={96}
-                                    className="h-24 w-24 object-cover rounded-lg shadow-sm border border-gray-200"
-                                    onError={(e) => {
-                                      const target = e.target as HTMLImageElement;
-                                      target.onerror = null; // Prevent infinite loop
-                                      target.src = '/placeholder-pet.png'; // Fallback image
-                                      target.className = 'h-24 w-24 object-contain rounded-lg bg-gray-100 border border-gray-200';
-                                      console.error('Failed to load pet image:', selectedBooking.pet_image_url);
-                                    }}
-                                  />
-                                </div>
-                              ) : (
-                                <div className="h-24 w-24 bg-gray-200 rounded-lg flex items-center justify-center flex-shrink-0">
-                                  <UserIcon className="h-8 w-8 text-gray-400" />
-                                </div>
-                              )}
-                              <div className="flex-1 min-w-0">
-                                {selectedBooking.pet_name && selectedBooking.pet_name !== 'Pet' && selectedBooking.pet_name !== 'Unknown' ? (
-                                  <div className="space-y-2">
-                                    <p className="text-lg font-semibold text-gray-900">{selectedBooking.pet_name}</p>
-                                    {selectedBooking.pet_type && selectedBooking.pet_type !== 'Unknown' && (
-                                      <p className="text-sm text-gray-600">
-                                        <span className="font-medium">Type:</span> {selectedBooking.pet_type}
-                                      </p>
-                                    )}
-                                    {selectedBooking.pet_breed && (
-                                      <p className="text-sm text-gray-600">
-                                        <span className="font-medium">Breed:</span> {selectedBooking.pet_breed}
-                                      </p>
-                                    )}
-                                    {selectedBooking.cause_of_death && (
-                                      <p className="text-sm text-gray-600">
-                                        <span className="font-medium">Cause of Death:</span> {selectedBooking.cause_of_death}
-                                      </p>
-                                    )}
-                                  </div>
-                                ) : (
-                                  <p className="text-sm text-gray-700 italic">Pet information not available</p>
-                                )}
-                              </div>
-                            </div>
-                          </div>
+                          <button
+                            onClick={() => setShowDetailsModal(false)}
+                            className="text-gray-400 hover:text-gray-600 p-2 rounded-lg hover:bg-gray-100 transition-colors duration-200 flex-shrink-0"
+                            aria-label="Close modal"
+                          >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
                         </div>
                       </div>
 
-                      {selectedBooking.special_requests && selectedBooking.special_requests !== 'asdasdasd' && (
-                        <div className="mt-6">
-                          <h4 className="text-sm font-medium text-gray-500 mb-2">Special Requests</h4>
-                          <div className="bg-gray-50 p-4 rounded-lg">
-                            <p className="text-sm text-gray-600">{selectedBooking.special_requests}</p>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Review Section - Only show for completed bookings */}
-                      {selectedBooking.status === 'completed' && (
-                        <div className="mt-6">
-                          <h4 className="text-sm font-medium text-gray-500 mb-2">Your Review</h4>
-                          {reviewedBookingIds.includes(selectedBooking.id) ? (
-                            userData?.id && <ReviewDisplay bookingId={selectedBooking.id} userId={userData.id} />
-                          ) : (
-                            <div className="bg-gray-50 p-4 rounded-lg">
-                              <p className="text-sm text-gray-600 mb-3">You haven&apos;t reviewed this booking yet. Your feedback helps other pet parents make informed decisions.</p>
-                              {userData?.id ? (
-                                <button
-                                  onClick={() => {
-                                    setShowDetailsModal(false);
-                                    setTimeout(() => {
-                                      setShowReviewModal(true);
-                                    }, 300);
-                                  }}
-                                  className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 flex items-center w-fit"
-                                >
-                                  <StarIcon className="h-4 w-4 mr-2" />
-                                  Leave a Review
-                                </button>
-                              ) : (
-                                <p className="text-sm text-gray-500">Please log in to leave a review.</p>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Certificate Section - Only show for completed bookings */}
-                      {selectedBooking.status === 'completed' && (
-                        <div className="mt-6">
-                          <h4 className="text-sm font-medium text-gray-500 mb-2">Cremation Certificate</h4>
-                          <div className="bg-gradient-to-br from-green-50 to-blue-50 p-4 rounded-lg border border-green-200">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center">
-                                <DocumentCheckIcon className="h-6 w-6 text-green-600 mr-3" />
-                                <div>
-                                  <p className="text-sm font-medium text-gray-900">Official Certificate Available</p>
-                                  <p className="text-xs text-gray-600">Download your cremation certificate as a keepsake</p>
+                      <div className="p-6 space-y-6">
+                        {/* Hero Section - Pet Information with Picture */}
+                        <div className="bg-gradient-to-br from-green-50 to-blue-50 rounded-2xl shadow-lg border border-green-100 p-8">
+                          <div className="flex items-start space-x-8">
+                            {/* Pet Picture */}
+                            <div className="flex-shrink-0">
+                              <div className="relative">
+                                <div className="w-32 h-32 bg-white rounded-2xl overflow-hidden border-4 border-white shadow-lg">
+                                  {selectedBooking.pet_image ? (
+                                    <Image
+                                      src={selectedBooking.pet_image}
+                                      alt={selectedBooking.pet_name}
+                                      width={128}
+                                      height={128}
+                                      className="w-full h-full object-cover"
+                                    />
+                                  ) : (
+                                    <div className="w-full h-full flex items-center justify-center text-gray-400 bg-gray-50">
+                                      <svg className="w-12 h-12" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                                      </svg>
+                                    </div>
+                                  )}
+                                </div>
+                                {/* Status Badge Overlay */}
+                                <div className="absolute -top-2 -right-2">
+                                  <span className={`px-3 py-1 rounded-full text-xs font-semibold shadow-md ${getStatusClass(selectedBooking.status)}`}>
+                                    <div className="flex items-center">
+                                      {getStatusIcon(selectedBooking.status)}
+                                      <span className="ml-1 capitalize">{selectedBooking.status.replace('_', ' ')}</span>
+                                    </div>
+                                  </span>
                                 </div>
                               </div>
-                              <button
-                                onClick={() => {
-                                  setShowCertificateModal(true);
-                                }}
-                                className="inline-flex items-center px-3 py-1.5 bg-green-600 text-white text-xs font-medium rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-200"
-                              >
-                                <DocumentCheckIcon className="h-3 w-3 mr-1" />
-                                View
-                              </button>
+                            </div>
+
+                            {/* Pet Details */}
+                            <div className="flex-1">
+                              <div className="mb-6">
+                                <h2 className="text-3xl font-bold text-gray-900 mb-2">{selectedBooking.pet_name}</h2>
+                                <p className="text-lg text-gray-600">Booking #{selectedBooking.id}</p>
+                              </div>
+
+                              <div className="grid grid-cols-2 gap-6">
+                                <div className="bg-white/70 backdrop-blur-sm rounded-xl p-4 border border-white/50">
+                                  <div className="flex items-center space-x-3">
+                                    <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                                      <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                                      </svg>
+                                    </div>
+                                    <div>
+                                      <p className="text-sm font-medium text-gray-600">Breed</p>
+                                      <p className="text-base font-semibold text-gray-900">{selectedBooking.pet_breed || 'Not specified'}</p>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="bg-white/70 backdrop-blur-sm rounded-xl p-4 border border-white/50">
+                                  <div className="flex items-center space-x-3">
+                                    <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                                      <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                      </svg>
+                                    </div>
+                                    <div>
+                                      <p className="text-sm font-medium text-gray-600">Age</p>
+                                      <p className="text-base font-semibold text-gray-900">{selectedBooking.pet_age || 'Not specified'}</p>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="bg-white/70 backdrop-blur-sm rounded-xl p-4 border border-white/50">
+                                  <div className="flex items-center space-x-3">
+                                    <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                                      <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16l3-3m-3 3l-3-3" />
+                                      </svg>
+                                    </div>
+                                    <div>
+                                      <p className="text-sm font-medium text-gray-600">Weight</p>
+                                      <p className="text-base font-semibold text-gray-900">{selectedBooking.pet_weight || 'Not specified'}</p>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="bg-white/70 backdrop-blur-sm rounded-xl p-4 border border-white/50">
+                                  <div className="flex items-center space-x-3">
+                                    <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
+                                      <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                      </svg>
+                                    </div>
+                                    <div>
+                                      <p className="text-sm font-medium text-gray-600">Service Date</p>
+                                      <p className="text-base font-semibold text-gray-900">{formatDateTime(selectedBooking.booking_date, selectedBooking.booking_time)}</p>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
                             </div>
                           </div>
                         </div>
-                      )}
 
-                      <div className="mt-8 flex flex-col sm:flex-row sm:justify-end gap-3">
-                        {selectedBooking.status === 'pending' && !cancelledBookingIds.includes(selectedBooking.id) && (
-                          <button
-                            type="button"
-                            className="inline-flex justify-center items-center rounded-md border border-red-300 px-6 py-3 text-sm font-medium text-red-700 hover:bg-red-50 focus:outline-none transition-colors"
-                            onClick={() => {
-                              setShowDetailsModal(false);
-                              handleCancelBooking(selectedBooking);
-                            }}
-                          >
-                            <XCircleIcon className="h-5 w-5 mr-2" />
-                            Cancel Booking
-                          </button>
-                        )}
-                        {selectedBooking.status === 'pending' && cancelledBookingIds.includes(selectedBooking.id) && (
-                          <div className="inline-flex items-center rounded-md border border-green-300 px-6 py-3 text-sm font-medium text-green-700 bg-green-50">
-                            <CheckCircleIcon className="h-5 w-5 mr-2" />
-                            Cancellation Pending
+                        {/* Progress Timeline Section */}
+                        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-8">
+                          <div className="text-center mb-8">
+                            <h2 className="text-2xl font-bold text-gray-900 mb-2">Service Progress</h2>
+                            <p className="text-gray-600">Track your pet&apos;s service journey with us</p>
+                          </div>
+                          <div className="max-w-4xl mx-auto">
+                            <BookingTimeline
+                              currentStatus={selectedBooking.status as 'pending' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled'}
+                              className="border-0 bg-transparent p-0"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                          {/* Left Column */}
+                          <div className="space-y-6">
+                            {/* Service Information Card */}
+                            <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition-shadow duration-300">
+                              <div className="flex items-center space-x-3 mb-6">
+                                <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                                  <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                  </svg>
+                                </div>
+                                <h2 className="text-xl font-bold text-gray-900">Service Information</h2>
+                              </div>
+                              <div className="space-y-4">
+                                <div>
+                                  <h3 className="text-base font-medium text-gray-900 mb-1">{selectedBooking.service_name}</h3>
+                                  <p className="text-sm text-gray-600">{selectedBooking.service_description}</p>
+                                </div>
+
+                                <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+                                  <div className="flex justify-between items-center">
+                                    <span className="text-sm text-gray-600">Service Price</span>
+                                    <span className="text-sm font-medium text-gray-900">
+                                      ₱{((selectedBooking.service_price || selectedBooking.price || 0) as number).toLocaleString()}
+                                    </span>
+                                  </div>
+
+                                  {/* Add-ons Section */}
+                                  {(selectedBooking as any).extras && Array.isArray((selectedBooking as any).extras) && (selectedBooking as any).extras.length > 0 && (
+                                    <>
+                                      <div className="border-t border-gray-200 pt-3">
+                                        <h4 className="text-sm font-medium text-gray-700 mb-2">Add-ons</h4>
+                                        <div className="space-y-2">
+                                          {(selectedBooking as any).extras.map((addon: any, index: number) => (
+                                            <div key={index} className="flex justify-between items-center pl-3">
+                                              <span className="text-sm text-gray-600">{addon.name}</span>
+                                              <span className="text-sm font-medium text-gray-900">
+                                                ₱{parseFloat(addon.price).toLocaleString()}
+                                              </span>
+                                            </div>
+                                          ))}
+                                          <div className="flex justify-between items-center pt-2 border-t border-gray-200">
+                                            <span className="text-sm font-medium text-gray-700">Add-ons Subtotal</span>
+                                            <span className="text-sm font-medium text-gray-900">
+                                              ₱{((selectedBooking as any).extras_total || (selectedBooking as any).extras?.reduce((sum: number, item: any) => sum + Number(item.price), 0) || 0).toLocaleString()}
+                                            </span>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </>
+                                  )}
+
+                                  {selectedBooking.delivery_fee && selectedBooking.delivery_fee > 0 && (
+                                    <div className="flex justify-between items-center border-t border-gray-200 pt-3">
+                                      <span className="text-sm text-gray-600">Delivery Fee</span>
+                                      <span className="text-sm font-medium text-gray-900">
+                                        ₱{selectedBooking.delivery_fee.toLocaleString()}
+                                      </span>
+                                    </div>
+                                  )}
+
+                                  <div className="flex justify-between items-center pt-3 border-t-2 border-gray-300">
+                                    <span className="text-base font-semibold text-gray-900">Total Amount</span>
+                                    <span className="text-xl font-bold text-[var(--primary-green)]">
+                                      ₱{(
+                                         Number(selectedBooking.total_amount || 0) ||
+                                         (Number(selectedBooking.service_price || selectedBooking.price || 0) +
+                                          Number((selectedBooking as any).extras_total || 0) +
+                                          Number(selectedBooking.delivery_fee || 0))
+                                      ).toLocaleString()}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Provider Information Card */}
+                            <div className="bg-white rounded-xl shadow-md border border-gray-200 p-5">
+                              <h2 className="text-lg font-semibold text-gray-900 mb-4">Provider Information</h2>
+                              <div className="space-y-3">
+                                <div>
+                                  <h3 className="text-base font-medium text-gray-900">
+                                    {selectedBooking.provider_name && selectedBooking.provider_name !== 'Service Provider'
+                                      ? selectedBooking.provider_name
+                                      : (selectedBooking.provider_name || 'Service Provider')}
+                                  </h3>
+                                </div>
+                                {selectedBooking.provider_address &&
+                                 selectedBooking.provider_address !== 'Service Address' &&
+                                 selectedBooking.provider_address !== 'Provider Address' ? (
+                                  <div className="flex items-start">
+                                    <MapPinIcon className="h-5 w-5 text-gray-400 mt-0.5 flex-shrink-0" />
+                                    <p className="ml-2 text-sm text-gray-600">{selectedBooking.provider_address}</p>
+                                  </div>
+                                ) : (
+                                  <p className="text-sm text-gray-500 italic">Address information not available</p>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Delivery & Payment Card */}
+                            {(selectedBooking.payment_method || selectedBooking.delivery_option) && (
+                              <div className="bg-white rounded-xl shadow-md border border-gray-200 p-5">
+                                <h2 className="text-lg font-semibold text-gray-900 mb-4">Delivery & Payment</h2>
+                                <div className="space-y-4">
+                                  {selectedBooking.delivery_option && (
+                                    <div>
+                                      <h3 className="text-sm font-medium text-gray-700 mb-2">Delivery Option</h3>
+                                      <p className="text-base font-medium text-gray-900 capitalize mb-2">
+                                        {selectedBooking.delivery_option}
+                                      </p>
+
+                                      {selectedBooking.delivery_option === 'delivery' && selectedBooking.delivery_address && (
+                                        <div className="bg-gray-50 rounded-lg p-3">
+                                          <p className="text-sm font-medium text-gray-700 mb-1">Delivery Address</p>
+                                          <p className="text-sm text-gray-900">{selectedBooking.delivery_address}</p>
+                                          {selectedBooking.delivery_distance && selectedBooking.delivery_distance > 0 && (
+                                            <p className="text-xs text-gray-500 mt-1">
+                                              Distance: {selectedBooking.delivery_distance.toFixed(1)} km
+                                            </p>
+                                          )}
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+
+                                  {selectedBooking.payment_method && (
+                                    <div>
+                                      <h3 className="text-sm font-medium text-gray-700 mb-2">Payment Method</h3>
+                                      <div className="flex items-center mb-2">
+                                        {selectedBooking.payment_method === 'cash' ? (
+                                          <BanknotesIcon className="h-5 w-5 text-gray-400 mr-2" />
+                                        ) : (
+                                          <CreditCardIcon className="h-5 w-5 text-gray-400 mr-2" />
+                                        )}
+                                        <span className="text-base font-medium text-gray-900 capitalize">
+                                          {selectedBooking.payment_method}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {selectedBooking.payment_status && (
+                                    <div>
+                                      <h3 className="text-sm font-medium text-gray-700 mb-2">Payment Status</h3>
+                                      <div className="flex items-center mb-2">
+                                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${getPaymentStatusClass(selectedBooking.payment_status)}`}>
+                                          <div className="flex items-center">
+                                            {getPaymentStatusIcon(selectedBooking.payment_status)}
+                                            <span className="ml-1 capitalize">{selectedBooking.payment_status.replace('_', ' ')}</span>
+                                          </div>
+                                        </span>
+                                      </div>
+
+                                      {selectedBooking.payment_method === 'gcash' && selectedBooking.payment_status === 'paid' && (
+                                        <p className="text-xs text-green-600 bg-green-50 rounded-lg p-2">
+                                          GCash payments are automatically marked as paid
+                                        </p>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Right Column */}
+                          <div className="space-y-6">
+                            {/* Booking Information Card */}
+                            <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition-shadow duration-300">
+                              <div className="flex items-center space-x-3 mb-6">
+                                <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                                  <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                                  </svg>
+                                </div>
+                                <h2 className="text-xl font-bold text-gray-900">Booking Information</h2>
+                              </div>
+                              <div className="space-y-4">
+                                <div className="grid grid-cols-1 gap-3">
+                                  <div className="flex justify-between items-center">
+                                    <span className="text-sm text-gray-600">Date & Time</span>
+                                    <span className="text-sm font-medium text-gray-900">
+                                      {formatDateTime(selectedBooking.booking_date, selectedBooking.booking_time)}
+                                    </span>
+                                  </div>
+
+                                  <div className="flex justify-between items-center">
+                                    <span className="text-sm text-gray-600">Booking ID</span>
+                                    <span className="text-sm font-medium text-gray-900">#{selectedBooking.id}</span>
+                                  </div>
+
+                                  <div className="flex justify-between items-center">
+                                    <span className="text-sm text-gray-600">Created On</span>
+                                    <span className="text-sm font-medium text-gray-900">
+                                      {new Date(selectedBooking.created_at).toLocaleDateString()}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Pet Information Card */}
+                            <div className="bg-white rounded-xl shadow-md border border-gray-200 p-5">
+                              <h2 className="text-lg font-semibold text-gray-900 mb-4">Pet Information</h2>
+                              <div className="flex items-start space-x-4">
+                                {selectedBooking.pet_image_url ? (
+                                  <div className="flex-shrink-0">
+                                    <Image
+                                      src={getProductionImagePath(selectedBooking.pet_image_url)}
+                                      alt={selectedBooking.pet_name || 'Pet'}
+                                      width={96}
+                                      height={96}
+                                      className="h-24 w-24 object-cover rounded-xl shadow-sm border border-gray-200"
+                                      onError={(e) => {
+                                        const target = e.target as HTMLImageElement;
+                                        target.onerror = null; // Prevent infinite loop
+                                        target.src = '/placeholder-pet.png'; // Fallback image
+                                        target.className = 'h-24 w-24 object-contain rounded-xl bg-gray-100 border border-gray-200';
+                                        console.error('Failed to load pet image:', selectedBooking.pet_image_url);
+                                      }}
+                                    />
+                                  </div>
+                                ) : (
+                                  <div className="h-24 w-24 bg-gray-100 rounded-xl flex items-center justify-center flex-shrink-0 border border-gray-200">
+                                    <UserIcon className="h-8 w-8 text-gray-400" />
+                                  </div>
+                                )}
+                                <div className="flex-1 min-w-0">
+                                  {selectedBooking.pet_name && selectedBooking.pet_name !== 'Pet' && selectedBooking.pet_name !== 'Unknown' ? (
+                                    <div className="space-y-2">
+                                      <h3 className="text-lg font-semibold text-gray-900">{selectedBooking.pet_name}</h3>
+                                      {selectedBooking.pet_type && selectedBooking.pet_type !== 'Unknown' && (
+                                        <p className="text-sm text-gray-600">
+                                          <span className="font-medium text-gray-700">Type:</span> {selectedBooking.pet_type}
+                                        </p>
+                                      )}
+                                      {selectedBooking.pet_breed && (
+                                        <p className="text-sm text-gray-600">
+                                          <span className="font-medium text-gray-700">Breed:</span> {selectedBooking.pet_breed}
+                                        </p>
+                                      )}
+                                      {selectedBooking.cause_of_death && (
+                                        <p className="text-sm text-gray-600">
+                                          <span className="font-medium text-gray-700">Cause of Death:</span> {selectedBooking.cause_of_death}
+                                        </p>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <p className="text-sm text-gray-500 italic">Pet information not available</p>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Special Requests Card */}
+                        {selectedBooking.special_requests && selectedBooking.special_requests !== 'asdasdasd' && (
+                          <div className="bg-white rounded-xl shadow-md border border-gray-200 p-5">
+                            <h2 className="text-lg font-semibold text-gray-900 mb-4">Special Requests</h2>
+                            <div className="bg-gray-50 rounded-lg p-4">
+                              <p className="text-sm text-gray-700">{selectedBooking.special_requests}</p>
+                            </div>
                           </div>
                         )}
-                        {/* Refund Button in Modal - Show only for cancelled paid bookings */}
-                        {selectedBooking.payment_status === 'paid' && selectedBooking.status === 'cancelled' && (
-                          <RefundButton
-                            booking={{
-                              id: selectedBooking.id,
-                              pet_name: selectedBooking.pet_name,
-                              booking_date: selectedBooking.booking_date,
-                              booking_time: selectedBooking.booking_time,
-                              price: selectedBooking.price || selectedBooking.service_price || 0,
-                              payment_method: selectedBooking.payment_method || 'cash',
-                              status: selectedBooking.status,
-                              payment_status: selectedBooking.payment_status || 'not_paid'
-                            }}
-                            onRefundRequested={() => {
-                              handleRefundRequested();
-                              setShowDetailsModal(false);
-                            }}
-                            size="md"
-                            variant="outline"
-                            className="inline-flex justify-center items-center rounded-md px-6 py-3"
-                          />
+
+                        {/* Review Section - Only show for completed bookings */}
+                        {selectedBooking.status === 'completed' && (
+                          <div className="bg-white rounded-xl shadow-md border border-gray-200 p-5">
+                            <h2 className="text-lg font-semibold text-gray-900 mb-4">Your Review</h2>
+                            {reviewedBookingIds.includes(selectedBooking.id) ? (
+                              (currentUserData?.id || currentUserData?.user_id) && <ReviewDisplay bookingId={selectedBooking.id} userId={currentUserData.id || currentUserData.user_id} />
+                            ) : (
+                              <div className="bg-gray-50 rounded-lg p-4">
+                                <p className="text-sm text-gray-600 mb-4">You haven&apos;t reviewed this booking yet. Your feedback helps other pet parents make informed decisions.</p>
+                                {currentUserData && (currentUserData.id || currentUserData.user_id) ? (
+                                  <button
+                                    onClick={() => {
+                                      console.log('Review button clicked, currentUserData:', currentUserData);
+                                      console.log('User ID:', currentUserData.id || currentUserData.user_id);
+                                      setShowDetailsModal(false);
+                                      setTimeout(() => {
+                                        setShowReviewModal(true);
+                                      }, 300);
+                                    }}
+                                    className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
+                                  >
+                                    <StarIcon className="h-4 w-4 mr-2" />
+                                    Leave a Review
+                                  </button>
+                                ) : userDataLoaded ? (
+                                  <p className="text-sm text-gray-500">Please log in to leave a review.</p>
+                                ) : (
+                                  <div className="space-y-2">
+                                    <p className="text-sm text-gray-500">Loading user information...</p>
+                                    {/* Debug info - remove in production */}
+                                    <p className="text-xs text-gray-400">
+                                      Debug: userData={userData ? 'exists' : 'null'}, currentUserData={currentUserData ? 'exists' : 'null'}, id={currentUserData?.id || 'undefined'}, user_id={currentUserData?.user_id || 'undefined'}
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
                         )}
-                        <button
-                          type="button"
-                          className="inline-flex justify-center items-center rounded-md border border-transparent bg-[var(--primary-green)] px-6 py-3 text-sm font-medium text-white hover:bg-[var(--primary-green-hover)] focus:outline-none transition-colors"
-                          onClick={() => setShowDetailsModal(false)}
-                        >
-                          Close
-                        </button>
+
+                        {/* Certificate Section - Only show for completed bookings */}
+                        {selectedBooking.status === 'completed' && (
+                          <div className="bg-white rounded-xl shadow-md border border-gray-200 p-5">
+                            <h2 className="text-lg font-semibold text-gray-900 mb-4">Cremation Certificate</h2>
+                            <div className="bg-gradient-to-br from-green-50 to-blue-50 rounded-lg p-4 border border-green-200">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center">
+                                  <DocumentCheckIcon className="h-6 w-6 text-green-600 mr-3" />
+                                  <div>
+                                    <h3 className="text-sm font-medium text-gray-900">Official Certificate Available</h3>
+                                    <p className="text-xs text-gray-600">Download your cremation certificate as a keepsake</p>
+                                  </div>
+                                </div>
+                                <button
+                                  onClick={() => {
+                                    setShowCertificateModal(true);
+                                  }}
+                                  className="inline-flex items-center px-3 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-200"
+                                >
+                                  <DocumentCheckIcon className="h-4 w-4 mr-2" />
+                                  View Certificate
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Footer Actions */}
+                      <div className="border-t border-gray-200 bg-gray-50 px-6 py-4 mt-6 -mx-6 -mb-6 rounded-b-2xl">
+                        <div className="flex flex-col sm:flex-row sm:justify-end gap-3">
+                          {selectedBooking.status === 'pending' && !cancelledBookingIds.includes(selectedBooking.id) && (
+                            <button
+                              type="button"
+                              className="inline-flex justify-center items-center rounded-lg border border-red-300 bg-white px-6 py-3 text-sm font-medium text-red-700 hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-200"
+                              onClick={() => {
+                                setShowDetailsModal(false);
+                                handleCancelBooking(selectedBooking);
+                              }}
+                            >
+                              <XCircleIcon className="h-5 w-5 mr-2" />
+                              Cancel Booking
+                            </button>
+                          )}
+                          {selectedBooking.status === 'pending' && cancelledBookingIds.includes(selectedBooking.id) && (
+                            <div className="inline-flex items-center rounded-lg border border-green-300 px-6 py-3 text-sm font-medium text-green-700 bg-green-50">
+                              <CheckCircleIcon className="h-5 w-5 mr-2" />
+                              Cancellation Pending
+                            </div>
+                          )}
+                          {/* Refund Button in Modal - Show only for cancelled paid bookings */}
+                          {selectedBooking.payment_status === 'paid' && selectedBooking.status === 'cancelled' && (
+                            <RefundButton
+                              booking={{
+                                id: selectedBooking.id,
+                                pet_name: selectedBooking.pet_name,
+                                booking_date: selectedBooking.booking_date,
+                                booking_time: selectedBooking.booking_time,
+                                price: selectedBooking.price || selectedBooking.service_price || 0,
+                                payment_method: selectedBooking.payment_method || 'cash',
+                                status: selectedBooking.status,
+                                payment_status: selectedBooking.payment_status || 'not_paid'
+                              }}
+                              onRefundRequested={() => {
+                                handleRefundRequested();
+                                setShowDetailsModal(false);
+                              }}
+                              size="md"
+                              variant="outline"
+                              className="inline-flex justify-center items-center rounded-lg px-6 py-3"
+                            />
+                          )}
+                          <button
+                            type="button"
+                            className="inline-flex justify-center items-center rounded-lg border border-transparent bg-[var(--primary-green)] px-6 py-3 text-sm font-medium text-white hover:bg-[var(--primary-green-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-200"
+                            onClick={() => setShowDetailsModal(false)}
+                          >
+                            Close
+                          </button>
+                        </div>
                       </div>
                     </>
                   )}
@@ -1345,15 +1543,16 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
       </Transition>
 
       {/* Review Modal */}
-      {selectedBooking && userData?.id && (
+      {selectedBooking && currentUserData && (currentUserData.id || currentUserData.user_id) && (
         <ReviewModal
           isOpen={showReviewModal}
           onClose={() => setShowReviewModal(false)}
           bookingId={selectedBooking.id}
-          userId={userData.id}
+          userId={currentUserData.id || currentUserData.user_id}
           providerId={selectedBooking.provider_id || 0}
           providerName={selectedBooking.provider_name || 'Service Provider'}
           onSuccess={() => {
+            console.log('Review submitted successfully');
             // Add the booking ID to the list of reviewed bookings
             if (selectedBooking && selectedBooking.id) {
               setReviewedBookingIds(prev => [...prev, selectedBooking.id]);

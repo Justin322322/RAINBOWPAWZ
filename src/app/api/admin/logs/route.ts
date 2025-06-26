@@ -15,20 +15,29 @@ export async function GET(request: NextRequest) {
     const entityType = url.searchParams.get('entity_type');
     const entityId = url.searchParams.get('entity_id');
     const adminId = url.searchParams.get('admin_id');
+    const search = url.searchParams.get('search');
+    const dateFrom = url.searchParams.get('date_from');
+    const dateTo = url.searchParams.get('date_to');
     
     // Calculate offset
     const offset = (page - 1) * limit;
     
     // Build the query
     let sql = `
-      SELECT 
+      SELECT
         al.*,
-        COALESCE(a.username, 'Unknown') as admin_username,
-        COALESCE(a.full_name, 'Unknown Admin') as admin_name
-      FROM 
+        CASE
+          WHEN al.admin_id = 0 THEN 'system'
+          ELSE COALESCE(ap.username, 'Unknown')
+        END as admin_username,
+        CASE
+          WHEN al.admin_id = 0 THEN 'System'
+          ELSE COALESCE(ap.full_name, 'Unknown Admin')
+        END as admin_name
+      FROM
         admin_logs al
       LEFT JOIN
-        admins a ON al.admin_id = a.id
+        admin_profiles ap ON al.admin_id = ap.user_id AND al.admin_id != 0
       WHERE 1=1
     `;
     
@@ -54,6 +63,22 @@ export async function GET(request: NextRequest) {
       sql += ' AND al.admin_id = ?';
       params.push(parseInt(adminId));
     }
+
+    if (search) {
+      sql += ' AND (al.action LIKE ? OR al.entity_type LIKE ? OR al.details LIKE ? OR ap.username LIKE ? OR ap.full_name LIKE ?)';
+      const searchTerm = `%${search}%`;
+      params.push(searchTerm, searchTerm, searchTerm, searchTerm, searchTerm);
+    }
+
+    if (dateFrom) {
+      sql += ' AND DATE(al.created_at) >= ?';
+      params.push(dateFrom);
+    }
+
+    if (dateTo) {
+      sql += ' AND DATE(al.created_at) <= ?';
+      params.push(dateTo);
+    }
     
     // Add order by and limit
     sql += ' ORDER BY al.created_at DESC LIMIT ? OFFSET ?';
@@ -65,31 +90,48 @@ export async function GET(request: NextRequest) {
     // Get total count for pagination
     let countSql = `
       SELECT COUNT(*) as total
-      FROM admin_logs
+      FROM admin_logs al
+      LEFT JOIN admin_profiles ap ON al.admin_id = ap.user_id
       WHERE 1=1
     `;
-    
+
     const countParams: any[] = [];
-    
-    // Add filters to count query
+
+    // Add filters to count query (same as main query)
     if (action) {
-      countSql += ' AND action = ?';
+      countSql += ' AND al.action = ?';
       countParams.push(action);
     }
-    
+
     if (entityType) {
-      countSql += ' AND entity_type = ?';
+      countSql += ' AND al.entity_type = ?';
       countParams.push(entityType);
     }
-    
+
     if (entityId) {
-      countSql += ' AND entity_id = ?';
+      countSql += ' AND al.entity_id = ?';
       countParams.push(parseInt(entityId));
     }
-    
+
     if (adminId) {
-      countSql += ' AND admin_id = ?';
+      countSql += ' AND al.admin_id = ?';
       countParams.push(parseInt(adminId));
+    }
+
+    if (search) {
+      countSql += ' AND (al.action LIKE ? OR al.entity_type LIKE ? OR al.details LIKE ? OR ap.username LIKE ? OR ap.full_name LIKE ?)';
+      const searchTerm = `%${search}%`;
+      countParams.push(searchTerm, searchTerm, searchTerm, searchTerm, searchTerm);
+    }
+
+    if (dateFrom) {
+      countSql += ' AND DATE(al.created_at) >= ?';
+      countParams.push(dateFrom);
+    }
+
+    if (dateTo) {
+      countSql += ' AND DATE(al.created_at) <= ?';
+      countParams.push(dateTo);
     }
     
     // Execute the count query
