@@ -302,6 +302,35 @@ erDiagram
         timestamp updated_at
     }
 
+    bookings {
+        int id PK
+        int user_id FK
+        int service_provider_id FK
+        int service_package_id FK
+        int pet_id FK
+        varchar pet_name
+        varchar pet_type
+        text cause_of_death
+        varchar pet_image_url
+        date booking_date
+        time booking_time
+        enum status
+        text special_requests
+        varchar payment_method
+        enum payment_status
+        int refund_id FK
+        enum delivery_option
+        text delivery_address
+        float delivery_distance
+        decimal delivery_fee
+        decimal total_price
+        varchar provider_name
+        varchar package_name
+        int quantity
+        timestamp created_at
+        timestamp updated_at
+    }
+
     service_bookings {
         int id PK
         int user_id FK
@@ -344,6 +373,52 @@ erDiagram
         text return_url
         text failure_reason
         json metadata
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    refunds {
+        int id PK
+        int booking_id FK
+        decimal amount
+        text reason
+        enum status
+        int processed_by FK
+        varchar payment_method
+        varchar transaction_id
+        text notes
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    reviews {
+        int id PK
+        int user_id FK
+        int service_provider_id FK
+        int booking_id FK
+        int rating
+        text comment
+        timestamp created_at
+        timestamp updated_at
+        timestamp expiration_date
+    }
+
+    provider_availability {
+        int id PK
+        int provider_id FK
+        date date
+        boolean is_available
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    provider_time_slots {
+        int id PK
+        int provider_id FK
+        date date
+        time start_time
+        time end_time
+        text available_services
         timestamp created_at
         timestamp updated_at
     }
@@ -400,10 +475,13 @@ erDiagram
 
 
 
-    %% Relationships - Only tables with actual foreign key constraints
+    %% Relationships - Connected tables only (excluding isolated tables)
     users ||--o{ admin_profiles : "has"
     users ||--o{ service_providers : "has"
     users ||--o{ pets : "owns"
+    users ||--o{ bookings : "makes"
+    users ||--o{ service_bookings : "makes"
+    users ||--o{ reviews : "writes"
     users ||--o{ notifications : "receives"
     users ||--o{ otp_codes : "has"
     users ||--o{ otp_attempts : "has"
@@ -411,12 +489,26 @@ erDiagram
     users ||--o{ user_restrictions : "has"
 
     service_providers ||--o{ service_packages : "offers"
+    service_providers ||--o{ bookings : "receives"
+    service_providers ||--o{ service_bookings : "receives"
+    service_providers ||--o{ reviews : "receives"
+    service_providers ||--o{ provider_availability : "has"
+    service_providers ||--o{ provider_time_slots : "has"
 
     service_packages ||--o{ package_inclusions : "includes"
     service_packages ||--o{ package_addons : "has"
     service_packages ||--o{ package_images : "has"
+    service_packages ||--o{ bookings : "booked_in"
+    service_packages ||--o{ service_bookings : "booked_in"
 
+    pets ||--o{ bookings : "subject_of"
+
+    bookings ||--o{ payment_transactions : "has"
     service_bookings ||--o{ payment_transactions : "has"
+    bookings ||--o{ refunds : "may_have"
+    service_bookings ||--o{ refunds : "may_have"
+    bookings ||--|| reviews : "may_have"
+    service_bookings ||--|| reviews : "may_have"
 ```
 
 ### Key Database Features
@@ -453,15 +545,12 @@ erDiagram
 - **Package Management**: Flexible service packages with addons and images
 
 #### Tables Not Shown in ERD
-The following tables exist in the database but are excluded from the ERD as they lack foreign key constraints:
-- **Admin Logs**: Audit trail for admin actions
-- **Admin Notifications**: Admin-specific notifications
-- **Email Queue/Log**: Email delivery and tracking system
-- **Rate Limits**: API rate limiting protection
-- **Reviews**: Customer feedback and rating system
-- **Refunds**: Payment refund management
-- **Provider Availability/Time Slots**: Scheduling and availability system
-- **Bookings**: Legacy booking table (empty, superseded by service_bookings)
+The following tables exist in the database but are excluded from the ERD as they have no relationships to other tables:
+- **Admin Logs**: Audit trail for admin actions (standalone logging)
+- **Admin Notifications**: Admin-specific notifications (standalone system)
+- **Email Queue**: Email delivery queue (standalone email system)
+- **Email Log**: Email delivery tracking (standalone logging)
+- **Rate Limits**: API rate limiting protection (standalone security feature)
 
 ### Automatic Setup (Recommended)
 The application automatically creates necessary database tables on first run. Simply:
