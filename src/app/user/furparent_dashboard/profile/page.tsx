@@ -25,6 +25,7 @@ import {
   ProfileButton,
   ProfileAlert
 } from '@/components/ui/ProfileFormComponents';
+import { SkeletonCard } from '@/components/ui/SkeletonLoader';
 
 interface ProfilePageProps {
   userData?: UserData;
@@ -36,6 +37,10 @@ function ProfilePage({ userData }: ProfilePageProps) {
   // Loading and error states
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  // Skeleton loading state with minimum delay
+  const [showSkeleton, setShowSkeleton] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true);
 
   // Edit mode states
   const [isEditingPersonal, setIsEditingPersonal] = useState(false);
@@ -75,8 +80,27 @@ function ProfilePage({ userData }: ProfilePageProps) {
         phone: userData.phone || '',
         address: userData.address || ''
       });
+      setInitialLoading(false);
     }
   }, [userData]);
+
+  // Skeleton loading control with minimum delay (600-800ms for fur parent standards)
+  useEffect(() => {
+    let skeletonTimer: NodeJS.Timeout | null = null;
+
+    if (!initialLoading && userData) {
+      // Add minimum 700ms delay for proper skeleton visibility
+      skeletonTimer = setTimeout(() => {
+        setShowSkeleton(false);
+      }, 700);
+    }
+
+    return () => {
+      if (skeletonTimer) {
+        clearTimeout(skeletonTimer);
+      }
+    };
+  }, [initialLoading, userData]);
 
   // Clear messages after 5 seconds
   useEffect(() => {
@@ -90,13 +114,44 @@ function ProfilePage({ userData }: ProfilePageProps) {
     return undefined;
   }, [success, error]);
 
-  if (!userData) {
+  if (!userData || showSkeleton || initialLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading profile...</p>
-          <p className="text-gray-500 text-sm mt-2">Please wait while we fetch your information...</p>
+      <div className="min-h-screen bg-gray-50 py-8">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="space-y-8">
+            <SkeletonCard
+              withHeader={true}
+              contentLines={1}
+              withFooter={false}
+              withShadow={false}
+              rounded="lg"
+              animate={true}
+              className="bg-transparent shadow-none"
+            />
+            <SkeletonCard
+              withImage={true}
+              imageHeight="h-32"
+              withHeader={true}
+              contentLines={4}
+              withFooter={true}
+              withShadow={true}
+              rounded="lg"
+              animate={true}
+            />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {[1, 2].map((i) => (
+                <SkeletonCard
+                  key={i}
+                  withHeader={true}
+                  contentLines={6}
+                  withFooter={false}
+                  withShadow={true}
+                  rounded="lg"
+                  animate={true}
+                />
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     );

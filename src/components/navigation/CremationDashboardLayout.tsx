@@ -12,13 +12,15 @@ interface CremationDashboardLayoutProps {
   activePage?: string;
   userName?: string;
   userData?: any;
+  skipSkeleton?: boolean;
 }
 
 export default function CremationDashboardLayout({
   children,
   activePage,
   userName: propUserName = 'Cremation Provider',
-  userData: propUserData
+  userData: propUserData,
+  skipSkeleton = false
 }: CremationDashboardLayoutProps) {
   const _router = useRouter();
 
@@ -60,7 +62,7 @@ export default function CremationDashboardLayout({
           userName={displayName}
         />
         <main className="p-4 md:p-6"> {/* Match admin padding */}
-          {contentLoading ? (
+          {contentLoading && !skipSkeleton ? (
             <DashboardSkeleton type="cremation" />
           ) : (
             children

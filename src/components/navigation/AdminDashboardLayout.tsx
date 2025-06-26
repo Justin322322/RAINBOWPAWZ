@@ -11,6 +11,7 @@ interface AdminDashboardLayoutProps {
   activePage?: string;
   userName?: string;
   adminData?: any;
+  skipSkeleton?: boolean;
 }
 
 /**
@@ -21,7 +22,8 @@ function AdminDashboardLayout({
   children,
   activePage,
   userName = 'System Administrator',
-  adminData
+  adminData,
+  skipSkeleton = false
 }: AdminDashboardLayoutProps) {
   // Use admin name from adminData if available
   const displayName = adminData?.full_name || adminData?.username || userName;
@@ -61,7 +63,7 @@ function AdminDashboardLayout({
       <div className="lg:pl-64 transition-all duration-300"> {/* Responsive padding */}
         <AdminNavbar activePage={activePage} userName={displayName} />
         <main className="p-4 md:p-6">
-          {contentLoading ? (
+          {contentLoading && !skipSkeleton ? (
             <DashboardSkeleton type="admin" />
           ) : (
             children

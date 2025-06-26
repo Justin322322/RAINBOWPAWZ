@@ -1,5 +1,4 @@
 import React from 'react';
-import { motion } from 'framer-motion';
 
 interface ProfileLayoutProps {
   children: React.ReactNode;
@@ -7,6 +6,7 @@ interface ProfileLayoutProps {
   subtitle: string;
   icon: React.ReactNode;
   className?: string;
+  showSkeleton?: boolean;
 }
 
 interface ProfileSectionProps {
@@ -16,6 +16,7 @@ interface ProfileSectionProps {
   className?: string;
   headerClassName?: string;
   action?: React.ReactNode;
+  showSkeleton?: boolean;
 }
 
 interface ProfileCardProps {
@@ -47,31 +48,41 @@ export const ProfileLayout: React.FC<ProfileLayoutProps> = ({
   title,
   subtitle,
   icon,
-  className = ''
+  className = '',
+  showSkeleton = false
 }) => {
   return (
     <div className={`max-w-7xl mx-auto ${className}`}>
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="space-y-8"
-      >
+      <div className="space-y-8">
         {/* Page Header */}
         <ProfileCard className="bg-gradient-to-r from-[var(--primary-green)] to-[var(--primary-green-hover)]">
-          <div className="flex items-center space-x-4">
-            <div className="bg-white/20 backdrop-blur-sm rounded-full p-3">
-              {icon}
+          {showSkeleton ? (
+            /* Header Skeleton */
+            <div className="flex items-center space-x-4">
+              <div className="bg-white/20 backdrop-blur-sm rounded-full p-3">
+                <div className="w-8 h-8 bg-white/30 rounded animate-pulse"></div>
+              </div>
+              <div className="text-white space-y-2">
+                <div className="h-8 bg-white/30 rounded w-64 animate-pulse"></div>
+                <div className="h-5 bg-white/20 rounded w-96 animate-pulse"></div>
+              </div>
             </div>
-            <div className="text-white">
-              <h1 className="text-3xl font-bold mb-1">{title}</h1>
-              <p className="text-white/90 text-lg">{subtitle}</p>
+          ) : (
+            /* Actual Header Content */
+            <div className="flex items-center space-x-4">
+              <div className="bg-white/20 backdrop-blur-sm rounded-full p-3">
+                {icon}
+              </div>
+              <div className="text-white">
+                <h1 className="text-3xl font-bold mb-1">{title}</h1>
+                <p className="text-white/90 text-lg">{subtitle}</p>
+              </div>
             </div>
-          </div>
+          )}
         </ProfileCard>
 
         {children}
-      </motion.div>
+      </div>
     </div>
   );
 };
@@ -83,18 +94,30 @@ export const ProfileSection: React.FC<ProfileSectionProps> = ({
   subtitle,
   className = '',
   headerClassName = '',
-  action
+  action,
+  showSkeleton = false
 }) => {
   return (
     <div className={`space-y-6 ${className}`}>
       <div className={`flex items-center justify-between ${headerClassName}`}>
-        <div>
-          <h2 className="text-2xl font-semibold text-gray-900 mb-2">{title}</h2>
-          {subtitle && (
-            <p className="text-gray-600 text-base">{subtitle}</p>
-          )}
-        </div>
-        {action && (
+        {showSkeleton ? (
+          /* Section Header Skeleton */
+          <div>
+            <div className="h-8 bg-gray-200 rounded w-44 mb-2 animate-pulse"></div>
+            {subtitle && (
+              <div className="h-5 bg-gray-200 rounded w-80 animate-pulse"></div>
+            )}
+          </div>
+        ) : (
+          /* Actual Section Header */
+          <div>
+            <h2 className="text-2xl font-semibold text-gray-900 mb-2">{title}</h2>
+            {subtitle && (
+              <p className="text-gray-600 text-base">{subtitle}</p>
+            )}
+          </div>
+        )}
+        {action && !showSkeleton && (
           <div className="flex-shrink-0">
             {action}
           </div>
@@ -114,12 +137,7 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
   noPadding = false
 }) => {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-      className={`bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden ${className}`}
-    >
+    <div className={`bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden ${className}`}>
       {title && (
         <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50">
           <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
@@ -131,7 +149,7 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
       <div className={noPadding ? '' : 'p-6'}>
         {children}
       </div>
-    </motion.div>
+    </div>
   );
 };
 

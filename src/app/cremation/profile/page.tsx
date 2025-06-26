@@ -20,7 +20,7 @@ import {
 import { getImagePath } from '@/utils/imageUtils';
 import PhilippinePhoneInput from '@/components/ui/PhilippinePhoneInput';
 import Image from 'next/image';
-import { SkeletonCard } from '@/components/ui/SkeletonLoader';
+
 import {
   ProfileLayout,
   ProfileSection,
@@ -91,6 +91,10 @@ function CremationProfilePage({ userData }: { userData: any }) {
   // Document preview modal states
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [previewImage, setPreviewImage] = useState<{ url: string; title: string } | null>(null);
+
+  // Skeleton loading state with minimum delay
+  // Skeleton loading state - starts false to prevent initial animation
+  const [showSkeleton, setShowSkeleton] = useState(false);
 
   const fileInputRefs = {
     businessPermit: useRef<HTMLInputElement>(null),
@@ -214,6 +218,38 @@ function CremationProfilePage({ userData }: { userData: any }) {
     }
   }, [showToast]);
 
+  // Load profile data and other initial data
+  useEffect(() => {
+    const fetchData = async () => {
+      setInitialLoading(true);
+      // Show skeleton immediately when starting to load
+      setShowSkeleton(true);
+      
+      await fetchProfileData();
+      setInitialLoading(false);
+    };
+
+    fetchData();
+  }, [fetchProfileData]);
+
+  // Skeleton loading control with minimum delay
+  useEffect(() => {
+    let skeletonTimer: NodeJS.Timeout | null = null;
+
+    if (!initialLoading && showSkeleton) {
+      // Add minimum 700ms delay for proper skeleton visibility
+      skeletonTimer = setTimeout(() => {
+        setShowSkeleton(false);
+      }, 700);
+    }
+
+    return () => {
+      if (skeletonTimer) {
+        clearTimeout(skeletonTimer);
+      }
+    };
+  }, [initialLoading, showSkeleton]);
+
   // Check for showDocuments query parameter on page load
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -224,25 +260,6 @@ function CremationProfilePage({ userData }: { userData: any }) {
       window.history.replaceState({}, document.title, window.location.pathname);
     }
   }, []);
-
-  // Fetch profile data only on initial mount
-  useEffect(() => {
-    let isMounted = true; // Track if component is mounted
-
-    const fetchData = async () => {
-      // Only proceed if component is still mounted
-      if (isMounted) {
-        await fetchProfileData();
-      }
-    };
-
-    fetchData();
-
-    // Cleanup function to prevent state updates on unmounted component
-    return () => {
-      isMounted = false;
-    };
-  }, [fetchProfileData]); // Include fetchProfileData dependency
 
   const _handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -684,24 +701,42 @@ function CremationProfilePage({ userData }: { userData: any }) {
   };
 
   return (
-    <CremationDashboardLayout activePage="profile" userData={userData}>
+    <CremationDashboardLayout activePage="profile" userData={userData} skipSkeleton={true}>
       <ProfileLayout
         title="My Profile"
         subtitle="Manage your account settings and business information"
         icon={<UserIcon className="h-8 w-8 text-white" />}
         className="p-6"
+        showSkeleton={showSkeleton || initialLoading}
       >
 
         {/* Profile Picture Section */}
         <ProfileSection
           title="Profile Picture"
           subtitle="Upload and manage your profile picture"
+          showSkeleton={showSkeleton || initialLoading}
         >
           <ProfileCard>
-            <div className="flex items-center space-x-6">
-              {/* Current/Preview Profile Picture */}
-              <div className="relative">
-                <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-gray-200 bg-gray-100 flex items-center justify-center shadow-lg">
+            {showSkeleton || initialLoading ? (
+              /* Profile Picture Section Skeleton */
+              <div className="flex items-center space-x-6">
+                <div className="relative">
+                  <div className="w-32 h-32 bg-gray-200 rounded-full animate-pulse"></div>
+                  <div className="absolute -bottom-2 -right-2 w-10 h-10 bg-gray-200 rounded-full animate-pulse"></div>
+                </div>
+                <div className="flex-1 space-y-4">
+                  <div className="space-y-3">
+                    <div className="h-10 bg-gray-200 rounded w-48 animate-pulse"></div>
+                    <div className="h-16 bg-gray-200 rounded animate-pulse"></div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              /* Actual Profile Picture Content */
+              <div className="flex items-center space-x-6">
+                {/* Current/Preview Profile Picture */}
+                <div className="relative">
+                  <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-gray-200 bg-gray-100 flex items-center justify-center shadow-lg">
                   {profilePicturePreview ? (
                     <Image
                       src={profilePicturePreview}
@@ -788,24 +823,207 @@ function CremationProfilePage({ userData }: { userData: any }) {
                 </div>
               </div>
             </div>
+            )}
           </ProfileCard>
         </ProfileSection>
 
-        {initialLoading ? (
-          <div className="space-y-8">
-            <ProfileCard title="Account Information">
-              <SkeletonCard contentLines={3} withHeader={false} />
-            </ProfileCard>
-            <ProfileCard title="Contact Information">
-              <SkeletonCard contentLines={6} withHeader={false} />
-            </ProfileCard>
-            <ProfileCard title="Business Information">
-              <SkeletonCard contentLines={4} withHeader={false} />
-            </ProfileCard>
-            <ProfileCard title="Security Settings">
-              <SkeletonCard contentLines={4} withHeader={false} />
-            </ProfileCard>
-          </div>
+        {showSkeleton || initialLoading ? (
+          <>
+            {/* Account Information Section Skeleton - matches ProfileSection structure */}
+            <ProfileSection
+              title=""
+              subtitle=""
+              className="animate-pulse"
+            >
+              {/* Section Header Skeleton */}
+              <div className="space-y-2 mb-6">
+                <div className="h-8 bg-gray-200 rounded w-48 animate-pulse"></div>
+                <div className="h-5 bg-gray-200 rounded w-72 animate-pulse"></div>
+              </div>
+
+              {/* ProfileCard Skeleton */}
+              <ProfileCard>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="space-y-2">
+                      <div className="h-4 bg-gray-200 rounded w-20 animate-pulse"></div>
+                      <div className="flex items-center space-x-2">
+                        <div className="w-5 h-5 bg-gray-200 rounded animate-pulse"></div>
+                        <div className="h-5 bg-gray-200 rounded flex-1 animate-pulse"></div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </ProfileCard>
+            </ProfileSection>
+
+            {/* Business Information Section Skeleton - matches ProfileSection structure */}
+            <ProfileSection
+              title=""
+              subtitle=""
+              className="animate-pulse"
+            >
+              {/* Section Header Skeleton */}
+              <div className="space-y-2 mb-6">
+                <div className="h-8 bg-gray-200 rounded w-52 animate-pulse"></div>
+                <div className="h-5 bg-gray-200 rounded w-80 animate-pulse"></div>
+              </div>
+
+              {/* ProfileCard Skeleton */}
+              <ProfileCard>
+                <div className="space-y-6">
+                  {/* Form Group Header */}
+                  <div>
+                    <div className="h-5 bg-gray-200 rounded w-36 mb-2 animate-pulse"></div>
+                    <div className="h-4 bg-gray-200 rounded w-52 animate-pulse"></div>
+                  </div>
+
+                  {/* Business Name Field */}
+                  <div className="space-y-2">
+                    <div className="h-4 bg-gray-200 rounded w-28 animate-pulse"></div>
+                    <div className="h-10 bg-gray-200 rounded w-full animate-pulse"></div>
+                  </div>
+
+                  {/* Business Description Field */}
+                  <div className="space-y-2">
+                    <div className="h-4 bg-gray-200 rounded w-36 animate-pulse"></div>
+                    <div className="h-24 bg-gray-200 rounded w-full animate-pulse"></div>
+                  </div>
+
+                  {/* Business Hours Field */}
+                  <div className="space-y-2">
+                    <div className="h-4 bg-gray-200 rounded w-28 animate-pulse"></div>
+                    <div className="h-10 bg-gray-200 rounded w-full animate-pulse"></div>
+                  </div>
+
+                  {/* Button area */}
+                  <div className="flex justify-end pt-4 border-t border-gray-100">
+                    <div className="h-10 bg-gray-200 rounded w-56 animate-pulse"></div>
+                  </div>
+                </div>
+              </ProfileCard>
+            </ProfileSection>
+
+            {/* Contact Information Section Skeleton - matches ProfileSection structure */}
+            <ProfileSection
+              title=""
+              subtitle=""
+              className="animate-pulse"
+            >
+              {/* Section Header Skeleton */}
+              <div className="space-y-2 mb-6">
+                <div className="h-8 bg-gray-200 rounded w-44 animate-pulse"></div>
+                <div className="h-5 bg-gray-200 rounded w-72 animate-pulse"></div>
+              </div>
+
+              {/* ProfileCard Skeleton */}
+              <ProfileCard>
+                <div className="space-y-6">
+                  {/* Form Group Header */}
+                  <div>
+                    <div className="h-5 bg-gray-200 rounded w-36 mb-2 animate-pulse"></div>
+                    <div className="h-4 bg-gray-200 rounded w-64 animate-pulse"></div>
+                  </div>
+
+                  {/* Two-column grid fields */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {[1, 2].map((i) => (
+                      <div key={i} className="space-y-2">
+                        <div className="h-4 bg-gray-200 rounded w-24 animate-pulse"></div>
+                        <div className="h-10 bg-gray-200 rounded w-full animate-pulse"></div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Full-width email field */}
+                  <div className="space-y-2">
+                    <div className="h-4 bg-gray-200 rounded w-28 animate-pulse"></div>
+                    <div className="h-10 bg-gray-200 rounded w-full animate-pulse"></div>
+                  </div>
+
+                  {/* Button area */}
+                  <div className="flex justify-end pt-4 border-t border-gray-100">
+                    <div className="h-10 bg-gray-200 rounded w-56 animate-pulse"></div>
+                  </div>
+                </div>
+              </ProfileCard>
+            </ProfileSection>
+
+            {/* Business Address Section Skeleton - matches ProfileSection structure */}
+            <ProfileSection
+              title=""
+              subtitle=""
+              className="animate-pulse"
+            >
+              {/* Section Header Skeleton */}
+              <div className="space-y-2 mb-6">
+                <div className="h-8 bg-gray-200 rounded w-40 animate-pulse"></div>
+                <div className="h-5 bg-gray-200 rounded w-68 animate-pulse"></div>
+              </div>
+
+              {/* ProfileCard Skeleton */}
+              <ProfileCard>
+                <div className="space-y-6">
+                  {/* Form Group Header */}
+                  <div>
+                    <div className="h-5 bg-gray-200 rounded w-36 mb-2 animate-pulse"></div>
+                    <div className="h-4 bg-gray-200 rounded w-56 animate-pulse"></div>
+                  </div>
+
+                  {/* Address Fields */}
+                  <div className="space-y-6">
+                    <div className="space-y-2">
+                      <div className="h-4 bg-gray-200 rounded w-32 animate-pulse"></div>
+                      <div className="h-10 bg-gray-200 rounded w-full animate-pulse"></div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      {[1, 2, 3].map((i) => (
+                        <div key={i} className="space-y-2">
+                          <div className="h-4 bg-gray-200 rounded w-16 animate-pulse"></div>
+                          <div className="h-10 bg-gray-200 rounded w-full animate-pulse"></div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Button area */}
+                  <div className="flex justify-end pt-4 border-t border-gray-100">
+                    <div className="h-10 bg-gray-200 rounded w-48 animate-pulse"></div>
+                  </div>
+                </div>
+              </ProfileCard>
+            </ProfileSection>
+
+            {/* Business Documents Section Skeleton - matches ProfileSection structure */}
+            <ProfileSection
+              title=""
+              subtitle=""
+              className="animate-pulse"
+            >
+              {/* Section Header Skeleton */}
+              <div className="space-y-2 mb-6">
+                <div className="h-8 bg-gray-200 rounded w-48 animate-pulse"></div>
+                <div className="h-5 bg-gray-200 rounded w-84 animate-pulse"></div>
+              </div>
+
+              {/* ProfileCard Skeleton */}
+              <ProfileCard>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center space-y-4">
+                      <div className="w-12 h-12 bg-gray-200 rounded mx-auto animate-pulse"></div>
+                      <div>
+                        <div className="h-5 bg-gray-200 rounded w-32 mx-auto mb-2 animate-pulse"></div>
+                        <div className="h-4 bg-gray-200 rounded w-24 mx-auto animate-pulse"></div>
+                      </div>
+                      <div className="h-9 bg-gray-200 rounded w-24 mx-auto animate-pulse"></div>
+                    </div>
+                  ))}
+                </div>
+              </ProfileCard>
+            </ProfileSection>
+          </>
         ) : error ? (
           <ProfileCard>
             <div className="text-center py-8">
@@ -840,6 +1058,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
           <ProfileSection
             title="Account Information"
             subtitle="Read-only information for reference"
+            showSkeleton={showSkeleton || initialLoading}
           >
             <ProfileCard>
               <ProfileGrid cols={3}>
@@ -866,6 +1085,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
           <ProfileSection
             title="Business Information"
             subtitle="Update your business details and information"
+            showSkeleton={showSkeleton || initialLoading}
           >
             <ProfileCard>
               <form onSubmit={handleBusinessUpdate} className="space-y-6">
@@ -923,6 +1143,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
           <ProfileSection
             title="Contact Information"
             subtitle="Update your personal contact details"
+            showSkeleton={showSkeleton || initialLoading}
           >
             <ProfileCard>
               <form onSubmit={handleContactUpdate} className="space-y-6">
@@ -993,6 +1214,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
           <ProfileSection
             title="Business Documents"
             subtitle="Upload your business verification documents"
+            showSkeleton={showSkeleton || initialLoading}
           >
             <ProfileCard>
               {/* Document Upload Alert */}
