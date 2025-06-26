@@ -40,7 +40,6 @@ const CompletedBookingReviewPrompt: React.FC<CompletedBookingReviewPromptProps> 
     const fetchPendingReviews = async () => {
       try {
         setLoading(true);
-        console.log('Fetching pending reviews for user ID:', userId);
 
         // Check if we have cached data that's still valid
         if (typeof window !== 'undefined') {
@@ -52,7 +51,6 @@ const CompletedBookingReviewPrompt: React.FC<CompletedBookingReviewPromptProps> 
 
               // If the cache is still valid, use it
               if (cachedData.timestamp && (now - cachedData.timestamp < CACHE_EXPIRY)) {
-                console.log('Using cached pending reviews detail data');
                 setPendingReviews(cachedData.reviews || []);
                 setLoading(false);
                 return;
@@ -76,7 +74,6 @@ const CompletedBookingReviewPrompt: React.FC<CompletedBookingReviewPromptProps> 
         }
 
         const data = await response.json();
-        console.log('Pending reviews API response:', data);
 
         const reviews = data.pendingReviews || [];
         setPendingReviews(reviews);
@@ -91,7 +88,6 @@ const CompletedBookingReviewPrompt: React.FC<CompletedBookingReviewPromptProps> 
 
         // Log debug information if available
         if (data.debug) {
-          console.log('Debug info:', data.debug);
         }
 
         // Removed toast notification to avoid duplication with the banner

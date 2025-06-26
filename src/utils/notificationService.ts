@@ -78,9 +78,7 @@ export async function createNotification({
             html: createEmailHtml(first_name, title, message, type, link),
             text: createEmailText(first_name, title, message, link)
           });
-          console.log(`User email notification sent to: ${email}`);
         } else if (!emailNotificationsEnabled) {
-          console.log(`Email notifications disabled for user ${userId}`);
         } else if (!email) {
           console.warn(`No email address found for user ${userId}`);
         }

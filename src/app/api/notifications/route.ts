@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifySecureAuth } from '@/lib/secureAuth';
 import { query } from '@/lib/db';
 import { RateLimiter, createRateLimitHeaders, createStandardErrorResponse, createStandardSuccessResponse } from '@/utils/rateLimitUtils';
+import { createNotification } from '@/utils/notificationService';
 
 // GET endpoint to fetch notifications for the authenticated user
 export async function GET(request: NextRequest) {
@@ -184,7 +185,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { userId: targetUserId, title, message, type = 'info', link = null } = body;
+    const { userId: targetUserId, title, message, type = 'info', link = null, shouldSendEmail = false, emailSubject } = body;
 
     // Validate required fields
     if (!targetUserId || !title || !message) {
@@ -210,25 +211,27 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Ensure the notifications table exists
-    const tableExists = await ensureNotificationsTable();
-    if (!tableExists) {
+    // Use the notification service which supports email
+    const notificationResult = await createNotification({
+      userId: targetUserId,
+      title,
+      message,
+      type,
+      link,
+      shouldSendEmail,
+      emailSubject
+    });
+
+    if (!notificationResult.success) {
       return NextResponse.json(
-        createStandardErrorResponse('Database table initialization failed', 503),
-        { status: 503 }
+        createStandardErrorResponse(notificationResult.error || 'Failed to create notification', 500),
+        { status: 500 }
       );
     }
 
-    // Insert the notification
-    const result = await query(
-      `INSERT INTO notifications (user_id, title, message, type, link)
-       VALUES (?, ?, ?, ?, ?)`,
-      [targetUserId, title, message, type, link]
-    ) as any;
-
     return NextResponse.json(
       createStandardSuccessResponse({
-        notificationId: result.insertId
+        notificationId: notificationResult.notificationId
       }, 'Notification created successfully')
     );
   } catch (error) {

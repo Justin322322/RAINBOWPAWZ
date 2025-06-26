@@ -66,7 +66,6 @@ export async function POST(request: NextRequest) {
       await query(addRefundIdColumn);
     } catch {
       // Column might already exist, ignore error
-      console.log('Refund_id column might already exist in service_bookings');
     }
 
     // Add refund tracking to payment_transactions if it doesn't exist
@@ -80,7 +79,6 @@ export async function POST(request: NextRequest) {
       await query(addRefundTrackingColumns);
     } catch {
       // Columns might already exist, ignore error
-      console.log('Refund tracking columns might already exist in payment_transactions');
     }
 
     return NextResponse.json({

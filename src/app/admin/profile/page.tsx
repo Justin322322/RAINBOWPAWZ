@@ -1,17 +1,14 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import AdminDashboardLayout from '@/components/navigation/AdminDashboardLayout';
 import withAdminAuth from '@/components/withAdminAuth';
 import {
   UserIcon,
   EnvelopeIcon,
   CheckCircleIcon,
-  XCircleIcon,
-  CameraIcon,
   ShieldCheckIcon
 } from '@heroicons/react/24/outline';
-import Image from 'next/image';
 import {
   ProfileLayout,
   ProfileSection,
@@ -25,6 +22,7 @@ import {
   ProfileButton,
   ProfileAlert
 } from '@/components/ui/ProfileFormComponents';
+import ProfilePictureUpload from '@/components/profile/ProfilePictureUpload';
 
 
 interface AdminProfileProps {
@@ -47,14 +45,8 @@ interface ProfileData {
 function AdminProfilePage({ adminData }: AdminProfileProps) {
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isUploadingPicture, setIsUploadingPicture] = useState(false);
-  const [profilePicturePreview, setProfilePicturePreview] = useState<string | null>(null);
-  const [profilePicture, setProfilePicture] = useState<File | null>(null);
-
   // Skeleton loading state - starts false to prevent initial animation
   const [showSkeleton, setShowSkeleton] = useState(false);
-
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Contact form state
   const [contactInfo, setContactInfo] = useState({
@@ -114,77 +106,7 @@ function AdminProfilePage({ adminData }: AdminProfileProps) {
     };
   }, [isLoading, showSkeleton]);
 
-  // Handle profile picture file selection
-  const handleProfilePictureChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
 
-    setProfilePicture(file);
-
-    // Create preview
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      setProfilePicturePreview(e.target?.result as string);
-    };
-    reader.readAsDataURL(file);
-  };
-
-  // Trigger profile picture input
-  const triggerProfilePictureInput = () => {
-    fileInputRef.current?.click();
-  };
-
-  // Handle profile picture upload
-  const handleProfilePictureUpload = async () => {
-    if (!profilePicture) return;
-
-    setIsUploadingPicture(true);
-
-    try {
-      const formData = new FormData();
-      formData.append('profilePicture', profilePicture);
-      formData.append('userId', adminData.id.toString());
-
-      const response = await fetch('/api/admin/upload-profile-picture', {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setProfileData(prev => prev ? { ...prev, profile_picture: data.profilePicturePath } : null);
-
-        // Update admin data in session storage
-        const adminDataStorage = sessionStorage.getItem('admin_data');
-        if (adminDataStorage) {
-          try {
-            const admin = JSON.parse(adminDataStorage);
-            admin.profile_picture = data.profilePicturePath;
-            sessionStorage.setItem('admin_data', JSON.stringify(admin));
-
-            // Trigger profile picture update event
-            window.dispatchEvent(new Event('profilePictureUpdated'));
-          } catch (error) {
-            console.error('Failed to update admin data in session storage:', error);
-          }
-        }
-
-        // Clear preview and file
-        setProfilePicturePreview(null);
-        setProfilePicture(null);
-        if (fileInputRef.current) {
-          fileInputRef.current.value = '';
-        }
-      } else {
-        const errorData = await response.json();
-        console.error('Failed to upload profile picture:', errorData.error);
-      }
-    } catch (error) {
-      console.error('Failed to upload profile picture:', error);
-    } finally {
-      setIsUploadingPicture(false);
-    }
-  };
 
   // Handle contact information update
   const handleContactUpdate = async (e: React.FormEvent) => {
@@ -229,6 +151,20 @@ function AdminProfilePage({ adminData }: AdminProfileProps) {
 
   const userName = profileData ? `${profileData.first_name} ${profileData.last_name}` : 'Admin';
 
+  // Memoize profile picture upload props to prevent unnecessary re-renders
+  const profilePictureAdditionalData = useMemo(() => {
+    return adminData?.id ? { userId: adminData.id.toString() } : undefined;
+  }, [adminData?.id]);
+
+  const handleProfilePictureUploadSuccess = useCallback((profilePicturePath: string) => {
+    if (profileData) {
+      setProfileData({
+        ...profileData,
+        profile_picture: profilePicturePath
+      });
+    }
+  }, [profileData]);
+
   return (
     <AdminDashboardLayout activePage="profile" userName={userName} skipSkeleton={true}>
       <ProfileLayout
@@ -247,123 +183,33 @@ function AdminProfilePage({ adminData }: AdminProfileProps) {
           <ProfileCard>
             {showSkeleton || isLoading ? (
               /* Profile Picture Section Skeleton */
-              <div className="flex items-center space-x-6">
-                <div className="relative">
-                  <div className="w-32 h-32 bg-gray-200 rounded-full animate-pulse"></div>
-                  <div className="absolute -bottom-2 -right-2 w-10 h-10 bg-gray-200 rounded-full animate-pulse"></div>
-                </div>
-                <div className="flex-1 space-y-4">
-                  <div className="space-y-3">
-                    <div className="h-10 bg-gray-200 rounded w-48 animate-pulse"></div>
-                    <div className="h-16 bg-gray-200 rounded animate-pulse"></div>
+              <div className="w-full max-w-md mx-auto">
+                <div className="bg-gray-100 rounded-2xl p-8 border-2 border-dashed border-gray-200 animate-pulse">
+                  <div className="flex flex-col items-center space-y-6">
+                    <div className="relative">
+                      <div className="w-32 h-32 bg-gray-200 rounded-full animate-pulse"></div>
+                      <div className="absolute -bottom-2 -right-2 w-10 h-10 bg-gray-200 rounded-full animate-pulse"></div>
+                    </div>
+                    <div className="text-center space-y-3">
+                      <div className="h-6 bg-gray-200 rounded w-32 animate-pulse"></div>
+                      <div className="h-4 bg-gray-200 rounded w-48 animate-pulse"></div>
+                      <div className="flex items-center justify-center space-x-4">
+                        <div className="h-3 bg-gray-200 rounded w-20 animate-pulse"></div>
+                        <div className="h-3 bg-gray-200 rounded w-16 animate-pulse"></div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
             ) : (
-              /* Actual Profile Picture Content */
-              <div className="flex items-center space-x-6">
-                {/* Current/Preview Profile Picture */}
-                <div className="relative">
-                  <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-gray-200 bg-gray-100 flex items-center justify-center shadow-lg">
-                    {profilePicturePreview ? (
-                      <Image
-                        src={profilePicturePreview}
-                        alt="Profile Picture Preview"
-                        width={128}
-                        height={128}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : profileData?.profile_picture ? (
-                      <Image
-                        src={profileData.profile_picture}
-                        alt="Profile Picture"
-                        width={128}
-                        height={128}
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          console.error('Failed to load profile picture:', e.currentTarget.src);
-                          e.currentTarget.style.display = 'none';
-                          e.currentTarget.parentElement?.classList.add('flex', 'items-center', 'justify-center');
-                          if (e.currentTarget.parentElement) {
-                            e.currentTarget.parentElement.innerHTML = '<svg class="w-16 h-16 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>';
-                          }
-                        }}
-                      />
-                    ) : (
-                      <UserIcon className="w-16 h-16 text-gray-400" />
-                    )}
-                  </div>
-                  {profilePicturePreview && (
-                    <div className="absolute -top-2 -right-2 bg-emerald-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm shadow-lg">
-                      <CheckCircleIcon className="w-5 h-5" />
-                    </div>
-                  )}
-                  <button
-                    onClick={() => fileInputRef.current?.click()}
-                    className="absolute -bottom-2 -right-2 bg-[var(--primary-green)] text-white rounded-full w-10 h-10 flex items-center justify-center shadow-lg hover:bg-[var(--primary-green-hover)] transition-colors"
-                  >
-                    <CameraIcon className="w-5 h-5" />
-                  </button>
-                </div>
-
-                {/* Upload Controls */}
-                <div className="flex-1 space-y-4">
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={handleProfilePictureChange}
-                    className="hidden"
-                    accept="image/*"
-                  />
-
-                  {profilePicturePreview ? (
-                    <div className="space-y-4">
-                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                        <p className="text-sm text-blue-800 font-medium">New profile picture preview</p>
-                        <p className="text-xs text-blue-600 mt-1">Click upload to save changes</p>
-                      </div>
-                      <div className="flex space-x-3">
-                        <ProfileButton
-                          variant="primary"
-                          onClick={handleProfilePictureUpload}
-                          loading={isUploadingPicture}
-                          icon={<CheckCircleIcon className="h-5 w-5" />}
-                        >
-                          {isUploadingPicture ? 'Uploading...' : 'Upload Picture'}
-                        </ProfileButton>
-                        <ProfileButton
-                          variant="secondary"
-                          onClick={() => {
-                            setProfilePicture(null);
-                            setProfilePicturePreview(null);
-                            if (fileInputRef.current) {
-                              fileInputRef.current.value = '';
-                            }
-                          }}
-                          icon={<XCircleIcon className="h-5 w-5" />}
-                        >
-                          Cancel
-                        </ProfileButton>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      <ProfileButton
-                        variant="secondary"
-                        onClick={triggerProfilePictureInput}
-                        icon={<CameraIcon className="h-5 w-5" />}
-                      >
-                        Choose New Picture
-                      </ProfileButton>
-                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                        <p className="text-sm text-blue-800">
-                          Upload a profile picture (JPEG, PNG, GIF, or WebP, max 5MB)
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
+              <ProfilePictureUpload
+                currentImagePath={profileData?.profile_picture || undefined}
+                userType="admin"
+                apiEndpoint="/api/admin/upload-profile-picture"
+                additionalData={profilePictureAdditionalData}
+                size="lg"
+                onUploadSuccess={handleProfilePictureUploadSuccess}
+              />
             )}
           </ProfileCard>
         </ProfileSection>

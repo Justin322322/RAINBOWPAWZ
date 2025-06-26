@@ -46,7 +46,6 @@ export async function POST(request: NextRequest) {
 
     // Optionally validate payment data first
     if (validatePaymentData) {
-      console.log('Validating payment data before retry...');
       
       // Get bookings with missing payment IDs
       const { query } = await import('@/lib/db');
@@ -75,11 +74,9 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      console.log(`Payment validation results: ${validationResults.validated} validated, ${validationResults.failed} failed`);
     }
 
     // Retry failed refunds
-    console.log('Starting retry of failed PayMongo refunds...');
     const retryResults = await retryFailedRefunds();
 
     return NextResponse.json({

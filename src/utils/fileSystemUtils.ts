@@ -20,7 +20,6 @@ export async function cleanupOldFiles(
     
     // Check if directory exists
     if (!fs.existsSync(directory)) {
-      console.log(`Directory ${directory} does not exist, nothing to clean up.`);
       return [];
     }
     
@@ -28,7 +27,6 @@ export async function cleanupOldFiles(
     const files = await fsPromises.readdir(directory);
     
     if (files.length === 0) {
-      console.log(`No files found in ${directory}.`);
       return [];
     }
     
@@ -56,7 +54,6 @@ export async function cleanupOldFiles(
       const latestFile = fileStats[0].name;
       filesToDelete = files.filter(file => file !== latestFile);
       
-      console.log(`Keeping latest file: ${latestFile}`);
     }
     
     // Delete the files
@@ -66,7 +63,6 @@ export async function cleanupOldFiles(
       const filePath = join(directory, file);
       await fsPromises.unlink(filePath);
       deletedFiles.push(filePath);
-      console.log(`Deleted old file: ${filePath}`);
     }
     
     return deletedFiles;

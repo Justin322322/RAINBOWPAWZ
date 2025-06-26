@@ -68,7 +68,7 @@ export default function AdminFurParentsPage() {
     total: 0,
     totalPages: 0
   });
-  const [_isRetrying, setIsRetrying] = useState(false);
+
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -86,8 +86,13 @@ export default function AdminFurParentsPage() {
 
   // Fetch fur parents from the API
   useEffect(() => {
+    let isMounted = true; // Track if component is still mounted
+
     const fetchUsers = async () => {
       try {
+        // Don't make API calls if component is unmounted (e.g., during logout)
+        if (!isMounted) return;
+
         setLoading(true);
         setError(null);
 
@@ -107,7 +112,16 @@ export default function AdminFurParentsPage() {
           }
         });
 
+        // Check if component is still mounted before processing response
+        if (!isMounted) return;
+
         if (!response.ok) {
+          // Handle 401 Unauthorized specifically (likely due to logout)
+          if (response.status === 401) {
+            // Don't show error for 401 during logout - just return silently
+            return;
+          }
+
           let errorDetails = '';
           try {
             const errorData = await response.json();
@@ -128,22 +142,36 @@ export default function AdminFurParentsPage() {
           phone: user.phone || user.phone_number, // Support both field names
         }));
 
-        setUsers(mappedUsers);
-        setPagination({
-          page: data.pagination?.page || 1,
-          limit: data.pagination?.limit || 10,
-          total: data.pagination?.total || mappedUsers.length,
-          totalPages: data.pagination?.totalPages || 1
-        });
+        // Only update state if component is still mounted
+        if (isMounted) {
+          setUsers(mappedUsers);
+          setPagination({
+            page: data.pagination?.page || 1,
+            limit: data.pagination?.limit || 10,
+            total: data.pagination?.total || mappedUsers.length,
+            totalPages: data.pagination?.totalPages || 1
+          });
+        }
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'An unknown error occurred');
-        showToast('Failed to load fur parents. Please try again.', 'error');
+        // Only handle errors if component is still mounted
+        if (isMounted) {
+          setError(err instanceof Error ? err.message : 'An unknown error occurred');
+          showToast('Failed to load fur parents. Please try again.', 'error');
+        }
       } finally {
-        setLoading(false);
+        // Only update loading state if component is still mounted
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
 
     fetchUsers();
+
+    // Cleanup function to prevent state updates after component unmounts
+    return () => {
+      isMounted = false;
+    };
   }, [pagination.page, pagination.limit, statusFilter, searchTerm, showToast]);
 
   // Filter users based on search term and status
@@ -212,6 +240,12 @@ export default function AdminFurParentsPage() {
         }),
       });
 
+      // Handle 401 Unauthorized specifically (likely due to logout)
+      if (response.status === 401) {
+        // Don't show error for 401 during logout - just return silently
+        return;
+      }
+
       const data = await response.json();
 
       if (!response.ok || !data.success) {
@@ -275,6 +309,12 @@ export default function AdminFurParentsPage() {
           restricted: false
         }),
       });
+
+      // Handle 401 Unauthorized specifically (likely due to logout)
+      if (response.status === 401) {
+        // Don't show error for 401 during logout - just return silently
+        return;
+      }
 
       const data = await response.json();
 
@@ -365,14 +405,12 @@ export default function AdminFurParentsPage() {
 
   // Handle retry when loading fails
   const handleRetry = () => {
-    setIsRetrying(true);
     // Reset pagination to first page
     setPagination(prev => ({
       ...prev,
       page: 1
     }));
     // The useEffect will trigger a reload
-    setTimeout(() => setIsRetrying(false), 500);
   };
 
   return (

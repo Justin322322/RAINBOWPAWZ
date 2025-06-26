@@ -7,7 +7,6 @@ import { query } from '@/lib/db';
  */
 export async function POST(_request: NextRequest) {
   try {
-    console.log('Starting email tables migration...');
 
     // Create email_queue table
     await query(`
@@ -31,7 +30,6 @@ export async function POST(_request: NextRequest) {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
     `);
 
-    console.log('email_queue table created/verified');
 
     // Create email_log table
     await query(`
@@ -46,7 +44,6 @@ export async function POST(_request: NextRequest) {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
     `);
 
-    console.log('email_log table created/verified');
 
     // Verify tables exist
     const emailQueueCheck = await query(`
@@ -66,7 +63,6 @@ export async function POST(_request: NextRequest) {
     const emailQueueExists = emailQueueCheck[0]?.count > 0;
     const emailLogExists = emailLogCheck[0]?.count > 0;
 
-    console.log('Migration completed successfully');
 
     return NextResponse.json({
       success: true,

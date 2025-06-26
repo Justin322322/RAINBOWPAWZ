@@ -13,7 +13,9 @@ import {
   UsersIcon,
   StarIcon,
   CurrencyDollarIcon,
-  DocumentTextIcon
+  DocumentTextIcon,
+  UserCircleIcon,
+  CogIcon
 } from '@heroicons/react/24/outline';
 
 interface AdminSidebarProps {
@@ -65,6 +67,18 @@ export default function AdminSidebar({ activePage: propActivePage }: AdminSideba
       href: '/admin/logs',
       icon: DocumentTextIcon,
       id: 'logs'
+    },
+    {
+      name: 'Profile',
+      href: '/admin/profile',
+      icon: UserCircleIcon,
+      id: 'profile'
+    },
+    {
+      name: 'Settings',
+      href: '/admin/settings',
+      icon: CogIcon,
+      id: 'settings'
     }
   ];
 
@@ -113,6 +127,12 @@ export default function AdminSidebar({ activePage: propActivePage }: AdminSideba
         setActivePage('reviews');
       } else if (currentPath === 'refunds') {
         setActivePage('refunds');
+      } else if (currentPath === 'logs') {
+        setActivePage('logs');
+      } else if (currentPath === 'profile') {
+        setActivePage('profile');
+      } else if (currentPath === 'settings') {
+        setActivePage('settings');
       } else if (pathname.includes('/admin/users')) {
         // Always set user management open when on any user management page
         setUserManagementOpen(true);

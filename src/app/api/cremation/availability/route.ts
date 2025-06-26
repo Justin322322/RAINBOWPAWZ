@@ -55,7 +55,6 @@ export async function GET(request: NextRequest) {
     const formattedStartDate = formatDateToString(startDate);
     const formattedEndDate = formatDateToString(endDate);
 
-    console.log(`Fetching availability for provider ${providerId} from ${formattedStartDate} to ${formattedEndDate}`);
 
     // First, get all dates in the month range
     const allDatesInMonth: { date: string; isAvailable: boolean; timeSlots: any[] }[] = [];
@@ -74,7 +73,6 @@ export async function GET(request: NextRequest) {
       currentDate.setDate(currentDate.getDate() + 1);
     }
 
-    console.log(`Generated ${allDatesInMonth.length} dates from ${formatDateToString(startDate)} to ${formatDateToString(endDate)}`)
 
     try {
       // Get time slots directly - this is simpler and more reliable
@@ -95,20 +93,16 @@ export async function GET(request: NextRequest) {
       const timeSlots = await query(directTimeSlotsQuery, [providerId, formattedStartDate, formattedEndDate]) as any[];
 
       // Process time slots and mark dates as available
-      console.log(`Found ${timeSlots.length} time slots for provider ${providerId}`);
 
       for (const slot of timeSlots) {
         // Convert MySQL date format to ISO string for consistent comparison
         const slotDate = slot.date.split('T')[0]; // Ensure we're using YYYY-MM-DD format
-        console.log(`Processing slot for date: ${slotDate}, id: ${slot.id}`);
 
         const dateIndex = allDatesInMonth.findIndex(d => d.date === slotDate);
-        console.log(`Date index in allDatesInMonth: ${dateIndex}`);
 
         if (dateIndex !== -1) {
           // If we have a time slot for a date, mark the date as available
           allDatesInMonth[dateIndex].isAvailable = true;
-          console.log(`Marked date ${slotDate} as available`);
 
           // Parse the time slot and add it to the array
           const slotData: { id: string; start: string; end: string; availableServices?: number[] } = {
@@ -160,11 +154,9 @@ export async function GET(request: NextRequest) {
       `;
 
       const availabilityResult = await query(availabilityQuery, [providerId, formattedStartDate, formattedEndDate]) as any[];
-      console.log(`Found ${availabilityResult.length} availability records for provider ${providerId}`);
 
       // Update availability based on the provider_availability table
       for (const availDay of availabilityResult) {
-        console.log(`Processing availability for date: ${availDay.date}, is_available: ${availDay.is_available}`);
 
         // Format the date consistently
         let formattedAvailDate = availDay.date;
@@ -178,17 +170,13 @@ export async function GET(request: NextRequest) {
           }
         }
 
-        console.log(`Formatted availability date: ${formattedAvailDate}`);
 
         const dateIndex = allDatesInMonth.findIndex(d => d.date === formattedAvailDate);
-        console.log(`Date index in allDatesInMonth: ${dateIndex}`);
 
         if (dateIndex !== -1) {
           const isAvailable = availDay.is_available === 1 || availDay.is_available === true;
           allDatesInMonth[dateIndex].isAvailable = isAvailable;
-          console.log(`Marked date ${formattedAvailDate} availability as ${isAvailable}`);
         } else {
-          console.log(`Date ${formattedAvailDate} not found in allDatesInMonth`);
         }
       }
 
@@ -252,8 +240,6 @@ export async function POST(request: NextRequest) {
       normalizedDate = `${year}-${month}-${day}`;
 
       // Log the original and normalized dates for debugging
-      console.log('Original date:', date);
-      console.log('Normalized date:', normalizedDate);
     } catch {
       return NextResponse.json({
         error: 'Invalid date format',

@@ -80,11 +80,9 @@ export async function PATCH(
 ) {
   try {
     const { id } = await params;
-    console.log('PATCH /api/packages/[id] - Request received for package:', id);
 
     const packageId = Number(id);
     if (isNaN(packageId)) {
-      console.log('Invalid package ID provided:', id);
       return NextResponse.json({ error: 'Invalid package ID' }, { status: 400 });
     }
 
@@ -158,8 +156,6 @@ export async function PATCH(
     }
 
     // full update
-    console.log('Starting full package update for package ID:', packageId);
-    console.log('Update data:', JSON.stringify(body, null, 2));
 
     try {
       const result = await withTransaction(async (transaction) => {
@@ -281,7 +277,6 @@ export async function PATCH(
         return { success: true, filesToDelete };
       });
 
-      console.log('Package update transaction completed successfully');
 
       // Delete physical files only after transaction commits successfully
       if (result.filesToDelete && result.filesToDelete.length > 0) {
@@ -290,7 +285,6 @@ export async function PATCH(
             const fullPath = join(process.cwd(), 'public', imagePath);
             if (fs.existsSync(fullPath)) {
               fs.unlinkSync(fullPath);
-              console.log(`Deleted unused image file: ${fullPath}`);
             }
           } catch (fileError) {
             console.error('Error deleting unused file:', fileError);

@@ -58,7 +58,6 @@ const FurParentDashboardWrapper: React.FC<FurParentDashboardWrapperProps> = ({
 
         // Mark notification as sent
         localStorage.setItem(lastNotificationKey, Date.now().toString());
-        console.log(`Created review notification for ${pendingCount} pending reviews`);
       } catch (error) {
         console.error('Error creating review notifications:', error);
       }

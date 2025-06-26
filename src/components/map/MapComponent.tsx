@@ -111,20 +111,15 @@ export default function MapComponent({
   const geocodeAddressEnhanced = useCallback(async (address: string, type: 'user' | 'provider', providerId?: number) => {
     // If initial coordinates were provided, don't geocode user location to maintain consistency with API
     if (type === 'user' && (mapLoaded || initialUserCoordinates)) {
-      console.log('🗺️ [MapComponent] Skipping user geocoding - using provided coordinates for consistency with API');
       return;
     }
 
-    console.log(`🗺️ [MapComponent] Starting geocoding for ${type}:`, address);
     setIsGeocoding(true);
     setGeocodeError(null);
     setGeocodeAccuracy(null);
 
     try {
       const result = await geocodingService.geocodeAddress(address);
-      console.log(`🗺️ [MapComponent] Geocoding result for "${address}":`, result);
-      console.log(`🗺️ [MapComponent] Coordinates: [${result.coordinates[0]}, ${result.coordinates[1]}]`);
-      console.log(`🗺️ [MapComponent] Accuracy: ${result.accuracy}, Confidence: ${result.confidence}, Provider: ${result.provider}`);
 
       // Update accuracy indicator
       setGeocodeAccuracy(result.accuracy);
@@ -138,17 +133,14 @@ export default function MapComponent({
       }
 
       if (type === 'user') {
-        console.log(`🗺️ [MapComponent] Setting user coordinates to:`, result.coordinates);
         setUserCoordinates(result.coordinates);
         if (mapRef.current) {
           mapRef.current.setView(result.coordinates, 13);
           // Only add user marker if it doesn't exist or coordinates have changed
           if (!userMarkerRef.current) {
-            console.log(`🗺️ [MapComponent] Adding new user marker at:`, result.coordinates);
             addUserMarker(result.coordinates);
           } else {
             // Update existing marker position if coordinates have changed
-            console.log(`🗺️ [MapComponent] Updating existing user marker to:`, result.coordinates);
             userMarkerRef.current.setLatLng([result.coordinates[0], result.coordinates[1]]);
           }
         }
@@ -167,7 +159,6 @@ export default function MapComponent({
         setGeocodeAccuracy('low');
         // Use default Balanga City center coordinates
         const balangaCoordinates: [number, number] = [14.6742, 120.5434];
-        console.log(`🗺️ [MapComponent] Using default coordinates:`, balangaCoordinates);
         setUserCoordinates(balangaCoordinates);
         if (mapRef.current) {
           addUserMarker(balangaCoordinates);
@@ -185,12 +176,10 @@ export default function MapComponent({
     if (typeof window !== 'undefined' && !userCoordinates) {
       // If initial coordinates are provided, use them (these are the same coordinates used by the API)
       if (initialUserCoordinates) {
-        console.log('🗺️ [MapComponent] Using provided coordinates (same as API):', initialUserCoordinates);
         setUserCoordinates(initialUserCoordinates);
       } else if (userAddress) {
         // Otherwise, set default coordinates first to prevent error if geocoding fails
         const defaultCoordinates: [number, number] = [14.6742, 120.5434]; // Balanga City center coordinates
-        console.log('🗺️ [MapComponent] Using default coordinates:', defaultCoordinates);
         setUserCoordinates(defaultCoordinates);
 
         // Only geocode if no coordinates were provided - this ensures consistency with API
@@ -422,12 +411,6 @@ export default function MapComponent({
                                  { lat: userCoordinates[0], lng: userCoordinates[1] };
 
       const startCoords: [number, number] = [currentUserPosition.lat, currentUserPosition.lng];
-
-      console.log('🗺️ [MapComponent] Calculating route with coordinates:', {
-        userCoords: startCoords,
-        providerCoords: providerCoords,
-        providerName: providerName
-      });
 
       // Get route using the enhanced routing service
       const routeResult = await routingService.getRoute(startCoords, providerCoords, { trafficAware: true });

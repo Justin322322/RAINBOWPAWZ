@@ -85,7 +85,6 @@ export async function sendSMS({ to, message }: SendSMSParams): Promise<SendSMSRe
       to: formattedPhone
     });
 
-    console.log(`SMS sent successfully to ${formattedPhone}, SID: ${messageResponse.sid}`);
 
     return {
       success: true,

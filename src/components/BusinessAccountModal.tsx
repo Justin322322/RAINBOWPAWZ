@@ -156,7 +156,6 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
       };
 
       // Log the data being sent for debugging
-      console.log("Sending registration data:", textData);
 
       // First, try sending the registration data without files
       const regResponse = await fetch('/api/auth/register', {
@@ -168,10 +167,8 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
       });
 
       // Log the response for debugging
-      console.log("Registration response status:", regResponse.status);
 
       const regData = await regResponse.json();
-      console.log("Registration response data:", regData);
 
       if (!regResponse.ok) {
         // Handle specific error cases

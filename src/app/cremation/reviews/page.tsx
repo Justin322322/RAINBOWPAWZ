@@ -86,14 +86,12 @@ function ReviewsPage({ userData }: ReviewsPageProps) {
         }
 
         const data = await response.json();
-        console.log('Reviews API response:', data);
 
         // Only update state if component is still mounted
         if (!isMounted) return;
 
         // Check if we have reviews data
         if (data.reviews && Array.isArray(data.reviews)) {
-          console.log(`Found ${data.reviews.length} reviews in API response`);
 
           // Log the first few reviews for debugging
           if (data.reviews.length > 0) {
@@ -120,7 +118,6 @@ function ReviewsPage({ userData }: ReviewsPageProps) {
               };
             });
 
-            console.log(`Found ${uniqueServices.length} unique services for filtering`);
             setServices(uniqueServices);
           }
         } else {
@@ -135,7 +132,6 @@ function ReviewsPage({ userData }: ReviewsPageProps) {
 
         setAverageRating(numericRating);
         setTotalReviews(data.totalReviews || 0);
-        console.log(`Set average rating: ${numericRating} (type: ${typeof numericRating}) from ${data.totalReviews} reviews`);
 
         // Reset error flag on successful load
         hasShownErrorRef.current = false;

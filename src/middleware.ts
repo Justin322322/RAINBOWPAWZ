@@ -83,7 +83,6 @@ export function middleware(request: NextRequest) {
         const payload = decodeJWTPayload(decodedValue);
         if (!payload) {
           // If we can't decode the JWT, redirect to login
-          console.log('[Middleware] Could not decode JWT, redirecting to login');
           return NextResponse.redirect(new URL('/', request.url));
         }
         
@@ -92,7 +91,6 @@ export function middleware(request: NextRequest) {
         
         // If we can't get basic info from JWT, redirect to login
         if (!userId || !accountType) {
-          console.log('[Middleware] Missing userId or accountType in JWT, redirecting to login');
           return NextResponse.redirect(new URL('/', request.url));
         }
       } else {

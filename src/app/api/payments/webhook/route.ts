@@ -66,7 +66,6 @@ export async function POST(request: NextRequest) {
         break;
 
       default:
-        console.log('Unhandled webhook event type:', eventType);
     }
 
     return NextResponse.json({ success: true, message: 'Webhook processed' });
@@ -83,9 +82,8 @@ export async function POST(request: NextRequest) {
 async function handleSourceChargeable(sourceData: any) {
   try {
     const sourceId = sourceData.id;
-    const status = sourceData.attributes.status;
+    const _status = sourceData.attributes._status;
 
-    console.log('Processing source.chargeable:', { sourceId, status });
 
     // Update payment status
     const success = await processPaymentWebhook(sourceId, 'chargeable');
@@ -105,7 +103,6 @@ async function handleSourceChargeable(sourceData: any) {
 
         // Create payment notification
         await createPaymentNotification(booking_id, 'payment_confirmed');
-        console.log('Payment confirmed notification sent for booking:', booking_id);
       }
     }
   } catch (error) {
@@ -116,9 +113,8 @@ async function handleSourceChargeable(sourceData: any) {
 async function handlePaymentPaid(paymentData: any) {
   try {
     const paymentId = paymentData.id;
-    const status = paymentData.attributes.status;
+    const _status = paymentData.attributes._status;
 
-    console.log('Processing payment.paid:', { paymentId, status });
 
     // For payment intents, we need to find the transaction by payment_intent_id
     const transactionQuery = `
@@ -148,7 +144,6 @@ async function handlePaymentPaid(paymentData: any) {
 
       // Create payment notification
       await createPaymentNotification(booking_id, 'payment_confirmed');
-      console.log('Payment confirmed notification sent for booking:', booking_id);
     }
   } catch (error) {
     console.error('Error handling payment.paid:', error);
@@ -158,10 +153,9 @@ async function handlePaymentPaid(paymentData: any) {
 async function handlePaymentFailed(paymentData: any) {
   try {
     const paymentId = paymentData.id;
-    const status = paymentData.attributes.status;
+    const _status = paymentData.attributes._status;
     const failureReason = paymentData.attributes.last_payment_error?.message || 'Payment failed';
 
-    console.log('Processing payment.failed:', { paymentId, status, failureReason });
 
     // Find the transaction
     const transactionQuery = `
@@ -184,7 +178,6 @@ async function handlePaymentFailed(paymentData: any) {
 
       // Create payment notification
       await createPaymentNotification(booking_id, 'payment_failed');
-      console.log('Payment failed notification sent for booking:', booking_id);
     }
   } catch (error) {
     console.error('Error handling payment.failed:', error);
@@ -194,10 +187,9 @@ async function handlePaymentFailed(paymentData: any) {
 async function handleRefundSucceeded(refundData: any) {
   try {
     const refundId = refundData.id;
-    const paymentId = refundData.attributes.payment_id;
-    const status = refundData.attributes.status;
+    const _paymentId = refundData.attributes.payment_id;
+    const _status = refundData.attributes._status;
 
-    console.log('Processing refund.succeeded:', { refundId, paymentId, status });
 
     // Find the refund record by PayMongo transaction ID
     const refundQuery = `
@@ -216,9 +208,7 @@ async function handleRefundSucceeded(refundData: any) {
 
       // Create refund notification
       await createPaymentNotification(booking_id, 'payment_refunded');
-      console.log('Refund processed notification sent for booking:', booking_id);
 
-      console.log('Refund completed successfully:', localRefundId);
     } else {
       console.warn('Refund record not found for PayMongo refund:', refundId);
     }
@@ -230,11 +220,10 @@ async function handleRefundSucceeded(refundData: any) {
 async function handleRefundFailed(refundData: any) {
   try {
     const refundId = refundData.id;
-    const paymentId = refundData.attributes.payment_id;
-    const status = refundData.attributes.status;
+    const _paymentId = refundData.attributes.payment_id;
+    const _status = refundData.attributes._status;
     const failureReason = refundData.attributes.failure_reason || 'Refund failed';
 
-    console.log('Processing refund.failed:', { refundId, paymentId, status, failureReason });
 
     // Find the refund record by PayMongo transaction ID
     const refundQuery = `
@@ -256,9 +245,7 @@ async function handleRefundFailed(refundData: any) {
 
       // Create refund notification
       await createPaymentNotification(booking_id, 'payment_failed');
-      console.log('Refund failed notification sent for booking:', booking_id);
 
-      console.log('Refund marked as failed:', localRefundId);
     } else {
       console.warn('Refund record not found for PayMongo refund:', refundId);
     }

@@ -103,7 +103,6 @@ async function sendBusinessEmailNotification(
     const emailNotificationsEnabled = user.email_notifications !== null ? Boolean(user.email_notifications) : true;
 
     if (!emailNotificationsEnabled) {
-      console.log(`Email notifications disabled for business user ${userId}`);
       return;
     }
 
@@ -120,7 +119,6 @@ async function sendBusinessEmailNotification(
       text: createBusinessEmailText(user.first_name, user.business_name, title, message, link)
     });
 
-    console.log(`Business email notification sent to: ${user.email}`);
   } catch (error) {
     console.error('Error sending business email notification:', error);
   }

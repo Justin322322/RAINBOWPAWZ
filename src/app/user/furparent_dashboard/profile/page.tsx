@@ -32,7 +32,6 @@ interface ProfilePageProps {
 }
 
 function ProfilePage({ userData }: ProfilePageProps) {
-  console.log('🔍 [ProfilePage] Component rendered with userData:', userData);
 
   // Loading and error states
   const [error, setError] = useState<string | null>(null);

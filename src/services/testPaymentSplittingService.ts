@@ -23,7 +23,6 @@ export async function createTestSplitPayment(bookingData: {
   customer_info: any;
 }) {
   try {
-    console.log('🧪 Creating test split payment for booking:', bookingData.booking_id);
     
     // Get provider's test merchant ID
     const providerResult = await query(
@@ -45,13 +44,6 @@ export async function createTestSplitPayment(bookingData: {
     const platformFeeRate = (provider.commission_rate || 15.00) / 100;
     const providerAmount = bookingData.amount * (1 - platformFeeRate);
     const platformFeeAmount = bookingData.amount * platformFeeRate;
-    
-    console.log('💰 Split calculation:', {
-      totalAmount: bookingData.amount,
-      providerAmount: providerAmount,
-      platformFee: platformFeeAmount,
-      feeRate: `${provider.commission_rate || 15}%`
-    });
     
     // For now, let's simulate split payment creation
     // Once SEEDS is approved, we'll use the actual API
@@ -144,13 +136,6 @@ async function simulateSplitPayment(
     providerAmount,
     bookingData.amount
   ]);
-  
-  console.log('🎭 Simulated split payment created:', {
-    paymentId: paymentIntent.id,
-    mockSplitId: mockSplitId,
-    checkoutUrl: paymentIntent.attributes.next_action?.redirect?.url,
-    note: 'This is a simulation. Real split will happen when SEEDS is approved.'
-  });
   
   return {
     success: true,

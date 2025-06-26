@@ -33,7 +33,6 @@ const ReviewNotificationBanner: React.FC<ReviewNotificationBannerProps> = ({ use
 
               // If the cache is still valid, use it
               if (cachedData.timestamp && (now - cachedData.timestamp < CACHE_EXPIRY)) {
-                console.log('Using cached pending reviews data');
                 setPendingReviewsCount(cachedData.count || 0);
                 setLoading(false);
                 return;

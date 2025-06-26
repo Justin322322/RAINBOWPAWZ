@@ -48,39 +48,25 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
 
   // Handle authentication state changes and get user data
   useEffect(() => {
-    console.log('🔍 [Checkout] Authentication state check...');
-    console.log('🔍 [Checkout] userData from props:', userData);
-    console.log('🔍 [Checkout] sessionStorage auth_token:', sessionStorage.getItem('auth_token'));
-    console.log('🔍 [Checkout] sessionStorage user_data:', sessionStorage.getItem('user_data'));
-
     // Give the authentication HOC some time to load userData
     const authTimeout = setTimeout(() => {
-      console.log('⏰ [Checkout] Auth timeout reached, stopping wait');
       setIsWaitingForAuth(false);
     }, 2000); // Wait 2 seconds for authentication to complete
 
     // If userData is available from props, use it
     if (userData) {
-      console.log('✅ [Checkout] userData received from props:', userData);
-      console.log('🔍 [Checkout] userData.address:', userData.address);
-      console.log('🔍 [Checkout] userData.city:', userData.city);
-      console.log('🔍 [Checkout] userData.role:', userData.role);
       setCurrentUserData(userData);
       setIsWaitingForAuth(false);
       clearTimeout(authTimeout);
     } else {
-      console.log('⚠️ [Checkout] No userData received from authentication HOC');
-
       // Check if we have session data but no userData prop
       const sessionUserData = sessionStorage.getItem('user_data');
       if (sessionUserData) {
         try {
           const parsedUserData = JSON.parse(sessionUserData);
-          console.log('📦 [Checkout] Found user data in session storage:', parsedUserData);
-          
+
           // If we have valid session data but no userData prop, use it
           if (parsedUserData && parsedUserData.id) {
-            console.log('✅ [Checkout] Using session storage user data as fallback');
             setCurrentUserData(parsedUserData);
             setIsWaitingForAuth(false);
             clearTimeout(authTimeout);
@@ -325,8 +311,6 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
 
   // Handle date and time selection with validation
   const handleDateTimeSelected = (date: string, timeSlot: any | null) => {
-    console.log('handleDateTimeSelected called:', { date, timeSlot: timeSlot ? `${timeSlot.start}-${timeSlot.end}` : null });
-
     // Only update state if we have valid values
     if (date) {
       setSelectedDate(date);
@@ -526,8 +510,6 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
     const fetchUserDataIfNeeded = async () => {
       // If we don't have userData from props or session, try to fetch it
       if (!currentUserData && !isWaitingForAuth) {
-        console.log('🔍 [Checkout] No userData available, attempting to fetch from API...');
-
         try {
           // Get user ID from auth token
           const authToken = sessionStorage.getItem('auth_token');
@@ -537,11 +519,10 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
             const response = await fetch(`/api/users/${userId}`);
             if (response.ok) {
               const fetchedUserData = await response.json();
-              console.log('✅ [Checkout] Fetched user data from API:', fetchedUserData);
 
               // Store in session storage for future use
               sessionStorage.setItem('user_data', JSON.stringify(fetchedUserData));
-              
+
               // Set the current user data
               setCurrentUserData(fetchedUserData);
             } else {
@@ -561,32 +542,25 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
   useEffect(() => {
     const calculateActualDistance = async () => {
       if (currentUserData && bookingData && deliveryOption === 'delivery') {
-        console.log('🔍 [Checkout] Calculating actual delivery distance...');
-        
         // Check if the user has an address in their profile
         if (!currentUserData.address && !currentUserData.city) {
-          console.log('⚠️ [Checkout] User has no address or city in profile');
           setActualDeliveryDistance(null);
           return;
         }
 
         setIsCalculatingDistance(true);
-        
+
         try {
           // Get coordinates for the delivery address
           const deliveryAddress = currentUserData.address || currentUserData.city || 'Bataan';
           const deliveryCoordinates = getBataanCoordinates(deliveryAddress);
-          
+
           // Get coordinates for the provider address
           const providerAddress = bookingData.provider.address || bookingData.provider.city || 'Bataan';
           const providerCoordinates = getBataanCoordinates(providerAddress);
-          
+
           // Calculate the actual distance
           const distance = calculateDistance(deliveryCoordinates, providerCoordinates);
-          
-          console.log('📍 [Checkout] Delivery address:', deliveryAddress);
-          console.log('📍 [Checkout] Provider address:', providerAddress);
-          console.log('📏 [Checkout] Calculated distance:', distance, 'km');
           
           setActualDeliveryDistance(distance);
           

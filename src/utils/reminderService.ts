@@ -26,7 +26,6 @@ export async function processPendingReminders(): Promise<{ processed: number; er
       LIMIT 100
     `) as any[];
 
-    console.log(`Found ${pendingReminders.length} pending reminders to process`);
 
     for (const reminder of pendingReminders) {
       try {
@@ -41,7 +40,6 @@ export async function processPendingReminders(): Promise<{ processed: number; er
             [reminder.id]
           );
           processed++;
-          console.log(`Processed reminder ${reminder.id} for booking ${reminder.booking_id}`);
         } else {
           console.error(`Failed to send reminder ${reminder.id}:`, result.error);
           errors++;
@@ -52,7 +50,6 @@ export async function processPendingReminders(): Promise<{ processed: number; er
       }
     }
 
-    console.log(`Reminder processing complete: ${processed} processed, ${errors} errors`);
     return { processed, errors };
   } catch (error) {
     console.error('Error in processPendingReminders:', error);
@@ -80,7 +77,6 @@ export async function processReviewRequests(): Promise<{ processed: number; erro
       LIMIT 50
     `) as any[];
 
-    console.log(`Found ${completedBookings.length} completed bookings eligible for review requests`);
 
     for (const booking of completedBookings) {
       try {
@@ -96,7 +92,6 @@ export async function processReviewRequests(): Promise<{ processed: number; erro
 
           if (result.success) {
             processed++;
-            console.log(`Sent review request for booking ${booking.id}`);
           } else {
             console.error(`Failed to send review request for booking ${booking.id}:`, result.error);
             errors++;
@@ -108,7 +103,6 @@ export async function processReviewRequests(): Promise<{ processed: number; erro
       }
     }
 
-    console.log(`Review request processing complete: ${processed} processed, ${errors} errors`);
     return { processed, errors };
   } catch (error) {
     console.error('Error in processReviewRequests:', error);
@@ -140,7 +134,6 @@ export async function cleanupOldData(): Promise<{ remindersDeleted: number; noti
 
     notificationsDeleted = notificationResult.affectedRows || 0;
 
-    console.log(`Cleanup complete: ${remindersDeleted} reminders deleted, ${notificationsDeleted} notifications deleted`);
     return { remindersDeleted, notificationsDeleted };
   } catch (error) {
     console.error('Error in cleanupOldData:', error);
@@ -195,7 +188,6 @@ export async function triggerReminderProcessing(): Promise<{
   reviews: { processed: number; errors: number };
   cleanup: { remindersDeleted: number; notificationsDeleted: number };
 }> {
-  console.log('Starting manual reminder processing...');
 
   const [reminderResults, reviewResults, cleanupResults] = await Promise.all([
     processPendingReminders(),
@@ -203,7 +195,6 @@ export async function triggerReminderProcessing(): Promise<{
     cleanupOldData()
   ]);
 
-  console.log('Manual reminder processing complete');
 
   return {
     reminders: reminderResults,

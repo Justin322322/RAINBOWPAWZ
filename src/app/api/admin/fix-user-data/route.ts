@@ -167,7 +167,6 @@ async function fixAllMissingPhoneNumbers() {
         );
 
         updatedCount++;
-        console.log(`Updated phone for user ${user.user_id}: ${user.first_name} ${user.last_name} -> ${placeholderPhone}`);
       } catch (error) {
         console.error(`Failed to update phone for user ${user.user_id}:`, error);
       }

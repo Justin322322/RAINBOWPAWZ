@@ -18,21 +18,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
     }
 
-    console.log('Starting notifications table migration...');
 
     // Check current table structure
     const tableInfo = await query(`
       DESCRIBE notifications
     `) as any[];
 
-    console.log('Current table structure:', tableInfo);
 
     // Check if we need to migrate from notification_id to id
     const hasNotificationId = tableInfo.some(col => col.Field === 'notification_id');
     const hasId = tableInfo.some(col => col.Field === 'id');
 
     if (hasNotificationId && !hasId) {
-      console.log('Migrating from notification_id to id...');
       
       // Rename notification_id to id
       await query(`
@@ -40,11 +37,8 @@ export async function POST(request: NextRequest) {
         CHANGE COLUMN notification_id id INT AUTO_INCREMENT PRIMARY KEY
       `);
       
-      console.log('Successfully renamed notification_id to id');
     } else if (hasId) {
-      console.log('Table already has id column, no migration needed');
     } else {
-      console.log('Table structure is unexpected, creating new table...');
       
       // Drop and recreate table with correct structure
       await query(`DROP TABLE IF EXISTS notifications_backup`);
@@ -53,7 +47,6 @@ export async function POST(request: NextRequest) {
       const dataCount = await query(`SELECT COUNT(*) as count FROM notifications`) as any[];
       if (dataCount[0].count > 0) {
         await query(`CREATE TABLE notifications_backup AS SELECT * FROM notifications`);
-        console.log(`Backed up ${dataCount[0].count} notifications`);
       }
       
       // Drop and recreate with correct structure
@@ -85,7 +78,6 @@ export async function POST(request: NextRequest) {
           FROM notifications_backup
         `);
         
-        console.log(`Restored ${dataCount[0].count} notifications`);
         
         // Drop backup table
         await query(`DROP TABLE notifications_backup`);
@@ -94,11 +86,9 @@ export async function POST(request: NextRequest) {
 
     // Verify the final structure
     const finalTableInfo = await query(`DESCRIBE notifications`) as any[];
-    console.log('Final table structure:', finalTableInfo);
 
     // Test the table by counting records
     const recordCount = await query(`SELECT COUNT(*) as count FROM notifications`) as any[];
-    console.log(`Table has ${recordCount[0].count} notifications`);
 
     return NextResponse.json({
       success: true,

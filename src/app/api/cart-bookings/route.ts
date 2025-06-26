@@ -259,9 +259,7 @@ export async function POST(request: NextRequest) {
         // Delete the time slot to prevent it from being booked again
         const timeSlotId = timeSlots[0].id;
         await query('DELETE FROM provider_time_slots WHERE id = ?', [timeSlotId]);
-        console.log(`Time slot ${timeSlotId} removed after booking ${result.bookingId} was created`);
       } else {
-        console.log(`No matching time slot found for booking ${result.bookingId} at ${formattedDate} ${bookingTime}`);
       }
     } catch (timeSlotError) {
       // Log the error but don't fail the booking creation

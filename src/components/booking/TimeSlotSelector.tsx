@@ -42,13 +42,11 @@ export default function TimeSlotSelector({
   useEffect(() => {
     // Only update if the selectedDate is a non-empty string
     if (selectedDate && selectedDate.trim() !== '') {
-      console.log(`TimeSlotSelector: Updating selected date from props: ${selectedDate}`);
       setSelectedDateState(selectedDate);
     }
 
     // Only update if selectedTimeSlot is not null
     if (selectedTimeSlot) {
-      console.log(`TimeSlotSelector: Updating selected time slot from props: ${selectedTimeSlot.start}-${selectedTimeSlot.end}`);
       setSelectedTimeSlotState(selectedTimeSlot);
     }
   }, [selectedDate, selectedTimeSlot]);
@@ -60,12 +58,10 @@ export default function TimeSlotSelector({
 
       // Format for month: YYYY-MM
       const monthString = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}`;
-      console.log(`TimeSlotSelector: Fetching availability data for provider ${providerId}, month ${monthString}`);
 
       // Add timestamp to prevent caching
       const timestamp = new Date().getTime();
       const url = `/api/cremation/availability?providerId=${providerId}&month=${monthString}&t=${timestamp}`;
-      console.log(`TimeSlotSelector: API URL: ${url}`);
 
       const response = await fetch(url, {
         headers: {
@@ -83,16 +79,13 @@ export default function TimeSlotSelector({
       }
 
       const data = await response.json();
-      console.log(`TimeSlotSelector: Received ${data.availability?.length || 0} days of availability data`);
 
       // Debug data received from API
       if (data.availability?.length > 0) {
         const daysWithSlots = data.availability.filter((day: any) => day.timeSlots?.length > 0);
-        console.log(`TimeSlotSelector: Found ${daysWithSlots.length} days with time slots`);
 
         // Log the first few days with slots for debugging
-        daysWithSlots.slice(0, 3).forEach((day: any) => {
-          console.log(`TimeSlotSelector: Day ${day.date} has ${day.timeSlots.length} slots`);
+        daysWithSlots.slice(0, 3).forEach((_day: any) => {
         });
       }
 
@@ -221,7 +214,6 @@ export default function TimeSlotSelector({
   };
 
   const handleDateSelect = (dateString: string, timeSlots: TimeSlot[]) => {
-    console.log(`TimeSlotSelector: Date selected: ${dateString} with ${timeSlots.length} time slots`);
 
     // Clear any local error when a date is selected
     if (error) setError(null);
@@ -238,14 +230,12 @@ export default function TimeSlotSelector({
     }
 
     if (hasTimeSlots) {
-      console.log(`TimeSlotSelector: Date ${dateString} has ${timeSlots.length} time slots available`);
       // Clear any previous error when a valid date with slots is selected
       setError(null);
 
       // Notify the parent about the date selection (without clearing existing time slot)
       onDateTimeSelected(dateString, selectedDateState === dateString ? selectedTimeSlotState : null);
     } else {
-      console.log(`TimeSlotSelector: Date ${dateString} has no time slots available`);
 
       // Only show a message about no available slots, not an error
       if (timeSlots.length === 0) {
@@ -260,11 +250,9 @@ export default function TimeSlotSelector({
   };
 
   const handleTimeSlotSelect = (timeSlot: TimeSlot) => {
-    console.log(`TimeSlotSelector: Time slot selected: ${timeSlot.start}-${timeSlot.end} (ID: ${timeSlot.id})`);
     setSelectedTimeSlotState(timeSlot);
 
     if (selectedDateState) {
-      console.log(`TimeSlotSelector: Notifying parent of date/time selection: ${selectedDateState} at ${timeSlot.start}`);
       // Now that both date and time slot are selected, notify the parent
       // This is the proper time to trigger validation if needed
       onDateTimeSelected(selectedDateState, timeSlot);

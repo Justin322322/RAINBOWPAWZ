@@ -158,7 +158,7 @@ export class MonitoringService {
 
   // Log performance metrics
   static logPerformanceMetric(operation: string, duration: number, success: boolean) {
-    const metric = {
+    const _metric = {
       operation,
       duration,
       success,
@@ -166,7 +166,6 @@ export class MonitoringService {
     };
 
     // In production, you'd send this to a monitoring service
-    console.log('Performance Metric:', metric);
   }
 
   // Performance monitoring wrapper

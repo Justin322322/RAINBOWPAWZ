@@ -106,7 +106,6 @@ export async function GET(request: NextRequest) {
           if (booking.booking_date) {
             try {
               // Log the original date for debugging
-              console.log('Original booking date:', booking.booking_date);
 
               // Helper function to format date consistently
               const formatDateToString = (date: Date | string): string => {
@@ -149,7 +148,6 @@ export async function GET(request: NextRequest) {
               formattedDate = formatDateToString(booking.booking_date);
 
               // Log the formatted date for debugging
-              console.log('Formatted date:', formattedDate);
             } catch (dateError) {
               console.error('Error parsing booking date:', dateError);
 
@@ -479,7 +477,6 @@ export async function GET(request: NextRequest) {
                 if (booking.booking_date) {
                   try {
                     // Log the original date for debugging
-                    console.log('Original booking date:', booking.booking_date);
 
                     // Helper function to format date consistently
                     const formatDateToString = (date: Date | string): string => {
@@ -522,7 +519,6 @@ export async function GET(request: NextRequest) {
                     formattedDate = formatDateToString(booking.booking_date);
 
                     // Log the formatted date for debugging
-                    console.log('Formatted date:', formattedDate);
                   } catch (dateError) {
                     console.error('Error parsing booking date:', dateError);
 
@@ -608,7 +604,6 @@ export async function GET(request: NextRequest) {
         if (booking.booking_date) {
           try {
             // Log the original date for debugging
-            console.log('Original booking date:', booking.booking_date);
 
             // Helper function to format date consistently
             const formatDateToString = (date: Date | string): string => {
@@ -651,7 +646,6 @@ export async function GET(request: NextRequest) {
             formattedDate = formatDateToString(booking.booking_date);
 
             // Log the formatted date for debugging
-            console.log('Formatted date:', formattedDate);
           } catch (dateError) {
             console.error('Error parsing booking date:', dateError);
 
@@ -1155,9 +1149,7 @@ export async function POST(request: NextRequest) {
             // Delete the time slot to prevent it from being booked again
             const timeSlotId = timeSlots[0].id;
             await query('DELETE FROM provider_time_slots WHERE id = ?', [timeSlotId]);
-            console.log(`Time slot ${timeSlotId} removed after booking ${insertId} was created`);
           } else {
-            console.log(`No matching time slot found for booking ${insertId} at ${bookingData.date} ${bookingData.time}`);
           }
         }
       } catch (timeSlotError) {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { sendBusinessVerificationEmail } from '@/lib/consolidatedEmailService';
 import { logAdminAction, getAdminIdFromRequest } from '@/utils/adminUtils';
+import { createBusinessNotification } from '@/utils/businessNotificationService';
 import mysql from 'mysql2/promise';
 
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
@@ -121,34 +122,20 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       );
     }
 
-    // Create a notification for the business owner
+    // Create a notification for the business owner with email support
     try {
-      // First check if the notifications table exists
-      const tableCheck = await query(`
-        SELECT COUNT(*) as count
-        FROM information_schema.tables
-        WHERE table_schema = ? AND table_name = 'notifications'
-      `, [process.env.DB_NAME || 'rainbow_paws']);
-
-      const tableExists = tableCheck && Array.isArray(tableCheck) &&
-                          tableCheck[0] && tableCheck[0].count > 0;
-
-      if (tableExists) {
-        // Create notification for the business owner
-        await query(`
-          INSERT INTO notifications (user_id, title, message, type, link, is_read)
-          VALUES (?, ?, ?, ?, ?, ?)
-        `, [
-          business.user_id,
-          'Application Approved',
-          `Your business application for ${business.business_name || business.name} has been approved. You can now start offering services.`,
-          'success',
-          '/login',
-          0
-        ]);
-      }
-    } catch {
+      await createBusinessNotification({
+        userId: business.user_id,
+        title: 'Application Approved',
+        message: `Your business application for ${business.business_name || business.name} has been approved. You can now start offering services.`,
+        type: 'success',
+        link: '/cremation/dashboard',
+        shouldSendEmail: true,
+        emailSubject: 'Business Application Approved - Rainbow Paws'
+      });
+    } catch (notificationError) {
       // Non-critical error, just log it
+      console.error('Error creating approval notification:', notificationError);
     }
 
     // Log the admin action using the utility function
@@ -188,7 +175,6 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
 
         if (emailResult.success) {
           emailSent = true;
-          console.log('Email sent successfully to:', business.email);
         } else {
           console.warn('Email sending failed:', emailResult.error);
         }
@@ -210,7 +196,6 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
           shouldSendEmail: true,
           emailSubject: 'Business Application Approved - Rainbow Paws'
         });
-        console.log('Business notification created for user:', business.user_id);
       } catch (notificationError) {
         // Log the error but continue with the process
         console.error('Error creating business notification:', notificationError);

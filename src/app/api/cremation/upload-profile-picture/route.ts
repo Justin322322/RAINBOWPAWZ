@@ -9,7 +9,6 @@ import { verifySecureAuth } from '@/lib/secureAuth';
 // Function to save profile picture to disk
 async function saveProfilePicture(file: File, userId: string): Promise<string> {
   try {
-    console.log(`Saving profile picture: ${file.name} for user ${userId}`);
 
     // Create a unique filename with timestamp
     const timestamp = Date.now();
@@ -35,7 +34,6 @@ async function saveProfilePicture(file: File, userId: string): Promise<string> {
 
     // Return the relative path
     const relativePath = `/uploads/profile-pictures/${userId}/${filename}`;
-    console.log(`Profile picture saved successfully at: ${relativePath}`);
 
     return relativePath;
   } catch (error) {
@@ -106,7 +104,6 @@ export async function POST(request: NextRequest) {
     try {
       // First save, then clean up to ensure we always have at least one picture
       await cleanupOldFiles(userId.toString(), 'profile-pictures', true);
-      console.log(`Cleaned up old profile pictures for user ${userId}`);
     } catch (cleanupError) {
       console.error('Error cleaning up old profile pictures:', cleanupError);
       // Continue with the process even if cleanup fails
@@ -118,7 +115,6 @@ export async function POST(request: NextRequest) {
         'UPDATE users SET profile_picture = ? WHERE user_id = ?',
         [profilePicturePath, userId]
       );
-      console.log(`Profile picture updated in database for user ${userId}: ${profilePicturePath}`);
     } catch (dbError) {
       console.error('Failed to update profile picture in database:', dbError);
       throw new Error('Failed to save profile picture to database');

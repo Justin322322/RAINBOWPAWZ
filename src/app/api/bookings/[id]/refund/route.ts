@@ -104,7 +104,6 @@ export async function POST(
       if (!result.success) {
         console.error('Failed to create admin notification:', result.error);
       } else {
-        console.log('Admin notification created successfully with ID:', result.notificationId);
       }
     } catch (notificationError) {
       console.error('Failed to create admin notification:', notificationError);

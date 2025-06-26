@@ -180,7 +180,6 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
       const timestamp = new Date().getTime();
       const url = `/api/cremation/availability?providerId=${providerId}&startDate=${startDate}&endDate=${endDate}&month=${monthString}&t=${timestamp}`;
 
-      console.log(`Fetching availability data from: ${url}`);
 
       const headers = new Headers({
         'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -328,7 +327,6 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
       
       // If this is a network error, try to fallback to cached data
       if (err instanceof Error && err.message.includes('fetch')) {
-        console.log('Network error detected, checking for cached data');
         if (typeof window !== 'undefined') {
           const cachedData = localStorage.getItem(`availabilityData_${providerId}`);
           if (cachedData) {
@@ -604,7 +602,6 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
-    console.log('Setting weekday availability for year:', currentYear);
     
     for (let month = 0; month < 12; month++) {
       const daysInMonth = new Date(currentYear, month + 1, 0).getDate();
@@ -641,7 +638,6 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
       }
     }
     
-    console.log('Weekday batch data prepared:', batchData.length, 'days');
     
     // Batch API call instead of individual calls
     try {
@@ -712,7 +708,6 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
-    console.log('Setting weekend availability for year:', currentYear);
     
     for (let month = 0; month < 12; month++) {
       const daysInMonth = new Date(currentYear, month + 1, 0).getDate();
@@ -749,7 +744,6 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
       }
     }
     
-    console.log('Weekend batch data prepared:', batchData.length, 'days');
     
     // Batch API call
     try {
@@ -1103,7 +1097,6 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
 
       // Try one more approach - clear all slots for the date
       try {
-        console.log('Attempting to clear all slots for date:', dateString);
         const clearResponse = await fetch(`/api/cremation/availability/debug?action=clear-date&date=${dateString}&providerId=${providerId}`, {
           method: 'GET',
           headers: {
@@ -1113,7 +1106,6 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
         });
 
         const clearResponseData = await clearResponse.json();
-        console.log('Clear date response:', clearResponseData);
 
         if (clearResponse.ok && clearResponseData.affectedRows > 0) {
           showToast(`Cleared ${clearResponseData.affectedRows} time slots for ${dateString}`, 'success');

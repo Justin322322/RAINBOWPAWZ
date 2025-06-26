@@ -8,7 +8,6 @@ import {
   XCircleIcon,
   ExclamationTriangleIcon,
   FireIcon,
-  BanknotesIcon,
   ArrowPathIcon,
 } from '@heroicons/react/24/outline';
 import Link from 'next/link';
@@ -55,12 +54,6 @@ function AdminDashboardPage({ adminData }: { adminData: any }) {
       name: 'Active Services',
       icon: FireIcon,
       color: 'purple',
-    },
-    {
-      key: 'monthlyRevenue',
-      name: 'Monthly Revenue',
-      icon: BanknotesIcon,
-      color: 'amber',
     },
   ];
 
@@ -148,7 +141,6 @@ function AdminDashboardPage({ adminData }: { adminData: any }) {
             setRecentApplications(result.data.recentApplications || []);
           }
           
-          console.log('Dashboard data loaded successfully');
         } else {
           setError(result.error || 'Failed to fetch dashboard data');
           console.error('Dashboard data error:', result.error || 'Unknown error');
@@ -213,10 +205,10 @@ function AdminDashboardPage({ adminData }: { adminData: any }) {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
         {isLoading ? (
           // Using standardized skeleton loader
-          Array(4).fill(0).map((_, index) => (
+          Array(3).fill(0).map((_, index) => (
             <SkeletonCard
               key={index}
               withHeader={true}
@@ -229,7 +221,7 @@ function AdminDashboardPage({ adminData }: { adminData: any }) {
           ))
         ) : error ? (
           // Error state
-          <div className="col-span-4 bg-white rounded-xl shadow-md border border-gray-100 p-6">
+          <div className="col-span-3 bg-white rounded-xl shadow-md border border-gray-100 p-6">
             <div className="flex items-center justify-center">
               <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-red-100 text-red-600 mb-4">
                 <XCircleIcon className="h-6 w-6" />

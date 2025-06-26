@@ -9,7 +9,6 @@ import { cleanupOldFiles } from '@/utils/fileSystemUtils';
 // Function to save profile picture to disk
 async function saveProfilePicture(file: File, userId: string): Promise<string> {
   try {
-    console.log(`Saving profile picture: ${file.name} for user ${userId}`);
 
     // Create a unique filename with timestamp
     const timestamp = Date.now();
@@ -35,7 +34,6 @@ async function saveProfilePicture(file: File, userId: string): Promise<string> {
 
     // Return the relative path
     const relativePath = `/uploads/profile-pictures/${userId}/${filename}`;
-    console.log(`Profile picture saved successfully at: ${relativePath}`);
 
     return relativePath;
   } catch (error) {
@@ -109,7 +107,6 @@ export async function POST(request: NextRequest) {
     try {
       // First save, then clean up to ensure we always have at least one picture
       await cleanupOldFiles(userId.toString(), 'profile-pictures', true);
-      console.log(`Cleaned up old profile pictures for user ${userId}`);
     } catch (cleanupError) {
       console.error('Error cleaning up old profile pictures:', cleanupError);
       // Continue with the process even if cleanup fails
@@ -117,13 +114,17 @@ export async function POST(request: NextRequest) {
 
     // Update the database with the new profile picture path
     try {
-      // First, add the profile_picture column if it doesn't exist
-      try {
+      // First, check if the profile_picture column exists and add it if it doesn't
+      const columnCheck = await query(`
+        SELECT COLUMN_NAME
+        FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'users'
+        AND COLUMN_NAME = 'profile_picture'
+      `) as any[];
+
+      if (columnCheck.length === 0) {
         await query(`ALTER TABLE users ADD COLUMN profile_picture VARCHAR(255) NULL AFTER gender`);
-        console.log('Added profile_picture column to users table');
-      } catch (alterError) {
-        // Column might already exist, which is fine
-        console.log('Profile picture column already exists or other alter error:', alterError);
       }
 
       // Update the user's profile picture in the database
@@ -138,7 +139,6 @@ export async function POST(request: NextRequest) {
         }, { status: 404 });
       }
 
-      console.log(`Profile picture updated in database for user ${userId}: ${profilePicturePath}`);
 
       return NextResponse.json({
         success: true,

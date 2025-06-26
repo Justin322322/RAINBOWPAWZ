@@ -73,7 +73,6 @@ const withBusinessVerification = <P extends object>(
           // Skip client-side auth check and go directly to API
           // This is more reliable with JWT tokens and provides better security
           if (process.env.NODE_ENV === 'development') {
-            console.log('[withBusinessVerification] Checking business status via API');
           }
 
           // Make API call to check business status with improved error handling
@@ -88,13 +87,10 @@ const withBusinessVerification = <P extends object>(
 
           if (!response.ok) {
             if (process.env.NODE_ENV === 'development') {
-              console.log('[withBusinessVerification] API call failed with status:', response.status);
               // Log response text for debugging
               try {
-                const errorText = await response.text();
-                console.log('[withBusinessVerification] Error response:', errorText);
+                const _errorText = await response.text();
               } catch {
-                console.log('[withBusinessVerification] Could not read error response');
               }
             }
             
@@ -106,19 +102,16 @@ const withBusinessVerification = <P extends object>(
             if (response.status === 401) {
               // Unauthorized - user is not logged in
               if (process.env.NODE_ENV === 'development') {
-                console.log('[withBusinessVerification] User not authenticated (401), redirecting to home');
               }
               router.push('/');
             } else if (response.status === 403) {
               // Forbidden - user is not a business user
               if (process.env.NODE_ENV === 'development') {
-                console.log('[withBusinessVerification] User not authorized as business (403), redirecting to home');
               }
               router.push('/');
             } else {
               // Other errors - redirect to home
               if (process.env.NODE_ENV === 'development') {
-                console.log('[withBusinessVerification] API error, redirecting to home');
               }
               router.push('/');
             }
@@ -128,12 +121,10 @@ const withBusinessVerification = <P extends object>(
           const result = await response.json();
 
           if (process.env.NODE_ENV === 'development') {
-            console.log('[withBusinessVerification] API response:', result);
           }
 
           if (!result.success) {
             if (process.env.NODE_ENV === 'development') {
-              console.log('[withBusinessVerification] Failed to get business status:', result.error);
             }
             // Clear any stale auth data before redirecting
             clearBusinessVerificationCache();
@@ -157,7 +148,6 @@ const withBusinessVerification = <P extends object>(
           // Check if user is a business user
           if (user.user_type !== 'business' && user.role !== 'business') {
             if (process.env.NODE_ENV === 'development') {
-              console.log('[withBusinessVerification] User is not a business user, redirecting to home');
             }
             // Clear any stale auth data before redirecting
             clearBusinessVerificationCache();
@@ -169,7 +159,6 @@ const withBusinessVerification = <P extends object>(
           // Check if business has service provider data
           if (!serviceProvider) {
             if (process.env.NODE_ENV === 'development') {
-              console.log('[withBusinessVerification] No service provider data found, redirecting to pending verification');
             }
             router.push('/cremation/pending-verification');
             return;
@@ -188,7 +177,6 @@ const withBusinessVerification = <P extends object>(
             };
 
             if (process.env.NODE_ENV === 'development') {
-              console.log('[withBusinessVerification] Business approved, setting user data');
             }
 
             setUserData(completeUserData);
@@ -206,14 +194,12 @@ const withBusinessVerification = <P extends object>(
           } else if (applicationStatus === 'restricted') {
             // Business is restricted, redirect to restricted page
             if (process.env.NODE_ENV === 'development') {
-              console.log('[withBusinessVerification] Business is restricted');
             }
             router.push('/cremation/restricted');
             return;
           } else {
             // Business is pending or rejected, redirect to pending verification
             if (process.env.NODE_ENV === 'development') {
-              console.log('[withBusinessVerification] Business application is pending or rejected, redirecting to pending verification');
             }
             router.push('/cremation/pending-verification');
             return;

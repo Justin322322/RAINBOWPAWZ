@@ -216,7 +216,6 @@ export async function POST(request: NextRequest) {
       return { successCount, errors };
     });
 
-    console.log(`Batch availability update completed. Success: ${result.successCount}, Errors: ${result.errors.length}`);
 
     return NextResponse.json({
       success: true,

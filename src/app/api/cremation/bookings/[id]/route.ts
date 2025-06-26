@@ -143,7 +143,6 @@ export async function PUT(
         // Send comprehensive notification (in-app + email)
         await createBookingNotification(parseInt(bookingId), notificationType);
 
-        console.log(`Notification sent for booking ${bookingId} status update to ${status}`);
       } catch (notificationError) {
         console.error('Error sending notification for booking status update:', notificationError);
         // Don't fail the status update if notification fails

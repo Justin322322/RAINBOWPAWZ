@@ -93,7 +93,6 @@ async function sendAdminEmailNotifications(
     `) as any[];
 
     if (!adminsResult || adminsResult.length === 0) {
-      console.log('No admins found with email notifications enabled');
       return;
     }
 
@@ -106,7 +105,6 @@ async function sendAdminEmailNotifications(
           html: createAdminEmailHtml(admin.first_name, title, message, type, link),
           text: createAdminEmailText(admin.first_name, title, message, link)
         });
-        console.log(`Admin email notification sent to: ${admin.email}`);
       } catch (emailError) {
         console.error(`Failed to send admin email to ${admin.email}:`, emailError);
       }

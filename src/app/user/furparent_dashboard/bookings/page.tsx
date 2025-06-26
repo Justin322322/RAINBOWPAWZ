@@ -85,10 +85,6 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
   const [currentUserData, setCurrentUserData] = useState<any>(null);
 
   useEffect(() => {
-    console.log('🔍 [BookingsPage] userData received:', userData);
-    console.log('🔍 [BookingsPage] userData.id:', userData?.id);
-    console.log('🔍 [BookingsPage] userData.user_id:', userData?.user_id);
-    console.log('🔍 [BookingsPage] userData type:', typeof userData);
 
     if (userData && (userData.id || userData.user_id)) {
       setUserDataLoaded(true);
@@ -99,7 +95,6 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
       if (cachedUserData) {
         try {
           const parsedData = JSON.parse(cachedUserData);
-          console.log('🔍 [BookingsPage] Using cached userData:', parsedData);
           setCurrentUserData(parsedData);
           setUserDataLoaded(true);
         } catch (error) {
@@ -499,7 +494,6 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
 
     try {
       // Log the input for debugging
-      console.log('Formatting date and time:', { date, time });
 
       // Normalize the time string
       const timeString = time || '00:00:00';
@@ -531,8 +525,6 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
       }
 
       // Log the parsed date for debugging
-      console.log('Parsed date object:', dateObj, 'Year:', year, 'Month:', month, 'Day:', day);
-      console.log('Formatted date:', format(dateObj, 'MMM d, yyyy • h:mm a'));
 
       // Format the date consistently
       return format(dateObj, 'MMM d, yyyy • h:mm a');
@@ -546,7 +538,6 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
         const fallbackDate = new Date(dateTimeString);
 
         if (!isNaN(fallbackDate.getTime())) {
-          console.log('Fallback date parsing succeeded:', fallbackDate);
           return format(fallbackDate, 'MMM d, yyyy • h:mm a');
         }
       } catch (fallbackError) {
@@ -1238,8 +1229,6 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
                                 {currentUserData && (currentUserData.id || currentUserData.user_id) ? (
                                   <button
                                     onClick={() => {
-                                      console.log('Review button clicked, currentUserData:', currentUserData);
-                                      console.log('User ID:', currentUserData.id || currentUserData.user_id);
                                       setShowDetailsModal(false);
                                       setTimeout(() => {
                                         setShowReviewModal(true);
@@ -1453,7 +1442,6 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
           providerId={selectedBooking.provider_id || 0}
           providerName={selectedBooking.provider_name || 'Service Provider'}
           onSuccess={() => {
-            console.log('Review submitted successfully');
             // Add the booking ID to the list of reviewed bookings
             if (selectedBooking && selectedBooking.id) {
               setReviewedBookingIds(prev => [...prev, selectedBooking.id]);

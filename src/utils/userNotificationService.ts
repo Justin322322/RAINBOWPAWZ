@@ -1,4 +1,5 @@
 import { query } from '@/lib/db';
+import { createNotification } from '@/utils/notificationService';
 
 export interface UserNotificationData {
   userId: number;
@@ -8,6 +9,8 @@ export interface UserNotificationData {
   entityType?: string;
   _entityType?: string;
   entityId?: number;
+  shouldSendEmail?: boolean;
+  emailSubject?: string;
 }
 
 /**
@@ -19,12 +22,11 @@ export async function createUserNotification({
   title,
   message,
   _entityType,
-  entityId
+  entityId,
+  shouldSendEmail = false,
+  emailSubject
 }: UserNotificationData): Promise<boolean> {
   try {
-    // Ensure the notifications table exists
-    await ensureNotificationsTable();
-
     // Determine link based on notification type
     let link = null;
 
@@ -38,13 +40,18 @@ export async function createUserNotification({
       }
     }
 
-    // Insert the notification
-    const _result = await query(
-      `INSERT INTO notifications (user_id, title, message, type, link)
-       VALUES (?, ?, ?, ?, ?)`,
-      [userId, title, message, type, link]
-    ) as any;
-    return true;
+    // Use the notification service which supports email
+    const notificationResult = await createNotification({
+      userId,
+      title,
+      message,
+      type: type as 'info' | 'success' | 'warning' | 'error',
+      link,
+      shouldSendEmail,
+      emailSubject
+    });
+
+    return notificationResult.success;
   } catch (error) {
     console.error("Error creating user notification:", error);
     return false;

@@ -141,7 +141,6 @@ export default function BookingForm({
         // With secure JWT authentication, getUserId might return null on client-side
         // In this case, the API endpoints will handle user identification via cookies
         // We can still proceed without explicitly setting the user ID
-        console.log('User ID not available client-side (secure authentication)');
       }
     }
   }, [userId]);

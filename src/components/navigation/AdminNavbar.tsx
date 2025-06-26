@@ -17,7 +17,9 @@ import {
   UsersIcon,
   ArrowRightOnRectangleIcon,
   BellIcon,
-  DocumentTextIcon
+  DocumentTextIcon,
+  UserCircleIcon,
+  CogIcon
 } from '@heroicons/react/24/outline';
 import LogoutModal from '@/components/LogoutModal';
 import NotificationBell from '@/components/ui/NotificationBell';
@@ -130,6 +132,18 @@ export default function AdminNavbar({ activePage: propActivePage, userName = 'Ad
       href: '/admin/logs',
       icon: DocumentTextIcon,
       id: 'logs'
+    },
+    {
+      name: 'Profile',
+      href: '/admin/profile',
+      icon: UserCircleIcon,
+      id: 'profile'
+    },
+    {
+      name: 'Settings',
+      href: '/admin/settings',
+      icon: CogIcon,
+      id: 'settings'
     }
   ];
 

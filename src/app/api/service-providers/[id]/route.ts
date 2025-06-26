@@ -127,12 +127,6 @@ export async function GET(
             const distanceResult = await calculateEnhancedDistance(userCoordinates, providerCoordinates);
             provider.distance = distanceResult.formattedDistance;
             provider.distanceValue = distanceResult.distance;
-
-            console.log('📍 [Distance] Real routing calculation for provider', provider.name, ':', {
-              distance: distanceResult.distance,
-              formatted: distanceResult.formattedDistance,
-              source: distanceResult.source
-            });
           } catch (error) {
             console.error('Real routing calculation failed, using fallback:', error);
             // Fallback to simple calculation
@@ -248,12 +242,6 @@ export async function GET(
               const distanceResult = await calculateEnhancedDistance(userCoordinates, businessCoordinates);
               (formattedBusiness as any).distance = distanceResult.formattedDistance;
               (formattedBusiness as any).distanceValue = distanceResult.distance;
-
-              console.log('📍 [Distance] Real routing calculation for business', formattedBusiness.name, ':', {
-                distance: distanceResult.distance,
-                formatted: distanceResult.formattedDistance,
-                source: distanceResult.source
-              });
             } catch (error) {
               console.error('Real routing calculation failed for business, using fallback:', error);
               // Fallback to simple calculation

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import CremationDashboardLayout from '@/components/navigation/CremationDashboardLayout';
 import withBusinessVerification from '@/components/withBusinessVerification';
 import { useToast } from '@/context/ToastContext';
@@ -10,16 +10,15 @@ import {
   EnvelopeIcon,
   PhoneIcon,
   BuildingStorefrontIcon,
-  InformationCircleIcon,
   ArrowUpTrayIcon,
   ExclamationTriangleIcon,
-  CameraIcon,
   DocumentIcon,
   XMarkIcon
 } from '@heroicons/react/24/outline';
 import { getImagePath } from '@/utils/imageUtils';
 import PhilippinePhoneInput from '@/components/ui/PhilippinePhoneInput';
 import Image from 'next/image';
+import ProfilePictureUpload from '@/components/profile/ProfilePictureUpload';
 
 import {
   ProfileLayout,
@@ -82,11 +81,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
     governmentId: { file: null as File | null, preview: null as string | null }
   });
 
-  // Profile picture upload states
-  const [profilePicture, setProfilePicture] = useState<File | null>(null);
-  const [profilePicturePreview, setProfilePicturePreview] = useState<string | null>(null);
-  const [uploadingProfilePicture, setUploadingProfilePicture] = useState(false);
-  const [profilePictureTimestamp, setProfilePictureTimestamp] = useState<number>(Date.now());
+
 
   // Document preview modal states
   const [showPreviewModal, setShowPreviewModal] = useState(false);
@@ -102,12 +97,40 @@ function CremationProfilePage({ userData }: { userData: any }) {
     governmentId: useRef<HTMLInputElement>(null),
   };
 
-  const profilePictureInputRef = useRef<HTMLInputElement>(null);
+
 
   const { showToast } = useToast();
 
+  // Ref to track if component is mounted and abort controller for cleanup
+  const isMountedRef = useRef(true);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  // Ref to store showToast function to avoid dependency issues
+  const showToastRef = useRef(showToast);
+
+  // Update showToast ref when it changes
+  useEffect(() => {
+    showToastRef.current = showToast;
+  }, [showToast]);
+
   // Define fetchProfileData function outside useEffect so it can be called elsewhere
   const fetchProfileData = useCallback(async (forceLoading = true) => {
+    // Check if component is still mounted and user is authenticated
+    if (!isMountedRef.current) {
+      return;
+    }
+
+    // Check authentication state before making API call
+    const hasSecureAuthToken = document.cookie.indexOf('secure_auth_token') !== -1;
+    const hasLegacyAuthToken = document.cookie.indexOf('auth_token') !== -1;
+    const hasSessionData = sessionStorage.getItem('business_verification_cache') ||
+                          sessionStorage.getItem('user_data');
+
+    // If no authentication tokens or session data, user has likely logged out
+    if (!hasSecureAuthToken && !hasLegacyAuthToken && !hasSessionData) {
+      console.log('No authentication found, skipping profile data fetch');
+      return;
+    }
+
     try {
       // For secure JWT authentication, always try to fetch from server
       // Don't rely on client-side authentication checks
@@ -118,6 +141,14 @@ function CremationProfilePage({ userData }: { userData: any }) {
       }
       setError(null); // Clear any previous errors
 
+      // Cancel any previous request
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+
+      // Create new abort controller for this request
+      abortControllerRef.current = new AbortController();
+
       // Add cache-busting query parameter and no-cache headers
       const response = await fetch(`/api/cremation/profile?t=${Date.now()}`, {
         method: 'GET',
@@ -125,7 +156,8 @@ function CremationProfilePage({ userData }: { userData: any }) {
           'Cache-Control': 'no-cache, no-store, must-revalidate',
           'Pragma': 'no-cache'
         },
-        credentials: 'include' // Important: Include credentials with the request
+        credentials: 'include', // Important: Include credentials with the request
+        signal: abortControllerRef.current.signal // Add abort signal
       });
 
       // Parse response data first
@@ -192,16 +224,36 @@ function CremationProfilePage({ userData }: { userData: any }) {
 
       setError(null);
     } catch (error) {
+      // Check if the request was aborted (component unmounted or new request started)
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.log('Profile data fetch was aborted');
+        return;
+      }
+
+      // Check if component is still mounted before handling error
+      if (!isMountedRef.current) {
+        return;
+      }
+
       console.error('Error fetching profile data:', error);
 
-      // Check if this is a logout scenario (user intentionally logged out)
-      const isLogoutScenario = window.location.pathname !== '/cremation/profile' ||
-                              document.cookie.indexOf('auth_token') === -1;
+      // Enhanced logout scenario detection
+      const hasSecureAuthToken = document.cookie.indexOf('secure_auth_token') !== -1;
+      const hasLegacyAuthToken = document.cookie.indexOf('auth_token') !== -1;
+      const hasSessionData = sessionStorage.getItem('business_verification_cache') ||
+                            sessionStorage.getItem('user_data');
+      const isNavigatingAway = window.location.pathname !== '/cremation/profile';
+
+      // Consider it a logout scenario if:
+      // 1. User is navigating away from the profile page, OR
+      // 2. No authentication tokens AND no session data exist
+      const isLogoutScenario = isNavigatingAway ||
+                              (!hasSecureAuthToken && !hasLegacyAuthToken && !hasSessionData);
 
       if (!isLogoutScenario) {
         setError(error instanceof Error ? error.message : 'An error occurred while fetching data');
         // Show toast only if not in logout scenario
-        showToast(error instanceof Error ? error.message : 'Failed to load profile data. Please try again.', 'error');
+        showToastRef.current(error instanceof Error ? error.message : 'Failed to load profile data. Please try again.', 'error');
 
         // If authentication error and not logging out, redirect to login after a short delay
         if (error instanceof Error &&
@@ -212,11 +264,29 @@ function CremationProfilePage({ userData }: { userData: any }) {
             window.location.href = '/';
           }, 2000);
         }
+      } else {
+        console.log('Logout scenario detected, suppressing error handling');
       }
     } finally {
-      setInitialLoading(false);
+      // Only update loading state if component is still mounted
+      if (isMountedRef.current) {
+        setInitialLoading(false);
+      }
     }
-  }, [showToast]);
+  }, []); // Remove showToast dependency to prevent unnecessary re-renders
+
+  // Component cleanup effect
+  useEffect(() => {
+    return () => {
+      // Mark component as unmounted
+      isMountedRef.current = false;
+
+      // Cancel any ongoing fetch requests
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
 
   // Load profile data and other initial data
   useEffect(() => {
@@ -224,7 +294,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
       setInitialLoading(true);
       // Show skeleton immediately when starting to load
       setShowSkeleton(true);
-      
+
       await fetchProfileData();
       setInitialLoading(false);
     };
@@ -471,7 +541,6 @@ function CremationProfilePage({ userData }: { userData: any }) {
 
       reader.onload = (event) => {
         const result = event.target?.result as string;
-        console.log(`File loaded for ${type}:`, result ? 'Success' : 'Failed');
         setDocuments(prev => ({
           ...prev,
           [type]: {
@@ -506,113 +575,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
     }));
   };
 
-  // Profile picture handling functions
-  const handleProfilePictureChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
 
-      // Validate file type
-      const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-      if (!validTypes.includes(file.type)) {
-        showToast('Please select a valid image file (JPEG, PNG, GIF, or WebP)', 'error');
-        return;
-      }
-
-      // Validate file size (max 5MB)
-      const maxSize = 5 * 1024 * 1024;
-      if (file.size > maxSize) {
-        showToast('File size must be less than 5MB', 'error');
-        return;
-      }
-
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        setProfilePicturePreview(event.target?.result as string);
-        setProfilePicture(file);
-      };
-      reader.onerror = (error) => {
-        console.error('FileReader error:', error);
-        showToast('Failed to read file', 'error');
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleProfilePictureUpload = async () => {
-    if (!profilePicture) {
-      showToast('Please select a profile picture first', 'error');
-      return;
-    }
-
-    setUploadingProfilePicture(true);
-
-    try {
-      // Use userData from the secure authentication system
-      if (!userData?.user_id) {
-        throw new Error('User ID not available');
-      }
-
-      const formData = new FormData();
-      formData.append('profilePicture', profilePicture);
-      formData.append('userId', userData.user_id.toString());
-
-      const response = await fetch('/api/cremation/upload-profile-picture', {
-        method: 'POST',
-        body: formData,
-        credentials: 'include', // Include cookies for authentication
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to upload profile picture');
-      }
-
-      const data = await response.json();
-
-      // Update profile data with new profile picture path and add cache busting
-      if (profileData) {
-        const updatedProfile = {
-          ...profileData,
-          profilePicturePath: data.profilePicturePath
-        };
-        setProfileData(updatedProfile);
-      }
-
-      // Update timestamp to force image refresh
-      setProfilePictureTimestamp(Date.now());
-
-      // Refresh profile data from server to ensure we have the latest information
-      await fetchProfileData(false); // Don't show loading indicator
-
-      showToast('Profile picture updated successfully!', 'success');
-      setProfilePicture(null);
-      setProfilePicturePreview(null);
-
-      // Reset file input
-      if (profilePictureInputRef.current) {
-        profilePictureInputRef.current.value = '';
-      }
-
-      // Update the cached user data with new profile picture
-      try {
-        // Use the utility function to update all caches (this also dispatches the event)
-        const { updateCachedProfilePicture } = await import('@/utils/businessVerificationCache');
-        updateCachedProfilePicture(data.profilePicturePath);
-      } catch (error) {
-        console.error('Error updating cached user data:', error);
-      }
-    } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Failed to upload profile picture', 'error');
-    } finally {
-      setUploadingProfilePicture(false);
-    }
-  };
-
-  const triggerProfilePictureInput = () => {
-    if (profilePictureInputRef.current) {
-      profilePictureInputRef.current.click();
-    }
-  };
 
   const openPreviewModal = (imagePath: string, title: string) => {
     setPreviewImage({ url: getImagePath(imagePath), title });
@@ -700,6 +663,21 @@ function CremationProfilePage({ userData }: { userData: any }) {
     }
   };
 
+  // Memoize profile picture upload props to prevent unnecessary re-renders
+  const profilePictureAdditionalData = useMemo(() => {
+    return userData?.user_id ? { userId: userData.user_id.toString() } : undefined;
+  }, [userData?.user_id]);
+
+  const handleProfilePictureUploadSuccess = useCallback((profilePicturePath: string) => {
+    // Update local profile data state
+    if (profileData) {
+      setProfileData({
+        ...profileData,
+        profilePicturePath: profilePicturePath
+      });
+    }
+  }, [profileData]);
+
   return (
     <CremationDashboardLayout activePage="profile" userData={userData} skipSkeleton={true}>
       <ProfileLayout
@@ -719,110 +697,38 @@ function CremationProfilePage({ userData }: { userData: any }) {
           <ProfileCard>
             {showSkeleton || initialLoading ? (
               /* Profile Picture Section Skeleton */
-              <div className="flex items-center space-x-6">
-                <div className="relative">
-                  <div className="w-32 h-32 bg-gray-200 rounded-full animate-pulse"></div>
-                  <div className="absolute -bottom-2 -right-2 w-10 h-10 bg-gray-200 rounded-full animate-pulse"></div>
-                </div>
-                <div className="flex-1 space-y-4">
-                  <div className="space-y-3">
-                    <div className="h-10 bg-gray-200 rounded w-48 animate-pulse"></div>
-                    <div className="h-16 bg-gray-200 rounded animate-pulse"></div>
+              <div className="p-6">
+                <div className="w-full max-w-md mx-auto">
+                  <div className="bg-gray-100 rounded-2xl p-8 border-2 border-dashed border-gray-200 animate-pulse">
+                    <div className="flex flex-col items-center space-y-6">
+                      <div className="relative">
+                        <div className="w-32 h-32 bg-gray-200 rounded-full animate-pulse"></div>
+                        <div className="absolute -bottom-2 -right-2 w-10 h-10 bg-gray-200 rounded-full animate-pulse"></div>
+                      </div>
+                      <div className="text-center space-y-3">
+                        <div className="h-6 bg-gray-200 rounded w-32 animate-pulse"></div>
+                        <div className="h-4 bg-gray-200 rounded w-48 animate-pulse"></div>
+                        <div className="flex items-center justify-center space-x-4">
+                          <div className="h-3 bg-gray-200 rounded w-20 animate-pulse"></div>
+                          <div className="h-3 bg-gray-200 rounded w-16 animate-pulse"></div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
             ) : (
               /* Actual Profile Picture Content */
-              <div className="flex items-center space-x-6">
-                {/* Current/Preview Profile Picture */}
-                <div className="relative">
-                  <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-gray-200 bg-gray-100 flex items-center justify-center shadow-lg">
-                  {profilePicturePreview ? (
-                    <Image
-                      src={profilePicturePreview}
-                      alt="Profile Picture Preview"
-                      width={128}
-                      height={128}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : profileData?.profilePicturePath ? (
-                    <Image
-                      src={`${getImagePath(profileData.profilePicturePath)}?t=${profilePictureTimestamp}`}
-                      alt="Profile Picture"
-                      width={128}
-                      height={128}
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        console.error('Failed to load profile picture:', e.currentTarget.src);
-                        const img = e.currentTarget as HTMLImageElement;
-                        if (img.src.includes('?t=')) {
-                          img.src = getImagePath(profileData.profilePicturePath);
-                        } else {
-                          img.style.display = 'none';
-                          img.parentElement?.classList.add('flex', 'items-center', 'justify-center');
-                          if (img.parentElement) {
-                            img.parentElement.innerHTML = '<svg class="w-16 h-16 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>';
-                          }
-                        }
-                      }}
-                    />
-                  ) : (
-                    <UserIcon className="w-16 h-16 text-gray-400" />
-                  )}
-                </div>
-                {profilePicturePreview && (
-                  <div className="absolute -top-2 -right-2 bg-emerald-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm shadow-lg">
-                    <CheckCircleIcon className="w-5 h-5" />
-                  </div>
-                )}
-                <button
-                  onClick={() => profilePictureInputRef.current?.click()}
-                  className="absolute -bottom-2 -right-2 bg-[var(--primary-green)] text-white rounded-full w-10 h-10 flex items-center justify-center shadow-lg hover:bg-[var(--primary-green-hover)] transition-colors"
-                >
-                  <CameraIcon className="w-5 h-5" />
-                </button>
-              </div>
-
-              {/* Upload Controls */}
-              <div className="flex-1 space-y-4">
-                <input
-                  type="file"
-                  ref={profilePictureInputRef}
-                  onChange={handleProfilePictureChange}
-                  className="hidden"
-                  accept="image/*"
+              <div className="p-6">
+                <ProfilePictureUpload
+                  currentImagePath={profileData?.profilePicturePath}
+                  userType="business"
+                  apiEndpoint="/api/cremation/upload-profile-picture"
+                  additionalData={profilePictureAdditionalData}
+                  size="lg"
+                  onUploadSuccess={handleProfilePictureUploadSuccess}
                 />
-
-                <div className="space-y-3">
-                  <ProfileButton
-                    variant="secondary"
-                    onClick={triggerProfilePictureInput}
-                    icon={<ArrowUpTrayIcon className="h-5 w-5" />}
-                  >
-                    Choose New Picture
-                  </ProfileButton>
-
-                  {profilePicture && (
-                    <ProfileButton
-                      variant="primary"
-                      onClick={handleProfilePictureUpload}
-                      loading={uploadingProfilePicture}
-                      icon={<CheckCircleIcon className="h-5 w-5" />}
-                      className="ml-3"
-                    >
-                      {uploadingProfilePicture ? 'Uploading...' : 'Upload Picture'}
-                    </ProfileButton>
-                  )}
-                </div>
-
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                  <p className="text-sm text-blue-800">
-                    <InformationCircleIcon className="h-4 w-4 inline mr-1" />
-                    Upload a profile picture (JPEG, PNG, GIF, or WebP, max 5MB)
-                  </p>
-                </div>
               </div>
-            </div>
             )}
           </ProfileCard>
         </ProfileSection>

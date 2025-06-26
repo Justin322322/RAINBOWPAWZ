@@ -29,7 +29,6 @@ export async function GET(request: Request) {
 
     if (!isNaN(lat) && !isNaN(lng)) {
       userCoordinates = { lat, lng };
-      console.log('🎯 [API] Using provided coordinates:', userCoordinates);
     } else {
       console.warn('⚠️ [API] Invalid coordinates provided, falling back to geocoding');
       // Only fallback to geocoding if we have a valid location string
@@ -46,7 +45,6 @@ export async function GET(request: Request) {
     }
   } else if (userLocation) {
     // Priority 2: Fallback to address-based lookup
-    console.log('📍 [API] No coordinates provided, using address lookup for:', userLocation);
     userCoordinates = getBataanCoordinates(userLocation);
   } else {
     // No location information available
@@ -81,11 +79,10 @@ export async function GET(request: Request) {
 
       if (useServiceProvidersTable) {
         // Debug: Check if we have any providers at all
-        const totalProvidersCount = await query(`
+        const _totalProvidersCount = await query(`
           SELECT COUNT(*) as count FROM service_providers WHERE provider_type = 'cremation'
         `) as any[];
         
-        console.log('🔍 [Service Providers API] Total cremation providers in database:', totalProvidersCount[0]?.count || 0);
         
         // First check which status columns exist in the service_providers table
         const columnsResult = await query(`
@@ -151,7 +148,6 @@ export async function GET(request: Request) {
         `) as any[];
 
         // Log successful query results
-        console.log('✅ [Service Providers API] Successfully fetched', providersResult.length, 'cremation providers');
       } else {
         // Use business_profiles table
         providersResult = [];
@@ -203,14 +199,6 @@ export async function GET(request: Request) {
               const distanceResult = await calculateEnhancedDistance(userCoordinates, providerCoordinates);
               provider.distance = distanceResult.formattedDistance;
               provider.distanceValue = distanceResult.distance; // Store numeric value for sorting
-
-              console.log('📍 [Distance] Real routing calculation for', provider.name, ':', {
-                distance: distanceResult.distance,
-                formatted: distanceResult.formattedDistance,
-                source: distanceResult.source,
-                userCoords: userCoordinates,
-                providerCoords: providerCoordinates
-              });
             } catch (error) {
               console.error('📍 [Distance] Real routing calculation failed, using fallback:', error);
               // Fallback to simple calculation
@@ -345,12 +333,6 @@ export async function GET(request: Request) {
               const distanceResult = await calculateEnhancedDistance(userCoordinates, businessCoordinates);
               (business as any).distance = distanceResult.formattedDistance;
               (business as any).distanceValue = distanceResult.distance; // Store numeric value for sorting
-
-              console.log('📍 [Distance] Real routing calculation for business', business.name, ':', {
-                distance: distanceResult.distance,
-                formatted: distanceResult.formattedDistance,
-                source: distanceResult.source
-              });
             } catch (error) {
               console.error('📍 [Distance] Real routing calculation failed for business, using fallback:', error);
               // Fallback to simple calculation
@@ -366,10 +348,6 @@ export async function GET(request: Request) {
       }
 
       // If no providers found in either table, log and return empty
-      console.log('⚠️ [Service Providers API] No providers found in database - this could mean:');
-      console.log('  1. No cremation services are registered');
-      console.log('  2. All services have restrictive application_status');
-      console.log('  3. Database connection issues');
       
       return NextResponse.json({ providers: [] });
     } catch {

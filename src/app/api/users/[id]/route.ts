@@ -7,11 +7,9 @@ export async function GET(request: NextRequest) {
   const pathParts = url.pathname.split('/');
   const userId = pathParts[pathParts.length - 1];
 
-  console.log(`[User API] Fetching user data for ID: ${userId}`);
 
   try {
     if (!userId) {
-      console.log('[User API] Error: No user ID provided');
       return NextResponse.json({
         error: 'User ID is required'
       }, { status: 400 });
@@ -29,7 +27,6 @@ export async function GET(request: NextRequest) {
       // If user found in database, return it with defaults for missing fields
       if (userResult && userResult.length > 0) {
         const user = userResult[0];
-        console.log(`[User API] Found user in database:`, { id: user.id, role: user.role, is_otp_verified: user.is_otp_verified });
 
         // Set defaults for missing fields
         if (user.is_otp_verified === undefined || user.is_otp_verified === null) user.is_otp_verified = 1;
@@ -132,7 +129,6 @@ export async function GET(request: NextRequest) {
               // Ensure user_type is set to 'business' for backward compatibility
               user.user_type = 'business';
             } else {
-              console.log(`[User API] No service provider found for business user ID: ${user.id}`);
             }
           } catch (businessError) {
             console.error(`[User API] Error fetching business details:`, businessError);
@@ -143,10 +139,8 @@ export async function GET(request: NextRequest) {
         // Remove sensitive information
         delete user.password;
 
-        console.log(`[User API] Returning user data:`, { id: user.id, user_type: user.user_type, is_otp_verified: user.is_otp_verified });
         return NextResponse.json(user);
       } else {
-        console.log(`[User API] No user found in database for ID: ${userId}`);
       }
     } catch (dbError) {
       console.error(`[User API] Database error:`, dbError);
@@ -213,7 +207,6 @@ export async function GET(request: NextRequest) {
     }
 
     // User not found
-    console.log(`[User API] User not found for ID: ${userId}`);
     return NextResponse.json({
       error: 'User not found',
       message: 'No user found with the provided ID'

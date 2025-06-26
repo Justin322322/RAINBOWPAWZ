@@ -29,23 +29,7 @@ export class ValidationError extends AppError {
   }
 }
 
-export class AuthenticationError extends AppError {
-  constructor(message: string = 'Authentication required') {
-    super(message, 401, 'AUTHENTICATION_ERROR');
-  }
-}
-
-export class AuthorizationError extends AppError {
-  constructor(message: string = 'Insufficient permissions') {
-    super(message, 403, 'AUTHORIZATION_ERROR');
-  }
-}
-
-export class NotFoundError extends AppError {
-  constructor(message: string = 'Resource not found') {
-    super(message, 404, 'NOT_FOUND');
-  }
-}
+// Unused error classes removed - use AppError directly with appropriate status codes
 
 export class ConflictError extends AppError {
   constructor(message: string) {
@@ -53,11 +37,7 @@ export class ConflictError extends AppError {
   }
 }
 
-export class RateLimitError extends AppError {
-  constructor(message: string = 'Rate limit exceeded') {
-    super(message, 429, 'RATE_LIMIT_ERROR');
-  }
-}
+// RateLimitError removed - use AppError directly
 
 export class DatabaseError extends AppError {
   constructor(message: string, details?: any) {

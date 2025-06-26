@@ -212,7 +212,6 @@ function usePackageForm(router: AppRouterInstance, showToast: {
         }
         
         const data = await res.json();
-        console.log('Image upload successful:', data);
         return data.filePath as string;
               } catch (err) {
           console.error('Image upload error:', err);
@@ -255,7 +254,6 @@ function usePackageForm(router: AppRouterInstance, showToast: {
     if (!validateForm()) return;
     setIsSubmitting(true);
     try {
-      console.log('Submitting package data:', formData);
       
       const res = await fetch('/api/packages', {
         method: 'POST', 
@@ -285,8 +283,7 @@ function usePackageForm(router: AppRouterInstance, showToast: {
         throw new Error(errorMessage);
       }
       
-      const result = await res.json();
-      console.log('Package created successfully:', result);
+      const _result = await res.json();
       showToast('Package created successfully!', 'success' as ToastType);
       router.push('/cremation/packages');
     } catch (err) {

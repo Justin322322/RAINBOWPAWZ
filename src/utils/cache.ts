@@ -236,7 +236,6 @@ class CacheManager {
       }
 
       keysToRemove.forEach(key => localStorage.removeItem(key));
-      console.log('🗑️ Cleared routing cache entries:', keysToRemove.length);
     } catch (error) {
       console.warn('Failed to clear routing cache:', error);
     }

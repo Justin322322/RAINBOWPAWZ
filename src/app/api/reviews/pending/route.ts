@@ -17,7 +17,6 @@ export async function GET(request: NextRequest) {
 
     const [userId, accountType] = authToken.split('_');
 
-    console.log('Fetching pending reviews for user:', userId, 'account type:', accountType);
 
     // In development, allow any account type for testing
     const isDevelopment = process.env.NODE_ENV === 'development';
@@ -35,7 +34,6 @@ export async function GET(request: NextRequest) {
       `) as any[];
 
       if (!tablesResult || tablesResult.length === 0) {
-        console.log('Reviews table does not exist, creating it');
 
         // Create the reviews table if it doesn't exist
         await query(`
@@ -71,7 +69,6 @@ export async function GET(request: NextRequest) {
       `) as any[];
 
       const existingTables = new Set(tablesResult.map((row: any) => row.TABLE_NAME));
-      console.log('Existing tables:', Array.from(existingTables));
 
       // Get all completed bookings using the business_services table
       if (existingTables.has('business_services')) {
@@ -92,7 +89,6 @@ export async function GET(request: NextRequest) {
           `;
 
           const allCompletedBookings = await query(completedBookingsQuery, [userId]) as any[];
-          console.log('Found completed bookings (business_services):', allCompletedBookings.length);
 
           if (allCompletedBookings && allCompletedBookings.length > 0) {
             // Now get all reviews for this user
@@ -103,7 +99,6 @@ export async function GET(request: NextRequest) {
             `;
 
             const existingReviews = await query(reviewsQuery, [userId]) as any[];
-            console.log('Found existing reviews:', existingReviews.length);
 
             // Create a set of booking IDs that already have reviews
             const reviewedBookingIds = new Set(existingReviews.map(review => review.booking_id));
@@ -122,14 +117,12 @@ export async function GET(request: NextRequest) {
 
               // If booking date is older than 5 days, don't include it
               if (bookingDate < fiveDaysAgo) {
-                console.log(`Booking ${booking.booking_id} is older than 5 days, excluding from pending reviews`);
                 return false;
               }
 
               return true;
             });
 
-            console.log('Pending reviews after filtering:', pendingReviews.length);
 
             return NextResponse.json({
               pendingReviews,
@@ -163,7 +156,6 @@ export async function GET(request: NextRequest) {
           `;
 
           const directResults = await query(directQuery, [userId]) as any[];
-          console.log('Direct query found completed bookings:', directResults.length);
 
           if (directResults && directResults.length > 0) {
             // Now get all reviews for this user
@@ -174,7 +166,6 @@ export async function GET(request: NextRequest) {
             `;
 
             const existingReviews = await query(reviewsQuery, [userId]) as any[];
-            console.log('Found existing reviews:', existingReviews.length);
 
             // Create a set of booking IDs that already have reviews
             const reviewedBookingIds = new Set(existingReviews.map(review => review.booking_id));
@@ -193,14 +184,12 @@ export async function GET(request: NextRequest) {
 
               // If booking date is older than 5 days, don't include it
               if (bookingDate < fiveDaysAgo) {
-                console.log(`Booking ${booking.booking_id} is older than 5 days, excluding from pending reviews`);
                 return false;
               }
 
               return true;
             });
 
-            console.log('Pending reviews after filtering:', pendingReviews.length);
 
             return NextResponse.json({
               pendingReviews,
@@ -234,7 +223,6 @@ export async function GET(request: NextRequest) {
           `;
 
           const fallbackResults = await query(fallbackQuery, [userId]) as any[];
-          console.log('Fallback query found completed bookings:', fallbackResults.length);
 
           if (fallbackResults && fallbackResults.length > 0) {
             // Now get all reviews for this user
@@ -245,7 +233,6 @@ export async function GET(request: NextRequest) {
             `;
 
             const existingReviews = await query(reviewsQuery, [userId]) as any[];
-            console.log('Found existing reviews:', existingReviews.length);
 
             // Create a set of booking IDs that already have reviews
             const reviewedBookingIds = new Set(existingReviews.map(review => review.booking_id));
@@ -264,14 +251,12 @@ export async function GET(request: NextRequest) {
 
               // If booking date is older than 5 days, don't include it
               if (bookingDate < fiveDaysAgo) {
-                console.log(`Booking ${booking.booking_id} is older than 5 days, excluding from pending reviews`);
                 return false;
               }
 
               return true;
             });
 
-            console.log('Pending reviews after filtering:', pendingReviews.length);
           }
         } catch (error) {
           console.error('Error with fallback query:', error);

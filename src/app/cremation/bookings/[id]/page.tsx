@@ -128,7 +128,6 @@ function BookingDetailsPage({ userData }: BookingDetailsProps) {
   useEffect(() => {
     // This effect only runs to log state changes, never to trigger re-fetches
     if (booking && hasInitiallyLoaded.current) {
-      console.log('Booking state updated:', booking.status);
     }
   }, [booking]); // Monitor booking changes for logging
 
@@ -141,7 +140,6 @@ function BookingDetailsPage({ userData }: BookingDetailsProps) {
     // Enhanced debounce mechanism - prevent rapid clicks within 1.5 seconds
     const now = Date.now();
     if (now - lastUpdateTime < 1500) {
-      console.log('Update blocked by debounce mechanism');
       return;
     }
 
@@ -209,7 +207,6 @@ function BookingDetailsPage({ userData }: BookingDetailsProps) {
     } catch (error) {
       // Don't show error if request was aborted
       if (error instanceof Error && error.name === 'AbortError') {
-        console.log('Update request was aborted');
         return;
       }
 

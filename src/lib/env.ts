@@ -31,6 +31,4 @@ function validateEnv() {
 export const env = validateEnv();
 
 // Helper functions for environment-specific logic
-export const isDevelopment = env.NODE_ENV === 'development';
-export const isProduction = env.NODE_ENV === 'production';
-export const isTest = env.NODE_ENV === 'test';
+// Environment checks can be done directly with env.NODE_ENV

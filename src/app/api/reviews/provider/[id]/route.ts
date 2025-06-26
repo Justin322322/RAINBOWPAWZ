@@ -11,7 +11,6 @@ export async function GET(
     // Then access the id property
     const providerId = awaitedParams.id;
 
-    console.log(`Fetching reviews for provider ID: ${providerId}`);
 
     if (!providerId) {
       return NextResponse.json({ error: 'Provider ID is required' }, { status: 400 });
@@ -23,8 +22,7 @@ export async function GET(
       [providerId]
     ) as any[];
 
-    const reviewCount = reviewsCheck[0]?.count || 0;
-    console.log(`Direct database check: Found ${reviewCount} reviews for provider ID ${providerId}`);
+    const _reviewCount = reviewsCheck[0]?.count || 0;
 
     // Check if the provider exists in service_providers table
     const providerCheck = await query(
@@ -33,9 +31,7 @@ export async function GET(
     ) as any[];
 
     if (providerCheck.length > 0) {
-      console.log(`Provider found in service_providers table: ${providerCheck[0].name} (ID: ${providerCheck[0].id})`);
     } else {
-      console.log(`Provider with ID ${providerId} not found in service_providers table`);
     }
 
     // Get all reviews for the provider with user names and booking details
@@ -87,7 +83,6 @@ export async function GET(
       // Make sure we're using the correct parameter type
       const providerIdParam = isNaN(Number(providerId)) ? providerId : Number(providerId);
 
-      console.log(`Executing dynamic query with provider ID: ${providerIdParam} (type: ${typeof providerIdParam})`);
 
       // SECURITY FIX: Build safe query with validated components
       const selectFieldsStr = selectFields;
@@ -111,7 +106,6 @@ export async function GET(
           rating: reviews[0].rating
         });
       }
-      console.log(`Found ${reviews.length} reviews with dynamic JOIN`);
     } catch (joinError) {
       console.error('Error with dynamic JOIN query:', joinError);
 
@@ -120,7 +114,6 @@ export async function GET(
         // Make sure we're using the correct parameter type
         const providerIdParam = isNaN(Number(providerId)) ? providerId : Number(providerId);
 
-        console.log(`Executing simplified query with provider ID: ${providerIdParam} (type: ${typeof providerIdParam})`);
 
         // Try to get reviews with just user information
         reviews = await query(
@@ -147,7 +140,6 @@ export async function GET(
           });
         }
 
-        console.log(`Found ${reviews.length} reviews with simplified JOIN`);
 
         // If we have reviews and they have booking IDs, try to enhance them with booking data
         if (reviews.length > 0) {
@@ -175,8 +167,7 @@ export async function GET(
                 }
                 return review;
               });
-            } catch (error) {
-              console.log('Could not enhance reviews with booking dates:', error);
+            } catch {
             }
           }
         }
@@ -188,14 +179,12 @@ export async function GET(
           // Make sure we're using the correct parameter type
           const providerIdParam = isNaN(Number(providerId)) ? providerId : Number(providerId);
 
-          console.log(`Executing basic query with provider ID: ${providerIdParam} (type: ${typeof providerIdParam})`);
 
           reviews = await query(
             `SELECT * FROM reviews WHERE service_provider_id = ? ORDER BY created_at DESC`,
             [providerIdParam]
           ) as any[];
 
-          console.log(`Found ${reviews.length} reviews with basic query`);
 
           // If we found reviews, try to enhance them with user data
           if (reviews.length > 0) {
@@ -225,8 +214,7 @@ export async function GET(
                   return review;
                 });
               }
-            } catch (userError) {
-              console.log('Could not enhance reviews with user data:', userError);
+            } catch {
             }
           }
         } catch (basicError) {
@@ -238,7 +226,6 @@ export async function GET(
               'SELECT * FROM reviews WHERE service_provider_id = ?',
               [providerId]
             ) as any[];
-            console.log(`Last resort query found ${reviews.length} reviews`);
           } catch (finalError) {
             console.error('Final query attempt failed:', finalError);
             reviews = []; // Ensure we return an empty array rather than undefined
@@ -250,7 +237,6 @@ export async function GET(
     // Calculate average rating - make sure we use the correct parameter type
     const providerIdParam = isNaN(Number(providerId)) ? providerId : Number(providerId);
 
-    console.log(`Calculating average rating for provider ID: ${providerIdParam} (type: ${typeof providerIdParam})`);
 
     const ratingResult = await query(
       `SELECT AVG(rating) as average_rating, COUNT(*) as total_reviews
@@ -270,7 +256,6 @@ export async function GET(
 
     const totalReviews = parseInt(ratingResult[0]?.total_reviews) || 0;
 
-    console.log(`Average rating calculation: ${averageRating} (type: ${typeof averageRating}) from ${totalReviews} reviews`);
 
     return NextResponse.json({
       reviews,

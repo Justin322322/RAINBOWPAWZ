@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { getAuthTokenFromRequest } from '@/utils/auth';
+import { createBusinessNotification } from '@/utils/businessNotificationService';
 
 // POST endpoint to create a new review
 export async function POST(request: NextRequest) {
@@ -130,7 +131,6 @@ export async function POST(request: NextRequest) {
       `) as any[];
 
       const existingTables = new Set(tablesResult.map((row: any) => row.TABLE_NAME));
-      console.log('Existing tables for review submission:', Array.from(existingTables));
 
       if (existingTables.has('service_bookings')) {
         try {
@@ -138,9 +138,7 @@ export async function POST(request: NextRequest) {
             'SELECT status FROM service_bookings WHERE id = ? AND user_id = ?',
             [booking_id, user_id]
           ) as any[];
-          console.log('Found booking in service_bookings:', bookingResult.length > 0);
-        } catch (error) {
-          console.log('Error checking service_bookings table:', error);
+        } catch {
         }
       }
     } catch (error) {
@@ -231,10 +229,8 @@ export async function POST(request: NextRequest) {
       `) as any[];
 
       const existingTables = new Set(tablesResult.map((row: any) => row.TABLE_NAME));
-      console.log('Existing tables for notifications:', Array.from(existingTables));
 
       if (!existingTables.has('notifications')) {
-        console.log('Notifications table does not exist, skipping notification');
         return NextResponse.json({
           success: true,
           reviewId: result.insertId,
@@ -253,7 +249,6 @@ export async function POST(request: NextRequest) {
 
         if (businessResult && businessResult.length > 0) {
           providerUserId = businessResult[0].user_id;
-          console.log('Found provider user ID from businesses table:', providerUserId);
         }
       }
 
@@ -267,10 +262,8 @@ export async function POST(request: NextRequest) {
 
           if (providerResult && providerResult.length > 0) {
             providerUserId = providerResult[0].user_id;
-            console.log('Found provider user ID from service_providers table:', providerUserId);
           }
-        } catch (error) {
-          console.log('Error checking service_providers table:', error);
+        } catch {
         }
       }
 
@@ -285,21 +278,17 @@ export async function POST(request: NextRequest) {
           ? `${userResult[0].first_name} ${userResult[0].last_name}`
           : 'A customer';
 
-        // Create the notification
-        await query(
-          `INSERT INTO notifications (user_id, title, message, type, link)
-           VALUES (?, ?, ?, ?, ?)`,
-          [
-            providerUserId,
-            'New Review Received',
-            `${userName} left a ${rating}-star review for your service.`,
-            'info',
-            '/cremation/reviews'
-          ]
-        );
-        console.log('Created notification for provider user ID:', providerUserId);
+        // Create the notification with email support
+        await createBusinessNotification({
+          userId: providerUserId,
+          title: 'New Review Received',
+          message: `${userName} left a ${rating}-star review for your service.`,
+          type: 'info',
+          link: '/cremation/reviews',
+          shouldSendEmail: true,
+          emailSubject: `New ${rating}-Star Review Received - Rainbow Paws`
+        });
       } else {
-        console.log('Could not find provider user ID for notification');
       }
     } catch (notificationError) {
       // Log the error but continue with the process

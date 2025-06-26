@@ -13,7 +13,6 @@ export const getAdminIdFromRequest = async (request: NextRequest): Promise<numbe
     const authToken = getAuthTokenFromRequest(request);
 
     if (!authToken) {
-      console.log('No auth token found in request');
       return null;
     }
 
@@ -44,7 +43,6 @@ export const getAdminIdFromRequest = async (request: NextRequest): Promise<numbe
 
     // Check if this is an admin account
     if (!userId || accountType !== 'admin') {
-      console.log(`User is not admin. UserId: ${userId}, AccountType: ${accountType}`);
       return null;
     }
 
@@ -55,11 +53,9 @@ export const getAdminIdFromRequest = async (request: NextRequest): Promise<numbe
     ) as any[];
 
     if (!userData || userData.length === 0) {
-      console.log('No admin user found in database for ID:', userId);
       return null;
     }
 
-    console.log('Admin authorization successful for ID:', userId);
     return parseInt(userData[0].user_id);
   } catch (error) {
     console.error('Error getting admin ID from request:', error);

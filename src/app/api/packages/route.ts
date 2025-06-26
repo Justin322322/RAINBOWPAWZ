@@ -149,6 +149,21 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      // Ensure package_addons table exists
+      await transaction.query(`
+        CREATE TABLE IF NOT EXISTS package_addons (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          addon_id INT,
+          package_id INT NOT NULL,
+          description TEXT NOT NULL,
+          price DECIMAL(10,2) DEFAULT 0.00,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          INDEX idx_package_id (package_id),
+          INDEX idx_addon_id (addon_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+      `);
+
       // add-ons
       for (const raw of addOns) {
         let desc: string;
@@ -165,31 +180,66 @@ export async function POST(request: NextRequest) {
         }
         if (!desc) continue;
 
-        const colInfo = (await transaction.query(
+        // Check if id column exists in package_addons table
+        const idColumnExists = (await transaction.query(
           `
-          SELECT EXTRA
+          SELECT COUNT(*) as count
           FROM INFORMATION_SCHEMA.COLUMNS
           WHERE TABLE_SCHEMA = DATABASE()
             AND TABLE_NAME = 'package_addons'
             AND COLUMN_NAME = 'id'
           `
         )) as any[];
-        const hasAI = colInfo[0]?.EXTRA.includes('auto_increment');
 
-        if (hasAI) {
-          await transaction.query(
-            'INSERT INTO package_addons (package_id, description, price) VALUES (?, ?, ?)',
-            [packageId, desc, cost]
-          );
-        } else {
-          const maxRow = (await transaction.query(
-            'SELECT MAX(id) AS maxId FROM package_addons'
+        const hasIdColumn = idColumnExists[0]?.count > 0;
+
+        if (hasIdColumn) {
+          // Check if id column is auto increment
+          const colInfo = (await transaction.query(
+            `
+            SELECT EXTRA
+            FROM INFORMATION_SCHEMA.COLUMNS
+            WHERE TABLE_SCHEMA = DATABASE()
+              AND TABLE_NAME = 'package_addons'
+              AND COLUMN_NAME = 'id'
+            `
           )) as any[];
-          const nextId = (maxRow[0]?.maxId || 0) + 1;
-          await transaction.query(
-            'INSERT INTO package_addons (id, package_id, description, price) VALUES (?, ?, ?, ?)',
-            [nextId, packageId, desc, cost]
-          );
+          const hasAI = colInfo[0]?.EXTRA.includes('auto_increment');
+
+          if (hasAI) {
+            await transaction.query(
+              'INSERT INTO package_addons (package_id, description, price) VALUES (?, ?, ?)',
+              [packageId, desc, cost]
+            );
+          } else {
+            const maxRow = (await transaction.query(
+              'SELECT MAX(id) AS maxId FROM package_addons'
+            )) as any[];
+            const nextId = (maxRow[0]?.maxId || 0) + 1;
+            await transaction.query(
+              'INSERT INTO package_addons (id, package_id, description, price) VALUES (?, ?, ?, ?)',
+              [nextId, packageId, desc, cost]
+            );
+          }
+        } else {
+          // Table doesn't have id column, use addon_id or create without id
+          try {
+            // Try to get max addon_id if it exists
+            const maxRow = (await transaction.query(
+              'SELECT MAX(addon_id) AS maxId FROM package_addons'
+            )) as any[];
+            const nextId = (maxRow[0]?.maxId || 0) + 1;
+            await transaction.query(
+              'INSERT INTO package_addons (addon_id, package_id, description, price) VALUES (?, ?, ?, ?)',
+              [nextId, packageId, desc, cost]
+            );
+          } catch {
+            // If addon_id doesn't exist either, insert without any id
+            await transaction.query(
+              'INSERT INTO package_addons (package_id, description, price) VALUES (?, ?, ?)',
+              [packageId, desc, cost]
+            );
+          }
         }
       }
 

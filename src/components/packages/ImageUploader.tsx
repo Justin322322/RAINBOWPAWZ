@@ -1,4 +1,4 @@
-import React, { ChangeEvent } from 'react';
+import React, { ChangeEvent, memo } from 'react';
 import { PhotoIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { ProductionSafeImage } from '@/components/ui/ProductionSafeImage';
 
@@ -10,12 +10,12 @@ interface ImageUploaderProps {
   onRemove: (index: number) => void | Promise<void>;
 }
 
-export const ImageUploader: React.FC<ImageUploaderProps> = ({ 
-  images, 
-  uploadingImages, 
-  fileInputRef, 
-  onUpload, 
-  onRemove 
+const ImageUploaderComponent: React.FC<ImageUploaderProps> = ({
+  images,
+  uploadingImages,
+  fileInputRef,
+  onUpload,
+  onRemove
 }) => (
   <div className="mb-8">
     <h2 className="text-lg font-medium text-gray-800 mb-4">Images</h2>
@@ -68,4 +68,8 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
       />
     </div>
   </div>
-); 
+);
+
+ImageUploaderComponent.displayName = 'ImageUploader';
+
+export const ImageUploader = memo(ImageUploaderComponent);

@@ -69,8 +69,13 @@ export default function AdminCremationCentersPage() {
 
   // Fetch cremation centers from the API
   useEffect(() => {
+    let isMounted = true; // Track if component is still mounted
+
     const fetchCremationCenters = async () => {
       try {
+        // Don't make API calls if component is unmounted (e.g., during logout)
+        if (!isMounted) return;
+
         setLoading(true);
         setError(null);
 
@@ -84,8 +89,16 @@ export default function AdminCremationCentersPage() {
           }
         });
 
+        // Check if component is still mounted before processing response
+        if (!isMounted) return;
 
         if (!response.ok) {
+          // Handle 401 Unauthorized specifically (likely due to logout)
+          if (response.status === 401) {
+            // Don't show error for 401 during logout - just return silently
+            return;
+          }
+
           // Try to get the error message from the response
           let errorDetails = '';
           try {
@@ -138,21 +151,35 @@ export default function AdminCremationCentersPage() {
           };
         });
 
-        setCremationCenters(centersWithRating);
+        // Only update state if component is still mounted
+        if (isMounted) {
+          setCremationCenters(centersWithRating);
+        }
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'An unknown error occurred');
+        // Only handle errors if component is still mounted
+        if (isMounted) {
+          setError(err instanceof Error ? err.message : 'An unknown error occurred');
 
-        // Show toast with error message
-        showToast('Failed to load cremation centers: ' + (err instanceof Error ? err.message : 'Unknown error'), 'error');
+          // Show toast with error message
+          showToast('Failed to load cremation centers: ' + (err instanceof Error ? err.message : 'Unknown error'), 'error');
 
-        // Set empty array instead of mock data to ensure we're showing real data
-        setCremationCenters([]);
+          // Set empty array instead of mock data to ensure we're showing real data
+          setCremationCenters([]);
+        }
       } finally {
-        setLoading(false);
+        // Only update loading state if component is still mounted
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
 
     fetchCremationCenters();
+
+    // Cleanup function to prevent state updates after component unmounts
+    return () => {
+      isMounted = false;
+    };
   }, [showToast]);
 
   // Filter cremation centers based on search term and status filter
@@ -236,6 +263,12 @@ export default function AdminCremationCentersPage() {
         }),
       });
 
+      // Handle 401 Unauthorized specifically (likely due to logout)
+      if (response.status === 401) {
+        // Don't show error for 401 during logout - just return silently
+        return;
+      }
+
       const data = await response.json();
 
       if (!response.ok || !data.success) {
@@ -316,6 +349,12 @@ export default function AdminCremationCentersPage() {
         });
 
 
+        // Handle 401 Unauthorized specifically (likely due to logout)
+        if (response.status === 401) {
+          // Don't show error for 401 during logout - just return silently
+          return;
+        }
+
         // Try to parse the response as JSON
         let data;
         try {
@@ -349,6 +388,12 @@ export default function AdminCremationCentersPage() {
         }),
       });
 
+
+      // Handle 401 Unauthorized specifically for fallback (likely due to logout)
+      if (fallbackResponse.status === 401) {
+        // Don't show error for 401 during logout - just return silently
+        return;
+      }
 
       // Try to parse the fallback response
       let fallbackData;
@@ -652,6 +697,12 @@ export default function AdminCremationCentersPage() {
 
 
                     if (!response.ok) {
+                      // Handle 401 Unauthorized specifically (likely due to logout)
+                      if (response.status === 401) {
+                        // Don't show error for 401 during logout - just return silently
+                        return;
+                      }
+
                       // Try to get the error message from the response
                       let errorDetails = '';
                       try {

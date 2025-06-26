@@ -157,27 +157,4 @@ export const CacheInvalidation = {
   },
 };
 
-// Utility functions for common caching patterns
-export async function cacheUserData<T>(
-  userId: number,
-  fetcher: () => Promise<T>,
-  ttl?: number
-): Promise<T> {
-  return userCacheService.getOrSet(CacheKeys.user(userId), fetcher, ttl);
-}
-
-export async function cachePackageData<T>(
-  providerId: number | undefined,
-  fetcher: () => Promise<T>,
-  ttl?: number
-): Promise<T> {
-  return packageCacheService.getOrSet(CacheKeys.packages(providerId), fetcher, ttl);
-}
-
-export async function cacheProviderData<T>(
-  providerId: number,
-  fetcher: () => Promise<T>,
-  ttl?: number
-): Promise<T> {
-  return providerCacheService.getOrSet(CacheKeys.provider(providerId), fetcher, ttl);
-}
+// Utility functions for common caching patterns are available through the cache services above

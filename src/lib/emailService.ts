@@ -52,106 +52,11 @@ export const sendWelcomeEmail = async (email: string, firstName: string, account
   return response.json();
 };
 
-/**
- * Send an OTP verification email
- */
-export const sendOTPEmail = async (email: string, otp: string, useQueue = false) => {
-  const response = await fetch('/api/email', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      type: 'otp',
-      email,
-      otp,
-      useQueue
-    }),
-  });
+// OTP email functionality moved to consolidatedEmailService.ts
 
-  if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.error || 'Failed to send OTP email');
-  }
+// Booking confirmation email functionality moved to consolidatedEmailService.ts
 
-  return response.json();
-};
-
-/**
- * Send a booking confirmation email
- */
-export const sendBookingConfirmationEmail = async (
-  email: string,
-  bookingDetails: {
-    customerName: string;
-    serviceName: string;
-    providerName: string;
-    bookingDate: string;
-    bookingTime: string;
-    petName: string;
-    bookingId: string | number;
-  },
-  useQueue = true
-) => {
-  const response = await fetch('/api/email', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      type: 'booking_confirmation',
-      email,
-      bookingDetails,
-      useQueue
-    }),
-  });
-
-  if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.error || 'Failed to send booking confirmation email');
-  }
-
-  return response.json();
-};
-
-/**
- * Send a booking status update email
- */
-export const sendBookingStatusUpdateEmail = async (
-  email: string,
-  bookingDetails: {
-    customerName: string;
-    serviceName: string;
-    providerName: string;
-    bookingDate: string;
-    bookingTime: string;
-    petName: string;
-    bookingId: string | number;
-    status: 'pending' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled';
-    notes?: string;
-  },
-  useQueue = true
-) => {
-  const response = await fetch('/api/email', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      type: 'booking_status_update',
-      email,
-      bookingDetails,
-      useQueue
-    }),
-  });
-
-  if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.error || 'Failed to send booking status update email');
-  }
-
-  return response.json();
-};
+// Booking status update email functionality moved to consolidatedEmailService.ts
 
 /**
  * Send a business verification email

@@ -82,7 +82,6 @@ const ReviewForm: React.FC<ReviewFormProps> = ({
       });
 
       const responseData = await response.json();
-      console.log('Review submission response:', responseData);
 
       if (!response.ok) {
         // Log validation details if available

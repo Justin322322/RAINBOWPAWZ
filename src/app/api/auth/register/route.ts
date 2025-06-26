@@ -61,8 +61,7 @@ function formatPhoneNumber(phoneNumber: string | undefined): string | null {
 
 export async function POST(request: Request) {
   // Test database connection first
-  const dbConnected = await testConnection();
-  console.log("Database connection test result:", dbConnected);
+  const _dbConnected = await testConnection();
 
   // Add CORS headers
   const headers = {
@@ -175,14 +174,13 @@ export async function POST(request: Request) {
         // Register in users table
         try {
           // Check users table structure
-          const usersTableColumns = await transaction.query(`
+          const _usersTableColumns = await transaction.query(`
             SELECT COLUMN_NAME
             FROM INFORMATION_SCHEMA.COLUMNS
             WHERE TABLE_SCHEMA = DATABASE()
             AND TABLE_NAME = 'users'
           `) as any[];
 
-          console.log("Users table columns:", usersTableColumns.map(col => col.COLUMN_NAME));
 
           // Insert user with simplified query
           const sql = `INSERT INTO users (email, password, first_name, last_name, phone, address, gender, role)
@@ -256,22 +254,19 @@ export async function POST(request: Request) {
             }
 
             // Log the SQL query for debugging
-            console.log("Attempting to insert into service_providers table");
 
             // Check if the service_providers table exists and get its columns
-            const tableCheckResult = await transaction.query(`
+            const _tableCheckResult = await transaction.query(`
               SELECT COLUMN_NAME
               FROM INFORMATION_SCHEMA.COLUMNS
               WHERE TABLE_SCHEMA = DATABASE()
               AND TABLE_NAME = 'service_providers'
             `) as any[];
 
-            console.log("service_providers table columns:", tableCheckResult.map(col => col.COLUMN_NAME));
 
             // Use a more explicit approach with column names
             // First, check if the service_providers table exists
-            const tableExists = await checkTableExists('service_providers');
-            console.log("service_providers table exists:", tableExists);
+            const _tableExists = await checkTableExists('service_providers');
 
             const sql = `INSERT INTO service_providers
                         SET user_id = ?,
@@ -317,7 +312,6 @@ export async function POST(request: Request) {
             let result;
             try {
               result = await transaction.query(sql, values) as any;
-              console.log("Service provider insertion successful, result:", result);
             } catch (queryError) {
               console.error("Error executing service provider insertion query:", queryError);
               throw queryError;
@@ -326,7 +320,6 @@ export async function POST(request: Request) {
             // Create admin notification for all business registrations
             try {
               const serviceProviderId = result.insertId;
-              console.log("Creating admin notification for service provider ID:", serviceProviderId);
 
               // Use different notification type and message based on provider type
               const notificationType = providerType === 'cremation' ? 'new_cremation_center' : 'pending_application';
@@ -342,7 +335,6 @@ export async function POST(request: Request) {
               });
 
               if (notificationResult.success) {
-                console.log("Admin notification created successfully with ID:", notificationResult.notificationId);
               } else {
                 console.error("Failed to create admin notification:", notificationResult.error);
               }
@@ -364,11 +356,9 @@ export async function POST(request: Request) {
     };
 
     // Execute the registration process
-    console.log("Starting registration process...");
     let userId;
     try {
       userId = await registerUser();
-      console.log("Registration successful, userId:", userId);
     } catch (regError) {
       console.error("Registration process failed:", regError);
       throw regError;
@@ -378,7 +368,6 @@ export async function POST(request: Request) {
       // Send welcome email
       try {
         const accountType = data.account_type === 'personal' ? 'personal' : 'business';
-        console.log("Sending welcome email to:", data.email);
 
         // Send using simple email service
         const emailResult = await sendWelcomeEmail(data.email, data.firstName, accountType);
@@ -387,7 +376,6 @@ export async function POST(request: Request) {
           console.warn("Failed to send welcome email:", emailResult);
           // Continue with registration even if email fails
         } else {
-          console.log("Welcome email sent successfully");
         }
       } catch (emailError) {
         console.error("Error sending welcome email:", emailError);
@@ -400,11 +388,9 @@ export async function POST(request: Request) {
         const isCremationCenter = data.account_type === 'business' &&
           (data as BusinessRegistrationData).businessType === 'cremation';
 
-        console.log("Is cremation center registration:", isCremationCenter);
 
         // Skip OTP generation for cremation centers
         if (!isCremationCenter) {
-          console.log("Generating OTP for user:", userId);
           const ipAddress = request.headers.get('x-forwarded-for') || 'unknown';
 
           const otpResult = await generateOtp({
@@ -417,29 +403,25 @@ export async function POST(request: Request) {
             console.warn("Failed to generate OTP:", otpResult);
             // Continue with registration even if OTP generation fails
           } else {
-            console.log("OTP generated successfully");
 
             // For fur parents, auto-approve is_verified
             try {
-              const updateResult = await query(
+              const _updateResult = await query(
                 'UPDATE users SET is_verified = 1 WHERE user_id = ?',
                 [userId]
               );
-              console.log("Fur parent verification update result:", updateResult);
             } catch (updateError) {
               console.error("Error updating fur parent verification status:", updateError);
               // Continue with registration even if verification update fails
             }
           }
         } else {
-          console.log("Skipping OTP generation for cremation center, marking as verified");
           // For cremation centers, mark them as OTP verified AND is_verified automatically
           try {
-            const updateResult = await query(
+            const _updateResult = await query(
               'UPDATE users SET is_otp_verified = 1, is_verified = 1 WHERE user_id = ?',
               [userId]
             );
-            console.log("Verification update result:", updateResult);
           } catch (updateError) {
             console.error("Error updating verification status:", updateError);
             throw updateError;

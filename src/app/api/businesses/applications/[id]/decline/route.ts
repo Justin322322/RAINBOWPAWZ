@@ -152,7 +152,6 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
 
         if (emailResult.success) {
           emailSent = true;
-          console.log('Email sent successfully to:', business.email);
         } else {
           console.warn('Email sending failed:', emailResult.error);
         }
@@ -175,7 +174,6 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
           link: requestDocuments ? '/cremation/documents' : '/cremation/dashboard',
           shouldSendEmail: false, // Email was already sent above
         });
-        console.log('Business notification created for user:', business.user_id);
       } catch (notificationError) {
         // Non-critical error, just log it
         console.error('Error creating business notification:', notificationError);

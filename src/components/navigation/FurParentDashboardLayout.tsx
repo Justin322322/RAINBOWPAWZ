@@ -77,7 +77,6 @@ function FurParentDashboardLayout({
         {/* Clone children and pass currentUserData to them */}
         {React.Children.map(children, (child) => {
           if (React.isValidElement(child)) {
-            console.log('🔍 [Layout] Passing userData to child, address:', currentUserData?.address);
             return React.cloneElement(child, { userData: currentUserData } as any);
           }
           return child;

@@ -118,9 +118,6 @@ export async function POST(request: NextRequest) {
       await writeFile(filePath, buffer);
 
       // Log successful file write for debugging
-      console.log(`Successfully wrote file to: ${filePath}`);
-      console.log(`File size: ${buffer.length} bytes`);
-      console.log(`Relative path that will be returned: ${relativePath}`);
 
 
       // If packageId is provided, save in database

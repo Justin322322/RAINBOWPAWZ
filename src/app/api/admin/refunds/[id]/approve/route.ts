@@ -237,7 +237,6 @@ export async function POST(
           }
         } else {
           // No PayMongo transaction found, process manually
-          console.log(`No PayMongo transaction found for booking ${refund.booking_id}, processing manually`);
           await completeRefund(refund.booking_id, refundId);
 
           // Send completion email for manual processing

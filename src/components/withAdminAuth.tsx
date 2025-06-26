@@ -88,7 +88,6 @@ const withAdminAuth = <P_Original extends object>(
           });
 
           if (!response.ok) {
-            console.log('[withAdminAuth] API call failed with status:', response.status);
             if (response.status === 401 || response.status === 403) {
               router.replace('/');
               return;
@@ -99,7 +98,6 @@ const withAdminAuth = <P_Original extends object>(
           const result = await response.json();
 
           if (!result.authenticated || result.accountType !== 'admin') {
-            console.log('[withAdminAuth] User not authenticated as admin');
             router.replace('/');
             return;
           }

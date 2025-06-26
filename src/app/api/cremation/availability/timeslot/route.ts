@@ -9,7 +9,6 @@ export async function DELETE(request: NextRequest) {
     const providerId = url.searchParams.get('providerId');
     const date = url.searchParams.get('date'); // Optional date parameter for additional filtering
 
-    console.log('DELETE request received for time slot:', { slotId, providerId, date });
 
     if (!slotId) {
       return NextResponse.json({ error: 'Time slot ID is required' }, { status: 400 });
@@ -37,14 +36,11 @@ export async function DELETE(request: NextRequest) {
       WHERE id = ?
     `;
     const checkResult = await query(checkQuery, [slotId]) as any[];
-    console.log('Debug query result:', checkResult);
 
     if (!checkResult || checkResult.length === 0) {
-      console.log('No slot found with ID', slotId, 'in the database');
 
       // If we have a date parameter, try to delete by date and provider instead
       if (date) {
-        console.log('Attempting to delete by date and provider instead:', { date, providerId: providerIdNum });
 
         const result = await withTransaction(async (transaction) => {
           // Delete time slots for the date and provider
@@ -54,7 +50,6 @@ export async function DELETE(request: NextRequest) {
           `;
 
           const deleteByDateResult = await transaction.query(deleteByDateQuery, [providerIdNum, date]) as any;
-          console.log('Delete by date result:', deleteByDateResult);
 
           if (deleteByDateResult && deleteByDateResult.affectedRows > 0) {
             return {
@@ -87,11 +82,9 @@ export async function DELETE(request: NextRequest) {
 
       // If the slot exists but belongs to a different provider, log this information
       if (slotDetails.provider_id !== providerIdNum) {
-        console.log('Found slot with ID', slotId, 'but it belongs to provider', slotDetails.provider_id, 'not', providerIdNum);
 
         // For this specific case, we'll allow deletion even if provider IDs don't match
         // This is to fix potential data inconsistencies
-        console.log('Proceeding with deletion despite provider mismatch to fix data inconsistency');
       }
 
       // Delete the time slot using only the ID for maximum reliability
@@ -100,7 +93,6 @@ export async function DELETE(request: NextRequest) {
         WHERE id = ?
       `;
       const deleteResult = await transaction.query(deleteSlotQuery, [slotId]) as any;
-      console.log('Delete result:', deleteResult);
 
       // Check if any rows were affected by the delete operation
       if (!deleteResult || deleteResult.affectedRows === 0) {
@@ -115,7 +107,6 @@ export async function DELETE(request: NextRequest) {
       `;
       const remainingResult = await transaction.query(remainingSlotsQuery, [providerIdNum, slotDate]) as any[];
       const remainingCount = remainingResult[0].count;
-      console.log('Remaining slots for date', slotDate, ':', remainingCount);
 
       return {
         success: true,

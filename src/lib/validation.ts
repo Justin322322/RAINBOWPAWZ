@@ -119,13 +119,4 @@ export function validateData<T>(schema: z.ZodSchema<T>, data: unknown): { succes
   }
 }
 
-// Middleware helper for API route validation
-export function createValidationMiddleware<T>(schema: z.ZodSchema<T>) {
-  return (data: unknown) => {
-    const result = validateData(schema, data);
-    if (!result.success) {
-      throw new Error(`Validation failed: ${result.errors.join(', ')}`);
-    }
-    return result.data;
-  };
-}
+// Validation middleware removed - use validateData function directly

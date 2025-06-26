@@ -152,7 +152,6 @@ async function ensureNotificationColumns() {
         ALTER TABLE users
         ADD COLUMN sms_notifications BOOLEAN DEFAULT TRUE COMMENT 'User preference for SMS notifications'
       `);
-      console.log('Added sms_notifications column to users table');
     }
 
     // Add email_notifications column if it doesn't exist
@@ -161,7 +160,6 @@ async function ensureNotificationColumns() {
         ALTER TABLE users
         ADD COLUMN email_notifications BOOLEAN DEFAULT TRUE COMMENT 'User preference for email notifications'
       `);
-      console.log('Added email_notifications column to users table');
     }
 
   } catch (error) {

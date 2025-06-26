@@ -178,7 +178,6 @@ export async function query(sql: string, params: any[] = []): Promise<QueryResul
       console.error('MySQL connection lost. Attempting to reconnect...');
       try {
         pool = mysql.createPool(finalConfig);
-        console.log('MySQL pool recreated successfully.');
       } catch (reconnectError) {
         console.error('Failed to recreate MySQL pool:', reconnectError);
       }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, ChangeEvent, useEffect } from 'react';
+import { useState, useRef, ChangeEvent, useEffect, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import CremationDashboardLayout from '@/components/navigation/CremationDashboardLayout';
 import withBusinessVerification from '@/components/withBusinessVerification';
@@ -85,7 +85,6 @@ function EditPackagePage({ userData }: EditPackagePageProps) {
         }
 
         const data = await response.json();
-        console.log('Fetched package data:', JSON.stringify(data, null, 2));
 
         if (data.package) {
           // Process add-ons from the API response
@@ -122,7 +121,6 @@ function EditPackagePage({ userData }: EditPackagePageProps) {
             });
           }
 
-          console.log('Processed add-ons:', processedAddOns);
 
           // Ensure all data is properly formatted
           const formattedData = {
@@ -137,14 +135,11 @@ function EditPackagePage({ userData }: EditPackagePageProps) {
             addOns: processedAddOns
           };
 
-          console.log('Formatted package data for form:', JSON.stringify(formattedData, null, 2));
 
           // Ensure deliveryFeePerKm is properly set
           if (formattedData.deliveryFeePerKm === undefined) {
             formattedData.deliveryFeePerKm = 0;
-            console.log('Setting default deliveryFeePerKm to 0');
           } else {
-            console.log('Using deliveryFeePerKm from API:', formattedData.deliveryFeePerKm);
           }
 
           setFormData(formattedData);
@@ -180,7 +175,6 @@ function EditPackagePage({ userData }: EditPackagePageProps) {
     // Handle numeric fields properly
     if (name === 'price' || name === 'deliveryFeePerKm') {
       const numValue = value === '' ? 0 : parseFloat(value);
-      console.log(`Setting ${name} to:`, numValue);
 
       setFormData(prev => ({
         ...prev,
@@ -223,7 +217,6 @@ function EditPackagePage({ userData }: EditPackagePageProps) {
         price = !isNaN(parsedPrice) ? parsedPrice : null;
       }
 
-      console.log(`Adding new add-on: "${newAddOn.trim()}" with price: ${price}`);
 
       // Create the new add-on object
       const newAddOnObj = {
@@ -231,12 +224,10 @@ function EditPackagePage({ userData }: EditPackagePageProps) {
         price: price
       };
 
-      console.log('New add-on object:', newAddOnObj);
 
       // Update the form data with the new add-on
       setFormData(prev => {
         const updatedAddOns = [...prev.addOns, newAddOnObj];
-        console.log('Updated add-ons array:', updatedAddOns);
         return {
           ...prev,
           addOns: updatedAddOns
@@ -258,7 +249,7 @@ function EditPackagePage({ userData }: EditPackagePageProps) {
   };
 
   // Handle image upload
-  const handleImageUpload = async (e: ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = useCallback(async (e: ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const files = Array.from(e.target.files);
       
@@ -312,7 +303,6 @@ function EditPackagePage({ userData }: EditPackagePageProps) {
           }
 
           const data = await response.json();
-          console.log('Image upload successful:', data);
           return data.filePath; // Return the file path from the server
         } catch (error) {
           console.error('Image upload error:', error);
@@ -341,17 +331,12 @@ function EditPackagePage({ userData }: EditPackagePageProps) {
 
       // Successfully uploaded images (no toast notification needed)
     }
-  };
+  }, [packageId]);
 
   // Handle removing an image
-  const handleRemoveImage = async (index: number) => {
+  const handleRemoveImage = useCallback(async (index: number) => {
     const imageToRemove = formData.images[index];
     
-    console.log('=== REMOVE IMAGE DEBUG ===');
-    console.log('Image index:', index);
-    console.log('Image to remove:', imageToRemove);
-    console.log('All images in form:', formData.images);
-    console.log('Package ID:', packageId);
     
     // Confirm deletion
     if (!window.confirm('Are you sure you want to delete this image? This action cannot be undone.')) {
@@ -359,8 +344,6 @@ function EditPackagePage({ userData }: EditPackagePageProps) {
     }
     
     try {
-      console.log('Sending DELETE request to:', `/api/packages/${packageId}/images`);
-      console.log('Request body:', JSON.stringify({ imagePath: imageToRemove }, null, 2));
       
       // Call API to delete image from database and file system
       const response = await fetch(`/api/packages/${packageId}/images`, {
@@ -374,12 +357,9 @@ function EditPackagePage({ userData }: EditPackagePageProps) {
         }),
       });
 
-      console.log('Response status:', response.status);
-      console.log('Response ok:', response.ok);
 
       if (!response.ok) {
         const errorData = await response.json();
-        console.log('Error response data:', errorData);
         throw new Error(errorData.error || 'Failed to delete image');
       }
 
@@ -394,7 +374,7 @@ function EditPackagePage({ userData }: EditPackagePageProps) {
       console.error('Error deleting image:', error);
       // Error handled in console, no toast notification needed
     }
-  };
+  }, [formData.images, packageId]);
 
   // Validate form before submission
   const validateForm = (): boolean => {
@@ -436,8 +416,6 @@ function EditPackagePage({ userData }: EditPackagePageProps) {
 
     try {
       // Log the current form data for debugging
-      console.log('Current form data before submission:', formData);
-      console.log('Form data stringified:', JSON.stringify(formData, null, 2));
 
       // Create a fresh object with only the fields we need
       const dataToSend = {
@@ -465,15 +443,10 @@ function EditPackagePage({ userData }: EditPackagePageProps) {
         images: formData.images.map(img => String(img))
       };
 
-      console.log('Clean data to send:', JSON.stringify(dataToSend, null, 2));
 
       // Log the data being sent for debugging
-      console.log('Submitting package update with data:', JSON.stringify(dataToSend, null, 2));
-      console.log('deliveryFeePerKm value:', dataToSend.deliveryFeePerKm);
 
       // Log the request details
-      console.log('Sending PATCH request to:', `/api/packages/${packageId}`);
-      console.log('Request payload:', JSON.stringify(dataToSend, null, 2));
 
       // Update package via API
       try {
@@ -486,12 +459,9 @@ function EditPackagePage({ userData }: EditPackagePageProps) {
           body: JSON.stringify(dataToSend),
         });
 
-        console.log('Response status:', response.status);
-        console.log('Response headers:', Object.fromEntries(response.headers.entries()));
 
         // Get the response data
         const responseText = await response.text();
-        console.log('Raw response text:', responseText);
 
         // Try to parse as JSON
         let responseData;
@@ -502,7 +472,6 @@ function EditPackagePage({ userData }: EditPackagePageProps) {
           }
 
           responseData = JSON.parse(responseText);
-          console.log('Parsed response data:', responseData);
         } catch (parseError) {
           console.error('Error parsing response as JSON:', parseError);
           console.error('Response text was:', responseText);
@@ -520,7 +489,6 @@ function EditPackagePage({ userData }: EditPackagePageProps) {
           throw new Error(responseData.error || responseData.details || 'Failed to update package');
         }
 
-        console.log('Package update response:', responseData);
 
         // Show success toast with more details if available
         if (responseData.success) {

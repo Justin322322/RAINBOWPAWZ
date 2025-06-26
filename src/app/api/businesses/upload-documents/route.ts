@@ -8,7 +8,6 @@ import { verifySecureAuth } from '@/lib/secureAuth';
 // Function to save file to disk
 async function saveFile(file: File, userId: string, documentType: string): Promise<string> {
   try {
-    console.log(`Saving file: ${file.name} for user ${userId} as ${documentType}`);
 
     // Create a unique filename with timestamp
     const timestamp = Date.now();
@@ -34,7 +33,6 @@ async function saveFile(file: File, userId: string, documentType: string): Promi
 
     // Return the relative path
     const relativePath = `/uploads/documents/${userId}/${filename}`;
-    console.log(`File saved successfully at: ${relativePath}`);
 
     return relativePath;
   } catch (error) {
@@ -216,19 +214,15 @@ export async function POST(request: NextRequest) {
 
     if (updateFields.length > 0) {
       // Log the update query for debugging
-      console.log("Update fields:", updateFields);
-      console.log("Update values:", updateValues);
-      console.log("Business profile ID:", businessProfileId);
 
       const updateQuery = `UPDATE service_providers SET ${updateFields.join(', ')} WHERE provider_id = ?`;
 
       try {
-        const updateResult = await query(
+        const _updateResult = await query(
           updateQuery,
           [...updateValues, businessProfileId]
         );
 
-        console.log("Update result:", updateResult);
 
         // Verify if the update was successful
         const verifyResult = await query(

@@ -193,17 +193,25 @@ export function preloadImage(src: string): Promise<void> {
 /**
  * Trigger a profile picture update event to refresh all components
  * @param newProfilePicturePath The new profile picture path
+ * @param userType The type of user (user, admin, business)
  */
-export function triggerProfilePictureUpdate(newProfilePicturePath: string): void {
+export function triggerProfilePictureUpdate(newProfilePicturePath: string, userType: 'user' | 'admin' | 'business' = 'user'): void {
   if (typeof window === 'undefined') return;
 
-  // Update session storage
+  // Update session storage based on user type
   try {
-    const userData = sessionStorage.getItem('user_data');
+    let storageKey = 'user_data';
+    if (userType === 'admin') {
+      storageKey = 'admin_data';
+    } else if (userType === 'business') {
+      storageKey = 'business_data';
+    }
+
+    const userData = sessionStorage.getItem(storageKey);
     if (userData) {
       const user = JSON.parse(userData);
       user.profile_picture = newProfilePicturePath;
-      sessionStorage.setItem('user_data', JSON.stringify(user));
+      sessionStorage.setItem(storageKey, JSON.stringify(user));
     }
   } catch (error) {
     console.error('Failed to update session storage:', error);
@@ -211,6 +219,79 @@ export function triggerProfilePictureUpdate(newProfilePicturePath: string): void
 
   // Dispatch custom event to notify all components
   window.dispatchEvent(new CustomEvent('profilePictureUpdated', {
-    detail: { profilePicturePath: newProfilePicturePath }
+    detail: {
+      profilePicturePath: newProfilePicturePath,
+      userType: userType,
+      timestamp: Date.now()
+    }
   }));
+}
+
+/**
+ * Upload profile picture with AJAX (no page refresh)
+ * @param file The image file to upload
+ * @param apiEndpoint The API endpoint for upload
+ * @param userType The type of user
+ * @param additionalData Any additional form data
+ * @returns Promise with upload result
+ */
+export async function uploadProfilePictureAjax(
+  file: File,
+  apiEndpoint: string,
+  userType: 'user' | 'admin' | 'business' = 'user',
+  additionalData?: Record<string, string>
+): Promise<{ success: boolean; profilePicturePath?: string; error?: string }> {
+  try {
+    // Validate file
+    if (!file.type.startsWith('image/')) {
+      throw new Error('Please select a valid image file');
+    }
+
+    if (file.size > 5 * 1024 * 1024) { // 5MB limit
+      throw new Error('Profile picture must be less than 5MB');
+    }
+
+    // Create form data
+    const formData = new FormData();
+    formData.append('profilePicture', file);
+
+    // Add additional data if provided
+    if (additionalData) {
+      Object.entries(additionalData).forEach(([key, value]) => {
+        formData.append(key, value);
+      });
+    }
+
+    // Upload file
+    const response = await fetch(apiEndpoint, {
+      method: 'POST',
+      body: formData,
+      credentials: 'include'
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Failed to upload profile picture');
+    }
+
+    const result = await response.json();
+
+    if (result.success && result.profilePicturePath) {
+      // Trigger update event to refresh all components
+      triggerProfilePictureUpdate(result.profilePicturePath, userType);
+
+      return {
+        success: true,
+        profilePicturePath: result.profilePicturePath
+      };
+    } else {
+      throw new Error(result.error || 'Upload failed');
+    }
+  } catch (error) {
+    console.error('Profile picture upload error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Upload failed'
+    };
+  }
 }

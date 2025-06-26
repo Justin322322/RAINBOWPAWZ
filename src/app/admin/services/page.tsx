@@ -9,7 +9,6 @@ import {
   QueueListIcon,
   FireIcon,
   ShieldCheckIcon,
-  BanknotesIcon,
   ExclamationCircleIcon,
   CheckCircleIcon,
 } from '@heroicons/react/24/outline';
@@ -51,7 +50,6 @@ type Stats = {
   activeServices: number;
   totalBookings: number;
   verifiedCenters: number;
-  monthlyRevenue: string;
 };
 
 function StatusBadge({ status }: { status: Service['status'] }) {
@@ -100,7 +98,6 @@ function useServices(params: {
     activeServices: 0,
     totalBookings: 0,
     verifiedCenters: 0,
-    monthlyRevenue: '₱0.00',
   });
   const [pagination, setPagination] = useState<Pagination>({
     total: 0,
@@ -172,7 +169,6 @@ function useServices(params: {
             activeServices: data.stats.activeServices || 0,
             totalBookings: data.stats.totalBookings || 0,
             verifiedCenters: data.stats.verifiedCenters || 0,
-            monthlyRevenue: data.stats.monthlyRevenue || '₱0.00',
           });
         } else {
           // Use data from the response directly if stats object is not present
@@ -180,7 +176,6 @@ function useServices(params: {
             activeServices: data.activeServicesCount || 0,
             totalBookings: 0,
             verifiedCenters: data.serviceProvidersCount || 0,
-            monthlyRevenue: data.monthlyRevenue || '₱0.00',
           });
         }
 
@@ -196,7 +191,6 @@ function useServices(params: {
 
         // Auto-retry logic - limit to 1 retry to prevent infinite loops
         if (retryCount < 1) {
-          console.log(`Retrying... Attempt ${retryCount + 1}/2`);
           retryTimer = setTimeout(() => {
             if (isMounted) {
               setRetryCount(prev => prev + 1);
@@ -438,7 +432,7 @@ export default function AdminServicesPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <StatCard
           icon={<FireIcon className="text-green-800" />}
           label="Active Services"
@@ -456,12 +450,6 @@ export default function AdminServicesPage() {
           label="Service Providers"
           value={typeof stats.verifiedCenters === 'number' ? stats.verifiedCenters : 0}
           color="purple"
-        />
-        <StatCard
-          icon={<BanknotesIcon className="text-amber-800" />}
-          label="Monthly Revenue"
-          value={stats.monthlyRevenue || '₱0.00'}
-          color="amber"
         />
       </div>
 

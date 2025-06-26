@@ -66,32 +66,21 @@ function ServicesPage({ userData }: ServicesPageProps) {
           }
         }
 
-        // Debug: Log user location detection
-        console.log('🔍 [Services] User data available:', !!userDataToUse);
-        console.log('🔍 [Services] User address:', userDataToUse?.address);
-
         // Clear routing cache to remove old invalid entries (one-time fix)
-        console.log('🗑️ [Services] Clearing routing cache to fix trafficAware issue');
         cacheManager.clearRoutingCache();
 
         // Use profile address or default, and geocode to get coordinates
         let location;
 
         if (userDataToUse?.address && userDataToUse.address.trim() !== '') {
-          console.log('✅ Using user profile address:', userDataToUse.address);
-          console.log('🗺️ Geocoding user profile address to get coordinates...');
-
           try {
             // Geocode the user's profile address to get coordinates
-            console.log('🗺️ [Frontend] Starting geocoding for address:', userDataToUse.address);
             const geocodedLocation = await geocodeAddress(userDataToUse.address);
             location = {
               address: userDataToUse.address,
               coordinates: geocodedLocation.coordinates,
               source: 'profile' as const
             };
-            console.log('✅ Successfully geocoded user address to coordinates:', geocodedLocation.coordinates);
-            console.log('✅ Final location object:', location);
           } catch (error) {
             console.error('❌ Failed to geocode user address:', error);
             console.error('❌ Error details:', error);
@@ -100,11 +89,8 @@ function ServicesPage({ userData }: ServicesPageProps) {
               address: userDataToUse.address,
               source: 'profile' as const
             };
-            console.log('⚠️ Using fallback location without coordinates:', location);
           }
         } else {
-          console.log('⚠️ No user address found in profile');
-          console.log('User data address was:', userDataToUse?.address);
           // Don't set a location if user hasn't provided one
           location = null;
         }
@@ -167,13 +153,11 @@ function ServicesPage({ userData }: ServicesPageProps) {
 
         // Wait for location loading to complete to ensure we have coordinates if available
         if (isLoadingLocation) {
-          console.log('⏳ [Frontend] Waiting for location loading to complete...');
           return;
         }
 
         // Check if we have user location
         if (!userLocation) {
-          console.log('❌ [Frontend] No user location available');
           setServiceProviders([]);
           return;
         }
@@ -182,14 +166,9 @@ function ServicesPage({ userData }: ServicesPageProps) {
         let apiUrl = `/api/service-providers?location=${encodeURIComponent(userLocation.address)}`;
 
         // Add coordinates if available for more accurate distance calculation
-        console.log('🔍 [Frontend] Checking userLocation for coordinates:', userLocation);
         if (userLocation.coordinates) {
           const [lat, lng] = userLocation.coordinates;
           apiUrl += `&lat=${lat}&lng=${lng}`;
-          console.log('🎯 [Frontend] Sending coordinates to API:', { lat, lng });
-        } else {
-          console.log('📍 [Frontend] No coordinates available, using address only:', userLocation.address);
-          console.log('📍 [Frontend] userLocation.coordinates is:', userLocation.coordinates);
         }
 
         const response = await fetch(apiUrl);

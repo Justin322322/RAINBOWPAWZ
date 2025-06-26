@@ -87,7 +87,6 @@ function SMSTestPage({ adminData }: { adminData: any }) {
 
       if (response.ok && data.success) {
         showToast('Test SMS sent successfully!', 'success');
-        console.log('SMS Message ID:', data.messageId);
       } else {
         showToast(data.error || 'Failed to send test SMS', 'error');
       }

@@ -32,7 +32,6 @@ export function usePackages({ userData }: UsePackagesProps) {
   const fetchPackages = useCallback(async () => {
     try {
       // Log the provider ID for debugging
-      console.log('Using provider ID:', providerId);
 
       // Fetch packages from API
       const response = await fetch(`/api/packages?providerId=${providerId}&includeInactive=true`, {

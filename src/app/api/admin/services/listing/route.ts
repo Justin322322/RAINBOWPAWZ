@@ -129,7 +129,6 @@ export async function GET(request: NextRequest) {
   // --- Execute main query with fallback ---
   let rows: RawServiceRow[] = [];
   try {
-    console.log('Executing query:', sql, params);
     const result = await query(sql, params);
     if (Array.isArray(result)) {
       rows = result as RawServiceRow[];
@@ -157,7 +156,6 @@ export async function GET(request: NextRequest) {
         FROM service_packages
         LIMIT ? OFFSET ?
       `;
-      console.log('Falling back to simple query');
       const fallbackResult = await query(fallbackQuery, [limit, offset]);
       rows = Array.isArray(fallbackResult) ? fallbackResult as RawServiceRow[] : [];
     } catch (fallbackError: any) {

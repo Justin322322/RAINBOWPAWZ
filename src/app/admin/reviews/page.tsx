@@ -31,6 +31,24 @@ interface Review {
   provider_name: string;
 }
 
+interface BookingDetails {
+  id: number;
+  pet_name: string;
+  pet_type: string;
+  service_name: string;
+  booking_date: string;
+  booking_time: string;
+  status: string;
+  price: number;
+  payment_method: string;
+  payment_status: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone: string;
+  notes: string;
+}
+
 function AdminReviewsPage() {
   const { showToast } = useToast();
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -44,6 +62,10 @@ function AdminReviewsPage() {
   const [reviewToDelete, setReviewToDelete] = useState<Review | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [userName, _setUserName] = useState('Admin');
+  const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
+  const [selectedBookingId, setSelectedBookingId] = useState<number | null>(null);
+  const [bookingDetails, setBookingDetails] = useState<BookingDetails | null>(null);
+  const [loadingBooking, setLoadingBooking] = useState(false);
 
   useEffect(() => {
     // Flag to prevent multiple error toasts
@@ -151,6 +173,33 @@ function AdminReviewsPage() {
   const handleDeleteClick = (review: Review) => {
     setReviewToDelete(review);
     setIsDeleteModalOpen(true);
+  };
+
+  const handleBookingClick = async (bookingId: number) => {
+    setSelectedBookingId(bookingId);
+    setIsBookingModalOpen(true);
+    setLoadingBooking(true);
+    setBookingDetails(null);
+
+    try {
+      const response = await fetch(`/api/cremation/bookings/${bookingId}`);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `HTTP ${response.status}: Failed to fetch booking details`);
+      }
+      const data = await response.json();
+      setBookingDetails(data);
+    } catch (error) {
+      console.error('Error fetching booking details:', error);
+      showToast(
+        error instanceof Error ? error.message : 'Failed to load booking details',
+        'error'
+      );
+      // Close modal on error
+      setIsBookingModalOpen(false);
+    } finally {
+      setLoadingBooking(false);
+    }
   };
 
   const handleDeleteConfirm = async () => {
@@ -348,18 +397,144 @@ function AdminReviewsPage() {
                   </div>
                 )}
                 <div className="mt-3 text-sm">
-                  <a
-                    href={`/admin/bookings/${review.booking_id}`}
+                  <button
+                    onClick={() => handleBookingClick(review.booking_id)}
                     className="text-[var(--primary-green)] hover:text-[var(--primary-green-hover)] hover:underline"
                   >
                     View Booking #{review.booking_id}
-                  </a>
+                  </button>
                 </div>
               </div>
             ))}
           </div>
         )}
       </div>
+
+      {/* Booking Details Modal */}
+      <Modal
+        isOpen={isBookingModalOpen}
+        onClose={() => setIsBookingModalOpen(false)}
+        title={`Booking Details #${selectedBookingId}`}
+        size="medium"
+      >
+        <div className="p-6">
+          {loadingBooking ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--primary-green)]"></div>
+              <span className="ml-3 text-gray-600">Loading booking details...</span>
+            </div>
+          ) : bookingDetails ? (
+            <div className="space-y-6">
+              {/* Pet Information */}
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h3 className="text-lg font-medium text-gray-900 mb-3">Pet Information</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Pet Name</p>
+                    <p className="text-gray-900">{bookingDetails.pet_name}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Pet Type</p>
+                    <p className="text-gray-900">{bookingDetails.pet_type}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Service Information */}
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h3 className="text-lg font-medium text-gray-900 mb-3">Service Information</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Service</p>
+                    <p className="text-gray-900">{bookingDetails.service_name}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Status</p>
+                    <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
+                      bookingDetails.status === 'completed' ? 'bg-green-100 text-green-800' :
+                      bookingDetails.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                      bookingDetails.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
+                      'bg-gray-100 text-gray-800'
+                    }`}>
+                      {bookingDetails.status.charAt(0).toUpperCase() + bookingDetails.status.slice(1)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Booking Information */}
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h3 className="text-lg font-medium text-gray-900 mb-3">Booking Information</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Date</p>
+                    <p className="text-gray-900">{format(new Date(bookingDetails.booking_date), 'PPP')}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Time</p>
+                    <p className="text-gray-900">{bookingDetails.booking_time}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Price</p>
+                    <p className="text-gray-900">₱{bookingDetails.price.toLocaleString()}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Payment</p>
+                    <p className="text-gray-900">{bookingDetails.payment_method} - {bookingDetails.payment_status}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Customer Information */}
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h3 className="text-lg font-medium text-gray-900 mb-3">Customer Information</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Name</p>
+                    <p className="text-gray-900">{bookingDetails.first_name} {bookingDetails.last_name}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Email</p>
+                    <p className="text-gray-900">{bookingDetails.email}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Phone</p>
+                    <p className="text-gray-900">{bookingDetails.phone}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Special Notes */}
+              {bookingDetails.notes && bookingDetails.notes !== 'No special notes' && (
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h3 className="text-lg font-medium text-gray-900 mb-3">Special Notes</h3>
+                  <p className="text-gray-700">{bookingDetails.notes}</p>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <p className="text-gray-600">Failed to load booking details.</p>
+              <button
+                onClick={() => setIsBookingModalOpen(false)}
+                className="mt-4 px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg text-sm font-medium text-gray-700 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          )}
+
+          {/* Modal Footer */}
+          <div className="flex justify-end pt-4 border-t border-gray-200 mt-6">
+            <button
+              onClick={() => setIsBookingModalOpen(false)}
+              className="px-4 py-2 bg-[var(--primary-green)] text-white rounded-lg hover:bg-[var(--primary-green-hover)] transition-colors"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Delete Confirmation Modal */}
       <Modal

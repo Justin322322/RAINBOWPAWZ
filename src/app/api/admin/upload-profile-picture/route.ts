@@ -9,7 +9,6 @@ import { cleanupOldFiles } from '@/utils/fileSystemUtils';
 // Function to save profile picture to disk
 async function saveProfilePicture(file: File, userId: string): Promise<string> {
   try {
-    console.log(`Saving admin profile picture: ${file.name} for user ${userId}`);
 
     // Create a unique filename with timestamp
     const timestamp = Date.now();
@@ -35,7 +34,6 @@ async function saveProfilePicture(file: File, userId: string): Promise<string> {
 
     // Return the relative path for database storage
     const relativePath = `/uploads/admin-profile-pictures/${userId}/${filename}`;
-    console.log(`Admin profile picture saved to: ${relativePath}`);
     
     return relativePath;
   } catch (error) {
@@ -113,7 +111,6 @@ export async function POST(request: NextRequest) {
     try {
       // First save, then clean up to ensure we always have at least one picture
       await cleanupOldFiles(userId.toString(), 'admin-profile-pictures', true);
-      console.log(`Cleaned up old admin profile pictures for user ${userId}`);
     } catch (cleanupError) {
       console.error('Error cleaning up old admin profile pictures:', cleanupError);
       // Continue with the process even if cleanup fails

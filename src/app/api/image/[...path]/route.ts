@@ -16,11 +16,9 @@ export async function GET(
     const pathParams = await Promise.resolve(params);
     const imagePath = pathParams.path.join('/');
 
-    console.log(`API Image request: ${imagePath}`);
 
     // Construct the full path to the image
     const fullPath = join(process.cwd(), 'public', 'uploads', imagePath);
-    console.log(`Looking for image at: ${fullPath}`);
 
     // Additional paths to try in production environments
     const possiblePaths = [
@@ -71,9 +69,7 @@ export async function GET(
     // Check all possible paths
     let foundPath = '';
     for (const path of possiblePaths) {
-      console.log(`Trying path: ${path}`);
       if (fs.existsSync(path)) {
-        console.log(`Found image at path: ${path}`);
         foundPath = path;
         break;
       }
@@ -97,7 +93,6 @@ export async function GET(
     }
 
     // If still not found, return a fallback image
-    console.log('Using fallback image');
     const fallbackPath = join(process.cwd(), 'public', 'bg_4.png');
     if (fs.existsSync(fallbackPath)) {
       const fallbackImage = fs.readFileSync(fallbackPath);
@@ -110,7 +105,6 @@ export async function GET(
     }
 
     // If fallback doesn't exist, return a default image
-    console.log('All fallbacks failed, returning default image');
     const defaultImagePath = join(process.cwd(), 'public', 'bg_4.png');
     if (fs.existsSync(defaultImagePath)) {
       const defaultImage = fs.readFileSync(defaultImagePath);
@@ -129,14 +123,12 @@ export async function GET(
     // But keeping it for backward compatibility
     if (fs.existsSync(fullPath)) {
       // Read the file
-      console.log(`Reading image file: ${fullPath}`);
       const image = fs.readFileSync(fullPath);
 
       // Determine the content type based on file extension
       const extension = fullPath.split('.').pop()?.toLowerCase() || '';
       let contentType = getContentType(extension);
 
-      console.log(`Serving image with content type: ${contentType}`);
 
       // Return the image with appropriate headers
       return new NextResponse(image, {

@@ -131,7 +131,6 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
   useEffect(() => {
     // Wait for location loading to complete to ensure we have coordinates if available
     if (isLoadingLocation) {
-      console.log('⏳ [Service Detail] Waiting for location loading to complete...');
       return;
     }
 
