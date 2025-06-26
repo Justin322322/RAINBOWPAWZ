@@ -100,7 +100,7 @@ StatsCardSkeleton.displayName = 'StatsCardSkeleton';
  */
 export const TableSkeleton = memo(({ rows = 5 }: { rows?: number }) => {
   return (
-    <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+    <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden">
       <div className="p-6">
         <SkeletonText
           lines={1}

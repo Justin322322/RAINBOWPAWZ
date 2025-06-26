@@ -138,7 +138,7 @@ export const SkeletonCard: React.FC<SkeletonCardProps> = React.memo(({
     none: 'rounded-none',
     sm: 'rounded-sm',
     md: 'rounded-md',
-    lg: 'rounded-lg',
+    lg: 'rounded-xl',
   };
 
   return (
@@ -146,8 +146,8 @@ export const SkeletonCard: React.FC<SkeletonCardProps> = React.memo(({
       className={cn(
         'bg-white overflow-hidden',
         roundedClasses[rounded],
-        withShadow && 'shadow-sm',
-        withBorder && 'border border-gray-200',
+        withShadow && 'shadow-md',
+        withBorder && 'border border-gray-100',
         className
       )}
       role="presentation"

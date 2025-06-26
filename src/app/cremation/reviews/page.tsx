@@ -231,7 +231,7 @@ function ReviewsPage({ userData }: ReviewsPageProps) {
         </div>
 
         {/* Filters and Search */}
-        <div className="bg-white rounded-lg shadow-sm p-4">
+        <div className="bg-white rounded-xl shadow-md border border-gray-100 p-4">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center space-y-4 md:space-y-0 md:space-x-4">
             <div className="flex items-center space-x-2">
               <FunnelIcon className="h-5 w-5 text-gray-400" />
@@ -314,7 +314,7 @@ function ReviewsPage({ userData }: ReviewsPageProps) {
             </div>
           </div>
         ) : filteredReviews.length === 0 ? (
-          <div className="bg-white rounded-lg shadow-sm p-6 text-center">
+          <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 text-center">
             <StarIcon className="h-12 w-12 text-gray-300 mx-auto mb-3" />
             <h3 className="text-lg font-medium text-gray-900 mb-1">No reviews found</h3>
             <p className="text-gray-500">
@@ -337,7 +337,7 @@ function ReviewsPage({ userData }: ReviewsPageProps) {
             {filteredReviews.map((review) => (
               <div
                 key={review.id}
-                className="bg-white rounded-lg shadow-sm p-6"
+                className="bg-white rounded-xl shadow-md border border-gray-100 hover:shadow-lg transition-shadow duration-200 p-6"
               >
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4">
                   <div>

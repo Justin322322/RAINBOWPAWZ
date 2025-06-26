@@ -35,8 +35,8 @@ export const PackageCards: React.FC<PackageCardsProps> = ({
         return (
           <div
             key={pkg.id}
-            className={`border rounded-lg overflow-hidden transition-all duration-300 shadow-sm hover:shadow-md ${
-              pkg.isActive ? 'border-gray-200' : 'border-red-200 bg-red-50'
+            className={`border rounded-xl overflow-hidden transition-all duration-300 shadow-md hover:shadow-lg ${
+              pkg.isActive ? 'border-gray-100' : 'border-red-200 bg-red-50'
             }`}
           >
             <div className="h-40 w-full relative bg-gray-100 overflow-hidden">

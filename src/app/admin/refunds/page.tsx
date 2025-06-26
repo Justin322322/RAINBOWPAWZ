@@ -219,7 +219,7 @@ function AdminRefundsPage() {
     <AdminDashboardLayout activePage="refunds" userName={userName}>
       <div className="space-y-6">
         {/* Header section */}
-        <div className="mb-8 bg-white rounded-xl shadow-sm p-6">
+        <div className="mb-8 bg-white rounded-xl shadow-md border border-gray-100 p-6">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
             <div>
               <h1 className="text-2xl font-semibold text-gray-800">Refund Management</h1>
@@ -257,7 +257,7 @@ function AdminRefundsPage() {
             <select
               value={statusFilter}
               onChange={handleStatusFilterChange}
-              className="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2 pr-8 focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)] sm:text-sm"
+              className="appearance-none bg-white border border-gray-300 rounded-xl px-4 py-2 pr-8 focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)] sm:text-sm"
             >
               <option value="all">All Status</option>
               <option value="pending">Pending Review</option>
@@ -272,7 +272,7 @@ function AdminRefundsPage() {
 
         {/* Refunds List */}
         {filteredRefunds.length === 0 ? (
-          <div className="text-center py-12 bg-white rounded-xl shadow-sm">
+          <div className="text-center py-12 bg-white rounded-xl shadow-md border border-gray-100">
             <p className="text-gray-500 text-lg">
               {searchTerm || statusFilter !== 'all'
                 ? 'No refunds match your search criteria.'
@@ -286,7 +286,7 @@ function AdminRefundsPage() {
                 key={refund.id}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="bg-white rounded-xl shadow-sm p-6"
+                className="bg-white rounded-xl shadow-md border border-gray-100 hover:shadow-lg transition-shadow duration-200 p-6"
               >
                 <div className="flex flex-col lg:flex-row lg:items-center justify-between space-y-4 lg:space-y-0">
                   <div className="flex-1">

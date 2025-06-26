@@ -6,20 +6,16 @@ import Image from 'next/image';
 import CremationDashboardLayout from '@/components/navigation/CremationDashboardLayout';
 import withBusinessVerification from '@/components/withBusinessVerification';
 import { useToast } from '@/context/ToastContext';
-import StatCard from '@/components/ui/StatCard';
 import {
   MagnifyingGlassIcon,
   CalendarIcon,
   EyeIcon,
-  CheckIcon,
   XMarkIcon,
-  ClockIcon,
   EnvelopeIcon,
   FunnelIcon,
-  PencilSquareIcon,
-  BanknotesIcon
+  PencilSquareIcon
 } from '@heroicons/react/24/outline';
-import { LoadingSpinner, StatsCardSkeleton } from '@/app/cremation/components/LoadingComponents';
+import { LoadingSpinner } from '@/app/cremation/components/LoadingComponents';
 
 function CremationBookingsPage({ userData }: { userData: any }) {
   const [searchTerm, setSearchTerm] = useState('');
@@ -29,7 +25,7 @@ function CremationBookingsPage({ userData }: { userData: any }) {
   const [selectedBooking, setSelectedBooking] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [bookings, setBookings] = useState<any[]>([]);
-  const [stats, setStats] = useState({
+  const [_stats, setStats] = useState({
     totalBookings: 0,
     scheduled: 0,
     inProgress: 0,
@@ -188,7 +184,7 @@ function CremationBookingsPage({ userData }: { userData: any }) {
   return (
     <CremationDashboardLayout activePage="bookings" userData={userData}>
       {/* Header section */}
-      <div className="mb-8 bg-white rounded-xl shadow-sm p-6">
+      <div className="mb-8 bg-white rounded-xl shadow-md border border-gray-100 p-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
           <div>
             <h1 className="text-2xl font-semibold text-gray-800">Active Bookings</h1>
@@ -244,50 +240,10 @@ function CremationBookingsPage({ userData }: { userData: any }) {
         </div>
       </div>
 
-      {/* Stats cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
-        {loading ? (
-          // Using standardized stats card skeleton
-          <StatsCardSkeleton count={5} />
 
-        ) : (
-          <>
-            <StatCard
-              icon={<CalendarIcon />}
-              label="Total Bookings"
-              value={stats.totalBookings}
-              color="blue"
-            />
-            <StatCard
-              icon={<ClockIcon />}
-              label="Pending"
-              value={stats.pending}
-              color="yellow"
-            />
-            <StatCard
-              icon={<CheckIcon />}
-              label="Completed"
-              value={stats.completed}
-              color="green"
-            />
-            <StatCard
-              icon={<XMarkIcon />}
-              label="Cancelled"
-              value={stats.cancelled}
-              color="amber"
-            />
-            <StatCard
-              icon={<BanknotesIcon />}
-              label="Total Revenue"
-              value={`₱${parseFloat(String(stats.totalRevenue || '0')).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`}
-              color="purple"
-            />
-          </>
-        )}
-      </div>
 
       {/* Bookings Table */}
-      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+      <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-200">
           <h2 className="text-lg font-medium text-gray-800">Booking List</h2>
         </div>

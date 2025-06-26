@@ -709,7 +709,7 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
             bookings.map((booking) => (
               <motion.div
                 key={booking.id}
-                className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden"
+                className="bg-white border border-gray-100 rounded-xl shadow-md hover:shadow-lg transition-shadow duration-200 overflow-hidden"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4 }}

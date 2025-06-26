@@ -16,12 +16,12 @@ import {
   CheckCircleIcon,
   ArrowPathIcon,
   PlayIcon,
-  DocumentCheckIcon,
-  SparklesIcon,
+
 } from '@heroicons/react/24/outline';
 import CremationDashboardLayout from '@/components/navigation/CremationDashboardLayout';
 import withBusinessVerification from '@/components/withBusinessVerification';
 import { useToast } from '@/context/ToastContext';
+import BookingTimeline from '@/components/booking/BookingTimeline';
 import CremationCertificate from '@/components/certificates/CremationCertificate';
 import { SkeletonCard } from '@/components/ui/SkeletonLoader';
 
@@ -301,217 +301,9 @@ function BookingDetailsPage({ userData }: BookingDetailsProps) {
     setShowCertificate(true);
   };
 
-  // Simple Progress Timeline Component - no complex animations to prevent repeated triggers
-  const SimpleProgressTimeline = React.memo(({ status, onShowCertificate }: { status: string; onShowCertificate: () => void }) => {
-    const stages = [
-      { id: 'pending', label: 'Booking Received', description: 'Your booking has been submitted', icon: ClockIcon },
-      { id: 'confirmed', label: 'Booking Confirmed', description: 'We have confirmed your booking', icon: CheckCircleIcon },
-      { id: 'in_progress', label: 'Service in Progress', description: 'Your pet is being cared for', icon: SparklesIcon },
-      { id: 'completed', label: 'Service Completed', description: 'Your service has been completed', icon: DocumentCheckIcon }
-    ];
+  // Remove the old SimpleProgressTimeline component - now using the improved BookingTimeline
 
-    const getStageStatus = (stageId: string, currentStatus: string) => {
-      const stageOrder = ['pending', 'confirmed', 'in_progress', 'completed'];
-      const currentIndex = stageOrder.indexOf(currentStatus);
-      const stageIndex = stageOrder.indexOf(stageId);
 
-      if (currentStatus === 'cancelled') {
-        return stageIndex === 0 ? 'completed' : 'inactive';
-      }
-
-      if (stageIndex < currentIndex) return 'completed';
-      if (stageIndex === currentIndex) return 'current';
-      return 'upcoming';
-    };
-
-    return (
-      <div className="bg-white rounded-lg shadow-sm p-6">
-        <h2 className="text-lg font-medium text-gray-900 mb-4">Booking Progress</h2>
-        <p className="text-sm text-gray-600 mb-6">Track your service journey with us</p>
-
-        {/* Desktop Timeline */}
-        <div className="hidden md:block">
-          <div className="relative flex justify-between items-start">
-            {stages.map((stage, index) => {
-              const stageStatus = getStageStatus(stage.id, status);
-              const IconComponent = stage.icon;
-              const isLast = index === stages.length - 1;
-
-              return (
-                <div key={stage.id} className="flex flex-col items-center relative flex-1">
-                  {/* Progress Line */}
-                  {!isLast && (
-                    <div className="absolute top-10 left-1/2 w-full h-1 z-0 rounded-full bg-gray-200">
-                      {stageStatus === 'completed' && (
-                        <div className={`h-full rounded-full w-full ${
-                          status === 'cancelled' ? 'bg-red-500' : 'bg-green-500'
-                        }`} />
-                      )}
-                    </div>
-                  )}
-
-                  {/* Icon Circle */}
-                  <div className={`
-                    relative z-10 w-16 h-16 rounded-full flex items-center justify-center border-4 bg-white shadow-md
-                    ${stageStatus === 'completed'
-                      ? status === 'cancelled' && stage.id === 'pending'
-                        ? 'border-red-500 bg-red-500 text-white'
-                        : 'border-green-500 bg-green-500 text-white'
-                      : stageStatus === 'current'
-                      ? 'border-blue-500 text-blue-600 bg-blue-50'
-                      : 'border-gray-300 text-gray-400'
-                    }
-                  `}>
-                    {stageStatus === 'completed' ? (
-                      <CheckCircleIcon className="h-6 w-6" />
-                    ) : stageStatus === 'current' ? (
-                      <IconComponent className="h-6 w-6" />
-                    ) : (
-                      <div className="w-3 h-3 rounded-full bg-current opacity-50" />
-                    )}
-                  </div>
-
-                  {/* Stage Info */}
-                  <div className="mt-4 text-center max-w-32">
-                    <h3 className={`text-sm font-semibold mb-1 ${
-                      stageStatus === 'completed' || stageStatus === 'current'
-                        ? 'text-gray-900'
-                        : 'text-gray-500'
-                    }`}>
-                      {stage.label}
-                    </h3>
-                    <p className={`text-xs ${
-                      stageStatus === 'completed' || stageStatus === 'current'
-                        ? 'text-gray-600'
-                        : 'text-gray-400'
-                    }`}>
-                      {stage.description}
-                    </p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Mobile Timeline */}
-        <div className="md:hidden space-y-4">
-          {stages.map((stage, index) => {
-            const stageStatus = getStageStatus(stage.id, status);
-            const IconComponent = stage.icon;
-            const isLast = index === stages.length - 1;
-
-            return (
-              <div key={stage.id} className="relative flex items-start">
-                {/* Vertical Line */}
-                {!isLast && (
-                  <div className="absolute left-6 top-12 w-0.5 h-12 bg-gray-200">
-                    {stageStatus === 'completed' && (
-                      <div className={`w-full h-full ${
-                        status === 'cancelled' ? 'bg-red-500' : 'bg-green-500'
-                      }`} />
-                    )}
-                  </div>
-                )}
-
-                {/* Icon Circle */}
-                <div className={`
-                  relative z-10 w-12 h-12 rounded-full flex items-center justify-center border-3 bg-white shadow-md mr-4
-                  ${stageStatus === 'completed'
-                    ? status === 'cancelled' && stage.id === 'pending'
-                      ? 'border-red-500 bg-red-500 text-white'
-                      : 'border-green-500 bg-green-500 text-white'
-                    : stageStatus === 'current'
-                    ? 'border-blue-500 text-blue-600 bg-blue-50'
-                    : 'border-gray-300 text-gray-400'
-                  }
-                `}>
-                  {stageStatus === 'completed' ? (
-                    <CheckCircleIcon className="h-5 w-5" />
-                  ) : stageStatus === 'current' ? (
-                    <IconComponent className="h-5 w-5" />
-                  ) : (
-                    <div className="w-2.5 h-2.5 rounded-full bg-current opacity-50" />
-                  )}
-                </div>
-
-                {/* Stage Info */}
-                <div className="flex-1">
-                  <h3 className={`text-sm font-semibold mb-1 ${
-                    stageStatus === 'completed' || stageStatus === 'current'
-                      ? 'text-gray-900'
-                      : 'text-gray-500'
-                  }`}>
-                    {stage.label}
-                  </h3>
-                  <p className={`text-xs ${
-                    stageStatus === 'completed' || stageStatus === 'current'
-                      ? 'text-gray-600'
-                      : 'text-gray-400'
-                  }`}>
-                    {stage.description}
-                  </p>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Status Message */}
-        <div className={`mt-6 p-4 rounded-lg border-l-4 ${
-          status === 'completed' ? 'bg-green-50 border-green-400' :
-          status === 'in_progress' ? 'bg-blue-50 border-blue-400' :
-          status === 'confirmed' ? 'bg-blue-50 border-blue-400' :
-          status === 'cancelled' ? 'bg-red-50 border-red-400' :
-          'bg-yellow-50 border-yellow-400'
-        }`}>
-          <div className="flex items-start justify-between">
-            <div>
-              <h3 className={`font-medium mb-1 ${
-                status === 'completed' ? 'text-green-800' :
-                status === 'in_progress' ? 'text-blue-800' :
-                status === 'confirmed' ? 'text-blue-800' :
-                status === 'cancelled' ? 'text-red-800' :
-                'text-yellow-800'
-              }`}>
-                {status === 'pending' && 'Booking Received'}
-                {status === 'confirmed' && 'Booking Confirmed'}
-                {status === 'in_progress' && 'Service in Progress'}
-                {status === 'completed' && 'Service Completed'}
-                {status === 'cancelled' && 'Booking Cancelled'}
-              </h3>
-              <p className={`text-sm ${
-                status === 'completed' ? 'text-green-700' :
-                status === 'in_progress' ? 'text-blue-700' :
-                status === 'confirmed' ? 'text-blue-700' :
-                status === 'cancelled' ? 'text-red-700' :
-                'text-yellow-700'
-              }`}>
-                {status === 'pending' && 'We have received your booking and will confirm it shortly.'}
-                {status === 'confirmed' && 'Your booking has been confirmed. We will start the service soon.'}
-                {status === 'in_progress' && 'Your pet is currently being cared for with respect and dignity.'}
-                {status === 'completed' && 'Your service has been completed. Thank you for trusting us.'}
-                {status === 'cancelled' && 'This booking has been cancelled. Contact us if you have questions.'}
-              </p>
-            </div>
-
-            {/* Certificate Button */}
-            {status === 'completed' && (
-              <button
-                onClick={onShowCertificate}
-                className="ml-4 inline-flex items-center px-3 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors duration-200"
-              >
-                <DocumentCheckIcon className="h-4 w-4 mr-2" />
-                View Certificate
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  });
-
-  SimpleProgressTimeline.displayName = 'SimpleProgressTimeline';
 
   if (loading) {
     return (
@@ -584,31 +376,52 @@ function BookingDetailsPage({ userData }: BookingDetailsProps) {
           animation: spin 1s linear infinite;
         }
       `}</style>
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* Back Button */}
-        <button
-          onClick={() => router.back()}
-          className="inline-flex items-center text-gray-600 hover:text-gray-900 mb-6"
-        >
-          <ArrowLeftIcon className="h-5 w-5 mr-2" />
-          Back to Bookings
-        </button>
+        <div className="mb-8">
+          <button
+            onClick={() => router.back()}
+            className="inline-flex items-center text-gray-600 hover:text-gray-900 transition-colors duration-200 group"
+          >
+            <ArrowLeftIcon className="h-5 w-5 mr-2 group-hover:-translate-x-1 transition-transform duration-200" />
+            Back to Bookings
+          </button>
+        </div>
 
         {booking ? (
-          <div className="space-y-6">
-            {/* Booking Header */}
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4">
-                <div className="flex items-center space-x-4">
-                  <h1 className="text-2xl font-semibold text-gray-900">Booking #{booking.id}</h1>
-                  <div className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(booking.status)}`}>
-                    {getStatusLabel(booking.status)}
+          <div className="space-y-8">
+            {/* Page Header */}
+            <div className="bg-white rounded-lg border border-gray-200 p-6">
+              <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-3">
+                    <h1 className="text-2xl font-semibold text-gray-900">Booking #{booking.id}</h1>
+                    <div className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(booking.status)}`}>
+                      {getStatusLabel(booking.status)}
+                    </div>
+                  </div>
+                  <p className="text-gray-600 mb-4">
+                    Service for <span className="font-medium text-gray-800">{booking.pet_name}</span> • {booking.service_name}
+                  </p>
+                  <div className="flex flex-wrap gap-4 text-sm text-gray-500">
+                    <div className="flex items-center">
+                      <CalendarIcon className="h-4 w-4 mr-2" />
+                      {formatDate(booking.booking_date)}
+                    </div>
+                    <div className="flex items-center">
+                      <ClockIcon className="h-4 w-4 mr-2" />
+                      {formatTime(booking.booking_time)}
+                    </div>
+                    <div className="flex items-center">
+                      <CreditCardIcon className="h-4 w-4 mr-2" />
+                      ₱{parseFloat(booking.price.toString()).toLocaleString()}
+                    </div>
                   </div>
                 </div>
 
-                {/* Action Buttons - Moved to top */}
+                {/* Action Buttons */}
                 <motion.div
-                  className="flex flex-col sm:flex-row gap-2 mt-4 sm:mt-0"
+                  className="flex flex-col sm:flex-row gap-2 min-w-fit"
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3, delay: 0.2 }}
@@ -721,138 +534,145 @@ function BookingDetailsPage({ userData }: BookingDetailsProps) {
                   )}
                 </motion.div>
               </div>
-
-              <div className="border-t border-gray-200 pt-4 mt-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-gray-500">Booking Date</p>
-                    <p className="font-medium flex items-center mt-1">
-                      <CalendarIcon className="h-4 w-4 text-gray-400 mr-1" />
-                      {formatDate(booking.booking_date)}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500">Booking Time</p>
-                    <p className="font-medium flex items-center mt-1">
-                      <ClockIcon className="h-4 w-4 text-gray-400 mr-1" />
-                      {formatTime(booking.booking_time)}
-                    </p>
-                  </div>
-                </div>
-              </div>
             </div>
 
             {/* Progress Timeline */}
-            <SimpleProgressTimeline status={booking.status} onShowCertificate={handleShowCertificate} />
+            <BookingTimeline
+              currentStatus={booking.status as 'pending' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled'}
+              showCertificateButton={true}
+              onShowCertificate={handleShowCertificate}
+              className="mb-6"
+            />
 
-            {/* Service Details */}
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <h2 className="text-lg font-medium text-gray-900 mb-4">Service Details</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <h3 className="text-sm font-medium text-gray-500">Service Package</h3>
-                  <p className="mt-1 font-medium">{booking.service_name}</p>
-                  <p className="text-sm text-gray-600 mt-1">₱{parseFloat(booking.price.toString()).toLocaleString()}</p>
+            {/* Main Content Grid */}
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+              {/* Left Column - Main Information */}
+              <div className="xl:col-span-2 space-y-6">
+                {/* Service Details */}
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+                  <div className="px-6 py-4 border-b border-gray-200">
+                    <h2 className="text-lg font-medium text-gray-900">Service Details</h2>
+                  </div>
+                  <div className="p-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                      <div>
+                        <h3 className="text-sm font-medium text-gray-500 mb-1">Service Package</h3>
+                        <p className="text-base font-medium text-gray-900">{booking.service_name}</p>
+                        <p className="text-lg font-semibold text-gray-900 mt-1">₱{parseFloat(booking.price.toString()).toLocaleString()}</p>
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-medium text-gray-500 mb-1">Processing Time</h3>
+                        <p className="text-base font-medium text-gray-900">{booking.processing_time}</p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-sm font-medium text-gray-500">Processing Time</h3>
-                  <p className="mt-1 font-medium">{booking.processing_time}</p>
-                </div>
-              </div>
-            </div>
 
-            {/* Pet Information */}
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <h2 className="text-lg font-medium text-gray-900 mb-4">Pet Information</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <h3 className="text-sm font-medium text-gray-500">Pet Name</h3>
-                  <p className="mt-1 font-medium">{booking.pet_name}</p>
+                {/* Pet Information */}
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+                  <div className="px-6 py-4 border-b border-gray-200">
+                    <h2 className="text-lg font-medium text-gray-900">Pet Information</h2>
+                  </div>
+                  <div className="p-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                      <div>
+                        <h3 className="text-sm font-medium text-gray-500 mb-1">Pet Name</h3>
+                        <p className="text-base font-medium text-gray-900">{booking.pet_name}</p>
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-medium text-gray-500 mb-1">Pet Type</h3>
+                        <p className="text-base font-medium text-gray-900">{booking.pet_type}</p>
+                      </div>
+                      {booking.cause_of_death && (
+                        <div className="col-span-1 sm:col-span-2">
+                          <h3 className="text-sm font-medium text-gray-500 mb-1">Cause of Death</h3>
+                          <p className="text-base font-medium text-gray-900">{booking.cause_of_death}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-sm font-medium text-gray-500">Pet Type</h3>
-                  <p className="mt-1 font-medium">{booking.pet_type}</p>
-                </div>
-                {booking.cause_of_death && (
-                  <div className="col-span-1 md:col-span-2">
-                    <h3 className="text-sm font-medium text-gray-500">Cause of Death</h3>
-                    <p className="mt-1 font-medium">{booking.cause_of_death}</p>
+
+                {/* Special Requests */}
+                {booking.notes && (
+                  <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+                    <div className="px-6 py-4 border-b border-gray-200">
+                      <h2 className="text-lg font-medium text-gray-900">Special Requests</h2>
+                    </div>
+                    <div className="p-6">
+                      <p className="text-gray-700 leading-relaxed">{booking.notes}</p>
+                    </div>
                   </div>
                 )}
               </div>
-            </div>
 
-            {/* Customer Information */}
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <h2 className="text-lg font-medium text-gray-900 mb-4">Customer Information</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <h3 className="text-sm font-medium text-gray-500">Name</h3>
-                  <p className="mt-1 font-medium">{booking.first_name} {booking.last_name}</p>
-                </div>
-                <div>
-                  <h3 className="text-sm font-medium text-gray-500">Email</h3>
-                  <p className="mt-1 font-medium flex items-center">
-                    <EnvelopeIcon className="h-4 w-4 text-gray-400 mr-1" />
-                    <a href={`mailto:${booking.email}`} className="text-blue-600 hover:text-blue-800">
-                      {booking.email}
-                    </a>
-                  </p>
-                </div>
-                <div>
-                  <h3 className="text-sm font-medium text-gray-500">Phone</h3>
-                  <p className="mt-1 font-medium flex items-center">
-                    <PhoneIcon className="h-4 w-4 text-gray-400 mr-1" />
-                    {booking.phone ? (
-                      <a href={`tel:${booking.phone}`} className="text-blue-600 hover:text-blue-800">
-                        {booking.phone}
+              {/* Right Column - Customer & Payment Info */}
+              <div className="space-y-6">
+                {/* Customer Information */}
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+                  <div className="px-6 py-4 border-b border-gray-200">
+                    <h2 className="text-lg font-medium text-gray-900">Customer Information</h2>
+                  </div>
+                  <div className="p-6 space-y-4">
+                    <div>
+                      <h3 className="text-sm font-medium text-gray-500 mb-1">Name</h3>
+                      <p className="text-base font-medium text-gray-900">{booking.first_name} {booking.last_name}</p>
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-medium text-gray-500 mb-1">Email</h3>
+                      <a href={`mailto:${booking.email}`} className="text-blue-600 hover:text-blue-800 flex items-center">
+                        <EnvelopeIcon className="h-4 w-4 mr-2" />
+                        {booking.email}
                       </a>
-                    ) : (
-                      'Not provided'
-                    )}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Payment and Delivery Information */}
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <h2 className="text-lg font-medium text-gray-900 mb-4">Payment & Delivery</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <h3 className="text-sm font-medium text-gray-500">Payment Method</h3>
-                  <p className="mt-1 font-medium flex items-center">
-                    <CreditCardIcon className="h-4 w-4 text-gray-400 mr-1" />
-                    {booking.payment_method || 'Not specified'}
-                  </p>
-                </div>
-                <div>
-                  <h3 className="text-sm font-medium text-gray-500">Delivery Option</h3>
-                  <p className="mt-1 font-medium flex items-center">
-                    <TruckIcon className="h-4 w-4 text-gray-400 mr-1" />
-                    {booking.delivery_option || 'Pickup'}
-                  </p>
-                </div>
-                <div>
-                  <h3 className="text-sm font-medium text-gray-500">Total Amount</h3>
-                  <p className="mt-1 font-medium">₱{parseFloat(booking.price.toString()).toLocaleString()}</p>
-                </div>
-                {booking.delivery_option === 'delivery' && booking.delivery_address && (
-                  <div className="col-span-1 md:col-span-2">
-                    <h3 className="text-sm font-medium text-gray-500">Delivery Address</h3>
-                    <p className="mt-1 font-medium">{booking.delivery_address}</p>
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-medium text-gray-500 mb-1">Phone</h3>
+                      {booking.phone ? (
+                        <a href={`tel:${booking.phone}`} className="text-blue-600 hover:text-blue-800 flex items-center">
+                          <PhoneIcon className="h-4 w-4 mr-2" />
+                          {booking.phone}
+                        </a>
+                      ) : (
+                        <p className="text-gray-500">Not provided</p>
+                      )}
+                    </div>
                   </div>
-                )}
+                </div>
+
+                {/* Payment and Delivery Information */}
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+                  <div className="px-6 py-4 border-b border-gray-200">
+                    <h2 className="text-lg font-medium text-gray-900">Payment & Delivery</h2>
+                  </div>
+                  <div className="p-6 space-y-4">
+                    <div>
+                      <h3 className="text-sm font-medium text-gray-500 mb-1">Payment Method</h3>
+                      <p className="text-base font-medium text-gray-900 flex items-center">
+                        <CreditCardIcon className="h-4 w-4 mr-2 text-gray-400" />
+                        {booking.payment_method || 'Not specified'}
+                      </p>
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-medium text-gray-500 mb-1">Delivery Option</h3>
+                      <p className="text-base font-medium text-gray-900 flex items-center">
+                        <TruckIcon className="h-4 w-4 mr-2 text-gray-400" />
+                        {booking.delivery_option || 'Pickup'}
+                      </p>
+                    </div>
+                    <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                      <h3 className="text-sm font-medium text-gray-700 mb-1">Total Amount</h3>
+                      <p className="text-xl font-semibold text-gray-900">₱{parseFloat(booking.price.toString()).toLocaleString()}</p>
+                    </div>
+                    {booking.delivery_option === 'delivery' && booking.delivery_address && (
+                      <div>
+                        <h3 className="text-sm font-medium text-gray-500 mb-1">Delivery Address</h3>
+                        <p className="text-base font-medium text-gray-900">{booking.delivery_address}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
-
-            {/* Special Requests */}
-            {booking.notes && (
-              <div className="bg-white rounded-lg shadow-sm p-6">
-                <h2 className="text-lg font-medium text-gray-900 mb-4">Special Requests</h2>
-                <p className="text-gray-700">{booking.notes}</p>
-              </div>
-            )}
 
             {/* Certificate Modal */}
             {showCertificate && booking && (

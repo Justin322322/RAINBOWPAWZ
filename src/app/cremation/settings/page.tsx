@@ -129,7 +129,7 @@ function CremationSettingsPage({ userData }: CremationSettingsProps) {
           )}
 
           {/* Settings Content */}
-          <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+          <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-200">
               <h2 className="text-lg font-medium text-gray-800">Notification Preferences</h2>
               <p className="text-sm text-gray-600 mt-1">
@@ -157,7 +157,7 @@ function CremationSettingsPage({ userData }: CremationSettingsProps) {
               ) : (
                 <div className="space-y-4">
                   {/* SMS Notifications */}
-                  <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:border-[var(--primary-green)] transition-colors">
+                  <div className="flex items-center justify-between p-4 border border-gray-200 rounded-xl hover:border-[var(--primary-green)] transition-colors">
                     <div className="flex items-center space-x-3">
                       <div className="bg-blue-100 rounded-full p-2">
                         <DevicePhoneMobileIcon className="h-6 w-6 text-blue-600" />
@@ -181,7 +181,7 @@ function CremationSettingsPage({ userData }: CremationSettingsProps) {
                   </div>
 
                   {/* Email Notifications */}
-                  <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:border-[var(--primary-green)] transition-colors">
+                  <div className="flex items-center justify-between p-4 border border-gray-200 rounded-xl hover:border-[var(--primary-green)] transition-colors">
                     <div className="flex items-center space-x-3">
                       <div className="bg-green-100 rounded-full p-2">
                         <EnvelopeIcon className="h-6 w-6 text-green-600" />
@@ -207,7 +207,7 @@ function CremationSettingsPage({ userData }: CremationSettingsProps) {
               )}
 
               {/* Additional Information */}
-              <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-xl">
                 <div className="flex items-start">
                   <div className="flex-shrink-0">
                     <BellIcon className="h-5 w-5 text-blue-600 mt-0.5" />
