@@ -21,7 +21,6 @@ import {
   BanknotesIcon,
   CreditCardIcon,
   StarIcon,
-  UserIcon,
   DocumentCheckIcon,
   CurrencyDollarIcon
 } from '@heroicons/react/24/outline';
@@ -49,7 +48,6 @@ interface BookingData {
   created_at: string;
   updated_at: string;
   service_name: string;
-  service_description: string;
   service_price: number;
   provider_name: string;
   provider_address: string;
@@ -948,9 +946,9 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
                             <div className="flex-shrink-0">
                               <div className="relative">
                                 <div className="w-32 h-32 bg-white rounded-2xl overflow-hidden border-4 border-white shadow-lg">
-                                  {selectedBooking.pet_image ? (
+                                  {selectedBooking.pet_image_url ? (
                                     <Image
-                                      src={selectedBooking.pet_image}
+                                      src={getProductionImagePath(selectedBooking.pet_image_url)}
                                       alt={selectedBooking.pet_name}
                                       width={128}
                                       height={128}
@@ -965,12 +963,10 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
                                   )}
                                 </div>
                                 {/* Status Badge Overlay */}
-                                <div className="absolute -top-2 -right-2">
-                                  <span className={`px-3 py-1 rounded-full text-xs font-semibold shadow-md ${getStatusClass(selectedBooking.status)}`}>
-                                    <div className="flex items-center">
-                                      {getStatusIcon(selectedBooking.status)}
-                                      <span className="ml-1 capitalize">{selectedBooking.status.replace('_', ' ')}</span>
-                                    </div>
+                                <div className="absolute -top-1 -right-1">
+                                  <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium shadow-lg ${getStatusClass(selectedBooking.status)}`}>
+                                    {getStatusIcon(selectedBooking.status)}
+                                    <span className="ml-1 capitalize">{selectedBooking.status.replace('_', ' ')}</span>
                                   </span>
                                 </div>
                               </div>
@@ -983,49 +979,7 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
                                 <p className="text-lg text-gray-600">Booking #{selectedBooking.id}</p>
                               </div>
 
-                              <div className="grid grid-cols-2 gap-6">
-                                <div className="bg-white/70 backdrop-blur-sm rounded-xl p-4 border border-white/50">
-                                  <div className="flex items-center space-x-3">
-                                    <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                                      <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                                      </svg>
-                                    </div>
-                                    <div>
-                                      <p className="text-sm font-medium text-gray-600">Breed</p>
-                                      <p className="text-base font-semibold text-gray-900">{selectedBooking.pet_breed || 'Not specified'}</p>
-                                    </div>
-                                  </div>
-                                </div>
-
-                                <div className="bg-white/70 backdrop-blur-sm rounded-xl p-4 border border-white/50">
-                                  <div className="flex items-center space-x-3">
-                                    <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                                      <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                      </svg>
-                                    </div>
-                                    <div>
-                                      <p className="text-sm font-medium text-gray-600">Age</p>
-                                      <p className="text-base font-semibold text-gray-900">{selectedBooking.pet_age || 'Not specified'}</p>
-                                    </div>
-                                  </div>
-                                </div>
-
-                                <div className="bg-white/70 backdrop-blur-sm rounded-xl p-4 border border-white/50">
-                                  <div className="flex items-center space-x-3">
-                                    <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-                                      <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16l3-3m-3 3l-3-3" />
-                                      </svg>
-                                    </div>
-                                    <div>
-                                      <p className="text-sm font-medium text-gray-600">Weight</p>
-                                      <p className="text-base font-semibold text-gray-900">{selectedBooking.pet_weight || 'Not specified'}</p>
-                                    </div>
-                                  </div>
-                                </div>
-
+                              <div className="grid grid-cols-1 gap-4">
                                 <div className="bg-white/70 backdrop-blur-sm rounded-xl p-4 border border-white/50">
                                   <div className="flex items-center space-x-3">
                                     <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
@@ -1058,9 +1012,10 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
                           </div>
                         </div>
 
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                          {/* Left Column */}
-                          <div className="space-y-6">
+                                                {/* Content Grid - Responsive Layout */}
+                        <div className="space-y-6">
+                          {/* Top Row - Primary Information (Always Full Width) */}
+                          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
                             {/* Service Information Card */}
                             <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition-shadow duration-300">
                               <div className="flex items-center space-x-3 mb-6">
@@ -1074,7 +1029,6 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
                               <div className="space-y-4">
                                 <div>
                                   <h3 className="text-base font-medium text-gray-900 mb-1">{selectedBooking.service_name}</h3>
-                                  <p className="text-sm text-gray-600">{selectedBooking.service_description}</p>
                                 </div>
 
                                 <div className="bg-gray-50 rounded-lg p-4 space-y-3">
@@ -1134,6 +1088,43 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
                               </div>
                             </div>
 
+                            {/* Booking Information Card */}
+                            <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition-shadow duration-300">
+                              <div className="flex items-center space-x-3 mb-6">
+                                <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                                  <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                                  </svg>
+                                </div>
+                                <h2 className="text-xl font-bold text-gray-900">Booking Information</h2>
+                              </div>
+                              <div className="space-y-4">
+                                <div className="grid grid-cols-1 gap-3">
+                                  <div className="flex justify-between items-center">
+                                    <span className="text-sm text-gray-600">Date & Time</span>
+                                    <span className="text-sm font-medium text-gray-900">
+                                      {formatDateTime(selectedBooking.booking_date, selectedBooking.booking_time)}
+                                    </span>
+                                  </div>
+
+                                  <div className="flex justify-between items-center">
+                                    <span className="text-sm text-gray-600">Booking ID</span>
+                                    <span className="text-sm font-medium text-gray-900">#{selectedBooking.id}</span>
+                                  </div>
+
+                                  <div className="flex justify-between items-center">
+                                    <span className="text-sm text-gray-600">Created On</span>
+                                    <span className="text-sm font-medium text-gray-900">
+                                      {new Date(selectedBooking.created_at).toLocaleDateString()}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Second Row - Provider and Payment Information */}
+                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                             {/* Provider Information Card */}
                             <div className="bg-white rounded-xl shadow-md border border-gray-200 p-5">
                               <h2 className="text-lg font-semibold text-gray-900 mb-4">Provider Information</h2>
@@ -1222,96 +1213,6 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
                                 </div>
                               </div>
                             )}
-                          </div>
-
-                          {/* Right Column */}
-                          <div className="space-y-6">
-                            {/* Booking Information Card */}
-                            <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 hover:shadow-xl transition-shadow duration-300">
-                              <div className="flex items-center space-x-3 mb-6">
-                                <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                                  <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                                  </svg>
-                                </div>
-                                <h2 className="text-xl font-bold text-gray-900">Booking Information</h2>
-                              </div>
-                              <div className="space-y-4">
-                                <div className="grid grid-cols-1 gap-3">
-                                  <div className="flex justify-between items-center">
-                                    <span className="text-sm text-gray-600">Date & Time</span>
-                                    <span className="text-sm font-medium text-gray-900">
-                                      {formatDateTime(selectedBooking.booking_date, selectedBooking.booking_time)}
-                                    </span>
-                                  </div>
-
-                                  <div className="flex justify-between items-center">
-                                    <span className="text-sm text-gray-600">Booking ID</span>
-                                    <span className="text-sm font-medium text-gray-900">#{selectedBooking.id}</span>
-                                  </div>
-
-                                  <div className="flex justify-between items-center">
-                                    <span className="text-sm text-gray-600">Created On</span>
-                                    <span className="text-sm font-medium text-gray-900">
-                                      {new Date(selectedBooking.created_at).toLocaleDateString()}
-                                    </span>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Pet Information Card */}
-                            <div className="bg-white rounded-xl shadow-md border border-gray-200 p-5">
-                              <h2 className="text-lg font-semibold text-gray-900 mb-4">Pet Information</h2>
-                              <div className="flex items-start space-x-4">
-                                {selectedBooking.pet_image_url ? (
-                                  <div className="flex-shrink-0">
-                                    <Image
-                                      src={getProductionImagePath(selectedBooking.pet_image_url)}
-                                      alt={selectedBooking.pet_name || 'Pet'}
-                                      width={96}
-                                      height={96}
-                                      className="h-24 w-24 object-cover rounded-xl shadow-sm border border-gray-200"
-                                      onError={(e) => {
-                                        const target = e.target as HTMLImageElement;
-                                        target.onerror = null; // Prevent infinite loop
-                                        target.src = '/placeholder-pet.png'; // Fallback image
-                                        target.className = 'h-24 w-24 object-contain rounded-xl bg-gray-100 border border-gray-200';
-                                        console.error('Failed to load pet image:', selectedBooking.pet_image_url);
-                                      }}
-                                    />
-                                  </div>
-                                ) : (
-                                  <div className="h-24 w-24 bg-gray-100 rounded-xl flex items-center justify-center flex-shrink-0 border border-gray-200">
-                                    <UserIcon className="h-8 w-8 text-gray-400" />
-                                  </div>
-                                )}
-                                <div className="flex-1 min-w-0">
-                                  {selectedBooking.pet_name && selectedBooking.pet_name !== 'Pet' && selectedBooking.pet_name !== 'Unknown' ? (
-                                    <div className="space-y-2">
-                                      <h3 className="text-lg font-semibold text-gray-900">{selectedBooking.pet_name}</h3>
-                                      {selectedBooking.pet_type && selectedBooking.pet_type !== 'Unknown' && (
-                                        <p className="text-sm text-gray-600">
-                                          <span className="font-medium text-gray-700">Type:</span> {selectedBooking.pet_type}
-                                        </p>
-                                      )}
-                                      {selectedBooking.pet_breed && (
-                                        <p className="text-sm text-gray-600">
-                                          <span className="font-medium text-gray-700">Breed:</span> {selectedBooking.pet_breed}
-                                        </p>
-                                      )}
-                                      {selectedBooking.cause_of_death && (
-                                        <p className="text-sm text-gray-600">
-                                          <span className="font-medium text-gray-700">Cause of Death:</span> {selectedBooking.cause_of_death}
-                                        </p>
-                                      )}
-                                    </div>
-                                  ) : (
-                                    <p className="text-sm text-gray-500 italic">Pet information not available</p>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
                           </div>
                         </div>
 
