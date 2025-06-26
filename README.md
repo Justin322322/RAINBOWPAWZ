@@ -189,6 +189,280 @@ PAYMONGO_SECRET_KEY=your-paymongo-secret-key
 
 ## 🗄️ Database Setup
 
+### Database Schema (ERD)
+
+The Rainbow Paws application uses a comprehensive MySQL database schema designed to handle all aspects of pet memorial services. Below is the Entity Relationship Diagram showing the complete database structure:
+
+```mermaid
+erDiagram
+    users {
+        int user_id PK
+        varchar email UK
+        varchar password
+        varchar first_name
+        varchar last_name
+        varchar phone
+        text address
+        enum gender
+        varchar profile_picture
+        enum role
+        enum status
+        boolean is_verified
+        boolean is_otp_verified
+        timestamp last_login
+        timestamp created_at
+        timestamp updated_at
+        boolean sms_notifications
+        boolean email_notifications
+    }
+
+    admin_profiles {
+        int id PK
+        int user_id FK
+        varchar username
+        varchar full_name
+        varchar admin_role
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    service_providers {
+        int provider_id PK
+        int user_id FK
+        varchar name
+        enum provider_type
+        varchar contact_first_name
+        varchar contact_last_name
+        varchar phone
+        text address
+        text hours
+        text description
+        enum application_status
+        timestamp verification_date
+        text verification_notes
+        varchar bir_certificate_path
+        varchar business_permit_path
+        varchar government_id_path
+        int active_service_count
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    service_packages {
+        int package_id PK
+        int provider_id FK
+        varchar name
+        text description
+        enum category
+        enum cremation_type
+        varchar processing_time
+        decimal price
+        decimal delivery_fee_per_km
+        text conditions
+        boolean is_active
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    package_inclusions {
+        int inclusion_id PK
+        int package_id FK
+        varchar description
+        timestamp created_at
+    }
+
+    package_addons {
+        int addon_id PK
+        int package_id FK
+        varchar description
+        decimal price
+        timestamp created_at
+    }
+
+    package_images {
+        int image_id PK
+        int package_id FK
+        varchar image_path
+        int display_order
+        timestamp created_at
+    }
+
+    pets {
+        int pet_id PK
+        int user_id FK
+        varchar name
+        varchar species
+        varchar breed
+        enum gender
+        varchar age
+        decimal weight
+        varchar photo_path
+        text special_notes
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    service_bookings {
+        int id PK
+        int user_id FK
+        int provider_id FK
+        int package_id FK
+        varchar pet_name
+        varchar pet_type
+        text cause_of_death
+        varchar pet_image_url
+        date booking_date
+        time booking_time
+        enum status
+        text special_requests
+        varchar payment_method
+        enum payment_status
+        int refund_id FK
+        enum delivery_option
+        text delivery_address
+        float delivery_distance
+        decimal delivery_fee
+        decimal price
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    payment_transactions {
+        int id PK
+        int booking_id FK
+        varchar payment_intent_id
+        varchar source_id
+        decimal amount
+        varchar currency
+        enum payment_method
+        enum status
+        int refund_id FK
+        timestamp refunded_at
+        enum provider
+        varchar provider_transaction_id
+        text checkout_url
+        text return_url
+        text failure_reason
+        json metadata
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    notifications {
+        int id PK
+        int user_id FK
+        varchar title
+        text message
+        enum type
+        boolean is_read
+        varchar link
+        timestamp created_at
+    }
+
+
+
+    otp_codes {
+        int id PK
+        int user_id FK
+        varchar otp_code
+        datetime expires_at
+        boolean is_used
+        timestamp used_at
+        timestamp created_at
+    }
+
+    otp_attempts {
+        int id PK
+        int user_id FK
+        enum attempt_type
+        varchar ip_address
+        timestamp attempt_time
+    }
+
+    password_reset_tokens {
+        int id PK
+        int user_id FK
+        varchar token UK
+        timestamp created_at
+        datetime expires_at
+        boolean is_used
+    }
+
+    user_restrictions {
+        int restriction_id PK
+        int user_id FK
+        text reason
+        timestamp restriction_date
+        varchar duration
+        int report_count
+        boolean is_active
+    }
+
+
+
+    %% Relationships - Only tables with actual foreign key constraints
+    users ||--o{ admin_profiles : "has"
+    users ||--o{ service_providers : "has"
+    users ||--o{ pets : "owns"
+    users ||--o{ notifications : "receives"
+    users ||--o{ otp_codes : "has"
+    users ||--o{ otp_attempts : "has"
+    users ||--o{ password_reset_tokens : "has"
+    users ||--o{ user_restrictions : "has"
+
+    service_providers ||--o{ service_packages : "offers"
+
+    service_packages ||--o{ package_inclusions : "includes"
+    service_packages ||--o{ package_addons : "has"
+    service_packages ||--o{ package_images : "has"
+
+    service_bookings ||--o{ payment_transactions : "has"
+```
+
+### Key Database Features
+
+#### Core Entities (with Foreign Key Relationships)
+- **Users**: Central user management with role-based access (fur_parent, business, admin)
+- **Service Providers**: Cremation businesses with verification workflow (linked to users)
+- **Service Packages**: Customizable service offerings with pricing and inclusions (linked to providers)
+- **Pets**: Pet profiles with detailed information and photos (linked to users)
+- **Service Bookings**: Main booking system for cremation services
+- **Payment Transactions**: Payment processing system (linked to service_bookings)
+
+#### Security & Authentication
+- **OTP System**: Secure email verification with attempt tracking
+- **Password Reset**: Token-based password recovery
+- **Rate Limiting**: API protection against abuse
+- **User Restrictions**: Admin-controlled user access management
+
+#### Payment & Financial
+- **Payment Transactions**: Complete payment processing with PayMongo integration
+- **Refunds**: Automated refund processing with admin oversight
+- **Multiple Payment Methods**: Support for GCash, PayMaya, and card payments
+
+#### Communication & Notifications
+- **Email System**: Queue-based email delivery with logging
+- **Notifications**: Real-time user notifications with read status
+- **Admin Notifications**: Separate notification system for administrators
+- **Admin Logs**: Comprehensive audit trail for all admin actions
+
+#### Business Logic
+- **Provider Availability**: Calendar-based availability management
+- **Time Slots**: Detailed scheduling with service-specific availability
+- **Reviews**: Rating system with expiration dates
+- **Package Management**: Flexible service packages with addons and images
+
+#### Tables Not Shown in ERD
+The following tables exist in the database but are excluded from the ERD as they lack foreign key constraints:
+- **Admin Logs**: Audit trail for admin actions
+- **Admin Notifications**: Admin-specific notifications
+- **Email Queue/Log**: Email delivery and tracking system
+- **Rate Limits**: API rate limiting protection
+- **Reviews**: Customer feedback and rating system
+- **Refunds**: Payment refund management
+- **Provider Availability/Time Slots**: Scheduling and availability system
+- **Bookings**: Legacy booking table (empty, superseded by service_bookings)
+
 ### Automatic Setup (Recommended)
 The application automatically creates necessary database tables on first run. Simply:
 
