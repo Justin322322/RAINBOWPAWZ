@@ -379,51 +379,143 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
     }
   };
 
-  // Initial fetch of notifications only if user is authenticated
+  // Initial fetch of notifications and setup SSE for real-time updates
   useEffect(() => {
-    // Prevent multiple interval instances
-    let intervalId: NodeJS.Timeout | null = null;
+    let eventSource: EventSource | null = null;
+    let reconnectTimeout: NodeJS.Timeout | null = null;
+    let reconnectAttempts = 0;
+    const maxReconnectAttempts = 5;
+    
     // Capture ref value at the beginning of the effect to avoid ref warnings
     const timeoutIds = timeoutIdsRef.current;
 
-    // Check if user is authenticated before fetching notifications
-    if (typeof window !== 'undefined' && isAuthenticated()) {
-      // Initial fetch with error handling
-      fetchNotifications().catch(_err => {
-        // Don't show error toast for initial load to avoid annoying users
-      });
+    // Setup Server-Sent Events for instant notifications
+    const setupSSE = () => {
+      // Check if user is authenticated before setting up SSE
+      if (typeof window !== 'undefined' && isAuthenticated()) {
+        try {
+          // Initial fetch of existing notifications
+          fetchNotifications().catch(_err => {
+            // Don't show error toast for initial load
+          });
 
-      // Set up polling to check for new notifications every 2 minutes (reduced from 1 minute)
-      // This helps reduce server load and excessive API calls
-      intervalId = setInterval(() => {
-        // Check authentication again before each fetch
-        if (isAuthenticated()) {
-          // Wrap in try/catch to prevent unhandled promise rejections
-          try {
-            fetchNotifications().catch(_err => {
-              // Silent fail for background updates
-            });
-          } catch {
-          }
-        } else {
-          // If no longer authenticated, clear the interval
-          if (intervalId) {
-            clearInterval(intervalId);
-            intervalId = null;
-          }
+          // Setup SSE connection for real-time notifications
+          eventSource = new EventSource('/api/notifications/sse', {
+            withCredentials: true
+          });
+
+          eventSource.onopen = () => {
+            console.log('Real-time notifications connected');
+            reconnectAttempts = 0; // Reset reconnect attempts on successful connection
+          };
+
+          eventSource.onmessage = (event) => {
+            try {
+              const data = JSON.parse(event.data);
+              
+              switch (data.type) {
+                case 'connection':
+                  console.log('SSE connected:', data.message);
+                  break;
+                  
+                case 'notification':
+                  // New notification received - add to state instantly
+                  const newNotification = data.notification;
+                  setNotifications(prev => [newNotification, ...prev]);
+                  
+                  // Update unread count if notification is unread
+                  if (newNotification.is_read === 0) {
+                    setUnreadCount(prev => prev + 1);
+                  }
+                  
+                  console.log('Instant notification received:', newNotification.title);
+                  break;
+                  
+                case 'system_notification':
+                  // System-wide notification
+                  const sysNotification = data.notification;
+                  setNotifications(prev => [sysNotification, ...prev]);
+                  
+                  if (sysNotification.is_read === 0) {
+                    setUnreadCount(prev => prev + 1);
+                  }
+                  break;
+                  
+                case 'ping':
+                  // Keep-alive ping - no action needed
+                  break;
+                  
+                default:
+                  console.log('Unknown SSE message type:', data.type);
+              }
+            } catch (error) {
+              console.warn('Error parsing SSE message:', error);
+            }
+          };
+
+          eventSource.onerror = (error) => {
+            console.warn('SSE connection error:', error);
+            eventSource?.close();
+            
+            // Implement exponential backoff for reconnection
+            if (reconnectAttempts < maxReconnectAttempts) {
+              const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000); // Max 30 seconds
+              reconnectAttempts++;
+              
+              console.log(`Attempting to reconnect SSE in ${delay}ms (attempt ${reconnectAttempts}/${maxReconnectAttempts})`);
+              
+              reconnectTimeout = setTimeout(() => {
+                if (isAuthenticated()) {
+                  setupSSE();
+                }
+              }, delay);
+            } else {
+              console.warn('Max SSE reconnection attempts reached. Falling back to periodic refresh.');
+              // Fallback to periodic refresh if SSE fails completely
+              const fallbackInterval = setInterval(() => {
+                if (isAuthenticated()) {
+                  fetchNotifications().catch(_err => {
+                    // Silent fail for background updates
+                  });
+                } else {
+                  clearInterval(fallbackInterval);
+                }
+              }, 60000); // Check every minute as fallback
+            }
+          };
+
+        } catch (error) {
+          console.error('Failed to setup SSE:', error);
+          // Fallback to polling if SSE is not supported
+          const fallbackInterval = setInterval(() => {
+            if (isAuthenticated()) {
+              fetchNotifications().catch(_err => {
+                // Silent fail for background updates
+              });
+            } else {
+              clearInterval(fallbackInterval);
+            }
+          }, 30000); // Check every 30 seconds as fallback
         }
-      }, 120000); // 2 minutes
-    }
+      }
+    };
 
-    // Clean up interval and any pending timeouts on component unmount
+    // Initialize SSE connection
+    setupSSE();
+
+    // Clean up SSE connection and timeouts on component unmount
     return () => {
-      if (intervalId) {
-        clearInterval(intervalId);
-        intervalId = null;
+      if (eventSource) {
+        eventSource.close();
+        eventSource = null;
+      }
+      
+      if (reconnectTimeout) {
+        clearTimeout(reconnectTimeout);
+        reconnectTimeout = null;
       }
       
       // Clear any pending timeouts from fetchNotifications
-      // Use the captured ref value to avoid ref value change warning
       timeoutIds.forEach(timeoutId => {
         clearTimeout(timeoutId);
       });

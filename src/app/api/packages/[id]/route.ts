@@ -21,8 +21,15 @@ export async function GET(
   }
 
   try {
+    // Join with service_providers to get provider information
     const rows = (await query(
-      `SELECT * FROM service_packages WHERE package_id = ? LIMIT 1`,
+      `SELECT 
+        sp.*,
+        svp.provider_id AS providerId,
+        svp.name AS providerName
+      FROM service_packages sp
+      JOIN service_providers svp ON sp.provider_id = svp.provider_id
+      WHERE sp.package_id = ? LIMIT 1`,
       [packageId]
     )) as any[];
 
@@ -48,7 +55,7 @@ export async function GET(
 
     return NextResponse.json({
       package: {
-        id: pkg.id,
+        id: pkg.package_id,
         name: pkg.name,
         description: pkg.description,
         category: pkg.category,
@@ -58,6 +65,8 @@ export async function GET(
         deliveryFeePerKm: Number(pkg.delivery_fee_per_km),
         conditions: pkg.conditions,
         isActive: Boolean(pkg.is_active),
+        providerId: pkg.providerId,
+        providerName: pkg.providerName,
         inclusions: inclusions.map((i) => i.description),
         addOns: addOns.map((a) => ({ id: a.id, name: a.description, price: Number(a.price) })),
         images: images

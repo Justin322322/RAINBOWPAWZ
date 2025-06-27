@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import {
@@ -12,7 +12,6 @@ import {
   ClockIcon,
   ExclamationCircleIcon
 } from '@heroicons/react/24/outline';
-import FurParentNavbar from '@/components/navigation/FurParentNavbar';
 import withOTPVerification from '@/components/withOTPVerification';
 import FurParentPageSkeleton from '@/components/ui/FurParentPageSkeleton';
 
@@ -29,10 +28,10 @@ interface CartItem {
 }
 
 interface CartPageProps {
-  userData?: any;
+  _userData?: any;
 }
 
-function CartPage({ userData }: CartPageProps) {
+function CartPage({ _userData }: CartPageProps) {
   const router = useRouter();
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -97,8 +96,7 @@ function CartPage({ userData }: CartPageProps) {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Navigation */}
-      <FurParentNavbar activePage="bookings" userName={`${userData?.first_name || ''} ${userData?.last_name || ''}`} />
+      {/* Navigation is now handled by layout */}
 
       <main className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
         {/* Back button */}

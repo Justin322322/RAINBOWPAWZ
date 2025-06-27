@@ -1,6 +1,95 @@
 import { query } from '@/lib/db';
 import { sendEmail } from '@/lib/consolidatedEmailService';
 
+// Import the standardized base email template
+const baseEmailTemplate = (content: string) => `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RainbowPaws Notification</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      margin: 0;
+      padding: 0;
+    }
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .header {
+      background-color: #10B981;
+      padding: 20px;
+      text-align: center;
+    }
+    .header h1 {
+      color: white;
+      margin: 0;
+      font-size: 24px;
+    }
+    .content {
+      padding: 20px;
+      background-color: #fff;
+    }
+    .footer {
+      background-color: #f5f5f5;
+      padding: 15px;
+      text-align: center;
+      font-size: 12px;
+      color: #666;
+    }
+    .button {
+      display: inline-block;
+      background-color: #10B981;
+      color: white;
+      padding: 12px 24px;
+      text-decoration: none;
+      border-radius: 25px;
+      margin: 20px 0;
+      font-weight: normal;
+    }
+    .info-box {
+      background-color: #f9f9f9;
+      border: 1px solid #eee;
+      border-radius: 4px;
+      padding: 15px;
+      margin: 15px 0;
+    }
+    .business-badge {
+      background-color: #10B981;
+      color: white;
+      padding: 6px 12px;
+      border-radius: 15px;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      display: inline-block;
+      margin-bottom: 15px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>RainbowPaws</h1>
+    </div>
+    <div class="content">
+      ${content}
+    </div>
+    <div class="footer">
+      <p>&copy; ${new Date().getFullYear()} RainbowPaws - Pet Memorial Services</p>
+      <p>This is an automated message, please do not reply to this email.</p>
+    </div>
+  </div>
+</body>
+</html>
+`;
+
 interface BusinessNotificationParams {
   userId: number;
   title: string;
@@ -135,95 +224,6 @@ function createBusinessEmailHtml(
   type: string,
   link: string | null
 ): string {
-  // Use the same base template as the main email templates
-  const baseEmailTemplate = (content: string) => `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>RainbowPaws Notification</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      line-height: 1.6;
-      color: #333;
-      margin: 0;
-      padding: 0;
-    }
-    .container {
-      max-width: 600px;
-      margin: 0 auto;
-      padding: 20px;
-    }
-    .header {
-      background-color: #10B981;
-      padding: 20px;
-      text-align: center;
-    }
-    .header h1 {
-      color: white;
-      margin: 0;
-      font-size: 24px;
-    }
-    .content {
-      padding: 20px;
-      background-color: #fff;
-    }
-    .footer {
-      background-color: #f5f5f5;
-      padding: 15px;
-      text-align: center;
-      font-size: 12px;
-      color: #666;
-    }
-    .button {
-      display: inline-block;
-      background-color: #10B981;
-      color: white;
-      padding: 12px 24px;
-      text-decoration: none;
-      border-radius: 25px;
-      margin: 20px 0;
-      font-weight: normal;
-    }
-    .info-box {
-      background-color: #f9f9f9;
-      border: 1px solid #eee;
-      border-radius: 4px;
-      padding: 15px;
-      margin: 15px 0;
-    }
-    .business-badge {
-      background-color: #10B981;
-      color: white;
-      padding: 6px 12px;
-      border-radius: 15px;
-      font-size: 12px;
-      font-weight: 600;
-      text-transform: uppercase;
-      display: inline-block;
-      margin-bottom: 15px;
-    }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="header">
-      <h1>RainbowPaws</h1>
-    </div>
-    <div class="content">
-      ${content}
-    </div>
-    <div class="footer">
-      <p>&copy; ${new Date().getFullYear()} RainbowPaws - Pet Memorial Services</p>
-      <p>This is an automated message, please do not reply to this email.</p>
-    </div>
-  </div>
-</body>
-</html>
-`;
-
   // Button text based on notification type
   const getButtonText = () => {
     if (title.includes('Booking')) return 'View Booking';

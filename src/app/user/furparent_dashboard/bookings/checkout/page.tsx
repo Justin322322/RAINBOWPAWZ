@@ -416,7 +416,8 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
 
           // No test provider fallback - all data from database
 
-          setError('Provider not found. Please try again or contact support.');
+          console.error(`Provider API failed: ${providerResponse.status} for provider ID: ${providerIdParam}`);
+          setError(`Provider not found (ID: ${providerIdParam}). Please try selecting the service again from the services page.`);
           return;
         }
 
@@ -430,7 +431,12 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
         // Fetch package data
         const packageResponse = await fetch(`/api/packages/${packageIdParam}`);
         if (!packageResponse.ok) {
-          setError('Package not found. Please try again or contact support.');
+          // If coming from cart and package not found, offer to clear cart
+          if (fromCart === 'true') {
+            setError('The package in your cart is no longer available. Please remove it from your cart and select a new package.');
+          } else {
+            setError('Package not found. Please try again or contact support.');
+          }
           return;
         }
 
@@ -939,6 +945,20 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
               >
                 Browse All Services
               </button>
+
+              {error.includes('cart') && (
+                <button
+                  onClick={() => {
+                    // Clear the cart and redirect to services
+                    localStorage.removeItem('cart');
+                    showToast('Cart cleared successfully', 'success');
+                    router.push('/user/furparent_dashboard/services');
+                  }}
+                  className="w-full sm:w-auto px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 flex items-center justify-center mt-3 sm:mt-0 sm:ml-3"
+                >
+                  Clear Cart & Browse Services
+                </button>
+              )}
 
               <p className="text-gray-600 text-sm mt-4">
                 If this error persists, please contact our support team for assistance.

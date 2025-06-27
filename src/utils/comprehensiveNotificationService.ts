@@ -36,6 +36,18 @@ export type SystemNotificationType =
   | 'service_update'
   | 'policy_update';
 
+// Import SSE broadcasting functions
+let broadcastToUser: ((userId: string, accountType: string, notification: any) => void) | null = null;
+
+// Dynamically import SSE functions to avoid SSR issues
+if (typeof window === 'undefined') {
+  import('../app/api/notifications/sse/route').then(module => {
+    broadcastToUser = module.broadcastToUser;
+  }).catch(err => {
+    console.warn('SSE broadcasting not available:', err.message);
+  });
+}
+
 /**
  * Create booking lifecycle notifications
  */
@@ -101,7 +113,16 @@ export async function createBookingNotification(
 
       case 'booking_cancelled':
         title = 'Booking Cancelled';
-        message = `Your booking for ${pet_name}'s ${service_name} has been cancelled. ${additionalData?.reason ? `Reason: ${additionalData.reason}` : ''}`;
+        
+        // Determine if cancellation was initiated by provider or user
+        const cancelledByProvider = additionalData?.cancelledBy === 'provider' || additionalData?.source === 'provider';
+        
+        if (cancelledByProvider) {
+          message = `Your booking for ${pet_name}'s ${service_name} has been cancelled by the service provider. ${additionalData?.reason ? `Reason: ${additionalData.reason}` : 'Please contact them for more details.'}`;
+        } else {
+          message = `Your booking for ${pet_name}'s ${service_name} has been cancelled. ${additionalData?.reason ? `Reason: ${additionalData.reason}` : ''}`;
+        }
+        
         type = 'warning';
         link = `/user/furparent_dashboard/bookings?bookingId=${bookingId}`;
         sendEmailNotification = true;
@@ -154,8 +175,24 @@ export async function createBookingNotification(
     }
 
     // Create provider notification for certain events
-    if (['booking_created', 'booking_pending'].includes(notificationType) && provider_id) {
+    if (['booking_created', 'booking_pending', 'booking_cancelled'].includes(notificationType) && provider_id) {
       await createProviderNotification(bookingDetails, notificationType);
+    }
+
+    // Broadcast instant notification via SSE if available
+    if (broadcastToUser && user_id) {
+      // Determine user account type (assume 'user' for most bookings, 'business' for providers)
+      const accountType = 'user'; // Most booking notifications go to fur parents
+      
+      broadcastToUser(user_id.toString(), accountType, {
+        id: Date.now(), // Temporary ID for instant display
+        title,
+        message,
+        type,
+        is_read: 0,
+        link: null,
+        created_at: new Date().toISOString()
+      });
     }
 
     return notificationResult;
@@ -228,6 +265,22 @@ export async function createPaymentNotification(
     // Send SMS notification for important payment events
     if (['payment_confirmed', 'payment_failed'].includes(paymentStatus)) {
       await sendPaymentSMSNotification(bookingDetails, paymentStatus, paymentDetails);
+    }
+
+    // Broadcast instant notification via SSE if available
+    if (broadcastToUser && user_id) {
+      // Determine user account type (assume 'user' for most bookings, 'business' for providers)
+      const accountType = 'user'; // Most booking notifications go to fur parents
+      
+      broadcastToUser(user_id.toString(), accountType, {
+        id: Date.now(), // Temporary ID for instant display
+        title,
+        message,
+        type,
+        is_read: 0,
+        link: null,
+        created_at: new Date().toISOString()
+      });
     }
 
     return notificationResult;
@@ -577,6 +630,12 @@ async function createProviderNotification(
         link = `/cremation/bookings?status=pending`;
         break;
 
+      case 'booking_cancelled':
+        title = 'Booking Cancelled';
+        message = `The booking for ${bookingDetails.pet_name}'s ${bookingDetails.service_name} has been cancelled by the customer.`;
+        link = `/cremation/bookings/${bookingDetails.id}`;
+        break;
+
       default:
         return; // No provider notification for this type
     }
@@ -585,10 +644,23 @@ async function createProviderNotification(
       userId: providerUserId,
       title,
       message,
-      type: 'info',
+      type: notificationType === 'booking_cancelled' ? 'warning' : 'info',
       link,
       shouldSendEmail: true
     });
+
+    // Broadcast instant notification to provider via SSE if available
+    if (broadcastToUser) {
+      broadcastToUser(providerUserId.toString(), 'business', {
+        id: Date.now(), // Temporary ID for instant display
+        title,
+        message,
+        type: notificationType === 'booking_cancelled' ? 'warning' : 'info',
+        is_read: 0,
+        link,
+        created_at: new Date().toISOString()
+      });
+    }
   } catch (error) {
     console.error('Error creating provider notification:', error);
   }

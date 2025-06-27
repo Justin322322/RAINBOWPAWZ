@@ -10,6 +10,7 @@ import { sendEmail } from '@/lib/consolidatedEmailService';
 import { createRefundNotificationEmail } from '@/lib/emailTemplates';
 import { createUserNotification } from '@/utils/userNotificationService';
 import { createAdminNotification } from '@/utils/adminNotificationService';
+import { createBusinessNotification } from '@/utils/businessNotificationService';
 
 /**
  * POST - Approve a refund request
@@ -68,6 +69,7 @@ export async function POST(
         sb.booking_time,
         sb.payment_method,
         sb.user_id,
+        sb.provider_id,
         CONCAT(u.first_name, ' ', u.last_name) as user_name,
         u.email as user_email
       FROM refunds r
@@ -157,6 +159,9 @@ export async function POST(
                console.error('Failed to create admin notification:', adminNotificationError);
              }
 
+            // Notify service provider about refund
+            await notifyServiceProviderAboutRefund(refund.provider_id, refund.booking_id, refund.pet_name, refund.amount, 'processing');
+
             return NextResponse.json({
               success: true,
               message: 'Refund approved and submitted to PayMongo. Processing may take 5-10 business days.',
@@ -223,6 +228,9 @@ export async function POST(
              } catch (adminNotificationError) {
                console.error('Failed to create admin notification:', adminNotificationError);
              }
+
+            // Notify service provider about refund
+            await notifyServiceProviderAboutRefund(refund.provider_id, refund.booking_id, refund.pet_name, refund.amount, 'processed');
 
             return NextResponse.json({
               success: true,
@@ -291,6 +299,9 @@ export async function POST(
             console.error('Failed to create admin notification:', adminNotificationError);
           }
 
+          // Notify service provider about refund
+          await notifyServiceProviderAboutRefund(refund.provider_id, refund.booking_id, refund.pet_name, refund.amount, 'processed');
+
           return NextResponse.json({
             success: true,
             message: 'Refund approved and processed manually. No PayMongo transaction found for this GCash payment.',
@@ -357,6 +368,9 @@ export async function POST(
           console.error('Failed to create admin notification:', adminNotificationError);
         }
 
+        // Notify service provider about refund
+        await notifyServiceProviderAboutRefund(refund.provider_id, refund.booking_id, refund.pet_name, refund.amount, 'processed');
+
         return NextResponse.json({
           success: true,
           message: 'Refund approved and processed successfully.',
@@ -382,5 +396,52 @@ export async function POST(
       error: 'Internal server error',
       details: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 });
+  }
+}
+
+/**
+ * Helper function to notify service provider about refund
+ */
+async function notifyServiceProviderAboutRefund(
+  providerId: number,
+  bookingId: number,
+  petName: string,
+  amount: number,
+  status: 'processing' | 'processed'
+): Promise<void> {
+  if (!providerId) return;
+
+  try {
+    // Get provider user ID
+    let providerResult = await query('SELECT user_id FROM service_providers WHERE provider_id = ?', [providerId]) as any[];
+    
+    if (!providerResult || providerResult.length === 0) {
+      providerResult = await query('SELECT user_id FROM businesses WHERE id = ?', [providerId]) as any[];
+    }
+    
+    if (!providerResult || providerResult.length === 0) {
+      providerResult = await query('SELECT user_id FROM users WHERE user_id = ? AND role = "business"', [providerId]) as any[];
+    }
+
+    if (providerResult && providerResult.length > 0) {
+      const providerUserId = providerResult[0].user_id;
+      
+      const title = status === 'processing' ? 'Refund Being Processed' : 'Refund Completed';
+      const message = status === 'processing' 
+        ? `A refund of ₱${amount.toFixed(2)} is being processed for booking #${bookingId} (${petName}).`
+        : `A refund of ₱${amount.toFixed(2)} has been completed for booking #${bookingId} (${petName}).`;
+      
+      await createBusinessNotification({
+        userId: providerUserId,
+        title,
+        message,
+        type: 'info',
+        link: `/cremation/bookings/${bookingId}`,
+        shouldSendEmail: true,
+        emailSubject: `Refund ${status === 'processing' ? 'Processing' : 'Completed'} - Rainbow Paws`
+      });
+    }
+  } catch (error) {
+    console.error('Failed to notify service provider about refund:', error);
   }
 }

@@ -193,21 +193,72 @@ async function handleRefundSucceeded(refundData: any) {
 
     // Find the refund record by PayMongo transaction ID
     const refundQuery = `
-      SELECT r.id, r.booking_id
+      SELECT r.id, r.booking_id, r.amount, sb.user_id, sb.pet_name, sb.provider_id
       FROM refunds r
+      JOIN service_bookings sb ON r.booking_id = sb.id
       WHERE r.transaction_id = ? AND r.status = 'processing'
     `;
     const refundResult = await query(refundQuery, [refundId]) as any[];
 
     if (refundResult.length > 0) {
-      const { id: localRefundId, booking_id } = refundResult[0];
+      const { id: localRefundId, booking_id, amount, user_id, pet_name, provider_id } = refundResult[0];
 
       // Complete the refund process
       const { completeRefund } = await import('@/services/refundService');
       await completeRefund(booking_id, localRefundId);
 
-      // Create refund notification
+      // Create comprehensive refund notification for user
       await createPaymentNotification(booking_id, 'payment_refunded');
+
+      // Create user notification with detailed information
+      const { createUserNotification } = await import('@/utils/userNotificationService');
+      try {
+        await createUserNotification({
+          userId: user_id,
+          type: 'refund_processed',
+          title: 'Refund Processed',
+          message: `Your refund for ${pet_name} has been processed successfully. The amount of ₱${parseFloat(amount).toFixed(2)} has been refunded to your account.`,
+          entityType: 'booking',
+          entityId: booking_id,
+          shouldSendEmail: true,
+          emailSubject: 'Refund Completed - Rainbow Paws'
+        });
+      } catch (notificationError) {
+        console.error('Failed to create user notification:', notificationError);
+      }
+
+      // Notify service provider about the refund
+      if (provider_id) {
+        const { createBusinessNotification } = await import('@/utils/businessNotificationService');
+        try {
+          // Get provider user ID
+          let providerResult = await query('SELECT user_id FROM service_providers WHERE provider_id = ?', [provider_id]) as any[];
+          
+          if (!providerResult || providerResult.length === 0) {
+            providerResult = await query('SELECT user_id FROM businesses WHERE id = ?', [provider_id]) as any[];
+          }
+          
+          if (!providerResult || providerResult.length === 0) {
+            providerResult = await query('SELECT user_id FROM users WHERE user_id = ? AND role = "business"', [provider_id]) as any[];
+          }
+
+          if (providerResult && providerResult.length > 0) {
+            const providerUserId = providerResult[0].user_id;
+            
+            await createBusinessNotification({
+              userId: providerUserId,
+              title: 'Refund Processed',
+              message: `A refund of ₱${parseFloat(amount).toFixed(2)} has been processed for booking #${booking_id} (${pet_name}).`,
+              type: 'info',
+              link: `/cremation/bookings/${booking_id}`,
+              shouldSendEmail: true,
+              emailSubject: 'Refund Notification - Rainbow Paws'
+            });
+          }
+        } catch (providerNotificationError) {
+          console.error('Failed to create provider notification:', providerNotificationError);
+        }
+      }
 
     } else {
       console.warn('Refund record not found for PayMongo refund:', refundId);

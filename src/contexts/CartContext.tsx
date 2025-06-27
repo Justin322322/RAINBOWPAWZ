@@ -50,6 +50,27 @@ const CartContext = createContext<CartContextType>({
 // Custom hook to use the cart context
 export const useCart = () => useContext(CartContext);
 
+// Validation function to check if packages exist
+const validateCartItems = async (items: CartItem[]): Promise<CartItem[]> => {
+  const validItems: CartItem[] = [];
+  
+  for (const item of items) {
+    try {
+      const response = await fetch(`/api/packages/${item.packageId}`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.package) {
+          validItems.push(item);
+        }
+      }
+    } catch (error) {
+      console.warn(`Package ${item.packageId} not found, removing from cart:`, error);
+    }
+  }
+  
+  return validItems;
+};
+
 // Cart provider component
 export const CartProvider = ({ children }: { children: ReactNode }) => {
   // Initialize cart with empty array to prevent hydration mismatch
@@ -66,22 +87,31 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     if (!isHydrated) return;
 
-    try {
-      const storedCart = localStorage.getItem('cart');
-      if (storedCart) {
-        const parsedCart = JSON.parse(storedCart);
-        // Validate cart structure before setting
-        if (Array.isArray(parsedCart)) {
-          setItems(parsedCart);
+    const loadAndValidateCart = async () => {
+      try {
+        const storedCart = localStorage.getItem('cart');
+        if (storedCart) {
+          const parsedCart = JSON.parse(storedCart);
+          // Validate cart structure before setting
+          if (Array.isArray(parsedCart) && parsedCart.length > 0) {
+            // Validate that packages still exist
+            const validItems = await validateCartItems(parsedCart);
+            if (validItems.length !== parsedCart.length) {
+              console.log(`Removed ${parsedCart.length - validItems.length} invalid items from cart`);
+            }
+            setItems(validItems);
+          }
         }
+      } catch (error) {
+        console.warn('Error loading cart from localStorage:', error);
+        // Clear corrupted cart data
+        localStorage.removeItem('cart');
+      } finally {
+        setLoaded(true);
       }
-    } catch (error) {
-      console.warn('Error loading cart from localStorage:', error);
-      // Clear corrupted cart data
-      localStorage.removeItem('cart');
-    } finally {
-      setLoaded(true);
-    }
+    };
+
+    loadAndValidateCart();
   }, [isHydrated]);
 
   // Save cart to localStorage whenever it changes (only after initial load)

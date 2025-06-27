@@ -63,8 +63,25 @@ const CartDropdown = ({ isOpen, onClose }: CartDropdownProps) => {
   };
 
   const proceedToCheckout = () => {
-    // Navigate to cart page
-    router.push('/user/furparent_dashboard/cart');
+    // Check if we have cart items and valid data before proceeding
+    if (cartItems.length === 0) {
+      onClose();
+      return;
+    }
+
+    const item = cartItems[0];
+    
+    // Validate that we have the required IDs for direct checkout
+    if (item.providerId && item.packageId) {
+      // Direct checkout with valid data
+      const petParams = item.petId && item.petName
+        ? `&petId=${item.petId}&petName=${encodeURIComponent(item.petName)}`
+        : '';
+      router.push(`/user/furparent_dashboard/bookings/checkout?provider=${item.providerId}&package=${item.packageId}&fromCart=true${petParams}`);
+    } else {
+      // Fallback to cart page if data is incomplete
+      router.push('/user/furparent_dashboard/cart');
+    }
     onClose();
   };
 

@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { createBookingNotification, type BookingNotificationType } from '@/utils/comprehensiveNotificationService';
+import { createAdminNotification } from '@/utils/adminNotificationService';
+import { checkRefundEligibility, createRefundRecord } from '@/services/refundService';
+import { REFUND_REASONS } from '@/types/refund';
 
 export async function GET(
   _request: NextRequest,
@@ -119,9 +122,64 @@ export async function PUT(
     const result = await query(updateQuery, [status, bookingId]) as any;
 
     if (result.affectedRows > 0) {
+      // Handle refund processing if booking is cancelled and was paid
+      let refundInfo = null;
+      if (status === 'cancelled') {
+        try {
+          // Get booking details to check payment status
+          const bookingDetails = await query(`
+            SELECT payment_status, price, user_id, pet_name, payment_method
+            FROM service_bookings 
+            WHERE id = ?
+          `, [bookingId]) as any[];
+
+          if (bookingDetails && bookingDetails.length > 0) {
+            const booking = bookingDetails[0];
+            
+            if (booking.payment_status === 'paid') {
+              // Check refund eligibility
+              const eligibilityCheck = await checkRefundEligibility(parseInt(bookingId));
+              
+              if (eligibilityCheck.eligible) {
+                // Create refund request for provider-cancelled booking
+                const refundId = await createRefundRecord({
+                  booking_id: parseInt(bookingId),
+                  reason: REFUND_REASONS.PROVIDER_CANCELLED,
+                  amount: parseFloat(booking.price),
+                  notes: 'Refund request due to service provider cancellation'
+                });
+
+                // Create admin notification for refund request
+                try {
+                  await createAdminNotification({
+                    type: 'refund_request',
+                    title: 'Refund Request - Provider Cancelled',
+                    message: `Refund request for provider-cancelled booking #${bookingId} (${booking.pet_name}) - Amount: ₱${parseFloat(booking.price).toFixed(2)}`,
+                    entityType: 'refund',
+                    entityId: refundId
+                  });
+                } catch (adminNotificationError) {
+                  console.error('Failed to create admin notification:', adminNotificationError);
+                }
+
+                refundInfo = {
+                  status: 'pending',
+                  message: 'A refund request has been automatically created and will be processed by our team within 1-2 business days.',
+                  amount: parseFloat(booking.price)
+                };
+              }
+            }
+          }
+        } catch (refundError) {
+          console.error('Error processing refund for cancelled booking:', refundError);
+          // Continue with cancellation even if refund processing fails
+        }
+      }
+
       // Send notification to customer about status update
       try {
         let notificationType: BookingNotificationType;
+        let additionalData: Record<string, any> = {};
 
         switch (status) {
           case 'confirmed':
@@ -135,13 +193,25 @@ export async function PUT(
             break;
           case 'cancelled':
             notificationType = 'booking_cancelled';
+            // Indicate this cancellation was initiated by the service provider
+            let cancellationReason = 'Service provider cancelled the booking';
+            if (refundInfo) {
+              cancellationReason += `. ${refundInfo.message}`;
+            }
+            
+            additionalData = {
+              cancelledBy: 'provider',
+              source: 'provider',
+              reason: cancellationReason,
+              refundInfo: refundInfo
+            };
             break;
           default:
             notificationType = 'booking_pending';
         }
 
         // Send comprehensive notification (in-app + email)
-        await createBookingNotification(parseInt(bookingId), notificationType);
+        await createBookingNotification(parseInt(bookingId), notificationType, additionalData);
 
       } catch (notificationError) {
         console.error('Error sending notification for booking status update:', notificationError);
@@ -151,7 +221,8 @@ export async function PUT(
       return NextResponse.json({
         success: true,
         message: 'Booking status updated successfully',
-        status: status
+        status: status,
+        refund: refundInfo
       });
     } else {
       return NextResponse.json({ error: 'Booking not found or no changes made' }, { status: 404 });

@@ -171,10 +171,10 @@ export async function GET(request: NextRequest) {
           if (user.role === 'business') {
             try {
               const businessResult = await query(
-                `SELECT id, business_name, business_type, verification_status
-                FROM business_profiles
+                `SELECT provider_id as id, name as business_name, provider_type as business_type, application_status as verification_status
+                FROM service_providers
                 WHERE user_id = ? LIMIT 1`,
-                [user.id]
+                [user.user_id]
               ) as any[];
 
               if (businessResult && businessResult.length > 0) {

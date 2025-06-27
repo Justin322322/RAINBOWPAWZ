@@ -13,6 +13,8 @@ import {
 } from '@/services/refundService';
 import { REFUND_REASONS } from '@/types/refund';
 import { createAdminNotification } from '@/utils/adminNotificationService';
+// Import comprehensive notification service
+import { createBookingNotification } from '@/utils/comprehensiveNotificationService';
 
 export async function POST(request: NextRequest) {
   // Extract ID from URL
@@ -170,6 +172,16 @@ export async function POST(request: NextRequest) {
         console.error('Refund request error:', refundError);
         // Continue with cancellation even if refund request fails
       }
+    }
+
+    // Send booking cancellation notifications
+    try {
+      await createBookingNotification(parseInt(bookingId), 'booking_cancelled', {
+        reason: 'Customer requested cancellation'
+      });
+    } catch (notificationError) {
+      console.error('Error sending cancellation notifications:', notificationError);
+      // Continue with the process even if notifications fail
     }
 
     // Simulate a small delay to show loading state

@@ -10,14 +10,13 @@ import {
   CheckIcon
 } from '@heroicons/react/24/outline';
 import { useCart } from '@/contexts/CartContext';
-import FurParentNavbar from '@/components/navigation/FurParentNavbar';
 import withOTPVerification from '@/components/withOTPVerification';
 
 interface CartPageProps {
-  userData?: any;
+  _userData?: any;
 }
 
-function CartPage({ userData }: CartPageProps) {
+function CartPage({ _userData }: CartPageProps) {
   const router = useRouter();
   const { items, removeItem, totalPrice } = useCart();
   const [_isLoading, _setIsLoading] = useState(false);
@@ -31,6 +30,14 @@ function CartPage({ userData }: CartPageProps) {
     // Always redirect to the checkout page with the first item's details
     // The checkout page will handle the item from the cart context
     const item = items[0];
+
+    // Validate that we have the required IDs
+    if (!item.providerId || !item.packageId) {
+      console.error('Cart item missing provider or package ID:', item);
+      // Fallback: try to extract from other fields or redirect to services
+      router.push('/user/furparent_dashboard/services');
+      return;
+    }
 
     // If pet is already selected, include it in the URL, otherwise just go to checkout
     const petParams = item.petId && item.petName
@@ -50,8 +57,6 @@ function CartPage({ userData }: CartPageProps) {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <FurParentNavbar activePage="services" userName={`${userData?.first_name || ''} ${userData?.last_name || ''}`} />
-
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Back button */}
         <button

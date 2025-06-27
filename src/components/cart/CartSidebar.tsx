@@ -44,6 +44,15 @@ const CartSidebar: React.FC<CartSidebarProps> = ({ isOpen, onClose }) => {
 
     const item = items[0];
 
+    // Validate that we have the required IDs
+    if (!item.providerId || !item.packageId) {
+      console.error('Cart item missing provider or package ID:', item);
+      // Fallback: redirect to services page
+      router.push('/user/furparent_dashboard/services');
+      handleClose();
+      return;
+    }
+
     // If pet is already selected, include it in the URL, otherwise just go to checkout
     const petParams = item.petId && item.petName
       ? `&petId=${item.petId}&petName=${encodeURIComponent(item.petName)}`

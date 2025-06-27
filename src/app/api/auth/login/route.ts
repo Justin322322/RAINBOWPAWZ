@@ -191,23 +191,13 @@ export async function POST(request: Request) {
           // For business accounts, fetch additional business profile details
           if (user.role === 'business') {
             try {
-              // Check service_providers table first (new structure)
-              let businessResult = await query(
+              // Check service_providers table (current structure)
+              const businessResult = await query(
                 `SELECT provider_id, name as business_name, provider_type as business_type, phone as business_phone,
                  address as business_address, application_status as verification_status
                  FROM service_providers WHERE user_id = ? LIMIT 1`,
                 [user.user_id]
               ) as any[];
-
-              // If no result, try the legacy business_profiles table
-              if (!businessResult || businessResult.length === 0) {
-                businessResult = await query(
-                  `SELECT id, business_name, business_type, business_phone, business_address,
-                   province, city, zip
-                   FROM business_profiles WHERE user_id = ? LIMIT 1`,
-                  [user.user_id]
-                ) as any[];
-              }
 
               if (businessResult && businessResult.length > 0) {
                 const business = businessResult[0];
@@ -219,11 +209,7 @@ export async function POST(request: Request) {
                   business_type: business.business_type,
                   business_phone: business.business_phone,
                   business_address: business.business_address,
-                  // Only include these fields if they exist (from legacy business_profiles table)
-                  province: business.province || null,
-                  city: business.city || null,
-                  zip: business.zip || null,
-                  business_id: business.provider_id || business.id,
+                  business_id: business.provider_id,
                   user_type: 'business', // For backward compatibility
                   verification_status: business.verification_status || 'approved', // Use the status from DB or default
                   id: user.user_id // Ensure id field is present
