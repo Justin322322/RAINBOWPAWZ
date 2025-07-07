@@ -3,7 +3,7 @@
 import React from 'react';
 import { cn } from '@/utils/classNames';
 
-export interface SpinnerProps {
+interface SpinnerProps {
   size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
   color?: 'primary' | 'white' | 'gray' | 'black';
   className?: string;
@@ -92,4 +92,4 @@ export const Spinner: React.FC<SpinnerProps> = ({
   );
 };
 
-export default Spinner;
+

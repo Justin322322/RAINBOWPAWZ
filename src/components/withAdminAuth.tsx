@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { fastAuthCheck } from '@/utils/auth';
 
 // Define the shape of the admin data
-export interface AdminData {
+interface AdminData {
   id: number;
   username: string;
   email: string;

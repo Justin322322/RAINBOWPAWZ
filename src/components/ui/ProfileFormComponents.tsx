@@ -153,52 +153,7 @@ export const ProfileTextarea: React.FC<ProfileTextareaProps> = ({
   );
 };
 
-// Profile Select Component
-export const ProfileSelect: React.FC<ProfileSelectProps> = ({
-  label,
-  value,
-  onChange,
-  options,
-  required = false,
-  disabled = false,
-  error,
-  className = ''
-}) => {
-  return (
-    <div className={`space-y-2 ${className}`}>
-      <label className="block text-sm font-medium text-gray-700">
-        {label}
-        {required && <span className="text-red-500 ml-1">*</span>}
-      </label>
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        required={required}
-        disabled={disabled}
-        className={`
-          block w-full rounded-lg border-gray-300 shadow-sm
-          focus:border-[var(--primary-green)] focus:ring-[var(--primary-green)]
-          disabled:bg-gray-50 disabled:text-gray-500
-          px-3 py-2.5
-          ${error ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}
-          transition-colors duration-200
-        `}
-      >
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-      {error && (
-        <p className="text-sm text-red-600 flex items-center">
-          <ExclamationTriangleIcon className="h-4 w-4 mr-1" />
-          {error}
-        </p>
-      )}
-    </div>
-  );
-};
+// ProfileSelect component removed - not used
 
 // Profile Button Component
 export const ProfileButton: React.FC<ProfileButtonProps> = ({
@@ -319,12 +274,4 @@ export const ProfileAlert: React.FC<ProfileAlertProps> = ({
   );
 };
 
-const ProfileFormComponents = {
-  ProfileInput,
-  ProfileTextarea,
-  ProfileSelect,
-  ProfileButton,
-  ProfileAlert
-};
-
-export default ProfileFormComponents;
+// Default export removed - not used

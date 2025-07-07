@@ -187,25 +187,7 @@ export function createBookingSMSMessage(
   }
 }
 
-/**
- * Validate Twilio configuration
- */
-export function validateTwilioConfig(): { isValid: boolean; missingVars: string[] } {
-  const requiredVars = [
-    { name: 'TWILIO_ACCOUNT_SID', value: accountSid },
-    { name: 'TWILIO_AUTH_TOKEN', value: authToken },
-    { name: 'TWILIO_PHONE_NUMBER', value: fromNumber }
-  ];
 
-  const missingVars = requiredVars
-    .filter(variable => !variable.value)
-    .map(variable => variable.name);
-
-  return {
-    isValid: missingVars.length === 0,
-    missingVars
-  };
-}
 
 /**
  * Test phone number formatting (for development/testing)
@@ -226,14 +208,4 @@ export function testPhoneNumberFormatting(phoneNumber: string): {
   }
 }
 
-/**
- * Test SMS functionality (for development/testing)
- */
-export async function testSMS(testPhoneNumber: string): Promise<SendSMSResult> {
-  const testMessage = 'This is a test message from Rainbow Paws SMS service.';
 
-  return await sendSMS({
-    to: testPhoneNumber,
-    message: testMessage
-  });
-}

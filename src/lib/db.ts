@@ -88,16 +88,7 @@ try {
   }
 }
 
-// **🔥 NEW: Connection Pool Health Monitoring**
-export function getPoolStats(): PoolStats {
-  const poolConfig = pool.config;
-  return {
-    totalConnections: poolConfig.connectionLimit || 10,
-    activeConnections: (pool as any)._allConnections?.length || 0,
-    idleConnections: (pool as any)._freeConnections?.length || 0,
-    queuedRequests: (pool as any)._connectionQueue?.length || 0
-  };
-}
+
 
 // **🔥 NEW: Database Health Check Endpoint**
 export async function getDatabaseHealth(): Promise<{
@@ -118,7 +109,13 @@ export async function getDatabaseHealth(): Promise<{
   }
 
   const responseTime = Date.now() - startTime;
-  const poolStats = getPoolStats();
+  const poolConfig = pool.config;
+  const poolStats = {
+    totalConnections: poolConfig.connectionLimit || 10,
+    activeConnections: (pool as any)._allConnections?.length || 0,
+    idleConnections: (pool as any)._freeConnections?.length || 0,
+    queuedRequests: (pool as any)._connectionQueue?.length || 0
+  };
 
   // Check for potential issues
   if (poolStats.queuedRequests > 5) {
@@ -427,4 +424,4 @@ export async function checkTableExists(tableName: string): Promise<boolean> {
   }
 }
 
-export default pool;
+// Default export removed - not used

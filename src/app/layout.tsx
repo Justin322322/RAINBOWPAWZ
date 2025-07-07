@@ -6,7 +6,7 @@ import ToastWrapper from "@/components/providers/ToastWrapper";
 import NotificationProvider from "@/components/providers/NotificationProvider";
 import { LoadingProvider } from "@/contexts/LoadingContext";
 import { AuthStateProvider } from "@/contexts/AuthStateContext";
-import LoadingOverlay from "@/components/ui/LoadingOverlay";
+import { LoadingOverlay } from "@/components/ui/LoadingOverlay";
 
 // Load Inter font for sans-serif text
 const inter = Inter({

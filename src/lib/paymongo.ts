@@ -5,7 +5,7 @@
 
 const PAYMONGO_BASE_URL = 'https://api.paymongo.com/v1';
 
-export interface PayMongoPaymentIntent {
+interface PayMongoPaymentIntent {
   id: string;
   type: string;
   attributes: {
@@ -38,7 +38,7 @@ export interface PayMongoPaymentIntent {
   };
 }
 
-export interface PayMongoSource {
+interface PayMongoSource {
   id: string;
   type: string;
   attributes: {
@@ -59,7 +59,7 @@ export interface PayMongoSource {
   };
 }
 
-export interface CreatePaymentIntentData {
+interface CreatePaymentIntentData {
   amount: number; // Amount in centavos (e.g., 10000 = PHP 100.00)
   currency: string;
   description: string;
@@ -68,7 +68,7 @@ export interface CreatePaymentIntentData {
   statement_descriptor?: string;
 }
 
-export interface CreateSourceData {
+interface CreateSourceData {
   amount: number; // Amount in centavos
   currency: string;
   type: string; // 'gcash' for GCash payments
@@ -84,45 +84,7 @@ export interface CreateSourceData {
   description?: string;
 }
 
-/**
- * Create a payment intent for GCash payment
- */
-export async function createPaymentIntent(data: CreatePaymentIntentData): Promise<PayMongoPaymentIntent> {
-  const secretKey = process.env.PAYMONGO_SECRET_KEY;
 
-  if (!secretKey) {
-    throw new Error('PayMongo secret key is not configured');
-  }
-
-  const response = await fetch(`${PAYMONGO_BASE_URL}/payment_intents`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Basic ${Buffer.from(secretKey + ':').toString('base64')}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      data: {
-        attributes: {
-          amount: data.amount,
-          currency: data.currency || 'PHP',
-          description: data.description,
-          payment_method_allowed: data.payment_method_allowed || ['gcash'],
-          capture_type: data.capture_type || 'automatic',
-          statement_descriptor: data.statement_descriptor || 'Rainbow Paws',
-        }
-      }
-    })
-  });
-
-  if (!response.ok) {
-    const error = await response.json();
-    console.error('PayMongo API Error Response:', error);
-    throw new Error(`PayMongo API Error: ${error.errors?.[0]?.detail || error.message || 'Unknown error'}`);
-  }
-
-  const result = await response.json();
-  return result.data;
-}
 
 /**
  * Create a source for GCash payment (alternative method)
@@ -191,32 +153,7 @@ export async function retrievePaymentIntent(paymentIntentId: string): Promise<Pa
   return result.data;
 }
 
-/**
- * Retrieve a payment by ID
- */
-export async function retrievePayment(paymentId: string): Promise<any> {
-  const secretKey = process.env.PAYMONGO_SECRET_KEY;
 
-  if (!secretKey) {
-    throw new Error('PayMongo secret key is not configured');
-  }
-
-  const response = await fetch(`${PAYMONGO_BASE_URL}/payments/${paymentId}`, {
-    method: 'GET',
-    headers: {
-      'Authorization': `Basic ${Buffer.from(secretKey + ':').toString('base64')}`,
-      'Content-Type': 'application/json',
-    }
-  });
-
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(`PayMongo API Error: ${error.errors?.[0]?.detail || 'Unknown error'}`);
-  }
-
-  const result = await response.json();
-  return result.data;
-}
 
 /**
  * List payments with optional filters
@@ -291,12 +228,7 @@ export function phpToCentavos(amount: number): number {
   return Math.round(amount * 100);
 }
 
-/**
- * Convert centavos to PHP amount
- */
-export function centavosToPHP(centavos: number): number {
-  return centavos / 100;
-}
+
 
 /**
  * Create a refund for a payment
@@ -340,32 +272,7 @@ export async function createRefund(paymentId: string, refundData: {
   return result.data;
 }
 
-/**
- * Retrieve a refund by ID
- */
-export async function retrieveRefund(refundId: string): Promise<any> {
-  const secretKey = process.env.PAYMONGO_SECRET_KEY;
 
-  if (!secretKey) {
-    throw new Error('PayMongo secret key is not configured');
-  }
-
-  const response = await fetch(`${PAYMONGO_BASE_URL}/refunds/${refundId}`, {
-    method: 'GET',
-    headers: {
-      'Authorization': `Basic ${Buffer.from(secretKey + ':').toString('base64')}`,
-      'Content-Type': 'application/json',
-    }
-  });
-
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(`PayMongo API Error: ${error.errors?.[0]?.detail || 'Unknown error'}`);
-  }
-
-  const result = await response.json();
-  return result.data;
-}
 
 /**
  * Validate webhook signature (for webhook security)

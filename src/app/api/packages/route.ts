@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query, withTransaction } from '@/lib/db';
-import { getAuthTokenFromRequest, parseAuthTokenAsync } from '@/utils/auth';
+import { getAuthTokenFromRequest, parseAuthToken } from '@/utils/auth';
 import * as fs from 'fs';
 import { join } from 'path';
 import { getImagePath } from '@/utils/imagePathUtils';
@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Parse auth token to handle both JWT and old formats
-    const authData = await parseAuthTokenAsync(authToken);
+    const authData = await parseAuthToken(authToken);
     if (!authData) {
       return NextResponse.json({ error: 'Invalid authentication token' }, { status: 401 });
     }

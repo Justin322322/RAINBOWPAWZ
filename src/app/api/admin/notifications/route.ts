@@ -6,7 +6,7 @@ import { verifySecureAuth } from '@/lib/secureAuth';
 export async function GET(request: NextRequest) {
   try {
     // Use secure authentication for consistency
-    const user = verifySecureAuth(request);
+    const user = await verifySecureAuth(request);
     if (!user) {
       return NextResponse.json({
         error: 'Unauthorized',
@@ -199,7 +199,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     // Use secure authentication for consistency
-    const user = verifySecureAuth(request);
+    const user = await verifySecureAuth(request);
     if (!user) {
       return NextResponse.json({
         error: 'Unauthorized',
@@ -308,3 +308,4 @@ export async function POST(request: NextRequest) {
     });
   }
 }
+

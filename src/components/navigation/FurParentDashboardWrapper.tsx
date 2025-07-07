@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect } from 'react';
-import { createNotification } from '@/utils/notifications';
+// Notification utilities removed
 
 interface FurParentDashboardWrapperProps {
   children: React.ReactNode;
@@ -54,7 +54,7 @@ const FurParentDashboardWrapper: React.FC<FurParentDashboardWrapperProps> = ({
         const message = `You have ${pendingCount} completed ${pendingCount === 1 ? 'booking' : 'bookings'} that ${pendingCount === 1 ? 'needs' : 'need'} a review`;
         const link = '/user/furparent_dashboard/bookings?filter=completed';
 
-        await createNotification(userData.id, title, message, 'info', link);
+        // Notification creation removed - functionality disabled
 
         // Mark notification as sent
         localStorage.setItem(lastNotificationKey, Date.now().toString());

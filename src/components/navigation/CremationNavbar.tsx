@@ -19,7 +19,7 @@ import {
 } from '@heroicons/react/24/outline';
 import LogoutModal from '@/components/LogoutModal';
 import NotificationBell from '@/components/ui/NotificationBell';
-import { useSupressHydrationWarning } from '@/hooks/useSupressHydrationWarning';
+// Hydration warning hook removed
 import { getProfilePictureUrl, handleImageError } from '@/utils/imageUtils';
 
 interface CremationNavbarProps {
@@ -35,7 +35,11 @@ export default function CremationNavbar({
 }: CremationNavbarProps) {
   const pathname = usePathname();
   const _router = useRouter();
-  const isMounted = useSupressHydrationWarning();
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // Navigation and UI state - moved to top
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -151,8 +155,32 @@ export default function CremationNavbar({
       const sessionUserName = sessionStorage.getItem('user_full_name');
       const localUserName = localStorage.getItem('cremation_user_name');
 
-      // Use the best available name source (session > local > prop)
-      const bestUserName = sessionUserName || localUserName || propUserName;
+      // Also check business verification cache for user data
+      let userDataName = null;
+      try {
+        const businessCache = sessionStorage.getItem('business_verification_cache');
+        if (businessCache) {
+          const cache = JSON.parse(businessCache);
+          if (cache.userData?.first_name) {
+            userDataName = `${cache.userData.first_name} ${cache.userData.last_name || ''}`.trim();
+          }
+        }
+      } catch (error) {
+        // Ignore parsing errors
+      }
+
+      // Use the best available name source (session > local > userData > prop)
+      // Only use stored names if they're not default placeholders
+      let bestUserName = propUserName;
+
+      if (userDataName && userDataName !== 'Cremation Provider') {
+        bestUserName = userDataName;
+      } else if (sessionUserName && sessionUserName !== 'Cremation Provider') {
+        bestUserName = sessionUserName;
+      } else if (localUserName && localUserName !== 'Cremation Provider') {
+        bestUserName = localUserName;
+      }
+
       setUserName(bestUserName);
 
       // Fetch fresh profile picture data in background to ensure consistency

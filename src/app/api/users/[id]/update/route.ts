@@ -43,6 +43,7 @@ export async function PUT(request: NextRequest) {
     const {
       firstName,
       lastName,
+      email,
       phoneNumber,
       address,
       sex
@@ -53,6 +54,16 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({
         error: 'First name and last name are required'
       }, { status: 400 });
+    }
+
+    // Validate email format if provided
+    if (email && email.trim()) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email.trim())) {
+        return NextResponse.json({
+          error: 'Invalid email format'
+        }, { status: 400 });
+      }
     }
 
     // Format phone number if provided
@@ -73,12 +84,13 @@ export async function PUT(request: NextRequest) {
       `UPDATE users
        SET first_name = ?,
            last_name = ?,
+           email = ?,
            phone = ?,
            address = ?,
            gender = ?,
            updated_at = NOW()
        WHERE user_id = ?`,
-      [firstName, lastName, formattedPhone, address || null, sex || null, userId]
+      [firstName, lastName, email || null, formattedPhone, address || null, sex || null, userId]
     ) as any;
 
     if (updateResult.affectedRows === 0) {

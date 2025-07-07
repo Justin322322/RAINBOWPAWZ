@@ -69,6 +69,53 @@ export default function FurParentNavbar({ activePage: propActivePage, userName =
   // Get real cart item count from context
   const { itemCount } = useCart();
 
+  // Function to update profile picture from session storage or API
+  const updateProfilePictureFromStorage = useCallback(async () => {
+    const userData = sessionStorage.getItem('user_data');
+    if (userData) {
+      try {
+        const user = JSON.parse(userData);
+        const newProfilePicture = user.profile_picture || null;
+        // Only update if the profile picture actually changed
+        if (newProfilePicture !== profilePicture) {
+          setProfilePicture(newProfilePicture);
+          // Also update global state
+          globalProfilePictureState.profilePicture = newProfilePicture;
+          return; // Profile picture found in cache
+        }
+      } catch (error) {
+        console.error('Failed to parse user data:', error);
+      }
+    }
+
+    // If no profile picture in cache or session storage is empty, fetch from API
+    if (!profilePicture) {
+      try {
+        const response = await fetch(`/api/users/${userData ? JSON.parse(userData).user_id || JSON.parse(userData).id : ''}`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.profile_picture) {
+            setProfilePicture(data.profile_picture);
+            globalProfilePictureState.profilePicture = data.profile_picture;
+
+            // Update session storage with the fetched profile picture
+            if (userData) {
+              try {
+                const user = JSON.parse(userData);
+                user.profile_picture = data.profile_picture;
+                sessionStorage.setItem('user_data', JSON.stringify(user));
+              } catch (error) {
+                console.error('Failed to update user data cache:', error);
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch user profile picture:', error);
+      }
+    }
+  }, [profilePicture]);
+
   // Only initialize profile picture once globally - never reload during navigation
   useEffect(() => {
     // Only run if global state is not initialized
@@ -83,6 +130,11 @@ export default function FurParentNavbar({ activePage: propActivePage, userName =
           setProfilePicture(profilePicturePath);
           globalProfilePictureState.profilePicture = profilePicturePath;
           globalProfilePictureState.initialized = true;
+
+          // If no profile picture in cache, try to fetch from API
+          if (!profilePicturePath) {
+            updateProfilePictureFromStorage();
+          }
         } catch (error) {
           console.error('Failed to parse user data:', error);
           globalProfilePictureState.initialized = true; // Mark as initialized even on error
@@ -91,26 +143,7 @@ export default function FurParentNavbar({ activePage: propActivePage, userName =
         globalProfilePictureState.initialized = true; // Mark as initialized even if no data
       }
     }
-  }, []); // Empty dependency array ensures this only runs once
-
-  // Function to update profile picture from session storage
-  const updateProfilePictureFromStorage = useCallback(() => {
-    const userData = sessionStorage.getItem('user_data');
-    if (userData) {
-      try {
-        const user = JSON.parse(userData);
-        const newProfilePicture = user.profile_picture || null;
-        // Only update if the profile picture actually changed
-        if (newProfilePicture !== profilePicture) {
-          setProfilePicture(newProfilePicture);
-          // Also update global state
-          globalProfilePictureState.profilePicture = newProfilePicture;
-        }
-      } catch (error) {
-        console.error('Failed to parse user data:', error);
-      }
-    }
-  }, [profilePicture]);
+  }, [updateProfilePictureFromStorage]); // Include updateProfilePictureFromStorage in dependencies
 
   // Listen for profile picture updates and user data updates from other components
   useEffect(() => {

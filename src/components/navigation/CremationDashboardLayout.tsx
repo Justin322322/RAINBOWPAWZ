@@ -48,9 +48,10 @@ export default function CremationDashboardLayout({
     };
   }, [userData]);
 
-  // Get display name from user data
-  const displayName = userData?.business_name ||
-    (userData?.first_name ? `${userData.first_name} ${userData.last_name || ''}` : propUserName);
+  // Get display name from user data - prioritize user's actual name over business name
+  const displayName = userData?.first_name
+    ? `${userData.first_name} ${userData.last_name || ''}`.trim()
+    : userData?.business_name || propUserName;
 
   // Render the cremation dashboard with admin-like structure
   return (

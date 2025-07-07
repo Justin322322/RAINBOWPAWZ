@@ -6,7 +6,7 @@ import { CheckIcon } from '@heroicons/react/24/outline';
 import { Modal } from './Modal';
 import { Button } from './Button';
 
-export interface ConfirmationModalProps {
+interface ConfirmationModalProps {
   isOpen: boolean;
   onClose: () => void;
   onConfirm: () => Promise<void> | void;
@@ -138,4 +138,4 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   );
 };
 
-export default ConfirmationModal;
+

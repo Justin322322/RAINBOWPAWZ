@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
     const host = url.hostname;
     
     // Check authentication
-    const authResult = verifySecureAuth(request);
+    const authResult = await verifySecureAuth(request);
     
     // Get cookies info
     const authCookie = request.cookies.get('auth_token');

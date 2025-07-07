@@ -744,102 +744,176 @@ export default function AdminCremationCentersPage() {
             </button>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Center Details
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Owner
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Location
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Stats
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
+          <>
+            {/* Mobile Card View */}
+            <div className="block sm:hidden">
+              <div className="divide-y divide-gray-200">
+                {filteredCenters.map((center) => (
+                  <div key={center.id} className="p-4 hover:bg-gray-50">
+                    <div className="flex items-start space-x-3">
+                      <div className="flex-shrink-0 h-10 w-10 bg-[var(--primary-green)] text-white rounded-full flex items-center justify-center">
+                        <BuildingStorefrontIcon className="h-5 w-5" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center space-x-2 mb-2">
+                              <h3 className="text-sm font-medium text-gray-900 truncate">
+                                {center.name}
+                              </h3>
+                              {getStatusBadge(center.status, center.verified, center)}
+                            </div>
+                            <div className="text-xs text-gray-600 space-y-1">
+                              <div className="flex items-center">
+                                <UserCircleIcon className="h-3 w-3 mr-1 flex-shrink-0" />
+                                <span className="truncate">{center.owner}</span>
+                              </div>
+                              <div className="flex items-center">
+                                <EnvelopeIcon className="h-3 w-3 mr-1 flex-shrink-0" />
+                                <span className="truncate">{center.email}</span>
+                              </div>
+                              <div className="flex items-center">
+                                <PhoneIcon className="h-3 w-3 mr-1 flex-shrink-0" />
+                                <span className="truncate">{center.phone}</span>
+                              </div>
+                              <div className="flex items-center">
+                                <MapPinIcon className="h-3 w-3 mr-1 flex-shrink-0" />
+                                <span className="truncate">{center.address}</span>
+                              </div>
+                              <div className="text-xs text-gray-500 mt-2">
+                                {center.activeServices} services • {center.totalBookings} bookings
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex flex-col space-y-1 ml-2">
+                            <button
+                              onClick={() => handleViewDetails(center)}
+                              className="text-[var(--primary-green)] hover:text-[var(--primary-green-hover)] text-xs font-medium"
+                            >
+                              View
+                            </button>
+                            {center.status === 'active' ? (
+                              <button
+                                onClick={() => handleRestrictCenter(center)}
+                                className="text-red-600 hover:text-red-700 text-xs font-medium"
+                              >
+                                Restrict
+                              </button>
+                            ) : center.status === 'restricted' ? (
+                              <button
+                                onClick={() => handleUnrestrictCenter(center)}
+                                className="text-green-600 hover:text-green-700 text-xs font-medium"
+                              >
+                                Restore
+                              </button>
+                            ) : null}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Desktop Table View */}
+            <div className="hidden sm:block overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th scope="col" className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Center Details
+                    </th>
+                    <th scope="col" className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Owner
+                    </th>
+                    <th scope="col" className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Location
+                    </th>
+                    <th scope="col" className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Stats
+                    </th>
+                    <th scope="col" className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th scope="col" className="px-4 sm:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredCenters.map((center) => (
                   <tr key={center.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="flex-shrink-0 h-10 w-10 bg-[var(--primary-green)] text-white rounded-full flex items-center justify-center">
-                          <BuildingStorefrontIcon className="h-6 w-6" />
+                      <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <div className="flex-shrink-0 h-10 w-10 bg-[var(--primary-green)] text-white rounded-full flex items-center justify-center">
+                            <BuildingStorefrontIcon className="h-6 w-6" />
+                          </div>
+                          <div className="ml-4 min-w-0">
+                            <div className="text-sm font-medium text-gray-900 truncate">{center.name}</div>
+                            <div className="text-sm text-gray-500">ID: {center.id}</div>
+                          </div>
                         </div>
-                        <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">{center.name}</div>
-                          <div className="text-sm text-gray-500">ID: {center.id}</div>
+                      </td>
+                      <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900 truncate">{center.owner}</div>
+                        <div className="text-sm text-gray-500 truncate">{center.email}</div>
+                      </td>
+                      <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900 truncate">{center.address}</div>
+                        <div className="text-sm text-gray-500 truncate">{center.phone}</div>
+                      </td>
+                      <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">{center.activeServices} services</div>
+                        <div className="text-sm text-gray-500">{center.totalBookings} bookings</div>
+                      </td>
+                      <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                        {getStatusBadge(center.status, center.verified, center)}
+                      </td>
+                      <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <div className="flex items-center justify-end space-x-2 sm:space-x-4">
+                          <button
+                            onClick={() => handleViewDetails(center)}
+                            className="text-[var(--primary-green)] hover:text-[var(--primary-green)] hover:underline"
+                          >
+                            View
+                          </button>
+
+                          {/* Restrict/Unrestrict Button */}
+                          {center.application_status !== 'restricted' &&
+                            center.verification_status !== 'restricted' &&
+                            center.status !== 'restricted' ? (
+                            <button
+                              onClick={() => openRestrictModal(center)}
+                              disabled={isProcessing}
+                              className="text-red-600 hover:text-red-900 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              <span className="hidden sm:inline">{isProcessing ? 'Processing...' : 'Restrict'}</span>
+                              <span className="sm:hidden">Restrict</span>
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => openUnrestrictModal(center)}
+                              disabled={isProcessing}
+                              className="text-green-600 hover:text-green-900 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              <span className="hidden sm:inline">{isProcessing ? 'Processing...' : 'Unrestrict'}</span>
+                              <span className="sm:hidden">Restore</span>
+                            </button>
+                          )}
                         </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{center.owner}</div>
-                      <div className="text-sm text-gray-500">{center.email}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{center.address}</div>
-                      <div className="text-sm text-gray-500">{center.phone}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{center.activeServices} services</div>
-                      <div className="text-sm text-gray-500">{center.totalBookings} bookings</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {getStatusBadge(center.status, center.verified, center)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="flex items-center justify-end space-x-4">
-                        <button
-                          onClick={() => handleViewDetails(center)}
-                          className="text-[var(--primary-green)] hover:text-[var(--primary-green)] hover:underline"
-                        >
-                          View
-                        </button>
-
-
-
-                        {/* Restrict/Unrestrict Button */}
-                        {center.application_status !== 'restricted' &&
-                          center.verification_status !== 'restricted' &&
-                          center.status !== 'restricted' ? (
-                          <button
-                            onClick={() => openRestrictModal(center)}
-                            disabled={isProcessing}
-                            className="text-red-600 hover:text-red-900 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            {isProcessing ? 'Processing...' : 'Restrict'}
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => openUnrestrictModal(center)}
-                            disabled={isProcessing}
-                            className="text-green-600 hover:text-green-900 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            {isProcessing ? 'Processing...' : 'Unrestrict'}
-                          </button>
-                        )}
-                      </div>
-                    </td>
+                      </td>
                   </tr>
                 ))}
-              </tbody>
-            </table>
-            {filteredCenters.length === 0 && (
-              <div className="px-6 py-8 text-center">
-                <p className="text-gray-500 text-sm">No cremation centers match your search criteria.</p>
-              </div>
-            )}
-          </div>
+                </tbody>
+              </table>
+              {filteredCenters.length === 0 && (
+                <div className="px-6 py-8 text-center">
+                  <p className="text-gray-500 text-sm">No cremation centers match your search criteria.</p>
+                </div>
+              )}
+            </div>
+          </>
         )}
       </div>
 

@@ -17,7 +17,7 @@ export async function PUT(request: NextRequest) {
     }
 
     // Verify admin authentication using secure auth
-    const authUser = verifySecureAuth(request);
+    const authUser = await verifySecureAuth(request);
     if (!authUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }

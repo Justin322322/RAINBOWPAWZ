@@ -2,10 +2,10 @@
 
 import React from 'react';
 import { motion, Easing } from 'framer-motion';
-import Spinner from '@/components/ui/Spinner';
+import { Spinner } from '@/components/ui/Spinner';
 import { cn } from '@/utils/classNames';
 
-export interface SectionLoaderProps {
+interface SectionLoaderProps {
   message?: string;
   className?: string;
   spinnerSize?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
@@ -70,4 +70,4 @@ export const SectionLoader: React.FC<SectionLoaderProps> = ({
   );
 };
 
-export default SectionLoader;
+

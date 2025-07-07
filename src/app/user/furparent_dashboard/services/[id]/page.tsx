@@ -18,7 +18,12 @@ import {
 import FurParentPageSkeleton from '@/components/ui/FurParentPageSkeleton';
 import { handleImageError } from '@/utils/imageUtils';
 import ReviewsList from '@/components/reviews/ReviewsList';
-import { LocationData } from '@/utils/geolocation';
+// LocationData type removed with geolocation utils
+type LocationData = {
+  address: string;
+  coordinates?: [number, number];
+  source: 'profile' | 'default' | 'geolocation';
+};
 
 interface ServiceDetailPageProps {
   userData?: any;

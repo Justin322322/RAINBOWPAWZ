@@ -3,7 +3,7 @@
 import React from 'react';
 import { cn } from '@/utils/classNames';
 
-export interface SkeletonProps {
+interface SkeletonProps {
   className?: string;
   width?: string;
   height?: string;
@@ -61,7 +61,7 @@ export const Skeleton: React.FC<SkeletonProps> = React.memo(({
 
 Skeleton.displayName = 'Skeleton';
 
-export interface SkeletonTextProps extends SkeletonProps {
+interface SkeletonTextProps extends SkeletonProps {
   lines?: number;
   spacing?: 'tight' | 'normal' | 'loose';
   lastLineWidth?: 'full' | '3/4' | '2/3' | '1/2' | '1/3' | '1/4';
@@ -109,7 +109,7 @@ export const SkeletonText: React.FC<SkeletonTextProps> = React.memo(({
 
 SkeletonText.displayName = 'SkeletonText';
 
-export interface SkeletonCardProps {
+interface SkeletonCardProps {
   className?: string;
   animate?: boolean;
   withImage?: boolean;
@@ -210,4 +210,4 @@ const SkeletonLoader = {
   SkeletonCard,
 };
 
-export default SkeletonLoader;
+// Default export removed - not used

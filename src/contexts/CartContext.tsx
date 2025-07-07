@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
 // Define the cart item type
-export interface CartItem {
+interface CartItem {
   id: string;
   packageId: number;
   providerId: number;

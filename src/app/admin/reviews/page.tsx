@@ -16,7 +16,7 @@ import withAdminAuth from '@/components/withAdminAuth';
 import { useToast } from '@/context/ToastContext';
 import StarRating from '@/components/ui/StarRating';
 import Modal from '@/components/Modal';
-import SectionLoader from '@/components/ui/SectionLoader';
+import { SectionLoader } from '@/components/ui/SectionLoader';
 
 interface Review {
   id: number;

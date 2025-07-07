@@ -1,7 +1,7 @@
 import { query } from '@/lib/db';
 import { createNotification } from '@/utils/notificationService';
 
-export interface UserNotificationData {
+interface UserNotificationData {
   userId: number;
   type: string;
   title: string;

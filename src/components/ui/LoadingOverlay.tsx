@@ -2,11 +2,11 @@
 
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import Spinner from '@/components/ui/Spinner';
+import { Spinner } from '@/components/ui/Spinner';
 import { cn } from '@/utils/classNames';
 import { useLoading } from '@/contexts/LoadingContext';
 
-export interface LoadingOverlayProps {
+interface LoadingOverlayProps {
   isLoading?: boolean;
   message?: string;
   className?: string;
@@ -69,4 +69,4 @@ export const LoadingOverlay: React.FC<LoadingOverlayProps> = ({
   );
 };
 
-export default LoadingOverlay;
+

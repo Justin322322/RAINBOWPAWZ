@@ -24,14 +24,14 @@ export type BookingNotificationType =
   | 'reminder_1h';
 
 // Payment notification types
-export type PaymentNotificationType =
+type PaymentNotificationType =
   | 'payment_pending'
   | 'payment_confirmed'
   | 'payment_failed'
   | 'payment_refunded';
 
 // System notification types
-export type SystemNotificationType =
+type SystemNotificationType =
   | 'system_maintenance'
   | 'service_update'
   | 'policy_update';

@@ -35,7 +35,7 @@ const alertVariants = cva(
   }
 );
 
-export interface AlertProps
+interface AlertProps
   extends React.HTMLAttributes<HTMLDivElement>,
     VariantProps<typeof alertVariants> {
   title?: string;
@@ -122,4 +122,4 @@ const Alert = forwardRef<HTMLDivElement, AlertProps>(
 
 Alert.displayName = "Alert";
 
-export { Alert, alertVariants };
+export { Alert };

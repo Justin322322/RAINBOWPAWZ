@@ -382,7 +382,7 @@ export default function AdminServicesPage() {
       </AnimatePresence>
 
       {/* Header section */}
-      <div className="mb-8 bg-white rounded-xl shadow-sm p-6">
+      <div className="mb-8 bg-white rounded-xl shadow-md border border-gray-100 p-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
           <div>
             <h1 className="text-2xl font-semibold text-gray-800">Active Services</h1>

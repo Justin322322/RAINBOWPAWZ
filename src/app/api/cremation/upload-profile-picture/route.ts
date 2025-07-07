@@ -45,7 +45,7 @@ async function saveProfilePicture(file: File, userId: string): Promise<string> {
 export async function POST(request: NextRequest) {
   try {
     // Use secure authentication
-    const user = verifySecureAuth(request);
+    const user = await verifySecureAuth(request);
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -134,3 +134,4 @@ export async function POST(request: NextRequest) {
     }, { status: 500 });
   }
 }
+

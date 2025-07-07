@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useToast } from '@/context/ToastContext';
 import { PackageData } from '@/types/packages';
 
-export interface UsePackagesProps {
+interface UsePackagesProps {
   userData?: any;
 }
 

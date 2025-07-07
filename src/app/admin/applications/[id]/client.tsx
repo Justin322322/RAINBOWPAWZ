@@ -18,7 +18,7 @@ import withAdminAuth from '@/components/withAdminAuth';
 import ConfirmationModal from '@/components/ConfirmationModal';
 import DeclineModal from '@/components/DeclineModal';
 import DocumentViewerModal from '@/components/modals/DocumentViewerModal';
-import SectionLoader from '@/components/ui/SectionLoader';
+import { SectionLoader } from '@/components/ui/SectionLoader';
 
 interface ApplicationDetailContentProps {
   id: string;
@@ -423,7 +423,7 @@ function ApplicationDetailContent({ id }: ApplicationDetailContentProps) {
 
     if (error) {
       return (
-        <div className="bg-white rounded-xl shadow-sm p-6 text-center">
+        <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 text-center">
           <div className="mx-auto h-12 w-12 text-red-500 flex items-center justify-center">
             <ExclamationTriangleIcon className="h-10 w-10" />
           </div>
@@ -450,7 +450,7 @@ function ApplicationDetailContent({ id }: ApplicationDetailContentProps) {
 
     if (!application) {
       return (
-        <div className="bg-white rounded-xl shadow-sm p-6 text-center">
+        <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 text-center">
           <ExclamationTriangleIcon className="mx-auto h-12 w-12 text-yellow-400" />
           <h3 className="mt-2 text-lg font-medium text-gray-900">Application Not Found</h3>
           <p className="mt-1 text-sm text-gray-500">
@@ -473,7 +473,7 @@ function ApplicationDetailContent({ id }: ApplicationDetailContentProps) {
         {/* Left Column - Application Details */}
         <div className="lg:col-span-2 space-y-6">
           {/* Business Information */}
-          <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+          <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-200">
               <h2 className="text-lg font-medium text-gray-800">Business Information</h2>
             </div>
@@ -515,7 +515,7 @@ function ApplicationDetailContent({ id }: ApplicationDetailContentProps) {
           </div>
 
           {/* Contact Information */}
-          <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+          <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-200">
               <h2 className="text-lg font-medium text-gray-800">Contact Information</h2>
             </div>
@@ -544,7 +544,7 @@ function ApplicationDetailContent({ id }: ApplicationDetailContentProps) {
           </div>
 
           {/* Documents */}
-          <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+          <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-200">
               <h2 className="text-lg font-medium text-gray-800">Submitted Documents</h2>
             </div>
@@ -578,7 +578,7 @@ function ApplicationDetailContent({ id }: ApplicationDetailContentProps) {
         {/* Right Column - Status and Actions */}
         <div className="space-y-6">
           {/* Application Status */}
-          <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+          <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-200">
               <h2 className="text-lg font-medium text-gray-800">Application Status</h2>
             </div>
@@ -642,7 +642,7 @@ function ApplicationDetailContent({ id }: ApplicationDetailContentProps) {
           </div>
 
           {/* Actions */}
-          <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+          <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-200">
               <h2 className="text-lg font-medium text-gray-800">Actions</h2>
             </div>

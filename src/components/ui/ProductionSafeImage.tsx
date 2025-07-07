@@ -77,4 +77,4 @@ export const ProductionSafeImage: React.FC<ProductionSafeImageProps> = ({
   );
 };
 
-export default ProductionSafeImage;
+

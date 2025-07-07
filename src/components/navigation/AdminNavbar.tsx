@@ -55,18 +55,50 @@ export default function AdminNavbar({ activePage: propActivePage, userName = 'Ad
     return null;
   });
 
-  // Function to update profile picture from session storage
-  const updateProfilePictureFromStorage = () => {
+  // Function to update profile picture from session storage or API
+  const updateProfilePictureFromStorage = async () => {
     const adminData = sessionStorage.getItem('admin_data');
     if (adminData) {
       try {
         const admin = JSON.parse(adminData);
-        setProfilePicture(admin.profile_picture || null);
+        if (admin.profile_picture) {
+          setProfilePicture(admin.profile_picture);
+          return;
+        }
       } catch (error) {
         console.error('Failed to parse admin data:', error);
       }
     }
+
+    // If no profile picture in cache, fetch from API
+    try {
+      const response = await fetch('/api/admin/profile');
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.profile?.profile_picture) {
+          setProfilePicture(data.profile.profile_picture);
+
+          // Update session storage with the profile picture
+          if (adminData) {
+            try {
+              const admin = JSON.parse(adminData);
+              admin.profile_picture = data.profile.profile_picture;
+              sessionStorage.setItem('admin_data', JSON.stringify(admin));
+            } catch (error) {
+              console.error('Failed to update admin data cache:', error);
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch admin profile picture:', error);
+    }
   };
+
+  // Initial profile picture fetch
+  useEffect(() => {
+    updateProfilePictureFromStorage();
+  }, []);
 
   // Listen for profile picture updates from other components
   useEffect(() => {

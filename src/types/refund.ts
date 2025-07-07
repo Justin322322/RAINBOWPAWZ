@@ -23,7 +23,7 @@ export interface RefundRequest {
   notes?: string;
 }
 
-export interface RefundResponse {
+interface RefundResponse {
   success: boolean;
   refund?: Refund;
   message?: string;
@@ -49,7 +49,7 @@ export interface PayMongoRefundData {
   notes?: string;
 }
 
-export interface PayMongoRefundResponse {
+interface PayMongoRefundResponse {
   id: string;
   type: string;
   attributes: {
@@ -85,5 +85,5 @@ export const REFUND_STATUS = {
   CANCELLED: 'cancelled'
 } as const;
 
-export type RefundReason = typeof REFUND_REASONS[keyof typeof REFUND_REASONS];
-export type RefundStatus = typeof REFUND_STATUS[keyof typeof REFUND_STATUS];
+type RefundReason = typeof REFUND_REASONS[keyof typeof REFUND_REASONS];
+type RefundStatus = typeof REFUND_STATUS[keyof typeof REFUND_STATUS];

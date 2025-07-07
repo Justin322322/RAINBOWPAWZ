@@ -157,47 +157,4 @@ export const useLoading = (): LoadingContextType => {
   return context;
 };
 
-// Enhanced utility hook for section-specific loading with conflict prevention
-export const useSectionLoading = (sectionId: string): {
-  isSectionLoading: boolean;
-  startSectionLoading: (message?: string, priority?: 'low' | 'medium' | 'high') => void;
-  stopSectionLoading: () => void;
-  hasConflict: boolean;
-} => {
-  const { loadingSection, setLoadingSection, setLoadingMessage, activeSections } = useLoading();
 
-  const isSectionLoading = loadingSection === sectionId;
-  const hasConflict = activeSections.size > 1 && activeSections.has(sectionId);
-
-  const startSectionLoading = useCallback(
-    (message?: string, priority: 'low' | 'medium' | 'high' = 'medium') => {
-      // Check for conflicts and resolve based on priority
-      const currentSection = activeSections.get(sectionId);
-      const shouldOverride = !currentSection ||
-        priority === 'high' ||
-        (priority === 'medium' && currentSection.priority === 'low');
-
-      if (shouldOverride) {
-        setLoadingSection(sectionId);
-        if (message) {
-          setLoadingMessage(message);
-        }
-      }
-    },
-    [sectionId, setLoadingSection, setLoadingMessage, activeSections]
-  );
-
-  const stopSectionLoading = useCallback(() => {
-    if (loadingSection === sectionId) {
-      setLoadingSection(null);
-      setLoadingMessage(null);
-    }
-  }, [loadingSection, sectionId, setLoadingSection, setLoadingMessage]);
-
-  return {
-    isSectionLoading,
-    startSectionLoading,
-    stopSectionLoading,
-    hasConflict,
-  };
-};

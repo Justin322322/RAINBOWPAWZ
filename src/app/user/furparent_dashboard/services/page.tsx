@@ -10,9 +10,14 @@ import {
   CalendarIcon
 } from '@heroicons/react/24/outline';
 import dynamic from 'next/dynamic';
-import SectionLoader from '@/components/ui/SectionLoader';
+import { SectionLoader } from '@/components/ui/SectionLoader';
 import { motion } from 'framer-motion';
-import { geocodeAddress, LocationData } from '@/utils/geolocation';
+// Geolocation utils removed
+type LocationData = {
+  address: string;
+  coordinates?: [number, number];
+  source: 'profile' | 'default' | 'geolocation';
+};
 import { cacheManager } from '@/utils/cache';
 
 // Import the map component with dynamic loading and standardized loading indicator
@@ -74,11 +79,9 @@ function ServicesPage({ userData }: ServicesPageProps) {
 
         if (userDataToUse?.address && userDataToUse.address.trim() !== '') {
           try {
-            // Geocode the user's profile address to get coordinates
-            const geocodedLocation = await geocodeAddress(userDataToUse.address);
+            // Geocoding functionality removed - use address without coordinates
             location = {
               address: userDataToUse.address,
-              coordinates: geocodedLocation.coordinates,
               source: 'profile' as const
             };
           } catch (error) {

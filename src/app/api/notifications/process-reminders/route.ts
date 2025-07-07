@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthTokenFromRequest } from '@/utils/auth';
-import { triggerReminderProcessing, getReminderStats } from '@/utils/reminderService';
 import { createStandardErrorResponse, createStandardSuccessResponse } from '@/utils/rateLimitUtils';
 
 /**
@@ -33,13 +32,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Process reminders
-    const results = await triggerReminderProcessing();
+    // Process reminders - functionality removed
+    const results = { processed: 0, errors: 0 };
 
     return NextResponse.json(
       createStandardSuccessResponse({
         ...results,
-        message: 'Reminder processing completed successfully'
+        message: 'Reminder processing service is disabled'
       })
     );
   } catch (error) {
@@ -73,13 +72,13 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get reminder statistics
-    const stats = await getReminderStats();
+    // Get reminder statistics - functionality removed
+    const stats = { total: 0, pending: 0, sent: 0 };
 
     return NextResponse.json(
       createStandardSuccessResponse({
         stats,
-        message: 'Reminder statistics retrieved successfully'
+        message: 'Reminder statistics service is disabled'
       })
     );
   } catch (error) {

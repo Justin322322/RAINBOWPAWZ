@@ -1,4 +1,4 @@
-export interface AddOn {
+interface AddOn {
   name: string;
   price: number | null;
 }
@@ -18,7 +18,7 @@ export interface PackageData {
   isActive: boolean;
 }
 
-export interface PackageFormData {
+interface PackageFormData {
   name: string;
   description: string;
   category: string;

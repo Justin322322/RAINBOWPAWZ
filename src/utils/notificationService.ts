@@ -93,7 +93,7 @@ const baseEmailTemplate = (content: string) => `
 /**
  * Interface for creating a new notification
  */
-export interface CreateNotificationParams {
+interface CreateNotificationParams {
   userId: number;
   title: string;
   message: string;
@@ -237,21 +237,7 @@ This is an automated message, please do not reply to this email.
   `.trim();
 }
 
-/**
- * Get unread notification count for a user
- */
-export async function getUnreadNotificationCount(userId: number): Promise<number> {
-  try {
-    const result = await query(
-      'SELECT COUNT(*) as count FROM notifications WHERE user_id = ? AND is_read = 0',
-      [userId]
-    ) as any[];
 
-    return result[0].count || 0;
-  } catch {
-    return 0;
-  }
-}
 
 /**
  * Helper function to ensure the notifications table exists

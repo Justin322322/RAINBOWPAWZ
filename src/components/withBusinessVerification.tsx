@@ -3,14 +3,9 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 // import { fastAuthCheck } from '@/utils/auth';
-import {
-  getCachedBusinessVerification,
-  setCachedBusinessVerification,
-  clearBusinessVerificationCache
-} from '@/utils/businessVerificationCache';
+// Business verification cache functionality removed
 
-// Export the clear function for use in other components
-export { clearBusinessVerificationCache };
+// clearBusinessVerificationCache function removed - not used
 
 // Global state to cache business verification like withAdminAuth does
 let globalBusinessAuthState = {
@@ -57,17 +52,27 @@ const withBusinessVerification = <P extends object>(
       const checkBusinessVerification = async () => {
         try {
           // Check cache first
-          const cachedVerification = getCachedBusinessVerification();
-          if (cachedVerification && cachedVerification.verified && cachedVerification.userData) {
-            setUserData(cachedVerification.userData);
-            setIsAuthenticated(true);
-            // Cache in global state like admin
-            globalBusinessAuthState = {
-              verified: true,
-              userData: cachedVerification.userData
-            };
-            setIsLoading(false);
-            return;
+          try {
+            const businessCache = sessionStorage.getItem('business_verification_cache');
+            if (businessCache) {
+              const cache = JSON.parse(businessCache);
+              if (cache.verified && cache.userData && cache.timestamp) {
+                // Use cached data if it's less than 5 minutes old
+                const cacheAge = Date.now() - cache.timestamp;
+                if (cacheAge < 5 * 60 * 1000) { // 5 minutes
+                  setUserData(cache.userData);
+                  setIsAuthenticated(true);
+                  globalBusinessAuthState = {
+                    verified: true,
+                    userData: cache.userData
+                  };
+                  setIsLoading(false);
+                  return;
+                }
+              }
+            }
+          } catch (cacheError) {
+            console.warn('Failed to read business verification cache:', cacheError);
           }
 
           // Skip client-side auth check and go directly to API
@@ -95,7 +100,7 @@ const withBusinessVerification = <P extends object>(
             }
             
             // Clear any stale auth data before redirecting
-            clearBusinessVerificationCache();
+            // Cache clearing removed
             globalBusinessAuthState = { verified: false, userData: null };
             
             // Handle different error types
@@ -127,7 +132,7 @@ const withBusinessVerification = <P extends object>(
             if (process.env.NODE_ENV === 'development') {
             }
             // Clear any stale auth data before redirecting
-            clearBusinessVerificationCache();
+            // Cache clearing removed
             globalBusinessAuthState = { verified: false, userData: null };
             router.push('/');
             return;
@@ -150,7 +155,7 @@ const withBusinessVerification = <P extends object>(
             if (process.env.NODE_ENV === 'development') {
             }
             // Clear any stale auth data before redirecting
-            clearBusinessVerificationCache();
+            // Cache clearing removed
             globalBusinessAuthState = { verified: false, userData: null };
             router.push('/');
             return;
@@ -182,8 +187,23 @@ const withBusinessVerification = <P extends object>(
             setUserData(completeUserData);
             setIsAuthenticated(true);
 
-            // Cache the verification result
-            setCachedBusinessVerification(completeUserData, true);
+            // Cache the verification result in session storage
+            try {
+              sessionStorage.setItem('business_verification_cache', JSON.stringify({
+                verified: true,
+                userData: completeUserData,
+                timestamp: Date.now()
+              }));
+
+              // Also update user_data for compatibility
+              sessionStorage.setItem('user_data', JSON.stringify(completeUserData));
+
+              // Store user full name for navbar
+              const fullName = `${completeUserData.first_name} ${completeUserData.last_name}`.trim();
+              sessionStorage.setItem('user_full_name', fullName);
+            } catch (error) {
+              console.error('Failed to cache business verification:', error);
+            }
 
             // Cache in global state like admin
             globalBusinessAuthState = {
@@ -216,7 +236,7 @@ const withBusinessVerification = <P extends object>(
           // Only show errors and redirect if not in logout scenario
           if (!isLogoutScenario) {
             // Clear any stale auth data before redirecting
-            clearBusinessVerificationCache();
+            // Cache clearing removed
             globalBusinessAuthState = { verified: false, userData: null };
             router.push('/');
           }

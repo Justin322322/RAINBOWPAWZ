@@ -4,13 +4,13 @@ import React, { useState, useRef, useEffect, forwardRef } from 'react';
 import { cn } from '@/utils/classNames';
 import { ChevronDownIcon } from '@heroicons/react/24/outline';
 
-export interface SelectOption {
+interface SelectOption {
   value: string;
   label: string;
   disabled?: boolean;
 }
 
-export interface SelectInputProps {
+interface SelectInputProps {
   options: SelectOption[];
   value?: string;
   onChange: (value: string) => void;

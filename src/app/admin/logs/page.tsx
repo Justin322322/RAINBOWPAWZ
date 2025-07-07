@@ -17,8 +17,9 @@ import {
 import AdminDashboardLayout from '@/components/navigation/AdminDashboardLayout';
 import withAdminAuth from '@/components/withAdminAuth';
 import { useToast } from '@/context/ToastContext';
-import SectionLoader from '@/components/ui/SectionLoader';
+import { SectionLoader } from '@/components/ui/SectionLoader';
 import Modal from '@/components/Modal';
+import Select from '@/components/ui/Select';
 
 interface AdminLog {
   id: number;
@@ -255,16 +256,19 @@ function AdminLogsPage({ adminData }: { adminData: any }) {
     <AdminDashboardLayout activePage="logs" userName={userName}>
       <div className="space-y-6">
         {/* Header */}
-        <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
-            <div>
-              <h1 className="text-2xl font-semibold text-gray-800">Activity Monitor</h1>
-              <p className="text-gray-600 mt-1">
-                Track admin activities and business operations - {totalLogs} {totalLogs === 1 ? 'activity' : 'activities'} recorded
+        <div className="bg-white rounded-xl shadow-md border border-gray-100 p-4 sm:p-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
+            <div className="min-w-0 flex-1">
+              <h1 className="text-xl sm:text-2xl font-semibold text-gray-800">Activity Monitor</h1>
+              <p className="text-gray-600 mt-1 text-sm sm:text-base">
+                Track admin activities and business operations
+              </p>
+              <p className="text-xs sm:text-sm text-gray-500 mt-1">
+                {totalLogs} {totalLogs === 1 ? 'activity' : 'activities'} recorded
               </p>
             </div>
-            <div className="flex items-center space-x-3">
-              <label className="flex items-center space-x-2">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-3">
+              <label className="flex items-center justify-center sm:justify-start space-x-2 py-2 sm:py-0">
                 <input
                   type="checkbox"
                   checked={autoRefresh}
@@ -275,7 +279,7 @@ function AdminLogsPage({ adminData }: { adminData: any }) {
               </label>
               <button
                 onClick={() => fetchLogs(currentPage)}
-                className="px-4 py-2 bg-[var(--primary-green)] text-white rounded-lg hover:bg-[var(--primary-green-hover)] transition-colors flex items-center justify-center"
+                className="px-4 py-2 bg-[var(--primary-green)] text-white rounded-lg hover:bg-[var(--primary-green-hover)] transition-colors flex items-center justify-center text-sm font-medium"
                 disabled={loading}
               >
                 <ArrowPathIcon className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
@@ -286,74 +290,86 @@ function AdminLogsPage({ adminData }: { adminData: any }) {
         </div>
 
         {/* Filters */}
-        <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6">
+        <div className="bg-white rounded-xl shadow-md border border-gray-100 p-4 sm:p-6">
           <div className="flex items-center mb-4">
             <FunnelIcon className="h-5 w-5 text-gray-500 mr-2" />
             <h3 className="text-lg font-medium text-gray-800">Filters</h3>
           </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4">
             {/* Search */}
-            <div className="relative">
+            <div className="relative sm:col-span-2 lg:col-span-1">
               <MagnifyingGlassIcon className="h-4 w-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
               <input
                 type="text"
                 placeholder="Search logs..."
                 value={filters.search}
                 onChange={(e) => handleFilterChange('search', e.target.value)}
-                className="pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--primary-green)] focus:border-transparent w-full"
+                className="pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--primary-green)] focus:border-transparent w-full text-sm"
               />
             </div>
 
             {/* Action Filter */}
-            <select
+            <Select
+              options={[
+                { label: 'All Activities', value: '' },
+                { label: 'Approvals', value: 'approve' },
+                { label: 'Rejections', value: 'reject' },
+                { label: 'Restrictions', value: 'restrict' },
+                { label: 'Restorations', value: 'restore' },
+                { label: 'Admin Logins', value: 'login' },
+                { label: 'Refund Actions', value: 'refund' },
+              ]}
               value={filters.action}
-              onChange={(e) => handleFilterChange('action', e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--primary-green)] focus:border-transparent"
-            >
-              <option value="">All Activities</option>
-              <option value="approve">Approvals</option>
-              <option value="reject">Rejections</option>
-              <option value="restrict">Restrictions</option>
-              <option value="restore">Restorations</option>
-              <option value="login">Admin Logins</option>
-              <option value="refund">Refund Actions</option>
-            </select>
+              onChange={(value) => handleFilterChange('action', value)}
+              placeholder="All Activities"
+              className="text-sm"
+            />
 
             {/* Entity Type Filter */}
-            <select
+            <Select
+              options={[
+                { label: 'All Types', value: '' },
+                { label: 'Cremation Centers', value: 'service_providers' },
+                { label: 'Applications', value: 'application' },
+                { label: 'Bookings', value: 'booking' },
+                { label: 'Reviews', value: 'review' },
+                { label: 'Refunds', value: 'refund' },
+              ]}
               value={filters.entity_type}
-              onChange={(e) => handleFilterChange('entity_type', e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--primary-green)] focus:border-transparent"
-            >
-              <option value="">All Types</option>
-              <option value="service_providers">Cremation Centers</option>
-              <option value="application">Applications</option>
-              <option value="booking">Bookings</option>
-              <option value="review">Reviews</option>
-              <option value="refund">Refunds</option>
-            </select>
+              onChange={(value) => handleFilterChange('entity_type', value)}
+              placeholder="All Types"
+              className="text-sm"
+            />
 
             {/* Date From */}
-            <input
-              type="date"
-              value={filters.date_from}
-              onChange={(e) => handleFilterChange('date_from', e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--primary-green)] focus:border-transparent"
-            />
+            <div className="flex flex-col">
+              <label className="text-xs text-gray-600 mb-1 sm:hidden">From Date</label>
+              <input
+                type="date"
+                value={filters.date_from}
+                onChange={(e) => handleFilterChange('date_from', e.target.value)}
+                className="px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--primary-green)] focus:border-transparent text-sm"
+                placeholder="From date"
+              />
+            </div>
 
             {/* Date To */}
-            <input
-              type="date"
-              value={filters.date_to}
-              onChange={(e) => handleFilterChange('date_to', e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--primary-green)] focus:border-transparent"
-            />
+            <div className="flex flex-col">
+              <label className="text-xs text-gray-600 mb-1 sm:hidden">To Date</label>
+              <input
+                type="date"
+                value={filters.date_to}
+                onChange={(e) => handleFilterChange('date_to', e.target.value)}
+                className="px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--primary-green)] focus:border-transparent text-sm"
+                placeholder="To date"
+              />
+            </div>
 
             {/* Clear Filters */}
             <button
               onClick={clearFilters}
-              className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+              className="px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium sm:col-span-2 lg:col-span-1"
             >
               Clear Filters
             </button>
@@ -373,27 +389,75 @@ function AdminLogsPage({ adminData }: { adminData: any }) {
         {/* Logs Table */}
         <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden">
           {logs.length === 0 && !loading ? (
-            <div className="p-8 text-center">
+            <div className="p-6 sm:p-8 text-center">
               <DocumentTextIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">No activities found</h3>
-              <p className="text-gray-500">No admin activities match your current filters. Try adjusting your search criteria.</p>
+              <p className="text-gray-500 text-sm sm:text-base">No admin activities match your current filters. Try adjusting your search criteria.</p>
             </div>
           ) : (
             <>
-              <div className="overflow-x-auto">
+              {/* Mobile Card View */}
+              <div className="block sm:hidden">
+                <div className="divide-y divide-gray-200">
+                  {logs.map((log) => {
+                    const actionDisplay = getActionDisplay(log.action);
+                    const ActionIcon = actionDisplay.icon;
+                    const description = getActionDescription(log);
+
+                    return (
+                      <div key={log.id} className="p-4 hover:bg-gray-50">
+                        <div className="flex items-start space-x-3">
+                          <div className={`p-2 rounded-full ${actionDisplay.bg} flex-shrink-0`}>
+                            <ActionIcon className={`h-4 w-4 ${actionDisplay.color}`} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-gray-900 truncate">
+                                  {description}
+                                </p>
+                                <p className="text-xs text-gray-500 mt-1">
+                                  {actionDisplay.label}
+                                </p>
+                                <div className="flex items-center mt-2 text-xs text-gray-500">
+                                  <UserIcon className="h-3 w-3 mr-1" />
+                                  <span className="truncate">{log.admin_name || 'Unknown Admin'}</span>
+                                </div>
+                                <div className="flex items-center mt-1 text-xs text-gray-500">
+                                  <ClockIcon className="h-3 w-3 mr-1" />
+                                  <span>{format(new Date(log.created_at), 'MMM dd, yyyy h:mm a')}</span>
+                                </div>
+                              </div>
+                              <button
+                                onClick={() => viewLogDetails(log)}
+                                className="ml-2 text-[var(--primary-green)] hover:text-[var(--primary-green-hover)] flex-shrink-0"
+                              >
+                                <EyeIcon className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Desktop Table View */}
+              <div className="hidden sm:block overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Activity
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Performed By
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Date & Time
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Details
                       </th>
                     </tr>
@@ -406,13 +470,13 @@ function AdminLogsPage({ adminData }: { adminData: any }) {
 
                       return (
                         <tr key={log.id} className="hover:bg-gray-50">
-                          <td className="px-6 py-4">
+                          <td className="px-4 sm:px-6 py-4">
                             <div className="flex items-center">
                               <div className={`p-2 rounded-full ${actionDisplay.bg} mr-3 flex-shrink-0`}>
                                 <ActionIcon className={`h-4 w-4 ${actionDisplay.color}`} />
                               </div>
-                              <div>
-                                <div className="text-sm font-medium text-gray-900">
+                              <div className="min-w-0">
+                                <div className="text-sm font-medium text-gray-900 truncate">
                                   {description}
                                 </div>
                                 <div className="text-sm text-gray-500">
@@ -421,22 +485,22 @@ function AdminLogsPage({ adminData }: { adminData: any }) {
                               </div>
                             </div>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="flex items-center">
-                              <UserIcon className="h-4 w-4 text-gray-400 mr-2" />
-                              <div>
-                                <div className="text-sm font-medium text-gray-900">
+                          <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center min-w-0">
+                              <UserIcon className="h-4 w-4 text-gray-400 mr-2 flex-shrink-0" />
+                              <div className="min-w-0">
+                                <div className="text-sm font-medium text-gray-900 truncate">
                                   {log.admin_name || 'Unknown Admin'}
                                 </div>
-                                <div className="text-sm text-gray-500">
+                                <div className="text-sm text-gray-500 truncate">
                                   {log.admin_username || 'unknown'}
                                 </div>
                               </div>
                             </div>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
+                          <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center">
-                              <ClockIcon className="h-4 w-4 text-gray-400 mr-2" />
+                              <ClockIcon className="h-4 w-4 text-gray-400 mr-2 flex-shrink-0" />
                               <div>
                                 <div className="text-sm text-gray-900">
                                   {format(new Date(log.created_at), 'MMM dd, yyyy')}
@@ -447,13 +511,14 @@ function AdminLogsPage({ adminData }: { adminData: any }) {
                               </div>
                             </div>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                             <button
                               onClick={() => viewLogDetails(log)}
-                              className="text-[var(--primary-green)] hover:text-[var(--primary-green-hover)] flex items-center"
+                              className="text-[var(--primary-green)] hover:text-[var(--primary-green-hover)] flex items-center justify-end"
                             >
                               <EyeIcon className="h-4 w-4 mr-1" />
-                              View Details
+                              <span className="hidden sm:inline">View Details</span>
+                              <span className="sm:hidden">View</span>
                             </button>
                           </td>
                         </tr>
@@ -470,14 +535,17 @@ function AdminLogsPage({ adminData }: { adminData: any }) {
                     <button
                       onClick={() => goToPage(currentPage - 1)}
                       disabled={currentPage === 1}
-                      className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="relative inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       Previous
                     </button>
+                    <span className="text-sm text-gray-700 flex items-center">
+                      Page {currentPage} of {totalPages}
+                    </span>
                     <button
                       onClick={() => goToPage(currentPage + 1)}
                       disabled={currentPage === totalPages}
-                      className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="relative inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       Next
                     </button>
