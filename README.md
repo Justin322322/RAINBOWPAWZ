@@ -213,7 +213,7 @@ When creating an issue, please use the appropriate template:
 
 ### Community
 - 📧 Email: rainbowpaws2025@gmail.com
-- 🐦 Facebook: [@justinmarlosibonga](https://www.facebook.com/justinmarlosibonga)
+- 🇫 Facebook: [@justinmarlosibonga](https://www.facebook.com/justinmarlosibonga)
 
 ## 🆕 Recent Updates (2025-07-07)
 
