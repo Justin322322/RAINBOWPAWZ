@@ -13,29 +13,52 @@ export default function RestrictedPage() {
     // Check if user should be on this page
     const checkStatus = async () => {
       try {
-        const response = await fetch('/api/auth/check-business-status');
-        const result = await response.json();
-
-        if (result.success) {
-          const serviceProvider = result.serviceProvider;
-
-          // If no service provider data, redirect to pending verification
-          if (!serviceProvider) {
-            router.push('/cremation/pending-verification');
-            return;
+        // Check authentication first
+        const authResponse = await fetch('/api/auth/check', {
+          method: 'GET',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache'
           }
+        });
 
-          const applicationStatus = serviceProvider.application_status ?
-                                   String(serviceProvider.application_status).toLowerCase() : null;
+        if (!authResponse.ok) {
+          router.push('/');
+          return;
+        }
 
-          // If not restricted, redirect to appropriate page
-          if (applicationStatus === 'approved') {
-            router.push('/cremation/dashboard');
-            return;
-          } else if (applicationStatus !== 'restricted') {
-            router.push('/cremation/pending-verification');
-            return;
+        const authData = await authResponse.json();
+
+        if (!authData.authenticated) {
+          router.push('/');
+          return;
+        }
+
+        // This page is for personal users only, not business users
+        if (authData.accountType !== 'user') {
+          if (authData.accountType === 'business') {
+            router.push('/cremation/restricted');
+          } else {
+            router.push('/admin/dashboard');
           }
+          return;
+        }
+
+        // Check user status
+        const userStatusResponse = await fetch('/api/auth/check-user-status');
+        if (!userStatusResponse.ok) {
+          router.push('/');
+          return;
+        }
+
+        const statusData = await userStatusResponse.json();
+        const user = statusData.user;
+
+        if (!user || user.status !== 'restricted') {
+          // Not restricted, redirect to dashboard
+          router.push('/user/furparent_dashboard');
+          return;
         }
 
         setLoading(false);
@@ -74,10 +97,10 @@ export default function RestrictedPage() {
               </div>
 
               <p className="text-gray-700 mb-2">
-                Your business account has been restricted by our administrators.
+                Your account has been restricted by our administrators.
               </p>
               <p className="text-gray-700">
-                Please contact support for more information about your account status.
+                Please review the information below or submit an appeal for review.
               </p>
             </div>
           )}
@@ -118,6 +141,13 @@ export default function RestrictedPage() {
               className="w-full px-4 py-2 bg-[var(--primary-green)] text-white rounded-lg hover:bg-[var(--primary-green-hover)] transition-all duration-300 font-medium"
             >
               Submit Appeal
+            </button>
+
+            <button
+              onClick={() => window.location.href = 'mailto:support@rainbowpaws.com'}
+              className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-300"
+            >
+              Contact Support
             </button>
 
             <button

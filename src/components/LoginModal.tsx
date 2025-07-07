@@ -94,6 +94,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onShowSignup }
       // Get user ID and account type from response
       const userId = data.user.id;
       const accountType = data.account_type;
+      const isRestricted = data.isRestricted;
       // Note: No token in response - using secure httpOnly cookies instead
       const firstName = data.user.first_name || '';
       const lastName = data.user.last_name || '';
@@ -115,10 +116,22 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onShowSignup }
 
       // Redirect to the appropriate dashboard after a delay for the animation
       setTimeout(() => {
-        const dashboardUrl = redirectToDashboard(accountType);
+        let redirectUrl;
+
+        if (isRestricted) {
+          // Redirect restricted users to their respective restricted pages
+          if (accountType === 'business') {
+            redirectUrl = '/cremation/restricted';
+          } else {
+            redirectUrl = '/restricted';
+          }
+        } else {
+          // Normal dashboard redirect for non-restricted users
+          redirectUrl = redirectToDashboard(accountType);
+        }
 
         // Use window.location.replace for a cleaner redirect
-        window.location.replace(dashboardUrl);
+        window.location.replace(redirectUrl);
       }, 1500);
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'Connection error. Please try again later.');

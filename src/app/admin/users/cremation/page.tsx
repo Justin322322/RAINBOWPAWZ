@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import AdminDashboardLayout from '@/components/navigation/AdminDashboardLayout';
+import Image from 'next/image';
 import {
   MagnifyingGlassIcon,
   FunnelIcon,
@@ -15,13 +16,46 @@ import {
   UserCircleIcon,
   CheckCircleIcon,
   XCircleIcon,
-  ExclamationTriangleIcon
+  ExclamationTriangleIcon,
+  CalendarIcon,
+  CurrencyDollarIcon,
+  ChartBarIcon
 } from '@heroicons/react/24/outline';
 import { useToast } from '@/context/ToastContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
+import { Modal } from '@/components/ui/Modal';
+import { Button } from '@/components/ui/Button';
+import {
+  ProfileCard,
+  ProfileSection,
+  ProfileField,
+  ProfileGrid,
+  ProfileFormGroup
+} from '@/components/ui/ProfileLayout';
+import { ProfileButton } from '@/components/ui/ProfileFormComponents';
+import { getProfilePictureUrl } from '@/utils/imageUtils';
 
 import { LoadingSpinner } from '@/app/admin/services/client';
+
+// CSS for border pulsing animation
+const pulsingBorderStyles = `
+  @keyframes pulse-border {
+    0%, 100% {
+      border-color: #f97316;
+      border-width: 2px;
+    }
+    50% {
+      border-color: #ea580c;
+      border-width: 3px;
+    }
+  }
+
+  .animate-pulse-border {
+    animation: pulse-border 2s ease-in-out infinite;
+    border-style: solid;
+  }
+`;
 
 // Define the type for cremation center data
 interface CremationCenter {
@@ -43,6 +77,19 @@ interface CremationCenter {
   verification_status?: string; // Optional for backward compatibility
   city?: string;
   province?: string;
+  profile_picture?: string;
+  appeals?: Appeal[];
+}
+
+interface Appeal {
+  appeal_id: number;
+  subject: string;
+  message: string;
+  status: 'pending' | 'under_review' | 'approved' | 'rejected';
+  admin_response?: string;
+  submitted_at: string;
+  reviewed_at?: string;
+  resolved_at?: string;
 }
 
 export default function AdminCremationCentersPage() {
@@ -62,10 +109,25 @@ export default function AdminCremationCentersPage() {
   const [showRestoreModal, setShowRestoreModal] = useState(false);
 
   const [centerToAction, setCenterToAction] = useState<CremationCenter | null>(null);
+  const [showAppealModal, setShowAppealModal] = useState(false);
+  const [selectedAppeal, setSelectedAppeal] = useState<Appeal | null>(null);
+  const [appealResponse, setAppealResponse] = useState('');
+  const [restrictReason, setRestrictReason] = useState('');
 
   const { showToast } = useToast();
 
-
+  // Format date for display
+  const formatDate = (dateString: string) => {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
 
   // Fetch cremation centers from the API
   useEffect(() => {
@@ -117,6 +179,18 @@ export default function AdminCremationCentersPage() {
         }
 
         // Log the data we received for debugging
+        console.log('Cremation centers data:', data.businesses);
+
+        // Check for appeals in the data
+        data.businesses.forEach((center: any) => {
+          if (center.appeals && center.appeals.length > 0) {
+            console.log(`Center ${center.name} has ${center.appeals.length} appeals:`, center.appeals);
+            const pendingAppeals = center.appeals.filter((appeal: any) => appeal.status === 'pending');
+            if (pendingAppeals.length > 0) {
+              console.log(`Center ${center.name} has ${pendingAppeals.length} pending appeals`);
+            }
+          }
+        });
 
         // Add default rating and update active services count
         const centersWithRating = data.businesses.map((center: any) => {
@@ -182,6 +256,33 @@ export default function AdminCremationCentersPage() {
     };
   }, [showToast]);
 
+  // Handle appeal notification from URL parameters
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const appealId = urlParams.get('appealId');
+      const userId = urlParams.get('userId');
+
+      if (appealId && userId && cremationCenters.length > 0) {
+        // Find the cremation center and open their details modal, then the appeal modal
+        const targetCenter = cremationCenters.find(center => center.id?.toString() === userId);
+        if (targetCenter) {
+          // Load center details and appeals
+          handleViewDetails(targetCenter).then(() => {
+            // Find the specific appeal and open the modal
+            const appeal = targetCenter.appeals?.find(a => a.appeal_id.toString() === appealId);
+            if (appeal) {
+              setSelectedAppeal(appeal);
+              setShowAppealModal(true);
+              // Clear URL parameters after opening modal
+              window.history.replaceState({}, '', window.location.pathname);
+            }
+          });
+        }
+      }
+    }
+  }, [cremationCenters]);
+
   // Filter cremation centers based on search term and status filter
   const filteredCenters = cremationCenters.filter(center => {
     const matchesSearch =
@@ -216,14 +317,69 @@ export default function AdminCremationCentersPage() {
     return matchesSearch && matchesStatus;
   });
 
-  const handleViewDetails = (center: any) => {
-    setSelectedCenter(center);
+  const handleViewDetails = async (center: any) => {
+    // Load center appeals when viewing details
+    const appeals = await loadCenterAppeals(center.id);
+    setSelectedCenter({ ...center, appeals });
     setShowDetailsModal(true);
+  };
+
+  const loadCenterAppeals = async (centerId: number | string) => {
+    try {
+      // For cremation centers, we need to find the user_id associated with the business
+      const response = await fetch(`/api/appeals?business_id=${centerId}`);
+      if (response.ok) {
+        const data = await response.json();
+        return data.appeals || [];
+      }
+    } catch (error) {
+      console.error('Error loading center appeals:', error);
+    }
+    return [];
+  };
+
+  const handleAppealAction = async (appealId: number, status: string, response?: string) => {
+    try {
+      setIsProcessing(true);
+      const apiResponse = await fetch(`/api/appeals/${appealId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          status,
+          admin_response: response
+        }),
+      });
+
+      const data = await apiResponse.json();
+
+      if (apiResponse.ok) {
+        showToast(`Appeal ${status} successfully`, 'success');
+        setShowAppealModal(false);
+        setSelectedAppeal(null);
+        setAppealResponse('');
+
+        // Refresh center details if modal is open
+        if (selectedCenter) {
+          const appeals = await loadCenterAppeals(selectedCenter.id);
+          setSelectedCenter({ ...selectedCenter, appeals });
+        }
+      } else {
+        throw new Error(data.error || `Failed to ${status} appeal`);
+      }
+    } catch (error) {
+      console.error(`Error ${status} appeal:`, error);
+      showToast(error instanceof Error ? error.message : `Failed to ${status} appeal`, 'error');
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   // Function to open the restrict modal
   const openRestrictModal = (center: CremationCenter) => {
     setCenterToAction(center);
+    setRestrictReason('');
     // Close details modal if it's open to avoid modal conflicts
     if (showDetailsModal) {
       setShowDetailsModal(false);
@@ -259,7 +415,8 @@ export default function AdminCremationCentersPage() {
         },
         body: JSON.stringify({
           businessId: center.id,
-          action: 'restrict'
+          action: 'restrict',
+          reason: restrictReason || 'Restricted by admin'
         }),
       });
 
@@ -534,6 +691,7 @@ export default function AdminCremationCentersPage() {
 
   return (
     <AdminDashboardLayout activePage="cremation" userName={userName}>
+      <style jsx>{pulsingBorderStyles}</style>
       {/* Header section */}
       <div className="mb-8 bg-white rounded-xl shadow-md border border-gray-100 p-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
@@ -748,11 +906,40 @@ export default function AdminCremationCentersPage() {
             {/* Mobile Card View */}
             <div className="block sm:hidden">
               <div className="divide-y divide-gray-200">
-                {filteredCenters.map((center) => (
-                  <div key={center.id} className="p-4 hover:bg-gray-50">
+                {filteredCenters.map((center) => {
+                  const hasPendingAppeal = center.appeals && center.appeals.some(appeal => appeal.status === 'pending');
+                  console.log(`Center ${center.name}: appeals=${center.appeals?.length || 0}, hasPendingAppeal=${hasPendingAppeal}`);
+                  return (
+                  <div
+                    key={center.id}
+                    className={`p-4 hover:bg-gray-50 transition-all duration-300 border border-gray-200 rounded-lg ${
+                      hasPendingAppeal
+                        ? 'animate-pulse-border'
+                        : ''
+                    }`}
+                  >
                     <div className="flex items-start space-x-3">
-                      <div className="flex-shrink-0 h-10 w-10 bg-[var(--primary-green)] text-white rounded-full flex items-center justify-center">
-                        <BuildingStorefrontIcon className="h-5 w-5" />
+                      <div className="flex-shrink-0 h-10 w-10 bg-[var(--primary-green)] text-white rounded-full flex items-center justify-center overflow-hidden">
+                        {center.profile_picture ? (
+                          <Image
+                            src={getProfilePictureUrl(center.profile_picture)}
+                            alt={center.name}
+                            width={40}
+                            height={40}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              // Fallback to icon if image fails to load
+                              const target = e.target as HTMLImageElement;
+                              target.style.display = 'none';
+                              const parent = target.parentElement;
+                              if (parent) {
+                                parent.innerHTML = '<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>';
+                              }
+                            }}
+                          />
+                        ) : (
+                          <BuildingStorefrontIcon className="h-5 w-5" />
+                        )}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between">
@@ -762,6 +949,11 @@ export default function AdminCremationCentersPage() {
                                 {center.name}
                               </h3>
                               {getStatusBadge(center.status, center.verified, center)}
+                              {center.appeals && center.appeals.some(appeal => appeal.status === 'pending') && (
+                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                                  Appeal Pending
+                                </span>
+                              )}
                             </div>
                             <div className="text-xs text-gray-600 space-y-1">
                               <div className="flex items-center">
@@ -812,7 +1004,8 @@ export default function AdminCremationCentersPage() {
                       </div>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
@@ -842,12 +1035,41 @@ export default function AdminCremationCentersPage() {
                   </tr>
                 </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {filteredCenters.map((center) => (
-                  <tr key={center.id} className="hover:bg-gray-50">
+                {filteredCenters.map((center) => {
+                  const hasPendingAppeal = center.appeals && center.appeals.some(appeal => appeal.status === 'pending');
+                  // console.log(`Table row - Center ${center.name}: appeals=${center.appeals?.length || 0}, hasPendingAppeal=${hasPendingAppeal}`);
+                  return (
+                  <tr
+                    key={center.id}
+                    className={`hover:bg-gray-50 transition-all duration-300 ${
+                      hasPendingAppeal
+                        ? 'animate-pulse-border'
+                        : ''
+                    }`}
+                  >
                       <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
-                          <div className="flex-shrink-0 h-10 w-10 bg-[var(--primary-green)] text-white rounded-full flex items-center justify-center">
-                            <BuildingStorefrontIcon className="h-6 w-6" />
+                          <div className="flex-shrink-0 h-10 w-10 bg-[var(--primary-green)] text-white rounded-full flex items-center justify-center overflow-hidden">
+                            {center.profile_picture ? (
+                              <Image
+                                src={getProfilePictureUrl(center.profile_picture)}
+                                alt={center.name}
+                                width={40}
+                                height={40}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  // Fallback to icon if image fails to load
+                                  const target = e.target as HTMLImageElement;
+                                  target.style.display = 'none';
+                                  const parent = target.parentElement;
+                                  if (parent) {
+                                    parent.innerHTML = '<svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>';
+                                  }
+                                }}
+                              />
+                            ) : (
+                              <BuildingStorefrontIcon className="h-6 w-6" />
+                            )}
                           </div>
                           <div className="ml-4 min-w-0">
                             <div className="text-sm font-medium text-gray-900 truncate">{center.name}</div>
@@ -868,7 +1090,14 @@ export default function AdminCremationCentersPage() {
                         <div className="text-sm text-gray-500">{center.totalBookings} bookings</div>
                       </td>
                       <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
-                        {getStatusBadge(center.status, center.verified, center)}
+                        <div className="flex items-center space-x-2">
+                          {getStatusBadge(center.status, center.verified, center)}
+                          {center.appeals && center.appeals.some(appeal => appeal.status === 'pending') && (
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                              Appeal
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex items-center justify-end space-x-2 sm:space-x-4">
@@ -904,7 +1133,8 @@ export default function AdminCremationCentersPage() {
                         </div>
                       </td>
                   </tr>
-                ))}
+                  );
+                })}
                 </tbody>
               </table>
               {filteredCenters.length === 0 && (
@@ -918,16 +1148,62 @@ export default function AdminCremationCentersPage() {
       </div>
 
       {/* Restrict Confirmation Modal */}
-      <ConfirmationModal
+      <Modal
         isOpen={showRestrictModal}
         onClose={() => setShowRestrictModal(false)}
-        onConfirm={() => centerToAction ? handleRestrictCenter(centerToAction) : Promise.resolve()}
         title="Restrict Cremation Center"
-        message={`Are you sure you want to restrict "${centerToAction?.name}"? This will prevent them from accepting new bookings.`}
-        confirmText="Restrict Access"
+        size="medium"
         variant="danger"
-        icon={<ExclamationTriangleIcon className="h-6 w-6 text-red-600" />}
-      />
+      >
+        <div className="flex items-start mb-4">
+          <div className="mr-3 flex-shrink-0">
+            <ExclamationTriangleIcon className="h-6 w-6 text-red-600" />
+          </div>
+          <div className="text-sm text-gray-600 flex-1">
+            <p className="mb-4">Are you sure you want to restrict &quot;{centerToAction?.name}&quot;? This will prevent them from accepting new bookings.</p>
+            <div>
+              <label htmlFor="restrict-reason" className="block text-sm font-medium text-gray-700 mb-2">
+                Reason for restriction (optional)
+              </label>
+              <textarea
+                id="restrict-reason"
+                value={restrictReason}
+                onChange={(e) => setRestrictReason(e.target.value)}
+                className="shadow-sm focus:ring-red-500 focus:border-red-500 block w-full sm:text-sm border-2 border-gray-400 rounded-md p-3 bg-white text-gray-900 placeholder-gray-500"
+                placeholder="Enter reason for restriction"
+                rows={3}
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-6 flex flex-col-reverse sm:grid sm:grid-cols-2 gap-3">
+          <Button
+            variant="secondary"
+            onClick={() => setShowRestrictModal(false)}
+            disabled={isProcessing}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="danger"
+            onClick={() => centerToAction ? handleRestrictCenter(centerToAction) : Promise.resolve()}
+            disabled={isProcessing}
+          >
+            {isProcessing ? (
+              <>
+                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Restricting...
+              </>
+            ) : (
+              'Restrict Access'
+            )}
+          </Button>
+        </div>
+      </Modal>
 
       {/* Unrestrict Confirmation Modal */}
       <ConfirmationModal
@@ -944,168 +1220,361 @@ export default function AdminCremationCentersPage() {
 
 
       {/* Center Details Modal */}
-      {showDetailsModal && selectedCenter && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[90] p-4">
-          <div className="bg-white rounded-xl shadow-xl border border-gray-100 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-              <h2 className="text-xl font-semibold text-gray-800">Cremation Center Details</h2>
-              <button
-                onClick={() => setShowDetailsModal(false)}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <XMarkIcon className="h-6 w-6" />
-              </button>
-            </div>
-            <div className="p-6">
-              <div className="flex flex-col space-y-6">
-                {/* Header */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <div className="h-16 w-16 bg-[var(--primary-green)] text-white rounded-full flex items-center justify-center mr-4">
-                      <BuildingStorefrontIcon className="h-10 w-10" />
-                    </div>
-                    <div>
-                      <h3 className="text-2xl font-semibold text-gray-900">{selectedCenter.name}</h3>
-                      <div className="flex items-center space-x-2 mt-1">
-                        <span className="text-gray-600">ID: {selectedCenter.id}</span>
-                        <span>•</span>
-                        <span className="flex items-center">
-                          <span className="text-gray-600 mr-1">No ratings yet</span>
-                        </span>
-                        <span>•</span>
-                        <span className="flex items-center">
-                          {selectedCenter.verification_status === 'verified' || selectedCenter.application_status === 'approved' ? (
-                            <span className="flex items-center text-green-600 text-sm">
-                              <ShieldCheckIcon className="h-4 w-4 mr-1" />
-                              Verified
-                            </span>
-                          ) : selectedCenter.verification_status === 'restricted' ? (
-                            <span className="flex items-center text-orange-600 text-sm">
-                              <ShieldExclamationIcon className="h-4 w-4 mr-1" />
-                              Restricted
-                            </span>
-                          ) : null}
-                        </span>
+      <Modal
+        isOpen={showDetailsModal}
+        onClose={() => setShowDetailsModal(false)}
+        title="Cremation Center Details"
+        size="xlarge"
+        className="max-w-6xl mx-4 sm:mx-auto"
+        contentClassName="max-h-[85vh] overflow-y-auto"
+      >
+        <div className="space-y-6">
+          {/* Header Section */}
+          <ProfileCard className="bg-gradient-to-r from-[var(--primary-green)] to-[var(--primary-green-hover)]">
+            <div className="flex flex-col space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between space-y-4 sm:space-y-0">
+                <div className="flex items-start space-x-4">
+                  <div className="bg-white/20 backdrop-blur-sm rounded-full p-3 flex-shrink-0 overflow-hidden">
+                    {selectedCenter?.profile_picture ? (
+                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full overflow-hidden bg-white">
+                        <Image
+                          src={getProfilePictureUrl(selectedCenter.profile_picture)}
+                          alt={selectedCenter.name}
+                          width={40}
+                          height={40}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            // Fallback to icon if image fails to load
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                            const parent = target.parentElement;
+                            if (parent) {
+                              parent.innerHTML = '<svg class="h-8 w-8 sm:h-10 sm:w-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>';
+                            }
+                          }}
+                        />
                       </div>
-                    </div>
+                    ) : (
+                      <BuildingStorefrontIcon className="h-8 w-8 sm:h-10 sm:w-10 text-white" />
+                    )}
                   </div>
-                  <div>
-                    {getStatusBadge(selectedCenter.status, selectedCenter.verified, selectedCenter)}
-                  </div>
-                </div>
-
-                {/* Description */}
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <p className="text-gray-700">{selectedCenter.description || 'No description provided.'}</p>
-                </div>
-
-                {/* Contact Details */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <h4 className="text-lg font-medium text-gray-900 mb-3">Owner Details</h4>
-                    <div className="bg-gray-50 p-4 rounded-lg space-y-3">
-                      <div className="flex items-start">
-                        <UserCircleIcon className="h-5 w-5 text-gray-500 mr-2 mt-0.5" />
-                        <div>
-                          <p className="text-sm font-medium text-gray-700">Owner Name</p>
-                          <p className="text-gray-900">{selectedCenter.owner}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-start">
-                        <EnvelopeIcon className="h-5 w-5 text-gray-500 mr-2 mt-0.5" />
-                        <div>
-                          <p className="text-sm font-medium text-gray-700">Email</p>
-                          <p className="text-gray-900">{selectedCenter.email}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-start">
-                        <PhoneIcon className="h-5 w-5 text-gray-500 mr-2 mt-0.5" />
-                        <div>
-                          <p className="text-sm font-medium text-gray-700">Phone</p>
-                          <p className="text-gray-900">{selectedCenter.phone}</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <h4 className="text-lg font-medium text-gray-900 mb-3">Business Details</h4>
-                    <div className="bg-gray-50 p-4 rounded-lg space-y-3">
-                      <div className="flex items-start">
-                        <MapPinIcon className="h-5 w-5 text-gray-500 mr-2 mt-0.5" />
-                        <div>
-                          <p className="text-sm font-medium text-gray-700">Address</p>
-                          <p className="text-gray-900">{selectedCenter.address}</p>
-                          {(selectedCenter.city || selectedCenter.province) && (
-                            <p className="text-gray-600 text-sm">
-                              {[selectedCenter.city, selectedCenter.province].filter(Boolean).join(', ')}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex items-start">
-                        <svg className="h-5 w-5 text-gray-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                        <div>
-                          <p className="text-sm font-medium text-gray-700">Registration Date</p>
-                          <p className="text-gray-900">{selectedCenter.registrationDate}</p>
-                        </div>
+                  <div className="text-white min-w-0 flex-1">
+                    <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold mb-2 break-words">{selectedCenter?.name}</h1>
+                    <div className="space-y-1 text-white/90 text-sm">
+                      <div>ID: {selectedCenter?.id}</div>
+                      <div>No ratings yet</div>
+                      <div className="flex items-center">
+                        {selectedCenter?.verification_status === 'verified' || selectedCenter?.application_status === 'approved' ? (
+                          <span className="flex items-center">
+                            <ShieldCheckIcon className="h-4 w-4 mr-1" />
+                            Verified
+                          </span>
+                        ) : selectedCenter?.verification_status === 'restricted' ? (
+                          <span className="flex items-center">
+                            <ShieldExclamationIcon className="h-4 w-4 mr-1" />
+                            Restricted
+                          </span>
+                        ) : null}
                       </div>
                     </div>
                   </div>
                 </div>
-
-                {/* Business Stats */}
-                <div>
-                  <h4 className="text-lg font-medium text-gray-900 mb-3">Business Performance</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                      <p className="text-sm font-medium text-gray-700">Active Services</p>
-                      <p className="text-2xl font-semibold text-[var(--primary-green)]">{selectedCenter.activeServices}</p>
-                    </div>
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                      <p className="text-sm font-medium text-gray-700">Total Bookings</p>
-                      <p className="text-2xl font-semibold text-[var(--primary-green)]">{selectedCenter.totalBookings}</p>
-                    </div>
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                      <p className="text-sm font-medium text-gray-700">Total Revenue</p>
-                      <p className="text-2xl font-semibold text-[var(--primary-green)]">{selectedCenter.revenue}</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Action Buttons */}
-                <div className="flex justify-end space-x-3 mt-8 border-t pt-6">
-                  <button
-                    onClick={() => setShowDetailsModal(false)}
-                    className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-                  >
-                    Close
-                  </button>
-                  {selectedCenter.status === 'restricted' ? (
-                    <button
-                      onClick={() => openUnrestrictModal(selectedCenter)}
-                      disabled={isProcessing}
-                      className="px-4 py-2 bg-[var(--primary-green)] text-white rounded-lg hover:bg-opacity-90 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {isProcessing ? 'Processing...' : 'Restore Access'}
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => openRestrictModal(selectedCenter)}
-                      disabled={isProcessing}
-                      className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {isProcessing ? 'Processing...' : 'Restrict Access'}
-                    </button>
-                  )}
+                <div className="flex-shrink-0 self-start">
+                  {selectedCenter && getStatusBadge(selectedCenter.status, selectedCenter.verified, selectedCenter)}
                 </div>
               </div>
             </div>
+          </ProfileCard>
+
+          {/* Description Section */}
+          <ProfileSection
+            title="Business Description"
+            subtitle="Overview of the cremation center's services and facilities"
+          >
+            <ProfileCard className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
+              <div className="flex items-start space-x-3">
+                <div className="flex-shrink-0 mt-1">
+                  <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                    <BuildingStorefrontIcon className="h-5 w-5 text-blue-600" />
+                  </div>
+                </div>
+                <div className="flex-1">
+                  <p className="text-gray-700 leading-relaxed text-base">
+                    {selectedCenter?.description || (
+                      <span className="italic text-gray-500">
+                        No description provided for this cremation center.
+                      </span>
+                    )}
+                  </p>
+                </div>
+              </div>
+            </ProfileCard>
+          </ProfileSection>
+
+          {/* Contact Information */}
+          <ProfileSection
+            title="Contact Information"
+            subtitle="Owner and business contact details"
+          >
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <ProfileCard>
+                <ProfileFormGroup title="Owner Details" subtitle="Primary contact person">
+                  <div className="space-y-4">
+                    <ProfileField
+                      label="Owner Name"
+                      value={selectedCenter?.owner}
+                      icon={<UserCircleIcon className="h-5 w-5" />}
+                    />
+                    <ProfileField
+                      label="Email Address"
+                      value={selectedCenter?.email}
+                      icon={<EnvelopeIcon className="h-5 w-5" />}
+                    />
+                    <ProfileField
+                      label="Phone Number"
+                      value={selectedCenter?.phone}
+                      icon={<PhoneIcon className="h-5 w-5" />}
+                    />
+                  </div>
+                </ProfileFormGroup>
+              </ProfileCard>
+
+              <ProfileCard>
+                <ProfileFormGroup title="Business Details" subtitle="Location and registration information">
+                  <div className="space-y-4">
+                    <ProfileField
+                      label="Business Address"
+                      value={
+                        <div>
+                          <div className="break-words">{selectedCenter?.address}</div>
+                          {(selectedCenter?.city || selectedCenter?.province) && (
+                            <div className="text-sm text-gray-600 mt-1">
+                              {[selectedCenter?.city, selectedCenter?.province].filter(Boolean).join(', ')}
+                            </div>
+                          )}
+                        </div>
+                      }
+                      icon={<MapPinIcon className="h-5 w-5" />}
+                    />
+                    <ProfileField
+                      label="Registration Date"
+                      value={selectedCenter?.registrationDate}
+                      icon={<CalendarIcon className="h-5 w-5" />}
+                    />
+                  </div>
+                </ProfileFormGroup>
+              </ProfileCard>
+            </div>
+          </ProfileSection>
+
+          {/* Business Performance */}
+          <ProfileSection
+            title="Business Performance"
+            subtitle="Key metrics and statistics for this cremation center"
+          >
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+              <ProfileField
+                label="Active Services"
+                value={selectedCenter?.activeServices}
+                icon={<ChartBarIcon className="h-5 w-5" />}
+                valueClassName="text-xl sm:text-2xl font-bold text-[var(--primary-green)]"
+                className="text-center sm:text-left"
+              />
+              <ProfileField
+                label="Total Bookings"
+                value={selectedCenter?.totalBookings}
+                icon={<CalendarIcon className="h-5 w-5" />}
+                valueClassName="text-xl sm:text-2xl font-bold text-[var(--primary-green)]"
+                className="text-center sm:text-left"
+              />
+              <ProfileField
+                label="Total Revenue"
+                value={selectedCenter?.revenue}
+                icon={<CurrencyDollarIcon className="h-5 w-5" />}
+                valueClassName="text-xl sm:text-2xl font-bold text-[var(--primary-green)]"
+                className="text-center sm:text-left sm:col-span-2 lg:col-span-1"
+              />
+            </div>
+          </ProfileSection>
+
+          {/* Appeals Section */}
+          {selectedCenter?.appeals && selectedCenter.appeals.length > 0 && (
+            <ProfileSection
+              title="Business Appeals"
+              subtitle="Appeals submitted by this cremation center"
+            >
+              <div className="space-y-4">
+                {selectedCenter.appeals.map((appeal) => (
+                  <ProfileCard key={appeal.appeal_id} className="border-l-4 border-l-blue-500">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            appeal.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                            appeal.status === 'under_review' ? 'bg-blue-100 text-blue-800' :
+                            appeal.status === 'approved' ? 'bg-green-100 text-green-800' :
+                            'bg-red-100 text-red-800'
+                          }`}>
+                            {appeal.status.replace('_', ' ').toUpperCase()}
+                          </span>
+                          <span className="text-sm text-gray-500">
+                            {formatDate(appeal.submitted_at)}
+                          </span>
+                        </div>
+                        <h4 className="font-medium text-gray-900 mb-2">{appeal.subject}</h4>
+                        <p className="text-gray-600 text-sm mb-3 line-clamp-2">{appeal.message}</p>
+                        {appeal.admin_response && (
+                          <div className="bg-gray-50 p-3 rounded-md">
+                            <p className="text-sm font-medium text-gray-700 mb-1">Admin Response:</p>
+                            <p className="text-sm text-gray-600">{appeal.admin_response}</p>
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex space-x-2 ml-4">
+                        {appeal.status === 'pending' || appeal.status === 'under_review' ? (
+                          <>
+                            <button
+                              onClick={() => {
+                                setSelectedAppeal(appeal);
+                                setShowAppealModal(true);
+                              }}
+                              className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                            >
+                              Review
+                            </button>
+                          </>
+                        ) : (
+                          <span className="text-sm text-gray-500">
+                            {appeal.status === 'approved' ? 'Approved' : 'Rejected'}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </ProfileCard>
+                ))}
+              </div>
+            </ProfileSection>
+          )}
+
+          {/* Action Buttons */}
+          <div className="border-t border-gray-200 pt-6">
+            <ProfileSection
+              title="Administrative Actions"
+              subtitle="Manage cremation center access and permissions"
+              className="mb-0"
+            >
+              <ProfileCard className="bg-gray-50 border-2 border-dashed border-gray-200">
+                <div className="flex flex-col space-y-4">
+                  <div className="text-center">
+                    <p className="text-sm text-gray-600 mb-4">
+                      Use the buttons below to manage this cremation center's access to the platform.
+                    </p>
+                  </div>
+                  <div className="flex flex-col sm:flex-row justify-center sm:justify-end space-y-3 sm:space-y-0 sm:space-x-3">
+                    <ProfileButton
+                      onClick={() => setShowDetailsModal(false)}
+                      variant="secondary"
+                      size="lg"
+                      className="order-2 sm:order-1 w-full sm:w-auto"
+                    >
+                      Close Details
+                    </ProfileButton>
+                    {selectedCenter?.status === 'restricted' ? (
+                      <ProfileButton
+                        onClick={() => selectedCenter && openUnrestrictModal(selectedCenter)}
+                        disabled={isProcessing}
+                        loading={isProcessing}
+                        variant="success"
+                        size="lg"
+                        className="order-1 sm:order-2 w-full sm:w-auto"
+                      >
+                        {isProcessing ? 'Processing...' : 'Restore Access'}
+                      </ProfileButton>
+                    ) : (
+                      <ProfileButton
+                        onClick={() => selectedCenter && openRestrictModal(selectedCenter)}
+                        disabled={isProcessing}
+                        loading={isProcessing}
+                        variant="danger"
+                        size="lg"
+                        className="order-1 sm:order-2 w-full sm:w-auto"
+                      >
+                        {isProcessing ? 'Processing...' : 'Restrict Access'}
+                      </ProfileButton>
+                    )}
+                  </div>
+                </div>
+              </ProfileCard>
+            </ProfileSection>
           </div>
         </div>
-      )}
+      </Modal>
+
+      {/* Appeal Review Modal */}
+      <Modal
+        isOpen={showAppealModal}
+        onClose={() => {
+          setShowAppealModal(false);
+          setSelectedAppeal(null);
+          setAppealResponse('');
+        }}
+        title="Review Appeal"
+        size="large"
+      >
+        {selectedAppeal && (
+          <div className="space-y-6">
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <h3 className="font-medium text-gray-900 mb-2">{selectedAppeal.subject}</h3>
+              <p className="text-gray-700 mb-3">{selectedAppeal.message}</p>
+              <div className="text-sm text-gray-500">
+                <p>Submitted: {formatDate(selectedAppeal.submitted_at)}</p>
+                <p>Status: <span className="capitalize">{selectedAppeal.status.replace('_', ' ')}</span></p>
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="appealResponse" className="block text-sm font-medium text-gray-700 mb-2">
+                Admin Response (Optional)
+              </label>
+              <textarea
+                id="appealResponse"
+                rows={4}
+                value={appealResponse}
+                onChange={(e) => setAppealResponse(e.target.value)}
+                className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
+                placeholder="Provide additional context or explanation for your decision..."
+              />
+            </div>
+
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => {
+                  setShowAppealModal(false);
+                  setSelectedAppeal(null);
+                  setAppealResponse('');
+                }}
+                className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => selectedAppeal && handleAppealAction(selectedAppeal.appeal_id, 'rejected', appealResponse)}
+                disabled={isProcessing}
+                className="px-4 py-2 border border-transparent rounded-md text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isProcessing ? 'Processing...' : 'Reject Appeal'}
+              </button>
+              <button
+                onClick={() => selectedAppeal && handleAppealAction(selectedAppeal.appeal_id, 'approved', appealResponse)}
+                disabled={isProcessing}
+                className="px-4 py-2 border border-transparent rounded-md text-sm font-medium text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isProcessing ? 'Processing...' : 'Approve Appeal'}
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </AdminDashboardLayout>
   );
 }

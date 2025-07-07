@@ -577,6 +577,25 @@
   position: fixed !important;
 }
 
+/* Custom pulsing animation for pending appeals */
+@keyframes gentle-pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(251, 146, 60, 0.4);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scale(1.005);
+    box-shadow: 0 0 0 8px rgba(251, 146, 60, 0.1);
+  }
+}
+
+.pending-appeal-pulse {
+  animation: gentle-pulse 2.5s ease-in-out infinite;
+  border-radius: 8px;
+}
+
 .toast-message {
   z-index: 999999 !important;
   position: relative !important;
