@@ -113,7 +113,7 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
             key="buttons"
             initial={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="mt-5 sm:mt-6 sm:grid sm:grid-cols-2 sm:gap-3"
+            className="mt-5 sm:mt-6 flex flex-col-reverse sm:grid sm:grid-cols-2 gap-3"
           >
             <Button
               variant="secondary"

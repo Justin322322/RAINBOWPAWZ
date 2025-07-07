@@ -785,24 +785,24 @@ export default function AdminCremationCentersPage() {
                               </div>
                             </div>
                           </div>
-                          <div className="flex flex-col space-y-1 ml-2">
+                          <div className="flex flex-col space-y-2 ml-3">
                             <button
                               onClick={() => handleViewDetails(center)}
-                              className="text-[var(--primary-green)] hover:text-[var(--primary-green-hover)] text-xs font-medium"
+                              className="px-3 py-2 bg-[var(--primary-green)] text-white rounded-md hover:bg-[var(--primary-green-hover)] text-sm font-medium min-w-[70px] text-center transition-colors"
                             >
                               View
                             </button>
                             {center.status === 'active' ? (
                               <button
-                                onClick={() => handleRestrictCenter(center)}
-                                className="text-red-600 hover:text-red-700 text-xs font-medium"
+                                onClick={() => openRestrictModal(center)}
+                                className="px-3 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 text-sm font-medium min-w-[70px] text-center transition-colors"
                               >
                                 Restrict
                               </button>
                             ) : center.status === 'restricted' ? (
                               <button
-                                onClick={() => handleUnrestrictCenter(center)}
-                                className="text-green-600 hover:text-green-700 text-xs font-medium"
+                                onClick={() => openUnrestrictModal(center)}
+                                className="px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm font-medium min-w-[70px] text-center transition-colors"
                               >
                                 Restore
                               </button>
