@@ -212,9 +212,8 @@ When creating an issue, please use the appropriate template:
 - ❓ [Question](https://github.com/Justin322322/RAINBOWPAWZ/issues/new?template=question.md)
 
 ### Community
-- 💬 [Discussions](https://github.com/Justin322322/RAINBOWPAWZ/discussions) - Ask questions and share ideas
-- 📧 Email: support@rainbowpaws.com
-- 🐦 Twitter: [@RainbowPaws](https://twitter.com/RainbowPaws)
+- 📧 Email: rainbowpaws2025@gmail.com
+- 🐦 Facebook: [@justinmarlosibonga](https://www.facebook.com/justinmarlosibonga)
 
 ## 🆕 Recent Updates (2025-07-07)
 
