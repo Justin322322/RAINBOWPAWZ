@@ -212,8 +212,8 @@ When creating an issue, please use the appropriate template:
 - ❓ [Question](https://github.com/Justin322322/RAINBOWPAWZ/issues/new?template=question.md)
 
 ### Community
-- 📧 Email: rainbowpaws2025@gmail.com
-- 🇫 Facebook: [@justinmarlosibonga](https://www.facebook.com/justinmarlosibonga)
+- Email: rainbowpaws2025@gmail.com
+- Facebook: [@justinmarlosibonga](https://www.facebook.com/justinmarlosibonga)
 
 ## 🆕 Recent Updates (2025-07-07)
 
