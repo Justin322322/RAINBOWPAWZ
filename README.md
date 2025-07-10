@@ -552,179 +552,186 @@ npx next start -p 3005
 
 ## Data Flow Diagram
 
-The following sequential diagrams illustrate how data flows through the Rainbow Paws application for key user scenarios:
+The following Data Flow Diagram illustrates how data flows through the Rainbow Paws application across different layers and components:
 
-### User Authentication Flow
 ```mermaid
-sequenceDiagram
-    participant User as User
-    participant UI as Auth UI
-    participant API as Auth API
-    participant Service as Auth Service
-    participant Cache as Cache
-    participant DB as Users DB
-    participant Email as Email Service
-    participant SMS as SMS Service
-
-    User->>UI: Enter login credentials
-    UI->>API: POST /api/auth/login
-    API->>Service: Validate credentials
-    Service->>DB: Query user data
-    DB-->>Service: Return user info
-    Service->>Cache: Store session
-    Service-->>API: Authentication result
-    API-->>UI: JWT token + user data
-    UI-->>User: Redirect to dashboard
-
-    Note over Service,SMS: For 2FA enabled users
-    Service->>SMS: Send OTP
-    SMS-->>User: SMS notification
-    User->>UI: Enter OTP
-    UI->>API: Verify OTP
-    API->>Service: Validate OTP
-    Service-->>API: OTP verified
-```
-
-### Pet Registration & Booking Flow
-```mermaid
-sequenceDiagram
-    participant User as Fur Parent
-    participant UI as Booking UI
-    participant PetAPI as Pet API
-    participant BookingAPI as Booking API
-    participant Service as Booking Service
-    participant PetDB as Pets DB
-    participant BookingDB as Bookings DB
-    participant ProviderDB as Providers DB
-    participant Storage as File Storage
-    participant Notifications as Notification Service
-
-    User->>UI: Add new pet profile
-    UI->>PetAPI: POST /api/pets
-    PetAPI->>Storage: Upload pet images
-    Storage-->>PetAPI: Image URLs
-    PetAPI->>PetDB: Save pet data
-    PetDB-->>PetAPI: Pet created
-    PetAPI-->>UI: Pet profile saved
-
-    User->>UI: Browse service packages
-    UI->>BookingAPI: GET /api/packages
-    BookingAPI->>ProviderDB: Query available packages
-    ProviderDB-->>BookingAPI: Package list
-    BookingAPI-->>UI: Display packages
-
-    User->>UI: Select package & book
-    UI->>BookingAPI: POST /api/bookings
-    BookingAPI->>Service: Process booking
-    Service->>BookingDB: Create booking record
-    Service->>Notifications: Send confirmation
-    Notifications-->>User: Email & SMS confirmation
-    Service-->>BookingAPI: Booking confirmed
-    BookingAPI-->>UI: Booking success
-```
-
-### Payment Processing Flow
-```mermaid
-sequenceDiagram
-    participant User as User
-    participant UI as Payment UI
-    participant PaymentAPI as Payment API
-    participant PaymentService as Payment Service
-    participant PayMongo as PayMongo API
-    participant PaymentDB as Payments DB
-    participant BookingDB as Bookings DB
-    participant Notifications as Notification Service
-
-    User->>UI: Initiate payment
-    UI->>PaymentAPI: POST /api/payments/create
-    PaymentAPI->>PaymentService: Process payment request
-    PaymentService->>PayMongo: Create payment intent
-    PayMongo-->>PaymentService: Payment intent created
-    PaymentService->>PaymentDB: Log payment attempt
-    PaymentService-->>PaymentAPI: Payment intent data
-    PaymentAPI-->>UI: Payment form data
-
-    User->>UI: Submit payment details
-    UI->>PayMongo: Process payment (direct)
-    PayMongo-->>UI: Payment result
-    UI->>PaymentAPI: POST /api/payments/confirm
-    PaymentAPI->>PaymentService: Confirm payment
-    PaymentService->>PayMongo: Verify payment status
-    PayMongo-->>PaymentService: Payment confirmed
-    PaymentService->>PaymentDB: Update payment status
-    PaymentService->>BookingDB: Update booking status
-    PaymentService->>Notifications: Send payment confirmation
-    Notifications-->>User: Payment success notification
-```
-
-### Admin Notification & Management Flow
-```mermaid
-sequenceDiagram
-    participant Admin as Admin
-    participant UI as Admin Dashboard
-    participant AdminAPI as Admin API
-    participant NotificationAPI as Notification API
-    participant BookingService as Booking Service
-    participant EmailService as Email Service
-    participant SMSService as SMS Service
-    participant AdminDB as Admin Logs
-    participant NotificationDB as Notifications DB
-
-    Note over Admin,NotificationDB: New booking notification
-    BookingService->>NotificationAPI: New booking created
-    NotificationAPI->>EmailService: Send admin email
-    NotificationAPI->>SMSService: Send admin SMS
-    NotificationAPI->>NotificationDB: Log notification
-    EmailService-->>Admin: Email notification
-    SMSService-->>Admin: SMS notification
-
-    Admin->>UI: View pending bookings
-    UI->>AdminAPI: GET /api/admin/bookings
-    AdminAPI->>BookingService: Query pending bookings
-    BookingService-->>AdminAPI: Booking list
-    AdminAPI-->>UI: Display bookings
-
-    Admin->>UI: Update booking status
-    UI->>AdminAPI: PUT /api/admin/bookings/:id
-    AdminAPI->>BookingService: Update booking
-    BookingService->>NotificationAPI: Status change notification
-    NotificationAPI->>EmailService: Notify customer
-    NotificationAPI->>SMSService: Notify customer
-    AdminAPI->>AdminDB: Log admin action
-    AdminAPI-->>UI: Update confirmed
-```
-
-### Real-time Notification System
-```mermaid
-sequenceDiagram
-    participant System as System Event
-    participant NotificationAPI as Notification API
-    participant EmailService as Email Service
-    participant SMSService as SMS Service
-    participant SMTP as SMTP Server
-    participant Twilio as Twilio API
-    participant User as User
-    participant NotificationDB as Notifications DB
-
-    System->>NotificationAPI: Trigger notification event
-    NotificationAPI->>NotificationDB: Log notification
-
-    par Email Notification
-        NotificationAPI->>EmailService: Send email
-        EmailService->>SMTP: SMTP request
-        SMTP-->>EmailService: Email sent
-        EmailService-->>NotificationAPI: Email delivered
-    and SMS Notification
-        NotificationAPI->>SMSService: Send SMS
-        SMSService->>Twilio: SMS API request
-        Twilio-->>SMSService: SMS sent
-        SMSService-->>NotificationAPI: SMS delivered
+flowchart TD
+    subgraph "External Actors"
+        FP[Fur Parents]
+        SP[Service Providers]
+        AD[Administrators]
+        GU[Guest Users]
     end
 
-    NotificationAPI->>NotificationDB: Update delivery status
-    SMTP-->>User: Email received
-    Twilio-->>User: SMS received
+    subgraph "User Interface Layer"
+        WEB[Web Application]
+        AUTH_UI[Authentication Pages]
+        DASH[User Dashboard]
+        ADMIN_UI[Admin Dashboard]
+        BOOKING_UI[Booking Interface]
+        PAYMENT_UI[Payment Interface]
+    end
+
+    subgraph "API Gateway Layer"
+        API_ROUTER[API Router]
+        AUTH_MW[Auth Middleware]
+        RATE_LIMIT[Rate Limiter]
+        VALIDATOR[Request Validator]
+    end
+
+    subgraph "Business Logic Layer"
+        AUTH_SVC[Authentication Service]
+        USER_SVC[User Management Service]
+        PET_SVC[Pet Management Service]
+        BOOKING_SVC[Booking Service]
+        PAYMENT_SVC[Payment Service]
+        NOTIFICATION_SVC[Notification Service]
+        ADMIN_SVC[Admin Service]
+        FILE_SVC[File Upload Service]
+    end
+
+    subgraph "Data Access Layer"
+        USER_REPO[User Repository]
+        PET_REPO[Pet Repository]
+        BOOKING_REPO[Booking Repository]
+        PAYMENT_REPO[Payment Repository]
+        PROVIDER_REPO[Provider Repository]
+        NOTIFICATION_REPO[Notification Repository]
+    end
+
+    subgraph "Database Layer"
+        MYSQL[(MySQL Database)]
+        CACHE[(Redis Cache)]
+    end
+
+    subgraph "External Services"
+        PAYMONGO[PayMongo API]
+        TWILIO[Twilio SMS]
+        SMTP[SMTP Server]
+        STORAGE[File Storage]
+    end
+
+    subgraph "Data Stores"
+        USER_DATA[User Data]
+        PET_DATA[Pet Profiles]
+        BOOKING_DATA[Booking Records]
+        PAYMENT_DATA[Payment Transactions]
+        PROVIDER_DATA[Service Providers]
+        NOTIFICATION_DATA[Notifications]
+        FILE_DATA[Uploaded Files]
+    end
+
+    %% External Actors to UI
+    FP --> WEB
+    SP --> WEB
+    AD --> ADMIN_UI
+    GU --> AUTH_UI
+
+    %% UI Layer to API Gateway
+    WEB --> API_ROUTER
+    AUTH_UI --> API_ROUTER
+    DASH --> API_ROUTER
+    ADMIN_UI --> API_ROUTER
+    BOOKING_UI --> API_ROUTER
+    PAYMENT_UI --> API_ROUTER
+
+    %% API Gateway Processing
+    API_ROUTER --> AUTH_MW
+    AUTH_MW --> RATE_LIMIT
+    RATE_LIMIT --> VALIDATOR
+
+    %% API Gateway to Business Logic
+    VALIDATOR --> AUTH_SVC
+    VALIDATOR --> USER_SVC
+    VALIDATOR --> PET_SVC
+    VALIDATOR --> BOOKING_SVC
+    VALIDATOR --> PAYMENT_SVC
+    VALIDATOR --> NOTIFICATION_SVC
+    VALIDATOR --> ADMIN_SVC
+    VALIDATOR --> FILE_SVC
+
+    %% Business Logic to Data Access
+    AUTH_SVC --> USER_REPO
+    USER_SVC --> USER_REPO
+    PET_SVC --> PET_REPO
+    BOOKING_SVC --> BOOKING_REPO
+    BOOKING_SVC --> PROVIDER_REPO
+    PAYMENT_SVC --> PAYMENT_REPO
+    NOTIFICATION_SVC --> NOTIFICATION_REPO
+    ADMIN_SVC --> USER_REPO
+    ADMIN_SVC --> BOOKING_REPO
+    FILE_SVC --> STORAGE
+
+    %% Data Access to Database
+    USER_REPO --> MYSQL
+    PET_REPO --> MYSQL
+    BOOKING_REPO --> MYSQL
+    PAYMENT_REPO --> MYSQL
+    PROVIDER_REPO --> MYSQL
+    NOTIFICATION_REPO --> MYSQL
+
+    %% Cache Integration
+    AUTH_SVC --> CACHE
+    USER_SVC --> CACHE
+    BOOKING_SVC --> CACHE
+
+    %% External Service Integration
+    PAYMENT_SVC --> PAYMONGO
+    NOTIFICATION_SVC --> TWILIO
+    NOTIFICATION_SVC --> SMTP
+
+    %% Database to Data Stores
+    MYSQL --> USER_DATA
+    MYSQL --> PET_DATA
+    MYSQL --> BOOKING_DATA
+    MYSQL --> PAYMENT_DATA
+    MYSQL --> PROVIDER_DATA
+    MYSQL --> NOTIFICATION_DATA
+    STORAGE --> FILE_DATA
+
+    %% Data Flow Styling
+    classDef userLayer fill:#e1f5fe,stroke:#01579b,stroke-width:2px
+    classDef apiLayer fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    classDef businessLayer fill:#e8f5e8,stroke:#1b5e20,stroke-width:2px
+    classDef dataLayer fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    classDef externalLayer fill:#ffebee,stroke:#b71c1c,stroke-width:2px
+    classDef storageLayer fill:#f1f8e9,stroke:#33691e,stroke-width:2px
+
+    class WEB,AUTH_UI,DASH,ADMIN_UI,BOOKING_UI,PAYMENT_UI userLayer
+    class API_ROUTER,AUTH_MW,RATE_LIMIT,VALIDATOR apiLayer
+    class AUTH_SVC,USER_SVC,PET_SVC,BOOKING_SVC,PAYMENT_SVC,NOTIFICATION_SVC,ADMIN_SVC,FILE_SVC businessLayer
+    class USER_REPO,PET_REPO,BOOKING_REPO,PAYMENT_REPO,PROVIDER_REPO,NOTIFICATION_REPO,MYSQL,CACHE dataLayer
+    class PAYMONGO,TWILIO,SMTP,STORAGE externalLayer
+    class USER_DATA,PET_DATA,BOOKING_DATA,PAYMENT_DATA,PROVIDER_DATA,NOTIFICATION_DATA,FILE_DATA storageLayer
 ```
+
+### Data Flow Process Description
+
+**1. User Interaction Flow**
+- External actors (Fur Parents, Service Providers, Admins) interact with the web application
+- Requests flow through the UI layer to the API Gateway
+- API Gateway handles authentication, rate limiting, and request validation
+
+**2. Business Logic Processing**
+- Validated requests are processed by appropriate business services
+- Services implement core business rules and workflows
+- Cross-service communication handles complex operations
+
+**3. Data Persistence**
+- Business services interact with data repositories
+- Repositories abstract database operations
+- Data is stored in MySQL with Redis caching for performance
+
+**4. External Integration**
+- Payment processing through PayMongo API
+- SMS notifications via Twilio
+- Email delivery through SMTP servers
+- File storage for images and documents
+
+**5. Response Flow**
+- Data flows back through the same layers
+- Responses are formatted and returned to the UI
+- Real-time updates via notifications and cache invalidation
 
 ## API Documentation
 
@@ -919,15 +926,15 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## Support
 
 ### Getting Help
-- 📖 Check the [documentation](#-table-of-contents) first
-- 🔍 Search [existing issues](https://github.com/Justin322322/RAINBOWPAWZ/issues) for solutions
-- 🆕 [Create a new issue](https://github.com/Justin322322/RAINBOWPAWZ/issues/new) if you can't find an answer
+- Check the [documentation](#table-of-contents) first
+- Search [existing issues](https://github.com/Justin322322/RAINBOWPAWZ/issues) for solutions
+- [Create a new issue](https://github.com/Justin322322/RAINBOWPAWZ/issues/new) if you can't find an answer
 
 ### Issue Templates
 When creating an issue, please use the appropriate template:
-- 🐛 [Bug Report](https://github.com/Justin322322/RAINBOWPAWZ/issues/new?template=bug_report.md)
-- ✨ [Feature Request](https://github.com/Justin322322/RAINBOWPAWZ/issues/new?template=feature_request.md)
-- ❓ [Question](https://github.com/Justin322322/RAINBOWPAWZ/issues/new?template=question.md)
+- [Bug Report](https://github.com/Justin322322/RAINBOWPAWZ/issues/new?template=bug_report.md)
+- [Feature Request](https://github.com/Justin322322/RAINBOWPAWZ/issues/new?template=feature_request.md)
+- [Question](https://github.com/Justin322322/RAINBOWPAWZ/issues/new?template=question.md)
 
 ### Community
 - Email: rainbowpaws2025@gmail.com
