@@ -1,63 +1,63 @@
-# 🐾 Rainbow Paws Application
+# Rainbow Paws Application
 
 A comprehensive Next.js application for pet memorial services, connecting pet owners with cremation service providers.
 
-## 📋 Table of Contents
+## Table of Contents
 
-- [🐾 Overview](#-overview)
-- [✨ Features](#-features)
-- [🛠️ Technology Stack](#️-technology-stack)
-- [🏗️ System Architecture](#️-system-architecture)
-- [📋 Prerequisites](#-prerequisites)
-- [⚙️ Installation & Setup](#️-installation--setup)
-- [🗄️ Database Setup](#️-database-setup)
-- [🚀 Running the Application](#-running-the-application)
-- [📧 Email Configuration](#-email-configuration)
-- [📜 Available Scripts](#-available-scripts)
-- [📊 Data Flow Diagram](#-data-flow-diagram)
-- [📚 API Documentation](#-api-documentation)
-- [🚀 Deployment](#-deployment)
-- [📁 File Organization](#-file-organization)
-- [🧪 Testing](#-testing)
-- [🔧 Troubleshooting](#-troubleshooting)
-- [📖 Learn More](#-learn-more)
-- [🤝 Contributing](#-contributing)
-- [📄 License](#-license)
-- [💬 Support](#-support)
-- [🆕 Recent Updates](#-recent-updates-2025-07-07)
+- [Overview](#overview)
+- [Features](#features)
+- [Technology Stack](#technology-stack)
+- [System Architecture](#system-architecture)
+- [Prerequisites](#prerequisites)
+- [Installation & Setup](#installation--setup)
+- [Database Setup](#database-setup)
+- [Running the Application](#running-the-application)
+- [Email Configuration](#email-configuration)
+- [Available Scripts](#available-scripts)
+- [Data Flow Diagram](#data-flow-diagram)
+- [API Documentation](#api-documentation)
+- [Deployment](#deployment)
+- [File Organization](#file-organization)
+- [Testing](#testing)
+- [Troubleshooting](#troubleshooting)
+- [Learn More](#learn-more)
+- [Contributing](#contributing)
+- [License](#license)
+- [Support](#support)
+- [Recent Updates](#recent-updates-2025-07-07)
 
-## 🐾 Overview
+## Overview
 
 Rainbow Paws is a full-featured web application that facilitates pet memorial services by connecting pet owners (fur parents) with cremation service providers. The platform offers booking management, payment processing, notifications, and comprehensive dashboards for all user types.
 
-## ✨ Features
+## Features
 
 ### For Pet Owners (Fur Parents)
-- 🐕 Pet profile management with photos and details
-- 📅 Service booking with real-time availability
-- 💳 Secure payment processing (GCash, PayMaya, Card)
-- 📱 SMS and email notifications
-- 📊 Booking history and status tracking
-- ⭐ Review and rating system
-- 🗺️ Interactive maps for service locations
+- Pet profile management with photos and details
+- Service booking with real-time availability
+- Secure payment processing (GCash, PayMaya, Card)
+- SMS and email notifications
+- Booking history and status tracking
+- Review and rating system
+- Interactive maps for service locations
 
 ### For Service Providers (Cremation Businesses)
-- 🏢 Business profile and document management
-- 📦 Service package creation and management
-- ⏰ Availability and time slot management
-- 📈 Revenue analytics and reporting
-- 🔔 Real-time booking notifications
-- 📋 Booking status management
-- 💰 Refund processing
+- Business profile and document management
+- Service package creation and management
+- Availability and time slot management
+- Revenue analytics and reporting
+- Real-time booking notifications
+- Booking status management
+- Refund processing
 
 ### For Administrators
-- 👥 User and business management
-- ✅ Business application approval workflow
-- 📊 System analytics and monitoring
-- ⚙️ Platform configuration
-- 💸 Payment and refund oversight
+- User and business management
+- Business application approval workflow
+- System analytics and monitoring
+- Platform configuration
+- Payment and refund oversight
 
-## 🛠️ Technology Stack
+## Technology Stack
 
 - **Frontend**: Next.js 15, React 19, TypeScript
 - **Styling**: Tailwind CSS, Framer Motion
@@ -70,7 +70,7 @@ Rainbow Paws is a full-featured web application that facilitates pet memorial se
 - **Validation**: Zod schema validation
 - **State Management**: React Context API
 
-## 🏗️ System Architecture
+## System Architecture
 
 ```mermaid
 graph TB
@@ -131,7 +131,7 @@ graph TB
     style PAYMONGO fill:#00d4aa
 ```
 
-## 📋 Prerequisites
+## Prerequisites
 
 Before running the application, ensure you have:
 
@@ -140,7 +140,7 @@ Before running the application, ensure you have:
 - **MySQL** database server (v8.0 or higher)
 - **XAMPP** (recommended for local development) - [Download here](https://www.apachefriends.org/) or standalone MySQL
 
-## ⚙️ Installation & Setup
+## Installation & Setup
 
 ### 1. Clone the Repository
 ```bash
@@ -198,7 +198,7 @@ TWILIO_PHONE_NUMBER=your-twilio-phone-number
 PAYMONGO_SECRET_KEY=your-paymongo-secret-key
 ```
 
-## 🗄️ Database Setup
+## Database Setup
 
 ### Database Schema (ERD)
 
@@ -488,7 +488,7 @@ cd src/lib/migrations
 node run_migrations.js
 ```
 
-## 🚀 Running the Application
+## Running the Application
 
 ### Development Mode
 ```bash
@@ -515,7 +515,7 @@ npm run build
 npx next start -p 3005
 ```
 
-## 📧 Email Configuration
+## Email Configuration
 
 ### Development Mode (Default)
 - `DEV_EMAIL_MODE=true` - Emails are logged to console instead of being sent
@@ -534,7 +534,7 @@ npx next start -p 3005
 
 > **Note**: Regular Gmail passwords won't work for SMTP. You must use an App Password.
 
-## 📜 Available Scripts
+## Available Scripts
 
 | Script | Description |
 |--------|-------------|
@@ -550,111 +550,183 @@ npx next start -p 3005
 | `npm run clean:all` | Full cleanup including node_modules |
 | `npm run spring-clean` | Complete cleanup with linting and type checking |
 
-## 📊 Data Flow Diagram
+## Data Flow Diagram
 
-The following diagram illustrates how data flows through the Rainbow Paws application:
+The following sequential diagrams illustrate how data flows through the Rainbow Paws application for key user scenarios:
 
+### User Authentication Flow
 ```mermaid
-flowchart TD
-    subgraph "User Interface Layer"
-        UI[User Interface]
-        AUTH_UI[Authentication Pages]
-        DASHBOARD[Dashboard Pages]
-        BOOKING_UI[Booking Interface]
-    end
+sequenceDiagram
+    participant User as User
+    participant UI as Auth UI
+    participant API as Auth API
+    participant Service as Auth Service
+    participant Cache as Cache
+    participant DB as Users DB
+    participant Email as Email Service
+    participant SMS as SMS Service
 
-    subgraph "API Layer"
-        AUTH_API[Authentication API]
-        USER_API[User Management API]
-        PET_API[Pet Management API]
-        BOOKING_API[Booking API]
-        PAYMENT_API[Payment API]
-        NOTIFICATION_API[Notification API]
-        ADMIN_API[Admin API]
-    end
+    User->>UI: Enter login credentials
+    UI->>API: POST /api/auth/login
+    API->>Service: Validate credentials
+    Service->>DB: Query user data
+    DB-->>Service: Return user info
+    Service->>Cache: Store session
+    Service-->>API: Authentication result
+    API-->>UI: JWT token + user data
+    UI-->>User: Redirect to dashboard
 
-    subgraph "Business Logic Layer"
-        AUTH_SERVICE[Authentication Service]
-        BOOKING_SERVICE[Booking Service]
-        PAYMENT_SERVICE[Payment Service]
-        EMAIL_SERVICE[Email Service]
-        SMS_SERVICE[SMS Service]
-        CACHE_SERVICE[Cache Service]
-    end
-
-    subgraph "Data Access Layer"
-        DB_USERS[(Users Table)]
-        DB_PETS[(Pets Table)]
-        DB_BOOKINGS[(Bookings Table)]
-        DB_PAYMENTS[(Payments Table)]
-        DB_NOTIFICATIONS[(Notifications Table)]
-        DB_PROVIDERS[(Service Providers Table)]
-        DB_PACKAGES[(Service Packages Table)]
-    end
-
-    subgraph "External Services"
-        PAYMONGO_EXT[PayMongo API]
-        TWILIO_EXT[Twilio SMS API]
-        SMTP_EXT[SMTP Server]
-    end
-
-    subgraph "File Storage"
-        PET_IMAGES[Pet Images]
-        PACKAGE_IMAGES[Package Images]
-        PROFILE_IMAGES[Profile Images]
-    end
-
-    %% User Interface to API
-    UI --> AUTH_API
-    AUTH_UI --> AUTH_API
-    DASHBOARD --> USER_API
-    DASHBOARD --> PET_API
-    BOOKING_UI --> BOOKING_API
-    BOOKING_UI --> PAYMENT_API
-
-    %% API to Business Logic
-    AUTH_API --> AUTH_SERVICE
-    USER_API --> AUTH_SERVICE
-    PET_API --> AUTH_SERVICE
-    BOOKING_API --> BOOKING_SERVICE
-    PAYMENT_API --> PAYMENT_SERVICE
-    NOTIFICATION_API --> EMAIL_SERVICE
-    NOTIFICATION_API --> SMS_SERVICE
-
-    %% Business Logic to Data Access
-    AUTH_SERVICE --> DB_USERS
-    BOOKING_SERVICE --> DB_BOOKINGS
-    BOOKING_SERVICE --> DB_PETS
-    BOOKING_SERVICE --> DB_PROVIDERS
-    BOOKING_SERVICE --> DB_PACKAGES
-    PAYMENT_SERVICE --> DB_PAYMENTS
-    EMAIL_SERVICE --> DB_NOTIFICATIONS
-    SMS_SERVICE --> DB_NOTIFICATIONS
-
-    %% External Service Integration
-    PAYMENT_SERVICE --> PAYMONGO_EXT
-    SMS_SERVICE --> TWILIO_EXT
-    EMAIL_SERVICE --> SMTP_EXT
-
-    %% File Storage
-    PET_API --> PET_IMAGES
-    USER_API --> PROFILE_IMAGES
-    ADMIN_API --> PACKAGE_IMAGES
-
-    %% Cache Integration
-    AUTH_SERVICE --> CACHE_SERVICE
-    BOOKING_SERVICE --> CACHE_SERVICE
-
-    %% Styling
-    style UI fill:#e1f5fe
-    style AUTH_API fill:#f3e5f5
-    style BOOKING_SERVICE fill:#e8f5e8
-    style DB_USERS fill:#fff3e0
-    style PAYMONGO_EXT fill:#ffebee
-    style PET_IMAGES fill:#f1f8e9
+    Note over Service,SMS: For 2FA enabled users
+    Service->>SMS: Send OTP
+    SMS-->>User: SMS notification
+    User->>UI: Enter OTP
+    UI->>API: Verify OTP
+    API->>Service: Validate OTP
+    Service-->>API: OTP verified
 ```
 
-## 📚 API Documentation
+### Pet Registration & Booking Flow
+```mermaid
+sequenceDiagram
+    participant User as Fur Parent
+    participant UI as Booking UI
+    participant PetAPI as Pet API
+    participant BookingAPI as Booking API
+    participant Service as Booking Service
+    participant PetDB as Pets DB
+    participant BookingDB as Bookings DB
+    participant ProviderDB as Providers DB
+    participant Storage as File Storage
+    participant Notifications as Notification Service
+
+    User->>UI: Add new pet profile
+    UI->>PetAPI: POST /api/pets
+    PetAPI->>Storage: Upload pet images
+    Storage-->>PetAPI: Image URLs
+    PetAPI->>PetDB: Save pet data
+    PetDB-->>PetAPI: Pet created
+    PetAPI-->>UI: Pet profile saved
+
+    User->>UI: Browse service packages
+    UI->>BookingAPI: GET /api/packages
+    BookingAPI->>ProviderDB: Query available packages
+    ProviderDB-->>BookingAPI: Package list
+    BookingAPI-->>UI: Display packages
+
+    User->>UI: Select package & book
+    UI->>BookingAPI: POST /api/bookings
+    BookingAPI->>Service: Process booking
+    Service->>BookingDB: Create booking record
+    Service->>Notifications: Send confirmation
+    Notifications-->>User: Email & SMS confirmation
+    Service-->>BookingAPI: Booking confirmed
+    BookingAPI-->>UI: Booking success
+```
+
+### Payment Processing Flow
+```mermaid
+sequenceDiagram
+    participant User as User
+    participant UI as Payment UI
+    participant PaymentAPI as Payment API
+    participant PaymentService as Payment Service
+    participant PayMongo as PayMongo API
+    participant PaymentDB as Payments DB
+    participant BookingDB as Bookings DB
+    participant Notifications as Notification Service
+
+    User->>UI: Initiate payment
+    UI->>PaymentAPI: POST /api/payments/create
+    PaymentAPI->>PaymentService: Process payment request
+    PaymentService->>PayMongo: Create payment intent
+    PayMongo-->>PaymentService: Payment intent created
+    PaymentService->>PaymentDB: Log payment attempt
+    PaymentService-->>PaymentAPI: Payment intent data
+    PaymentAPI-->>UI: Payment form data
+
+    User->>UI: Submit payment details
+    UI->>PayMongo: Process payment (direct)
+    PayMongo-->>UI: Payment result
+    UI->>PaymentAPI: POST /api/payments/confirm
+    PaymentAPI->>PaymentService: Confirm payment
+    PaymentService->>PayMongo: Verify payment status
+    PayMongo-->>PaymentService: Payment confirmed
+    PaymentService->>PaymentDB: Update payment status
+    PaymentService->>BookingDB: Update booking status
+    PaymentService->>Notifications: Send payment confirmation
+    Notifications-->>User: Payment success notification
+```
+
+### Admin Notification & Management Flow
+```mermaid
+sequenceDiagram
+    participant Admin as Admin
+    participant UI as Admin Dashboard
+    participant AdminAPI as Admin API
+    participant NotificationAPI as Notification API
+    participant BookingService as Booking Service
+    participant EmailService as Email Service
+    participant SMSService as SMS Service
+    participant AdminDB as Admin Logs
+    participant NotificationDB as Notifications DB
+
+    Note over Admin,NotificationDB: New booking notification
+    BookingService->>NotificationAPI: New booking created
+    NotificationAPI->>EmailService: Send admin email
+    NotificationAPI->>SMSService: Send admin SMS
+    NotificationAPI->>NotificationDB: Log notification
+    EmailService-->>Admin: Email notification
+    SMSService-->>Admin: SMS notification
+
+    Admin->>UI: View pending bookings
+    UI->>AdminAPI: GET /api/admin/bookings
+    AdminAPI->>BookingService: Query pending bookings
+    BookingService-->>AdminAPI: Booking list
+    AdminAPI-->>UI: Display bookings
+
+    Admin->>UI: Update booking status
+    UI->>AdminAPI: PUT /api/admin/bookings/:id
+    AdminAPI->>BookingService: Update booking
+    BookingService->>NotificationAPI: Status change notification
+    NotificationAPI->>EmailService: Notify customer
+    NotificationAPI->>SMSService: Notify customer
+    AdminAPI->>AdminDB: Log admin action
+    AdminAPI-->>UI: Update confirmed
+```
+
+### Real-time Notification System
+```mermaid
+sequenceDiagram
+    participant System as System Event
+    participant NotificationAPI as Notification API
+    participant EmailService as Email Service
+    participant SMSService as SMS Service
+    participant SMTP as SMTP Server
+    participant Twilio as Twilio API
+    participant User as User
+    participant NotificationDB as Notifications DB
+
+    System->>NotificationAPI: Trigger notification event
+    NotificationAPI->>NotificationDB: Log notification
+
+    par Email Notification
+        NotificationAPI->>EmailService: Send email
+        EmailService->>SMTP: SMTP request
+        SMTP-->>EmailService: Email sent
+        EmailService-->>NotificationAPI: Email delivered
+    and SMS Notification
+        NotificationAPI->>SMSService: Send SMS
+        SMSService->>Twilio: SMS API request
+        Twilio-->>SMSService: SMS sent
+        SMSService-->>NotificationAPI: SMS delivered
+    end
+
+    NotificationAPI->>NotificationDB: Update delivery status
+    SMTP-->>User: Email received
+    Twilio-->>User: SMS received
+```
+
+## API Documentation
 
 ### Authentication Endpoints
 - `POST /api/auth/register` - User registration
@@ -686,7 +758,7 @@ flowchart TD
 - `GET /api/payments/status` - Check payment status
 - `POST /api/payments/webhook` - Payment webhook handler
 
-## 🚀 Deployment
+## Deployment
 
 ### Production Build
 ```bash
@@ -719,7 +791,7 @@ EXPOSE 3001
 CMD ["npm", "start"]
 ```
 
-## 📁 File Organization
+## File Organization
 
 ### Package Images
 Images for service packages are organized in a structured folder system:
@@ -738,7 +810,7 @@ User and business profile pictures:
 - **Path Format**: `/public/uploads/profiles/{userType}/{userId}/{filename}`
 - **Types**: `users`, `businesses`, `admins`
 
-## 🧪 Testing
+## Testing
 
 ### Running Tests
 ```bash
@@ -757,7 +829,7 @@ npm run test:coverage
 - **Integration Tests**: API endpoint tests
 - **E2E Tests**: Full user workflow tests
 
-## 🔧 Troubleshooting
+## Troubleshooting
 
 ### Common Issues
 
@@ -801,7 +873,7 @@ Or use an online generator: [JWT Secret Generator](https://generate-secret.verce
 - Monitor database queries in development mode
 - Use React Developer Tools for component debugging
 
-## 📖 Learn More
+## Learn More
 
 ### Next.js Resources
 - [Next.js Documentation](https://nextjs.org/docs) - Learn about Next.js features and API
@@ -820,15 +892,15 @@ Or use an online generator: [JWT Secret Generator](https://generate-secret.verce
 - [Leaflet Documentation](https://leafletjs.com/) - Interactive maps library
 - [Framer Motion](https://www.framer.com/motion/) - Animation library documentation
 
-## 🤝 Contributing
+## Contributing
 
 We welcome contributions! Here's how to get started:
 
-1. 🍴 [Fork the repository](https://github.com/Justin322322/RAINBOWPAWZ/fork)
-2. 🌿 Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. 💾 Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. 📤 Push to the branch (`git push origin feature/amazing-feature`)
-5. 📝 [Open a Pull Request](https://github.com/Justin322322/RAINBOWPAWZ/compare)
+1. [Fork the repository](https://github.com/Justin322322/RAINBOWPAWZ/fork)
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. [Open a Pull Request](https://github.com/Justin322322/RAINBOWPAWZ/compare)
 
 ### Development Guidelines
 - Follow the existing code style and conventions
@@ -840,11 +912,11 @@ We welcome contributions! Here's how to get started:
 ### Code of Conduct
 Please read our [Code of Conduct](CODE_OF_CONDUCT.md) before contributing.
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 💬 Support
+## Support
 
 ### Getting Help
 - 📖 Check the [documentation](#-table-of-contents) first
@@ -861,35 +933,35 @@ When creating an issue, please use the appropriate template:
 - Email: rainbowpaws2025@gmail.com
 - Facebook: [@justinmarlosibonga](https://www.facebook.com/justinmarlosibonga)
 
-## 🆕 Recent Updates (2025-07-07)
+## Recent Updates (2025-07-07)
 
-### 📱 Mobile Responsiveness Improvements
-- ✅ **Admin Dashboard**: Enhanced mobile card views for recent applications
-- ✅ **User Management**: Improved mobile interface for cremation centers and fur parents
-- ✅ **Admin Logs**: Fixed mobile view with custom Select components
-- ✅ **Touch-Friendly Buttons**: Larger, more accessible action buttons on mobile
-- ✅ **Modal Improvements**: Better mobile modal experience with proper warnings
+### Mobile Responsiveness Improvements
+- **Admin Dashboard**: Enhanced mobile card views for recent applications
+- **User Management**: Improved mobile interface for cremation centers and fur parents
+- **Admin Logs**: Fixed mobile view with custom Select components
+- **Touch-Friendly Buttons**: Larger, more accessible action buttons on mobile
+- **Modal Improvements**: Better mobile modal experience with proper warnings
 
-### 🧹 Codebase Optimization
-- ✅ **File Cleanup**: Removed 45+ unused legacy files and components
-- ✅ **Bundle Optimization**: Reduced application size through dead code elimination
-- ✅ **Build Performance**: Improved compilation speed and reduced memory usage
-- ✅ **Type Safety**: Enhanced TypeScript coverage and error handling
+### Codebase Optimization
+- **File Cleanup**: Removed 45+ unused legacy files and components
+- **Bundle Optimization**: Reduced application size through dead code elimination
+- **Build Performance**: Improved compilation speed and reduced memory usage
+- **Type Safety**: Enhanced TypeScript coverage and error handling
 
-### 🔧 Bug Fixes & Stability
-- ✅ **Build Errors**: Fixed all TypeScript compilation errors
-- ✅ **Mobile UX**: Resolved touch target issues and improved accessibility
-- ✅ **Modal Warnings**: Ensured restriction warnings appear on all devices
-- ✅ **Production Ready**: Zero-error build suitable for deployment
+### Bug Fixes & Stability
+- **Build Errors**: Fixed all TypeScript compilation errors
+- **Mobile UX**: Resolved touch target issues and improved accessibility
+- **Modal Warnings**: Ensured restriction warnings appear on all devices
+- **Production Ready**: Zero-error build suitable for deployment
 
-### 🎨 UI/UX Enhancements
-- ✅ **Consistent Design**: Unified card styling across all admin pages
-- ✅ **Better Navigation**: Improved mobile menu and touch interactions
-- ✅ **Loading States**: Enhanced skeleton loading components
-- ✅ **Responsive Tables**: Better mobile table handling with proper overflow
+### UI/UX Enhancements
+- **Consistent Design**: Unified card styling across all admin pages
+- **Better Navigation**: Improved mobile menu and touch interactions
+- **Loading States**: Enhanced skeleton loading components
+- **Responsive Tables**: Better mobile table handling with proper overflow
 
 ---
 
-**Built with ❤️ for pet lovers everywhere**
+**Built with care for pet lovers everywhere**
 
 *Rainbow Paws - Honoring the memories of our beloved companions*
