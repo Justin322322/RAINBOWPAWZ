@@ -202,7 +202,7 @@ PAYMONGO_SECRET_KEY=your-paymongo-secret-key
 
 ### Database Schema (ERD)
 
-The Rainbow Paws application uses a comprehensive MySQL database schema designed to handle all aspects of pet memorial services. Below is the Entity Relationship Diagram showing the complete database structure:
+The Rainbow Paws application uses a comprehensive MySQL database schema designed to handle all aspects of pet memorial services. The database has been optimized and cleaned of any corrupted data. Below is the Entity Relationship Diagram showing the complete database structure:
 
 ```mermaid
 erDiagram
@@ -461,21 +461,27 @@ erDiagram
 
 #### Tables Not Shown in ERD
 The following tables exist in the database but are excluded from the ERD as they lack foreign key constraints:
-- **Admin Logs**: Audit trail for admin actions
+- **Admin Logs**: Audit trail for admin actions (optimized)
 - **Admin Notifications**: Admin-specific notifications
-- **Email Queue/Log**: Email delivery and tracking system
-- **Rate Limits**: API rate limiting protection
+- **Email Queue/Log**: Email delivery and tracking system (optimized)
+- **Rate Limits**: API rate limiting protection (optimized)
 - **Reviews**: Customer feedback and rating system
 - **Refunds**: Payment refund management
 - **Provider Availability/Time Slots**: Scheduling and availability system
-- **Bookings**: Legacy booking table (empty, superseded by service_bookings)
+- **User Appeals**: Appeal system for restricted users
+- **Appeal History**: Tracking of appeal status changes
+- **Business Notifications**: Business-specific notifications
+- **Migration History**: Database migration tracking
 
 ### Automatic Setup (Recommended)
-The application automatically creates necessary database tables on first run. Simply:
+The application automatically creates necessary database tables on first run. The included SQL file has been cleaned and optimized for production use. Simply:
 
 1. Ensure MySQL is running
 2. Create an empty database named `rainbow_paws`
-3. Start the application - tables will be created automatically
+3. Import the provided `rainbow_paws.sql` file, or
+4. Start the application - tables will be created automatically
+
+**Note**: The database has been cleaned of corrupted data and optimized for performance.
 
 ### Manual Setup (Advanced)
 If you prefer manual setup, run the migration scripts in `src/lib/migrations/`:
