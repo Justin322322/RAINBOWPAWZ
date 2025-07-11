@@ -407,7 +407,51 @@ erDiagram
         boolean is_active
     }
 
-    %% Relationships - Only tables with actual foreign key constraints
+    user_appeals {
+        int appeal_id PK
+        int user_id FK
+        int admin_id FK
+        enum user_type
+        int business_id FK
+        enum appeal_type
+        varchar subject
+        text message
+        json evidence_files
+        enum status
+        text admin_response
+        timestamp submitted_at
+        timestamp reviewed_at
+        timestamp resolved_at
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    appeal_history {
+        int history_id PK
+        int appeal_id FK
+        int admin_id FK
+        enum previous_status
+        enum new_status
+        text admin_response
+        timestamp changed_at
+        text notes
+    }
+
+    refunds {
+        int id PK
+        int booking_id FK
+        int processed_by FK
+        decimal amount
+        text reason
+        enum status
+        varchar payment_method
+        varchar transaction_id
+        text notes
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    %% Relationships - All foreign key constraints
     users ||--o{ admin_profiles : "has"
     users ||--o{ service_providers : "has"
     users ||--o{ pets : "owns"
@@ -416,14 +460,23 @@ erDiagram
     users ||--o{ otp_attempts : "has"
     users ||--o{ password_reset_tokens : "has"
     users ||--o{ user_restrictions : "has"
+    users ||--o{ user_appeals : "submits"
+    users ||--o{ appeal_history : "processes"
+    users ||--o{ service_bookings : "makes"
+    users ||--o{ refunds : "processes"
 
     service_providers ||--o{ service_packages : "offers"
+    service_providers ||--o{ service_bookings : "receives"
 
     service_packages ||--o{ package_inclusions : "includes"
     service_packages ||--o{ package_addons : "has"
     service_packages ||--o{ package_images : "has"
+    service_packages ||--o{ service_bookings : "booked_as"
 
     service_bookings ||--o{ payment_transactions : "has"
+    service_bookings ||--o{ refunds : "may_have"
+
+    user_appeals ||--o{ appeal_history : "tracks"
 ```
 
 ### Key Database Features
@@ -433,8 +486,11 @@ erDiagram
 - **Service Providers**: Cremation businesses with verification workflow (linked to users)
 - **Service Packages**: Customizable service offerings with pricing and inclusions (linked to providers)
 - **Pets**: Pet profiles with detailed information and photos (linked to users)
-- **Service Bookings**: Main booking system for cremation services
+- **Service Bookings**: Main booking system connecting users, providers, and packages
 - **Payment Transactions**: Payment processing system (linked to service_bookings)
+- **User Appeals**: Appeal system for restricted users (linked to users and admins)
+- **Appeal History**: Tracking of appeal status changes (linked to appeals and admins)
+- **Refunds**: Refund management system (linked to bookings and admin users)
 
 #### Security & Authentication
 - **OTP System**: Secure email verification with attempt tracking
@@ -460,17 +516,14 @@ erDiagram
 - **Package Management**: Flexible service packages with addons and images
 
 #### Tables Not Shown in ERD
-The following tables exist in the database but are excluded from the ERD as they lack foreign key constraints:
+The following tables exist in the database but are excluded from the ERD as they are primarily operational/logging tables:
 - **Admin Logs**: Audit trail for admin actions (optimized)
 - **Admin Notifications**: Admin-specific notifications
+- **Business Notifications**: Business-specific notifications
 - **Email Queue/Log**: Email delivery and tracking system (optimized)
 - **Rate Limits**: API rate limiting protection (optimized)
 - **Reviews**: Customer feedback and rating system
-- **Refunds**: Payment refund management
 - **Provider Availability/Time Slots**: Scheduling and availability system
-- **User Appeals**: Appeal system for restricted users
-- **Appeal History**: Tracking of appeal status changes
-- **Business Notifications**: Business-specific notifications
 - **Migration History**: Database migration tracking
 
 ### Automatic Setup (Recommended)
