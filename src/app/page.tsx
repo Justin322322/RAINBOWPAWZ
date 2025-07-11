@@ -17,13 +17,45 @@ export default function Home() {
   const [isBusinessAccountModalOpen, setIsBusinessAccountModalOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [activeSection, setActiveSection] = useState('');
 
-  // Scroll effect for navbar and check URL parameters
+  // Scroll effect for navbar, scroll spy, and check URL parameters
   useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 50);
+
+      // Scroll spy functionality
+      const sections = ['services', 'how-it-works', 'promise'];
+      const navHeight = 80;
+      const scrollPosition = window.scrollY + navHeight + 50; // Add offset for better detection
+
+      let currentSection = '';
+
+      // Check if we're in the hero section (at the top)
+      const heroSection = document.getElementById('hero');
+      if (heroSection && window.scrollY < heroSection.offsetHeight - 200) {
+        currentSection = ''; // Clear active section when in hero
+      } else {
+        // Check other sections
+        for (const sectionId of sections) {
+          const element = document.getElementById(sectionId);
+          if (element) {
+            const elementTop = element.offsetTop;
+            const elementBottom = elementTop + element.offsetHeight;
+
+            if (scrollPosition >= elementTop && scrollPosition < elementBottom) {
+              currentSection = sectionId;
+              break;
+            }
+          }
+        }
+      }
+
+      setActiveSection(currentSection);
     };
+
     window.addEventListener('scroll', handleScroll);
+    handleScroll(); // Call once to set initial state
 
     // Check for showLogin parameter in URL
     const urlParams = new URLSearchParams(window.location.search);
@@ -62,18 +94,97 @@ export default function Home() {
     setIsSignupOptionModalOpen(true);
   };
 
-  // Enhanced smooth scroll functionality with offset adjustment and smoother animation
+  // Enhanced smooth scroll functionality with improved animation and visual feedback
   const handleSmoothScroll = (e: React.MouseEvent<HTMLAnchorElement>, targetId: string) => {
     e.preventDefault();
     const element = document.getElementById(targetId);
-    const navHeight = 80; // Height of your fixed navbar
-    const elementPosition = element?.getBoundingClientRect().top ?? 0;
-    const offsetPosition = elementPosition + window.pageYOffset - navHeight;
+    if (!element) return;
 
-    window.scrollTo({
-      top: offsetPosition,
-      behavior: "smooth"
-    });
+    // Add click animation to the link
+    const target = e.currentTarget;
+    target.style.transform = 'scale(0.95)';
+    target.style.transition = 'transform 0.1s ease';
+    setTimeout(() => {
+      target.style.transform = '';
+    }, 100);
+
+    const navHeight = 80; // Height of your fixed navbar
+    const additionalOffset = -10; // Negative offset to bring title closer to navbar
+    const elementPosition = element.getBoundingClientRect().top;
+    const offsetPosition = elementPosition + window.pageYOffset - navHeight - additionalOffset;
+
+    // Add subtle visual feedback - very light highlight
+    element.style.transition = 'background-color 0.2s ease';
+    element.style.backgroundColor = 'rgba(27, 77, 62, 0.02)';
+
+    // Custom smooth scroll with easing
+    const startPosition = window.pageYOffset;
+    const distance = offsetPosition - startPosition;
+    const duration = Math.min(Math.abs(distance) / 2, 1000); // Dynamic duration based on distance, max 1s
+    let startTime: number | null = null;
+
+    // Easing function for smoother animation
+    const easeInOutCubic = (t: number): number => {
+      return t < 0.5 ? 4 * t * t * t : (t - 1) * (2 * t - 2) * (2 * t - 2) + 1;
+    };
+
+    const animateScroll = (currentTime: number) => {
+      if (startTime === null) startTime = currentTime;
+      const timeElapsed = currentTime - startTime;
+      const progress = Math.min(timeElapsed / duration, 1);
+      const easedProgress = easeInOutCubic(progress);
+
+      window.scrollTo(0, startPosition + distance * easedProgress);
+
+      if (progress < 1) {
+        requestAnimationFrame(animateScroll);
+      } else {
+        // Remove highlight after scroll completes
+        setTimeout(() => {
+          element.style.backgroundColor = '';
+          element.style.transition = '';
+        }, 300);
+      }
+    };
+
+    requestAnimationFrame(animateScroll);
+  };
+
+  // Smooth scroll to top (hero section)
+  const handleScrollToTop = (e: React.MouseEvent) => {
+    e.preventDefault();
+
+    // Add click animation to the logo
+    const target = e.currentTarget;
+    target.style.transform = 'scale(0.95)';
+    target.style.transition = 'transform 0.1s ease';
+    setTimeout(() => {
+      target.style.transform = '';
+    }, 100);
+
+    // Custom smooth scroll to top
+    const startPosition = window.pageYOffset;
+    const duration = Math.min(startPosition / 2, 1000); // Dynamic duration, max 1s
+    let startTime: number | null = null;
+
+    const easeInOutCubic = (t: number): number => {
+      return t < 0.5 ? 4 * t * t * t : (t - 1) * (2 * t - 2) * (2 * t - 2) + 1;
+    };
+
+    const animateScroll = (currentTime: number) => {
+      if (startTime === null) startTime = currentTime;
+      const timeElapsed = currentTime - startTime;
+      const progress = Math.min(timeElapsed / duration, 1);
+      const easedProgress = easeInOutCubic(progress);
+
+      window.scrollTo(0, startPosition * (1 - easedProgress));
+
+      if (progress < 1) {
+        requestAnimationFrame(animateScroll);
+      }
+    };
+
+    requestAnimationFrame(animateScroll);
   };
 
   const openPersonalAccountModal = () => {
@@ -100,25 +211,37 @@ export default function Home() {
       <header className={`fixed w-full top-0 z-50 bg-[var(--primary-green)] transition-all duration-300 ${isScrolled ? 'shadow-lg' : ''}`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-20">
-            <Link href="/" className="flex items-center space-x-3">
+            <a onClick={handleScrollToTop} className="flex items-center space-x-3 cursor-pointer">
               <Image src="/logo.png" alt="Rainbow Paws Logo" width={40} height={40} className="h-10 w-auto" />
               <span className="text-xl modern-heading text-white tracking-wide">RainbowPaws</span>
-            </Link>
+            </a>
             
             {/* Desktop Navigation */}
             <nav className="hidden md:flex items-center space-x-10">
               <a onClick={(e) => handleSmoothScroll(e, 'services')}
-                className="text-base modern-text text-white hover:text-white transition-all duration-300 relative after:content-[''] after:absolute after:-bottom-2 after:left-0 after:w-0 after:h-0.5 after:bg-white after:transition-all after:duration-300 hover:after:w-full cursor-pointer"
+                className={`text-base modern-text text-white hover:text-white transition-all duration-300 relative after:content-[''] after:absolute after:-bottom-2 after:left-0 after:h-0.5 after:bg-white after:transition-all after:duration-300 cursor-pointer ${
+                  activeSection === 'services'
+                    ? 'after:w-full text-white font-medium'
+                    : 'after:w-0 hover:after:w-full'
+                }`}
               >
                 Memorial Services
               </a>
               <a onClick={(e) => handleSmoothScroll(e, 'how-it-works')}
-                className="text-base modern-text text-white hover:text-white transition-all duration-300 relative after:content-[''] after:absolute after:-bottom-2 after:left-0 after:w-0 after:h-0.5 after:bg-white after:transition-all after:duration-300 hover:after:w-full cursor-pointer"
+                className={`text-base modern-text text-white hover:text-white transition-all duration-300 relative after:content-[''] after:absolute after:-bottom-2 after:left-0 after:h-0.5 after:bg-white after:transition-all after:duration-300 cursor-pointer ${
+                  activeSection === 'how-it-works'
+                    ? 'after:w-full text-white font-medium'
+                    : 'after:w-0 hover:after:w-full'
+                }`}
               >
                 How It Works
               </a>
               <a onClick={(e) => handleSmoothScroll(e, 'promise')}
-                className="text-base modern-text text-white hover:text-white transition-all duration-300 relative after:content-[''] after:absolute after:-bottom-2 after:left-0 after:w-0 after:h-0.5 after:bg-white after:transition-all after:duration-300 hover:after:w-full cursor-pointer"
+                className={`text-base modern-text text-white hover:text-white transition-all duration-300 relative after:content-[''] after:absolute after:-bottom-2 after:left-0 after:h-0.5 after:bg-white after:transition-all after:duration-300 cursor-pointer ${
+                  activeSection === 'promise'
+                    ? 'after:w-full text-white font-medium'
+                    : 'after:w-0 hover:after:w-full'
+                }`}
               >
                 Our Promise
               </a>
@@ -165,32 +288,38 @@ export default function Home() {
             <div className="md:hidden bg-[var(--primary-green)] border-t border-white/20 relative z-50 shadow-lg">
               <div className="px-4 py-4 space-y-2">
                 {/* Navigation Links */}
-                <a 
+                <a
                   onClick={(e) => {
                     handleSmoothScroll(e, 'services');
                     setIsMobileMenuOpen(false);
                   }}
-                  className="flex items-center px-4 py-4 rounded-lg text-white hover:bg-white/10 transition-all duration-300 cursor-pointer"
+                  className={`flex items-center px-4 py-4 rounded-lg text-white hover:bg-white/10 transition-all duration-300 cursor-pointer ${
+                    activeSection === 'services' ? 'bg-white/20 border-l-4 border-white' : ''
+                  }`}
                 >
                   <span className="modern-text text-base">Memorial Services</span>
                 </a>
-                
-                <a 
+
+                <a
                   onClick={(e) => {
                     handleSmoothScroll(e, 'how-it-works');
                     setIsMobileMenuOpen(false);
                   }}
-                  className="flex items-center px-4 py-4 rounded-lg text-white hover:bg-white/10 transition-all duration-300 cursor-pointer"
+                  className={`flex items-center px-4 py-4 rounded-lg text-white hover:bg-white/10 transition-all duration-300 cursor-pointer ${
+                    activeSection === 'how-it-works' ? 'bg-white/20 border-l-4 border-white' : ''
+                  }`}
                 >
                   <span className="modern-text text-base">How It Works</span>
                 </a>
-                
-                <a 
+
+                <a
                   onClick={(e) => {
                     handleSmoothScroll(e, 'promise');
                     setIsMobileMenuOpen(false);
                   }}
-                  className="flex items-center px-4 py-4 rounded-lg text-white hover:bg-white/10 transition-all duration-300 cursor-pointer"
+                  className={`flex items-center px-4 py-4 rounded-lg text-white hover:bg-white/10 transition-all duration-300 cursor-pointer ${
+                    activeSection === 'promise' ? 'bg-white/20 border-l-4 border-white' : ''
+                  }`}
                 >
                   <span className="modern-text text-base">Our Promise</span>
                 </a>
@@ -225,7 +354,7 @@ export default function Home() {
       </header>
 
       {/* Hero Section */}
-      <section className="relative min-h-screen w-full overflow-hidden">
+      <section id="hero" className="relative min-h-screen w-full overflow-hidden">
         <div className="absolute inset-0">
           <video
             autoPlay
@@ -297,7 +426,7 @@ export default function Home() {
       </section>
 
       {/* Services Section */}
-      <section id="services" className="py-24 bg-white">
+      <section id="services" className="scroll-mt-16 pt-16 pb-24 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="section-title">Memorial Services</h2>
@@ -347,8 +476,10 @@ export default function Home() {
       </section>
 
       {/* How It Works Section */}
-      <section id="how-it-works" className="py-24 bg-[var(--background-light)]">
-        <h2 className="text-center text-2xl text-[var(--primary-green)] mb-16">How It Works</h2>
+      <section id="how-it-works" className="scroll-mt-16 pt-16 pb-24 bg-[var(--background-light)]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <h2 className="text-center text-2xl text-[var(--primary-green)] mb-16">How It Works</h2>
+        </div>
 
         <div className="roadmap-container">
           <div className="roadmap-line"></div>
@@ -391,7 +522,7 @@ export default function Home() {
       </section>
 
       {/* Our Promise Section - Add scroll margin to account for fixed header */}
-      <section id="promise" className="scroll-mt-20 py-24 md:py-32 bg-white relative overflow-hidden">
+      <section id="promise" className="scroll-mt-16 pt-16 pb-24 md:pb-32 bg-white relative overflow-hidden">
         <div className="absolute inset-0 bg-[url('/pattern.png')] opacity-5"></div>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
           <motion.div

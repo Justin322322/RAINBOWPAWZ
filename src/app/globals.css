@@ -613,6 +613,61 @@
   border-width: 2px;
 }
 
+/* Enhanced anchor scroll animations - subtle and clean */
+@keyframes section-highlight {
+  0% {
+    background-color: rgba(27, 77, 62, 0.01);
+  }
+  50% {
+    background-color: rgba(27, 77, 62, 0.02);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+.section-highlight {
+  animation: section-highlight 0.4s ease-out;
+}
+
+/* Smooth anchor link transitions */
+.nav-link-active {
+  position: relative;
+}
+
+.nav-link-active::after {
+  content: '';
+  position: absolute;
+  bottom: -8px;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, #ffffff, rgba(255, 255, 255, 0.8));
+  border-radius: 1px;
+  animation: nav-underline 0.3s ease-out;
+}
+
+@keyframes nav-underline {
+  0% {
+    width: 0%;
+    opacity: 0;
+  }
+  100% {
+    width: 100%;
+    opacity: 1;
+  }
+}
+
+/* Mobile navigation active state */
+.mobile-nav-active {
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.1));
+  border-left: 4px solid #ffffff;
+  transform: translateX(4px);
+  transition: all 0.3s ease;
+}
+
+
+
 .toast-message {
   z-index: 999999 !important;
   position: relative !important;
