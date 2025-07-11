@@ -155,7 +155,7 @@ export default function Home() {
     e.preventDefault();
 
     // Add click animation to the logo
-    const target = e.currentTarget;
+    const target = e.currentTarget as HTMLElement;
     target.style.transform = 'scale(0.95)';
     target.style.transition = 'transform 0.1s ease';
     setTimeout(() => {
