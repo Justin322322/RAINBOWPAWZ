@@ -128,7 +128,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Verify admin authentication using secure auth
-    const user = verifySecureAuth(request);
+    const user = await verifySecureAuth(request);
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -225,7 +225,10 @@ export async function GET(request: NextRequest) {
       if (columnNames.includes('verification_status')) selectFields.push('bp.verification_status');
       if (columnNames.includes('application_status')) selectFields.push('bp.application_status');
       if (columnNames.includes('created_at')) selectFields.push('bp.created_at');
-      if (columnNames.includes('updated_at')) selectFields.push('bp.updated_at');      // Check if business is verified based on application_status
+      if (columnNames.includes('updated_at')) selectFields.push('bp.updated_at');
+
+      // Add profile picture from users table if it exists
+      if (userColumnNames.includes('profile_picture')) selectFields.push('u.profile_picture');      // Check if business is verified based on application_status
       const verifiedCondition = columnNames.includes('application_status')
         ? `CASE WHEN bp.application_status = 'approved' THEN 1 ELSE 0 END`
         : '0';
@@ -304,6 +307,54 @@ export async function GET(request: NextRequest) {
         success: true,
         businesses: []
       });
+    }
+
+    // Get appeals for all businesses in one query for better performance
+    let businessAppeals: { [key: string]: any[] } = {};
+    try {
+      const businessIds = businesses.map(b => b.id).filter(id => id);
+      console.log('Fetching appeals for business IDs:', businessIds);
+
+      if (businessIds.length > 0) {
+        // First, let's get all appeals and see what we have
+        const allAppealsQuery = `SELECT * FROM user_appeals ORDER BY submitted_at DESC`;
+        const allAppeals = await query(allAppealsQuery) as any[];
+        console.log('All appeals in database:', allAppeals);
+
+        // Simplified query - get appeals by business_id directly
+        const appealsQuery = `
+          SELECT
+            a.appeal_id,
+            a.user_id,
+            a.business_id,
+            a.subject,
+            a.message,
+            a.status,
+            a.submitted_at
+          FROM user_appeals a
+          WHERE a.business_id IN (${businessIds.map(() => '?').join(',')})
+          ORDER BY a.submitted_at DESC
+        `;
+
+        const appeals = await query(appealsQuery, businessIds) as any[];
+        console.log('Appeals found for businesses:', appeals);
+
+        // Group appeals by business ID
+        appeals.forEach(appeal => {
+          const businessId = appeal.business_id;
+          if (businessId) {
+            if (!businessAppeals[businessId]) {
+              businessAppeals[businessId] = [];
+            }
+            businessAppeals[businessId].push(appeal);
+          }
+        });
+
+        console.log('Grouped business appeals:', businessAppeals);
+      }
+    } catch (error) {
+      console.error('Error fetching business appeals:', error);
+      // Continue without appeals data
     }
 
     // Format the results
@@ -389,7 +440,9 @@ export async function GET(request: NextRequest) {
           businessHours: business.business_hours || 'Not specified',
           permitNumber: business.bp_permit_number || '',
           taxIdNumber: business.tax_id_number || '',
-          documentPath: business.document_path || ''
+          documentPath: business.document_path || '',
+          profile_picture: business.profile_picture || null,
+          appeals: businessAppeals[business.id] || []
         };
       } catch {
         // Return a simplified record if formatting fails
@@ -406,7 +459,9 @@ export async function GET(request: NextRequest) {
           totalBookings: 0,
           revenue: '₱0.00',
           description: 'Error formatting description',
-          verified: false
+          verified: false,
+          profile_picture: business.profile_picture || null,
+          appeals: businessAppeals[business.id] || []
         };
       }
     });
@@ -508,7 +563,7 @@ export async function POST(request: NextRequest) {
   try {
 
     // Verify admin authentication using secure auth
-    const user = verifySecureAuth(request);
+    const user = await verifySecureAuth(request);
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized', success: false }, { status: 401 });
     }

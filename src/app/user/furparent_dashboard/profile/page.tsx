@@ -15,27 +15,24 @@ import {
 } from '@heroicons/react/24/outline';
 import withUserAuth, { UserData } from '@/components/withUserAuth';
 import Image from 'next/image';
-import { getImagePath, addCacheBuster } from '@/utils/imageUtils';
+import { getImagePath, addCacheBuster, getProfilePictureUrl } from '@/utils/imageUtils';
 import PhilippinePhoneInput from '@/components/ui/PhilippinePhoneInput';
 import {
   ProfileField
 } from '@/components/ui/ProfileLayout';
 import {
   ProfileInput,
-  ProfileButton,
-  ProfileAlert
+  ProfileButton
 } from '@/components/ui/ProfileFormComponents';
 import { SkeletonCard } from '@/components/ui/SkeletonLoader';
+import { useToast } from '@/context/ToastContext';
 
 interface ProfilePageProps {
   userData?: UserData;
 }
 
 function ProfilePage({ userData }: ProfilePageProps) {
-
-  // Loading and error states
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
+  const { showToast } = useToast();
 
   // Skeleton loading state with minimum delay
   const [showSkeleton, setShowSkeleton] = useState(true);
@@ -67,6 +64,9 @@ function ProfilePage({ userData }: ProfilePageProps) {
   const [isUpdatingPersonal, setIsUpdatingPersonal] = useState(false);
   const [isUpdatingContact, setIsUpdatingContact] = useState(false);
 
+  // Geolocation states
+  const [isGettingLocation, setIsGettingLocation] = useState(false);
+
   // Initialize form data when userData changes
   useEffect(() => {
     if (userData) {
@@ -79,6 +79,12 @@ function ProfilePage({ userData }: ProfilePageProps) {
         phone: userData.phone || '',
         address: userData.address || ''
       });
+
+      // Update profile picture timestamp to force refresh if user has a profile picture
+      if (userData.profile_picture) {
+        setProfilePictureTimestamp(Date.now());
+      }
+
       setInitialLoading(false);
     }
   }, [userData]);
@@ -101,17 +107,21 @@ function ProfilePage({ userData }: ProfilePageProps) {
     };
   }, [initialLoading, userData]);
 
-  // Clear messages after 5 seconds
+
+
+  // Listen for profile picture updates
   useEffect(() => {
-    if (success || error) {
-      const timer = setTimeout(() => {
-        setSuccess(null);
-        setError(null);
-      }, 5000);
-      return () => clearTimeout(timer);
-    }
-    return undefined;
-  }, [success, error]);
+    const handleProfilePictureUpdate = () => {
+      // Force refresh of profile picture display
+      setProfilePictureTimestamp(Date.now());
+    };
+
+    window.addEventListener('profilePictureUpdated', handleProfilePictureUpdate);
+
+    return () => {
+      window.removeEventListener('profilePictureUpdated', handleProfilePictureUpdate);
+    };
+  }, []);
 
   if (!userData || showSkeleton || initialLoading) {
     return (
@@ -161,12 +171,12 @@ function ProfilePage({ userData }: ProfilePageProps) {
     const file = event.target.files?.[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) { // 5MB limit
-        setError('Profile picture must be less than 5MB');
+        showToast('Profile picture must be less than 5MB', 'error');
         return;
       }
 
       if (!file.type.startsWith('image/')) {
-        setError('Please select a valid image file');
+        showToast('Please select a valid image file', 'error');
         return;
       }
 
@@ -184,7 +194,6 @@ function ProfilePage({ userData }: ProfilePageProps) {
     if (!profilePicture) return;
 
     setUploadingProfilePicture(true);
-    setError(null);
 
     try {
       const formData = new FormData();
@@ -201,7 +210,7 @@ function ProfilePage({ userData }: ProfilePageProps) {
 
       const result = await response.json();
       if (result.success) {
-        setSuccess('Profile picture updated successfully!');
+        showToast('Profile picture updated successfully!', 'success');
 
         // Update the timestamp to force image refresh
         setProfilePictureTimestamp(Date.now());
@@ -219,10 +228,19 @@ function ProfilePage({ userData }: ProfilePageProps) {
         window.dispatchEvent(new CustomEvent('userDataUpdated', {
           detail: { ...userData, profile_picture: result.profilePicture }
         }));
+
+        // Also trigger profile picture update event for navbar
+        window.dispatchEvent(new CustomEvent('profilePictureUpdated', {
+          detail: {
+            profilePicturePath: result.profilePicture,
+            userType: 'user',
+            timestamp: Date.now()
+          }
+        }));
       }
     } catch (error) {
       console.error('Error uploading profile picture:', error);
-      setError('Failed to upload profile picture. Please try again.');
+      showToast('Failed to upload profile picture. Please try again.', 'error');
     } finally {
       setUploadingProfilePicture(false);
     }
@@ -232,7 +250,6 @@ function ProfilePage({ userData }: ProfilePageProps) {
   const handlePersonalInfoUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsUpdatingPersonal(true);
-    setError(null);
 
     try {
       const response = await fetch(`/api/users/${userData.user_id || userData.id}/update`, {
@@ -241,28 +258,34 @@ function ProfilePage({ userData }: ProfilePageProps) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          first_name: personalInfo.firstName,
-          last_name: personalInfo.lastName,
+          firstName: personalInfo.firstName,
+          lastName: personalInfo.lastName,
         }),
       });
 
+      const result = await response.json();
+
       if (!response.ok) {
-        throw new Error('Failed to update personal information');
+        // Get specific error message from API response
+        const errorMessage = result.error || result.message || 'Failed to update personal information';
+        throw new Error(errorMessage);
       }
 
-      const result = await response.json();
       if (result.success) {
-        setSuccess('Personal information updated successfully!');
+        showToast('Personal information updated successfully!', 'success');
         setIsEditingPersonal(false);
 
         // Trigger user data update event
         window.dispatchEvent(new CustomEvent('userDataUpdated', {
           detail: { ...userData, first_name: personalInfo.firstName, last_name: personalInfo.lastName }
         }));
+      } else {
+        throw new Error(result.error || 'Update failed');
       }
     } catch (error) {
       console.error('Error updating personal info:', error);
-      setError('Failed to update personal information. Please try again.');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update personal information. Please try again.';
+      showToast(errorMessage, 'error');
     } finally {
       setIsUpdatingPersonal(false);
     }
@@ -272,7 +295,6 @@ function ProfilePage({ userData }: ProfilePageProps) {
   const handleContactInfoUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsUpdatingContact(true);
-    setError(null);
 
     try {
       const response = await fetch(`/api/users/${userData.user_id || userData.id}/update`, {
@@ -281,31 +303,109 @@ function ProfilePage({ userData }: ProfilePageProps) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
+          firstName: userData.first_name,
+          lastName: userData.last_name,
           email: contactInfo.email,
-          phone: contactInfo.phone,
+          phoneNumber: contactInfo.phone,
           address: contactInfo.address,
         }),
       });
 
+      const result = await response.json();
+
       if (!response.ok) {
-        throw new Error('Failed to update contact information');
+        // Get specific error message from API response
+        const errorMessage = result.error || result.message || 'Failed to update contact information';
+        throw new Error(errorMessage);
       }
 
-      const result = await response.json();
       if (result.success) {
-        setSuccess('Contact information updated successfully!');
+        showToast('Contact information updated successfully!', 'success');
         setIsEditingContact(false);
 
         // Trigger user data update event
         window.dispatchEvent(new CustomEvent('userDataUpdated', {
           detail: { ...userData, email: contactInfo.email, phone: contactInfo.phone, address: contactInfo.address }
         }));
+      } else {
+        throw new Error(result.error || 'Update failed');
       }
     } catch (error) {
       console.error('Error updating contact info:', error);
-      setError('Failed to update contact information. Please try again.');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update contact information. Please try again.';
+      showToast(errorMessage, 'error');
     } finally {
       setIsUpdatingContact(false);
+    }
+  };
+
+  // Get current location using browser geolocation API
+  const getCurrentLocation = async () => {
+    if (!navigator.geolocation) {
+      showToast('Geolocation is not supported by this browser.', 'error');
+      return;
+    }
+
+    setIsGettingLocation(true);
+
+    try {
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(
+          resolve,
+          reject,
+          {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 300000 // 5 minutes
+          }
+        );
+      });
+
+      const { latitude, longitude } = position.coords;
+
+      // Use reverse geocoding to get address from coordinates
+      try {
+        const response = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&countrycodes=ph&addressdetails=1`,
+          {
+            headers: {
+              'User-Agent': 'RainbowPaws/1.0 (contact@rainbowpaws.com)'
+            }
+          }
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data && data.display_name) {
+            // Update the address field with the detected location
+            setContactInfo(prev => ({ ...prev, address: data.display_name }));
+            showToast('Location detected successfully! Please review and update if needed.', 'success');
+          } else {
+            throw new Error('Could not determine address from location');
+          }
+        } else {
+          throw new Error('Geocoding service unavailable');
+        }
+      } catch (geocodeError) {
+        // Fallback: just show coordinates
+        const fallbackAddress = `Latitude: ${latitude.toFixed(6)}, Longitude: ${longitude.toFixed(6)}`;
+        setContactInfo(prev => ({ ...prev, address: fallbackAddress }));
+        showToast('Location detected but could not determine address. Please enter your address manually.', 'warning');
+      }
+    } catch (error: any) {
+      let errorMessage = 'Failed to get your location.';
+
+      if (error.code === 1) {
+        errorMessage = 'Location access denied. Please enable location permissions and try again.';
+      } else if (error.code === 2) {
+        errorMessage = 'Location unavailable. Please check your device settings.';
+      } else if (error.code === 3) {
+        errorMessage = 'Location request timed out. Please try again.';
+      }
+
+      showToast(errorMessage, 'error');
+    } finally {
+      setIsGettingLocation(false);
     }
   };
 
@@ -318,26 +418,7 @@ function ProfilePage({ userData }: ProfilePageProps) {
           <p className="text-gray-600 mt-2">Manage your personal information and account settings</p>
         </div>
 
-        {/* Success/Error Messages */}
-        {success && (
-          <div className="mb-6">
-            <ProfileAlert
-              type="success"
-              message={success}
-              onClose={() => setSuccess(null)}
-            />
-          </div>
-        )}
 
-        {error && (
-          <div className="mb-6">
-            <ProfileAlert
-              type="error"
-              message={error}
-              onClose={() => setError(null)}
-            />
-          </div>
-        )}
 
         <div className="space-y-6">
           {/* Profile Picture Card */}
@@ -360,12 +441,16 @@ function ProfilePage({ userData }: ProfilePageProps) {
                       />
                     ) : userData.profile_picture ? (
                       <Image
-                        src={addCacheBuster(getImagePath(userData.profile_picture))}
+                        src={getProfilePictureUrl(userData.profile_picture)}
                         alt="Profile"
                         width={96}
                         height={96}
                         className="w-full h-full object-cover"
                         key={profilePictureTimestamp} // Force re-render when timestamp changes
+                        onError={(e) => {
+                          console.warn('Profile picture failed to load:', userData.profile_picture);
+                          // Don't clear the state, just let it fall back to the default icon
+                        }}
                       />
                     ) : (
                       <div className="w-full h-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center">
@@ -531,13 +616,41 @@ function ProfilePage({ userData }: ProfilePageProps) {
                       />
                     </div>
 
-                    <ProfileInput
-                      label="Address"
-                      value={contactInfo.address}
-                      onChange={(value) => setContactInfo(prev => ({ ...prev, address: value }))}
-                      placeholder="Enter your complete address"
-                      icon={<MapPinIcon className="h-5 w-5" />}
-                    />
+                    <div className="space-y-2">
+                      <label className="block text-sm font-medium text-gray-700">
+                        Address
+                        <span className="text-red-500 ml-1">*</span>
+                      </label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                          <MapPinIcon className="h-5 w-5 text-gray-400" />
+                        </div>
+                        <input
+                          type="text"
+                          value={contactInfo.address}
+                          onChange={(e) => setContactInfo(prev => ({ ...prev, address: e.target.value }))}
+                          placeholder="Enter your complete address"
+                          className="block w-full rounded-lg border border-gray-300 shadow-sm bg-white
+                            focus:border-[var(--primary-green)] focus:ring-[var(--primary-green)] focus:ring-1
+                            pl-10 pr-32 py-2.5 transition-colors duration-200 text-gray-900"
+                        />
+                        <button
+                          type="button"
+                          onClick={getCurrentLocation}
+                          disabled={isGettingLocation}
+                          className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm font-medium text-[var(--primary-green)] hover:text-[var(--primary-green-hover)] disabled:text-gray-400 disabled:cursor-not-allowed"
+                        >
+                          {isGettingLocation ? (
+                            <div className="flex items-center">
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[var(--primary-green)] mr-2"></div>
+                              Getting...
+                            </div>
+                          ) : (
+                            'Use Current Location'
+                          )}
+                        </button>
+                      </div>
+                    </div>
                   </div>
 
                   <div className="flex justify-end pt-6 border-t border-gray-100 mt-6">

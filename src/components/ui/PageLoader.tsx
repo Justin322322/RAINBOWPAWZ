@@ -3,10 +3,10 @@
 import React from 'react';
 import Image from 'next/image';
 import { motion, Easing } from 'framer-motion';
-import Spinner from '@/components/ui/Spinner';
+import { Spinner } from '@/components/ui/Spinner';
 import { cn } from '@/utils/classNames';
 
-export interface PageLoaderProps {
+interface PageLoaderProps {
   message?: string;
   fullScreen?: boolean;
   className?: string;
@@ -74,4 +74,4 @@ export const PageLoader: React.FC<PageLoaderProps> = ({
   );
 };
 
-export default PageLoader;
+

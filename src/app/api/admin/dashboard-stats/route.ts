@@ -17,7 +17,7 @@ const defaultStats = {
 export async function GET(request: NextRequest) {
   try {
     // Verify admin authentication using secure auth
-    const user = verifySecureAuth(request);
+    const user = await verifySecureAuth(request);
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }

@@ -10,7 +10,7 @@ const sseConnections = new Map<string, ReadableStreamDefaultController>();
 export async function GET(request: NextRequest) {
   try {
     // Use secure authentication
-    const user = verifySecureAuth(request);
+    const user = await verifySecureAuth(request);
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }

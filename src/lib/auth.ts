@@ -6,11 +6,7 @@ interface _Session {
   isAdmin: boolean;
 }
 
-export const authOptions = {
-  // Configuration for authentication
-  cookieName: 'auth_token',
-  sessionExpiryDays: 30
-};
+
 
 // Get the server session from cookies
 export const getServerSession = async () => {
@@ -18,10 +14,10 @@ export const getServerSession = async () => {
     // Get the cookie value directly from the request headers
     // This is a workaround for the cookies() function type issues
     const cookieHeader = process.env.NODE_ENV === 'development'
-      ? { [authOptions.cookieName]: 'test_user_id_admin' } // Mock cookie for development
+      ? { 'auth_token': 'test_user_id_admin' } // Mock cookie for development
       : {};
 
-    const authCookieValue = cookieHeader[authOptions.cookieName];
+    const authCookieValue = cookieHeader['auth_token'];
 
     if (!authCookieValue) {
       return null;

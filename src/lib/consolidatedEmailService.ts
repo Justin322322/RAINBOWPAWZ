@@ -6,17 +6,7 @@ let cachedTransporter: nodemailer.Transporter | null = null;
 let lastTransporterCreation = 0;
 const TRANSPORTER_TTL = 5 * 60 * 1000; // 5 minutes
 
-// Function to close the transporter connection
-export function closeTransporter(): void {
-  if (cachedTransporter) {
-    try {
-      cachedTransporter.close();
-      cachedTransporter = null;
-    } catch (error) {
-      console.error('Error closing email transporter:', error);
-    }
-  }
-}
+
 
 // Helper function to strip HTML tags for plain text version
 function stripHtml(html: string): string {
@@ -27,7 +17,7 @@ function stripHtml(html: string): string {
 }
 
 // Email data interface
-export interface EmailData {
+interface EmailData {
   to: string;
   subject: string;
   html: string;
@@ -414,13 +404,7 @@ export const sendOtpEmail = async (email: string, otp: string) => {
   return sendEmail({ to: email, subject, html });
 };
 
-export const sendBookingConfirmationEmail = async (email: string, bookingDetails: any) => {
-  // Import the email templates dynamically to avoid circular dependencies
-  const { createBookingConfirmationEmail } = await import('@/lib/emailTemplates');
 
-  const { subject, html } = createBookingConfirmationEmail(bookingDetails);
-  return sendEmail({ to: email, subject, html });
-};
 
 export const sendBusinessVerificationEmail = async (
   email: string,

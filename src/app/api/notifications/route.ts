@@ -8,7 +8,7 @@ import { createNotification } from '@/utils/notificationService';
 export async function GET(request: NextRequest) {
   try {
     // Use secure authentication for consistency
-    const user = verifySecureAuth(request);
+    const user = await verifySecureAuth(request);
     if (!user) {
       return NextResponse.json(
         createStandardErrorResponse('Unauthorized', 401, {
@@ -177,7 +177,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     // Get user ID from auth token for rate limiting (optional for POST)
-    const user = verifySecureAuth(request);
+    const user = await verifySecureAuth(request);
     let userId: string | null = null;
 
     if (user) {
@@ -307,3 +307,4 @@ async function ensureNotificationsTable() {
     return false;
   }
 }
+

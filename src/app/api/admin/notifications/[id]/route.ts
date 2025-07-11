@@ -20,7 +20,7 @@ export async function DELETE(
     }
 
     // Use secure authentication for consistency
-    const user = verifySecureAuth(request);
+    const user = await verifySecureAuth(request);
     if (!user) {
       return NextResponse.json({
         error: 'Unauthorized',

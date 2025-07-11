@@ -4,7 +4,7 @@
 
 import { cacheManager } from '@/utils/cache';
 
-export interface GeocodingResult {
+interface GeocodingResult {
   coordinates: [number, number];
   formattedAddress: string;
   confidence: number;
@@ -12,7 +12,7 @@ export interface GeocodingResult {
   accuracy: 'high' | 'medium' | 'low';
 }
 
-export interface GeocodingError {
+interface GeocodingError {
   message: string;
   code: 'NETWORK_ERROR' | 'NO_RESULTS' | 'RATE_LIMITED' | 'API_ERROR' | 'INVALID_ADDRESS';
   retryable: boolean;

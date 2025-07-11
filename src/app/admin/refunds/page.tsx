@@ -16,7 +16,7 @@ import { useToast } from '@/context/ToastContext';
 import RefundStatus from '@/components/refund/RefundStatus';
 import Modal from '@/components/Modal';
 import { motion } from 'framer-motion';
-import SectionLoader from '@/components/ui/SectionLoader';
+import { SectionLoader } from '@/components/ui/SectionLoader';
 
 interface Refund {
   id: number;

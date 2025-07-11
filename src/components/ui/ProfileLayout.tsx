@@ -216,4 +216,4 @@ export const ProfileGrid: React.FC<{ children: React.ReactNode; cols?: number; c
   );
 };
 
-export default ProfileLayout;
+

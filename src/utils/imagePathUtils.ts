@@ -26,32 +26,4 @@ export function getImagePath(path: string): string {
   return `${baseUrl}/${path}`;
 }
 
-/**
- * Extracts the filename from a path
- * @param path - The path containing the filename
- * @returns The extracted filename
- */
-export function getFilenameFromPath(path: string): string {
-  return path.split('/').pop() || path;
-}
 
-/**
- * Generates a placeholder image URL for when an image is not available
- * @param type - The type of placeholder (e.g., 'package', 'pet', 'user')
- * @param id - Optional ID to generate a consistent placeholder
- * @returns URL to a placeholder image
- */
-export function getPlaceholderImage(type: 'package' | 'pet' | 'user' = 'package', id?: number): string {
-  const baseUrl = getAppBaseUrl();
-  
-  // Use existing SVG placeholders or fallback to bg_4.png
-  if (type === 'package') {
-    const index = id ? (id % 5) + 1 : Math.floor(Math.random() * 5) + 1;
-    return `${baseUrl}/images/sample-package-${index}.svg`;
-  } else if (type === 'pet') {
-    return `${baseUrl}/images/pet-placeholder.svg`;
-  } else {
-    // For user or any other type, use the reliable fallback
-    return `${baseUrl}/bg_4.png`;
-  }
-}

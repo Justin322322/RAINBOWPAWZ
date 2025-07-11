@@ -1,22 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { MonitoringService } from '@/lib/monitoring';
-import { createSuccessResponse, handleApiError } from '@/lib/errorHandler';
 
 export async function GET(_request: NextRequest) {
   try {
-    const health = await MonitoringService.getSystemHealth();
-    
+    // Simple health check (monitoring service removed)
+    const health = {
+      status: 'healthy',
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+      memory: process.memoryUsage(),
+      version: process.version
+    };
+
     // Determine HTTP status based on health
     let status = 200;
-    if (health.overall === 'degraded') {
-      status = 200; // Still operational but with issues
-    } else if (health.overall === 'unhealthy') {
-      status = 503; // Service unavailable
-    }
 
-    const response = createSuccessResponse(health, 'Health check completed');
-    
-    return NextResponse.json(response, { 
+    return NextResponse.json({
+      success: true,
+      data: health,
+      message: 'Health check completed'
+    }, {
       status,
       headers: {
         'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -25,7 +27,11 @@ export async function GET(_request: NextRequest) {
       },
     });
   } catch (error) {
-    return handleApiError(error, '/api/health');
+    return NextResponse.json({
+      success: false,
+      error: 'Health check failed',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 });
   }
 }
 

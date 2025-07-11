@@ -47,44 +47,4 @@ export function getAppBaseUrl(): string {
   return envUrl;
 }
 
-/**
- * Generate a full URL for an API endpoint
- * @param path The API path (should start with /)
- */
-export function getApiUrl(path: string): string {
-  const baseUrl = getAppBaseUrl();
-  // Ensure path starts with /
-  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
-  return `${baseUrl}${normalizedPath}`;
-}
 
-/**
- * Generate a full URL for a page
- * @param path The page path (should start with /)
- */
-export function getPageUrl(path: string): string {
-  const baseUrl = getAppBaseUrl();
-  // Ensure path starts with /
-  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
-  return `${baseUrl}${normalizedPath}`;
-}
-
-/**
- * Get the current port the app is running on
- * This will always return the actual port the app is running on,
- * not the one from environment variables
- */
-export function getAppPort(): string {
-  // In the browser, always use window.location.port
-  if (typeof window !== 'undefined') {
-    // If port is empty, use default port based on protocol
-    if (!window.location.port) {
-      return window.location.protocol === 'https:' ? '443' : '80';
-    }
-    return window.location.port;
-  }
-
-  // On the server, use the environment variable
-  // Default to 3001 since that's the port that's working for you
-  return process.env.PORT || '3001';
-}

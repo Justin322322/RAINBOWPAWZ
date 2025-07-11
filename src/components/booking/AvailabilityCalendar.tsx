@@ -854,7 +854,7 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
   // Copy availability functions
   const _copyMonthAvailability = async () => {
     if (!selectedMonthToCopy || targetMonths.length === 0) {
-      alert('Please select source month and target months');
+      showToast('Please select source month and target months', 'warning');
       return;
     }
     
@@ -865,7 +865,7 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
     });
     
     if (sourceData.length === 0) {
-      alert('No availability data found for the selected source month');
+      showToast('No availability data found for the selected source month', 'warning');
       return;
     }
     

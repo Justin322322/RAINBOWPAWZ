@@ -3,7 +3,7 @@
 import React, { forwardRef } from 'react';
 import { cn } from '@/utils/classNames';
 
-export interface CheckboxProps extends React.InputHTMLAttributes<HTMLInputElement> {
+interface CheckboxProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
   description?: string;
   error?: string;

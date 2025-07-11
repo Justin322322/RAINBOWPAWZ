@@ -16,7 +16,7 @@ async function safeQuery(queryString: string, params: any[] = []): Promise<any[]
 export async function GET(request: NextRequest) {
   try {
     // Verify admin authentication using secure auth
-    const user = verifySecureAuth(request);
+    const user = await verifySecureAuth(request);
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -396,3 +396,4 @@ export async function GET(request: NextRequest) {
     }, { status: 500 });
   }
 }
+

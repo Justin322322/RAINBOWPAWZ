@@ -1,12 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { verifySecureAuth } from '@/lib/secureAuth';
+import { createNotification } from '@/utils/notificationService';
+import { sendEmail } from '@/lib/consolidatedEmailService';
+import { sendSMS } from '@/lib/smsService';
 
 // API endpoint to restrict or restore access to a cremation business
 export async function POST(request: NextRequest) {
   try {
     // Verify admin authentication using secure auth
-    const user = verifySecureAuth(request);
+    const user = await verifySecureAuth(request);
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -39,6 +42,7 @@ export async function POST(request: NextRequest) {
     const newApplicationStatus = action === 'restrict' ? 'restricted' : 'approved';
 
     let result;
+    let businessUserId: number | null = null; // Declare in broader scope
     const tableName = 'service_providers'; // Use only the service_providers table
     try {
 
@@ -59,7 +63,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Get the user ID from the check result
-      const _businessUserId = checkResult[0].user_id;
+      businessUserId = checkResult[0].user_id;
 
       // SECURITY FIX: Check for available columns
       const columnsResult = await query('SHOW COLUMNS FROM service_providers') as any[];
@@ -265,6 +269,16 @@ export async function POST(request: NextRequest) {
       // Non-critical error, just log it
     }
 
+    // Send notifications asynchronously after successful database operations
+    if (action === 'restrict' && businessUserId) {
+      // Don't await this to prevent blocking the response
+      notifyUserOfRestriction(businessUserId, body.reason || 'Restricted by admin', body.duration)
+        .catch(error => {
+          console.error('Failed to send restriction notification:', error);
+          // Don't throw error as this is not critical for the main operation
+        });
+    }
+
     return NextResponse.json({
       success: true,
       message: `Business ${action === 'restrict' ? 'restricted' : 'restored'} successfully`,
@@ -279,3 +293,164 @@ export async function POST(request: NextRequest) {
     }, { status: 500 });
   }
 }
+
+// Helper function to notify user of restriction
+async function notifyUserOfRestriction(userId: number, reason: string, duration?: string) {
+  try {
+    // Get user details for notifications with timeout
+    const userResult = await Promise.race([
+      query(
+        `SELECT user_id, first_name, last_name, email, phone
+         FROM users WHERE user_id = ? LIMIT 1`,
+        [userId]
+      ),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('User query timeout')), 5000)
+      )
+    ]) as any[];
+
+    if (!userResult || userResult.length === 0) {
+      console.warn(`User not found for notification: ${userId}`);
+      return;
+    }
+
+    const user = userResult[0];
+    const title = 'Account Restricted';
+    const message = `Your cremation center account has been restricted. Reason: ${reason}${duration ? ` Duration: ${duration}` : ''}. You can submit an appeal to request a review.`;
+
+    // Create in-app notification with timeout and error handling
+    try {
+      await Promise.race([
+        createNotification({
+          userId: user.user_id,
+          title,
+          message,
+          type: 'error',
+          link: '/appeals',
+          shouldSendEmail: false // We'll send custom email below
+        }),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Notification creation timeout')), 10000)
+        )
+      ]);
+    } catch (notificationError) {
+      console.error('Failed to create in-app notification:', notificationError);
+      // Continue with other notifications even if this fails
+    }
+
+    // Send custom email notification (independent of in-app notification)
+    try {
+      const emailTemplate = createRestrictionNotificationEmail({
+        userName: `${user.first_name} ${user.last_name}`,
+        reason,
+        duration,
+        userType: 'cremation center'
+      });
+
+      await Promise.race([
+        sendEmail({
+          to: user.email,
+          subject: emailTemplate.subject,
+          html: emailTemplate.html
+        }),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Email sending timeout')), 15000)
+        )
+      ]);
+    } catch (emailError) {
+      console.error('Failed to send email notification:', emailError);
+      // Continue with SMS even if email fails
+    }
+
+    // Send SMS notification (independent of other notifications)
+    if (user.phone) {
+      try {
+        await Promise.race([
+          sendSMS({
+            to: user.phone,
+            message: `🚨 Your RainbowPaws cremation center account has been restricted. Reason: ${reason}. You can submit an appeal at ${process.env.NEXT_PUBLIC_BASE_URL}/appeals`
+          }),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('SMS sending timeout')), 10000)
+          )
+        ]);
+      } catch (smsError) {
+        console.error('Failed to send SMS notification:', smsError);
+      }
+    }
+
+  } catch (error) {
+    console.error('Error notifying user of restriction:', error);
+    // Don't throw error as this is not critical for the main operation
+  }
+}
+
+// Email template for restriction notifications
+function createRestrictionNotificationEmail({
+  userName,
+  reason,
+  duration,
+  userType = 'user'
+}: {
+  userName: string;
+  reason: string;
+  duration?: string;
+  userType?: string;
+}) {
+  const subject = '🚨 Account Restricted - Action Required';
+  const appUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Account Restricted</title>
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #dc2626; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+        .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px; }
+        .button { display: inline-block; background: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 20px 0; }
+        .warning { background: #fef2f2; border: 1px solid #fecaca; padding: 15px; border-radius: 6px; margin: 20px 0; }
+        .footer { text-align: center; margin-top: 30px; color: #666; font-size: 14px; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>🚨 Account Restricted</h1>
+        </div>
+        <div class="content">
+          <p>Hello ${userName},</p>
+
+          <div class="warning">
+            <strong>Your ${userType} account has been restricted.</strong>
+          </div>
+
+          <p><strong>Reason:</strong> ${reason}</p>
+          ${duration ? `<p><strong>Duration:</strong> ${duration}</p>` : ''}
+
+          <p>This restriction prevents you from accessing certain features of your account. If you believe this restriction was applied in error, you can submit an appeal for review.</p>
+
+          <div style="text-align: center;">
+            <a href="${appUrl}/appeals" class="button">Submit an Appeal</a>
+          </div>
+
+          <p>If you have any questions, please contact our support team.</p>
+
+          <p>Thank you,<br>The RainbowPaws Team</p>
+        </div>
+        <div class="footer">
+          <p>&copy; ${new Date().getFullYear()} RainbowPaws - Pet Memorial Services</p>
+          <p>This is an automated message, please do not reply to this email.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  return { subject, html };
+}
+

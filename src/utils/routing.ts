@@ -4,14 +4,14 @@
 
 import { cacheManager } from '@/utils/cache';
 
-export interface RouteStep {
+interface RouteStep {
   instruction: string;
   distance: string;
   duration: string;
   coordinates?: [number, number];
 }
 
-export interface RoutingResult {
+interface RoutingResult {
   route: [number, number][];
   distance: string;
   duration: string;
@@ -20,7 +20,7 @@ export interface RoutingResult {
   trafficAware: boolean;
 }
 
-export interface RoutingError {
+interface RoutingError {
   message: string;
   code: 'NETWORK_ERROR' | 'NO_ROUTE' | 'RATE_LIMITED' | 'API_ERROR';
   retryable: boolean;

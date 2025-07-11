@@ -1,8 +1,8 @@
 'use client';
 
 import React, { memo } from 'react';
-import SectionLoader from '@/components/ui/SectionLoader';
-import PageLoader from '@/components/ui/PageLoader';
+import { SectionLoader } from '@/components/ui/SectionLoader';
+import { PageLoader } from '@/components/ui/PageLoader';
 import { Skeleton, SkeletonText, SkeletonCard } from '@/components/ui/SkeletonLoader';
 import { cn } from '@/utils/classNames';
 import { useLoading } from '@/contexts/LoadingContext';
@@ -132,71 +132,8 @@ export const TableSkeleton = memo(({ rows = 5 }: { rows?: number }) => {
 
 TableSkeleton.displayName = 'TableSkeleton';
 
-/**
- * Empty State Component for when no data is found
- */
-export const EmptyState = memo(({ 
-  message = "No data found",
-  description = "Try adjusting your search criteria or check back later.",
-  icon: Icon,
-  className = ""
-}: {
-  message?: string;
-  description?: string;
-  icon?: React.ComponentType<{ className?: string }>;
-  className?: string;
-}) => (
-  <div className={cn("px-6 py-8 text-center", className)}>
-    {Icon && <Icon className="h-16 w-16 mx-auto text-gray-300 mb-4" />}
-    <h3 className="text-lg font-medium text-gray-700 mb-2">{message}</h3>
-    <p className="text-gray-500 text-sm">{description}</p>
-  </div>
-));
 
-EmptyState.displayName = 'EmptyState';
 
-/**
- * Error Display Component for error states
- */
-export const ErrorDisplay = memo(({
-  title = "Something went wrong",
-  message = "An error occurred while loading data.",
-  onRetry,
-  className = ""
-}: {
-  title?: string;
-  message?: string;
-  onRetry?: () => void;
-  className?: string;
-}) => (
-  <div className={cn("px-6 py-8 text-center", className)}>
-    <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-red-100 text-red-600 mb-4">
-      <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-      </svg>
-    </div>
-    <h3 className="text-lg font-medium text-red-800 mb-2">{title}</h3>
-    <p className="text-red-700 text-sm mb-4">{message}</p>
-    {onRetry && (
-      <button
-        onClick={onRetry}
-        className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
-      >
-        Try Again
-      </button>
-    )}
-  </div>
-));
 
-ErrorDisplay.displayName = 'ErrorDisplay';
 
-// Create a named object for the default export
-const LoadingComponents = {
-  LoadingSpinner,
-  StatsCardSkeleton,
-  TableSkeleton,
-  EmptyState,
-  ErrorDisplay
-};
 
-export default LoadingComponents;

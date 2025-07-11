@@ -2,7 +2,7 @@
  * Enhanced caching utilities for geocoding and routing data
  */
 
-export interface CacheEntry<T> {
+interface CacheEntry<T> {
   data: T;
   timestamp: number;
   ttl: number; // Time to live in milliseconds
@@ -10,14 +10,14 @@ export interface CacheEntry<T> {
   confidence?: number; // For geocoding results
 }
 
-export interface GeocodingCacheData {
+interface GeocodingCacheData {
   coordinates: [number, number];
   formattedAddress: string;
   confidence: number;
   provider: string;
 }
 
-export interface RoutingCacheData {
+interface RoutingCacheData {
   route: any;
   distance: string;
   duration: string;

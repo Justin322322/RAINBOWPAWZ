@@ -24,33 +24,7 @@ export interface JWTPayload {
   exp?: number;
 }
 
-/**
- * Generate a JWT token (SERVER-SIDE ONLY)
- */
-export function generateToken(payload: Omit<JWTPayload, 'iat' | 'exp'>): string {
-  // Check if we're in a browser environment
-  if (typeof window !== 'undefined') {
-    console.error('generateToken should not be called on the client side. The server should generate tokens.');
-    throw new Error('generateToken is not available on the client side');
-  }
-
-  // Server-side JWT_SECRET validation
-  if (!JWT_SECRET) {
-    throw new Error('JWT_SECRET environment variable is required but not set');
-  }
-
-  if (JWT_SECRET.length < 32) {
-    throw new Error('JWT_SECRET must be at least 32 characters long');
-  }
-
-  const options: SignOptions = {
-    expiresIn: JWT_EXPIRES_IN,
-    issuer: 'rainbow-paws',
-    audience: 'rainbow-paws-users'
-  } as SignOptions;
-
-  return jwt.sign(payload, JWT_SECRET, options);
-}
+// generateToken function removed - not used
 
 /**
  * Verify and decode a JWT token (SERVER-SIDE ONLY)
@@ -123,26 +97,7 @@ export function decodeTokenUnsafe(_token: string): JWTPayload | null {
   return null;
 }
 
-/**
- * Refresh a JWT token (generate new token with updated expiration)
- * SERVER-SIDE ONLY
- */
-export function refreshToken(token: string): string | null {
-  // Check if we're in a browser environment
-  if (typeof window !== 'undefined') {
-    console.error('refreshToken should not be called on the client side.');
-    return null;
-  }
 
-  const decoded = verifyToken(token);
-  if (!decoded) {
-    return null;
-  }
-
-  // Remove iat and exp from payload for new token
-  const { iat: _iat, exp: _exp, ...payload } = decoded;
-  return generateToken(payload);
-}
 
 /**
  * Extract token from Authorization header
@@ -160,30 +115,4 @@ export function extractTokenFromHeader(authHeader: string | null): string | null
   return parts[1];
 }
 
-/**
- * Get token expiration time
- */
-export function getTokenExpiration(token: string): Date | null {
-  try {
-    const decoded = jwt.decode(token) as JWTPayload;
-    if (decoded && decoded.exp) {
-      return new Date(decoded.exp * 1000);
-    }
-    return null;
-  } catch {
-    // Log error for debugging but don't expose sensitive data
-    console.error('Token expiration check failed');
-    return null;
-  }
-}
 
-/**
- * Check if token is expired
- */
-export function isTokenExpired(token: string): boolean {
-  const expiration = getTokenExpiration(token);
-  if (!expiration) {
-    return true;
-  }
-  return expiration < new Date();
-}

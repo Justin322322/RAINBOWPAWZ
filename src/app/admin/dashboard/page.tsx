@@ -9,6 +9,9 @@ import {
   ExclamationTriangleIcon,
   FireIcon,
   ArrowPathIcon,
+  UserIcon,
+  EnvelopeIcon,
+  ClockIcon,
 } from '@heroicons/react/24/outline';
 import Link from 'next/link';
 import withAdminAuth from '@/components/withAdminAuth';
@@ -317,37 +320,78 @@ function AdminDashboardPage({ adminData }: { adminData: any }) {
           </div>
         ) : recentApplications.length > 0 ? (
           <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden">
-            <div className="overflow-x-auto">
+            {/* Mobile Card View */}
+            <div className="block sm:hidden">
+              <div className="divide-y divide-gray-200">
+                {recentApplications.map((application) => (
+                  <div key={application.id} className="p-4 hover:bg-gray-50">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <div className="text-sm font-medium text-gray-900 truncate">
+                            {application.businessName}
+                          </div>
+                          {getStatusBadge(application.status || 'pending')}
+                        </div>
+                        <div className="text-xs text-gray-600 space-y-1">
+                          <div className="flex items-center">
+                            <UserIcon className="h-3 w-3 mr-1 flex-shrink-0" />
+                            <span className="truncate">{application.owner}</span>
+                          </div>
+                          <div className="flex items-center">
+                            <EnvelopeIcon className="h-3 w-3 mr-1 flex-shrink-0" />
+                            <span className="truncate">{application.email}</span>
+                          </div>
+                          <div className="flex items-center">
+                            <ClockIcon className="h-3 w-3 mr-1 flex-shrink-0" />
+                            <span>{application.submitDate}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <Link
+                        href={`/admin/applications/${application.id}`}
+                        className="ml-2 text-[var(--primary-green)] hover:text-[var(--primary-green-hover)] text-sm font-medium flex-shrink-0"
+                      >
+                        View
+                      </Link>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Desktop Table View */}
+            <div className="hidden sm:block overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
                     <th
                       scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                     >
                       Business
                     </th>
                     <th
                       scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                     >
                       Owner
                     </th>
                     <th
                       scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                     >
                       Date
                     </th>
                     <th
                       scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                     >
                       Status
                     </th>
                     <th
                       scope="col"
-                      className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      className="px-4 sm:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
                     >
                       Action
                     </th>
@@ -356,20 +400,20 @@ function AdminDashboardPage({ adminData }: { adminData: any }) {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {recentApplications.map((application) => (
                     <tr key={application.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">{application.businessName}</div>
+                      <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900 truncate">{application.businessName}</div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{application.owner}</div>
-                        <div className="text-sm text-gray-500">{application.email}</div>
+                      <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900 truncate">{application.owner}</div>
+                        <div className="text-sm text-gray-500 truncate">{application.email}</div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-900">{application.submitDate}</div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
                         {getStatusBadge(application.status || 'pending')}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <Link
                           href={`/admin/applications/${application.id}`}
                           className="text-[var(--primary-green)] hover:text-[var(--secondary-green)] hover:underline"

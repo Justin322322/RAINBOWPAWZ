@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { calculateDistance, getBataanCoordinates } from '@/utils/distance';
-import { calculateEnhancedDistance } from '@/utils/routeDistance';
 
 export async function GET(request: Request) {
   // Extract user location from query parameters
@@ -181,12 +180,12 @@ export async function GET(request: Request) {
             const providerCoordinates = getBataanCoordinates(provider.address || 'Bataan');
 
             try {
-              // Use enhanced distance calculation with real routing
-              const distanceResult = await calculateEnhancedDistance(userCoordinates, providerCoordinates);
-              provider.distance = distanceResult.formattedDistance;
-              provider.distanceValue = distanceResult.distance; // Store numeric value for sorting
+              // Use simple distance calculation (enhanced routing removed)
+              const distance = calculateDistance(userCoordinates, providerCoordinates);
+              provider.distance = `${distance.toFixed(1)} km`;
+              provider.distanceValue = distance; // Store numeric value for sorting
             } catch (error) {
-              console.error('📍 [Distance] Real routing calculation failed, using fallback:', error);
+              console.error('📍 [Distance] Distance calculation failed:', error);
               // Fallback to simple calculation
               const distanceValue = calculateDistance(userCoordinates, providerCoordinates);
               provider.distance = `${distanceValue} km away`;

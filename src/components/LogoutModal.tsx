@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { clearAuthToken } from '@/utils/auth';
 import { useToast } from '@/context/ToastContext';
-import { clearBusinessVerificationCache } from '@/utils/businessVerificationCache';
+
 import { clearGlobalAdminAuthState } from '@/components/withAdminAuth';
 import { clearGlobalBusinessAuthState } from '@/components/withBusinessVerification';
 import { clearGlobalUserAuthState } from '@/components/withUserAuth';
@@ -44,8 +44,7 @@ export default function LogoutModal({ isOpen, onClose, userName = 'User' }: Logo
       // Clear client-side auth data
       clearAuthToken();
 
-      // Clear business verification cache
-      clearBusinessVerificationCache();
+      // Clear business verification cache (functionality removed)
       
       // Clear global admin auth state
       clearGlobalAdminAuthState();
@@ -83,8 +82,7 @@ export default function LogoutModal({ isOpen, onClose, userName = 'User' }: Logo
       // Still clear the token and redirect even if the API call fails
       clearAuthToken();
       
-      // Clear business verification cache even on error
-      clearBusinessVerificationCache();
+      // Clear business verification cache even on error (functionality removed)
       clearGlobalAdminAuthState();
       clearGlobalBusinessAuthState();
       clearGlobalUserAuthState();

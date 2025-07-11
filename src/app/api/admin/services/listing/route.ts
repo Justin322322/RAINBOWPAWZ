@@ -64,7 +64,7 @@ async function listImagePaths(packageId: number): Promise<string[]> {
 
 export async function GET(request: NextRequest) {
   // --- Authentication ---
-  const user = verifySecureAuth(request);
+  const user = await verifySecureAuth(request);
   if (!user) {
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   }
@@ -372,3 +372,4 @@ export async function GET(request: NextRequest) {
     pagination: { total, page, limit, totalPages }
   });
 }
+

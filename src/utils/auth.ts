@@ -57,41 +57,9 @@ export const parseAuthToken = async (authToken: string): Promise<{ userId: strin
   }
 };
 
-// Synchronous version for backward compatibility - handles import errors gracefully
-export const parseAuthTokenSync = (authToken: string): { userId: string; accountType: string; email?: string } | null => {
-  try {
-    let userId: string | null = null;
-    let accountType: string | null = null;
-    let email: string | undefined = undefined;
 
-    // Check if it's a JWT token or old format
-    if (authToken.includes('.')) {
-      // JWT token format - for sync version, we can't safely verify JWT
-      // Return null to force use of async version or API calls
-      console.warn('JWT token detected in sync parseAuthToken - use parseAuthTokenAsync for proper verification');
-      return null;
-    } else {
-      // Old format fallback
-      const parts = authToken.split('_');
-      if (parts.length === 2) {
-        userId = parts[0];
-        accountType = parts[1];
-        // Old format doesn't have email
-      }
-    }
 
-    if (!userId || !accountType) {
-      return null;
-    }
 
-    return { userId, accountType, email };
-  } catch {
-    return null;
-  }
-};
-
-// Enhanced version that also handles async JWT import for API routes (alias for compatibility)
-export const parseAuthTokenAsync = parseAuthToken;
 
 // Get auth token from server request (for API routes)
 export const getAuthTokenFromRequest = (request: NextRequest): string | null => {
@@ -147,14 +115,16 @@ export const getAuthTokenFromRequest = (request: NextRequest): string | null => 
   }
 };
 
+
+
 // Get the auth token from cookies
-export const getAuthToken = (): string | null => {
+const getAuthToken = (): string | null => {
   if (typeof document === 'undefined') return null;
 
   try {
     // Get cookies - removed secure_auth_token check since it's httpOnly and not accessible client-side
     const cookies = document.cookie.split(';');
-    
+
     // Check for legacy auth_token cookie
     const authCookie = cookies.find(cookie => cookie.trim().startsWith('auth_token='));
 
@@ -231,38 +201,7 @@ export const getUserId = (): string | null => {
   return null;
 };
 
-// Async version for proper server-side JWT verification
-export const getUserIdAsync = async (): Promise<string | null> => {
-  const token = getAuthToken();
-  if (!token) return null;
 
-  // For client-side, avoid JWT decoding for security
-  if (typeof window !== 'undefined') {
-    // Check if it's a JWT token - if so, we can't decode it safely on client
-    if (token.includes('.')) {
-      // For JWT tokens on client-side, we should use API calls instead
-      return null;
-    }
-    
-    // Old format fallback (still safe on client)
-    return token.split('_')[0];
-  }
-
-  // Server-side: we can verify JWT safely
-  if (token.includes('.')) {
-    try {
-      const { verifyToken } = await import('@/lib/jwt');
-      const payload = verifyToken(token);
-      return payload?.userId || null;
-    } catch (error) {
-      console.error('Error verifying JWT token in getUserIdAsync:', error);
-      return null;
-    }
-  }
-
-  // Old format fallback
-  return token.split('_')[0];
-};
 
 // Get account type from auth token (supports both JWT and old format)
 export const getAccountType = (): string | null => {
@@ -287,58 +226,9 @@ export const getAccountType = (): string | null => {
   return null;
 };
 
-// Async version for proper server-side JWT verification
-export const getAccountTypeAsync = async (): Promise<string | null> => {
-  const token = getAuthToken();
-  if (!token) return null;
 
-  // For client-side, avoid JWT decoding for security
-  if (typeof window !== 'undefined') {
-    // Check if it's a JWT token - if so, we can't decode it safely on client
-    if (token.includes('.')) {
-      // For JWT tokens on client-side, we should use API calls instead
-      return null;
-    }
-    
-    // Old format fallback (still safe on client)
-    return token.split('_')[1];
-  }
 
-  // Server-side: we can decode JWT safely
-  if (token.includes('.')) {
-    try {
-      const { verifyToken } = await import('@/lib/jwt');
-      const payload = verifyToken(token);
-      return payload?.accountType || null;
-    } catch (error) {
-      console.error('Error verifying JWT token in getAccountTypeAsync:', error);
-      return null;
-    }
-  }
 
-  // Old format fallback
-  return token.split('_')[1];
-};
-
-// Get JWT payload from token
-export const getJWTPayload = async (): Promise<JWTPayload | null> => {
-  const token = getAuthToken();
-  if (!token || !token.includes('.')) return null;
-
-  // Only allow server-side usage
-  if (typeof window !== 'undefined') {
-    console.error('getJWTPayload should not be called on the client side. Use API calls instead.');
-    return null;
-  }
-
-  try {
-    const { verifyToken } = await import('@/lib/jwt');
-    return verifyToken(token);
-  } catch (error) {
-    console.error('Error verifying JWT token in getJWTPayload:', error);
-    return null;
-  }
-};
 
 // Check if user is authenticated
 export const isAuthenticated = (): boolean => {
@@ -361,78 +251,9 @@ export const isAuthenticated = (): boolean => {
   return false;
 };
 
-// Check if user has a specific account type
-export const hasAccountType = (type: 'user' | 'admin' | 'business'): boolean => {
-  const accountType = getAccountType();
-  return accountType === type;
-};
 
-// Check if user is an admin
-export const isAdmin = (): boolean => {
-  return hasAccountType('admin');
-};
 
-// Check if user is a business (cremation center)
-export const isBusiness = (): boolean => {
-  return hasAccountType('business');
-};
 
-// Check if user is a fur parent
-export const isFurParent = (): boolean => {
-  return hasAccountType('user');
-};
-
-// Set auth token in cookie (accepts pre-generated JWT token)
-export const setAuthToken = (userId: string, accountType: string, expirationDays: number = 30, token?: string): void => {
-  if (typeof document === 'undefined') return;
-
-  // Use provided token or create a legacy format token for backward compatibility
-  const tokenValue = token || `${userId}_${accountType}`;
-
-  // Clear any existing auth token - use multiple approaches to ensure it's cleared
-  document.cookie = 'auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-  document.cookie = 'auth_token=; path=/; domain=localhost; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-
-  // Set expiration date
-  const expirationDate = new Date();
-  expirationDate.setDate(expirationDate.getDate() + expirationDays);
-
-  // Get the current hostname and port
-  const hostname = window.location.hostname;
-  const port = window.location.port;
-
-  // For HTTP connections, we can't use SameSite=None without Secure flag
-  // So we'll use SameSite=Lax instead which works better for HTTP
-  const sameSiteValue = 'Lax';
-
-  // Set the cookie with appropriate attributes for all environments
-  // Standard version without domain specification
-  document.cookie = `auth_token=${tokenValue}; path=/; expires=${expirationDate.toUTCString()}; SameSite=${sameSiteValue}`;
-
-  // Add specific settings for localhost to ensure it works consistently
-  if (hostname === 'localhost') {
-    // Additional cookie specifically for localhost
-    document.cookie = `auth_token=${tokenValue}; path=/; domain=localhost; expires=${expirationDate.toUTCString()}; SameSite=${sameSiteValue}`;
-  }
-
-  // Also add a cookie that's not port-specific (in case port is causing the issue)
-  if (port === '3000') {
-    try {
-      // Store the token in localStorage as a backup specifically for port 3000
-      localStorage.setItem('auth_token_3000', tokenValue);
-    } catch {
-      // Silently fail if localStorage is not available
-    }
-  }
-
-  // Also store in sessionStorage as a backup
-  sessionStorage.setItem('auth_user_id', userId);
-  sessionStorage.setItem('auth_account_type', accountType);
-  sessionStorage.setItem('auth_port', port || '80');
-
-  // Store the full token in sessionStorage as well
-  sessionStorage.setItem('auth_token', tokenValue);
-};
 
 // Clear auth token (logout)
 export const clearAuthToken = async (): Promise<void> => {
@@ -485,79 +306,7 @@ export const redirectToDashboard = (accountType: string): string => {
   }
 };
 
-// Check authentication status with the server
-export const checkAuthStatus = async (): Promise<{
-  authenticated: boolean;
-  userId?: string;
-  accountType?: string;
-}> => {
-  try {
-    // First check client-side cookies
-    const authToken = getAuthToken();
 
-    if (authToken) {
-      let userId: string | null = null;
-      let accountType: string | null = null;
-
-      // Check if it's a JWT token or old format
-      if (authToken.includes('.')) {
-        // For JWT tokens on client-side, don't decode - just verify with server
-        // This is more secure and avoids client-side JWT decoding
-        const response = await fetch('/api/auth/check');
-        const data = await response.json();
-        return {
-          authenticated: data.authenticated,
-          userId: data.userId,
-          accountType: data.accountType
-        };
-      } else {
-        // Old format fallback (still safe on client)
-        const parts = authToken.split('_');
-        if (parts.length === 2) {
-          userId = parts[0];
-          accountType = parts[1];
-        }
-      }
-
-      if (userId && accountType) {
-        return {
-          authenticated: true,
-          userId,
-          accountType
-        };
-      }
-    }
-
-    // If client-side check fails, check sessionStorage as fallback
-    if (typeof window !== 'undefined') {
-      const userId = sessionStorage.getItem('auth_user_id');
-      const accountType = sessionStorage.getItem('auth_account_type');
-
-      if (userId && accountType) {
-        // Try to restore the cookie from sessionStorage (legacy format)
-        setAuthToken(userId, accountType, 30);
-
-        return {
-          authenticated: true,
-          userId,
-          accountType
-        };
-      }
-    }
-
-    // If all client-side checks fail, verify with the server
-    const response = await fetch('/api/auth/check');
-    const data = await response.json();
-
-    return {
-      authenticated: data.authenticated,
-      userId: data.userId,
-      accountType: data.accountType
-    };
-  } catch {
-    return { authenticated: false };
-  }
-};
 
 // Fast auth check that doesn't redirect - use for preventing flashing during navigation
 export const fastAuthCheck = (): {

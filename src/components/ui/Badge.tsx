@@ -32,7 +32,7 @@ const badgeVariants = cva(
   }
 );
 
-export interface BadgeProps
+interface BadgeProps
   extends React.HTMLAttributes<HTMLDivElement>,
     VariantProps<typeof badgeVariants> {
   icon?: React.ReactNode;
@@ -91,4 +91,4 @@ const Badge = forwardRef<HTMLDivElement, BadgeProps>(
 
 Badge.displayName = "Badge";
 
-export { Badge, badgeVariants };
+export { Badge };

@@ -4,7 +4,7 @@ import { verifySecureAuth } from '@/lib/secureAuth';
 export async function GET(request: NextRequest) {
   try {
     // Use secure authentication verification
-    const user = verifySecureAuth(request);
+    const user = await verifySecureAuth(request);
     
     if (!user) {
       return NextResponse.json({
@@ -27,3 +27,4 @@ export async function GET(request: NextRequest) {
     }, { status: 500 });
   }
 }
+

@@ -6,7 +6,7 @@ import { verifySecureAuth } from '@/lib/secureAuth';
 export async function GET(request: NextRequest) {
   try {
     // Verify admin authentication using secure auth
-    const user = verifySecureAuth(request);
+    const user = await verifySecureAuth(request);
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -62,12 +62,16 @@ export async function GET(request: NextRequest) {
       const hasRole = columns.includes('role');
       const hasLastLogin = columns.includes('last_login');
 
+      // Check for profile_picture column
+      const hasProfilePicture = columns.includes('profile_picture');
+
       // Build the query dynamically based on available columns
       let selectFields = 'user_id, first_name, last_name, email, phone, address, gender, created_at, updated_at, is_otp_verified, status, is_verified';
 
       if (hasRole) selectFields += ', role';
       if (hasUserType) selectFields += ', user_type';
       if (hasLastLogin) selectFields += ', last_login';
+      if (hasProfilePicture) selectFields += ', profile_picture';
 
       // SECURITY FIX: Build the query with safe field selection
       let countQuery = 'SELECT COUNT(*) as total FROM users';
@@ -134,6 +138,40 @@ export async function GET(request: NextRequest) {
 
       // Execute users query
       const usersResult = await query(usersQuery, queryParams) as any[];
+
+      // Get appeals for all users in one query for better performance
+      let userAppeals: { [key: string]: any[] } = {};
+      try {
+        const userIds = usersResult.map(u => u.user_id).filter(id => id);
+        if (userIds.length > 0) {
+          const appealsQuery = `
+            SELECT
+              appeal_id,
+              user_id,
+              business_id,
+              subject,
+              message,
+              status,
+              submitted_at
+            FROM user_appeals
+            WHERE user_id IN (${userIds.map(() => '?').join(',')})
+            ORDER BY submitted_at DESC
+          `;
+
+          const appeals = await query(appealsQuery, userIds) as any[];
+
+          // Group appeals by user ID
+          appeals.forEach(appeal => {
+            if (!userAppeals[appeal.user_id]) {
+              userAppeals[appeal.user_id] = [];
+            }
+            userAppeals[appeal.user_id].push(appeal);
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching user appeals:', error);
+        // Continue without appeals data
+      }
 
       // Check for pets and service_bookings tables existence
       const [petsTableExists, bookingsTableExists] = await Promise.all([
@@ -227,6 +265,9 @@ export async function GET(request: NextRequest) {
             }
           }
 
+          // Add appeals data
+          user.appeals = userAppeals[user.user_id] || [];
+
           // Remove sensitive information
           delete user.password;
 
@@ -237,6 +278,7 @@ export async function GET(request: NextRequest) {
             ...user,
             user_type: user.user_type || 'unknown',
             role: user.role || 'unknown',
+            appeals: userAppeals[user.user_id] || [],
             _error: 'User processing error'
           };
         }
@@ -273,3 +315,4 @@ export async function GET(request: NextRequest) {
     }, { status: 500 });
   }
 }
+

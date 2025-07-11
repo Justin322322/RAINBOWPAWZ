@@ -67,7 +67,7 @@ export const getAdminIdFromRequest = async (request: NextRequest): Promise<numbe
  * Ensures that the admin_logs table exists in the database
  * @returns True if the table exists or was created successfully, false otherwise
  */
-export const ensureAdminLogsTable = async (): Promise<boolean> => {
+const ensureAdminLogsTable = async (): Promise<boolean> => {
   try {
     // Check if the table exists
     const tables = await query(`

@@ -86,16 +86,9 @@ export async function POST(request: Request) {
       // Add id field for client compatibility
       user.id = user.user_id;
 
-      // Check if user is restricted
-      if (user.status === 'restricted') {
-        return NextResponse.json({
-          error: 'Account restricted',
-          message: 'Your account has been restricted. Please contact support for assistance.'
-        }, {
-          status: 403,
-          headers
-        });
-      }
+      // Allow restricted users to login but they'll be redirected to restricted page
+      // This enables them to access the appeal system
+      const isRestricted = user.status === 'restricted';
 
       try {
 
@@ -162,6 +155,7 @@ export async function POST(request: Request) {
                     message: 'Login successful',
                     user: adminUser,
                     account_type: 'admin',
+                    isRestricted: isRestricted,
                     // Add legacy token for frontend compatibility
                     token: `${user.user_id}_admin`
                   }, {
@@ -221,6 +215,7 @@ export async function POST(request: Request) {
                   message: 'Login successful',
                   user: businessUser,
                   account_type: 'business',
+                  isRestricted: isRestricted,
                   // Add legacy token for frontend compatibility
                   token: `${user.user_id}_business`
                 }, {
@@ -255,6 +250,7 @@ export async function POST(request: Request) {
             message: 'Login successful',
             user,
             account_type: accountType,
+            isRestricted: isRestricted,
             // Add legacy token for frontend compatibility
             token: `${user.user_id}_${accountType}`
           }, {

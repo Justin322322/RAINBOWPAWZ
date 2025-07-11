@@ -1,6 +1,6 @@
 import { query } from '@/lib/db';
 
-export interface RevenueData {
+interface RevenueData {
   totalRevenue: number;
   monthlyRevenue: number;
   previousMonthRevenue: number;

@@ -88,16 +88,7 @@ try {
   }
 }
 
-// **🔥 NEW: Connection Pool Health Monitoring**
-export function getPoolStats(): PoolStats {
-  const poolConfig = pool.config;
-  return {
-    totalConnections: poolConfig.connectionLimit || 10,
-    activeConnections: (pool as any)._allConnections?.length || 0,
-    idleConnections: (pool as any)._freeConnections?.length || 0,
-    queuedRequests: (pool as any)._connectionQueue?.length || 0
-  };
-}
+
 
 // **🔥 NEW: Database Health Check Endpoint**
 export async function getDatabaseHealth(): Promise<{
@@ -118,7 +109,13 @@ export async function getDatabaseHealth(): Promise<{
   }
 
   const responseTime = Date.now() - startTime;
-  const poolStats = getPoolStats();
+  const poolConfig = pool.config;
+  const poolStats = {
+    totalConnections: poolConfig.connectionLimit || 10,
+    activeConnections: (pool as any)._allConnections?.length || 0,
+    idleConnections: (pool as any)._freeConnections?.length || 0,
+    queuedRequests: (pool as any)._connectionQueue?.length || 0
+  };
 
   // Check for potential issues
   if (poolStats.queuedRequests > 5) {
@@ -137,57 +134,100 @@ export async function getDatabaseHealth(): Promise<{
   };
 }
 
-// Helper function to execute SQL queries
+
+
+// Helper function to execute SQL queries with retry logic for lock timeouts
 export async function query(sql: string, params: any[] = []): Promise<QueryResult> {
-  let connection: mysql.PoolConnection;
-  try {
-    // Get a connection from the pool with timeout
-    connection = await pool.getConnection();
+  const maxRetries = 3;
+  let lastError: any;
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    let connection: mysql.PoolConnection | undefined;
 
     try {
-      // Execute the query
-      const [results] = await connection.query(sql, params);
-      return results as QueryResult;
-    } finally {
-      // **🔥 CRITICAL: Always release the connection back to the pool**
-      connection.release();
-    }
-  } catch (error) {
-    const err = error as any;
+      // Get a connection from the pool with timeout
+      connection = await Promise.race([
+        pool.getConnection(),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('Connection timeout')), 10000)
+        )
+      ]);
 
-    // Log the error for debugging
-    console.error('Database query error:', {
-      code: err.code,
-      message: err.message,
-      sql: sql.substring(0, 100) + (sql.length > 100 ? '...' : ''),
-      params: params
-    });
-
-    // Check if it's a connection error
-    if (err.code === 'ECONNREFUSED') {
-      // Connection refused error - MySQL server might not be running
-      console.error('MySQL server connection refused. Please ensure MySQL is running on port 3306.');
-    } else if (err.code === 'ER_ACCESS_DENIED_ERROR') {
-      // Access denied error - Check username and password
-      console.error('MySQL access denied. Please check database credentials.');
-    } else if (err.code === 'ER_BAD_DB_ERROR') {
-      // Database does not exist - Check database name
-      console.error('MySQL database does not exist. Please check database name.');
-    } else if (err.code === 'PROTOCOL_CONNECTION_LOST') {
-      // The connection was lost, try to reconnect
-      console.error('MySQL connection lost. Attempting to reconnect...');
       try {
-        pool = mysql.createPool(finalConfig);
-      } catch (reconnectError) {
-        console.error('Failed to recreate MySQL pool:', reconnectError);
+        // Execute the query with timeout
+        const [results] = await Promise.race([
+          connection.query(sql, params),
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error('Query execution timeout')), 15000)
+          )
+        ]);
+        return results as QueryResult;
+      } finally {
+        // **🔥 CRITICAL: Always release the connection back to the pool**
+        connection.release();
       }
-    } else if (err.code === 'ETIMEDOUT') {
-      // Connection timeout
-      console.error('MySQL connection timeout. The server may be overloaded.');
-    }
+    } catch (error) {
+      const err = error as any;
+      lastError = err;
 
-    throw error;
+      // Log the error for debugging
+      console.error(`Database query error (attempt ${attempt}/${maxRetries}):`, {
+        code: err.code,
+        message: err.message,
+        sql: sql.substring(0, 100) + (sql.length > 100 ? '...' : ''),
+        params: params
+      });
+
+      // Check if it's a retryable error
+      const isRetryableError = err.code === 'ER_LOCK_WAIT_TIMEOUT' ||
+                              err.code === 'ER_LOCK_DEADLOCK' ||
+                              err.code === 'ECONNRESET' ||
+                              err.message?.includes('timeout');
+
+      if (isRetryableError && attempt < maxRetries) {
+        // Wait before retry with exponential backoff
+        const waitTime = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
+        console.warn(`Retrying query in ${waitTime}ms due to ${err.code}`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+
+        // Clean up connection pool if needed
+        if (attempt === 2) {
+          // Force a small delay to allow pool to recover
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        continue;
+      }
+
+      // If it's not retryable or we've exhausted retries, break the loop
+      break;
+    }
   }
+
+  // Handle the final error after all retries
+  const err = lastError;
+
+  // Check if it's a connection error and provide helpful messages
+  if (err.code === 'ECONNREFUSED') {
+    console.error('MySQL server connection refused. Please ensure MySQL is running on port 3306.');
+  } else if (err.code === 'ER_ACCESS_DENIED_ERROR') {
+    console.error('MySQL access denied. Please check database credentials.');
+  } else if (err.code === 'ER_BAD_DB_ERROR') {
+    console.error('MySQL database does not exist. Please check database name.');
+  } else if (err.code === 'PROTOCOL_CONNECTION_LOST') {
+    console.error('MySQL connection lost. Attempting to recreate pool...');
+    try {
+      pool = mysql.createPool(finalConfig);
+    } catch (reconnectError) {
+      console.error('Failed to recreate MySQL pool:', reconnectError);
+    }
+  } else if (err.code === 'ETIMEDOUT') {
+    console.error('MySQL connection timeout. The server may be overloaded.');
+  } else if (err.code === 'ER_LOCK_WAIT_TIMEOUT') {
+    console.error('Lock wait timeout exceeded. This may indicate database contention.');
+  }
+
+  // Throw the final error
+  throw lastError;
 }
 
 // **🔥 NEW: Proper Transaction Management Class**
@@ -427,4 +467,4 @@ export async function checkTableExists(tableName: string): Promise<boolean> {
   }
 }
 
-export default pool;
+// Default export removed - not used

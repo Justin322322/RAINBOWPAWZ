@@ -267,26 +267,7 @@ export async function getPaymentStatus(bookingId: number): Promise<PaymentStatus
   }
 }
 
-/**
- * Update booking payment status
- */
-export async function updateBookingPaymentStatus(
-  bookingId: number,
-  paymentStatus: 'not_paid' | 'paid' | 'refunded'
-): Promise<boolean> {
-  try {
-    const updateQuery = `
-      UPDATE service_bookings
-      SET payment_status = ?, updated_at = NOW()
-      WHERE id = ?
-    `;
-    const result = await query(updateQuery, [paymentStatus, bookingId]) as any;
-    return result.affectedRows > 0;
-  } catch (error) {
-    console.error('Error updating booking payment status:', error);
-    return false;
-  }
-}
+
 
 /**
  * Process webhook for payment updates

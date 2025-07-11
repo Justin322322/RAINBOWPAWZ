@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/utils/classNames';
 import { XMarkIcon, ArrowLeftIcon } from '@heroicons/react/24/outline';
 
-export interface ModalProps {
+interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
   title?: string;

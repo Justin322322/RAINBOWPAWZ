@@ -1,15 +1,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { 
-  BellIcon, 
+import {
+  BellIcon,
   DevicePhoneMobileIcon,
-  EnvelopeIcon,
-  CheckCircleIcon,
-  ExclamationTriangleIcon
+  EnvelopeIcon
 } from '@heroicons/react/24/outline';
 import FurParentDashboardWrapper from '@/components/navigation/FurParentDashboardWrapper';
 import { SkeletonCard } from '@/components/ui/SkeletonLoader';
+import { useToast } from '@/context/ToastContext';
 
 interface SettingsPageProps {
   userData?: any;
@@ -21,13 +20,13 @@ interface NotificationSettings {
 }
 
 function SettingsPage({ userData }: SettingsPageProps) {
+  const { showToast } = useToast();
   const [settings, setSettings] = useState<NotificationSettings>({
     sms_notifications: true,
     email_notifications: true
   });
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   
   // Skeleton loading state with minimum delay
   const [showSkeleton, setShowSkeleton] = useState(true);
@@ -41,11 +40,11 @@ function SettingsPage({ userData }: SettingsPageProps) {
           const data = await response.json();
           setSettings(data.preferences);
         } else {
-          setMessage({ text: 'Failed to load notification settings', type: 'error' });
+          showToast('Failed to load notification settings', 'error');
         }
       } catch (error) {
         console.error('Failed to load notification settings:', error);
-        setMessage({ text: 'Failed to load notification settings', type: 'error' });
+        showToast('Failed to load notification settings', 'error');
       } finally {
         setIsLoading(false);
       }
@@ -83,7 +82,6 @@ function SettingsPage({ userData }: SettingsPageProps) {
   // Save settings to database
   const handleSave = async () => {
     setIsSaving(true);
-    setMessage(null);
 
     try {
       const response = await fetch('/api/users/notification-preferences', {
@@ -95,28 +93,19 @@ function SettingsPage({ userData }: SettingsPageProps) {
       });
 
       if (response.ok) {
-        setMessage({ text: 'Settings saved successfully!', type: 'success' });
+        showToast('Settings saved successfully!', 'success');
       } else {
         const errorData = await response.json();
-        setMessage({ text: errorData.error || 'Failed to save settings', type: 'error' });
+        showToast(errorData.error || 'Failed to save settings', 'error');
       }
     } catch {
-      setMessage({ text: 'Failed to save settings. Please try again.', type: 'error' });
+      showToast('Failed to save settings. Please try again.', 'error');
     } finally {
       setIsSaving(false);
     }
   };
 
-  // Clear message after 5 seconds
-  useEffect(() => {
-    if (message) {
-      const timer = setTimeout(() => {
-        setMessage(null);
-      }, 5000);
-      return () => clearTimeout(timer);
-    }
-    return () => {}; // Return empty cleanup function for else case
-  }, [message]);
+
 
   return (
     <div className="min-h-screen bg-white">
@@ -139,22 +128,6 @@ function SettingsPage({ userData }: SettingsPageProps) {
           {/* Settings Card */}
           <div className="bg-white rounded-lg shadow-md p-8">
             <h2 className="text-xl font-semibold text-gray-800 mb-6">Notification Preferences</h2>
-            
-            {/* Message Display */}
-            {message && (
-              <div className={`mb-6 p-4 rounded-md flex items-center ${
-                message.type === 'success' 
-                  ? 'bg-green-50 text-green-800 border border-green-200' 
-                  : 'bg-red-50 text-red-800 border border-red-200'
-              }`}>
-                {message.type === 'success' ? (
-                  <CheckCircleIcon className="h-5 w-5 mr-2" />
-                ) : (
-                  <ExclamationTriangleIcon className="h-5 w-5 mr-2" />
-                )}
-                {message.text}
-              </div>
-            )}
 
                           {showSkeleton || isLoading ? (
                 <div className="space-y-6">

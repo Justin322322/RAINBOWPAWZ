@@ -93,7 +93,7 @@ const baseEmailTemplate = (content: string) => `
 /**
  * Interface for creating a new notification
  */
-export interface CreateNotificationParams {
+interface CreateNotificationParams {
   userId: number;
   title: string;
   message: string;
@@ -106,6 +106,43 @@ export interface CreateNotificationParams {
 /**
  * Create a new notification for a user
  */
+/**
+ * Create a notification with minimal overhead (for critical operations)
+ */
+export async function createNotificationFast({
+  userId,
+  title,
+  message,
+  type = 'info',
+  link = null
+}: {
+  userId: number;
+  title: string;
+  message: string;
+  type?: 'info' | 'success' | 'warning' | 'error';
+  link?: string | null;
+}): Promise<{ success: boolean; notificationId?: number; error?: string }> {
+  try {
+    // Simple insert without table checks (assumes table exists)
+    const result = await query(
+      `INSERT INTO notifications (user_id, title, message, type, link)
+       VALUES (?, ?, ?, ?, ?)`,
+      [userId, title, message, type, link]
+    ) as any;
+
+    return {
+      success: true,
+      notificationId: result.insertId
+    };
+  } catch (error: any) {
+    console.error('Fast notification creation failed:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
 export async function createNotification({
   userId,
   title,
@@ -116,15 +153,51 @@ export async function createNotification({
   emailSubject
 }: CreateNotificationParams): Promise<{ success: boolean; notificationId?: number; error?: string }> {
   try {
-    // Ensure the notifications table exists
-    await ensureNotificationsTable();
+    // Ensure the notifications table exists with shorter timeout
+    await Promise.race([
+      ensureNotificationsTable(),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Table creation timeout')), 3000)
+      )
+    ]);
 
-    // Insert the notification
-    const result = await query(
-      `INSERT INTO notifications (user_id, title, message, type, link)
-       VALUES (?, ?, ?, ?, ?)`,
-      [userId, title, message, type, link]
-    ) as any;
+    // Insert the notification with timeout and retry logic
+    let result: any;
+    let retryCount = 0;
+    const maxRetries = 3;
+
+    while (retryCount < maxRetries) {
+      try {
+        result = await Promise.race([
+          query(
+            `INSERT INTO notifications (user_id, title, message, type, link)
+             VALUES (?, ?, ?, ?, ?)`,
+            [userId, title, message, type, link]
+          ),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Insert query timeout')), 5000)
+          )
+        ]) as any;
+        break; // Success, exit retry loop
+      } catch (insertError: any) {
+        retryCount++;
+        console.warn(`Notification insert attempt ${retryCount} failed:`, {
+          code: insertError.code,
+          message: insertError.message,
+          sql: insertError.sql,
+          params: [userId, title, message, type, link]
+        });
+
+        if (retryCount >= maxRetries) {
+          console.error(`All ${maxRetries} notification insert attempts failed for user ${userId}`);
+          throw insertError;
+        }
+
+        console.log(`Retrying query in ${500 * retryCount}ms due to ${insertError.code}`);
+        // Wait before retry (shorter backoff)
+        await new Promise(resolve => setTimeout(resolve, 500 * retryCount));
+      }
+    }
 
     // If requested, also send an email notification
     if (shouldSendEmail) {
@@ -237,27 +310,21 @@ This is an automated message, please do not reply to this email.
   `.trim();
 }
 
-/**
- * Get unread notification count for a user
- */
-export async function getUnreadNotificationCount(userId: number): Promise<number> {
-  try {
-    const result = await query(
-      'SELECT COUNT(*) as count FROM notifications WHERE user_id = ? AND is_read = 0',
-      [userId]
-    ) as any[];
 
-    return result[0].count || 0;
-  } catch {
-    return 0;
-  }
-}
+
+// Cache for table existence check
+let notificationsTableExists: boolean | null = null;
 
 /**
- * Helper function to ensure the notifications table exists
+ * Helper function to ensure the notifications table exists (with caching)
  */
 async function ensureNotificationsTable() {
   try {
+    // Use cached result if available
+    if (notificationsTableExists === true) {
+      return;
+    }
+
     // Check if the table exists
     const tableExists = await query(
       `SELECT COUNT(*) as count FROM information_schema.tables
@@ -265,7 +332,8 @@ async function ensureNotificationsTable() {
     ) as any[];
 
     if (tableExists[0].count === 0) {
-      // Create the table if it doesn't exist - Fixed foreign key to reference user_id instead of id
+      console.log('Creating notifications table...');
+      // Create the table if it doesn't exist - Simplified without foreign key for better performance
       await query(`
         CREATE TABLE IF NOT EXISTS notifications (
           id INT AUTO_INCREMENT PRIMARY KEY,
@@ -279,13 +347,18 @@ async function ensureNotificationsTable() {
           updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
           INDEX idx_user_id (user_id),
           INDEX idx_is_read (is_read),
-          INDEX idx_created_at (created_at),
-          FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+          INDEX idx_created_at (created_at)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
       `);
+      console.log('Notifications table created successfully');
     }
+
+    // Cache the result
+    notificationsTableExists = true;
   } catch (error) {
     console.error('Error ensuring notifications table exists:', error);
+    // Reset cache on error
+    notificationsTableExists = null;
     throw error;
   }
 }

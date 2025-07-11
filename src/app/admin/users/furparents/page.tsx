@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import AdminDashboardLayout from '@/components/navigation/AdminDashboardLayout';
+import Image from 'next/image';
 import {
   MagnifyingGlassIcon,
   FunnelIcon,
@@ -13,12 +14,27 @@ import {
   EnvelopeIcon,
   CheckCircleIcon,
   XCircleIcon,
-  ExclamationTriangleIcon
+  ExclamationTriangleIcon,
+  CalendarIcon,
+  HeartIcon,
+  ChartBarIcon
 } from '@heroicons/react/24/outline';
 import { useToast } from '@/context/ToastContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 import { Badge, Button, Input } from '@/components/ui';
+import { Modal } from '@/components/ui/Modal';
+import {
+  ProfileCard,
+  ProfileSection,
+  ProfileField,
+  ProfileGrid,
+  ProfileFormGroup
+} from '@/components/ui/ProfileLayout';
+import { ProfileButton } from '@/components/ui/ProfileFormComponents';
+import { getProfilePictureUrl } from '@/utils/imageUtils';
+
+
 
 // Types and interfaces
 type UserStatus = 'active' | 'restricted' | 'suspended' | 'inactive';
@@ -34,12 +50,25 @@ interface User {
   created_at: string;
   status: UserStatus;
   is_verified: boolean;
+  profile_picture?: string;
   pets?: number;
   completedBookings?: number;
   restriction?: {
     reason: string;
     restriction_date: string;
   };
+  appeals?: Appeal[];
+}
+
+interface Appeal {
+  appeal_id: number;
+  subject: string;
+  message: string;
+  status: 'pending' | 'under_review' | 'approved' | 'rejected';
+  admin_response?: string;
+  submitted_at: string;
+  reviewed_at?: string;
+  resolved_at?: string;
 }
 
 export default function AdminFurParentsPage() {
@@ -60,6 +89,9 @@ export default function AdminFurParentsPage() {
   const [userToAction, setUserToAction] = useState<User | null>(null);
   const [openDropdownId, setOpenDropdownId] = useState<string | number | null>(null);
   const [restrictReason, setRestrictReason] = useState('');
+  const [showAppealModal, setShowAppealModal] = useState(false);
+  const [selectedAppeal, setSelectedAppeal] = useState<Appeal | null>(null);
+  const [appealResponse, setAppealResponse] = useState('');
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { showToast } = useToast();
   const [pagination, setPagination] = useState({
@@ -135,6 +167,20 @@ export default function AdminFurParentsPage() {
 
         const data = await response.json();
 
+        // Log the data we received for debugging
+        console.log('Fur parents data:', data.users);
+
+        // Check for appeals in the data
+        data.users.forEach((user: any) => {
+          if (user.appeals && user.appeals.length > 0) {
+            console.log(`User ${user.first_name} ${user.last_name} has ${user.appeals.length} appeals:`, user.appeals);
+            const pendingAppeals = user.appeals.filter((appeal: any) => appeal.status === 'pending');
+            if (pendingAppeals.length > 0) {
+              console.log(`User ${user.first_name} ${user.last_name} has ${pendingAppeals.length} pending appeals`);
+            }
+          }
+        });
+
         // Map the users to match our interface
         const mappedUsers = (data.users || []).map((user: any) => ({
           ...user,
@@ -174,6 +220,33 @@ export default function AdminFurParentsPage() {
     };
   }, [pagination.page, pagination.limit, statusFilter, searchTerm, showToast]);
 
+  // Handle appeal notification from URL parameters
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const appealId = urlParams.get('appealId');
+      const userId = urlParams.get('userId');
+
+      if (appealId && userId && users.length > 0) {
+        // Find the user and open their details modal, then the appeal modal
+        const targetUser = users.find(user => user.user_id.toString() === userId);
+        if (targetUser) {
+          // Load user details and appeals
+          handleViewDetails(targetUser).then(() => {
+            // Find the specific appeal and open the modal
+            const appeal = targetUser.appeals?.find(a => a.appeal_id.toString() === appealId);
+            if (appeal) {
+              setSelectedAppeal(appeal);
+              setShowAppealModal(true);
+              // Clear URL parameters after opening modal
+              window.history.replaceState({}, '', window.location.pathname);
+            }
+          });
+        }
+      }
+    }
+  }, [users]);
+
   // Filter users based on search term and status
   const filteredUsers = users.filter(user => {
     const matchesSearch = searchTerm === '' ||
@@ -187,9 +260,62 @@ export default function AdminFurParentsPage() {
     return matchesSearch && matchesStatus;
   });
 
-  const handleViewDetails = (user: User) => {
-    setSelectedUser(user);
+  const handleViewDetails = async (user: User) => {
+    // Load user appeals when viewing details
+    const appeals = await loadUserAppeals(user.user_id);
+    setSelectedUser({ ...user, appeals });
     setShowDetailsModal(true);
+  };
+
+  const loadUserAppeals = async (userId: number) => {
+    try {
+      const response = await fetch(`/api/appeals?user_id=${userId}`);
+      if (response.ok) {
+        const data = await response.json();
+        return data.appeals || [];
+      }
+    } catch (error) {
+      console.error('Error loading user appeals:', error);
+    }
+    return [];
+  };
+
+  const handleAppealAction = async (appealId: number, status: string, response?: string) => {
+    try {
+      setIsProcessing(true);
+      const apiResponse = await fetch(`/api/appeals/${appealId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          status,
+          admin_response: response
+        }),
+      });
+
+      const data = await apiResponse.json();
+
+      if (apiResponse.ok) {
+        showToast(`Appeal ${status} successfully`, 'success');
+        setShowAppealModal(false);
+        setSelectedAppeal(null);
+        setAppealResponse('');
+
+        // Refresh user details if modal is open
+        if (selectedUser) {
+          const appeals = await loadUserAppeals(selectedUser.user_id);
+          setSelectedUser({ ...selectedUser, appeals });
+        }
+      } else {
+        throw new Error(data.error || `Failed to ${status} appeal`);
+      }
+    } catch (error) {
+      console.error(`Error ${status} appeal:`, error);
+      showToast(error instanceof Error ? error.message : `Failed to ${status} appeal`, 'error');
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   // Function to open the restrict modal
@@ -424,12 +550,15 @@ export default function AdminFurParentsPage() {
           </div>
           <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3 w-full md:w-auto">
             <div className="relative flex-grow sm:max-w-xs">
-              <Input
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
+              </div>
+              <input
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
+                className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)] sm:text-sm"
                 placeholder="Search fur parents..."
-                leftIcon={<MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />}
               />
             </div>
             <div className="relative flex-grow sm:max-w-xs">
@@ -456,6 +585,41 @@ export default function AdminFurParentsPage() {
           </div>
         </div>
       </div>
+
+      {/* Search Results Summary */}
+      {(searchTerm || statusFilter !== 'all') && (
+        <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
+            <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-1 text-blue-700">
+                <MagnifyingGlassIcon className="h-4 w-4" />
+                <span className="text-sm font-medium">
+                  {filteredUsers.length} result{filteredUsers.length !== 1 ? 's' : ''} found
+                </span>
+              </div>
+              {searchTerm && (
+                <span className="text-sm text-blue-600">
+                  for "{searchTerm}"
+                </span>
+              )}
+              {statusFilter !== 'all' && (
+                <span className="text-sm text-blue-600">
+                  with status "{statusFilter}"
+                </span>
+              )}
+            </div>
+            <button
+              onClick={() => {
+                setSearchTerm('');
+                setStatusFilter('all');
+              }}
+              className="text-sm text-blue-600 hover:text-blue-800 font-medium transition-colors"
+            >
+              Clear all filters
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Success Animation Overlays */}
       <AnimatePresence>
@@ -588,99 +752,235 @@ export default function AdminFurParentsPage() {
         {/* Users table */}
         {!loading && !error && filteredUsers.length > 0 && (
           <>
-            <div className="overflow-x-auto">
+            {/* Mobile Card View */}
+            <div className="block sm:hidden">
+              <div className="divide-y divide-gray-200">
+                {filteredUsers.map((user) => {
+                  const hasPendingAppeal = user.appeals && user.appeals.some(appeal => appeal.status === 'pending');
+                  return (
+                  <div
+                    key={user.user_id}
+                    className={`p-4 hover:bg-gray-50 transition-all duration-300 border border-gray-200 rounded-lg ${
+                      hasPendingAppeal
+                        ? 'animate-pulse-border'
+                        : ''
+                    }`}
+                  >
+                    <div className="flex items-start space-x-3">
+                      <div className="flex-shrink-0 h-10 w-10 bg-[var(--primary-green)] text-white rounded-full flex items-center justify-center overflow-hidden">
+                        {user.profile_picture ? (
+                          <Image
+                            src={getProfilePictureUrl(user.profile_picture)}
+                            alt={`${user.first_name} ${user.last_name}`}
+                            width={40}
+                            height={40}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              // Fallback to icon if image fails to load
+                              const target = e.target as HTMLImageElement;
+                              target.style.display = 'none';
+                              const parent = target.parentElement;
+                              if (parent) {
+                                parent.innerHTML = '<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>';
+                              }
+                            }}
+                          />
+                        ) : (
+                          <UserCircleIcon className="h-5 w-5" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center space-x-2 mb-2">
+                              <h3 className="text-sm font-medium text-gray-900 truncate">
+                                {user.first_name} {user.last_name}
+                              </h3>
+                              {getStatusBadge(user.status)}
+                              {user.appeals && user.appeals.some(appeal => appeal.status === 'pending') && (
+                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                                  Appeal Pending
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-xs text-gray-600 space-y-1">
+                              <div className="flex items-center">
+                                <EnvelopeIcon className="h-3 w-3 mr-1 flex-shrink-0" />
+                                <span className="truncate">{user.email}</span>
+                              </div>
+                              {user.phone_number && (
+                                <div className="flex items-center">
+                                  <PhoneIcon className="h-3 w-3 mr-1 flex-shrink-0" />
+                                  <span className="truncate">{user.phone_number}</span>
+                                </div>
+                              )}
+                              <div className="flex items-center">
+                                <MapPinIcon className="h-3 w-3 mr-1 flex-shrink-0" />
+                                <span className="truncate">{user.address || 'No address provided'}</span>
+                              </div>
+                              <div className="text-xs text-gray-500 mt-2">
+                                {user.completedBookings || 0} bookings • Joined {formatDate(user.created_at)}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex flex-col space-y-2 ml-3">
+                            <button
+                              onClick={() => handleViewDetails(user)}
+                              className="px-3 py-2 bg-[var(--primary-green)] text-white rounded-md hover:bg-[var(--primary-green-hover)] text-sm font-medium min-w-[70px] text-center transition-colors"
+                            >
+                              View
+                            </button>
+                            {user.status === 'active' ? (
+                              <button
+                                onClick={() => openRestrictModal(user)}
+                                className="px-3 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 text-sm font-medium min-w-[70px] text-center transition-colors"
+                              >
+                                Restrict
+                              </button>
+                            ) : user.status === 'restricted' ? (
+                              <button
+                                onClick={() => openUnrestrictModal(user)}
+                                className="px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm font-medium min-w-[70px] text-center transition-colors"
+                              >
+                                Restore
+                              </button>
+                            ) : null}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Desktop Table View */}
+            <div className="hidden sm:block overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th scope="col" className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       User
                     </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th scope="col" className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Contact
                     </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th scope="col" className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Registration Date
                     </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th scope="col" className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Status
                     </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Pets
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th scope="col" className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Bookings
                     </th>
-                    <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th scope="col" className="px-4 sm:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Actions
                     </th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredUsers.map((user) => (
-                    <tr key={user.user_id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div className="flex-shrink-0 h-10 w-10 bg-[var(--primary-green)] text-white rounded-full flex items-center justify-center">
-                            <UserCircleIcon className="h-6 w-6" />
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {filteredUsers.map((user) => {
+                      const hasPendingAppeal = user.appeals && user.appeals.some(appeal => appeal.status === 'pending');
+                      return (
+                      <tr
+                        key={user.user_id}
+                        className={`hover:bg-gray-50 transition-all duration-300 ${
+                          hasPendingAppeal
+                            ? 'animate-pulse-border'
+                            : ''
+                        }`}
+                      >
+                        <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <div className="flex-shrink-0 h-10 w-10 bg-[var(--primary-green)] text-white rounded-full flex items-center justify-center overflow-hidden">
+                              {user.profile_picture ? (
+                                <Image
+                                  src={getProfilePictureUrl(user.profile_picture)}
+                                  alt={`${user.first_name} ${user.last_name}`}
+                                  width={40}
+                                  height={40}
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    // Fallback to icon if image fails to load
+                                    const target = e.target as HTMLImageElement;
+                                    target.style.display = 'none';
+                                    const parent = target.parentElement;
+                                    if (parent) {
+                                      parent.innerHTML = '<svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>';
+                                    }
+                                  }}
+                                />
+                              ) : (
+                                <UserCircleIcon className="h-6 w-6" />
+                              )}
+                            </div>
+                            <div className="ml-4 min-w-0">
+                              <div className="text-sm font-medium text-gray-900 truncate">{user.first_name} {user.last_name}</div>
+                              <div className="text-sm text-gray-500">ID: {user.user_id}</div>
+                            </div>
                           </div>
-                          <div className="ml-4">
-                            <div className="text-sm font-medium text-gray-900">{user.first_name} {user.last_name}</div>
-                            <div className="text-sm text-gray-500">ID: {user.user_id}</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{user.email}</div>
-                        {user.phone_number && (
-                          <div className="text-sm text-gray-500">{user.phone_number}</div>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {formatDate(user.created_at)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {getStatusBadge(user.status)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {user.pets || 0}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {user.completedBookings || 0}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <div className="flex items-center justify-end space-x-4">
-                          <button
-                            onClick={() => handleViewDetails(user)}
-                            className="text-[var(--primary-green)] hover:text-[var(--primary-green)] hover:underline"
-                          >
-                            View
-                          </button>
-
-                          {/* Restrict/Unrestrict Button */}
-                          {user.status !== 'restricted' ? (
-                            <button
-                              onClick={() => openRestrictModal(user)}
-                              disabled={isProcessing}
-                              className="text-red-600 hover:text-red-900 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                              {isProcessing ? 'Processing...' : 'Restrict'}
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() => openUnrestrictModal(user)}
-                              disabled={isProcessing}
-                              className="text-green-600 hover:text-green-900 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                              {isProcessing ? 'Processing...' : 'Unrestrict'}
-                            </button>
+                        </td>
+                        <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900 truncate">{user.email}</div>
+                          {user.phone_number && (
+                            <div className="text-sm text-gray-500 truncate">{user.phone_number}</div>
                           )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                        </td>
+                        <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {formatDate(user.created_at)}
+                        </td>
+                        <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center space-x-2">
+                            {getStatusBadge(user.status)}
+                            {user.appeals && user.appeals.some(appeal => appeal.status === 'pending') && (
+                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                                Appeal
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {user.completedBookings || 0}
+                        </td>
+                        <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          <div className="flex items-center justify-end space-x-2 sm:space-x-4">
+                            <button
+                              onClick={() => handleViewDetails(user)}
+                              className="text-[var(--primary-green)] hover:text-[var(--primary-green)] hover:underline"
+                            >
+                              View
+                            </button>
+
+                            {/* Restrict/Unrestrict Button */}
+                            {user.status !== 'restricted' ? (
+                              <button
+                                onClick={() => openRestrictModal(user)}
+                                disabled={isProcessing}
+                                className="text-red-600 hover:text-red-900 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                <span className="hidden sm:inline">{isProcessing ? 'Processing...' : 'Restrict'}</span>
+                                <span className="sm:hidden">Restrict</span>
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => openUnrestrictModal(user)}
+                                disabled={isProcessing}
+                                className="text-green-600 hover:text-green-900 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                <span className="hidden sm:inline">{isProcessing ? 'Processing...' : 'Unrestrict'}</span>
+                                <span className="sm:hidden">Restore</span>
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
 
             {/* Pagination */}
             {pagination.totalPages > 1 && (
@@ -787,33 +1087,62 @@ export default function AdminFurParentsPage() {
       </div>
 
       {/* Restrict Confirmation Modal */}
-      <ConfirmationModal
+      <Modal
         isOpen={showRestrictModal}
         onClose={() => setShowRestrictModal(false)}
-        onConfirm={handleRestrictUser}
         title="Restrict Fur Parent"
-        message={
-          <div className="space-y-4">
-            <p>Are you sure you want to restrict &quot;{userToAction?.first_name} {userToAction?.last_name}&quot;? This will prevent them from making new bookings.</p>
+        size="medium"
+        variant="danger"
+      >
+        <div className="flex items-start mb-4">
+          <div className="mr-3 flex-shrink-0">
+            <ExclamationTriangleIcon className="h-6 w-6 text-red-600" />
+          </div>
+          <div className="text-sm text-gray-600 flex-1">
+            <p className="mb-4">Are you sure you want to restrict &quot;{userToAction?.first_name} {userToAction?.last_name}&quot;? This will prevent them from making new bookings.</p>
             <div>
-              <label htmlFor="restrict-reason" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="restrict-reason" className="block text-sm font-medium text-gray-700 mb-2">
                 Reason for restriction (optional)
               </label>
               <textarea
                 id="restrict-reason"
                 value={restrictReason}
                 onChange={(e) => setRestrictReason(e.target.value)}
-                className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md"
+                className="shadow-sm focus:ring-red-500 focus:border-red-500 block w-full sm:text-sm border-2 border-gray-400 rounded-md p-3 bg-white text-gray-900 placeholder-gray-500"
                 placeholder="Enter reason for restriction"
                 rows={3}
               />
             </div>
           </div>
-        }
-        confirmText="Restrict Access"
-        variant="danger"
-        icon={<ExclamationTriangleIcon className="h-6 w-6 text-red-600" />}
-      />
+        </div>
+
+        <div className="mt-6 flex flex-col-reverse sm:grid sm:grid-cols-2 gap-3">
+          <Button
+            variant="secondary"
+            onClick={() => setShowRestrictModal(false)}
+            disabled={isProcessing}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="danger"
+            onClick={handleRestrictUser}
+            disabled={isProcessing}
+          >
+            {isProcessing ? (
+              <>
+                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Restricting...
+              </>
+            ) : (
+              'Restrict Access'
+            )}
+          </Button>
+        </div>
+      </Modal>
 
       {/* Unrestrict Confirmation Modal */}
       <ConfirmationModal
@@ -828,188 +1157,381 @@ export default function AdminFurParentsPage() {
       />
 
       {/* User Details Modal */}
-      {showDetailsModal && selectedUser && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[90] p-4">
-          <div className="bg-white rounded-xl shadow-xl border border-gray-100 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-              <h2 className="text-xl font-semibold text-gray-800">Fur Parent Details</h2>
-              <button
-                onClick={() => setShowDetailsModal(false)}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <XMarkIcon className="h-6 w-6" />
-              </button>
-            </div>
-            <div className="p-6">
-              <div className="flex flex-col space-y-6">
-                {/* Header */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <div className="h-16 w-16 bg-[var(--primary-green)] text-white rounded-full flex items-center justify-center mr-4">
-                      <UserCircleIcon className="h-10 w-10" />
-                    </div>
-                    <div>
-                      <h3 className="text-2xl font-semibold text-gray-900">{selectedUser.first_name} {selectedUser.last_name}</h3>
-                      <div className="flex items-center space-x-2 mt-1">
-                        <span className="text-gray-600">ID: {selectedUser.user_id}</span>
-                        <span>•</span>
-                        <span className="flex items-center">
-                          {getStatusBadge(selectedUser.status)}
-                        </span>
+      <Modal
+        isOpen={showDetailsModal}
+        onClose={() => setShowDetailsModal(false)}
+        title="Fur Parent Details"
+        size="xlarge"
+        className="max-w-6xl mx-4 sm:mx-auto"
+        contentClassName="max-h-[85vh] overflow-y-auto"
+      >
+        <div className="space-y-6">
+          {/* Header Section */}
+          <ProfileCard className="bg-gradient-to-r from-[var(--primary-green)] to-[var(--primary-green-hover)]">
+            <div className="flex flex-col space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between space-y-4 sm:space-y-0">
+                <div className="flex items-start space-x-4">
+                  <div className="bg-white/20 backdrop-blur-sm rounded-full p-3 flex-shrink-0 overflow-hidden">
+                    {selectedUser?.profile_picture ? (
+                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full overflow-hidden bg-white">
+                        <Image
+                          src={getProfilePictureUrl(selectedUser.profile_picture)}
+                          alt={`${selectedUser.first_name} ${selectedUser.last_name}`}
+                          width={40}
+                          height={40}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            // Fallback to icon if image fails to load
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                            const parent = target.parentElement;
+                            if (parent) {
+                              parent.innerHTML = '<svg class="h-8 w-8 sm:h-10 sm:w-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>';
+                            }
+                          }}
+                        />
                       </div>
-                    </div>
+                    ) : (
+                      <UserCircleIcon className="h-8 w-8 sm:h-10 sm:w-10 text-white" />
+                    )}
                   </div>
-                </div>
-
-                {/* Contact Details */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <h4 className="text-lg font-medium text-gray-900 mb-3">Contact Details</h4>
-                    <div className="bg-gray-50 p-4 rounded-lg space-y-3">
-                      <div className="flex items-start">
-                        <EnvelopeIcon className="h-5 w-5 text-gray-500 mr-2 mt-0.5" />
-                        <div>
-                          <p className="text-sm font-medium text-gray-700">Email</p>
-                          <p className="text-gray-900">{selectedUser.email}</p>
-                        </div>
-                      </div>
-                      {selectedUser.phone_number && (
-                        <div className="flex items-start">
-                          <PhoneIcon className="h-5 w-5 text-gray-500 mr-2 mt-0.5" />
-                          <div>
-                            <p className="text-sm font-medium text-gray-700">Phone</p>
-                            <p className="text-gray-900">{selectedUser.phone_number}</p>
-                          </div>
-                        </div>
-                      )}
-                      {selectedUser.address && (
-                        <div className="flex items-start">
-                          <MapPinIcon className="h-5 w-5 text-gray-500 mr-2 mt-0.5" />
-                          <div>
-                            <p className="text-sm font-medium text-gray-700">Address</p>
-                            <p className="text-gray-900">{selectedUser.address}</p>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div>
-                    <h4 className="text-lg font-medium text-gray-900 mb-3">Account Details</h4>
-                    <div className="bg-gray-50 p-4 rounded-lg space-y-3">
-                      <div className="flex items-start">
-                        <svg className="h-5 w-5 text-gray-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                        <div>
-                          <p className="text-sm font-medium text-gray-700">Registration Date</p>
-                          <p className="text-gray-900">{formatDate(selectedUser.created_at)}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-start">
-                        <div className="h-5 w-5 text-gray-500 mr-2 mt-0.5 flex items-center justify-center">
-                          <span className="text-xs font-bold">✓</span>
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-gray-700">Verification Status</p>
-                          <p className="text-gray-900">
-                            {selectedUser.is_verified ? (
-                              <span className="inline-flex items-center text-green-600">
-                                <CheckCircleIcon className="h-4 w-4 mr-1" />
-                                Verified
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center text-yellow-600">
-                                <ExclamationTriangleIcon className="h-4 w-4 mr-1" />
-                                Not Verified
-                              </span>
-                            )}
-                          </p>
+                  <div className="text-white min-w-0 flex-1">
+                    <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold mb-2 break-words">
+                      {selectedUser?.first_name} {selectedUser?.last_name}
+                    </h1>
+                    <div className="space-y-1 text-white/90 text-sm">
+                      <div>ID: {selectedUser?.user_id}</div>
+                      <div className="flex items-center">
+                        <span className="mr-2">Account Status:</span>
+                        <div className="bg-white/20 rounded-full px-2 py-1">
+                          {selectedUser?.status === 'active' ? (
+                            <span className="text-green-200">Active</span>
+                          ) : selectedUser?.status === 'restricted' ? (
+                            <span className="text-red-200">Restricted</span>
+                          ) : (
+                            <span className="text-yellow-200">Inactive</span>
+                          )}
                         </div>
                       </div>
                     </div>
                   </div>
                 </div>
-
-                {/* User Stats */}
-                <div>
-                  <h4 className="text-lg font-medium text-gray-900 mb-3">User Activity</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                      <p className="text-sm font-medium text-gray-700">Registered Pets</p>
-                      <p className="text-2xl font-semibold text-[var(--primary-green)]">{selectedUser.pets || 0}</p>
-                    </div>
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                      <p className="text-sm font-medium text-gray-700">Completed Bookings</p>
-                      <p className="text-2xl font-semibold text-[var(--primary-green)]">{selectedUser.completedBookings || 0}</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Restriction information if applicable */}
-                {selectedUser.status === 'restricted' && selectedUser.restriction && (
-                  <div className="bg-red-50 p-4 rounded-lg border border-red-200">
-                    <h4 className="text-lg font-medium text-red-800 mb-3 flex items-center">
-                      <ShieldExclamationIcon className="h-5 w-5 mr-2" />
-                      Restriction Information
-                    </h4>
-                    <div className="space-y-3">
-                      <div className="flex items-start">
-                        <div className="w-32 text-red-700">Date Restricted:</div>
-                        <div className="text-red-900">{formatDate(selectedUser.restriction.restriction_date)}</div>
-                      </div>
-                      {selectedUser.restriction.reason && (
-                        <div className="flex items-start">
-                          <div className="w-32 text-red-700">Reason:</div>
-                          <div className="text-red-900">{selectedUser.restriction.reason}</div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Action Buttons */}
-                <div className="flex justify-end space-x-3 mt-8 border-t pt-6">
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => setShowDetailsModal(false)}
-                  >
-                    Close
-                  </Button>
-                  {selectedUser.status === 'restricted' ? (
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      onClick={() => {
-                        setShowDetailsModal(false);
-                        openUnrestrictModal(selectedUser);
-                      }}
-                      disabled={isProcessing}
-                      isLoading={isProcessing}
-                    >
-                      Restore Access
-                    </Button>
-                  ) : (
-                    <Button
-                      variant="danger"
-                      size="sm"
-                      onClick={() => {
-                        setShowDetailsModal(false);
-                        openRestrictModal(selectedUser);
-                      }}
-                      disabled={isProcessing}
-                      isLoading={isProcessing}
-                    >
-                      Restrict Access
-                    </Button>
-                  )}
+                <div className="flex-shrink-0 self-start">
+                  {selectedUser && getStatusBadge(selectedUser.status)}
                 </div>
               </div>
             </div>
+          </ProfileCard>
+
+          {/* Contact Information */}
+          <ProfileSection
+            title="Contact Information"
+            subtitle="Personal contact details and account information"
+          >
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <ProfileCard>
+                <ProfileFormGroup title="Contact Details" subtitle="Primary contact information">
+                  <div className="space-y-4">
+                    <ProfileField
+                      label="Email Address"
+                      value={selectedUser?.email}
+                      icon={<EnvelopeIcon className="h-5 w-5" />}
+                    />
+                    {selectedUser?.phone_number && (
+                      <ProfileField
+                        label="Phone Number"
+                        value={selectedUser.phone_number}
+                        icon={<PhoneIcon className="h-5 w-5" />}
+                      />
+                    )}
+                    {selectedUser?.address && (
+                      <ProfileField
+                        label="Home Address"
+                        value={<div className="break-words">{selectedUser.address}</div>}
+                        icon={<MapPinIcon className="h-5 w-5" />}
+                      />
+                    )}
+                  </div>
+                </ProfileFormGroup>
+              </ProfileCard>
+
+              <ProfileCard>
+                <ProfileFormGroup title="Account Details" subtitle="Registration and verification status">
+                  <div className="space-y-4">
+                    <ProfileField
+                      label="Registration Date"
+                      value={selectedUser ? formatDate(selectedUser.created_at) : 'N/A'}
+                      icon={<CalendarIcon className="h-5 w-5" />}
+                    />
+                    <ProfileField
+                      label="Verification Status"
+                      value={
+                        selectedUser?.is_verified ? (
+                          <span className="inline-flex items-center text-green-600 font-medium">
+                            <CheckCircleIcon className="h-4 w-4 mr-1" />
+                            Verified Account
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center text-yellow-600 font-medium">
+                            <ExclamationTriangleIcon className="h-4 w-4 mr-1" />
+                            Not Verified
+                          </span>
+                        )
+                      }
+                      icon={<CheckCircleIcon className="h-5 w-5" />}
+                    />
+                  </div>
+                </ProfileFormGroup>
+              </ProfileCard>
+            </div>
+          </ProfileSection>
+
+          {/* User Activity */}
+          <ProfileSection
+            title="User Activity"
+            subtitle="Pet registrations and booking history"
+          >
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+              <ProfileField
+                label="Registered Pets"
+                value={selectedUser?.pets || 0}
+                icon={<HeartIcon className="h-5 w-5" />}
+                valueClassName="text-xl sm:text-2xl font-bold text-[var(--primary-green)]"
+                className="text-center sm:text-left"
+              />
+              <ProfileField
+                label="Completed Bookings"
+                value={selectedUser?.completedBookings || 0}
+                icon={<ChartBarIcon className="h-5 w-5" />}
+                valueClassName="text-xl sm:text-2xl font-bold text-[var(--primary-green)]"
+                className="text-center sm:text-left"
+              />
+            </div>
+          </ProfileSection>
+
+          {/* Restriction Information */}
+          {selectedUser?.status === 'restricted' && selectedUser?.restriction && (
+            <ProfileSection
+              title="Restriction Information"
+              subtitle="Details about account restrictions"
+            >
+              <ProfileCard className="bg-red-50 border-red-200 border-2">
+                <div className="flex items-start space-x-3">
+                  <div className="flex-shrink-0 mt-1">
+                    <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
+                      <ShieldExclamationIcon className="h-5 w-5 text-red-600" />
+                    </div>
+                  </div>
+                  <div className="flex-1 space-y-4">
+                    <div>
+                      <h4 className="text-lg font-medium text-red-800 mb-3">Account Restricted</h4>
+                      <div className="space-y-3">
+                        <ProfileField
+                          label="Date Restricted"
+                          value={formatDate(selectedUser.restriction.restriction_date)}
+                          className="bg-red-100/50"
+                          valueClassName="text-red-900 font-medium"
+                        />
+                        {selectedUser.restriction.reason && (
+                          <ProfileField
+                            label="Restriction Reason"
+                            value={selectedUser.restriction.reason}
+                            className="bg-red-100/50"
+                            valueClassName="text-red-900"
+                          />
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </ProfileCard>
+            </ProfileSection>
+          )}
+
+          {/* Appeals Section */}
+          {selectedUser?.appeals && selectedUser.appeals.length > 0 && (
+            <ProfileSection
+              title="User Appeals"
+              subtitle="Appeals submitted by this user"
+            >
+              <div className="space-y-4">
+                {selectedUser.appeals.map((appeal) => (
+                  <ProfileCard key={appeal.appeal_id} className="border-l-4 border-l-blue-500">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            appeal.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                            appeal.status === 'under_review' ? 'bg-blue-100 text-blue-800' :
+                            appeal.status === 'approved' ? 'bg-green-100 text-green-800' :
+                            'bg-red-100 text-red-800'
+                          }`}>
+                            {appeal.status.replace('_', ' ').toUpperCase()}
+                          </span>
+                          <span className="text-sm text-gray-500">
+                            {formatDate(appeal.submitted_at)}
+                          </span>
+                        </div>
+                        <h4 className="font-medium text-gray-900 mb-2">{appeal.subject}</h4>
+                        <p className="text-gray-600 text-sm mb-3 line-clamp-2">{appeal.message}</p>
+                        {appeal.admin_response && (
+                          <div className="bg-gray-50 p-3 rounded-md">
+                            <p className="text-sm font-medium text-gray-700 mb-1">Admin Response:</p>
+                            <p className="text-sm text-gray-600">{appeal.admin_response}</p>
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex space-x-2 ml-4">
+                        {appeal.status === 'pending' || appeal.status === 'under_review' ? (
+                          <>
+                            <button
+                              onClick={() => {
+                                setSelectedAppeal(appeal);
+                                setShowAppealModal(true);
+                              }}
+                              className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                            >
+                              Review
+                            </button>
+                          </>
+                        ) : (
+                          <span className="text-sm text-gray-500">
+                            {appeal.status === 'approved' ? 'Approved' : 'Rejected'}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </ProfileCard>
+                ))}
+              </div>
+            </ProfileSection>
+          )}
+
+          {/* Action Buttons */}
+          <div className="border-t border-gray-200 pt-6">
+            <ProfileSection
+              title="Administrative Actions"
+              subtitle="Manage fur parent account access and permissions"
+              className="mb-0"
+            >
+              <ProfileCard className="bg-gray-50 border-2 border-dashed border-gray-200">
+                <div className="flex flex-col space-y-4">
+                  <div className="text-center">
+                    <p className="text-sm text-gray-600 mb-4">
+                      Use the buttons below to manage this fur parent's access to the platform.
+                    </p>
+                  </div>
+                  <div className="flex flex-col sm:flex-row justify-center sm:justify-end space-y-3 sm:space-y-0 sm:space-x-3">
+                    <ProfileButton
+                      onClick={() => setShowDetailsModal(false)}
+                      variant="secondary"
+                      size="lg"
+                      className="order-2 sm:order-1 w-full sm:w-auto"
+                    >
+                      Close Details
+                    </ProfileButton>
+                    {selectedUser?.status === 'restricted' ? (
+                      <ProfileButton
+                        onClick={() => {
+                          setShowDetailsModal(false);
+                          selectedUser && openUnrestrictModal(selectedUser);
+                        }}
+                        disabled={isProcessing}
+                        loading={isProcessing}
+                        variant="success"
+                        size="lg"
+                        className="order-1 sm:order-2 w-full sm:w-auto"
+                      >
+                        {isProcessing ? 'Processing...' : 'Restore Access'}
+                      </ProfileButton>
+                    ) : (
+                      <ProfileButton
+                        onClick={() => {
+                          setShowDetailsModal(false);
+                          selectedUser && openRestrictModal(selectedUser);
+                        }}
+                        disabled={isProcessing}
+                        loading={isProcessing}
+                        variant="danger"
+                        size="lg"
+                        className="order-1 sm:order-2 w-full sm:w-auto"
+                      >
+                        {isProcessing ? 'Processing...' : 'Restrict Access'}
+                      </ProfileButton>
+                    )}
+                  </div>
+                </div>
+              </ProfileCard>
+            </ProfileSection>
           </div>
         </div>
-      )}
+      </Modal>
+
+      {/* Appeal Review Modal */}
+      <Modal
+        isOpen={showAppealModal}
+        onClose={() => {
+          setShowAppealModal(false);
+          setSelectedAppeal(null);
+          setAppealResponse('');
+        }}
+        title="Review Appeal"
+        size="large"
+      >
+        {selectedAppeal && (
+          <div className="space-y-6">
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <h3 className="font-medium text-gray-900 mb-2">{selectedAppeal.subject}</h3>
+              <p className="text-gray-700 mb-3">{selectedAppeal.message}</p>
+              <div className="text-sm text-gray-500">
+                <p>Submitted: {formatDate(selectedAppeal.submitted_at)}</p>
+                <p>Status: <span className="capitalize">{selectedAppeal.status.replace('_', ' ')}</span></p>
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="appealResponse" className="block text-sm font-medium text-gray-700 mb-2">
+                Admin Response (Optional)
+              </label>
+              <textarea
+                id="appealResponse"
+                rows={4}
+                value={appealResponse}
+                onChange={(e) => setAppealResponse(e.target.value)}
+                className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
+                placeholder="Provide additional context or explanation for your decision..."
+              />
+            </div>
+
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => {
+                  setShowAppealModal(false);
+                  setSelectedAppeal(null);
+                  setAppealResponse('');
+                }}
+                className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => selectedAppeal && handleAppealAction(selectedAppeal.appeal_id, 'rejected', appealResponse)}
+                disabled={isProcessing}
+                className="px-4 py-2 border border-transparent rounded-md text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isProcessing ? 'Processing...' : 'Reject Appeal'}
+              </button>
+              <button
+                onClick={() => selectedAppeal && handleAppealAction(selectedAppeal.appeal_id, 'approved', appealResponse)}
+                disabled={isProcessing}
+                className="px-4 py-2 border border-transparent rounded-md text-sm font-medium text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isProcessing ? 'Processing...' : 'Approve Appeal'}
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </AdminDashboardLayout>
   );
 }

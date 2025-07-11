@@ -471,25 +471,7 @@ export async function completeRefund(bookingId: number, refundId: number): Promi
   }
 }
 
-/**
- * Get refund details by ID
- */
-export async function getRefundById(refundId: number): Promise<Refund | null> {
-  try {
-    const result = await query(`
-      SELECT * FROM refunds WHERE id = ?
-    `, [refundId]) as any[];
 
-    if (!result || result.length === 0) {
-      return null;
-    }
-
-    return result[0] as Refund;
-  } catch (error) {
-    console.error('Error getting refund by ID:', error);
-    return null;
-  }
-}
 
 /**
  * Retry failed PayMongo refunds that are eligible for retry
@@ -608,18 +590,4 @@ export async function validatePaymentDataForRefund(bookingId: number): Promise<b
   }
 }
 
-/**
- * Get refunds by booking ID
- */
-export async function getRefundsByBookingId(bookingId: number): Promise<Refund[]> {
-  try {
-    const result = await query(`
-      SELECT * FROM refunds WHERE booking_id = ? ORDER BY created_at DESC
-    `, [bookingId]) as any[];
 
-    return result as Refund[];
-  } catch (error) {
-    console.error('Error getting refunds by booking ID:', error);
-    return [];
-  }
-}

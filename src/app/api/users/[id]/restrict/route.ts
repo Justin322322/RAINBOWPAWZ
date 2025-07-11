@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query, withTransaction } from '@/lib/db';
 import { verifySecureAuth } from '@/lib/secureAuth';
+import { createNotificationFast } from '@/utils/notificationService';
+import { sendEmail } from '@/lib/consolidatedEmailService';
+import { sendSMS } from '@/lib/smsService';
 
 export async function PUT(request: NextRequest) {
   try {
@@ -17,7 +20,7 @@ export async function PUT(request: NextRequest) {
     }
 
     // Verify admin authentication using secure auth
-    const authUser = verifySecureAuth(request);
+    const authUser = await verifySecureAuth(request);
     if (!authUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -115,6 +118,11 @@ export async function PUT(request: NextRequest) {
            WHERE user_id = ?`,
           [userId]
         );
+
+        // Send notifications to the user (non-blocking)
+        notifyUserOfRestriction(userCheckResult[0], reason, duration).catch(error => {
+          console.error('Failed to send restriction notification:', error);
+        });
       } else {
         // Remove restriction
         await transaction.query(
@@ -184,10 +192,120 @@ export async function PUT(request: NextRequest) {
 
   } catch (error) {
     console.error('User restriction error:', error);
-    
+
     return NextResponse.json({
       error: 'Failed to update user restriction',
       message: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 });
   }
+}
+
+// Helper function to notify user of restriction
+async function notifyUserOfRestriction(user: any, reason: string, duration?: string) {
+  try {
+    const title = 'Account Restricted';
+    const message = `Your account has been restricted. Reason: ${reason}${duration ? ` Duration: ${duration}` : ''}. You can submit an appeal to request a review.`;
+
+    // Create in-app notification (using fast method)
+    const notificationResult = await createNotificationFast({
+      userId: user.user_id || user.id,
+      title,
+      message,
+      type: 'error',
+      link: '/appeals'
+    });
+
+    if (!notificationResult.success) {
+      console.error('Failed to create restriction notification:', notificationResult.error);
+    }
+
+    // Send custom email notification
+    const emailTemplate = createRestrictionNotificationEmail({
+      userName: `${user.first_name} ${user.last_name}`,
+      reason,
+      duration
+    });
+
+    await sendEmail({
+      to: user.email,
+      subject: emailTemplate.subject,
+      html: emailTemplate.html
+    });
+
+    // Send SMS notification
+    if (user.phone) {
+      await sendSMS({
+        to: user.phone,
+        message: `🚨 Your RainbowPaws account has been restricted. Reason: ${reason}. You can submit an appeal at ${process.env.NEXT_PUBLIC_BASE_URL}/appeals`
+      });
+    }
+
+  } catch (error) {
+    console.error('Error notifying user of restriction:', error);
+    // Don't throw error as this is not critical
+  }
+}
+
+// Email template for restriction notifications
+function createRestrictionNotificationEmail({
+  userName,
+  reason,
+  duration
+}: {
+  userName: string;
+  reason: string;
+  duration?: string;
+}) {
+  const subject = '🚨 Account Restricted - Action Required';
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Account Restricted</title>
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #dc2626, #b91c1c); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+        .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+        .alert-box { background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 20px; margin: 20px 0; }
+        .button { display: inline-block; background: #dc2626; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 20px 0; }
+        .footer { text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e5e5; color: #666; font-size: 14px; }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <h1>🚨 Account Restricted</h1>
+        <p>Important notice regarding your RainbowPaws account</p>
+      </div>
+      <div class="content">
+        <p>Dear ${userName},</p>
+
+        <div class="alert-box">
+          <h3>⚠️ Your account has been restricted</h3>
+          <p><strong>Reason:</strong> ${reason}</p>
+          ${duration ? `<p><strong>Duration:</strong> ${duration}</p>` : ''}
+        </div>
+
+        <p>This restriction means you will have limited access to RainbowPaws features. However, you have the right to appeal this decision.</p>
+
+        <h3>📝 How to Submit an Appeal</h3>
+        <p>If you believe this restriction was made in error or you would like to provide additional context, you can submit an appeal:</p>
+
+        <a href="${process.env.NEXT_PUBLIC_BASE_URL}/appeals" class="button">Submit Appeal</a>
+
+        <p><strong>Important:</strong> While your account is restricted, you will not be able to access most features of RainbowPaws. However, you can still submit appeals and contact our support team.</p>
+
+        <p>We take these matters seriously and appreciate your understanding as we work to maintain a safe and respectful community for all users.</p>
+      </div>
+      <div class="footer">
+        <p>This is an automated notification from RainbowPaws</p>
+        <p>If you have questions, please contact our support team at support@rainbowpaws.com</p>
+      </div>
+    </body>
+    </html>
+  `;
+
+  return { subject, html };
 }

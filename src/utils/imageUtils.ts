@@ -93,32 +93,7 @@ export function getProductionImagePath(path: string): string {
   return addCacheBuster(getImagePath(path));
 }
 
-/**
- * Get the correct image URL with fallback for a package
- * @param packageId The package ID
- * @param imageIndex Optional index if multiple images are available
- * @returns The image URL to use
- */
-export async function getPackageImageUrl(packageId: number | string, imageIndex: number = 0): Promise<string> {
-  try {
-    // Try to fetch available images from our API
-    const response = await fetch(`/api/packages/available-images?id=${packageId}`);
-    const data = await response.json();
 
-    // If we found images, return the requested one or the first one
-    if (data.success && data.imagesFound && data.imagesFound.length > 0) {
-      // If requested index is out of bounds, use the first image
-      const index = imageIndex < data.imagesFound.length ? imageIndex : 0;
-      return getImagePath(data.imagesFound[index]);
-    }
-
-    // Fallback to a reliable fallback image
-    return `/bg_4.png`;
-  } catch {
-    // Default fallback
-    return `/bg_4.png`;
-  }
-}
 
 /**
  * Get all available images for a package
@@ -176,26 +151,14 @@ export function handleImageError(event: React.SyntheticEvent<HTMLImageElement>, 
   target.classList.add('fallback-image');
 }
 
-/**
- * Preload an image to check if it exists
- * @param src The image source URL
- * @returns Promise that resolves if image loads, rejects if it fails
- */
-export function preloadImage(src: string): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => resolve();
-    img.onerror = () => reject();
-    img.src = src;
-  });
-}
+
 
 /**
  * Trigger a profile picture update event to refresh all components
  * @param newProfilePicturePath The new profile picture path
  * @param userType The type of user (user, admin, business)
  */
-export function triggerProfilePictureUpdate(newProfilePicturePath: string, userType: 'user' | 'admin' | 'business' = 'user'): void {
+function triggerProfilePictureUpdate(newProfilePicturePath: string, userType: 'user' | 'admin' | 'business' = 'user'): void {
   if (typeof window === 'undefined') return;
 
   // Update session storage based on user type
