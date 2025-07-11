@@ -34,24 +34,7 @@ import {
 import { ProfileButton } from '@/components/ui/ProfileFormComponents';
 import { getProfilePictureUrl } from '@/utils/imageUtils';
 
-// CSS for border pulsing animation
-const pulsingBorderStyles = `
-  @keyframes pulse-border {
-    0%, 100% {
-      border-color: #f97316;
-      border-width: 2px;
-    }
-    50% {
-      border-color: #ea580c;
-      border-width: 3px;
-    }
-  }
 
-  .animate-pulse-border {
-    animation: pulse-border 2s ease-in-out infinite;
-    border-style: solid;
-  }
-`;
 
 // Types and interfaces
 type UserStatus = 'active' | 'restricted' | 'suspended' | 'inactive';
@@ -558,7 +541,6 @@ export default function AdminFurParentsPage() {
 
   return (
     <AdminDashboardLayout activePage="furparents" userName={userName}>
-      <style jsx>{pulsingBorderStyles}</style>
       {/* Header section */}
       <div className="mb-8 bg-white rounded-xl shadow-md border border-gray-100 p-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
@@ -775,7 +757,6 @@ export default function AdminFurParentsPage() {
               <div className="divide-y divide-gray-200">
                 {filteredUsers.map((user) => {
                   const hasPendingAppeal = user.appeals && user.appeals.some(appeal => appeal.status === 'pending');
-                  console.log(`Mobile card - User ${user.first_name} ${user.last_name}: appeals=${user.appeals?.length || 0}, hasPendingAppeal=${hasPendingAppeal}`);
                   return (
                   <div
                     key={user.user_id}
@@ -902,7 +883,6 @@ export default function AdminFurParentsPage() {
                   <tbody className="bg-white divide-y divide-gray-200">
                     {filteredUsers.map((user) => {
                       const hasPendingAppeal = user.appeals && user.appeals.some(appeal => appeal.status === 'pending');
-                      console.log(`Table row - User ${user.first_name} ${user.last_name}: appeals=${user.appeals?.length || 0}, hasPendingAppeal=${hasPendingAppeal}`);
                       return (
                       <tr
                         key={user.user_id}

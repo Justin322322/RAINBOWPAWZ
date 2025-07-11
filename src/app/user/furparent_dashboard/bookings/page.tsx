@@ -549,6 +549,18 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
     }
   };
 
+  // Helper function to check if review period has expired (5 days after booking date)
+  const isReviewExpired = (bookingDate: string) => {
+    try {
+      const booking = new Date(bookingDate);
+      const fiveDaysAgo = new Date();
+      fiveDaysAgo.setDate(fiveDaysAgo.getDate() - 5);
+      return booking < fiveDaysAgo;
+    } catch {
+      return true; // If date parsing fails, consider it expired
+    }
+  };
+
   return (
     <div className="min-h-screen bg-white">
       {/* Navigation is now handled by layout */}
@@ -840,7 +852,7 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
                         variant="outline"
                       />
                     )}
-                    {booking.status === 'completed' && !reviewedBookingIds.includes(booking.id) && (currentUserData?.id || currentUserData?.user_id) && (
+                    {booking.status === 'completed' && !reviewedBookingIds.includes(booking.id) && !isReviewExpired(booking.booking_date) && (currentUserData?.id || currentUserData?.user_id) && (
                       <button
                         onClick={() => {
                           setSelectedBooking(booking);
@@ -851,6 +863,12 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
                         <StarIcon className="h-4 w-4 mr-2" />
                         Leave Review
                       </button>
+                    )}
+                    {booking.status === 'completed' && !reviewedBookingIds.includes(booking.id) && isReviewExpired(booking.booking_date) && (
+                      <div className="px-4 py-2 bg-gray-50 text-gray-500 rounded-md text-sm font-medium flex items-center">
+                        <ClockIcon className="h-4 w-4 mr-2" />
+                        Review Expired
+                      </div>
                     )}
                     {booking.status === 'completed' && reviewedBookingIds.includes(booking.id) && (
                       <div className="px-4 py-2 bg-green-50 text-green-700 rounded-md text-sm font-medium flex items-center">
@@ -1223,6 +1241,16 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
                             <h2 className="text-lg font-semibold text-gray-900 mb-4">Your Review</h2>
                             {reviewedBookingIds.includes(selectedBooking.id) ? (
                               (currentUserData?.id || currentUserData?.user_id) && <ReviewDisplay bookingId={selectedBooking.id} userId={currentUserData.id || currentUserData.user_id} />
+                            ) : isReviewExpired(selectedBooking.booking_date) ? (
+                              <div className="bg-gray-50 rounded-lg p-4">
+                                <div className="flex items-center text-gray-500 mb-2">
+                                  <ClockIcon className="h-5 w-5 mr-2" />
+                                  <span className="text-sm font-medium">Review Period Expired</span>
+                                </div>
+                                <p className="text-sm text-gray-600">
+                                  The review period for this booking has expired. Reviews can only be submitted within 5 days of booking completion.
+                                </p>
+                              </div>
                             ) : (
                               <div className="bg-gray-50 rounded-lg p-4">
                                 <p className="text-sm text-gray-600 mb-4">You haven&apos;t reviewed this booking yet. Your feedback helps other pet parents make informed decisions.</p>

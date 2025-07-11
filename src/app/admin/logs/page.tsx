@@ -57,7 +57,7 @@ function AdminLogsPage({ adminData }: { adminData: any }) {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalLogs, setTotalLogs] = useState(0);
-  const logsPerPage = 20;
+  const [logsPerPage, setLogsPerPage] = useState(10);
   
   // Filters
   const [filters, setFilters] = useState<LogFilters>({
@@ -114,7 +114,7 @@ function AdminLogsPage({ adminData }: { adminData: any }) {
     } finally {
       if (showLoading) setLoading(false);
     }
-  }, [filters, showToast]);
+  }, [filters, logsPerPage, showToast]);
 
   // Initial load
   useEffect(() => {
@@ -145,6 +145,12 @@ function AdminLogsPage({ adminData }: { adminData: any }) {
   // Handle filter changes
   const handleFilterChange = (key: keyof LogFilters, value: string) => {
     setFilters(prev => ({ ...prev, [key]: value }));
+    setCurrentPage(1);
+  };
+
+  // Handle logs per page change
+  const handleLogsPerPageChange = (newLogsPerPage: number) => {
+    setLogsPerPage(newLogsPerPage);
     setCurrentPage(1);
   };
 
@@ -268,6 +274,19 @@ function AdminLogsPage({ adminData }: { adminData: any }) {
               </p>
             </div>
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-3">
+              <div className="flex items-center space-x-2">
+                <span className="text-sm text-gray-600">Show:</span>
+                <select
+                  value={logsPerPage}
+                  onChange={(e) => handleLogsPerPageChange(parseInt(e.target.value))}
+                  className="text-sm border border-gray-300 rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-[var(--primary-green)] focus:border-transparent bg-white"
+                >
+                  <option value={10}>10</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>
+                <span className="text-sm text-gray-600">per page</span>
+              </div>
               <label className="flex items-center justify-center sm:justify-start space-x-2 py-2 sm:py-0">
                 <input
                   type="checkbox"

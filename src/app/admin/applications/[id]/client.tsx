@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { getProductionImagePath } from '@/utils/imageUtils';
+import { useToast } from '@/context/ToastContext';
 import {
   CheckCircleIcon,
   XCircleIcon,
@@ -54,6 +55,7 @@ interface Application {
 
 function ApplicationDetailContent({ id }: ApplicationDetailContentProps) {
   const router = useRouter();
+  const { showToast } = useToast();
   const [application, setApplication] = useState<Application | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>('');
@@ -331,7 +333,7 @@ function ApplicationDetailContent({ id }: ApplicationDetailContentProps) {
         throw new Error(data.message || 'Failed to approve application');
       }
     } catch (error) {
-      alert('Failed to approve application: ' + ((error as Error).message || 'Unknown error'));
+      showToast('Failed to approve application: ' + ((error as Error).message || 'Unknown error'), 'error');
     } finally {
       setIsProcessing(false);
     }
@@ -399,7 +401,7 @@ function ApplicationDetailContent({ id }: ApplicationDetailContentProps) {
         throw new Error(errorData.message || 'Failed to decline application');
       }
     } catch (error) {
-      alert('Failed to decline application: ' + ((error as Error).message || 'Unknown error'));
+      showToast('Failed to decline application: ' + ((error as Error).message || 'Unknown error'), 'error');
     } finally {
       setIsProcessing(false);
     }

@@ -22,20 +22,17 @@ import {
 } from '@/components/ui/ProfileLayout';
 import {
   ProfileInput,
-  ProfileButton,
-  ProfileAlert
+  ProfileButton
 } from '@/components/ui/ProfileFormComponents';
 import { SkeletonCard } from '@/components/ui/SkeletonLoader';
+import { useToast } from '@/context/ToastContext';
 
 interface ProfilePageProps {
   userData?: UserData;
 }
 
 function ProfilePage({ userData }: ProfilePageProps) {
-
-  // Loading and error states
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
+  const { showToast } = useToast();
 
   // Skeleton loading state with minimum delay
   const [showSkeleton, setShowSkeleton] = useState(true);
@@ -69,7 +66,6 @@ function ProfilePage({ userData }: ProfilePageProps) {
 
   // Geolocation states
   const [isGettingLocation, setIsGettingLocation] = useState(false);
-  const [locationError, setLocationError] = useState<string | null>(null);
 
   // Initialize form data when userData changes
   useEffect(() => {
@@ -111,18 +107,7 @@ function ProfilePage({ userData }: ProfilePageProps) {
     };
   }, [initialLoading, userData]);
 
-  // Clear messages after 5 seconds
-  useEffect(() => {
-    if (success || error || locationError) {
-      const timer = setTimeout(() => {
-        setSuccess(null);
-        setError(null);
-        setLocationError(null);
-      }, 5000);
-      return () => clearTimeout(timer);
-    }
-    return undefined;
-  }, [success, error, locationError]);
+
 
   // Listen for profile picture updates
   useEffect(() => {
@@ -186,12 +171,12 @@ function ProfilePage({ userData }: ProfilePageProps) {
     const file = event.target.files?.[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) { // 5MB limit
-        setError('Profile picture must be less than 5MB');
+        showToast('Profile picture must be less than 5MB', 'error');
         return;
       }
 
       if (!file.type.startsWith('image/')) {
-        setError('Please select a valid image file');
+        showToast('Please select a valid image file', 'error');
         return;
       }
 
@@ -209,7 +194,6 @@ function ProfilePage({ userData }: ProfilePageProps) {
     if (!profilePicture) return;
 
     setUploadingProfilePicture(true);
-    setError(null);
 
     try {
       const formData = new FormData();
@@ -226,7 +210,7 @@ function ProfilePage({ userData }: ProfilePageProps) {
 
       const result = await response.json();
       if (result.success) {
-        setSuccess('Profile picture updated successfully!');
+        showToast('Profile picture updated successfully!', 'success');
 
         // Update the timestamp to force image refresh
         setProfilePictureTimestamp(Date.now());
@@ -256,7 +240,7 @@ function ProfilePage({ userData }: ProfilePageProps) {
       }
     } catch (error) {
       console.error('Error uploading profile picture:', error);
-      setError('Failed to upload profile picture. Please try again.');
+      showToast('Failed to upload profile picture. Please try again.', 'error');
     } finally {
       setUploadingProfilePicture(false);
     }
@@ -266,7 +250,6 @@ function ProfilePage({ userData }: ProfilePageProps) {
   const handlePersonalInfoUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsUpdatingPersonal(true);
-    setError(null);
 
     try {
       const response = await fetch(`/api/users/${userData.user_id || userData.id}/update`, {
@@ -289,7 +272,7 @@ function ProfilePage({ userData }: ProfilePageProps) {
       }
 
       if (result.success) {
-        setSuccess('Personal information updated successfully!');
+        showToast('Personal information updated successfully!', 'success');
         setIsEditingPersonal(false);
 
         // Trigger user data update event
@@ -302,7 +285,7 @@ function ProfilePage({ userData }: ProfilePageProps) {
     } catch (error) {
       console.error('Error updating personal info:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to update personal information. Please try again.';
-      setError(errorMessage);
+      showToast(errorMessage, 'error');
     } finally {
       setIsUpdatingPersonal(false);
     }
@@ -312,7 +295,6 @@ function ProfilePage({ userData }: ProfilePageProps) {
   const handleContactInfoUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsUpdatingContact(true);
-    setError(null);
 
     try {
       const response = await fetch(`/api/users/${userData.user_id || userData.id}/update`, {
@@ -338,7 +320,7 @@ function ProfilePage({ userData }: ProfilePageProps) {
       }
 
       if (result.success) {
-        setSuccess('Contact information updated successfully!');
+        showToast('Contact information updated successfully!', 'success');
         setIsEditingContact(false);
 
         // Trigger user data update event
@@ -351,7 +333,7 @@ function ProfilePage({ userData }: ProfilePageProps) {
     } catch (error) {
       console.error('Error updating contact info:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to update contact information. Please try again.';
-      setError(errorMessage);
+      showToast(errorMessage, 'error');
     } finally {
       setIsUpdatingContact(false);
     }
@@ -360,12 +342,11 @@ function ProfilePage({ userData }: ProfilePageProps) {
   // Get current location using browser geolocation API
   const getCurrentLocation = async () => {
     if (!navigator.geolocation) {
-      setLocationError('Geolocation is not supported by this browser.');
+      showToast('Geolocation is not supported by this browser.', 'error');
       return;
     }
 
     setIsGettingLocation(true);
-    setLocationError(null);
 
     try {
       const position = await new Promise<GeolocationPosition>((resolve, reject) => {
@@ -398,7 +379,7 @@ function ProfilePage({ userData }: ProfilePageProps) {
           if (data && data.display_name) {
             // Update the address field with the detected location
             setContactInfo(prev => ({ ...prev, address: data.display_name }));
-            setSuccess('Location detected successfully! Please review and update if needed.');
+            showToast('Location detected successfully! Please review and update if needed.', 'success');
           } else {
             throw new Error('Could not determine address from location');
           }
@@ -409,7 +390,7 @@ function ProfilePage({ userData }: ProfilePageProps) {
         // Fallback: just show coordinates
         const fallbackAddress = `Latitude: ${latitude.toFixed(6)}, Longitude: ${longitude.toFixed(6)}`;
         setContactInfo(prev => ({ ...prev, address: fallbackAddress }));
-        setLocationError('Location detected but could not determine address. Please enter your address manually.');
+        showToast('Location detected but could not determine address. Please enter your address manually.', 'warning');
       }
     } catch (error: any) {
       let errorMessage = 'Failed to get your location.';
@@ -422,7 +403,7 @@ function ProfilePage({ userData }: ProfilePageProps) {
         errorMessage = 'Location request timed out. Please try again.';
       }
 
-      setLocationError(errorMessage);
+      showToast(errorMessage, 'error');
     } finally {
       setIsGettingLocation(false);
     }
@@ -437,26 +418,7 @@ function ProfilePage({ userData }: ProfilePageProps) {
           <p className="text-gray-600 mt-2">Manage your personal information and account settings</p>
         </div>
 
-        {/* Success/Error Messages */}
-        {success && (
-          <div className="mb-6">
-            <ProfileAlert
-              type="success"
-              message={success}
-              onClose={() => setSuccess(null)}
-            />
-          </div>
-        )}
 
-        {error && (
-          <div className="mb-6">
-            <ProfileAlert
-              type="error"
-              message={error}
-              onClose={() => setError(null)}
-            />
-          </div>
-        )}
 
         <div className="space-y-6">
           {/* Profile Picture Card */}
@@ -688,12 +650,6 @@ function ProfilePage({ userData }: ProfilePageProps) {
                           )}
                         </button>
                       </div>
-                      {locationError && (
-                        <p className="text-sm text-red-600 flex items-center">
-                          <ExclamationTriangleIcon className="h-4 w-4 mr-1" />
-                          {locationError}
-                        </p>
-                      )}
                     </div>
                   </div>
 

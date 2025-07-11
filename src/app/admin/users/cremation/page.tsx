@@ -38,24 +38,7 @@ import { getProfilePictureUrl } from '@/utils/imageUtils';
 
 import { LoadingSpinner } from '@/app/admin/services/client';
 
-// CSS for border pulsing animation
-const pulsingBorderStyles = `
-  @keyframes pulse-border {
-    0%, 100% {
-      border-color: #f97316;
-      border-width: 2px;
-    }
-    50% {
-      border-color: #ea580c;
-      border-width: 3px;
-    }
-  }
 
-  .animate-pulse-border {
-    animation: pulse-border 2s ease-in-out infinite;
-    border-style: solid;
-  }
-`;
 
 // Define the type for cremation center data
 interface CremationCenter {
@@ -691,7 +674,6 @@ export default function AdminCremationCentersPage() {
 
   return (
     <AdminDashboardLayout activePage="cremation" userName={userName}>
-      <style jsx>{pulsingBorderStyles}</style>
       {/* Header section */}
       <div className="mb-8 bg-white rounded-xl shadow-md border border-gray-100 p-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
@@ -908,7 +890,6 @@ export default function AdminCremationCentersPage() {
               <div className="divide-y divide-gray-200">
                 {filteredCenters.map((center) => {
                   const hasPendingAppeal = center.appeals && center.appeals.some(appeal => appeal.status === 'pending');
-                  console.log(`Center ${center.name}: appeals=${center.appeals?.length || 0}, hasPendingAppeal=${hasPendingAppeal}`);
                   return (
                   <div
                     key={center.id}
