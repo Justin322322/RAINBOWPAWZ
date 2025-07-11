@@ -1,4 +1,4 @@
-<img width="1460" height="1160" alt="logo" src="https://github.com/user-attachments/assets/769e4e6c-f22d-455a-9a3e-49b8b860f4f4" />
+<img width="200" height="600" alt="logo" src="https://github.com/user-attachments/assets/769e4e6c-f22d-455a-9a3e-49b8b860f4f4" />
 
 # Rainbow Paws Application
 
