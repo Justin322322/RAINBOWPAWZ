@@ -123,7 +123,7 @@ export default function FurParentNavbar({ activePage: propActivePage, userName =
         // Fallback: get user ID from auth token
         if (!userId) {
           const authToken = sessionStorage.getItem('auth_token');
-          if (authToken && authToken.includes('_')) {
+          if (authToken && authToken?.includes('_')) {
             userId = authToken.split('_')[0];
           }
         }
