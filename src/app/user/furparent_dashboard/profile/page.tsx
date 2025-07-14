@@ -31,8 +31,11 @@ interface ProfilePageProps {
   userData?: UserData;
 }
 
-function ProfilePage({ userData }: ProfilePageProps) {
+function ProfilePage({ userData: initialUserData }: ProfilePageProps) {
   const { showToast } = useToast();
+
+  // Local userData state that can be updated independently
+  const [userData, setUserData] = useState<UserData | undefined>(initialUserData);
 
   // Skeleton loading state with minimum delay
   const [showSkeleton, setShowSkeleton] = useState(true);
@@ -67,9 +70,37 @@ function ProfilePage({ userData }: ProfilePageProps) {
   // Geolocation states
   const [isGettingLocation, setIsGettingLocation] = useState(false);
 
-  // Initialize form data when userData changes
+  // Update local userData when prop changes
   useEffect(() => {
-    if (userData) {
+    if (initialUserData) {
+      setUserData(initialUserData);
+    }
+  }, [initialUserData]);
+
+  // Listen for user data updates from profile changes
+  useEffect(() => {
+    const handleUserDataUpdate = (event: CustomEvent) => {
+      if (event.detail) {
+        setUserData(event.detail);
+        // Also update session storage to keep it in sync
+        try {
+          sessionStorage.setItem('user_data', JSON.stringify(event.detail));
+        } catch (error) {
+          console.error('Failed to update session storage:', error);
+        }
+      }
+    };
+
+    window.addEventListener('userDataUpdated', handleUserDataUpdate as EventListener);
+
+    return () => {
+      window.removeEventListener('userDataUpdated', handleUserDataUpdate as EventListener);
+    };
+  }, []);
+
+  // Initialize form data on first load
+  useEffect(() => {
+    if (userData && initialLoading) {
       setPersonalInfo({
         firstName: userData.first_name || '',
         lastName: userData.last_name || ''
@@ -87,7 +118,22 @@ function ProfilePage({ userData }: ProfilePageProps) {
 
       setInitialLoading(false);
     }
-  }, [userData]);
+  }, [userData, initialLoading]);
+
+  // Update form data when userData changes (but not when editing)
+  useEffect(() => {
+    if (userData && !initialLoading && !isEditingPersonal && !isEditingContact) {
+      setPersonalInfo({
+        firstName: userData.first_name || '',
+        lastName: userData.last_name || ''
+      });
+      setContactInfo({
+        email: userData.email || '',
+        phone: userData.phone || '',
+        address: userData.address || ''
+      });
+    }
+  }, [userData, isEditingPersonal, isEditingContact, initialLoading]);
 
   // Skeleton loading control with minimum delay (600-800ms for fur parent standards)
   useEffect(() => {
@@ -224,9 +270,13 @@ function ProfilePage({ userData }: ProfilePageProps) {
           profilePictureInputRef.current.value = '';
         }
 
+        // Update local userData state immediately
+        const updatedUserData = { ...userData, profile_picture: result.profilePicture };
+        setUserData(updatedUserData);
+
         // Trigger user data update event with the new profile picture path
         window.dispatchEvent(new CustomEvent('userDataUpdated', {
-          detail: { ...userData, profile_picture: result.profilePicture }
+          detail: updatedUserData
         }));
 
         // Also trigger profile picture update event for navbar
@@ -275,9 +325,13 @@ function ProfilePage({ userData }: ProfilePageProps) {
         showToast('Personal information updated successfully!', 'success');
         setIsEditingPersonal(false);
 
+        // Update local userData state immediately
+        const updatedUserData = { ...userData, first_name: personalInfo.firstName, last_name: personalInfo.lastName };
+        setUserData(updatedUserData);
+
         // Trigger user data update event
         window.dispatchEvent(new CustomEvent('userDataUpdated', {
-          detail: { ...userData, first_name: personalInfo.firstName, last_name: personalInfo.lastName }
+          detail: updatedUserData
         }));
       } else {
         throw new Error(result.error || 'Update failed');
@@ -323,9 +377,13 @@ function ProfilePage({ userData }: ProfilePageProps) {
         showToast('Contact information updated successfully!', 'success');
         setIsEditingContact(false);
 
+        // Update local userData state immediately
+        const updatedUserData = { ...userData, email: contactInfo.email, phone: contactInfo.phone, address: contactInfo.address };
+        setUserData(updatedUserData);
+
         // Trigger user data update event
         window.dispatchEvent(new CustomEvent('userDataUpdated', {
-          detail: { ...userData, email: contactInfo.email, phone: contactInfo.phone, address: contactInfo.address }
+          detail: updatedUserData
         }));
       } else {
         throw new Error(result.error || 'Update failed');
@@ -408,6 +466,21 @@ function ProfilePage({ userData }: ProfilePageProps) {
       setIsGettingLocation(false);
     }
   };
+
+  // Show loading skeleton if userData is not available yet
+  if (!userData) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-8">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="space-y-6">
+            <SkeletonCard />
+            <SkeletonCard />
+            <SkeletonCard />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">

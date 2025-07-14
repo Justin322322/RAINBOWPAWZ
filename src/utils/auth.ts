@@ -262,9 +262,10 @@ export const clearAuthToken = async (): Promise<void> => {
   // Clear all session storage
   sessionStorage.clear();
 
-  // Clear localStorage backups
+  // Clear localStorage backups but preserve fur parent profile picture
   try {
     localStorage.removeItem('auth_token_3000');
+    // Note: We intentionally don't remove 'furparent_profile_picture' - let it persist across logout
   } catch {
     // Silently fail if localStorage is not available
   }

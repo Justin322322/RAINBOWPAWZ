@@ -28,10 +28,12 @@ export async function GET(
           userCoordinates = { lat, lng };
         } else if (userLocation && userLocation.trim() !== '') {
           userCoordinates = getBataanCoordinates(userLocation);
+          // Note: userCoordinates could be null if location not found, but that's okay for detail page
         }
       } else if (userLocation && userLocation.trim() !== '') {
         // Priority 2: Fallback to address-based lookup
         userCoordinates = getBataanCoordinates(userLocation);
+        // Note: userCoordinates could be null if location not found, but that's okay for detail page
       }
     }
 

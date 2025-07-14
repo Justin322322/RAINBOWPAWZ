@@ -218,7 +218,7 @@ export async function PATCH(request: NextRequest) {
     }
     else if (body.contactInfo) {
       // Handle contact info update
-      const { firstName, lastName, email, phone } = body.contactInfo;
+      const { firstName, lastName, email, phone, address } = body.contactInfo;
 
       // Validate required fields
       if (!firstName || !lastName || !email) {
@@ -240,21 +240,21 @@ export async function PATCH(request: NextRequest) {
         }
       }
 
-      // Update user info (including email)
-      await query('UPDATE users SET first_name = ?, last_name = ?, email = ?, phone = ?, updated_at = NOW() WHERE user_id = ?', 
-        [firstName, lastName, email, formattedPhone, user.userId]);
+      // Update user info (including email and address)
+      await query('UPDATE users SET first_name = ?, last_name = ?, email = ?, phone = ?, address = ?, updated_at = NOW() WHERE user_id = ?',
+        [firstName, lastName, email, formattedPhone, address || null, user.userId]);
 
       // Update service provider contact info
       await query(`
         UPDATE service_providers
-        SET contact_first_name = ?, contact_last_name = ?, phone = ?, updated_at = NOW()
+        SET contact_first_name = ?, contact_last_name = ?, phone = ?, address = ?, updated_at = NOW()
         WHERE user_id = ?
-      `, [firstName, lastName, formattedPhone, user.userId]);
+      `, [firstName, lastName, formattedPhone, address || null, user.userId]);
 
       return NextResponse.json({
         success: true,
         message: 'Contact information updated successfully',
-        contactInfo: { firstName, lastName, email, phone: formattedPhone }
+        contactInfo: { firstName, lastName, email, phone: formattedPhone, address }
       });
     }
 

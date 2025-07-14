@@ -81,14 +81,8 @@ class GeocodingService {
       }
     }
 
-    // All providers failed, return default location with warning
-    return {
-      coordinates: this.DEFAULT_COORDINATES,
-      formattedAddress: 'Balanga City, Bataan, Philippines (Default Location)',
-      confidence: 0.1,
-      provider: 'default',
-      accuracy: 'low'
-    };
+    // All providers failed, throw error instead of returning default location
+    throw lastError || this.createError('All geocoding providers failed', 'NO_RESULTS', false);
   }
 
   /**

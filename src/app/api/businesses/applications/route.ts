@@ -112,7 +112,7 @@ export async function GET() {
       WHERE
         ${whereClause}
       ORDER BY
-        ${serviceProviderColumns.includes('created_at') ? 'sp.created_at DESC' : 'sp.id DESC'}
+        ${serviceProviderColumns.includes('created_at') ? 'sp.created_at DESC' : 'sp.provider_id DESC'}
     `;
 
 
@@ -157,7 +157,7 @@ export async function GET() {
           WHERE
             ${whereClause}
           ORDER BY
-            ${serviceProviderColumns.includes('created_at') ? 'sp.created_at DESC' : 'sp.id DESC'}
+            ${serviceProviderColumns.includes('created_at') ? 'sp.created_at DESC' : 'sp.provider_id DESC'}
           LIMIT 50
         `;
         

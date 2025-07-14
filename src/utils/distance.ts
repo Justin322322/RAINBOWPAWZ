@@ -63,9 +63,8 @@ function deg2rad(deg: number): number {
  * @param location Location name or address
  * @returns Coordinates (latitude, longitude)
  */
-export function getBataanCoordinates(location: string): Coordinates {
-  // Default coordinates for Balanga City, Bataan (center point)
-  const defaultCoords = { lat: 14.6761, lng: 120.5439 };
+export function getBataanCoordinates(location: string): Coordinates | null {
+  // No default coordinates - return null if location not found
 
   // Common locations in Bataan with their coordinates
   const locations: Record<string, Coordinates> = {
@@ -94,7 +93,7 @@ export function getBataanCoordinates(location: string): Coordinates {
   };
   
   if (!location) {
-    return defaultCoords;
+    return null;
   }
 
   // Convert to lowercase for better matching
@@ -124,6 +123,6 @@ export function getBataanCoordinates(location: string): Coordinates {
     }
   }
 
-  // Return default coordinates if no match is found
-  return defaultCoords;
+  // Return null if no match is found - don't use default coordinates
+  return null;
 }

@@ -9,6 +9,7 @@ import {
   UserIcon,
   EnvelopeIcon,
   PhoneIcon,
+  MapPinIcon,
   BuildingStorefrontIcon,
   ArrowUpTrayIcon,
   ExclamationTriangleIcon,
@@ -54,9 +55,11 @@ function CremationProfilePage({ userData }: { userData: any }) {
     firstName: '',
     lastName: '',
     email: '',
-    phone: ''
+    phone: '',
+    address: ''
   });
   const [contactSuccess, setContactSuccess] = useState('');
+  const [isGettingLocation, setIsGettingLocation] = useState(false);
 
   // Business info states
   const [businessInfo, setBusinessInfo] = useState({
@@ -211,7 +214,8 @@ function CremationProfilePage({ userData }: { userData: any }) {
           firstName: data.profile.first_name || '',
           lastName: data.profile.last_name || '',
           email: data.profile.email || '',
-          phone: data.profile.business_phone || data.profile.phone || ''
+          phone: data.profile.business_phone || data.profile.phone || '',
+          address: data.profile.address || ''
         });
 
         // Set business info from profile data
@@ -460,6 +464,68 @@ function CremationProfilePage({ userData }: { userData: any }) {
     } catch (error) {
       console.error('Error updating contact information:', error);
       showToast('Failed to update contact information. Please try again.', 'error');
+    }
+  };
+
+  // Handle location detection for address
+  const handleGetLocation = async () => {
+    setIsGettingLocation(true);
+
+    try {
+      // Get user's current position
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 60000
+        });
+      });
+
+      const { latitude, longitude } = position.coords;
+
+      // Use reverse geocoding to get address from coordinates
+      try {
+        const response = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&countrycodes=ph&addressdetails=1`,
+          {
+            headers: {
+              'User-Agent': 'RainbowPaws/1.0 (contact@rainbowpaws.com)'
+            }
+          }
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data && data.display_name) {
+            // Update the address field with the detected location
+            setContactInfo(prev => ({ ...prev, address: data.display_name }));
+            showToast('Location detected successfully! Please review and update if needed.', 'success');
+          } else {
+            throw new Error('Could not determine address from location');
+          }
+        } else {
+          throw new Error('Geocoding service unavailable');
+        }
+      } catch (geocodeError) {
+        // Fallback: just show coordinates
+        const fallbackAddress = `Latitude: ${latitude.toFixed(6)}, Longitude: ${longitude.toFixed(6)}`;
+        setContactInfo(prev => ({ ...prev, address: fallbackAddress }));
+        showToast('Location detected but could not determine address. Please enter your address manually.', 'warning');
+      }
+    } catch (error: any) {
+      let errorMessage = 'Failed to get your location.';
+
+      if (error.code === 1) {
+        errorMessage = 'Location access denied. Please enable location permissions and try again.';
+      } else if (error.code === 2) {
+        errorMessage = 'Location unavailable. Please check your device settings.';
+      } else if (error.code === 3) {
+        errorMessage = 'Location request timed out. Please try again.';
+      }
+
+      showToast(errorMessage, 'error');
+    } finally {
+      setIsGettingLocation(false);
     }
   };
 
@@ -1100,6 +1166,37 @@ function CremationProfilePage({ userData }: { userData: any }) {
                       onChange={(value) => setContactInfo({...contactInfo, phone: value})}
                       className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
                     />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-gray-700">
+                      Address
+                      <span className="text-red-500 ml-1">*</span>
+                    </label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <MapPinIcon className="h-5 w-5 text-gray-400" />
+                      </div>
+                      <input
+                        type="text"
+                        value={contactInfo.address}
+                        onChange={(e) => setContactInfo(prev => ({ ...prev, address: e.target.value }))}
+                        placeholder="Enter your complete address"
+                        className="block w-full rounded-lg border border-gray-300 shadow-sm bg-white
+                          focus:border-[var(--primary-green)] focus:ring-[var(--primary-green)] focus:ring-1
+                          pl-10 pr-32 py-2.5 transition-colors duration-200 text-gray-900"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleGetLocation}
+                        disabled={isGettingLocation}
+                        className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm
+                          text-[var(--primary-green)] hover:text-green-700 disabled:text-gray-400
+                          disabled:cursor-not-allowed transition-colors duration-200"
+                      >
+                        {isGettingLocation ? 'Detecting...' : 'Use My Location'}
+                      </button>
+                    </div>
                   </div>
                 </ProfileFormGroup>
 

@@ -29,7 +29,7 @@ export async function GET(
     const reviews = await query(
       `SELECT r.*, sp.name as provider_name
        FROM reviews r
-       JOIN service_providers sp ON r.service_provider_id = sp.id
+       JOIN service_providers sp ON r.service_provider_id = sp.provider_id
        WHERE r.user_id = ?
        ORDER BY r.created_at DESC`,
       [userId]
