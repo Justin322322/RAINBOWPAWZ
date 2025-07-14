@@ -31,6 +31,14 @@ interface ProfilePageProps {
   userData?: UserData;
 }
 
+/**
+ * Displays and manages the authenticated user's profile, including personal details, contact information, profile picture, and account status.
+ *
+ * Provides editable forms for personal and contact information, profile picture upload with preview and validation, geolocation-based address autofill, and real-time updates via custom events. Handles loading states, error notifications, and synchronizes user data changes across the application.
+ *
+ * @param userData - Optional initial user data to populate the profile page
+ * @returns The rendered user profile management interface
+ */
 function ProfilePage({ userData: initialUserData }: ProfilePageProps) {
   const { showToast } = useToast();
 

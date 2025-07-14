@@ -3,6 +3,11 @@ import { query } from '@/lib/db';
 import { getAuthTokenFromRequest, parseAuthToken } from '@/utils/auth';
 import { testPhoneNumberFormatting } from '@/lib/smsService';
 
+/**
+ * Handles HTTP PUT requests to update a user's profile with validated and sanitized data.
+ *
+ * Validates the user ID from the URL, ensures the requester is authorized, and checks required fields and formats for email and phone number. Preserves the existing profile picture during the update. Returns a JSON response with the updated user data on success, or an appropriate error message and status code on failure.
+ */
 export async function PUT(request: NextRequest) {
   try {
     // Extract ID from URL

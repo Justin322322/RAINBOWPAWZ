@@ -30,6 +30,14 @@ interface ServiceDetailPageProps {
   userData?: any;
 }
 
+/**
+ * Displays detailed information about a pet service provider, including available packages, customer reviews, and booking functionality.
+ *
+ * This page fetches provider details, packages (with images), and the user's pets, and allows users to sort packages, view package details, and submit a booking request. It also manages user location for personalized results and updates location dynamically when the user profile changes.
+ *
+ * @param userData - Optional user data, used for retrieving the user's location and profile information if available.
+ * @returns The rendered service provider detail page component.
+ */
 function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
   const params = useParams();
   const router = useRouter();

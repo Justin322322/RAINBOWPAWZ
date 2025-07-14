@@ -37,6 +37,17 @@ interface RouteInstructions {
   }>;
 }
 
+/**
+ * Renders an interactive Leaflet map displaying the user's location, multiple service providers, and route directions.
+ *
+ * The map supports geocoding of user and provider addresses, custom animated markers, route calculation with step-by-step instructions, and responsive UI feedback for loading and errors. Map interaction is locked by default and can be enabled with a keyboard shortcut. All event listeners, markers, and resources are properly cleaned up on unmount.
+ *
+ * @param userAddress - The user's address to geocode and display on the map if coordinates are not provided.
+ * @param userCoordinates - Optional initial coordinates for the user's location; if provided, geocoding is skipped.
+ * @param serviceProviders - Array of service providers to display as markers on the map.
+ * @param selectedProviderId - Optional ID of a provider to automatically display route directions to.
+ * @returns A React component rendering the map, markers, route instructions, and related UI elements.
+ */
 export default function MapComponent({
   userAddress,
   userCoordinates: initialUserCoordinates,

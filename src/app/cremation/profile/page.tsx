@@ -36,6 +36,13 @@ import {
   ProfileAlert
 } from '@/components/ui/ProfileFormComponents';
 
+/**
+ * Renders the cremation business user profile management page, allowing users to view and update their account, business, contact, address, and document information.
+ *
+ * This component handles profile data fetching, form state management, document uploads, profile picture updates, and location-based address detection. It provides skeleton loaders during data fetch, error handling with user feedback, and modal previews for uploaded documents. The page is protected by business verification and redirects unauthenticated users to login.
+ *
+ * @returns The cremation business profile management page UI.
+ */
 function CremationProfilePage({ userData }: { userData: any }) {
   // Password states
   const [currentPassword, setCurrentPassword] = useState('');

@@ -32,6 +32,16 @@ interface FurParentNavbarProps {
   userName?: string;
 }
 
+/**
+ * Renders the navigation bar for the FurParent user dashboard, providing navigation links, user profile actions, cart and notification access, and logout functionality.
+ *
+ * The component manages and persists the user's profile picture across navigation and sessions, synchronizing it between sessionStorage, localStorage, and a global state. It listens for custom events to update user data and profile picture in real time. The navigation bar adapts to both desktop and mobile layouts, displaying appropriate menus and dropdowns for each context.
+ *
+ * @param activePage - Optionally overrides the currently highlighted navigation page.
+ * @param userName - The name of the user to display in the navigation bar. Defaults to 'User'.
+ *
+ * @returns The rendered navigation bar component for the FurParent dashboard.
+ */
 export default function FurParentNavbar({ activePage: propActivePage, userName = 'User' }: FurParentNavbarProps) {
   const pathname = usePathname();
   const _router = useRouter();

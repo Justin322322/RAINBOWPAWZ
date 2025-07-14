@@ -15,7 +15,13 @@ const formatDate = (dateString: string) => {
   }
 };
 
-// Get all business applications with status and documents
+/**
+ * Retrieves and returns a list of business applications with associated status, owner, contact information, address, and document details.
+ *
+ * Dynamically adapts to the available database schema, handling missing tables or columns gracefully. Returns a JSON response containing the formatted applications array, or an error message if retrieval fails.
+ *
+ * @returns A JSON response with `success`, an array of formatted business applications, and optionally an error or message field.
+ */
 export async function GET() {
   try {
 

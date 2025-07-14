@@ -2,8 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 
 /**
- * GET /api/admin/payments/analytics
- * Get payment analytics and statistics for admin dashboard
+ * Handles GET requests to the admin payments analytics endpoint, returning payment statistics and trends for the dashboard.
+ *
+ * Parses query parameters to determine the reporting period, retrieves aggregated payment data (including overall statistics, payment method breakdowns, daily trends, top providers, and recent failed payments), and returns a structured JSON response for analytics visualization.
+ *
+ * @returns A JSON response containing payment analytics data for the specified period or date range.
  */
 export async function GET(request: NextRequest) {
   try {

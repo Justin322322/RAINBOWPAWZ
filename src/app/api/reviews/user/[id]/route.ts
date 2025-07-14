@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { getAuthTokenFromRequest } from '@/utils/auth';
 
+/**
+ * Handles GET requests to retrieve all reviews submitted by a specific user, including the names of associated service providers.
+ *
+ * Returns a JSON response containing the user's reviews, or an error message with the appropriate HTTP status code if authentication fails, the user ID is missing, or an internal error occurs.
+ */
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }

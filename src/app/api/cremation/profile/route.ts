@@ -149,7 +149,11 @@ export async function PUT(request: NextRequest) {
   }
 }
 
-// PATCH endpoint to update cremation business profile
+/**
+ * Handles PATCH requests to update specific fields of a cremation business profile.
+ *
+ * Allows authenticated business users to update their password, address, or contact information. Validates input and updates the corresponding fields in the database. Returns appropriate success or error responses based on the operation performed.
+ */
 export async function PATCH(request: NextRequest) {
   try {
     // Use secure authentication

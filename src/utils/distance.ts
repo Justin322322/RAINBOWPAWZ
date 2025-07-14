@@ -58,10 +58,12 @@ function deg2rad(deg: number): number {
 }
 
 /**
- * Get coordinates for a location in Bataan, Philippines
- * This is a fallback function that returns coordinates for common locations in Bataan
- * @param location Location name or address
- * @returns Coordinates (latitude, longitude)
+ * Returns the geographic coordinates for a known location in Bataan, Philippines, or `null` if the location is not recognized.
+ *
+ * The function normalizes the input location string and attempts to match it against a predefined list of cities, municipalities, common places, and specific businesses in Bataan. If no match is found, it returns `null`.
+ *
+ * @param location - The name or address of a location in Bataan
+ * @returns The coordinates of the matched location, or `null` if no match is found
  */
 export function getBataanCoordinates(location: string): Coordinates | null {
   // No default coordinates - return null if location not found

@@ -41,6 +41,11 @@ interface ServicesPageProps {
   userData?: any;
 }
 
+/**
+ * Displays a page for authenticated users to find and view nearby pet cremation service providers based on their profile address.
+ *
+ * Fetches the user's location from their profile or session storage, retrieves a list of nearby service providers, and displays them with pagination and map integration. Updates location and provider data dynamically when the user's profile is updated or changed in another tab. Allows users to view provider details, get directions, and book services.
+ */
 function ServicesPage({ userData }: ServicesPageProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const [userLocation, setUserLocation] = useState<LocationData | null>(null);

@@ -11,6 +11,11 @@ interface _LoginResponse {
   account_type?: string;
 }
 
+/**
+ * Handles user login requests by validating credentials, authenticating users, and returning user profile data with appropriate authentication cookies.
+ *
+ * Accepts POST and OPTIONS requests, supports CORS, and processes login for multiple account types (user, admin, business). On successful authentication, returns user details, account type, restricted status, and a legacy token, while setting secure authentication cookies for session management and backward compatibility. Handles database connectivity, missing fields, invalid credentials, restricted accounts, and various error conditions with appropriate HTTP responses.
+ */
 export async function POST(request: Request) {
 
 

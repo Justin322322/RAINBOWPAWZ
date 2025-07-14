@@ -2,6 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { calculateDistance, getBataanCoordinates } from '@/utils/distance';
 
+/**
+ * Handles HTTP GET requests to retrieve detailed information about a service provider by ID, including optional distance from a user location.
+ *
+ * Extracts the provider ID from the request parameters and user location data from query parameters. Fetches provider details, average rating, and active package count from the database. If user location and provider address are available, calculates the distance between them. Returns appropriate error responses for missing provider ID, provider not found, or database errors.
+ *
+ * @returns A JSON response containing the provider details, or an error message with the appropriate HTTP status code.
+ */
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }

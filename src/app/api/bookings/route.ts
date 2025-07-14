@@ -23,6 +23,13 @@ const _serviceTypes: Record<number, { name: string; description: string; price: 
   }
 };
 
+/**
+ * Retrieves all cremation service bookings for the authenticated user.
+ *
+ * Authenticates the user via JWT or legacy token, then queries the database for bookings associated with the user's ID. Supports multiple database schema variations and includes fallback logic to ensure bookings are returned if possible. Formats booking data with consistent date and provider information. Returns an array of bookings, which may be empty, and may include warnings if the database is unavailable or partially accessible.
+ *
+ * @returns A JSON response containing an array of booking objects and optional warning messages.
+ */
 export async function GET(request: NextRequest) {
   try {
     // First, check if the database is available

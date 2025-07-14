@@ -2,6 +2,14 @@ import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { calculateDistance, getBataanCoordinates } from '@/utils/distance';
 
+/**
+ * Handles GET requests to retrieve cremation service providers based on user location.
+ *
+ * Extracts location information from query parameters, resolves user coordinates, and queries the database for cremation providers. Returns a list of providers with details, package counts, and calculated distances from the user. Responds with appropriate error messages if location data is missing or invalid, or if database errors occur.
+ *
+ * @param request - The incoming HTTP request containing location query parameters
+ * @returns A JSON response with an array of cremation service providers and their details, or an error message if the request cannot be fulfilled
+ */
 export async function GET(request: Request) {
   // Extract user location from query parameters
   const { searchParams } = new URL(request.url);
