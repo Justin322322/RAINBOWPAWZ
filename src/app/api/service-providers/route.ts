@@ -195,6 +195,12 @@ export async function GET(request: Request) {
             // Calculate actual distance based on coordinates
             const providerCoordinates = getBataanCoordinates(provider.address || 'Bataan');
 
+            // Check if providerCoordinates is null and skip processing if so
+            if (!providerCoordinates) {
+              console.warn('📍 [Distance] Provider coordinates are null, skipping provider:', provider.id);
+              continue;
+            }
+
             try {
               // Use simple distance calculation (enhanced routing removed)
               const distance = calculateDistance(userCoordinates, providerCoordinates);

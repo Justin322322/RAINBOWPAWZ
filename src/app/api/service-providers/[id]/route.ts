@@ -123,17 +123,24 @@ export async function GET(
         if (userCoordinates && provider.address) {
           const providerCoordinates = getBataanCoordinates(provider.address);
 
-          try {
-            // Use simple distance calculation (enhanced routing removed)
-            const distance = calculateDistance(userCoordinates, providerCoordinates);
-            provider.distance = `${distance.toFixed(1)} km`;
-            provider.distanceValue = distance;
-          } catch (error) {
-            console.error('Distance calculation failed:', error);
-            // Fallback to simple calculation
-            const distanceValue = calculateDistance(userCoordinates, providerCoordinates);
-            provider.distance = `${distanceValue} km away`;
-            provider.distanceValue = distanceValue;
+          // Check if providerCoordinates is null and handle accordingly
+          if (!providerCoordinates) {
+            console.warn('📍 [Distance] Provider coordinates are null for provider:', provider.id);
+            provider.distance = 'Location not available';
+            provider.distanceValue = null;
+          } else {
+            try {
+              // Use simple distance calculation (enhanced routing removed)
+              const distance = calculateDistance(userCoordinates, providerCoordinates);
+              provider.distance = `${distance.toFixed(1)} km`;
+              provider.distanceValue = distance;
+            } catch (error) {
+              console.error('Distance calculation failed:', error);
+              // Fallback to simple calculation
+              const distanceValue = calculateDistance(userCoordinates, providerCoordinates);
+              provider.distance = `${distanceValue} km away`;
+              provider.distanceValue = distanceValue;
+            }
           }
         } else {
           // No user location available
