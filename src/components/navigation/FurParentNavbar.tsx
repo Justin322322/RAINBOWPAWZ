@@ -47,17 +47,29 @@ export default function FurParentNavbar({ activePage: propActivePage, userName =
       return globalProfilePictureState.profilePicture;
     }
 
-    // If not initialized, get from session storage
+    // If not initialized, get from multiple sources in order of preference
     if (typeof window !== 'undefined') {
       try {
+        // 1. Try session storage first (most recent)
         const userData = sessionStorage.getItem('user_data');
         if (userData) {
           const user = JSON.parse(userData);
           const profilePicturePath = user.profile_picture || null;
-          // Initialize global state
-          globalProfilePictureState.profilePicture = profilePicturePath;
+          if (profilePicturePath) {
+            // Initialize global state and also backup to localStorage
+            globalProfilePictureState.profilePicture = profilePicturePath;
+            globalProfilePictureState.initialized = true;
+            localStorage.setItem('furparent_profile_picture', profilePicturePath);
+            return profilePicturePath;
+          }
+        }
+
+        // 2. Fallback to localStorage backup (survives logout)
+        const backupProfilePicture = localStorage.getItem('furparent_profile_picture');
+        if (backupProfilePicture) {
+          globalProfilePictureState.profilePicture = backupProfilePicture;
           globalProfilePictureState.initialized = true;
-          return profilePicturePath;
+          return backupProfilePicture;
         }
       } catch (error) {
         console.error('Failed to parse user data during initialization:', error);
@@ -79,8 +91,13 @@ export default function FurParentNavbar({ activePage: propActivePage, userName =
         // Only update if the profile picture actually changed
         if (newProfilePicture !== profilePicture) {
           setProfilePicture(newProfilePicture);
-          // Also update global state
+          // Also update global state and localStorage backup
           globalProfilePictureState.profilePicture = newProfilePicture;
+          if (newProfilePicture) {
+            localStorage.setItem('furparent_profile_picture', newProfilePicture);
+          } else {
+            localStorage.removeItem('furparent_profile_picture');
+          }
           return; // Profile picture found in cache
         }
       } catch (error) {
@@ -91,21 +108,46 @@ export default function FurParentNavbar({ activePage: propActivePage, userName =
     // If no profile picture in cache or session storage is empty, fetch from API
     if (!profilePicture) {
       try {
-        const response = await fetch(`/api/users/${userData ? JSON.parse(userData).user_id || JSON.parse(userData).id : ''}`);
-        if (response.ok) {
-          const data = await response.json();
-          if (data.profile_picture) {
-            setProfilePicture(data.profile_picture);
-            globalProfilePictureState.profilePicture = data.profile_picture;
+        // Get user ID from session storage or auth token
+        let userId = null;
 
-            // Update session storage with the fetched profile picture
-            if (userData) {
-              try {
-                const user = JSON.parse(userData);
-                user.profile_picture = data.profile_picture;
-                sessionStorage.setItem('user_data', JSON.stringify(user));
-              } catch (error) {
-                console.error('Failed to update user data cache:', error);
+        if (userData) {
+          try {
+            const user = JSON.parse(userData);
+            userId = user.user_id || user.id;
+          } catch (error) {
+            console.error('Failed to parse user data for API call:', error);
+          }
+        }
+
+        // Fallback: get user ID from auth token
+        if (!userId) {
+          const authToken = sessionStorage.getItem('auth_token');
+          if (authToken?.includes('_')) {
+            userId = authToken.split('_')[0];
+          }
+        }
+
+        if (userId) {
+          const response = await fetch(`/api/users/${userId}`);
+          if (response.ok) {
+            const data = await response.json();
+            if (data.profile_picture) {
+              setProfilePicture(data.profile_picture);
+              globalProfilePictureState.profilePicture = data.profile_picture;
+
+              // Backup to localStorage for persistence across logout
+              localStorage.setItem('furparent_profile_picture', data.profile_picture);
+
+              // Update session storage with the fetched profile picture
+              if (userData) {
+                try {
+                  const user = JSON.parse(userData);
+                  user.profile_picture = data.profile_picture;
+                  sessionStorage.setItem('user_data', JSON.stringify(user));
+                } catch (error) {
+                  console.error('Failed to update user data cache:', error);
+                }
               }
             }
           }
@@ -131,6 +173,11 @@ export default function FurParentNavbar({ activePage: propActivePage, userName =
           globalProfilePictureState.profilePicture = profilePicturePath;
           globalProfilePictureState.initialized = true;
 
+          // Backup to localStorage if we have a profile picture
+          if (profilePicturePath) {
+            localStorage.setItem('furparent_profile_picture', profilePicturePath);
+          }
+
           // If no profile picture in cache, try to fetch from API
           if (!profilePicturePath) {
             updateProfilePictureFromStorage();
@@ -140,7 +187,20 @@ export default function FurParentNavbar({ activePage: propActivePage, userName =
           globalProfilePictureState.initialized = true; // Mark as initialized even on error
         }
       } else {
-        globalProfilePictureState.initialized = true; // Mark as initialized even if no data
+        // No session storage data, check localStorage backup
+        try {
+          const backupProfilePicture = localStorage.getItem('furparent_profile_picture');
+          if (backupProfilePicture) {
+            setProfilePicture(backupProfilePicture);
+            globalProfilePictureState.profilePicture = backupProfilePicture;
+          }
+        } catch (error) {
+          console.error('Failed to get localStorage backup:', error);
+        }
+
+        // Try to fetch from API to get fresh data
+        updateProfilePictureFromStorage();
+        globalProfilePictureState.initialized = true; // Mark as initialized
       }
     }
   }, [updateProfilePictureFromStorage]); // Include updateProfilePictureFromStorage in dependencies
@@ -155,6 +215,12 @@ export default function FurParentNavbar({ activePage: propActivePage, userName =
       // Update session storage with new user data
       if (event.detail) {
         sessionStorage.setItem('user_data', JSON.stringify(event.detail));
+
+        // Also backup profile picture to localStorage if present
+        if (event.detail.profile_picture) {
+          localStorage.setItem('furparent_profile_picture', event.detail.profile_picture);
+        }
+
         updateProfilePictureFromStorage();
       }
     };

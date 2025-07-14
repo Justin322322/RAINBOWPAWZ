@@ -283,8 +283,8 @@ export async function GET(request: NextRequest) {
                    spkg.description as service_description,
                    spkg.price as service_price
             FROM bookings b
-            LEFT JOIN service_providers sp ON b.service_provider_id = sp.id
-            LEFT JOIN service_packages spkg ON b.service_package_id = spkg.id
+            LEFT JOIN service_providers sp ON b.service_provider_id = sp.provider_id
+            LEFT JOIN service_packages spkg ON b.service_package_id = spkg.package_id
             WHERE b.user_id = ?
           `;
           bookingsParams = [userId];
@@ -425,7 +425,7 @@ export async function GET(request: NextRequest) {
                    bp.business_name as provider_name,
                    bp.business_address as provider_address
             FROM service_bookings sb
-            LEFT JOIN service_packages sp ON sb.package_id = sp.id
+            LEFT JOIN service_packages sp ON sb.package_id = sp.package_id
             LEFT JOIN business_profiles bp ON sb.provider_id = bp.id
             WHERE sb.user_id = ?
           `;

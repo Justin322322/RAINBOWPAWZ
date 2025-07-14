@@ -18,6 +18,7 @@ import {
 import FurParentPageSkeleton from '@/components/ui/FurParentPageSkeleton';
 import { handleImageError } from '@/utils/imageUtils';
 import ReviewsList from '@/components/reviews/ReviewsList';
+import withUserAuth from '@/components/withUserAuth';
 // LocationData type removed with geolocation utils
 type LocationData = {
   address: string;
@@ -68,53 +69,69 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
   const [isLoadingLocation, setIsLoadingLocation] = useState(true);
 
   useEffect(() => {
-    const getLocation = async () => {
+    const getLocation = () => {
       setIsLoadingLocation(true);
-      try {
-        // Get user data from props or session storage
-        let userDataToUse = userData;
 
-        // If userData is not provided as prop, try to get it from session storage
-        if (!userDataToUse && typeof window !== 'undefined') {
-          const sessionUserData = sessionStorage.getItem('user_data');
-          if (sessionUserData) {
-            try {
-              userDataToUse = JSON.parse(sessionUserData);
-            } catch (error) {
-              console.error('Failed to parse user data from session storage:', error);
-            }
+      // Always get fresh data from session storage
+      let currentUserData = userData;
+
+      // Get the most recent data from session storage
+      if (typeof window !== 'undefined') {
+        const sessionUserData = sessionStorage.getItem('user_data');
+        if (sessionUserData) {
+          try {
+            const parsedData = JSON.parse(sessionUserData);
+            // Use session storage data if it's more recent or if userData prop is not available
+            currentUserData = parsedData;
+          } catch (error) {
+            console.error('Failed to parse user data from session storage:', error);
           }
         }
+      }
 
-        let location: LocationData;
+      // Set location based on current user data
+      let location = null;
+      if (currentUserData?.address && currentUserData.address.trim() !== '') {
+        location = {
+          address: currentUserData.address,
+          source: 'profile' as const
+        };
+      }
 
-        if (userDataToUse?.address && userDataToUse.address.trim() !== '') {
-          // Simply use the user's profile address
-          location = {
-            address: userDataToUse.address,
-            source: 'profile' as const
-          };
-        } else {
-          // No address set in profile - use default location instead of null
-          location = {
-            address: 'Balanga City, Bataan, Philippines',
-            source: 'default' as const
-          };
+      setUserLocation(location);
+      setIsLoadingLocation(false);
+    };
+
+    // Run immediately
+    getLocation();
+
+    // Listen for custom events (when profile is updated)
+    const handleUserDataUpdate = (event: CustomEvent) => {
+      if (event.detail) {
+        // Update session storage with new data
+        try {
+          sessionStorage.setItem('user_data', JSON.stringify(event.detail));
+        } catch (error) {
+          console.error('Failed to update session storage:', error);
         }
 
-        setUserLocation(location);
-      } catch (error) {
-        console.error('Error getting user location:', error);
-        setUserLocation({
-          address: 'Balanga City, Bataan, Philippines',
-          source: 'default' as const
-        });
-      } finally {
-        setIsLoadingLocation(false);
+        // Update location
+        if (event.detail.address && event.detail.address.trim() !== '') {
+          setUserLocation({
+            address: event.detail.address,
+            source: 'profile' as const
+          });
+        } else {
+          setUserLocation(null);
+        }
       }
     };
 
-    getLocation();
+    window.addEventListener('userDataUpdated', handleUserDataUpdate as EventListener);
+
+    return () => {
+      window.removeEventListener('userDataUpdated', handleUserDataUpdate as EventListener);
+    };
   }, [userData]);
 
   // Function to sort packages based on selected criteria
@@ -600,5 +617,5 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
   );
 }
 
-// Export the component directly (OTP verification is now handled by layout)
-export default ServiceDetailPage;
+// Export the component wrapped with auth HOC
+export default withUserAuth(ServiceDetailPage);

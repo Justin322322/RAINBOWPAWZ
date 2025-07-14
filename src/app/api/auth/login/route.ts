@@ -72,7 +72,7 @@ export async function POST(request: Request) {
       }
 
       userResult = await query(
-        'SELECT user_id, first_name, last_name, email, password, role, is_verified, is_otp_verified, status FROM users WHERE email = ? LIMIT 1',
+        'SELECT user_id, first_name, last_name, email, password, role, is_verified, is_otp_verified, status, profile_picture, phone, address, gender FROM users WHERE email = ? LIMIT 1',
         [email]
       ) as any[];
     } catch (queryError) {

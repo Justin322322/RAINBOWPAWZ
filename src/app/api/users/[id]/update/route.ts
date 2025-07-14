@@ -79,7 +79,15 @@ export async function PUT(request: NextRequest) {
       }
     }
 
-    // Update user in database
+    // Get current user data to preserve profile picture
+    const currentUserResult = await query(
+      'SELECT profile_picture FROM users WHERE user_id = ?',
+      [userId]
+    ) as any[];
+
+    const currentProfilePicture = currentUserResult.length > 0 ? currentUserResult[0].profile_picture : null;
+
+    // Update user in database (preserve existing profile_picture)
     const updateResult = await query(
       `UPDATE users
        SET first_name = ?,
@@ -88,9 +96,10 @@ export async function PUT(request: NextRequest) {
            phone = ?,
            address = ?,
            gender = ?,
+           profile_picture = ?,
            updated_at = NOW()
        WHERE user_id = ?`,
-      [firstName, lastName, email || null, formattedPhone, address || null, sex || null, userId]
+      [firstName, lastName, email || null, formattedPhone, address || null, sex || null, currentProfilePicture, userId]
     ) as any;
 
     if (updateResult.affectedRows === 0) {

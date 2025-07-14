@@ -9,6 +9,7 @@ import {
   UserIcon,
   EnvelopeIcon,
   PhoneIcon,
+  MapPinIcon,
   BuildingStorefrontIcon,
   ArrowUpTrayIcon,
   ExclamationTriangleIcon,
@@ -54,9 +55,11 @@ function CremationProfilePage({ userData }: { userData: any }) {
     firstName: '',
     lastName: '',
     email: '',
-    phone: ''
+    phone: '',
+    address: ''
   });
   const [contactSuccess, setContactSuccess] = useState('');
+  const [isGettingLocation, setIsGettingLocation] = useState(false);
 
   // Business info states
   const [businessInfo, setBusinessInfo] = useState({
@@ -211,7 +214,8 @@ function CremationProfilePage({ userData }: { userData: any }) {
           firstName: data.profile.first_name || '',
           lastName: data.profile.last_name || '',
           email: data.profile.email || '',
-          phone: data.profile.business_phone || data.profile.phone || ''
+          phone: data.profile.business_phone || data.profile.phone || '',
+          address: data.profile.address || ''
         });
 
         // Set business info from profile data
@@ -460,6 +464,151 @@ function CremationProfilePage({ userData }: { userData: any }) {
     } catch (error) {
       console.error('Error updating contact information:', error);
       showToast('Failed to update contact information. Please try again.', 'error');
+    }
+  };
+
+  // Client-side rate limiting for Nominatim API
+  const checkNominatimRateLimit = (): boolean => {
+    const RATE_LIMIT_KEY = 'nominatim_last_request';
+    const MIN_INTERVAL = 1000; // 1 second minimum between requests
+
+    const lastRequest = localStorage.getItem(RATE_LIMIT_KEY);
+    const now = Date.now();
+
+    if (lastRequest) {
+      const timeSinceLastRequest = now - parseInt(lastRequest);
+      if (timeSinceLastRequest < MIN_INTERVAL) {
+        return false; // Rate limited
+      }
+    }
+
+    localStorage.setItem(RATE_LIMIT_KEY, now.toString());
+    return true;
+  };
+
+  // Fallback geocoding service configuration
+  const fallbackGeocode = async (latitude: number, longitude: number): Promise<string> => {
+    // Fallback to a simple coordinate-based address format
+    // In a production environment, you could integrate with other services like:
+    // - Google Maps Geocoding API (if available)
+    // - MapBox Geocoding API
+    // - HERE Geocoding API
+
+    // For now, return a formatted coordinate string with approximate location
+    const approxLocation = `Approximate location: ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+
+    // You could also add logic to determine approximate city/region based on coordinates
+    if (latitude >= 14.0 && latitude <= 15.0 && longitude >= 120.0 && longitude <= 121.5) {
+      return `${approxLocation} (Bataan Province area, Philippines)`;
+    }
+
+    return `${approxLocation} (Philippines)`;
+  };
+
+  // Enhanced reverse geocoding with rate limiting and timeout
+  const reverseGeocode = async (latitude: number, longitude: number): Promise<string> => {
+    // Check rate limit
+    if (!checkNominatimRateLimit()) {
+      throw new Error('Rate limited. Please wait a moment before trying again.');
+    }
+
+    // Create AbortController for timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&countrycodes=ph&addressdetails=1`,
+        {
+          headers: {
+            'User-Agent': 'RainbowPaws/1.0 (contact@rainbowpaws.com)',
+            'Referer': window.location.origin
+          },
+          signal: controller.signal
+        }
+      );
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        if (response.status === 429) {
+          // Try fallback service for rate limiting
+          console.warn('Nominatim rate limited, using fallback geocoding');
+          return await fallbackGeocode(latitude, longitude);
+        }
+        throw new Error(`Geocoding service error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      if (data && data.display_name) {
+        return data.display_name;
+      } else {
+        throw new Error('Could not determine address from location');
+      }
+    } catch (error: any) {
+      clearTimeout(timeoutId);
+      if (error.name === 'AbortError') {
+        throw new Error('Request timed out. Please try again.');
+      }
+
+      // If Nominatim fails completely, try fallback
+      if (error.message.includes('fetch')) {
+        console.warn('Nominatim service unavailable, using fallback geocoding');
+        return await fallbackGeocode(latitude, longitude);
+      }
+
+      throw error;
+    }
+  };
+
+  // Handle location detection for address
+  const handleGetLocation = async () => {
+    setIsGettingLocation(true);
+
+    try {
+      // Get user's current position
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 60000
+        });
+      });
+
+      const { latitude, longitude } = position.coords;
+
+      // Use enhanced reverse geocoding with rate limiting
+      try {
+        const address = await reverseGeocode(latitude, longitude);
+        setContactInfo(prev => ({ ...prev, address }));
+        showToast('Location detected successfully! Please review and update if needed.', 'success');
+      } catch (geocodeError: any) {
+        console.warn('Reverse geocoding failed:', geocodeError.message);
+
+        // Fallback: just show coordinates
+        const fallbackAddress = `Latitude: ${latitude.toFixed(6)}, Longitude: ${longitude.toFixed(6)}`;
+        setContactInfo(prev => ({ ...prev, address: fallbackAddress }));
+
+        if (geocodeError.message.includes('Rate limited')) {
+          showToast('Please wait a moment before detecting location again.', 'warning');
+        } else {
+          showToast('Location detected but could not determine address. Please enter your address manually.', 'warning');
+        }
+      }
+    } catch (error: any) {
+      let errorMessage = 'Failed to get your location.';
+
+      if (error.code === 1) {
+        errorMessage = 'Location access denied. Please enable location permissions and try again.';
+      } else if (error.code === 2) {
+        errorMessage = 'Location unavailable. Please check your device settings.';
+      } else if (error.code === 3) {
+        errorMessage = 'Location request timed out. Please try again.';
+      }
+
+      showToast(errorMessage, 'error');
+    } finally {
+      setIsGettingLocation(false);
     }
   };
 
@@ -1100,6 +1249,49 @@ function CremationProfilePage({ userData }: { userData: any }) {
                       onChange={(value) => setContactInfo({...contactInfo, phone: value})}
                       className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
                     />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-gray-700">
+                      Address
+                      <span className="text-red-500 ml-1">*</span>
+                    </label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <MapPinIcon className="h-5 w-5 text-gray-400" />
+                      </div>
+                      <input
+                        type="text"
+                        value={contactInfo.address}
+                        onChange={(e) => setContactInfo(prev => ({ ...prev, address: e.target.value }))}
+                        placeholder="Enter your complete address"
+                        className="block w-full rounded-lg border border-gray-300 shadow-sm bg-white
+                          focus:border-[var(--primary-green)] focus:ring-[var(--primary-green)] focus:ring-1
+                          pl-10 pr-32 py-2.5 transition-colors duration-200 text-gray-900"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleGetLocation}
+                        disabled={isGettingLocation}
+                        className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm
+                          text-[var(--primary-green)] hover:text-green-700 disabled:text-gray-400
+                          disabled:cursor-not-allowed transition-colors duration-200"
+                      >
+                        {isGettingLocation ? 'Detecting...' : 'Use My Location'}
+                      </button>
+                    </div>
+                    <div className="text-xs text-gray-500 mt-1">
+                      Location detection powered by{' '}
+                      <a
+                        href="https://www.openstreetmap.org/copyright"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:text-blue-800 underline"
+                      >
+                        OpenStreetMap
+                      </a>
+                      {' '}contributors
+                    </div>
                   </div>
                 </ProfileFormGroup>
 

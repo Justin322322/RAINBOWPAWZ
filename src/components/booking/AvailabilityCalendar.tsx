@@ -65,11 +65,20 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
     const savedMonth = typeof window !== "undefined" ? localStorage.getItem('availabilityCalendarMonth') : null;
     if (savedMonth) {
       try {
-        return new Date(savedMonth);
+        const savedDate = new Date(savedMonth);
+        const now = new Date();
+
+        // Only use saved month if it's from the current year and not too far in the past
+        // This prevents showing old months like June when it's actually December
+        if (savedDate.getFullYear() === now.getFullYear() &&
+            savedDate.getMonth() >= now.getMonth() - 1) { // Allow previous month
+          return savedDate;
+        }
       } catch {
-        return new Date();
+        // If parsing fails, fall through to current date
       }
     }
+    // Default to current month
     return new Date();
   });
 
@@ -352,6 +361,34 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
   const forceCalendarRefresh = () => {
     setCalendarKey(prev => prev + 1);
   };
+
+  // Reset to current month when component mounts or provider changes
+  useEffect(() => {
+    const now = new Date();
+    const currentDate = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    // Clear old localStorage data that might be causing issues
+    if (typeof window !== "undefined") {
+      const savedMonth = localStorage.getItem('availabilityCalendarMonth');
+      if (savedMonth) {
+        try {
+          const savedDate = new Date(savedMonth);
+          // If saved date is more than 2 months old, clear it
+          const monthsDiff = (now.getFullYear() - savedDate.getFullYear()) * 12 + (now.getMonth() - savedDate.getMonth());
+          if (monthsDiff > 2) {
+            localStorage.removeItem('availabilityCalendarMonth');
+          }
+        } catch {
+          localStorage.removeItem('availabilityCalendarMonth');
+        }
+      }
+    }
+
+    // Only update if we're not already showing the current month
+    if (currentMonth.getMonth() !== now.getMonth() || currentMonth.getFullYear() !== now.getFullYear()) {
+      setCurrentMonth(currentDate);
+    }
+  }, [providerId]); // Reset when provider changes
 
   useEffect(() => {
     if (providerId && providerId > 0) {
@@ -1243,9 +1280,22 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
             >
               <ChevronLeftIcon className="h-5 w-5 text-gray-600" />
             </button>
-            <h2 className="text-lg font-semibold">
-              {currentMonth.toLocaleString('default', { month: 'long', year: 'numeric' })}
-            </h2>
+            <div className="flex items-center space-x-3">
+              <h2 className="text-lg font-semibold">
+                {currentMonth.toLocaleString('default', { month: 'long', year: 'numeric' })}
+              </h2>
+              <button
+                type="button"
+                onClick={() => {
+                  const now = new Date();
+                  setCurrentMonth(new Date(now.getFullYear(), now.getMonth(), 1));
+                }}
+                className="px-2 py-1 text-xs bg-[var(--primary-green)] text-white rounded-md hover:bg-green-700 transition-colors"
+                disabled={isDisabled}
+              >
+                Today
+              </button>
+            </div>
             <button
               type="button"
               onClick={handleNextMonth}

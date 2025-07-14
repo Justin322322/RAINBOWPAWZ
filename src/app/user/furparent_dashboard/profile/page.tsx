@@ -31,8 +31,11 @@ interface ProfilePageProps {
   userData?: UserData;
 }
 
-function ProfilePage({ userData }: ProfilePageProps) {
+function ProfilePage({ userData: initialUserData }: ProfilePageProps) {
   const { showToast } = useToast();
+
+  // Local userData state that can be updated independently
+  const [userData, setUserData] = useState<UserData | undefined>(initialUserData);
 
   // Skeleton loading state with minimum delay
   const [showSkeleton, setShowSkeleton] = useState(true);
@@ -67,9 +70,37 @@ function ProfilePage({ userData }: ProfilePageProps) {
   // Geolocation states
   const [isGettingLocation, setIsGettingLocation] = useState(false);
 
-  // Initialize form data when userData changes
+  // Update local userData when prop changes
   useEffect(() => {
-    if (userData) {
+    if (initialUserData) {
+      setUserData(initialUserData);
+    }
+  }, [initialUserData]);
+
+  // Listen for user data updates from profile changes
+  useEffect(() => {
+    const handleUserDataUpdate = (event: CustomEvent) => {
+      if (event.detail) {
+        setUserData(event.detail);
+        // Also update session storage to keep it in sync
+        try {
+          sessionStorage.setItem('user_data', JSON.stringify(event.detail));
+        } catch (error) {
+          console.error('Failed to update session storage:', error);
+        }
+      }
+    };
+
+    window.addEventListener('userDataUpdated', handleUserDataUpdate as EventListener);
+
+    return () => {
+      window.removeEventListener('userDataUpdated', handleUserDataUpdate as EventListener);
+    };
+  }, []);
+
+  // Initialize form data on first load
+  useEffect(() => {
+    if (userData && initialLoading) {
       setPersonalInfo({
         firstName: userData.first_name || '',
         lastName: userData.last_name || ''
@@ -87,7 +118,22 @@ function ProfilePage({ userData }: ProfilePageProps) {
 
       setInitialLoading(false);
     }
-  }, [userData]);
+  }, [userData, initialLoading]);
+
+  // Update form data when userData changes (but not when editing)
+  useEffect(() => {
+    if (userData && !initialLoading && !isEditingPersonal && !isEditingContact) {
+      setPersonalInfo({
+        firstName: userData.first_name || '',
+        lastName: userData.last_name || ''
+      });
+      setContactInfo({
+        email: userData.email || '',
+        phone: userData.phone || '',
+        address: userData.address || ''
+      });
+    }
+  }, [userData, isEditingPersonal, isEditingContact, initialLoading]);
 
   // Skeleton loading control with minimum delay (600-800ms for fur parent standards)
   useEffect(() => {
@@ -224,9 +270,13 @@ function ProfilePage({ userData }: ProfilePageProps) {
           profilePictureInputRef.current.value = '';
         }
 
+        // Update local userData state immediately
+        const updatedUserData = { ...userData, profile_picture: result.profilePicture };
+        setUserData(updatedUserData);
+
         // Trigger user data update event with the new profile picture path
         window.dispatchEvent(new CustomEvent('userDataUpdated', {
-          detail: { ...userData, profile_picture: result.profilePicture }
+          detail: updatedUserData
         }));
 
         // Also trigger profile picture update event for navbar
@@ -275,9 +325,13 @@ function ProfilePage({ userData }: ProfilePageProps) {
         showToast('Personal information updated successfully!', 'success');
         setIsEditingPersonal(false);
 
+        // Update local userData state immediately
+        const updatedUserData = { ...userData, first_name: personalInfo.firstName, last_name: personalInfo.lastName };
+        setUserData(updatedUserData);
+
         // Trigger user data update event
         window.dispatchEvent(new CustomEvent('userDataUpdated', {
-          detail: { ...userData, first_name: personalInfo.firstName, last_name: personalInfo.lastName }
+          detail: updatedUserData
         }));
       } else {
         throw new Error(result.error || 'Update failed');
@@ -323,9 +377,13 @@ function ProfilePage({ userData }: ProfilePageProps) {
         showToast('Contact information updated successfully!', 'success');
         setIsEditingContact(false);
 
+        // Update local userData state immediately
+        const updatedUserData = { ...userData, email: contactInfo.email, phone: contactInfo.phone, address: contactInfo.address };
+        setUserData(updatedUserData);
+
         // Trigger user data update event
         window.dispatchEvent(new CustomEvent('userDataUpdated', {
-          detail: { ...userData, email: contactInfo.email, phone: contactInfo.phone, address: contactInfo.address }
+          detail: updatedUserData
         }));
       } else {
         throw new Error(result.error || 'Update failed');
@@ -336,6 +394,94 @@ function ProfilePage({ userData }: ProfilePageProps) {
       showToast(errorMessage, 'error');
     } finally {
       setIsUpdatingContact(false);
+    }
+  };
+
+  // Client-side rate limiting for Nominatim API
+  const checkNominatimRateLimit = (): boolean => {
+    const RATE_LIMIT_KEY = 'nominatim_last_request';
+    const MIN_INTERVAL = 1000; // 1 second minimum between requests
+
+    const lastRequest = localStorage.getItem(RATE_LIMIT_KEY);
+    const now = Date.now();
+
+    if (lastRequest) {
+      const timeSinceLastRequest = now - parseInt(lastRequest);
+      if (timeSinceLastRequest < MIN_INTERVAL) {
+        return false; // Rate limited
+      }
+    }
+
+    localStorage.setItem(RATE_LIMIT_KEY, now.toString());
+    return true;
+  };
+
+  // Fallback geocoding service configuration
+  const fallbackGeocode = async (latitude: number, longitude: number): Promise<string> => {
+    // Fallback to a simple coordinate-based address format
+    const approxLocation = `Approximate location: ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+
+    // Determine approximate city/region based on coordinates
+    if (latitude >= 14.0 && latitude <= 15.0 && longitude >= 120.0 && longitude <= 121.5) {
+      return `${approxLocation} (Bataan Province area, Philippines)`;
+    }
+
+    return `${approxLocation} (Philippines)`;
+  };
+
+  // Enhanced reverse geocoding with rate limiting and timeout
+  const reverseGeocode = async (latitude: number, longitude: number): Promise<string> => {
+    // Check rate limit
+    if (!checkNominatimRateLimit()) {
+      throw new Error('Rate limited. Please wait a moment before trying again.');
+    }
+
+    // Create AbortController for timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&countrycodes=ph&addressdetails=1`,
+        {
+          headers: {
+            'User-Agent': 'RainbowPaws/1.0 (contact@rainbowpaws.com)',
+            'Referer': window.location.origin
+          },
+          signal: controller.signal
+        }
+      );
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        if (response.status === 429) {
+          // Try fallback service for rate limiting
+          console.warn('Nominatim rate limited, using fallback geocoding');
+          return await fallbackGeocode(latitude, longitude);
+        }
+        throw new Error(`Geocoding service error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      if (data && data.display_name) {
+        return data.display_name;
+      } else {
+        throw new Error('Could not determine address from location');
+      }
+    } catch (error: any) {
+      clearTimeout(timeoutId);
+      if (error.name === 'AbortError') {
+        throw new Error('Request timed out. Please try again.');
+      }
+
+      // If Nominatim fails completely, try fallback
+      if (error.message.includes('fetch')) {
+        console.warn('Nominatim service unavailable, using fallback geocoding');
+        return await fallbackGeocode(latitude, longitude);
+      }
+
+      throw error;
     }
   };
 
@@ -363,34 +509,23 @@ function ProfilePage({ userData }: ProfilePageProps) {
 
       const { latitude, longitude } = position.coords;
 
-      // Use reverse geocoding to get address from coordinates
+      // Use enhanced reverse geocoding with rate limiting
       try {
-        const response = await fetch(
-          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&countrycodes=ph&addressdetails=1`,
-          {
-            headers: {
-              'User-Agent': 'RainbowPaws/1.0 (contact@rainbowpaws.com)'
-            }
-          }
-        );
+        const address = await reverseGeocode(latitude, longitude);
+        setContactInfo(prev => ({ ...prev, address }));
+        showToast('Location detected successfully! Please review and update if needed.', 'success');
+      } catch (geocodeError: any) {
+        console.warn('Reverse geocoding failed:', geocodeError.message);
 
-        if (response.ok) {
-          const data = await response.json();
-          if (data && data.display_name) {
-            // Update the address field with the detected location
-            setContactInfo(prev => ({ ...prev, address: data.display_name }));
-            showToast('Location detected successfully! Please review and update if needed.', 'success');
-          } else {
-            throw new Error('Could not determine address from location');
-          }
-        } else {
-          throw new Error('Geocoding service unavailable');
-        }
-      } catch (geocodeError) {
         // Fallback: just show coordinates
         const fallbackAddress = `Latitude: ${latitude.toFixed(6)}, Longitude: ${longitude.toFixed(6)}`;
         setContactInfo(prev => ({ ...prev, address: fallbackAddress }));
-        showToast('Location detected but could not determine address. Please enter your address manually.', 'warning');
+
+        if (geocodeError.message.includes('Rate limited')) {
+          showToast('Please wait a moment before detecting location again.', 'warning');
+        } else {
+          showToast('Location detected but could not determine address. Please enter your address manually.', 'warning');
+        }
       }
     } catch (error: any) {
       let errorMessage = 'Failed to get your location.';
@@ -408,6 +543,21 @@ function ProfilePage({ userData }: ProfilePageProps) {
       setIsGettingLocation(false);
     }
   };
+
+  // Show loading skeleton if userData is not available yet
+  if (!userData) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-8">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="space-y-6">
+            <SkeletonCard />
+            <SkeletonCard />
+            <SkeletonCard />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -649,6 +799,18 @@ function ProfilePage({ userData }: ProfilePageProps) {
                             'Use Current Location'
                           )}
                         </button>
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1">
+                        Location detection powered by{' '}
+                        <a
+                          href="https://www.openstreetmap.org/copyright"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:text-blue-800 underline"
+                        >
+                          OpenStreetMap
+                        </a>
+                        {' '}contributors
                       </div>
                     </div>
                   </div>

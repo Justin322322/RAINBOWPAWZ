@@ -155,14 +155,10 @@ export default function MapComponent({
       console.error('🗺️ [MapComponent] Enhanced geocoding failed:', error);
 
       if (type === 'user') {
-        setGeocodeError("Could not find your location. Using default location in Balanga City.");
+        setGeocodeError("Could not find your location. Please check your address in your profile.");
         setGeocodeAccuracy('low');
-        // Use default Balanga City center coordinates
-        const balangaCoordinates: [number, number] = [14.6742, 120.5434];
-        setUserCoordinates(balangaCoordinates);
-        if (mapRef.current) {
-          addUserMarker(balangaCoordinates);
-        }
+        // Don't use default coordinates - let the user know their address couldn't be found
+        setUserCoordinates(null);
       }
     } finally {
       setIsGeocoding(false);
@@ -178,11 +174,8 @@ export default function MapComponent({
       if (initialUserCoordinates) {
         setUserCoordinates(initialUserCoordinates);
       } else if (userAddress) {
-        // Otherwise, set default coordinates first to prevent error if geocoding fails
-        const defaultCoordinates: [number, number] = [14.6742, 120.5434]; // Balanga City center coordinates
-        setUserCoordinates(defaultCoordinates);
-
-        // Only geocode if no coordinates were provided - this ensures consistency with API
+        // Don't set default coordinates - only use the user's actual address
+        // Geocode the user's address to get their actual location
         timer = setTimeout(() => {
           geocodeAddressEnhanced(userAddress, 'user');
         }, 100);

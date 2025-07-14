@@ -565,9 +565,18 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
           const providerAddress = bookingData.provider.address || bookingData.provider.city || 'Bataan';
           const providerCoordinates = getBataanCoordinates(providerAddress);
 
+          // Verify both coordinates are non-null before calculating distance
+          if (!deliveryCoordinates || !providerCoordinates) {
+            console.warn('❌ [Checkout] Missing coordinates - delivery:', deliveryCoordinates, 'provider:', providerCoordinates);
+            setActualDeliveryDistance(null);
+            // Show a message to the user about missing location data
+            // You might want to set an error state here to display to the user
+            return;
+          }
+
           // Calculate the actual distance
           const distance = calculateDistance(deliveryCoordinates, providerCoordinates);
-          
+
           setActualDeliveryDistance(distance);
           
           // Update delivery fee based on actual distance

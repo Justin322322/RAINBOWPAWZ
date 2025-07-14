@@ -75,18 +75,18 @@ export async function GET(request: NextRequest) {
 
     // Get provider payment statistics
     const providerStatsQuery = `
-      SELECT 
-        sp.business_name as provider_name,
-        sp.id as provider_id,
+      SELECT
+        sp.name as provider_name,
+        sp.provider_id as provider_id,
         COUNT(pt.id) as transaction_count,
         COUNT(CASE WHEN pt.status = 'succeeded' THEN 1 END) as successful_payments,
         SUM(CASE WHEN pt.status = 'succeeded' THEN pt.amount ELSE 0 END) as total_revenue,
         AVG(CASE WHEN pt.status = 'succeeded' THEN pt.amount ELSE NULL END) as average_amount
       FROM payment_transactions pt
       JOIN service_bookings sb ON pt.booking_id = sb.id
-      JOIN service_providers sp ON sb.provider_id = sp.id
+      JOIN service_providers sp ON sb.provider_id = sp.provider_id
       WHERE 1=1 ${dateFilter}
-      GROUP BY sp.id, sp.business_name
+      GROUP BY sp.provider_id, sp.name
       ORDER BY total_revenue DESC
       LIMIT 10
     `;

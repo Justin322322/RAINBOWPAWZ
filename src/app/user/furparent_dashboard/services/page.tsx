@@ -19,6 +19,7 @@ type LocationData = {
   source: 'profile' | 'default' | 'geolocation';
 };
 import { cacheManager } from '@/utils/cache';
+import withUserAuth from '@/components/withUserAuth';
 
 // Import the map component with dynamic loading and standardized loading indicator
 const MapComponent = dynamic(
@@ -51,64 +52,84 @@ function ServicesPage({ userData }: ServicesPageProps) {
   // Ref to hold map section element to scroll to when showing directions
   const mapSectionRef = useRef<HTMLDivElement>(null);
 
-  // Get user location from profile when component mounts
+  // Get user location from profile - simplified approach
   useEffect(() => {
-    const getLocation = async () => {
+    const getLocation = () => {
       setIsLoadingLocation(true);
-      try {
-        // Get user data from props or session storage
-        let userDataToUse = userData;
 
-        // If userData is not provided as prop, try to get it from session storage
-        if (!userDataToUse && typeof window !== 'undefined') {
-          const sessionUserData = sessionStorage.getItem('user_data');
-          if (sessionUserData) {
-            try {
-              userDataToUse = JSON.parse(sessionUserData);
-            } catch (error) {
-              console.error('Failed to parse user data from session storage:', error);
-            }
-          }
-        }
+      // Always get fresh data from session storage
+      let currentUserData = userData;
 
-        // Clear routing cache to remove old invalid entries (one-time fix)
-        cacheManager.clearRoutingCache();
-
-        // Use profile address or default, and geocode to get coordinates
-        let location;
-
-        if (userDataToUse?.address && userDataToUse.address.trim() !== '') {
+      // Get the most recent data from session storage
+      if (typeof window !== 'undefined') {
+        const sessionUserData = sessionStorage.getItem('user_data');
+        if (sessionUserData) {
           try {
-            // Geocoding functionality removed - use address without coordinates
-            location = {
-              address: userDataToUse.address,
-              source: 'profile' as const
-            };
+            const parsedData = JSON.parse(sessionUserData);
+            // Use session storage data if it's more recent or if userData prop is not available
+            currentUserData = parsedData;
           } catch (error) {
-            console.error('❌ Failed to geocode user address:', error);
-            console.error('❌ Error details:', error);
-            // Fallback to address without coordinates
-            location = {
-              address: userDataToUse.address,
-              source: 'profile' as const
-            };
+            console.error('Failed to parse user data from session storage:', error);
           }
-        } else {
-          // Don't set a location if user hasn't provided one
-          location = null;
+        }
+      }
+
+      // Clear routing cache to remove old invalid entries (one-time fix)
+      cacheManager.clearRoutingCache();
+
+      // Set location based on current user data
+      let location = null;
+      if (currentUserData?.address && currentUserData.address.trim() !== '') {
+        location = {
+          address: currentUserData.address,
+          source: 'profile' as const
+        };
+        console.log('✅ Setting location to:', location);
+      } else {
+        console.log('❌ No address found in user data');
+      }
+
+      setUserLocation(location);
+      setIsLoadingLocation(false);
+    };
+
+    // Run immediately
+    getLocation();
+
+    // Also listen for storage changes (when profile is updated in another tab/component)
+    const handleStorageChange = () => {
+      getLocation();
+    };
+
+    // Listen for custom events (when profile is updated)
+    const handleUserDataUpdate = (event: CustomEvent) => {
+      if (event.detail) {
+        // Update session storage with new data
+        try {
+          sessionStorage.setItem('user_data', JSON.stringify(event.detail));
+        } catch (error) {
+          console.error('Failed to update session storage:', error);
         }
 
-        setUserLocation(location);
-      } catch (error) {
-        console.error('Error getting user location:', error);
-        // Don't fall back to a hardcoded address
-        setUserLocation(null);
-      } finally {
-        setIsLoadingLocation(false);
+        // Update location
+        if (event.detail.address && event.detail.address.trim() !== '') {
+          setUserLocation({
+            address: event.detail.address,
+            source: 'profile' as const
+          });
+        } else {
+          setUserLocation(null);
+        }
       }
     };
 
-    getLocation();
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('userDataUpdated', handleUserDataUpdate as EventListener);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('userDataUpdated', handleUserDataUpdate as EventListener);
+    };
   }, [userData]);
 
   // Load map after component mounts and location is determined
@@ -516,5 +537,5 @@ function ServicesPage({ userData }: ServicesPageProps) {
   );
 }
 
-// Export the component directly (OTP verification is now handled by layout)
-export default ServicesPage;
+// Export the component wrapped with auth HOC
+export default withUserAuth(ServicesPage);

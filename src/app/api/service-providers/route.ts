@@ -33,6 +33,14 @@ export async function GET(request: Request) {
       // Only fallback to geocoding if we have a valid location string
       if (userLocation && userLocation.trim() !== '') {
         userCoordinates = getBataanCoordinates(userLocation);
+        if (!userCoordinates) {
+          // Location not found in our database
+          return NextResponse.json({
+            success: false,
+            error: 'Location not found. Please check your address in your profile.',
+            providers: []
+          });
+        }
       } else {
         // No valid location data available
         return NextResponse.json({
@@ -45,6 +53,14 @@ export async function GET(request: Request) {
   } else if (userLocation) {
     // Priority 2: Fallback to address-based lookup
     userCoordinates = getBataanCoordinates(userLocation);
+    if (!userCoordinates) {
+      // Location not found in our database
+      return NextResponse.json({
+        success: false,
+        error: 'Location not found. Please check your address in your profile.',
+        providers: []
+      });
+    }
   } else {
     // No location information available
     return NextResponse.json({
@@ -178,6 +194,12 @@ export async function GET(request: Request) {
 
             // Calculate actual distance based on coordinates
             const providerCoordinates = getBataanCoordinates(provider.address || 'Bataan');
+
+            // Check if providerCoordinates is null and skip processing if so
+            if (!providerCoordinates) {
+              console.warn('📍 [Distance] Provider coordinates are null, skipping provider:', provider.id);
+              continue;
+            }
 
             try {
               // Use simple distance calculation (enhanced routing removed)

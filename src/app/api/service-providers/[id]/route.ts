@@ -28,10 +28,12 @@ export async function GET(
           userCoordinates = { lat, lng };
         } else if (userLocation && userLocation.trim() !== '') {
           userCoordinates = getBataanCoordinates(userLocation);
+          // Note: userCoordinates could be null if location not found, but that's okay for detail page
         }
       } else if (userLocation && userLocation.trim() !== '') {
         // Priority 2: Fallback to address-based lookup
         userCoordinates = getBataanCoordinates(userLocation);
+        // Note: userCoordinates could be null if location not found, but that's okay for detail page
       }
     }
 
@@ -121,17 +123,24 @@ export async function GET(
         if (userCoordinates && provider.address) {
           const providerCoordinates = getBataanCoordinates(provider.address);
 
-          try {
-            // Use simple distance calculation (enhanced routing removed)
-            const distance = calculateDistance(userCoordinates, providerCoordinates);
-            provider.distance = `${distance.toFixed(1)} km`;
-            provider.distanceValue = distance;
-          } catch (error) {
-            console.error('Distance calculation failed:', error);
-            // Fallback to simple calculation
-            const distanceValue = calculateDistance(userCoordinates, providerCoordinates);
-            provider.distance = `${distanceValue} km away`;
-            provider.distanceValue = distanceValue;
+          // Check if providerCoordinates is null and handle accordingly
+          if (!providerCoordinates) {
+            console.warn('📍 [Distance] Provider coordinates are null for provider:', provider.id);
+            provider.distance = 'Location not available';
+            provider.distanceValue = null;
+          } else {
+            try {
+              // Use simple distance calculation (enhanced routing removed)
+              const distance = calculateDistance(userCoordinates, providerCoordinates);
+              provider.distance = `${distance.toFixed(1)} km`;
+              provider.distanceValue = distance;
+            } catch (error) {
+              console.error('Distance calculation failed:', error);
+              // Fallback to simple calculation
+              const distanceValue = calculateDistance(userCoordinates, providerCoordinates);
+              provider.distance = `${distanceValue} km away`;
+              provider.distanceValue = distanceValue;
+            }
           }
         } else {
           // No user location available
