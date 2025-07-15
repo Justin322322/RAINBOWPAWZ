@@ -62,7 +62,7 @@ function AdminDashboardLayout({
       <AdminSidebar activePage={activePage} />
       <div className="lg:pl-64 transition-all duration-300"> {/* Responsive padding */}
         <AdminNavbar activePage={activePage} userName={displayName} />
-        <main className="p-4 md:p-6">
+        <main className="pt-20 md:pt-24 p-4 md:p-6"> {/* Add top padding for fixed header */}
           {contentLoading && !skipSkeleton ? (
             <DashboardSkeleton type="admin" />
           ) : (

@@ -62,7 +62,7 @@ export default function CremationDashboardLayout({
           activePage={activePage}
           userName={displayName}
         />
-        <main className="p-4 md:p-6"> {/* Match admin padding */}
+        <main className="pt-20 md:pt-24 p-4 md:p-6"> {/* Add top padding for fixed header + match admin padding */}
           {contentLoading && !skipSkeleton ? (
             <DashboardSkeleton type="cremation" />
           ) : (
