@@ -506,8 +506,7 @@
 
   /* Fixed header spacing adjustments for mobile */
   .dashboard-content {
--    @apply pt-20;
-+    @apply pt-20 md:pt-24;
+    @apply pt-20 md:pt-24;
   }
 }
 
