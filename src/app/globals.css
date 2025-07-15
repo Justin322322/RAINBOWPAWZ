@@ -103,6 +103,38 @@
     @apply min-h-[44px] min-w-[44px];
   }
 
+  /* Enhanced mobile hero buttons */
+  .mobile-hero-button {
+    @apply w-full px-6 py-4 rounded-full text-base font-medium uppercase tracking-wider
+    transition-all duration-300 transform hover:-translate-y-0.5 shadow-lg hover:shadow-xl
+    min-h-[56px] touch-target;
+  }
+
+  .mobile-hero-button-primary {
+    @apply bg-[var(--primary-green)] hover:bg-[var(--primary-green-hover)] text-white;
+  }
+
+  .mobile-hero-button-secondary {
+    @apply bg-white/10 backdrop-blur-md text-white hover:bg-white/20 border border-white/30;
+  }
+
+  .mobile-hero-button-outline {
+    @apply bg-transparent text-white hover:bg-white/10 border border-white;
+  }
+
+  /* Dashboard content spacing utilities */
+  .dashboard-header-spacing {
+    @apply mb-6 sm:mb-8;
+  }
+
+  .dashboard-section-spacing {
+    @apply mb-6 sm:mb-8;
+  }
+
+  .dashboard-card-spacing {
+    @apply p-4 sm:p-6;
+  }
+
   .service-card {
     @apply bg-white p-8 rounded-xl shadow-md hover:shadow-lg transition-all duration-300
     border border-gray-100 hover:border-[var(--primary-green-border)];
@@ -125,12 +157,12 @@
   }
 
   .hero-title {
-    @apply text-6xl md:text-7xl font-light text-white mb-6 leading-tight tracking-wide;
+    @apply text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-light text-white mb-6 leading-tight tracking-wide;
     font-family: var(--font-serif);
   }
 
   .hero-description {
-    @apply text-xl text-gray-200 mb-12 max-w-2xl font-light leading-relaxed;
+    @apply text-lg sm:text-xl md:text-xl text-gray-200 mb-8 sm:mb-12 max-w-2xl font-light leading-relaxed;
     font-family: var(--font-sans);
   }
 
@@ -443,6 +475,38 @@
 
   .step-description {
     @apply text-sm;
+  }
+
+  /* Mobile hero improvements */
+  .hero-title {
+    @apply text-3xl leading-tight mb-4;
+    line-height: 1.2;
+  }
+
+  .hero-description {
+    @apply text-base mb-6 px-2;
+    line-height: 1.5;
+  }
+
+  /* Mobile button improvements */
+  .mobile-hero-button {
+    @apply py-3.5 text-sm;
+    min-height: 52px;
+  }
+
+  /* Better mobile spacing */
+  .mobile-safe-area {
+    @apply px-3;
+  }
+
+  /* Mobile navigation improvements */
+  .mobile-nav-active {
+    @apply bg-white/20;
+  }
+
+  /* Fixed header spacing adjustments for mobile */
+  .dashboard-content {
+    @apply pt-20;
   }
 }
 

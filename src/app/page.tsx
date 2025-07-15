@@ -210,10 +210,10 @@ export default function Home() {
       {/* Navigation */}
       <header className={`fixed w-full top-0 z-50 bg-[var(--primary-green)] transition-all duration-300 ${isScrolled ? 'shadow-lg' : ''}`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-20">
-            <a onClick={handleScrollToTop} className="flex items-center space-x-3 cursor-pointer">
-              <Image src="/logo.png" alt="Rainbow Paws Logo" width={40} height={40} className="h-10 w-auto" />
-              <span className="text-xl modern-heading text-white tracking-wide">RainbowPaws</span>
+          <div className="flex items-center justify-between h-16 sm:h-20">
+            <a onClick={handleScrollToTop} className="flex items-center space-x-2 sm:space-x-3 cursor-pointer touch-target">
+              <Image src="/logo.png" alt="Rainbow Paws Logo" width={40} height={40} className="h-8 sm:h-10 w-auto" />
+              <span className="text-lg sm:text-xl modern-heading text-white tracking-wide">RainbowPaws</span>
             </a>
             
             {/* Desktop Navigation */}
@@ -264,7 +264,8 @@ export default function Home() {
             {/* Mobile menu button */}
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="md:hidden text-white p-2 rounded-lg hover:bg-white/20 transition-colors duration-300"
+              className="md:hidden text-white p-3 rounded-lg hover:bg-white/20 transition-colors duration-300 touch-target"
+              aria-label={isMobileMenuOpen ? "Close menu" : "Open menu"}
             >
               {isMobileMenuOpen ? (
                 <XMarkIcon className="h-6 w-6" />
@@ -286,18 +287,18 @@ export default function Home() {
 
             {/* Mobile menu */}
             <div className="md:hidden bg-[var(--primary-green)] border-t border-white/20 relative z-50 shadow-lg">
-              <div className="px-4 py-4 space-y-2">
+              <div className="px-3 py-3 space-y-1">
                 {/* Navigation Links */}
                 <a
                   onClick={(e) => {
                     handleSmoothScroll(e, 'services');
                     setIsMobileMenuOpen(false);
                   }}
-                  className={`flex items-center px-4 py-4 rounded-lg text-white hover:bg-white/10 transition-all duration-300 cursor-pointer ${
+                  className={`flex items-center px-4 py-4 rounded-lg text-white hover:bg-white/10 transition-all duration-300 cursor-pointer touch-target ${
                     activeSection === 'services' ? 'bg-white/20 border-l-4 border-white' : ''
                   }`}
                 >
-                  <span className="modern-text text-base">Memorial Services</span>
+                  <span className="modern-text text-base font-medium">Memorial Services</span>
                 </a>
 
                 <a
@@ -305,11 +306,11 @@ export default function Home() {
                     handleSmoothScroll(e, 'how-it-works');
                     setIsMobileMenuOpen(false);
                   }}
-                  className={`flex items-center px-4 py-4 rounded-lg text-white hover:bg-white/10 transition-all duration-300 cursor-pointer ${
+                  className={`flex items-center px-4 py-4 rounded-lg text-white hover:bg-white/10 transition-all duration-300 cursor-pointer touch-target ${
                     activeSection === 'how-it-works' ? 'bg-white/20 border-l-4 border-white' : ''
                   }`}
                 >
-                  <span className="modern-text text-base">How It Works</span>
+                  <span className="modern-text text-base font-medium">How It Works</span>
                 </a>
 
                 <a
@@ -317,15 +318,15 @@ export default function Home() {
                     handleSmoothScroll(e, 'promise');
                     setIsMobileMenuOpen(false);
                   }}
-                  className={`flex items-center px-4 py-4 rounded-lg text-white hover:bg-white/10 transition-all duration-300 cursor-pointer ${
+                  className={`flex items-center px-4 py-4 rounded-lg text-white hover:bg-white/10 transition-all duration-300 cursor-pointer touch-target ${
                     activeSection === 'promise' ? 'bg-white/20 border-l-4 border-white' : ''
                   }`}
                 >
-                  <span className="modern-text text-base">Our Promise</span>
+                  <span className="modern-text text-base font-medium">Our Promise</span>
                 </a>
 
                 {/* Divider */}
-                <div className="border-t border-white/20 my-3"></div>
+                <div className="border-t border-white/20 my-4"></div>
 
                 {/* Auth buttons for mobile */}
                 <button
@@ -333,19 +334,19 @@ export default function Home() {
                     openLoginModal();
                     setIsMobileMenuOpen(false);
                   }}
-                  className="flex items-center w-full px-4 py-4 rounded-lg text-white hover:bg-white/10 transition-all duration-300"
+                  className="flex items-center w-full px-4 py-4 rounded-lg text-white hover:bg-white/10 transition-all duration-300 touch-target"
                 >
-                  <span className="modern-text text-base">Login</span>
+                  <span className="modern-text text-base font-medium">Login</span>
                 </button>
-                
+
                 <button
                   onClick={() => {
                     openSignupOptionModal();
                     setIsMobileMenuOpen(false);
                   }}
-                  className="flex items-center w-full px-4 py-4 rounded-lg text-white hover:bg-white/10 transition-all duration-300"
+                  className="flex items-center w-full px-4 py-4 rounded-lg text-white hover:bg-white/10 transition-all duration-300 touch-target border border-white/30 mt-2"
                 >
-                  <span className="modern-text text-base">Join Us</span>
+                  <span className="modern-text text-base font-medium">Join Us</span>
                 </button>
               </div>
             </div>
@@ -367,13 +368,13 @@ export default function Home() {
           </video>
           <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/50 to-black/70"></div>
         </div>
-        <div className="relative z-20 min-h-screen flex items-center justify-center px-4 pt-20">
+        <div className="relative z-20 min-h-screen flex items-center justify-center px-4 sm:px-6 pt-20">
           <div className="text-center max-w-4xl mx-auto text-white">
             <motion.h1
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8 }}
-              className="text-5xl md:text-7xl modern-heading mb-8 tracking-wide text-white drop-shadow-2xl [text-shadow:_0_1px_2px_rgb(0_0_0_/_20%)]"
+              className="text-4xl sm:text-5xl md:text-7xl modern-heading mb-6 sm:mb-8 tracking-wide text-white drop-shadow-2xl [text-shadow:_0_1px_2px_rgb(0_0_0_/_20%)]"
             >
               A Gentle Farewell
             </motion.h1>
@@ -381,42 +382,44 @@ export default function Home() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.2 }}
-              className="text-xl md:text-2xl modern-text mb-12 max-w-3xl mx-auto leading-relaxed text-white drop-shadow-xl [text-shadow:_0_1px_1px_rgb(0_0_0_/_10%)]"
+              className="text-lg sm:text-xl md:text-2xl modern-text mb-8 sm:mb-12 max-w-3xl mx-auto leading-relaxed text-white drop-shadow-xl [text-shadow:_0_1px_1px_rgb(0_0_0_/_10%)] px-2"
             >
               Providing dignified and compassionate memorial services for your beloved companions with grace and respect
             </motion.p>
+
+            {/* Primary Action Buttons */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.4 }}
-              className="flex flex-col sm:flex-row justify-center gap-6"
+              className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-6 mb-6 sm:mb-8 max-w-md sm:max-w-none mx-auto"
             >
               <button onClick={openPersonalAccountModal}
-                className="px-8 py-4 bg-[var(--primary-green)] hover:bg-[var(--primary-green-hover)] text-white rounded-full transition-all duration-300 transform hover:-translate-y-0.5 modern-label tracking-wide text-lg shadow-xl hover:shadow-2xl"
+                className="mobile-hero-button mobile-hero-button-primary sm:w-auto sm:px-8 sm:text-lg"
               >
                 BEGIN YOUR JOURNEY
               </button>
               <button onClick={openBusinessAccountModal}
-                className={`${buttonBaseStyle} bg-white/10 backdrop-blur-md text-white hover:bg-white/20 border-white/30`}
+                className="mobile-hero-button mobile-hero-button-secondary sm:w-auto sm:px-8 sm:text-lg"
               >
                 JOIN OUR PROVIDER NETWORK
               </button>
             </motion.div>
-            
-            {/* Mobile Login Buttons */}
+
+            {/* Secondary Action Buttons - Mobile Only */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.6 }}
-              className="md:hidden flex flex-col sm:flex-row justify-center gap-4 mt-8"
+              className="md:hidden flex flex-col gap-3 max-w-xs mx-auto"
             >
               <button onClick={openLoginModal}
-                className="px-6 py-3 bg-white/10 backdrop-blur-md text-white hover:bg-white/20 border border-white/30 rounded-full transition-all duration-300 transform hover:-translate-y-0.5 modern-label tracking-wide shadow-lg hover:shadow-xl"
+                className="w-full px-6 py-3 bg-white/10 backdrop-blur-md text-white hover:bg-white/20 border border-white/30 rounded-full transition-all duration-300 transform hover:-translate-y-0.5 modern-label tracking-wide text-sm shadow-lg hover:shadow-xl min-h-[44px] touch-target"
               >
                 LOGIN
               </button>
               <button onClick={openSignupOptionModal}
-                className="px-6 py-3 bg-transparent text-white hover:bg-white/10 border border-white rounded-full transition-all duration-300 transform hover:-translate-y-0.5 modern-label tracking-wide"
+                className="w-full px-6 py-3 bg-transparent text-white hover:bg-white/10 border border-white rounded-full transition-all duration-300 transform hover:-translate-y-0.5 modern-label tracking-wide text-sm min-h-[44px] touch-target"
               >
                 SIGN UP
               </button>

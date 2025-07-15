@@ -72,8 +72,8 @@ function FurParentDashboardLayout({
       {/* Navigation - Now persistent across all pages */}
       <FurParentNavbar activePage={activePage} userName={displayName} />
 
-      {/* Main Content */}
-      <main>
+      {/* Main Content - Add top padding to account for fixed header */}
+      <main className="pt-20 md:pt-24">
         {/* Clone children and pass currentUserData to them */}
         {React.Children.map(children, (child) => {
           if (React.isValidElement(child)) {

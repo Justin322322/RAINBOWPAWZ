@@ -374,7 +374,7 @@ export default function CremationNavbar({
   ];
 
   return (
-    <header className="bg-[var(--primary-green)] shadow-[0_4px_10px_rgba(0,0,0,0.3)] relative z-50 w-full">
+    <header className="bg-[var(--primary-green)] shadow-[0_4px_10px_rgba(0,0,0,0.3)] fixed top-0 left-0 lg:left-64 right-0 z-50 w-full lg:w-auto">
       <div className="w-full px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 md:h-20">
           <div className="flex items-center">
