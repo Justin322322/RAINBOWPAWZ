@@ -247,23 +247,19 @@ function ServicesPage({ userData }: ServicesPageProps) {
   // No longer needed since we're only using profile data
 
   return (
-    <div className="min-h-screen bg-white">
-      {/* Navigation is now handled by layout */}
-
-      {/* Main Content */}
-      <main>
-        {/* Hero Section with Pattern Background */}
-        <div className="relative py-16 bg-[var(--primary-green)]">
-          <div className="absolute inset-0 bg-[url('/bg_4.png')] bg-repeat opacity-20"></div>
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-            <h1 className="text-4xl md:text-5xl lg:text-6xl modern-heading text-white text-center mb-4">
-              Find the Right Cremation Services with Ease
-            </h1>
-            <p className="text-xl text-white text-center max-w-3xl mx-auto modern-text font-light">
-              No more endless searching—quickly locate and connect with trusted professionals in your area.
-            </p>
-          </div>
+    <>
+      {/* Hero Section with Pattern Background */}
+      <div className="relative py-16 bg-[var(--primary-green)] -mt-20 md:-mt-24 pt-36 md:pt-40">
+        <div className="absolute inset-0 bg-[url('/bg_4.png')] bg-repeat opacity-20"></div>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          <h1 className="text-4xl md:text-5xl lg:text-6xl modern-heading text-white text-center mb-4">
+            Find the Right Cremation Services with Ease
+          </h1>
+          <p className="text-xl text-white text-center max-w-3xl mx-auto modern-text font-light">
+            No more endless searching—quickly locate and connect with trusted professionals in your area.
+          </p>
         </div>
+      </div>
 
         {/* Map Section */}
         <div ref={mapSectionRef} className="bg-white py-8">
@@ -532,8 +528,7 @@ function ServicesPage({ userData }: ServicesPageProps) {
             </>
           )}
         </div>
-      </main>
-    </div>
+    </>
   );
 }
 
