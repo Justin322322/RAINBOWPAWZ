@@ -1,3 +1,4 @@
+<img width="200" height="600" alt="logo" src="https://github.com/user-attachments/assets/769e4e6c-f22d-455a-9a3e-49b8b860f4f4" />
 # Rainbow Paws Application
 
 A comprehensive Next.js application for pet memorial services, connecting pet owners with cremation service providers.
