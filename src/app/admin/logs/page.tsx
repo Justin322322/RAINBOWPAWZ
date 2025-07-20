@@ -691,6 +691,9 @@ function AdminLogsPage({ adminData }: { adminData: any }) {
                 </div>
               </div>
 
+              {/* Divider */}
+              <div className="border-t border-gray-200"></div>
+
               {/* Additional Information */}
               {selectedLog.details && (
                 <div>

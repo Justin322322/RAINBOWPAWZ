@@ -617,6 +617,19 @@ function ServiceDetailsModal({
   imageError: Record<number, boolean>;
   setImageError: React.Dispatch<React.SetStateAction<Record<number, boolean>>>;
 }) {
+  // Handle ESC key to close modal
+  React.useEffect(() => {
+    const handleEscKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    document.addEventListener('keydown', handleEscKey);
+    return () => {
+      document.removeEventListener('keydown', handleEscKey);
+    };
+  }, [onClose]);
   // Format the service data for display
   const formattedName = service.name || 'Unnamed Service';
   const formattedCenter = service.cremationCenter || 'Cremation Center';
@@ -645,43 +658,57 @@ function ServiceDetailsModal({
     : service.price;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[90] p-4">
-      <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-          <h2 className="text-xl font-semibold text-gray-800">Service Details</h2>
+    <div
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[90] p-1 sm:p-4"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          onClose();
+        }
+      }}
+    >
+      <div
+        className="bg-white rounded-lg sm:rounded-xl shadow-xl max-w-4xl w-full max-h-[98vh] sm:max-h-[90vh] flex flex-col overflow-hidden mx-1 sm:mx-0"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Fixed Header */}
+        <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 flex justify-between items-center flex-shrink-0">
+          <h2 className="text-lg sm:text-xl font-semibold text-gray-800">Service Details</h2>
           <button
             onClick={onClose}
-            className="text-gray-500 hover:text-gray-700"
+            className="text-gray-500 hover:text-gray-700 transition-colors p-1"
           >
-            <XMarkIcon className="h-6 w-6" />
+            <XMarkIcon className="h-5 w-5 sm:h-6 sm:w-6" />
           </button>
         </div>
-        <div className="p-6">
-          <div className="flex flex-col space-y-6">
+
+        {/* Scrollable Content */}
+        <div className="flex-1 overflow-y-auto modal-scrollbar">
+          <div className="p-4 sm:p-6 pb-6 sm:pb-8">
+            <div className="flex flex-col space-y-4 sm:space-y-6">
             {/* Header */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
               <div className="flex items-center">
-                <div className="h-16 w-16 bg-[var(--primary-green)] text-white rounded-full flex items-center justify-center mr-4">
-                  <FireIcon className="h-10 w-10" />
+                <div className="h-12 w-12 sm:h-16 sm:w-16 bg-[var(--primary-green)] text-white rounded-full flex items-center justify-center mr-3 sm:mr-4 flex-shrink-0">
+                  <FireIcon className="h-6 w-6 sm:h-10 sm:w-10" />
                 </div>
-                <div>
-                  <h3 className="text-2xl font-semibold text-gray-900">{formattedName}</h3>
-                  <div className="flex items-center space-x-2 mt-1">
-                    <span className="text-gray-600">Provider: {formattedCenter}</span>
-                    <span>•</span>
+                <div className="min-w-0 flex-1">
+                  <h3 className="text-lg sm:text-2xl font-semibold text-gray-900 truncate">{formattedName}</h3>
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-2 mt-1 space-y-1 sm:space-y-0">
+                    <span className="text-sm sm:text-base text-gray-600 truncate">Provider: {formattedCenter}</span>
+                    <span className="hidden sm:inline">•</span>
                     <span className="flex items-center">
                       <StatusBadge status={service.status} />
                     </span>
                   </div>
                 </div>
               </div>
-              <div>
-                <span className="text-2xl font-bold text-[var(--primary-green)]">{formattedPrice}</span>
+              <div className="flex justify-end sm:justify-start">
+                <span className="text-xl sm:text-2xl font-bold text-[var(--primary-green)]">{formattedPrice}</span>
               </div>
             </div>
 
             {/* Image */}
-            <div className="bg-gray-50 p-4 rounded-lg overflow-hidden h-64 relative">
+            <div className="bg-gray-50 p-3 sm:p-4 rounded-lg overflow-hidden h-48 sm:h-64 relative">
               {service.images.length === 0 || imageError[service.id] ? (
                 <div className="w-full h-full flex flex-col items-center justify-center bg-gray-100 p-4 text-center">
                   <svg className="h-16 w-16 text-gray-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -705,37 +732,46 @@ function ServiceDetailsModal({
             </div>
 
             {/* Service Details */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+              {/* Service Information */}
               <div>
-                <h4 className="text-lg font-medium text-gray-900 mb-3">Service Information</h4>
-                <div className="bg-gray-50 p-4 rounded-lg space-y-3">
-                  <div className="flex items-start">
-                    <div className="h-5 w-5 text-gray-500 mr-2 mt-0.5 flex items-center justify-center">
-                      <span className="text-xs font-bold">✓</span>
+                <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-3 sm:mb-4">Service Information</h3>
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 sm:p-4 space-y-3 sm:space-y-4">
+                  <div className="flex items-start space-x-3">
+                    <div className="w-5 h-5 text-gray-500 mt-0.5 flex-shrink-0">
+                      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
                     </div>
-                    <div>
+                    <div className="flex-1">
                       <p className="text-sm font-medium text-gray-700">Cremation Type</p>
                       <p className="text-gray-900">{formattedType}</p>
                     </div>
                   </div>
-                  <div className="flex items-start">
-                    <div className="h-5 w-5 text-gray-500 mr-2 mt-0.5 flex items-center justify-center">
-                      <span className="text-xs font-bold">⏱</span>
+
+                  <div className="flex items-start space-x-3">
+                    <div className="w-5 h-5 text-gray-500 mt-0.5 flex-shrink-0">
+                      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
                     </div>
-                    <div>
+                    <div className="flex-1">
                       <p className="text-sm font-medium text-gray-700">Processing Time</p>
                       <p className="text-gray-900">{formattedTime}</p>
                     </div>
                   </div>
-                  <div className="flex items-start">
-                    <div className="h-5 w-5 text-gray-500 mr-2 mt-0.5 flex items-center justify-center">
-                      <span className="text-xs font-bold">★</span>
+
+                  <div className="flex items-start space-x-3">
+                    <div className="w-5 h-5 text-gray-500 mt-0.5 flex-shrink-0">
+                      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                      </svg>
                     </div>
-                    <div>
+                    <div className="flex-1">
                       <p className="text-sm font-medium text-gray-700">Rating</p>
-                      <div className="flex items-center">
+                      <div className="flex items-center space-x-2">
                         <StarRating rating={rating} size="small" />
-                        <span className="ml-2 text-gray-700">
+                        <span className="text-sm text-gray-700">
                           {rating > 0 ? `${rating.toFixed(1)} / 5` : 'No ratings yet'}
                         </span>
                       </div>
@@ -744,23 +780,29 @@ function ServiceDetailsModal({
                 </div>
               </div>
 
+              {/* Booking Information */}
               <div>
-                <h4 className="text-lg font-medium text-gray-900 mb-3">Booking Information</h4>
-                <div className="bg-gray-50 p-4 rounded-lg space-y-3">
-                  <div className="flex items-start">
-                    <div className="h-5 w-5 text-gray-500 mr-2 mt-0.5 flex items-center justify-center">
-                      <span className="text-xs font-bold">📊</span>
+                <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-3 sm:mb-4">Booking Information</h3>
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 sm:p-4 space-y-3 sm:space-y-4">
+                  <div className="flex items-start space-x-3">
+                    <div className="w-5 h-5 text-gray-500 mt-0.5 flex-shrink-0">
+                      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                      </svg>
                     </div>
-                    <div>
+                    <div className="flex-1">
                       <p className="text-sm font-medium text-gray-700">Total Bookings</p>
                       <p className="text-gray-900">{bookings}</p>
                     </div>
                   </div>
-                  <div className="flex items-start">
-                    <div className="h-5 w-5 text-gray-500 mr-2 mt-0.5 flex items-center justify-center">
-                      <span className="text-xs font-bold">🏷️</span>
+
+                  <div className="flex items-start space-x-3">
+                    <div className="w-5 h-5 text-gray-500 mt-0.5 flex-shrink-0">
+                      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.99 1.99 0 013 12V7a4 4 0 014-4z" />
+                      </svg>
                     </div>
-                    <div>
+                    <div className="flex-1">
                       <p className="text-sm font-medium text-gray-700">Category</p>
                       <p className="text-gray-900">{service.category}</p>
                     </div>
@@ -771,19 +813,20 @@ function ServiceDetailsModal({
 
             {/* Description */}
             <div>
-              <h4 className="text-lg font-medium text-gray-900 mb-3">Description</h4>
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <p className="text-gray-700">{formattedDescription}</p>
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Description</h3>
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                <p className="text-gray-700 leading-relaxed">{formattedDescription}</p>
               </div>
             </div>
 
-            {/* Lists */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Service Details */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+              {/* Inclusions */}
               <div>
-                <h4 className="text-lg font-medium text-gray-900 mb-3">Inclusions</h4>
-                <div className="bg-gray-50 p-4 rounded-lg">
+                <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-3 sm:mb-4">Inclusions</h3>
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 sm:p-4">
                   {inclusions.length > 0 ? (
-                    <ul className="list-disc pl-5 space-y-1 text-sm text-gray-700">
+                    <ul className="list-disc pl-4 sm:pl-5 space-y-1 text-sm text-gray-700">
                       {inclusions.map((item, idx) => <li key={idx}>{item}</li>)}
                     </ul>
                   ) : (
@@ -791,11 +834,13 @@ function ServiceDetailsModal({
                   )}
                 </div>
               </div>
+
+              {/* Add-ons */}
               <div>
-                <h4 className="text-lg font-medium text-gray-900 mb-3">Add-ons</h4>
-                <div className="bg-gray-50 p-4 rounded-lg">
+                <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-3 sm:mb-4">Add-ons</h3>
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 sm:p-4">
                   {addOns.length > 0 ? (
-                    <ul className="list-disc pl-5 space-y-1 text-sm text-gray-700">
+                    <ul className="list-disc pl-4 sm:pl-5 space-y-1 text-sm text-gray-700">
                       {addOns.map((item, idx) => <li key={idx}>{item}</li>)}
                     </ul>
                   ) : (
@@ -807,22 +852,23 @@ function ServiceDetailsModal({
 
             {/* Conditions */}
             <div>
-              <h4 className="text-lg font-medium text-gray-900 mb-3">Conditions</h4>
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <p className="text-gray-700">{formattedConditions}</p>
+              <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-3 sm:mb-4">Terms & Conditions</h3>
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 sm:p-4">
+                <p className="text-sm sm:text-base text-gray-700 leading-relaxed">{formattedConditions}</p>
               </div>
             </div>
-
-            {/* Action Buttons */}
-            <div className="flex justify-end space-x-3 mt-8 border-t pt-6">
-              <button
-                onClick={onClose}
-                className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-              >
-                Close
-              </button>
             </div>
           </div>
+        </div>
+
+        {/* Fixed Footer */}
+        <div className="px-4 sm:px-6 py-3 sm:py-4 border-t border-gray-200 bg-gray-50 flex justify-end space-x-3 flex-shrink-0">
+          <button
+            onClick={onClose}
+            className="px-4 sm:px-6 py-2 sm:py-2.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+          >
+            Close
+          </button>
         </div>
       </div>
     </div>

@@ -135,12 +135,13 @@ const BookingTimeline: React.FC<BookingTimelineProps> = ({
 
   return (
     <motion.div
-      className={`bg-white border border-gray-200 rounded-xl shadow-sm p-8 ${className}`}
+      className={`bg-white border border-gray-200 rounded-xl shadow-sm p-3 md:p-8 ${className}`}
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
     >
-      <div className="mb-8">
+      {/* Header - Only show on desktop, mobile gets it from modal header */}
+      <div className="mb-8 hidden md:block">
         <h3 className="text-2xl font-semibold text-gray-900 mb-2">Service Progress</h3>
         <p className="text-gray-600">Track your booking journey with us</p>
       </div>
@@ -223,110 +224,134 @@ const BookingTimeline: React.FC<BookingTimelineProps> = ({
         </div>
       </div>
 
-      {/* Mobile Timeline */}
+      {/* Mobile Timeline - Simple Vertical Layout */}
       <div className="md:hidden">
-        <div className="timeline-mobile-container">
-          {steps.map((step, index) => {
-            const isCompleted = index <= validCurrentIndex;
-            const isCurrent = index === validCurrentIndex && currentStatus !== 'completed';
-            const isLast = index === steps.length - 1;
-            const IconComponent = step.icon;
+        <div className="relative">
+          {/* Continuous Vertical Line */}
+          <div className="absolute left-6 top-6 bottom-6 w-0.5 bg-gray-200">
+            <motion.div
+              className="w-full bg-emerald-500"
+              initial={{ height: '0%' }}
+              animate={{
+                height: currentStatus === 'completed' ? '100%' :
+                        validCurrentIndex === 0 ? '0%' :
+                        `${(validCurrentIndex / (steps.length - 1)) * 100}%`
+              }}
+              transition={{ duration: 0.8, ease: "easeOut" }}
+            />
+          </div>
 
-            return (
-              <motion.div
-                key={step.id}
-                className="timeline-step-container"
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.3, delay: index * 0.1 }}
-              >
-                {/* Step Container */}
-                <div className="flex items-start">
-                  {/* Vertical Line */}
-                  {!isLast && (
-                    <div className="absolute left-7 top-16 w-1 h-16 bg-gray-200 rounded-full">
-                      <motion.div
-                        className={`w-full rounded-full transition-all duration-500 ${
-                          isCompleted && !isCurrent ? 'bg-emerald-500' : 'bg-gray-200'
-                        }`}
-                        initial={{ height: '0%' }}
-                        animate={{ height: isCompleted && !isCurrent ? '100%' : '0%' }}
-                        transition={{ duration: 0.5, delay: 0.2 }}
-                      />
-                    </div>
-                  )}
+          {/* Steps */}
+          <div className="space-y-6">
+            {steps.map((step, index) => {
+              const isCompleted = index <= validCurrentIndex;
+              const isCurrent = index === validCurrentIndex && currentStatus !== 'completed';
+              const IconComponent = step.icon;
 
+              return (
+                <motion.div
+                  key={step.id}
+                  className="relative flex items-start space-x-4"
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.3, delay: index * 0.1 }}
+                >
                   {/* Circle */}
-                  <motion.div
+                  <div
                     className={`
-                      relative z-10 w-14 h-14 rounded-full flex items-center justify-center mr-6 border-4 transition-all duration-300 flex-shrink-0
+                      relative w-12 h-12 rounded-full flex items-center justify-center border-2 z-10 transition-all duration-300
                       ${isCompleted
-                        ? `${step.color.progress} text-white border-white shadow-lg timeline-step-completed`
+                        ? 'bg-emerald-500 text-white border-emerald-500'
                         : isCurrent
-                        ? `bg-white ${step.color.border} ${step.color.text} shadow-lg ring-4 ring-opacity-30 ${step.color.bg.replace('bg-', 'ring-')} timeline-step-current`
+                        ? `bg-white ${step.color.border} ${step.color.text} border-2`
                         : 'bg-white border-gray-300 text-gray-400'
                       }
                     `}
-                    whileHover={{ scale: isCompleted ? 1 : 1.05 }}
-                    whileTap={{ scale: 0.95 }}
                   >
-                    <IconComponent className="h-7 w-7" />
+                    <IconComponent className="h-5 w-5" />
                     {isCompleted && (
-                      <motion.div
-                        className="timeline-check-mark-mobile"
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        transition={{ duration: 0.2, delay: 0.3 }}
-                      >
-                        <CheckCircleIcon className="h-3.5 w-3.5 text-white" />
-                      </motion.div>
+                      <div className="absolute -top-1 -right-1 w-4 h-4 bg-white rounded-full flex items-center justify-center">
+                        <CheckCircleIcon className="h-3 w-3 text-emerald-500" />
+                      </div>
                     )}
-                  </motion.div>
+                  </div>
 
                   {/* Content */}
-                  <div className="flex-1 min-w-0 pt-2">
-                    <div className={`text-base font-semibold mb-3 leading-tight ${
-                      isCompleted || isCurrent ? 'text-gray-900' : 'text-gray-500'
-                    }`}>
-                      {step.title}
-                    </div>
-                    <div className={`text-sm leading-relaxed ${
-                      isCompleted || isCurrent ? 'text-gray-600' : 'text-gray-400'
-                    }`}>
-                      {step.description}
+                  <div className="flex-1 min-w-0">
+                    <div className={`
+                      p-4 rounded-lg border transition-all duration-200
+                      ${isCompleted || isCurrent
+                        ? 'bg-white border-gray-200 shadow-sm'
+                        : 'bg-gray-50 border-gray-200'
+                      }
+                    `}>
+                      <div className="flex items-center justify-between mb-1">
+                        <h4 className={`font-medium text-sm ${
+                          isCompleted || isCurrent ? 'text-gray-900' : 'text-gray-500'
+                        }`}>
+                          {step.title}
+                        </h4>
+                        {isCurrent && (
+                          <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
+                        )}
+                      </div>
+                      <p className={`text-xs leading-relaxed ${
+                        isCompleted || isCurrent ? 'text-gray-600' : 'text-gray-500'
+                      }`}>
+                        {step.description}
+                      </p>
                     </div>
                   </div>
-                </div>
-
-                {/* Separator Line (except for last item) */}
-                {!isLast && (
-                  <div className="timeline-step-separator"></div>
-                )}
-              </motion.div>
-            );
-          })}
+                </motion.div>
+              );
+            })}
+          </div>
         </div>
       </div>
 
-      {/* Current Status Message */}
+
+
+      {/* Current Status Summary - Mobile */}
       <motion.div
-        className={`mt-8 p-6 rounded-xl border-l-4 ${currentStep.color.bg} ${currentStep.color.border}`}
+        className="mt-6 p-4 rounded-lg bg-gray-50 border border-gray-200 md:hidden"
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, delay: 0.5 }}
+        transition={{ duration: 0.3, delay: 0.6 }}
       >
-        <div className="flex items-start space-x-4">
-          <div className={`w-3 h-3 rounded-full mt-1 ${currentStep.color.progress} animate-pulse`}></div>
+        <div className="flex items-start space-x-3">
+          <div className="w-2 h-2 rounded-full mt-1.5 bg-emerald-500"></div>
           <div className="flex-1">
-            <h4 className={`font-semibold mb-2 ${currentStep.color.text}`}>
+            <h4 className="text-sm font-medium mb-1 text-gray-900">
               Current Status: {currentStep.title}
             </h4>
-            <p className={`text-sm leading-relaxed ${currentStep.color.text.replace('700', '600')}`}>
+            <p className="text-sm leading-relaxed text-gray-600">
               {getStatusMessage()}
             </p>
           </div>
         </div>
       </motion.div>
+
+      {/* Current Status Message - Desktop */}
+      <div className="hidden md:block">
+        <motion.div
+          className={`mt-8 p-6 rounded-xl border-l-4 ${currentStep.color.bg} ${currentStep.color.border}`}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.5 }}
+        >
+          <div className="flex items-start space-x-4">
+            <div className={`w-3 h-3 rounded-full mt-1 ${currentStep.color.progress} animate-pulse`}></div>
+            <div className="flex-1">
+              <h4 className={`font-semibold mb-2 ${currentStep.color.text}`}>
+                Current Status: {currentStep.title}
+              </h4>
+              <p className={`text-sm leading-relaxed ${currentStep.color.text.replace('700', '600')}`}>
+                {getStatusMessage()}
+              </p>
+            </div>
+          </div>
+        </motion.div>
+      </div>
 
       {/* Certificate Button for Completed Status */}
       {currentStatus === 'completed' && showCertificateButton && onShowCertificate && (
