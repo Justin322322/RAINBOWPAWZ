@@ -609,6 +609,13 @@ npx next start -p 3005
 | `npm run clean:all` | Full cleanup including node_modules |
 | `npm run spring-clean` | Complete cleanup with linting and type checking |
 
+### Version Management Scripts
+| Script | Description |
+|--------|-------------|
+| `npm version patch` | Increment patch version (e.g., 1.0.0 → 1.0.1) |
+| `npm version minor` | Increment minor version (e.g., 1.0.0 → 1.1.0) |
+| `npm version major` | Increment major version (e.g., 1.0.0 → 2.0.0) |
+
 ## Data Flow Diagram
 
 The following Data Flow Diagram illustrates how data flows through the Rainbow Paws application across different layers and components:
@@ -823,6 +830,50 @@ flowchart TD
 - `POST /api/payments/create-intent` - Create payment intent
 - `GET /api/payments/status` - Check payment status
 - `POST /api/payments/webhook` - Payment webhook handler
+
+### System Endpoints
+- `GET /api/health` - Health check endpoint for monitoring
+- `GET /api/version` - Get application version and build information
+
+#### Version Endpoint Response
+```json
+{
+  "success": true,
+  "data": {
+    "version": "0.1.0",
+    "name": "app_rainbowpaws",
+    "timestamp": "2025-01-20T10:30:00.000Z",
+    "environment": "production"
+  }
+}
+```
+
+## CI/CD Workflow
+
+### Automated Deployment
+The application includes a GitHub Actions workflow for controlled deployments:
+
+- **Trigger**: Only deploys on version tags (e.g., `v1.0.0`) or manual dispatch
+- **Process**:
+  1. Install dependencies using `npm ci` for consistent builds
+  2. Run tests to ensure code quality
+  3. Build optimized production bundle
+  4. Deploy to staging for beta versions
+  5. Deploy to production for stable releases
+
+### Deployment Strategy
+- **No Forced Updates**: Clients are not automatically forced to update dependencies
+- **Version Control**: Uses semantic versioning for controlled releases
+- **Environment Separation**: Staging and production environments for safe testing
+
+### Creating a Release
+```bash
+# Create and push a version tag
+npm version patch  # or minor/major
+git push origin master --tags
+
+# This triggers the automated deployment workflow
+```
 
 ## Deployment
 
