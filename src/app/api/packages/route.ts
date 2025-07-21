@@ -334,10 +334,20 @@ export async function POST(request: NextRequest) {
           `);
 
           // Clear existing pet types for this provider
+          // Mark existing pet types as inactive instead of deleting
           await transaction.query(
-            'DELETE FROM business_pet_types WHERE provider_id = ?',
+            'UPDATE business_pet_types SET is_active = 0 WHERE provider_id = ?',
             [providerId]
           );
+
+          // Insert supported pet types
+          for (const petType of supportedPetTypes) {
+            // Use INSERT ... ON DUPLICATE KEY UPDATE for idempotency
+            await transaction.query(
+              'INSERT INTO business_pet_types (provider_id, pet_type, is_active) VALUES (?, ?, 1) ON DUPLICATE KEY UPDATE is_active = 1',
+              [providerId, petType]
+            );
+          }
 
           // Insert supported pet types
           for (const petType of supportedPetTypes) {
