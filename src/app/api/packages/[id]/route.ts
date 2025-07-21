@@ -53,6 +53,20 @@ export async function GET(
       [packageId]
     )) as any[];
 
+    // Get size pricing if available
+    const sizePricing = (await query(
+      `SELECT size_category, weight_range_min, weight_range_max, price
+       FROM package_size_pricing WHERE package_id = ? ORDER BY weight_range_min`,
+      [packageId]
+    )) as any[];
+
+    // Get supported pet types
+    const petTypes = (await query(
+      `SELECT pet_type FROM business_pet_types
+       WHERE provider_id = ? AND is_active = 1`,
+      [pkg.providerId]
+    )) as any[];
+
     return NextResponse.json({
       package: {
         id: pkg.package_id,
@@ -62,6 +76,7 @@ export async function GET(
         cremationType: pkg.cremation_type,
         processingTime: pkg.processing_time,
         price: Number(pkg.price),
+        pricePerKg: Number(pkg.price_per_kg || 0),
         deliveryFeePerKm: Number(pkg.delivery_fee_per_km),
         conditions: pkg.conditions,
         isActive: Boolean(pkg.is_active),
@@ -71,7 +86,16 @@ export async function GET(
         addOns: addOns.map((a) => ({ id: a.id, name: a.description, price: Number(a.price) })),
         images: images
           .map((i) => i.image_path)
-          .map((p) => getImagePath(p))
+          .map((p) => getImagePath(p)),
+        // New enhanced features
+        hasSizePricing: Boolean(pkg.has_size_pricing),
+        sizePricing: sizePricing.map((sp) => ({
+          sizeCategory: sp.size_category,
+          weightRangeMin: Number(sp.weight_range_min),
+          weightRangeMax: Number(sp.weight_range_max),
+          price: Number(sp.price)
+        })),
+        supportedPetTypes: petTypes.map((pt) => pt.pet_type)
       }
     });
   } catch (err: any) {

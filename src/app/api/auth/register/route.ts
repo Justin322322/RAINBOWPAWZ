@@ -25,6 +25,7 @@ interface PersonalRegistrationData {
 interface BusinessRegistrationData {
   businessName: string;
   businessType: string;
+  businessEntityType: string; // New field for legal entity type (Sole Proprietorship, Corporation, etc.)
   email: string;
   password: string;
   firstName: string;
@@ -40,6 +41,59 @@ interface BusinessRegistrationData {
 }
 
 type RegistrationData = PersonalRegistrationData | BusinessRegistrationData;
+
+/**
+ * Helper function to validate password strength
+ * Must meet all criteria: 8+ chars, uppercase, lowercase, numbers, special chars
+ */
+function validatePasswordStrength(password: string): {
+  isValid: boolean;
+  message: string;
+  requirements: string[];
+} {
+  const requirements: string[] = [];
+  let isValid = true;
+
+  // Check minimum length (8 characters)
+  if (password.length < 8) {
+    requirements.push('At least 8 characters long');
+    isValid = false;
+  }
+
+  // Check for lowercase letters
+  if (!/[a-z]/.test(password)) {
+    requirements.push('At least one lowercase letter');
+    isValid = false;
+  }
+
+  // Check for uppercase letters
+  if (!/[A-Z]/.test(password)) {
+    requirements.push('At least one uppercase letter');
+    isValid = false;
+  }
+
+  // Check for numbers
+  if (!/\d/.test(password)) {
+    requirements.push('At least one number');
+    isValid = false;
+  }
+
+  // Check for special characters
+  if (!/[^A-Za-z0-9]/.test(password)) {
+    requirements.push('At least one special character');
+    isValid = false;
+  }
+
+  const message = isValid
+    ? 'Password meets all requirements'
+    : `Password must include: ${requirements.join(', ')}`;
+
+  return {
+    isValid,
+    message,
+    requirements
+  };
+}
 
 /**
  * Helper function to format and validate Philippine phone numbers
@@ -111,7 +165,7 @@ export async function POST(request: Request) {
     if (data.account_type === 'personal') {
       requiredFields.push('firstName', 'lastName');
     } else if (data.account_type === 'business') {
-      requiredFields.push('businessName', 'businessType', 'firstName', 'lastName', 'businessPhone', 'businessAddress');
+      requiredFields.push('businessName', 'businessType', 'businessEntityType', 'firstName', 'lastName', 'businessPhone', 'businessAddress');
     } else {
       return NextResponse.json({
         error: 'Invalid account type'
@@ -138,6 +192,19 @@ export async function POST(request: Request) {
     if (!emailRegex.test(data.email)) {
       return NextResponse.json({
         error: 'Invalid email format'
+      }, {
+        status: 400,
+        headers
+      });
+    }
+
+    // Validate password strength (must meet all criteria)
+    const passwordValidation = validatePasswordStrength(data.password);
+    if (!passwordValidation.isValid) {
+      return NextResponse.json({
+        error: 'Password does not meet requirements',
+        message: passwordValidation.message,
+        requirements: passwordValidation.requirements
       }, {
         status: 400,
         headers
@@ -275,6 +342,7 @@ export async function POST(request: Request) {
                         SET user_id = ?,
                             name = ?,
                             provider_type = ?,
+                            business_entity_type = ?,
                             contact_first_name = ?,
                             contact_last_name = ?,
                             phone = ?,
@@ -303,6 +371,7 @@ export async function POST(request: Request) {
               userId,
               businessData.businessName,
               providerType,
+              businessData.businessEntityType,
               data.firstName,
               data.lastName,
               formattedBusinessPhone,

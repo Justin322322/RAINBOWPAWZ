@@ -195,7 +195,113 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// Mark notifications as read
+// Mark notifications as read (PATCH method for consistency with user API)
+export async function PATCH(request: NextRequest) {
+  try {
+    // Use secure authentication for consistency
+    const user = await verifySecureAuth(request);
+    if (!user) {
+      return NextResponse.json({
+        error: 'Unauthorized',
+        details: 'Admin access required',
+        success: false
+      }, {
+        status: 401,
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        }
+      });
+    }
+
+    if (user.accountType !== 'admin') {
+      return NextResponse.json({
+        error: 'Unauthorized',
+        details: 'Admin access required',
+        success: false
+      }, {
+        status: 403,
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        }
+      });
+    }
+
+    // Get notification data from request body
+    const body = await request.json();
+    const { notificationId, markAll } = body;
+
+    try {
+      if (markAll) {
+        // Mark all notifications as read
+        await query(`
+          UPDATE admin_notifications
+          SET is_read = 1
+        `);
+      } else if (notificationId) {
+        // Mark specific notification as read
+        await query(`
+          UPDATE admin_notifications
+          SET is_read = 1
+          WHERE id = ?
+        `, [notificationId]);
+      } else {
+        return NextResponse.json({
+          error: 'Invalid request',
+          details: 'Please provide notificationId or set markAll to true',
+          success: false
+        }, {
+          status: 400,
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache'
+          }
+        });
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: 'Notification marked as read'
+      }, {
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        }
+      });
+
+    } catch (dbError) {
+      console.error('Database error marking admin notification as read:', dbError);
+      return NextResponse.json({
+        error: 'Database error',
+        details: 'Failed to mark notification as read',
+        success: false
+      }, {
+        status: 500,
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        }
+      });
+    }
+
+  } catch (error) {
+    console.error('Error marking admin notification as read:', error);
+    return NextResponse.json({
+      error: 'Internal server error',
+      details: 'Failed to mark notification as read',
+      success: false
+    }, {
+      status: 500,
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache'
+      }
+    });
+  }
+}
+
+// Mark notifications as read (POST method for bulk operations)
 export async function POST(request: NextRequest) {
   try {
     // Use secure authentication for consistency

@@ -20,6 +20,7 @@ import { LoadingSpinner } from '@/app/cremation/components/LoadingComponents';
 import { PackageList } from '@/components/packages/PackageList';
 import { PackageCards } from '@/components/packages/PackageCards';
 import { EmptyState } from '@/components/packages/EmptyState';
+import PackageModal from '@/components/packages/PackageModal';
 import { usePackages } from '@/hooks/usePackages';
 import { ViewMode } from '@/types/packages';
 interface PackagesPageProps {
@@ -30,6 +31,11 @@ function PackagesPage({ userData }: PackagesPageProps) {
   const router = useRouter();
   const [viewMode, setViewMode] = useState<ViewMode>('card');
   const [isCreatingPackage, setIsCreatingPackage] = useState(false);
+
+  // Modal states
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingPackageId, setEditingPackageId] = useState<number | undefined>();
 
   // Use our custom hook for packages data and actions
   const {
@@ -49,21 +55,26 @@ function PackagesPage({ userData }: PackagesPageProps) {
     filteredPackages,
   } = usePackages({ userData });
 
-  // Navigation handler for edit
+  // Modal handlers
   const handleEditPackage = useCallback((packageId: number) => {
-    router.push(`/cremation/packages/edit/${packageId}`);
-  }, [router]);
+    setEditingPackageId(packageId);
+    setShowEditModal(true);
+  }, []);
 
-  // Handler for creating a new package
   const handleCreatePackage = useCallback(() => {
-    setIsCreatingPackage(true);
-    router.push('/cremation/packages/create');
+    setShowCreateModal(true);
+  }, []);
 
-    // Reset the state after a short delay to ensure the navigation has started
-    setTimeout(() => {
-      setIsCreatingPackage(false);
-    }, 2000);
-  }, [router]);
+  const handleModalSuccess = useCallback(() => {
+    // Refresh packages list
+    window.location.reload();
+  }, []);
+
+  const handleCloseModals = useCallback(() => {
+    setShowCreateModal(false);
+    setShowEditModal(false);
+    setEditingPackageId(undefined);
+  }, []);
 
   // Check if filters are applied (for empty state messaging)
   const hasFiltersApplied = searchTerm !== '' || categoryFilter !== 'all';
@@ -218,6 +229,23 @@ function PackagesPage({ userData }: PackagesPageProps) {
         confirmText="Delete"
         variant="danger"
         icon={<TrashIcon className="h-6 w-6 text-red-600" />}
+      />
+
+      {/* Create Package Modal */}
+      <PackageModal
+        isOpen={showCreateModal}
+        onClose={handleCloseModals}
+        onSuccess={handleModalSuccess}
+        mode="create"
+      />
+
+      {/* Edit Package Modal */}
+      <PackageModal
+        isOpen={showEditModal}
+        onClose={handleCloseModals}
+        onSuccess={handleModalSuccess}
+        mode="edit"
+        packageId={editingPackageId}
       />
     </CremationDashboardLayout>
   );

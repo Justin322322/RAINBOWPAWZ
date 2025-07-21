@@ -123,6 +123,13 @@ export async function POST(request: NextRequest) {
       inclusions = [],
       addOns = [],
       images = [],
+      // New fields for enhanced features
+      pricePerKg = 0,
+      usesCustomOptions = false,
+      customCategories = [],
+      customCremationTypes = [],
+      customProcessingTimes = [],
+      supportedPetTypes = [],
     } = await request.json();
 
     if (!name || !description || price == null) {
@@ -134,10 +141,10 @@ export async function POST(request: NextRequest) {
         `
         INSERT INTO service_packages
           (provider_id, name, description, category, cremation_type,
-           processing_time, price, conditions, is_active)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, TRUE)
+           processing_time, price, price_per_kg, conditions, uses_custom_options, is_active)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE)
         `,
-        [providerId, name, description, category, cremationType, processingTime, price, conditions]
+        [providerId, name, description, category, cremationType, processingTime, price, pricePerKg, conditions, usesCustomOptions]
       )) as any;
       const packageId = pkgRes.insertId;
 
@@ -268,8 +275,102 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({ 
-      success: true, 
+    // We've replaced size-based pricing with price per kg
+
+    // Handle custom options
+    if (usesCustomOptions && (customCategories.length > 0 || customCremationTypes.length > 0 || customProcessingTimes.length > 0)) {
+      try {
+        await withTransaction(async (transaction) => {
+          // Ensure the business_custom_options table exists
+          await transaction.query(`
+            CREATE TABLE IF NOT EXISTS business_custom_options (
+              id int(11) NOT NULL AUTO_INCREMENT,
+              provider_id int(11) NOT NULL,
+              option_type enum('category','cremation_type','processing_time') NOT NULL,
+              option_value varchar(255) NOT NULL,
+              is_active tinyint(1) DEFAULT 1,
+              created_at timestamp NOT NULL DEFAULT current_timestamp(),
+              updated_at timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+              PRIMARY KEY (id),
+              KEY idx_business_custom_options_provider (provider_id),
+              KEY idx_business_custom_options_type (option_type),
+              KEY idx_business_custom_options_active (is_active),
+              CONSTRAINT fk_business_custom_options_provider FOREIGN KEY (provider_id) REFERENCES service_providers (provider_id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+          `);
+
+          // Insert custom categories
+          for (const category of customCategories) {
+            await transaction.query(
+              'INSERT INTO business_custom_options (provider_id, option_type, option_value) VALUES (?, ?, ?)',
+              [providerId, 'category', category]
+            );
+          }
+
+          // Insert custom cremation types
+          for (const type of customCremationTypes) {
+            await transaction.query(
+              'INSERT INTO business_custom_options (provider_id, option_type, option_value) VALUES (?, ?, ?)',
+              [providerId, 'cremation_type', type]
+            );
+          }
+
+          // Insert custom processing times
+          for (const time of customProcessingTimes) {
+            await transaction.query(
+              'INSERT INTO business_custom_options (provider_id, option_type, option_value) VALUES (?, ?, ?)',
+              [providerId, 'processing_time', time]
+            );
+          }
+        });
+      } catch (customOptionsError) {
+        console.error('Failed to process custom options for package:', result.packageId, customOptionsError);
+        // We don't fail the entire operation since the package was created successfully
+      }
+    }
+
+    // Handle supported pet types
+    if (supportedPetTypes.length > 0) {
+      try {
+        await withTransaction(async (transaction) => {
+          // Ensure the business_pet_types table exists
+          await transaction.query(`
+            CREATE TABLE IF NOT EXISTS business_pet_types (
+              id int(11) NOT NULL AUTO_INCREMENT,
+              provider_id int(11) NOT NULL,
+              pet_type varchar(100) NOT NULL,
+              is_active tinyint(1) DEFAULT 1,
+              created_at timestamp NOT NULL DEFAULT current_timestamp(),
+              updated_at timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+              PRIMARY KEY (id),
+              KEY idx_business_pet_types_provider (provider_id),
+              KEY idx_business_pet_types_active (is_active),
+              CONSTRAINT fk_business_pet_types_provider FOREIGN KEY (provider_id) REFERENCES service_providers (provider_id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+          `);
+
+          // Clear existing pet types for this provider
+          await transaction.query(
+            'DELETE FROM business_pet_types WHERE provider_id = ?',
+            [providerId]
+          );
+
+          // Insert supported pet types
+          for (const petType of supportedPetTypes) {
+            await transaction.query(
+              'INSERT INTO business_pet_types (provider_id, pet_type) VALUES (?, ?)',
+              [providerId, petType]
+            );
+          }
+        });
+      } catch (petTypesError) {
+        console.error('Failed to process pet types for package:', result.packageId, petTypesError);
+        // We don't fail the entire operation since the package was created successfully
+      }
+    }
+
+    return NextResponse.json({
+      success: true,
       packageId: result.packageId,
       message: 'Package created successfully'
     });
@@ -322,10 +423,14 @@ async function getPackageById(packageId: number, providerId?: string) {
 async function enhancePackagesWithDetails(pkgs: any[]) {
   if (!pkgs.length) return [];
   const ids = pkgs.map((p) => p.id);
-  const [incs, adds, imgs] = await Promise.all([
+  const providerIds = [...new Set(pkgs.map((p) => p.providerId))];
+
+  const [incs, adds, imgs, sizePricing, petTypes] = await Promise.all([
     query(`SELECT package_id, description FROM package_inclusions WHERE package_id IN (?)`, [ids]),
     query(`SELECT package_id, addon_id as id, description, price FROM package_addons WHERE package_id IN (?)`, [ids]),
     query(`SELECT package_id, image_path, display_order FROM package_images WHERE package_id IN (?) ORDER BY display_order`, [ids]),
+    query(`SELECT package_id, size_category, weight_range_min, weight_range_max, price FROM package_size_pricing WHERE package_id IN (?)`, [ids]),
+    query(`SELECT provider_id, pet_type FROM business_pet_types WHERE provider_id IN (?) AND is_active = 1`, [providerIds]),
   ]) as any[][];
 
   const groupBy = (arr: any[], key: string) =>
@@ -337,6 +442,8 @@ async function enhancePackagesWithDetails(pkgs: any[]) {
   const incMap = groupBy(incs, 'package_id');
   const addMap = groupBy(adds, 'package_id');
   const imgMap = groupBy(imgs, 'package_id');
+  const sizeMap = groupBy(sizePricing, 'package_id');
+  const petTypeMap = groupBy(petTypes, 'provider_id');
 
   return pkgs.map((p: any) => {
     const inclusions = (incMap[p.id] || []).map((i: any) => i.description);
@@ -353,11 +460,25 @@ async function enhancePackagesWithDetails(pkgs: any[]) {
         return path.startsWith('http') ? path : getImagePath(path);
       })
       .filter(Boolean);
-    // Don't add sample images - let the frontend handle placeholders
-    // if (!images.length) {
-    //   images.push(`/images/sample-package-${(p.id % 5) + 1}.jpg`);
-    // }
-    return { ...p, inclusions, addOns, images };
+
+    // Enhanced features
+    const sizePricingData = (sizeMap[p.id] || []).map((sp: any) => ({
+      sizeCategory: sp.size_category,
+      weightRangeMin: Number(sp.weight_range_min),
+      weightRangeMax: Number(sp.weight_range_max),
+      price: Number(sp.price)
+    }));
+
+    const supportedPetTypes = (petTypeMap[p.providerId] || []).map((pt: any) => pt.pet_type);
+
+    return {
+      ...p,
+      inclusions,
+      addOns,
+      images,
+      pricePerKg: Number(p.price_per_kg || 0),
+      supportedPetTypes
+    };
   });
 }
 

@@ -1099,6 +1099,27 @@ export async function POST(request: NextRequest) {
         insertValues.push(bookingData.causeOfDeath || null);
       }
 
+      // Add size-based pricing fields if available
+      if (columnNames.includes('selected_size_category')) {
+        insertColumns.push('selected_size_category');
+        insertValues.push(bookingData.selectedSizeCategory || null);
+      }
+
+      if (columnNames.includes('selected_size_price')) {
+        insertColumns.push('selected_size_price');
+        insertValues.push(bookingData.selectedSizePrice || null);
+      }
+
+      if (columnNames.includes('has_size_pricing')) {
+        insertColumns.push('has_size_pricing');
+        insertValues.push(bookingData.hasSizePricing || false);
+      }
+
+      if (columnNames.includes('pet_weight')) {
+        insertColumns.push('pet_weight');
+        insertValues.push(bookingData.petWeight || null);
+      }
+
       // Add timestamps if available
       if (columnNames.includes('created_at')) {
         insertColumns.push('created_at');

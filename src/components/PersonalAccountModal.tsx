@@ -6,6 +6,7 @@ import { EyeIcon, EyeSlashIcon, ArrowRightIcon, XMarkIcon } from '@heroicons/rea
 import PrivacyPolicyModal from '@/components/PrivacyPolicyModal';
 import { useToast } from '@/context/ToastContext';
 import PhilippinePhoneInput from '@/components/ui/PhilippinePhoneInput';
+import PasswordCriteria from '@/components/ui/PasswordCriteria';
 
 type PersonalAccountModalProps = {
   isOpen: boolean;
@@ -28,70 +29,14 @@ const PersonalAccountModal: React.FC<PersonalAccountModalProps> = ({ isOpen, onC
   });
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-  const [passwordStrength, setPasswordStrength] = useState(0);
-  const [passwordFeedback, setPasswordFeedback] = useState('');
+  const [isPasswordValid, setIsPasswordValid] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isPrivacyPolicyOpen, setIsPrivacyPolicyOpen] = useState(false);
 
-  // Function to evaluate password strength
-  const evaluatePasswordStrength = (password: string) => {
-    let strength = 0;
-    let feedback = '';
-
-    if (password.length === 0) {
-      setPasswordStrength(0);
-      setPasswordFeedback('');
-      return;
-    }
-
-    // Length check
-    if (password.length >= 8) {
-      strength += 1;
-    } else {
-      feedback = 'Password should be at least 8 characters long';
-      setPasswordStrength(strength);
-      setPasswordFeedback(feedback);
-      return;
-    }
-
-    // Contains lowercase
-    if (/[a-z]/.test(password)) {
-      strength += 1;
-    }
-
-    // Contains uppercase
-    if (/[A-Z]/.test(password)) {
-      strength += 1;
-    } else {
-      feedback = feedback || 'Add uppercase letters';
-    }
-
-    // Contains numbers
-    if (/\d/.test(password)) {
-      strength += 1;
-    } else {
-      feedback = feedback || 'Add numbers';
-    }
-
-    // Contains special characters
-    if (/[^A-Za-z0-9]/.test(password)) {
-      strength += 1;
-    } else {
-      feedback = feedback || 'Add special characters';
-    }
-
-    // Set feedback based on strength
-    if (strength === 5) {
-      feedback = 'Strong password';
-    } else if (strength >= 3) {
-      feedback = feedback || 'Good password, but could be stronger';
-    } else {
-      feedback = feedback || 'Weak password';
-    }
-
-    setPasswordStrength(strength);
-    setPasswordFeedback(feedback);
+  // Handle password strength updates from PasswordCriteria component
+  const handlePasswordStrengthChange = (_strength: number, isValid: boolean) => {
+    setIsPasswordValid(isValid);
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -103,10 +48,7 @@ const PersonalAccountModal: React.FC<PersonalAccountModalProps> = ({ isOpen, onC
       [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value
     }));
 
-    // Evaluate password strength if the password field is changed
-    if (name === 'password') {
-      evaluatePasswordStrength(value);
-    }
+    // Password strength is now handled by the PasswordCriteria component
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -116,6 +58,13 @@ const PersonalAccountModal: React.FC<PersonalAccountModalProps> = ({ isOpen, onC
 
     if (formData.password !== formData.confirmPassword) {
       setErrorMessage('Passwords do not match');
+      setIsLoading(false);
+      return;
+    }
+
+    // Validate password strength before submission
+    if (!isPasswordValid) {
+      setErrorMessage('Password must meet all security requirements: at least 8 characters with uppercase, lowercase, numbers, and special characters');
       setIsLoading(false);
       return;
     }
@@ -216,11 +165,7 @@ const PersonalAccountModal: React.FC<PersonalAccountModalProps> = ({ isOpen, onC
     }
   };
 
-  const strengthColor = (strength: number) => {
-    if (strength >= 4) return 'bg-green-500';
-    if (strength >= 3) return 'bg-yellow-500';
-    return 'bg-red-500';
-  };
+
 
   return (
     <>
@@ -329,7 +274,7 @@ const PersonalAccountModal: React.FC<PersonalAccountModalProps> = ({ isOpen, onC
               name="address"
               value={formData.address}
               onChange={handleChange}
-              placeholder="123 Main St, Quezon City"
+              placeholder="123 Main St, Balanga City, Bataan, Philippines"
               size="lg"
             />
 
@@ -350,14 +295,10 @@ const PersonalAccountModal: React.FC<PersonalAccountModalProps> = ({ isOpen, onC
                   </button>
                 }
               />
-              {formData.password.length > 0 && (
-                <div className="mt-2 space-y-2">
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div className={`h-2 rounded-full transition-all duration-300 ${strengthColor(passwordStrength)}`} style={{ width: `${(passwordStrength / 5) * 100}%` }}></div>
-                  </div>
-                  <p className="text-sm text-gray-600">{passwordFeedback}</p>
-                </div>
-              )}
+              <PasswordCriteria
+                password={formData.password}
+                onStrengthChange={handlePasswordStrengthChange}
+              />
             </div>
 
             <Input
