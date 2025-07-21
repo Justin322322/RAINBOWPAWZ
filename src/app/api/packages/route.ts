@@ -282,22 +282,6 @@ export async function POST(request: NextRequest) {
       try {
         await withTransaction(async (transaction) => {
           // Ensure the business_custom_options table exists
-          await transaction.query(`
-            CREATE TABLE IF NOT EXISTS business_custom_options (
-              id int(11) NOT NULL AUTO_INCREMENT,
-              provider_id int(11) NOT NULL,
-              option_type enum('category','cremation_type','processing_time') NOT NULL,
-              option_value varchar(255) NOT NULL,
-              is_active tinyint(1) DEFAULT 1,
-              created_at timestamp NOT NULL DEFAULT current_timestamp(),
-              updated_at timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
-              PRIMARY KEY (id),
-              KEY idx_business_custom_options_provider (provider_id),
-              KEY idx_business_custom_options_type (option_type),
-              KEY idx_business_custom_options_active (is_active),
-              CONSTRAINT fk_business_custom_options_provider FOREIGN KEY (provider_id) REFERENCES service_providers (provider_id) ON DELETE CASCADE
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-          `);
 
           // Insert custom categories
           for (const category of customCategories) {
