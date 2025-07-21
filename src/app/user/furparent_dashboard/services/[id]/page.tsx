@@ -50,6 +50,7 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
   const [_bookingError, setBookingError] = useState<string | null>(null);
   const [_selectedDate, setSelectedDate] = useState<string | undefined>(undefined);
   const [_selectedTimeSlot, setSelectedTimeSlot] = useState<any | null>(null);
+  const [activeTab, setActiveTab] = useState('packages');
 
   // Will fetch real data from API
 
@@ -332,7 +333,7 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
   };
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen">
       {/* Navigation is now handled by layout */}
 
       {loading ? (
@@ -365,69 +366,57 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
       ) : provider ? (
         <>
           {/* Provider Banner */}
-          <div className="bg-[var(--primary-green)] text-white">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div>
-                <div className="flex items-center mb-2">
-                  <h1 className="text-3xl font-bold uppercase text-white">{provider.name}</h1>
-                  <div className="ml-4 flex items-center bg-white/20 px-3 py-1 rounded-full">
-                    <StarIcon className="h-5 w-5 text-yellow-300 mr-1" />
-                    <span className="text-white font-medium">{provider.rating ? provider.rating.toFixed(1) : 'New'}</span>
+          <div className="relative bg-gray-800 -mt-8 -mx-4 sm:-mx-6 lg:-mx-8 text-white">
+            <div className="absolute inset-0 overflow-hidden">
+              {provider.profile_picture ? (
+                <Image
+                  src={`/api/image/profile-pictures/${provider.id}/${provider.profile_picture.split('/').pop()}`}
+                  alt={`${provider.name} Profile`}
+                  fill
+                  className="object-cover"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = 'none';
+                    const parent = target.parentElement;
+                    if (parent) {
+                      parent.innerHTML = `<div class="absolute inset-0 bg-[url('/bg_2.png')] bg-cover bg-center"></div>`;
+                    }
+                  }}
+                />
+              ) : (
+                <div className="absolute inset-0 bg-[url('/bg_2.png')] bg-cover bg-center" />
+              )}
+            </div>
+            <div className="absolute inset-0 bg-[var(--primary-green-light)] mix-blend-multiply" aria-hidden="true" />
+            <div className="absolute inset-0 bg-gradient-to-t from-[var(--primary-green)] via-transparent to-transparent md:bg-gradient-to-r" aria-hidden="true" />
+
+            <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 sm:py-24 md:py-32 text-center md:text-left">
+              <div className="md:w-3/5 lg:w-1/2">
+                <div className="flex flex-col items-center md:flex-row gap-4 mb-4">
+                  <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white tracking-tight">{provider.name}</h1>
+                  <div className="flex-shrink-0 flex items-center bg-white/10 backdrop-blur-sm px-3 py-1 rounded-full text-sm">
+                    <StarIcon className="h-5 w-5 text-yellow-300 mr-2" />
+                    <span className="font-semibold text-white">{provider.rating ? provider.rating.toFixed(1) : 'New'}</span>
                   </div>
                 </div>
-                <p className="mt-2 text-white/80 flex items-center">
-                  <MapPinIcon className="h-4 w-4 mr-1 flex-shrink-0" />
+                <p className="mt-4 text-lg text-white/80 flex items-center justify-center md:justify-start">
+                  <MapPinIcon className="h-5 w-5 mr-2 flex-shrink-0" />
                   <span>{provider.address?.replace(', Philippines', '')}</span>
                 </p>
-                <div className="mt-6">
-                  <h2 className="text-xl font-semibold mb-2 text-white">Business Description:</h2>
-                  <p className="text-white/90 leading-relaxed">
-                    {provider.description || 'Professional pet cremation services with care and compassion.'}
+                <div className="mt-8 border-l-4 border-white/30 pl-6 max-w-md mx-auto md:mx-0">
+                  <p className="text-white/90 text-lg italic leading-relaxed">
+                    "{provider.description || 'Professional pet cremation services with care and compassion.'}"
                   </p>
                 </div>
-              </div>
-              <div className="relative h-64 md:h-auto overflow-hidden rounded-lg border border-white/20">
-                {provider.profile_picture ? (
-                  <Image
-                    src={`/api/image/profile-pictures/${provider.id}/${provider.profile_picture.split('/').pop()}`}
-                    alt={`${provider.name} Profile`}
-                    fill
-                    className="object-cover"
-                    onError={(e) => {
-                      // Fallback to default background if profile picture fails to load
-                      const target = e.target as HTMLImageElement;
-                      target.style.display = 'none';
-                      const parent = target.parentElement;
-                      if (parent) {
-                        parent.innerHTML = `
-                          <div class="absolute inset-0 bg-[url('/bg_2.png')] bg-cover bg-center"></div>
-                        `;
-                      }
-                    }}
-                  />
-                ) : provider.image ? (
-                  <div className="absolute inset-0 bg-[url('/bg_2.png')] bg-cover bg-center"></div>
-                ) : (
-                  <div className="absolute inset-0 flex items-center justify-center bg-white/10">
-                    <div className="text-center p-4">
-                      <svg className="mx-auto h-12 w-12 text-white/70" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
-                      <p className="mt-2 text-sm text-white/80">No image available</p>
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
           </div>
 
-
-
           {/* Main Content */}
           <div className="bg-gray-50 py-12">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              {/* Back button */}
-              <div className="mb-8">
+              {/* Back button and Tabs */}
+              <div className="flex justify-between items-center mb-8">
                 <button
                   onClick={() => router.back()}
                   className="flex items-center text-[var(--primary-green)] hover:text-[var(--primary-green-hover)] transition-colors"
@@ -435,178 +424,200 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
                   <ArrowLeftIcon className="h-5 w-5 mr-2" />
                   <span>Back to Services</span>
                 </button>
+                
+                <div className="flex space-x-1 bg-gray-200 p-1 rounded-lg">
+                  <button
+                    onClick={() => setActiveTab('packages')}
+                    className={`px-4 py-2 text-sm font-medium rounded-md ${
+                      activeTab === 'packages' ? 'bg-white text-[var(--primary-green)] shadow' : 'text-gray-600 hover:bg-gray-300'
+                    }`}
+                  >
+                    Packages
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('reviews')}
+                    className={`px-4 py-2 text-sm font-medium rounded-md ${
+                      activeTab === 'reviews' ? 'bg-white text-[var(--primary-green)] shadow' : 'text-gray-600 hover:bg-gray-300'
+                    }`}
+                  >
+                    Reviews
+                  </button>
+                </div>
               </div>
 
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
-                <h2 className="text-4xl font-bold text-[var(--primary-green)]">Our Packages</h2>
-                <div className="mt-4 md:mt-0 flex items-center">
-                  <span className="mr-2 text-gray-700">Sort By:</span>
+              {activeTab === 'packages' && (
+                <div>
+                  <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
+                    <h2 className="text-4xl font-bold text-[var(--primary-green)]">Our Packages</h2>
+                    <div className="mt-4 md:mt-0 flex items-center">
+                      <span className="mr-2 text-gray-700">Sort By:</span>
+                      <div className="relative">
+                        <select
+                          value={sortBy}
+                          onChange={(e) => setSortBy(e.target.value)}
+                          className="appearance-none bg-white border border-gray-300 rounded-md py-2 pl-3 pr-10 text-sm focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
+                        >
+                          <option value="all">All</option>
+                          <option value="price_low">Price: Low to High</option>
+                          <option value="price_high">Price: High to Low</option>
+                        </select>
+                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                          <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="h-px w-full bg-gray-300 mb-8"></div>
+
+                  {/* Packages Carousel */}
                   <div className="relative">
-                    <select
-                      value={sortBy}
-                      onChange={(e) => setSortBy(e.target.value)}
-                      className="appearance-none bg-white border border-gray-300 rounded-md py-2 pl-3 pr-10 text-sm focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
-                    >
-                      <option value="all">All</option>
-                      <option value="price_low">Price: Low to High</option>
-                      <option value="price_high">Price: High to Low</option>
-                    </select>
-                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
-                      <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-                      </svg>
+                    <div className="flex items-center justify-between mb-6">
+                      <button
+                        onClick={handlePrevPackage}
+                        disabled={currentPackageIndex === 0}
+                        className="p-2 rounded-full bg-[var(--primary-green)] text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <ChevronLeftIcon className="h-6 w-6" />
+                      </button>
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full mx-4">
+                        {getSortedPackages().slice(currentPackageIndex, currentPackageIndex + 3).map((pkg: any) => (
+                          <div key={pkg.id} className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
+                            <div className="h-48 relative overflow-hidden bg-gray-100">
+                              {pkg.images && pkg.images.length > 0 ? (
+                                <Image
+                                  src={pkg.images[0]}
+                                  alt={pkg.name}
+                                  fill
+                                  className="object-cover"
+                                  onError={(e) => handleImageError(e)}
+                                />
+                              ) : (
+                                <Image
+                                  src={`/bg_4.png`}
+                                  alt={pkg.name}
+                                  fill
+                                  className="object-cover"
+                                  onError={(e) => handleImageError(e)}
+                                />
+                              )}
+                              {/* Price Badge */}
+                              <div className="absolute top-3 right-3 bg-white/95 backdrop-blur-sm px-3 py-1 rounded-full shadow-sm">
+                                <span className="text-[var(--primary-green)] font-bold text-lg">₱{pkg.price.toLocaleString()}</span>
+                              </div>
+                            </div>
+
+                            <div className="p-5">
+                              {/* Package Name */}
+                              <h3 className="font-bold text-xl text-gray-900 mb-2 line-clamp-2">{pkg.name}</h3>
+
+                              {/* Package Tags */}
+                              <div className="flex flex-wrap gap-2 mb-3">
+                                {pkg.category && (
+                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                    {pkg.category}
+                                  </span>
+                                )}
+                                {pkg.cremationType && (
+                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                                    {pkg.cremationType}
+                                  </span>
+                                )}
+                                {pkg.processingTime && (
+                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                                    <ClockIcon className="w-3 h-3 mr-1" />
+                                    {pkg.processingTime}
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* Description Preview */}
+                              {pkg.description && (
+                                <p className="text-gray-600 text-sm mb-3 line-clamp-2">
+                                  {pkg.description}
+                                </p>
+                              )}
+
+                              {/* Key Inclusions */}
+                              {pkg.inclusions && pkg.inclusions.length > 0 && (
+                                <div className="mb-4">
+                                  <h4 className="text-sm font-semibold text-gray-700 mb-2">Includes:</h4>
+                                  <ul className="text-xs text-gray-600 space-y-1">
+                                    {pkg.inclusions.slice(0, 3).map((inclusion: string, index: number) => (
+                                      <li key={index} className="flex items-center">
+                                        <CheckCircleIcon className="w-3 h-3 text-green-500 mr-2 flex-shrink-0" />
+                                        <span className="line-clamp-1">{inclusion}</span>
+                                      </li>
+                                    ))}
+                                    {pkg.inclusions.length > 3 && (
+                                      <li className="text-[var(--primary-green)] font-medium">
+                                        +{pkg.inclusions.length - 3} more inclusions
+                                      </li>
+                                    )}
+                                  </ul>
+                                </div>
+                              )}
+
+                              {/* Delivery Info */}
+                              {pkg.deliveryFeePerKm && (
+                                <div className="mb-4 p-2 bg-gray-50 rounded-lg">
+                                  <div className="flex items-center text-xs text-gray-600">
+                                    <MapPinIcon className="w-3 h-3 mr-1" />
+                                    <span>Delivery: ₱{pkg.deliveryFeePerKm}/km</span>
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Action Button */}
+                              <button
+                                onClick={() => handleViewPackage(pkg.id)}
+                                className="w-full px-4 py-3 bg-[var(--primary-green)] text-white rounded-lg hover:bg-[var(--primary-green-hover)] transition-colors font-semibold text-sm"
+                              >
+                                View Full Details
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      <button
+                        onClick={handleNextPackage}
+                        disabled={getSortedPackages().length <= 3 || currentPackageIndex >= getSortedPackages().length - 3}
+                        className="p-2 rounded-full bg-[var(--primary-green)] text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <ChevronRightIcon className="h-6 w-6" />
+                      </button>
+                    </div>
+
+                    {/* Pagination dots */}
+                    <div className="flex justify-center space-x-2">
+                      {getSortedPackages().length > 0 && Array.from({ length: Math.ceil(getSortedPackages().length / 3) }).map((_, index) => (
+                        <button
+                          key={index}
+                          onClick={() => setCurrentPackageIndex(index * 3)}
+                          className={`h-2 w-2 rounded-full ${currentPackageIndex / 3 === index ? 'bg-[var(--primary-green)]' : 'bg-gray-300'}`}
+                          aria-label={`Go to page ${index + 1}`}
+                        />
+                      ))}
                     </div>
                   </div>
                 </div>
-              </div>
-
-              <div className="h-px w-full bg-gray-300 mb-8"></div>
-
-              {/* Reviews Section */}
-              <div className="mb-12">
-                <div className="text-center mb-8">
-                  <h2 className="text-3xl font-bold text-[var(--primary-green)] mb-2">What Our Customers Say</h2>
-                  <p className="text-gray-600 max-w-2xl mx-auto">
-                    Read authentic reviews from pet parents who have trusted us with their beloved companions.
-                  </p>
-                </div>
-                <ReviewsList providerId={Number(providerId)} className="" />
-              </div>
-
-              <div className="h-px w-full bg-gray-300 mb-8"></div>
-
-              {/* Packages Carousel */}
-              <div className="relative">
-                <div className="flex items-center justify-between mb-6">
-                  <button
-                    onClick={handlePrevPackage}
-                    disabled={currentPackageIndex === 0}
-                    className="p-2 rounded-full bg-[var(--primary-green)] text-white disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <ChevronLeftIcon className="h-6 w-6" />
-                  </button>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full mx-4">
-                    {getSortedPackages().slice(currentPackageIndex, currentPackageIndex + 3).map((pkg: any) => (
-                      <div key={pkg.id} className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
-                        <div className="h-48 relative overflow-hidden bg-gray-100">
-                          {pkg.images && pkg.images.length > 0 ? (
-                            <Image
-                              src={pkg.images[0]}
-                              alt={pkg.name}
-                              fill
-                              className="object-cover"
-                              onError={(e) => handleImageError(e)}
-                            />
-                          ) : (
-                            <Image
-                              src={`/bg_4.png`}
-                              alt={pkg.name}
-                              fill
-                              className="object-cover"
-                              onError={(e) => handleImageError(e)}
-                            />
-                          )}
-                          {/* Price Badge */}
-                          <div className="absolute top-3 right-3 bg-white/95 backdrop-blur-sm px-3 py-1 rounded-full shadow-sm">
-                            <span className="text-[var(--primary-green)] font-bold text-lg">₱{pkg.price.toLocaleString()}</span>
-                          </div>
-                        </div>
-
-                        <div className="p-5">
-                          {/* Package Name */}
-                          <h3 className="font-bold text-xl text-gray-900 mb-2 line-clamp-2">{pkg.name}</h3>
-
-                          {/* Package Tags */}
-                          <div className="flex flex-wrap gap-2 mb-3">
-                            {pkg.category && (
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                {pkg.category}
-                              </span>
-                            )}
-                            {pkg.cremationType && (
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                                {pkg.cremationType}
-                              </span>
-                            )}
-                            {pkg.processingTime && (
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
-                                <ClockIcon className="w-3 h-3 mr-1" />
-                                {pkg.processingTime}
-                              </span>
-                            )}
-                          </div>
-
-                          {/* Description Preview */}
-                          {pkg.description && (
-                            <p className="text-gray-600 text-sm mb-3 line-clamp-2">
-                              {pkg.description}
-                            </p>
-                          )}
-
-                          {/* Key Inclusions */}
-                          {pkg.inclusions && pkg.inclusions.length > 0 && (
-                            <div className="mb-4">
-                              <h4 className="text-sm font-semibold text-gray-700 mb-2">Includes:</h4>
-                              <ul className="text-xs text-gray-600 space-y-1">
-                                {pkg.inclusions.slice(0, 3).map((inclusion: string, index: number) => (
-                                  <li key={index} className="flex items-center">
-                                    <CheckCircleIcon className="w-3 h-3 text-green-500 mr-2 flex-shrink-0" />
-                                    <span className="line-clamp-1">{inclusion}</span>
-                                  </li>
-                                ))}
-                                {pkg.inclusions.length > 3 && (
-                                  <li className="text-[var(--primary-green)] font-medium">
-                                    +{pkg.inclusions.length - 3} more inclusions
-                                  </li>
-                                )}
-                              </ul>
-                            </div>
-                          )}
-
-                          {/* Delivery Info */}
-                          {pkg.deliveryFeePerKm && (
-                            <div className="mb-4 p-2 bg-gray-50 rounded-lg">
-                              <div className="flex items-center text-xs text-gray-600">
-                                <MapPinIcon className="w-3 h-3 mr-1" />
-                                <span>Delivery: ₱{pkg.deliveryFeePerKm}/km</span>
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Action Button */}
-                          <button
-                            onClick={() => handleViewPackage(pkg.id)}
-                            className="w-full px-4 py-3 bg-[var(--primary-green)] text-white rounded-lg hover:bg-[var(--primary-green-hover)] transition-colors font-semibold text-sm"
-                          >
-                            View Full Details
-                          </button>
-                        </div>
-                      </div>
-                    ))}
+              )}
+              
+              {activeTab === 'reviews' && (
+                <div>
+                  <div className="text-center mb-8">
+                    <h2 className="text-3xl font-bold text-[var(--primary-green)] mb-2">What Our Customers Say</h2>
+                    <p className="text-gray-600 max-w-2xl mx-auto">
+                      Read authentic reviews from pet parents who have trusted us with their beloved companions.
+                    </p>
                   </div>
-
-                  <button
-                    onClick={handleNextPackage}
-                    disabled={getSortedPackages().length <= 3 || currentPackageIndex >= getSortedPackages().length - 3}
-                    className="p-2 rounded-full bg-[var(--primary-green)] text-white disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <ChevronRightIcon className="h-6 w-6" />
-                  </button>
+                  <ReviewsList providerId={Number(providerId)} className="" />
                 </div>
-
-                {/* Pagination dots */}
-                <div className="flex justify-center space-x-2">
-                  {getSortedPackages().length > 0 && Array.from({ length: Math.ceil(getSortedPackages().length / 3) }).map((_, index) => (
-                    <button
-                      key={index}
-                      onClick={() => setCurrentPackageIndex(index * 3)}
-                      className={`h-2 w-2 rounded-full ${currentPackageIndex / 3 === index ? 'bg-[var(--primary-green)]' : 'bg-gray-300'}`}
-                      aria-label={`Go to page ${index + 1}`}
-                    />
-                  ))}
-                </div>
-              </div>
+              )}
             </div>
           </div>
         </>

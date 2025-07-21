@@ -467,7 +467,8 @@ function ServicesPage({ userData }: ServicesPageProps) {
                             href={`/user/furparent_dashboard/services/${provider.id}`}
                             className="bg-[var(--primary-green)] text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-[var(--primary-green-hover)] transition-colors duration-300 flex items-center"
                           >
-                            View Services
+                             <CalendarIcon className="h-4 w-4 mr-2" />
+                            Book Now
                           </Link>
                           <button
                             className="bg-gray-500 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-600 transition-colors duration-300"
@@ -476,13 +477,6 @@ function ServicesPage({ userData }: ServicesPageProps) {
                             Get Directions
                           </button>
                         </div>
-                        <Link
-                          href={`/user/furparent_dashboard/services/${provider.id}`}
-                          className="bg-[var(--primary-green-hover)] text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-[var(--primary-green)] transition-colors duration-300 flex items-center justify-center"
-                        >
-                          <CalendarIcon className="h-4 w-4 mr-2" />
-                          Book Now
-                        </Link>
                       </div>
                     </div>
                   </div>

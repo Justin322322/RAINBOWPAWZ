@@ -190,12 +190,15 @@ export async function POST(request: Request) {
           let genderValue = null;
           if (data.account_type === 'personal' && (data as PersonalRegistrationData).sex) {
             const sex = (data as PersonalRegistrationData).sex;
-            if (sex && sex.toLowerCase() === 'male') {
-              genderValue = 'Male';
-            } else if (sex && sex.toLowerCase() === 'female') {
-              genderValue = 'Female';
-            } else {
-              genderValue = 'Other';
+            if (sex) {
+              const lowerCaseSex = sex.toLowerCase();
+              if (lowerCaseSex === 'male') {
+                genderValue = 'Male';
+              } else if (lowerCaseSex === 'female') {
+                genderValue = 'Female';
+              } else if (lowerCaseSex === 'other' || lowerCaseSex === 'prefer-not-to-say') {
+                genderValue = 'Other';
+              }
             }
           }
 
@@ -230,7 +233,7 @@ export async function POST(request: Request) {
             phone: data.account_type === 'personal' ? data.phoneNumber || null : (data as BusinessRegistrationData).businessPhone,
             address: data.account_type === 'personal' ? data.address || null : (data as BusinessRegistrationData).businessAddress,
             gender: genderValue,
-            role
+            role: role,
           });
 
           const userResult = await transaction.query(sql, values) as any;

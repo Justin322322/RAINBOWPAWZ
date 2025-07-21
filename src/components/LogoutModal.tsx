@@ -98,6 +98,7 @@ export default function LogoutModal({ isOpen, onClose, userName = 'User' }: Logo
       onClose={!isLoggingOut ? onClose : () => {}}
       title={logoutSuccess ? "Logged Out Successfully" : "Confirm Logout"}
       size="small"
+      dialogClassName="bg-white"
     >
       <AnimatePresence mode="wait">
         {logoutSuccess ? (

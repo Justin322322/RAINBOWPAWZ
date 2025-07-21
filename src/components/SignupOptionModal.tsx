@@ -3,6 +3,7 @@
 import React from 'react';
 import Modal from './Modal';
 import { motion } from 'framer-motion';
+import { UserIcon, BuildingStorefrontIcon, ArrowRightIcon } from '@heroicons/react/24/outline';
 
 type SignupOptionModalProps = {
   isOpen: boolean;
@@ -22,22 +23,14 @@ const SignupOptionModal: React.FC<SignupOptionModalProps> = ({
   const options = [
     {
       title: "Fur Parent",
-      description: "Create an account to memorialize your beloved pets",
-      icon: (
-        <svg className="w-12 h-12 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-        </svg>
-      ),
+      description: "Create an account to memorialize your beloved pets.",
+      icon: <UserIcon className="w-8 h-8 text-teal-700" />,
       onClick: onSelectPersonalAccount,
     },
     {
       title: "Cremation Center",
-      description: "Join our network of pet memorial service providers",
-      icon: (
-        <svg className="w-12 h-12 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-        </svg>
-      ),
+      description: "Join our network of pet memorial service providers.",
+      icon: <BuildingStorefrontIcon className="w-8 h-8 text-teal-700" />,
       onClick: onSelectBusinessAccount,
     },
   ];
@@ -48,57 +41,63 @@ const SignupOptionModal: React.FC<SignupOptionModalProps> = ({
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Choose Account Type" size="small">
-      <div className="space-y-6">
-        <p className="text-gray-600 dark:text-gray-400 text-center font-light">
-          Select the type of account that best suits your needs
+    <Modal 
+      isOpen={isOpen} 
+      onClose={onClose} 
+      size="2xl"
+    >
+      <div className="p-6 pt-10">
+        <h2 className="text-3xl font-bold text-center text-gray-800 mb-4">
+          Choose Your Account Type
+        </h2>
+        <p className="text-gray-500 text-center mb-8 text-lg">
+          Select the account that best suits your needs to get started.
         </p>
 
-        <div className="grid gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {options.map((option, index) => (
-            <motion.button
+            <motion.div
               key={option.title}
-              onClick={option.onClick}
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, delay: index * 0.1 }}
-              className="w-full p-6 bg-[var(--primary-green)] text-white rounded-xl hover:bg-[var(--primary-green-hover)] transition-all duration-200 group text-left"
+              transition={{ duration: 0.5, delay: index * 0.15 }}
+              className="w-full"
             >
-              <div className="flex items-center space-x-4">
-                <div className="flex-shrink-0 group-hover:scale-110 transition-transform duration-200">
-                  {option.icon}
-                </div>
+              <button
+                onClick={option.onClick}
+                className="h-full w-full p-6 bg-white border-2 border-gray-200 text-gray-800 rounded-2xl hover:border-teal-500 hover:shadow-xl transition-all duration-300 group text-left flex flex-col justify-between"
+              >
                 <div>
-                  <h3 className="text-lg font-light tracking-wide text-white">
-                    {option.title}
-                  </h3>
-                  <p className="mt-1 text-sm text-white font-light">
+                  <div className="flex items-center space-x-5 mb-4">
+                    <div className="flex-shrink-0 bg-teal-50 p-4 rounded-full">
+                      {option.icon}
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-semibold tracking-wide text-gray-900">
+                        {option.title}
+                      </h3>
+                    </div>
+                  </div>
+                  <p className="mt-2 text-md text-gray-600 font-normal">
                     {option.description}
                   </p>
                 </div>
-                <div className="flex-shrink-0 self-center ml-auto">
-                  <svg
-                    className="w-5 h-5 text-white group-hover:translate-x-1 transition-transform duration-200"
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
+                <div className="flex items-center justify-end text-teal-600 mt-6">
+                  <span className="text-md font-semibold mr-2">
+                    Select
+                  </span>
+                  <ArrowRightIcon className="w-5 h-5 group-hover:translate-x-1.5 transition-transform duration-300" />
                 </div>
-              </div>
-            </motion.button>
+              </button>
+            </motion.div>
           ))}
         </div>
 
-        <div className="text-center text-sm text-gray-500 dark:text-gray-400 font-light">
+        <div className="text-center text-md text-gray-500 mt-10">
           Already have an account?{' '}
           <button
             onClick={handleLoginClick}
-            className="text-[var(--primary-green)] hover:text-[var(--primary-green-hover)] font-medium transition-colors duration-200"
+            className="font-semibold text-teal-600 hover:text-teal-500 transition-colors duration-300"
           >
             Log in
           </button>

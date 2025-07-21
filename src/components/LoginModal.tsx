@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Modal, Input, Button, Checkbox, Alert } from '@/components/ui';
-import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
+import { EyeIcon, EyeSlashIcon, ArrowRightIcon, XMarkIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 import ForgotPasswordModal from './ForgotPasswordModal';
 import { redirectToDashboard } from '@/utils/auth';
 import { useToast } from '@/context/ToastContext';
@@ -142,7 +142,19 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onShowSignup }
 
   return (
     <>
-      <Modal isOpen={isOpen} onClose={handleClose} title={loginSuccess ? "Login Successful" : "Welcome Back"} size="small">
+      <Modal 
+        isOpen={isOpen} 
+        onClose={handleClose} 
+        size="small"
+      >
+        <div className="relative">
+          <button
+            onClick={handleClose}
+            className="absolute top-3 right-3 text-gray-400 hover:text-gray-600 transition-colors duration-200 z-10 p-2 rounded-full hover:bg-gray-100"
+            aria-label="Close modal"
+          >
+            <XMarkIcon className="w-6 h-6" />
+          </button>
         <AnimatePresence mode="wait">
           {loginSuccess ? (
             <motion.div
@@ -152,16 +164,12 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onShowSignup }
               exit={{ opacity: 0, scale: 0.9 }}
               className="py-8 flex flex-col items-center justify-center text-center"
             >
-              <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center mb-6">
-                <svg className="w-10 h-10 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
-                </svg>
-              </div>
+              <CheckCircleIcon className="w-20 h-20 text-green-500 mx-auto mb-4" />
               <h2 className="text-2xl font-semibold text-gray-800 mb-2">Welcome back{userName ? `, ${userName}` : ''}!</h2>
-              <p className="text-gray-600 mb-6">You&apos;ve successfully logged in. Redirecting you to your dashboard...</p>
-              <div className="w-12 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+              <p className="text-gray-600 mb-6">You've successfully logged in. Redirecting...</p>
+              <div className="w-full bg-gray-200 rounded-full h-2.5 mt-4">
                 <motion.div
-                  className="h-full bg-green-500 rounded-full"
+                  className="bg-green-500 h-2.5 rounded-full"
                   initial={{ width: 0 }}
                   animate={{ width: "100%" }}
                   transition={{ duration: 1.5, ease: "easeInOut" }}
@@ -174,12 +182,18 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onShowSignup }
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="space-y-8"
+              className="p-6 pt-10"
             >
+              <div className="text-center mb-8">
+                <h2 className="text-3xl font-bold text-gray-800">Welcome Back</h2>
+                <p className="text-gray-500 mt-2">Sign in to continue your journey with us.</p>
+              </div>
+
               {errorMessage && (
                 <motion.div
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
+                  className="mb-6"
                 >
                   <Alert
                     variant="error"
@@ -188,109 +202,90 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onShowSignup }
                     dismissible
                   >
                     <p>{errorMessage}</p>
-                    {errorMessage.includes('Incorrect password') && (
-                      <p className="text-xs mt-1">
-                        Tip: If you&apos;ve forgotten your password, click &quot;Forgot password?&quot; below.
-                      </p>
-                    )}
-                    {errorMessage.includes('No account exists') && (
-                      <p className="text-xs mt-1">
-                        Tip: Check your spelling or <button
-                          type="button"
-                          onClick={onShowSignup}
-                          className="text-red-700 underline hover:text-red-800"
-                        >
-                          create a new account
-                        </button>.
-                      </p>
-                    )}
                   </Alert>
                 </motion.div>
               )}
 
               <form onSubmit={handleSubmit} className="space-y-6">
-            <Input
-              label="Email or Username"
-              id="email"
-              type="text"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Enter your email or username"
-              required
-              rounded="default"
-              size="lg"
-              labelClassName="font-light"
-            />
+                <Input
+                  label="Email"
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@example.com"
+                  required
+                  size="lg"
+                  className="transition-all duration-300"
+                />
 
-            <Input
-              label="Password"
-              id="password"
-              type={showPassword ? "text" : "password"}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Enter your password"
-              required
-              rounded="default"
-              size="lg"
-              labelClassName="font-light"
-              rightIcon={
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  {showPassword ? <EyeIcon className="h-5 w-5" /> : <EyeSlashIcon className="h-5 w-5" />}
-                </button>
-              }
-            />
+                <Input
+                  label="Password"
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  required
+                  size="lg"
+                  className="transition-all duration-300"
+                  rightIcon={
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="text-gray-400 hover:text-[var(--primary-green)] transition-colors"
+                    >
+                      {showPassword ? <EyeSlashIcon className="h-6 w-6" /> : <EyeIcon className="h-6 w-6" />}
+                    </button>
+                  }
+                />
 
-            <div className="flex items-center justify-between">
-              <Checkbox
-                id="remember-me"
-                name="remember-me"
-                label="Remember me"
-                labelClassName="font-light text-gray-600"
-                checkboxSize="md"
-              />
-              <div className="text-sm">
+                <div className="flex items-center justify-between">
+                  <Checkbox
+                    id="remember-me"
+                    name="remember-me"
+                    label="Remember me"
+                    labelClassName="font-normal text-gray-600"
+                    checkboxSize="md"
+                  />
+                  <Button
+                    type="button"
+                    variant="link"
+                    onClick={handleForgotPasswordClick}
+                    className="font-semibold text-[var(--primary-green)] hover:text-[var(--primary-green-hover)]"
+                  >
+                    Forgot password?
+                  </Button>
+                </div>
+
                 <Button
-                  type="button"
-                  variant="link"
-                  onClick={handleForgotPasswordClick}
-                  className="font-light"
+                  type="submit"
+                  disabled={isLoading}
+                  isLoading={isLoading}
+                  fullWidth
+                  size="lg"
+                  className="bg-[var(--primary-green)] hover:bg-[var(--primary-green-hover)] text-white font-bold tracking-wide flex items-center justify-center group"
                 >
-                  Forgot password?
+                  {isLoading ? 'Signing In...' : 'Sign In'}
+                  {!isLoading && <ArrowRightIcon className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />}
                 </Button>
-              </div>
-            </div>
 
-            <Button
-              type="submit"
-              disabled={isLoading}
-              isLoading={isLoading}
-              fullWidth
-              size="lg"
-              rounded="default"
-              className="font-light tracking-wide text-lg"
-            >
-              {isLoading ? 'Logging in...' : 'Login'}
-            </Button>
-
-            <div className="text-center text-sm text-gray-500 dark:text-gray-400 font-light">
-              Don&apos;t have an account?{' '}
-              <Button
-                type="button"
-                variant="link"
-                onClick={onShowSignup}
-                className="font-medium p-0"
-              >
-                Sign up
-              </Button>
-            </div>
-          </form>
+                <div className="text-center text-md text-gray-500">
+                  Don&apos;t have an account?{' '}
+                  <Button
+                    type="button"
+                    variant="link"
+                    onClick={onShowSignup}
+                    className="font-semibold text-[var(--primary-green)] hover:text-[var(--primary-green-hover)] p-0"
+                  >
+                    Sign up
+                  </Button>
+                </div>
+              </form>
             </motion.div>
           )}
         </AnimatePresence>
+        </div>
       </Modal>
 
       <ForgotPasswordModal

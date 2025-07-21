@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
-import Modal from '@/components/Modal';
-import { motion } from 'framer-motion';
-import { Button, Input } from '@/components/ui';
+import { Modal, Input, Button, Alert } from '@/components/ui';
+import { ArrowRightIcon, XMarkIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
+import { motion, AnimatePresence } from 'framer-motion';
 
 type ForgotPasswordModalProps = {
   isOpen: boolean;
@@ -16,11 +16,13 @@ const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({ isOpen, onClo
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  const [requestSent, setRequestSent] = useState(false);
 
   const handleClose = () => {
     setEmail('');
     setErrorMessage('');
     setSuccessMessage('');
+    setRequestSent(false);
     onClose();
   };
 
@@ -42,109 +44,127 @@ const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({ isOpen, onClo
 
       const data = await response.json();
 
-      // Handle the "No account exists" error as a user-friendly message
       if (!response.ok) {
         if (response.status === 404 && data.error === 'No account exists with this email address.') {
-          setErrorMessage('No account exists with this email address. Please check your email or create a new account.');
-          return;
+          setErrorMessage('No account exists with this email. Please check your spelling or sign up.');
+        } else {
+          setErrorMessage(data.error || 'Failed to send reset instructions. Please try again.');
         }
-        throw new Error(data.error || 'Failed to send reset instructions');
+        return;
       }
 
-      setSuccessMessage(data.message || 'Password reset instructions have been sent to your email.');
-
-      // Automatically return to login after success
-      setTimeout(() => {
-        handleClose();
-        onShowLogin();
-      }, 3000);
+      setSuccessMessage(data.message || 'If an account exists for this email, you will receive password reset instructions.');
+      setRequestSent(true);
+      
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : 'Failed to send reset instructions. Please try again.');
+      setErrorMessage(error instanceof Error ? error.message : 'An unexpected error occurred. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleLoginClick = () => {
+  const handleBackToLogin = () => {
     handleClose();
     onShowLogin();
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} title="Reset Password" size="small">
-      <div className="space-y-6">
-        {errorMessage && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-red-50 p-4 rounded-lg border border-red-100"
-          >
-            <div className="flex items-center">
-              <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-              </svg>
-              <p className="ml-3 text-sm text-red-600">{errorMessage}</p>
-            </div>
-          </motion.div>
-        )}
-
-        {successMessage && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-green-50 p-4 rounded-lg border border-green-100"
-          >
-            <div className="flex items-center">
-              <svg className="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-              </svg>
-              <p className="ml-3 text-sm text-green-600">{successMessage}</p>
-            </div>
-          </motion.div>
-        )}
-
-        <p className="text-gray-600 dark:text-gray-400 text-center font-light">
-          Enter your email address and we&apos;ll send you instructions to reset your password.
-        </p>
-
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <Input
-            type="email"
-            id="email"
-            label="Email Address"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="Enter your email address"
-            required
-            rounded="default"
-            size="lg"
-            labelClassName="font-light"
-          />
-
-          <Button
-            type="submit"
-            disabled={isLoading}
-            isLoading={isLoading}
-            fullWidth
-            size="lg"
-            rounded="default"
-            className="font-light tracking-wide text-lg"
-          >
-            {isLoading ? 'Sending...' : 'Send Reset Instructions'}
-          </Button>
-
-          <div className="text-center text-sm text-gray-500 dark:text-gray-400 font-light">
-            Remember your password?{' '}
-            <Button
-              type="button"
-              variant="link"
-              onClick={handleLoginClick}
-              className="font-medium p-0"
+    <Modal 
+      isOpen={isOpen} 
+      onClose={handleClose} 
+      onBack={handleBackToLogin}
+      size="small"
+    >
+      <div className="relative p-6 pt-10">
+        <button
+          onClick={handleClose}
+          className="absolute top-3 right-3 text-gray-400 hover:text-gray-600 transition-colors duration-200 z-10 p-2 rounded-full hover:bg-gray-100"
+          aria-label="Close modal"
+        >
+          <XMarkIcon className="w-6 h-6" />
+        </button>
+        <AnimatePresence mode="wait">
+        {requestSent ? (
+            <motion.div
+              key="success"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="text-center"
             >
-              Log in
-            </Button>
-          </div>
-        </form>
+              <CheckCircleIcon className="w-20 h-20 text-green-500 mx-auto mb-4" />
+              <h2 className="text-2xl font-bold text-gray-800">Request Sent!</h2>
+              <p className="text-gray-600 mt-2 mb-6">
+                {successMessage}
+              </p>
+              <Button
+                onClick={handleBackToLogin}
+                fullWidth
+                size="lg"
+                className="bg-[var(--primary-green)] hover:bg-[var(--primary-green-hover)] text-white font-bold"
+              >
+                Back to Login
+              </Button>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="form"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              <div className="text-center mb-8">
+                <h2 className="text-3xl font-bold text-gray-800">Reset Your Password</h2>
+                <p className="text-gray-500 mt-2">
+                  Enter your email and we'll send a reset link.
+                </p>
+              </div>
+
+              {errorMessage && (
+                <div className="mb-6">
+                  <Alert variant="error" title="Error" onClose={() => setErrorMessage('')} dismissible>
+                    <p>{errorMessage}</p>
+                  </Alert>
+                </div>
+              )}
+
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <Input
+                  label="Email Address"
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@example.com"
+                  required
+                  size="lg"
+                />
+
+                <Button
+                  type="submit"
+                  disabled={isLoading}
+                  isLoading={isLoading}
+                  fullWidth
+                  size="lg"
+                  className="bg-[var(--primary-green)] hover:bg-[var(--primary-green-hover)] text-white font-bold tracking-wide flex items-center justify-center group"
+                >
+                  {isLoading ? 'Sending...' : 'Send Reset Link'}
+                  {!isLoading && <ArrowRightIcon className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />}
+                </Button>
+              </form>
+              <div className="text-center text-md text-gray-500 mt-8">
+                <Button
+                  type="button"
+                  variant="link"
+                  onClick={handleBackToLogin}
+                  className="font-semibold text-[var(--primary-green)] hover:text-[var(--primary-green-hover)] p-0"
+                >
+                  &larr; Back to Log in
+                </Button>
+              </div>
+            </motion.div>
+        )}
+        </AnimatePresence>
       </div>
     </Modal>
   );

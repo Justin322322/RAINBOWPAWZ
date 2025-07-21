@@ -634,10 +634,12 @@ export default function Home() {
       {isPersonalAccountModalOpen && <PersonalAccountModal
         isOpen={isPersonalAccountModalOpen}
         onClose={closeAllModals}
+        onBack={openSignupOptionModal}
       />}
       {isBusinessAccountModalOpen && <BusinessAccountModal
         isOpen={isBusinessAccountModalOpen}
         onClose={closeAllModals}
+        onBack={openSignupOptionModal}
       />}
     </div>
   );

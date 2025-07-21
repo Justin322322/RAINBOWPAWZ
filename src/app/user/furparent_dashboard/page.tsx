@@ -4,6 +4,8 @@ import Image from 'next/image';
 import { motion } from 'framer-motion';
 import FurParentDashboardWrapper from '@/components/navigation/FurParentDashboardWrapper';
 import { UserData } from '@/components/withUserAuth';
+import { Button } from '@/components/ui/Button';
+import Link from 'next/link';
 
 interface FurParentDashboardProps {
   userData?: UserData;
@@ -75,57 +77,65 @@ function FurParentDashboard({ userData }: FurParentDashboardProps) {
                 Every day, we strive to improve our system to provide a dignified and transparent farewell for your cherished pets.
                 With RainbowPaws, you can confidently choose a trusted cremation service, ensuring peace of mind and respect for your pet&apos;s final journey.
               </p>
-            </div>
 
-            {/* Service Features */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
-              <div className="flex items-center space-x-3">
-                <div className="w-6 h-6">
-                  <Image
-                    src="/check-icon.svg"
-                    alt="Check"
-                    width={24}
-                    height={24}
-                    className="w-6 h-6"
-                  />
+              {/* Service Features */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
+                <div className="flex items-center space-x-3">
+                  <div className="w-6 h-6">
+                    <Image
+                      src="/check-icon.svg"
+                      alt="Check"
+                      width={24}
+                      height={24}
+                      className="w-6 h-6"
+                    />
+                  </div>
+                  <span className="text-[var(--text-secondary)] modern-text">Personalized Memorial Services</span>
                 </div>
-                <span className="text-[var(--text-secondary)] modern-text">Personalized Memorial Services</span>
+                <div className="flex items-center space-x-3">
+                  <div className="w-6 h-6">
+                    <Image
+                      src="/check-icon.svg"
+                      alt="Check"
+                      width={24}
+                      height={24}
+                      className="w-6 h-6"
+                    />
+                  </div>
+                  <span className="text-[var(--text-secondary)] modern-text">Verified and Licensed Providers</span>
+                </div>
+                <div className="flex items-center space-x-3">
+                  <div className="w-6 h-6">
+                    <Image
+                      src="/check-icon.svg"
+                      alt="Check"
+                      width={24}
+                      height={24}
+                      className="w-6 h-6"
+                    />
+                  </div>
+                  <span className="text-[var(--text-secondary)] modern-text">Memorial Keepsakes & Tributes</span>
+                </div>
+                <div className="flex items-center space-x-3">
+                  <div className="w-6 h-6">
+                    <Image
+                      src="/check-icon.svg"
+                      alt="Check"
+                      width={24}
+                      height={24}
+                      className="w-6 h-6"
+                    />
+                  </div>
+                  <span className="text-[var(--text-secondary)] modern-text">User Reviews & Ratings</span>
+                </div>
               </div>
-              <div className="flex items-center space-x-3">
-                <div className="w-6 h-6">
-                  <Image
-                    src="/check-icon.svg"
-                    alt="Check"
-                    width={24}
-                    height={24}
-                    className="w-6 h-6"
-                  />
-                </div>
-                <span className="text-[var(--text-secondary)] modern-text">Verified and Licensed Providers</span>
-              </div>
-              <div className="flex items-center space-x-3">
-                <div className="w-6 h-6">
-                  <Image
-                    src="/check-icon.svg"
-                    alt="Check"
-                    width={24}
-                    height={24}
-                    className="w-6 h-6"
-                  />
-                </div>
-                <span className="text-[var(--text-secondary)] modern-text">Memorial Keepsakes & Tributes</span>
-              </div>
-              <div className="flex items-center space-x-3">
-                <div className="w-6 h-6">
-                  <Image
-                    src="/check-icon.svg"
-                    alt="Check"
-                    width={24}
-                    height={24}
-                    className="w-6 h-6"
-                  />
-                </div>
-                <span className="text-[var(--text-secondary)] modern-text">User Reviews & Ratings</span>
+
+              <div className="mt-8">
+                <Link href="/user/furparent_dashboard/services" passHref>
+                  <Button variant="primary" size="lg">
+                    View Services
+                  </Button>
+                </Link>
               </div>
             </div>
           </motion.div>

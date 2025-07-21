@@ -2,33 +2,31 @@
 
 import React, { ReactNode, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { XMarkIcon } from '@heroicons/react/24/outline';
 
 type ModalProps = {
   isOpen: boolean;
   onClose: () => void;
-  title: string;
   children: ReactNode;
-  size?: 'small' | 'medium' | 'large' | 'xlarge' | 'fullscreen';
-  showCloseButton?: boolean;
-  className?: string;
-  onBack?: () => void;
+  title?: string;
+  size?: 'small' | 'medium' | 'large' | 'xlarge' | '2xl' | 'fullscreen';
+  dialogClassName?: string;
   closeOnOverlayClick?: boolean;
+  className?: string;
 };
 
 const Modal: React.FC<ModalProps> = ({
   isOpen,
   onClose,
-  title,
   children,
+  title,
   size = 'medium',
-  showCloseButton = true,
-  className = '',
-  onBack,
-  closeOnOverlayClick = true
+  dialogClassName = '',
+  closeOnOverlayClick = true,
 }) => {
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && closeOnOverlayClick) onClose();
+      if (e.key === 'Escape') onClose();
     };
 
     if (isOpen) {
@@ -40,99 +38,62 @@ const Modal: React.FC<ModalProps> = ({
       document.body.style.overflow = 'auto';
       window.removeEventListener('keydown', handleEscape);
     };
-  }, [isOpen, onClose, closeOnOverlayClick]);
+  }, [isOpen, onClose]);
 
   const sizeClasses = {
-    small: 'max-w-md w-full mx-4 sm:mx-auto',
-    medium: 'max-w-lg w-full mx-4 sm:mx-auto',
-    large: 'max-w-2xl w-full mx-4 sm:mx-auto',
-    xlarge: 'max-w-4xl w-full mx-4 sm:mx-auto',
-    fullscreen: 'max-w-[95vw] sm:max-w-[80vw] max-h-[95vh] sm:max-h-[90vh] w-full mx-2 sm:mx-auto'
+    small: 'max-w-md w-full',
+    medium: 'max-w-lg w-full',
+    large: 'max-w-2xl w-full',
+    xlarge: 'max-w-4xl w-full',
+    '2xl': 'max-w-5xl w-full',
+    fullscreen: 'w-[95vw] h-[95vh]',
   };
 
   return (
     <AnimatePresence>
       {isOpen && (
         <div
-          className="fixed inset-0 z-[9999] flex items-center justify-center p-4 md:p-6 mt-0"
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
           role="dialog"
           aria-modal="true"
-          aria-labelledby="modal-title"
+          aria-labelledby={title ? 'modal-title' : undefined}
         >
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.15, ease: "easeOut" }}
-            className="fixed inset-0 bg-black/60"
+            transition={{ duration: 0.3, ease: 'easeOut' }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm"
             onClick={closeOnOverlayClick ? onClose : undefined}
           />
 
           <motion.div
-            initial={{ scale: 0.98, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.98, opacity: 0 }}
-            transition={{ duration: 0.15, ease: "easeOut" }}
-            className={`
-              relative bg-white rounded-xl shadow-2xl w-full
-              ${sizeClasses[size]} max-h-[90vh] overflow-hidden flex flex-col
-              ${className} z-[9999]
-            `}
+            initial={{ scale: 0.95, opacity: 0, y: 20 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 0.95, opacity: 0, y: 20 }}
+            transition={{ duration: 0.2, ease: 'easeOut' }}
+            className={`relative bg-white rounded-2xl shadow-xl flex flex-col overflow-hidden ${sizeClasses[size]} ${dialogClassName}`}
+            style={{ maxHeight: '90vh' }}
           >
-            <div className="bg-[var(--primary-green)] text-white px-8 py-6 flex justify-between items-center">
-              <div className="flex items-center">
-                {onBack && (
-                  <button
-                    onClick={onBack}
-                    className="text-white hover:text-white/80 transition-colors duration-200 mr-4 flex items-center"
-                    aria-label="Go back"
-                  >
-                    <svg
-                      className="w-5 h-5"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M10 19l-7-7m0 0l7-7m-7 7h18"
-                      />
-                    </svg>
-                  </button>
+            {(title || closeOnOverlayClick) && (
+              <div className="flex items-center justify-between p-4 border-b border-gray-200 flex-shrink-0">
+                {title && (
+                  <h2 id="modal-title" className="text-lg font-semibold text-gray-900">
+                    {title}
+                  </h2>
                 )}
-                <h2
-                  id="modal-title"
-                  className="text-2xl font-light tracking-wide text-white"
-                >
-                  {title}
-                </h2>
+                {closeOnOverlayClick && (
+                   <button
+                   onClick={onClose}
+                   className="p-1 rounded-full text-gray-400 hover:bg-gray-200 hover:text-gray-600 transition-colors"
+                   aria-label="Close modal"
+                 >
+                   <XMarkIcon className="h-6 w-6" />
+                 </button>
+                )}
               </div>
-              {showCloseButton && (
-                <button
-                  onClick={onClose}
-                  className="text-white hover:text-white/80 transition-colors duration-200"
-                  aria-label="Close modal"
-                >
-                  <svg
-                    className="w-6 h-6"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M6 18L18 6M6 6l12 12"
-                    />
-                  </svg>
-                </button>
-              )}
-            </div>
-
-            <div className="px-8 py-6 overflow-y-auto max-h-[calc(90vh-120px)]">
+            )}
+            <div className="overflow-y-auto p-6 flex-grow">
               {children}
             </div>
           </motion.div>

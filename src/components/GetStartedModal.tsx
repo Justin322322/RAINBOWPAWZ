@@ -434,83 +434,84 @@ const GetStartedModal: React.FC<GetStartedModalProps> = ({
   return (
     <Modal
       isOpen={isOpen}
-      onClose={handleCloseButton}
+      onClose={onClose}
       title="Getting Started with RainbowPaws"
       size="xlarge"
       closeOnOverlayClick={false}
-      className="mt-0 pt-0"
     >
-      <div className="space-y-4 sm:space-y-6 max-w-3xl mx-auto px-2 sm:px-0">
-        <p className="text-gray-700 text-base sm:text-lg">
-          Welcome to RainbowPaws, {userName}! Our platform offers a seamless way to find and book trusted cremation services for your beloved pets. This guide will help you get started with our platform effortlessly.
-        </p>
+      <div className="mt-0 pt-0">
+        <div className="space-y-4 sm:space-y-6 max-w-3xl mx-auto px-2 sm:px-0">
+          <p className="text-gray-700 text-base sm:text-lg">
+            Welcome to RainbowPaws, {userName}! Our platform offers a seamless way to find and book trusted cremation services for your beloved pets. This guide will help you get started with our platform effortlessly.
+          </p>
 
-        {/* Step indicator */}
-        <div className="flex justify-between items-center mb-4 sm:mb-6 px-2">
-          {Array.from({ length: totalSteps }).map((_, index) => (
-            <div key={index} className="flex flex-col items-center">
-              <div
-                className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center mb-1 text-xs sm:text-sm ${
-                  index + 1 === currentStep
-                    ? 'bg-[var(--primary-green)] text-white'
-                    : index + 1 < currentStep
-                      ? 'bg-green-100 text-green-600 border border-green-600'
-                      : 'bg-gray-100 text-gray-400'
-                }`}
+          {/* Step indicator */}
+          <div className="flex justify-between items-center mb-4 sm:mb-6 px-2">
+            {Array.from({ length: totalSteps }).map((_, index) => (
+              <div key={index} className="flex flex-col items-center">
+                <div
+                  className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center mb-1 text-xs sm:text-sm ${
+                    index + 1 === currentStep
+                      ? 'bg-[var(--primary-green)] text-white'
+                      : index + 1 < currentStep
+                        ? 'bg-green-100 text-green-600 border border-green-600'
+                        : 'bg-gray-100 text-gray-400'
+                  }`}
+                >
+                  {index + 1 < currentStep ? (
+                    <CheckCircleIcon className="h-3 w-3 sm:h-5 sm:w-5" />
+                  ) : (
+                    index + 1
+                  )}
+                </div>
+                <div className="text-xs text-gray-500 text-center hidden sm:block">
+                  {index === 0 && "Find Services"}
+                  {index === 1 && "Locate Centers"}
+                  {index === 2 && "Explore"}
+                  {index === 3 && "Select"}
+                  {index === 4 && "Complete"}
+                </div>
+                <div className="text-xs text-gray-500 text-center sm:hidden">
+                  {index === 0 && "Find"}
+                  {index === 1 && "Locate"}
+                  {index === 2 && "Explore"}
+                  {index === 3 && "Select"}
+                  {index === 4 && "Done"}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Step content */}
+          <div className="min-h-[350px] sm:min-h-[450px] overflow-y-auto max-w-3xl mx-auto">
+            {renderStepContent()}
+          </div>
+
+          {/* Navigation buttons */}
+          <div className="flex justify-between mt-6 sm:mt-8 max-w-3xl mx-auto px-2">
+            {currentStep === 1 ? (
+              <button
+                onClick={onNotNow}
+                className="px-3 py-2 sm:px-4 sm:py-2 text-sm sm:text-base text-gray-600 hover:text-gray-800 hover:underline"
               >
-                {index + 1 < currentStep ? (
-                  <CheckCircleIcon className="h-3 w-3 sm:h-5 sm:w-5" />
-                ) : (
-                  index + 1
-                )}
-              </div>
-              <div className="text-xs text-gray-500 text-center hidden sm:block">
-                {index === 0 && "Find Services"}
-                {index === 1 && "Locate Centers"}
-                {index === 2 && "Explore"}
-                {index === 3 && "Select"}
-                {index === 4 && "Complete"}
-              </div>
-              <div className="text-xs text-gray-500 text-center sm:hidden">
-                {index === 0 && "Find"}
-                {index === 1 && "Locate"}
-                {index === 2 && "Explore"}
-                {index === 3 && "Select"}
-                {index === 4 && "Done"}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Step content */}
-        <div className="min-h-[350px] sm:min-h-[450px] overflow-y-auto max-w-3xl mx-auto">
-          {renderStepContent()}
-        </div>
-
-        {/* Navigation buttons */}
-        <div className="flex justify-between mt-6 sm:mt-8 max-w-3xl mx-auto px-2">
-          {currentStep === 1 ? (
+                Not Now
+              </button>
+            ) : (
+              <button
+                onClick={handlePrev}
+                className="px-3 py-2 sm:px-4 sm:py-2 text-sm sm:text-base rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300"
+              >
+                Previous
+              </button>
+            )}
             <button
-              onClick={onNotNow}
-              className="px-3 py-2 sm:px-4 sm:py-2 text-sm sm:text-base text-gray-600 hover:text-gray-800 hover:underline"
+              onClick={handleNext}
+              className="px-3 py-2 sm:px-4 sm:py-2 text-sm sm:text-base bg-[var(--primary-green)] text-white rounded-lg hover:bg-green-700 flex items-center"
             >
-              Not Now
+              {currentStep === totalSteps ? 'Finish' : 'Next'}
+              <ArrowRightIcon className="ml-1 sm:ml-2 h-3 w-3 sm:h-4 sm:w-4" />
             </button>
-          ) : (
-            <button
-              onClick={handlePrev}
-              className="px-3 py-2 sm:px-4 sm:py-2 text-sm sm:text-base rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300"
-            >
-              Previous
-            </button>
-          )}
-          <button
-            onClick={handleNext}
-            className="px-3 py-2 sm:px-4 sm:py-2 text-sm sm:text-base bg-[var(--primary-green)] text-white rounded-lg hover:bg-green-700 flex items-center"
-          >
-            {currentStep === totalSteps ? 'Finish' : 'Next'}
-            <ArrowRightIcon className="ml-1 sm:ml-2 h-3 w-3 sm:h-4 sm:w-4" />
-          </button>
+          </div>
         </div>
       </div>
     </Modal>
