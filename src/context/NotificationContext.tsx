@@ -426,54 +426,58 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
                   break;
                   
                 case 'notification':
-                  // New notification received - add to state instantly (with duplicate prevention)
-                  const newNotification = data.notification;
-                  let isNewNotification = false;
+                  {
+                    // New notification received - add to state instantly (with duplicate prevention)
+                    const newNotification = data.notification;
+                    let isNewNotification = false;
 
-                  setNotifications(prev => {
-                    // Check if notification already exists
-                    const existingIndex = prev.findIndex(n => n.id === newNotification.id);
+                    setNotifications(prev => {
+                      // Check if notification already exists
+                      const existingIndex = prev.findIndex(n => n.id === newNotification.id);
 
-                    if (existingIndex !== -1) {
-                      // Update existing notification
-                      const updated = [...prev];
-                      updated[existingIndex] = newNotification;
-                      return updated;
-                    } else {
-                      // Add new notification
-                      isNewNotification = true;
-                      return [newNotification, ...prev];
+                      if (existingIndex !== -1) {
+                        // Update existing notification
+                        const updated = [...prev];
+                        updated[existingIndex] = newNotification;
+                        return updated;
+                      } else {
+                        // Add new notification
+                        isNewNotification = true;
+                        return [newNotification, ...prev];
+                      }
+                    });
+
+                    // Update unread count only for new unread notifications
+                    if (isNewNotification && newNotification.is_read === 0) {
+                      setUnreadCount(prev => prev + 1);
                     }
-                  });
 
-                  // Update unread count only for new unread notifications
-                  if (isNewNotification && newNotification.is_read === 0) {
-                    setUnreadCount(prev => prev + 1);
+                    console.log('Instant notification received:', newNotification.title);
                   }
-
-                  console.log('Instant notification received:', newNotification.title);
                   break;
                   
                 case 'system_notification':
-                  // System-wide notification (with duplicate prevention)
-                  const sysNotification = data.notification;
-                  setNotifications(prev => {
-                    // Check if notification already exists
-                    const existingIndex = prev.findIndex(n => n.id === sysNotification.id);
+                  {
+                    // System-wide notification (with duplicate prevention)
+                    const sysNotification = data.notification;
+                    setNotifications(prev => {
+                      // Check if notification already exists
+                      const existingIndex = prev.findIndex(n => n.id === sysNotification.id);
 
-                    if (existingIndex !== -1) {
-                      // Update existing notification
-                      const updated = [...prev];
-                      updated[existingIndex] = sysNotification;
-                      return updated;
-                    } else {
-                      // Add new notification and update unread count
-                      if (sysNotification.is_read === 0) {
-                        setUnreadCount(prevCount => prevCount + 1);
+                      if (existingIndex !== -1) {
+                        // Update existing notification
+                        const updated = [...prev];
+                        updated[existingIndex] = sysNotification;
+                        return updated;
+                      } else {
+                        // Add new notification and update unread count
+                        if (sysNotification.is_read === 0) {
+                          setUnreadCount(prevCount => prevCount + 1);
+                        }
+                        return [sysNotification, ...prev];
                       }
-                      return [sysNotification, ...prev];
-                    }
-                  });
+                    });
+                  }
                   break;
                   
                 case 'ping':

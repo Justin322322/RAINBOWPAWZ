@@ -127,6 +127,18 @@ const PackageModal: React.FC<PackageModalProps> = ({
     setFormProgress(progress);
   }, [formData]);
 
+  // Memory cleanup for image previews - revoke blob URLs to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      // Clean up any blob URLs when component unmounts or images change
+      formData.images.forEach(image => {
+        if (image.startsWith('blob:')) {
+          URL.revokeObjectURL(image);
+        }
+      });
+    };
+  }, [formData.images]);
+
   // Smooth scroll to error field utility
   const scrollToErrorField = useCallback((fieldName: string) => {
     const element = document.getElementById(fieldName);
