@@ -78,7 +78,7 @@ const PackageModal: React.FC<PackageModalProps> = ({
   });
 
   // UI state
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [errors, setErrors] = useState<Record<string, string | undefined>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
@@ -385,7 +385,7 @@ const PackageModal: React.FC<PackageModalProps> = ({
       if (errors.images) {
         setErrors(prev => {
           const newErrors = { ...prev };
-          delete newErrors.images;
+          newErrors.images = undefined;
           return newErrors;
         });
       }
@@ -414,7 +414,7 @@ const PackageModal: React.FC<PackageModalProps> = ({
   }, [showToast]);
 
   const validateForm = useCallback(() => {
-    const newErrors: Record<string, string> = {};
+    const newErrors: Record<string, string | undefined> = {};
     const fieldOrder = ['name', 'description', 'price', 'inclusions', 'conditions', 'supportedPetTypes'];
 
     if (!formData.name.trim()) newErrors.name = 'Package name is required';
@@ -428,7 +428,7 @@ const PackageModal: React.FC<PackageModalProps> = ({
 
     // Handle validation errors with scroll-to-error
     if (Object.keys(newErrors).length > 0) {
-      const errorMessages = Object.values(newErrors);
+      const errorMessages = Object.values(newErrors).filter((msg): msg is string => msg !== undefined);
       const firstErrorField = fieldOrder.find(field => newErrors[field]);
 
       // Scroll to first error field

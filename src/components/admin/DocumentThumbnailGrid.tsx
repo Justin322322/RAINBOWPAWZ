@@ -142,12 +142,7 @@ const DocumentThumbnailGrid: React.FC<DocumentThumbnailGridProps> = ({
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
       {documents.map((document, index) => (
         <DocumentThumbnail
--          key={index}
-+          key={document.url || document.path || index}
-          document={document}
-          onDocumentClick={onDocumentClick}
-        />
-      ))}
+          key={document.url || document.path || index}
           document={document}
           onDocumentClick={onDocumentClick}
         />
