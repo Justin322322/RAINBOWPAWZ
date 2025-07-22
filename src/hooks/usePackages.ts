@@ -10,7 +10,7 @@ interface UsePackagesProps {
 
 export function usePackages({ userData }: UsePackagesProps) {
   const [packages, setPackages] = useState<PackageData[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -30,6 +30,7 @@ export function usePackages({ userData }: UsePackagesProps) {
   const providerId = userData?.business_id || userData?.provider_id || 999; // Fallback to 999 for demo
 
   const fetchPackages = useCallback(async () => {
+    setIsLoading(true);
     try {
       // Log the provider ID for debugging
 
@@ -97,6 +98,8 @@ export function usePackages({ userData }: UsePackagesProps) {
         showToastRef.current(error instanceof Error ? error.message : 'Failed to fetch packages', 'error');
       }
       setPackages([]);
+    } finally {
+      setIsLoading(false);
     }
   }, [providerId]); // **🔥 FIX: Removed showToast from dependencies**
 

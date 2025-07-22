@@ -45,29 +45,22 @@ export const PackageImage: React.FC<PackageImageProps> = ({
     return [];
   }, [images, src]);
 
-  // Initialize finalSrc state
-  const [finalSrc, setFinalSrc] = useState('');
+  // Initialize finalSrc state with the first available image
+  const [finalSrc, setFinalSrc] = useState(() => {
+    return filteredImages.length > 0 ? filteredImages[0] : '';
+  });
 
-  // Initialize or update finalSrc when filteredImages changes
+  // Single useEffect to handle all image state updates
   useEffect(() => {
     if (filteredImages.length > 0) {
-      setFinalSrc(filteredImages[0]);
-    }
-  }, [filteredImages]);
-
-  // Check image sources on component mount
-  useEffect(() => {
-    // Monitor image sources for changes
-  }, [alt, src, images, filteredImages, finalSrc, size]);
-
-  // Reset current image index when images list changes
-  useEffect(() => {
-    if (filteredImages.length > 0) {
+      // Reset to first image when images change
       setCurrentImageIndex(0);
       setFinalSrc(filteredImages[0]);
       setImageFailed(false);
+    } else {
+      setFinalSrc('');
     }
-  }, [images, src, alt, filteredImages]);
+  }, [filteredImages]);
 
   // Update finalSrc when currentImageIndex changes
   useEffect(() => {
