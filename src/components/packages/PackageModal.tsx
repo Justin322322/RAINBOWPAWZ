@@ -383,11 +383,10 @@ const PackageModal: React.FC<PackageModalProps> = ({
 
       // Clear any image errors
       if (errors.images) {
-        setErrors(prev => {
-          const newErrors = { ...prev };
-          newErrors.images = undefined;
-          return newErrors;
-        });
+        setErrors(prev => ({
+          ...prev,
+          images: undefined
+        }));
       }
 
       showToast('Image uploaded successfully!', 'success');
