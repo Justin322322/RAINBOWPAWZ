@@ -62,18 +62,14 @@ const DocumentThumbnail: React.FC<DocumentThumbnailProps> = ({ document, onDocum
 
   const isPdfFile = documentUrl.toLowerCase().endsWith('.pdf');
 
-  const handleClick = () => {
-    onDocumentClick(documentUrl, documentType);
-  };
-
   const handleImageError = () => {
     setLoadError(true);
   };
 
   return (
-    <div 
+    <div
       className="relative bg-white border-2 border-gray-200 rounded-lg overflow-hidden cursor-pointer hover:border-blue-300 hover:shadow-md transition-all duration-200"
-      onClick={handleClick}
+      onClick={() => onDocumentClick(documentUrl, documentType)}
     >
       {/* Thumbnail Area */}
       <div className="h-32 bg-gray-50 flex items-center justify-center relative">
@@ -117,7 +113,7 @@ const DocumentThumbnail: React.FC<DocumentThumbnailProps> = ({ document, onDocum
           <button
             onClick={(e) => {
               e.stopPropagation();
-              handleClick();
+              onDocumentClick(documentUrl, documentType);
             }}
             className="text-xs text-blue-600 hover:text-blue-800 font-medium"
           >
