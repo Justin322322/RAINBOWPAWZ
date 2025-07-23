@@ -225,13 +225,42 @@ function PackageDetailPage({ userData: _userData }: PackageDetailPageProps) {
                         </p>
                       </div>
                       <div>
-                        <p className="text-sm text-gray-500">Pricing</p>
+                        <p className="text-sm text-gray-500">Base Price</p>
                         <p className="font-medium flex items-center">
                           <span className="text-[var(--primary-green)] mr-2">✓</span>
                           ₱{packageData.price.toLocaleString()}
                         </p>
                       </div>
+
+                      {packageData.pricePerKg > 0 && (
+                        <div>
+                          <p className="text-sm text-gray-500">Price Per Kg</p>
+                          <p className="font-medium flex items-center">
+                            <span className="text-[var(--primary-green)] mr-2">✓</span>
+                            ₱{packageData.pricePerKg.toLocaleString()}/kg
+                          </p>
+                        </div>
+                      )}
                     </div>
+
+
+
+                    {/* Supported Pet Types */}
+                    {packageData.supportedPetTypes && packageData.supportedPetTypes.length > 0 && (
+                      <div>
+                        <p className="text-sm text-gray-500 mb-2">Supported Pet Types</p>
+                        <div className="flex flex-wrap gap-2">
+                          {packageData.supportedPetTypes.map((petType: string, index: number) => (
+                            <span
+                              key={index}
+                              className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800"
+                            >
+                              {petType}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
 
                     <div>
                       <p className="text-sm text-gray-500">Memorial Inclusions</p>

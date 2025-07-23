@@ -92,6 +92,9 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
   const [selectedDate, setSelectedDate] = useState<string | undefined>(undefined);
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<any | null>(null);
 
+  // Price calculation state
+  const [calculatedPrice, setCalculatedPrice] = useState<number>(0);
+
   // Field validation state
   const [validationErrors, setValidationErrors] = useState<{
     petName?: string;
@@ -755,6 +758,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
         petName,
         petType,
         petBreed: petBreed || undefined,
+        petWeight: parseFloat(petWeight) || 0,
         petImageUrl, // This will be the image path from the upload
         causeOfDeath: causeOfDeath || undefined,
         specialRequests: petSpecialNotes || undefined, // Use petSpecialNotes instead of specialRequests
@@ -770,7 +774,9 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
         selectedAddOns: selectedAddOns.map(addon => ({
           name: addon.name,
           price: addon.price
-        }))
+        })),
+        // Price per kg information
+        pricePerKg: bookingData?.package?.pricePerKg || 0
       };
 
 
@@ -908,11 +914,17 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
   const calculateTotalPrice = () => {
     if (!bookingData?.package?.price) return 0;
 
+    // Calculate price based on base price + (weight * price per kg)
     const basePrice = Number(bookingData.package.price);
+    const weightPrice = petWeight && bookingData.package.pricePerKg
+      ? parseFloat(petWeight) * Number(bookingData.package.pricePerKg)
+      : 0;
+    const totalBasePrice = basePrice + weightPrice;
+
     const delivery = deliveryOption === 'delivery' ? Number(deliveryFee) : 0;
     const addOns = addOnsTotalPrice || 0;
 
-    return basePrice + delivery + addOns;
+    return totalBasePrice + delivery + addOns;
   };
 
   return (
@@ -1126,13 +1138,38 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                           <input
                             type="number"
                             value={petWeight}
-                            onChange={(e) => setPetWeight(e.target.value)}
+                            onChange={(e) => {
+                              const weight = parseFloat(e.target.value);
+                              setPetWeight(e.target.value);
+
+                              // Calculate price based on weight and price per kg
+                              if (!isNaN(weight) && bookingData?.package?.pricePerKg) {
+                                const basePrice = Number(bookingData.package.price);
+                                const weightPrice = weight * Number(bookingData.package.pricePerKg);
+                                setCalculatedPrice(basePrice + weightPrice);
+                              }
+                            }}
                             min="0"
                             step="0.1"
                             className="w-full p-3 border border-gray-300 rounded-md focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
                             placeholder="Enter weight in kilograms"
                           />
+                          {bookingData?.package?.pricePerKg > 0 && petWeight && !isNaN(parseFloat(petWeight)) && (
+                            <div className="mt-2 text-sm">
+                              <p className="text-gray-600">
+                                Base price: ₱{Number(bookingData.package.price).toLocaleString()}
+                              </p>
+                              <p className="text-gray-600">
+                                Weight price: {parseFloat(petWeight).toFixed(1)}kg × ₱{Number(bookingData.package.pricePerKg).toLocaleString()}/kg =
+                                ₱{(parseFloat(petWeight) * Number(bookingData.package.pricePerKg)).toLocaleString()}
+                              </p>
+                              <p className="font-medium text-[var(--primary-green)]">
+                                Total base price: ₱{calculatedPrice.toLocaleString()}
+                              </p>
+                            </div>
+                          )}
                         </div>
+
 
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">

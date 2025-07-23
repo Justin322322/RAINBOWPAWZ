@@ -20,8 +20,10 @@ import { LoadingSpinner } from '@/app/cremation/components/LoadingComponents';
 import { PackageList } from '@/components/packages/PackageList';
 import { PackageCards } from '@/components/packages/PackageCards';
 import { EmptyState } from '@/components/packages/EmptyState';
+import { PackageDetailsModal } from '@/components/packages/PackageDetailsModal';
+import PackageModal from '@/components/packages/PackageModal';
 import { usePackages } from '@/hooks/usePackages';
-import { ViewMode } from '@/types/packages';
+import { ViewMode, PackageData } from '@/types/packages';
 interface PackagesPageProps {
   userData?: any;
 }
@@ -30,6 +32,13 @@ function PackagesPage({ userData }: PackagesPageProps) {
   const router = useRouter();
   const [viewMode, setViewMode] = useState<ViewMode>('card');
   const [isCreatingPackage, setIsCreatingPackage] = useState(false);
+
+  // Modal states
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [editingPackageId, setEditingPackageId] = useState<number | undefined>();
+  const [selectedPackage, setSelectedPackage] = useState<PackageData | null>(null);
 
   // Use our custom hook for packages data and actions
   const {
@@ -49,21 +58,38 @@ function PackagesPage({ userData }: PackagesPageProps) {
     filteredPackages,
   } = usePackages({ userData });
 
-  // Navigation handler for edit
+  // Modal handlers
   const handleEditPackage = useCallback((packageId: number) => {
-    router.push(`/cremation/packages/edit/${packageId}`);
-  }, [router]);
+    setEditingPackageId(packageId);
+    setShowEditModal(true);
+  }, []);
 
-  // Handler for creating a new package
   const handleCreatePackage = useCallback(() => {
-    setIsCreatingPackage(true);
-    router.push('/cremation/packages/create');
+    setShowCreateModal(true);
+  }, []);
 
-    // Reset the state after a short delay to ensure the navigation has started
-    setTimeout(() => {
-      setIsCreatingPackage(false);
-    }, 2000);
-  }, [router]);
+  const handleModalSuccess = useCallback(() => {
+    // Refresh packages list by refetching data
+    // If usePackages hook has a refetch method:
+    //   refetch();
+    // Or reset any cache/state that triggers a re-fetch
+  }, []);
+
+  const handleDetailsPackage = useCallback((packageId: number) => {
+    const pkg = packages.find(p => p.id === packageId);
+    if (pkg) {
+      setSelectedPackage(pkg);
+      setShowDetailsModal(true);
+    }
+  }, [packages]);
+
+  const handleCloseModals = useCallback(() => {
+    setShowCreateModal(false);
+    setShowEditModal(false);
+    setShowDetailsModal(false);
+    setEditingPackageId(undefined);
+    setSelectedPackage(null);
+  }, []);
 
   // Check if filters are applied (for empty state messaging)
   const hasFiltersApplied = searchTerm !== '' || categoryFilter !== 'all';
@@ -192,6 +218,7 @@ function PackagesPage({ userData }: PackagesPageProps) {
           packages={filteredPackages}
           onEdit={handleEditPackage}
           onDelete={handleDeleteClick}
+          onDetails={handleDetailsPackage}
           onToggleActive={handleToggleActive}
           toggleLoading={toggleLoading}
         />
@@ -203,6 +230,7 @@ function PackagesPage({ userData }: PackagesPageProps) {
           packages={filteredPackages}
           onEdit={handleEditPackage}
           onDelete={handleDeleteClick}
+          onDetails={handleDetailsPackage}
           onToggleActive={handleToggleActive}
           toggleLoading={toggleLoading}
         />
@@ -218,6 +246,30 @@ function PackagesPage({ userData }: PackagesPageProps) {
         confirmText="Delete"
         variant="danger"
         icon={<TrashIcon className="h-6 w-6 text-red-600" />}
+      />
+
+      {/* Create Package Modal */}
+      <PackageModal
+        isOpen={showCreateModal}
+        onClose={handleCloseModals}
+        onSuccess={handleModalSuccess}
+        mode="create"
+      />
+
+      {/* Edit Package Modal */}
+      <PackageModal
+        isOpen={showEditModal}
+        onClose={handleCloseModals}
+        onSuccess={handleModalSuccess}
+        mode="edit"
+        packageId={editingPackageId}
+      />
+
+      {/* Package Details Modal */}
+      <PackageDetailsModal
+        isOpen={showDetailsModal}
+        onClose={handleCloseModals}
+        package={selectedPackage}
       />
     </CremationDashboardLayout>
   );

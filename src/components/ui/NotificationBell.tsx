@@ -10,6 +10,7 @@ import Link from 'next/link';
 export default function NotificationBell() {
   const [isOpen, setIsOpen] = useState(false);
   const [dropdownPosition, setDropdownPosition] = useState<{ right?: string; left?: string }>({ right: '0' });
+  const [clickingNotificationId, setClickingNotificationId] = useState<number | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const { notifications, unreadCount, loading, markAsRead, markAllAsRead, removeNotification, fetchNotifications } = useNotifications();
@@ -58,13 +59,35 @@ export default function NotificationBell() {
 
   // Handle notification click
   const handleNotificationClick = async (notification: Notification) => {
-    if (notification.is_read === 0) {
-      await markAsRead(notification.id);
-    }
+    try {
+      console.log('Notification clicked:', notification.id, 'is_read:', notification.is_read);
 
-    // If there's a link, the navigation will happen via the Link component
-    // Otherwise, just close the dropdown
-    if (!notification.link) {
+      // Prevent multiple rapid clicks on the same notification
+      if (clickingNotificationId === notification.id) {
+        console.log('Already processing notification:', notification.id);
+        return;
+      }
+
+      // Mark as read if unread
+      if (notification.is_read === 0) {
+        console.log('Marking notification as read:', notification.id);
+        setClickingNotificationId(notification.id);
+
+        try {
+          await markAsRead(notification.id);
+        } finally {
+          setClickingNotificationId(null);
+        }
+      }
+
+      // Close the dropdown after a short delay to allow the state to update
+      setTimeout(() => {
+        setIsOpen(false);
+      }, 100);
+    } catch (error) {
+      console.error('Error handling notification click:', error);
+      setClickingNotificationId(null);
+      // Still close the dropdown even if marking as read fails
       setIsOpen(false);
     }
   };

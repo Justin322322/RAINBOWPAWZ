@@ -2,10 +2,12 @@
 
 import React, { useState } from 'react';
 import { Modal, Input, Button, Checkbox, Alert, SelectInput } from '@/components/ui';
-import { EyeIcon, EyeSlashIcon, ArrowRightIcon, DocumentArrowUpIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { EyeIcon, EyeSlashIcon, ArrowRightIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import PrivacyPolicyModal from '@/components/PrivacyPolicyModal';
 import { useToast } from '@/context/ToastContext';
 import PhilippinePhoneInput from '@/components/ui/PhilippinePhoneInput';
+import PasswordCriteria from '@/components/ui/PasswordCriteria';
+import FileInputWithThumbnail from '@/components/ui/FileInputWithThumbnail';
 
 type BusinessAccountModalProps = {
   isOpen: boolean;
@@ -26,6 +28,7 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
     businessEmail: '',
     businessDescription: '',
     businessType: 'cremation',
+    businessEntityType: 'sole_proprietorship', // New field for legal entity type
     businessHours: '',
     birCertificate: null as File | null,
     businessPermit: null as File | null,
@@ -36,70 +39,14 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
   });
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-  const [passwordStrength, setPasswordStrength] = useState(0);
-  const [passwordFeedback, setPasswordFeedback] = useState('');
+  const [isPasswordValid, setIsPasswordValid] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isPrivacyPolicyOpen, setIsPrivacyPolicyOpen] = useState(false);
 
-  // Function to evaluate password strength
-  const evaluatePasswordStrength = (password: string) => {
-    let strength = 0;
-    let feedback = '';
-
-    if (password.length === 0) {
-      setPasswordStrength(0);
-      setPasswordFeedback('');
-      return;
-    }
-
-    // Length check
-    if (password.length >= 8) {
-      strength += 1;
-    } else {
-      feedback = 'Password should be at least 8 characters long';
-      setPasswordStrength(strength);
-      setPasswordFeedback(feedback);
-      return;
-    }
-
-    // Contains lowercase
-    if (/[a-z]/.test(password)) {
-      strength += 1;
-    }
-
-    // Contains uppercase
-    if (/[A-Z]/.test(password)) {
-      strength += 1;
-    } else {
-      feedback = feedback || 'Add uppercase letters';
-    }
-
-    // Contains numbers
-    if (/\d/.test(password)) {
-      strength += 1;
-    } else {
-      feedback = feedback || 'Add numbers';
-    }
-
-    // Contains special characters
-    if (/[^A-Za-z0-9]/.test(password)) {
-      strength += 1;
-    } else {
-      feedback = feedback || 'Add special characters';
-    }
-
-    // Set feedback based on strength
-    if (strength === 5) {
-      feedback = 'Strong password';
-    } else if (strength >= 3) {
-      feedback = feedback || 'Good password, but could be stronger';
-    } else {
-      feedback = feedback || 'Weak password';
-    }
-
-    setPasswordStrength(strength);
-    setPasswordFeedback(feedback);
+  // Handle password strength updates from PasswordCriteria component
+  const handlePasswordStrengthChange = (_strength: number, isValid: boolean) => {
+    setIsPasswordValid(isValid);
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -124,16 +71,20 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
       }));
     }
 
-    // Evaluate password strength if the password field is changed
-    if (name === 'password') {
-      evaluatePasswordStrength(value);
-    }
+    // Password strength is now handled by the PasswordCriteria component
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setErrorMessage('');
+
+    // Validate password strength before submission
+    if (!isPasswordValid) {
+      setErrorMessage('Password must meet all security requirements: at least 8 characters with uppercase, lowercase, numbers, and special characters');
+      setIsLoading(false);
+      return;
+    }
 
     try {
       // Create FormData object for file uploads
@@ -148,6 +99,7 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
         password: formData.password,
         businessName: formData.businessName,
         businessType: 'cremation', // Set fixed business type for cremation centers
+        businessEntityType: formData.businessEntityType, // Include business entity type
         businessPhone: formData.businessPhone,
         businessAddress: formData.businessAddress,
         businessHours: formData.businessHours || null,
@@ -241,11 +193,7 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
     }
   };
 
-  const strengthColor = (strength: number) => {
-    if (strength >= 4) return 'bg-green-500';
-    if (strength >= 3) return 'bg-yellow-500';
-    return 'bg-red-500';
-  };
+
 
   return (
     <>
@@ -307,7 +255,24 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
                 <Input label="Business Hours" id="businessHours" name="businessHours" value={formData.businessHours} onChange={handleChange} placeholder="e.g., Mon-Fri, 9am-5pm" size="lg" />
               </div>
               <div className="mt-6">
-                <Input label="Business Address" id="businessAddress" name="businessAddress" value={formData.businessAddress} onChange={handleChange} placeholder="123 Business St, Quezon City" required size="lg" />
+                <Input label="Business Address" id="businessAddress" name="businessAddress" value={formData.businessAddress} onChange={handleChange} placeholder="123 Business St, Balanga City" required size="lg" />
+              </div>
+              <div className="mt-6">
+                <SelectInput
+                  label="Business Entity Type"
+                  id="businessEntityType"
+                  name="businessEntityType"
+                  value={formData.businessEntityType}
+                  onChange={(value) => setFormData({...formData, businessEntityType: value})}
+                  required
+                  options={[
+                    { value: "sole_proprietorship", label: "Sole Proprietorship" },
+                    { value: "corporation", label: "Corporation" },
+                    { value: "partnership", label: "Partnership" },
+                    { value: "limited_liability_company", label: "Limited Liability Company (LLC)" },
+                    { value: "cooperative", label: "Cooperative" }
+                  ]}
+                />
               </div>
               <div className="mt-6">
                 <label htmlFor="businessDescription" className="block text-sm font-medium text-gray-700 mb-2">Business Description</label>
@@ -318,9 +283,30 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
             <div className="border-b border-gray-200 pb-6">
               <h3 className="text-lg font-semibold text-gray-700 mb-4">Required Documents</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <FileInput label="BIR Certificate" id="birCertificate" name="birCertificate" onChange={handleChange} fileName={formData.birCertificate?.name} />
-                <FileInput label="Business Permit" id="businessPermit" name="businessPermit" onChange={handleChange} fileName={formData.businessPermit?.name} />
-                <FileInput label="Government ID" id="governmentId" name="governmentId" onChange={handleChange} fileName={formData.governmentId?.name} />
+                <FileInputWithThumbnail
+                  label="BIR Certificate"
+                  id="birCertificate"
+                  name="birCertificate"
+                  onChange={handleChange}
+                  file={formData.birCertificate}
+                  required
+                />
+                <FileInputWithThumbnail
+                  label="Business Permit"
+                  id="businessPermit"
+                  name="businessPermit"
+                  onChange={handleChange}
+                  file={formData.businessPermit}
+                  required
+                />
+                <FileInputWithThumbnail
+                  label="Government ID"
+                  id="governmentId"
+                  name="governmentId"
+                  onChange={handleChange}
+                  file={formData.governmentId}
+                  required
+                />
               </div>
               <p className="text-xs text-gray-500 mt-4">Please upload documents in PDF, JPG, or PNG format. These are required for verification.</p>
             </div>
@@ -342,14 +328,10 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
                   </button>
                 }
               />
-              {formData.password.length > 0 && (
-                <div className="mt-2 space-y-2">
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div className={`h-2 rounded-full transition-all duration-300 ${strengthColor(passwordStrength)}`} style={{ width: `${(passwordStrength / 5) * 100}%` }}></div>
-                  </div>
-                  <p className="text-sm text-gray-600">{passwordFeedback}</p>
-                </div>
-              )}
+              <PasswordCriteria
+                password={formData.password}
+                onStrengthChange={handlePasswordStrengthChange}
+              />
             </div>
 
             <Input
@@ -413,18 +395,7 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
   );
 };
 
-const FileInput = ({ label, id, name, onChange, fileName }: { label: string, id: string, name: string, onChange: (e: React.ChangeEvent<HTMLInputElement>) => void, fileName?: string }) => (
-  <div>
-    <label htmlFor={id} className="block text-sm font-medium text-gray-700 mb-2">{label}</label>
-    <div className="relative border-2 border-dashed border-gray-300 rounded-lg p-4 hover:border-[var(--primary-green)] transition-colors duration-200 text-center cursor-pointer">
-      <DocumentArrowUpIcon className="mx-auto h-10 w-10 text-gray-400" />
-      <p className="mt-2 text-sm text-gray-600">
-        {fileName ? <span className="font-semibold text-[var(--primary-green)]">{fileName}</span> : 'Click to upload'}
-      </p>
-      <input type="file" id={id} name={name} onChange={onChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" accept=".pdf,.jpg,.jpeg,.png" required />
-    </div>
-  </div>
-);
+
 
 
 export default BusinessAccountModal;

@@ -239,6 +239,8 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       return;
     }
 
+    console.log('Marking notification as read:', notificationId);
+
     try {
       // Determine the correct endpoint based on user type
       const userAccountType = getAccountType();
@@ -263,16 +265,21 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
         return;
       }
 
-      // Update local state
-      setNotifications(prev =>
-        prev.map(notification =>
+      // Update local state immediately
+      setNotifications(prev => {
+        const updated = prev.map(notification =>
           notification.id === notificationId
             ? { ...notification, is_read: 1 }
             : notification
-        )
-      );
+        );
 
-      setUnreadCount(prev => Math.max(0, prev - 1));
+        // Recalculate unread count from the updated notifications
+        const newUnreadCount = updated.filter(n => n.is_read === 0).length;
+        console.log('Updated unread count:', newUnreadCount, 'for notification:', notificationId);
+        setUnreadCount(newUnreadCount);
+
+        return updated;
+      });
 
       return await response.json();
     } catch (err) {
@@ -419,25 +426,57 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
                   break;
                   
                 case 'notification':
-                  // New notification received - add to state instantly
-                  const newNotification = data.notification;
-                  setNotifications(prev => [newNotification, ...prev]);
-                  
-                  // Update unread count if notification is unread
-                  if (newNotification.is_read === 0) {
-                    setUnreadCount(prev => prev + 1);
+                  {
+                    // New notification received - add to state instantly (with duplicate prevention)
+                    const newNotification = data.notification;
+                    let isNewNotification = false;
+
+                    setNotifications(prev => {
+                      // Check if notification already exists
+                      const existingIndex = prev.findIndex(n => n.id === newNotification.id);
+
+                      if (existingIndex !== -1) {
+                        // Update existing notification
+                        const updated = [...prev];
+                        updated[existingIndex] = newNotification;
+                        return updated;
+                      } else {
+                        // Add new notification
+                        isNewNotification = true;
+                        return [newNotification, ...prev];
+                      }
+                    });
+
+                    // Update unread count only for new unread notifications
+                    if (isNewNotification && newNotification.is_read === 0) {
+                      setUnreadCount(prev => prev + 1);
+                    }
+
+                    console.log('Instant notification received:', newNotification.title);
                   }
-                  
-                  console.log('Instant notification received:', newNotification.title);
                   break;
                   
                 case 'system_notification':
-                  // System-wide notification
-                  const sysNotification = data.notification;
-                  setNotifications(prev => [sysNotification, ...prev]);
-                  
-                  if (sysNotification.is_read === 0) {
-                    setUnreadCount(prev => prev + 1);
+                  {
+                    // System-wide notification (with duplicate prevention)
+                    const sysNotification = data.notification;
+                    setNotifications(prev => {
+                      // Check if notification already exists
+                      const existingIndex = prev.findIndex(n => n.id === sysNotification.id);
+
+                      if (existingIndex !== -1) {
+                        // Update existing notification
+                        const updated = [...prev];
+                        updated[existingIndex] = sysNotification;
+                        return updated;
+                      } else {
+                        // Add new notification and update unread count
+                        if (sysNotification.is_read === 0) {
+                          setUnreadCount(prevCount => prevCount + 1);
+                        }
+                        return [sysNotification, ...prev];
+                      }
+                    });
                   }
                   break;
                   

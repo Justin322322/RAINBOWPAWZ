@@ -20,6 +20,7 @@ import ConfirmationModal from '@/components/ConfirmationModal';
 import DeclineModal from '@/components/DeclineModal';
 import DocumentViewerModal from '@/components/modals/DocumentViewerModal';
 import { SectionLoader } from '@/components/ui/SectionLoader';
+import DocumentThumbnailGrid from '@/components/admin/DocumentThumbnailGrid';
 
 interface ApplicationDetailContentProps {
   id: string;
@@ -551,28 +552,10 @@ function ApplicationDetailContent({ id }: ApplicationDetailContentProps) {
               <h2 className="text-lg font-medium text-gray-800">Submitted Documents</h2>
             </div>
             <div className="p-6">
-              {application.documents && application.documents.length > 0 ? (
-                <div className="grid grid-cols-1 gap-4">
-                  {application.documents.map((doc, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                      <div className="flex items-center">
-                        <DocumentTextIcon className="h-5 w-5 text-gray-500 mr-2" />
-                        <span className="text-sm font-medium text-gray-900">{doc.type || doc.name}</span>
-                      </div>
-                      <div className="flex space-x-2">
-                        <button
-                          onClick={() => openDocumentModal(doc.url || doc.path || '', doc.type || doc.name || '')}
-                          className="text-sm text-blue-600 hover:text-blue-800 hover:underline"
-                        >
-                          View Document
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-gray-500">No documents have been submitted yet.</p>
-              )}
+              <DocumentThumbnailGrid
+                documents={application.documents || []}
+                onDocumentClick={openDocumentModal}
+              />
             </div>
           </div>
         </div>

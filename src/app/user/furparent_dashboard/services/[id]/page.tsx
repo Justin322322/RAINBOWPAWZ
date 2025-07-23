@@ -506,7 +506,10 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
                               )}
                               {/* Price Badge */}
                               <div className="absolute top-3 right-3 bg-white/95 backdrop-blur-sm px-3 py-1 rounded-full shadow-sm">
-                                <span className="text-[var(--primary-green)] font-bold text-lg">₱{pkg.price.toLocaleString()}</span>
+                                <span className="text-[var(--primary-green)] font-bold text-lg">
+                                  ₱{pkg.price.toLocaleString()}
+                                  {pkg.pricePerKg > 0 && <span className="text-xs">+/kg</span>}
+                                </span>
                               </div>
                             </div>
 
@@ -558,6 +561,40 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
                                       </li>
                                     )}
                                   </ul>
+                                </div>
+                              )}
+
+                              {/* Supported Pet Types */}
+                              {pkg.supportedPetTypes && pkg.supportedPetTypes.length > 0 && (
+                                <div className="mb-4">
+                                  <h4 className="text-sm font-semibold text-gray-700 mb-2">Suitable for:</h4>
+                                  <div className="flex flex-wrap gap-1">
+                                    {pkg.supportedPetTypes.slice(0, 4).map((petType: string, index: number) => (
+                                      <span
+                                        key={index}
+                                        className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700"
+                                      >
+                                        {petType}
+                                      </span>
+                                    ))}
+                                    {pkg.supportedPetTypes.length > 4 && (
+                                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">
+                                        +{pkg.supportedPetTypes.length - 4} more
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Price Per Kg Indicator */}
+                              {pkg.pricePerKg > 0 && (
+                                <div className="mb-4 p-2 bg-blue-50 rounded-lg">
+                                  <div className="flex items-center text-xs text-blue-700">
+                                    <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                      <path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
+                                    </svg>
+                                    <span>₱{pkg.pricePerKg.toLocaleString()}/kg additional</span>
+                                  </div>
                                 </div>
                               )}
 
