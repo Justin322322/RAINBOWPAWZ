@@ -166,6 +166,9 @@ export async function GET(
       const fallbackPath = join(process.cwd(), 'public', 'bg_4.png');
       if (fs.existsSync(fallbackPath)) {
         const fallbackImage = fs.readFileSync(fallbackPath);
+        // Reconstruct imagePath from params for cache control logic
+        const pathParams = await Promise.resolve(params);
+        const imagePath = pathParams.path.join('/');
         const isPackageImage = imagePath.includes('packages/');
         const cacheControl = isPackageImage
           ? 'public, max-age=10, s-maxage=10'
