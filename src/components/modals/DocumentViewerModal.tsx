@@ -117,22 +117,22 @@ const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <Dialog.Panel className="w-full max-w-4xl transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
-                <div className="flex justify-between items-center mb-4">
-                  <Dialog.Title as="h3" className="text-lg font-medium leading-6 text-gray-900">
+              <Dialog.Panel className="w-full max-w-4xl transform overflow-hidden rounded-2xl bg-white text-left align-middle shadow-xl transition-all">
+                <div className="bg-[var(--primary-green)] text-white px-4 sm:px-6 py-3 sm:py-4 flex justify-between items-center">
+                  <Dialog.Title as="h3" className="text-lg sm:text-xl font-medium text-white">
                     {documentType || 'Document'} Viewer
                   </Dialog.Title>
                   <button
                     type="button"
-                    className="rounded-md bg-white text-gray-400 hover:text-gray-500 focus:outline-none"
+                    className="text-white hover:text-white/80 transition-colors duration-200 flex-shrink-0 ml-2"
                     onClick={onClose}
                   >
                     <span className="sr-only">Close</span>
-                    <XMarkIcon className="h-6 w-6" aria-hidden="true" />
+                    <XMarkIcon className="w-5 h-5 sm:w-6 sm:h-6" aria-hidden="true" />
                   </button>
                 </div>
 
-                <div className="mt-2">
+                <div className="p-6">
                   <div className="relative bg-gray-100 rounded-lg overflow-hidden" style={{ minHeight: '60vh' }}>
                     {isLoading && (
                       <div className="absolute inset-0 flex items-center justify-center">

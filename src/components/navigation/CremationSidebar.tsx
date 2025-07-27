@@ -183,9 +183,6 @@ export default function CremationSidebar({
           <p className="text-white/70 text-xs modern-text">
             © {currentYear} RainbowPaws
           </p>
-          <p className="text-white/50 text-xs modern-text mt-1">
-            Cremation Portal v2.0
-          </p>
         </div>
       </div>
     </div>

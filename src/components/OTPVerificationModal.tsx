@@ -517,7 +517,25 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
 
       {/* Modal content */}
-      <div className="relative bg-white rounded-xl shadow-xl max-w-md w-full mx-4 p-6 md:p-8">
+      <div className="relative bg-white rounded-xl shadow-xl max-w-md w-full mx-4 overflow-hidden">
+        {/* Header */}
+        <div className="bg-[var(--primary-green)] text-white px-4 sm:px-6 py-3 sm:py-4 flex justify-between items-center">
+          <h2 className="text-lg sm:text-xl font-medium text-white">
+            {verificationStatus === 'success' ? 'Verification Successful!' : 'Verify Your Account'}
+          </h2>
+          <button
+            onClick={onClose}
+            className="text-white hover:text-white/80 transition-colors duration-200 flex-shrink-0 ml-2"
+            aria-label="Close modal"
+          >
+            <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="p-6 md:p-8">
         <AnimatePresence mode="wait">
           {verificationStatus === 'success' ? (
             <motion.div
@@ -532,7 +550,6 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
                 </svg>
               </div>
-              <h2 className="text-2xl font-semibold text-gray-800 mb-2">Verification Successful!</h2>
               <p className="text-gray-600 text-center">Your account has been verified successfully.</p>
             </motion.div>
           ) : (
@@ -542,7 +559,6 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
             >
-              <h2 className="text-2xl font-semibold text-gray-800 mb-2">Verify Your Account</h2>
               <p className="text-gray-600 mb-6">
                 We&apos;ve sent a 6-digit verification code to <span className="font-medium">{userEmail}</span>
               </p>
@@ -649,6 +665,7 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
             </motion.div>
           )}
         </AnimatePresence>
+        </div>
       </div>
     </div>
   );

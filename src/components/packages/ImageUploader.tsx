@@ -16,37 +16,51 @@ const ImageUploaderComponent: React.FC<ImageUploaderProps> = ({
   fileInputRef,
   onUpload,
   onRemove
-}) => (
-  <div className="mb-8">
-    <h2 className="text-lg font-medium text-gray-800 mb-4">Images</h2>
-    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-      {images.map((img, i) => (
-        <div key={i} className="aspect-square bg-gray-100 rounded-md relative overflow-hidden">
-          <ProductionSafeImage
-            src={img}
-            alt={`Package image ${i + 1}`}
-            className="h-full w-full object-cover"
-            fallbackSrc="/images/placeholder-image.jpg"
-            fill
-          />
-          <button
-            type="button"
-            onClick={() => onRemove(i)}
-            className="absolute top-2 right-2 bg-white p-1 rounded-full shadow-md hover:bg-red-50"
-          >
-            <XMarkIcon className="h-5 w-5 text-red-500" />
-          </button>
-        </div>
-      ))}
+}) => {
+  // Debug logging to understand image URLs
+  console.log('ImageUploader received images:', images);
+
+  return (
+    <div className="mb-8">
+      <h2 className="text-lg font-medium text-gray-800 mb-4">Images</h2>
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+        {images.map((img, i) => {
+          console.log(`Image ${i + 1} URL:`, img);
+          // Create a stable key using the image URL and index
+          const imageKey = `${img}-${i}`;
+          return (
+            <div key={imageKey} className="aspect-square bg-gray-100 rounded-md relative overflow-hidden">
+              <ProductionSafeImage
+                src={img}
+                alt={`Package image ${i + 1}`}
+                className="h-full w-full object-cover"
+                fallbackSrc="/bg_4.png"
+                fill
+                priority={i === 0} // Prioritize loading the first image
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  console.log(`Removing image at index ${i}:`, img);
+                  onRemove(i);
+                }}
+                className="absolute top-2 right-2 bg-white p-1 rounded-full shadow-md hover:bg-red-50 transition-colors"
+                title="Remove image"
+              >
+                <XMarkIcon className="h-5 w-5 text-red-500" />
+              </button>
+            </div>
+          );
+        })}
 
       {/* Show loading indicators for uploading images */}
       {Array.from(uploadingImages).map((uploadId) => (
         <div
           key={uploadId}
-          className="aspect-square bg-gray-100 rounded-md flex flex-col items-center justify-center border-2 border-dashed border-blue-300 animate-pulse"
+          className="aspect-square bg-gradient-to-br from-green-50 to-green-100 rounded-md flex flex-col items-center justify-center border-2 border-dashed border-green-300 animate-pulse"
         >
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-          <span className="text-xs text-blue-500 mt-2">Uploading...</span>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500"></div>
+          <span className="text-xs text-green-600 mt-2 font-medium">Uploading...</span>
         </div>
       ))}
 
@@ -68,7 +82,8 @@ const ImageUploaderComponent: React.FC<ImageUploaderProps> = ({
       />
     </div>
   </div>
-);
+  );
+};
 
 ImageUploaderComponent.displayName = 'ImageUploader';
 

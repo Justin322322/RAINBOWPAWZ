@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/Button';
 import { XMarkIcon, CheckCircleIcon, ExclamationTriangleIcon, PlusIcon, CheckIcon } from '@heroicons/react/24/outline';
 import { ImageUploader } from '@/components/packages/ImageUploader';
 import { useToast } from '@/context/ToastContext';
+import { motion, AnimatePresence } from 'framer-motion';
 
 // Types
 interface AddOn {
@@ -81,7 +82,7 @@ const PackageModal: React.FC<PackageModalProps> = ({
   const [errors, setErrors] = useState<Record<string, string | undefined>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
   const [formProgress, setFormProgress] = useState(0);
 
   // Form field states
@@ -239,6 +240,34 @@ const PackageModal: React.FC<PackageModalProps> = ({
       const data = await response.json();
       const pkg = data.package;
       
+      // Debug logging to understand image paths
+      console.log('Package images from API:', pkg.images);
+
+      // Process images to ensure they work correctly in edit mode
+      // The API already processes images with getImagePath(), but we need to ensure
+      // they're in the correct format for the ImageUploader component
+      const processedImages = (pkg.images || []).map((imagePath: string) => {
+        console.log('Processing image path:', imagePath);
+
+        // If the image is already an API path, use it as-is
+        if (imagePath.startsWith('/api/image/')) {
+          console.log('Image is already API path:', imagePath);
+          return imagePath;
+        }
+        // If it's an uploads path, convert to API path
+        if (imagePath.startsWith('/uploads/')) {
+          const uploadPath = imagePath.substring('/uploads/'.length);
+          const apiPath = `/api/image/${uploadPath}`;
+          console.log('Converting uploads path to API path:', imagePath, '->', apiPath);
+          return apiPath;
+        }
+        // For any other format, return as-is and let the component handle it
+        console.log('Using image path as-is:', imagePath);
+        return imagePath;
+      });
+
+      console.log('Processed images for form:', processedImages);
+
       setFormData({
         name: pkg.name || '',
         description: pkg.description || '',
@@ -250,7 +279,7 @@ const PackageModal: React.FC<PackageModalProps> = ({
         inclusions: pkg.inclusions || [],
         addOns: pkg.addOns || [],
         conditions: pkg.conditions || '',
-        images: pkg.images || [],
+        images: processedImages,
         packageId: pkg.id,
         pricePerKg: pkg.pricePerKg || 0,
         usesCustomOptions: pkg.usesCustomOptions || false,
@@ -388,6 +417,7 @@ const PackageModal: React.FC<PackageModalProps> = ({
 
       const result = await response.json();
 
+      // Add image to form data immediately for real-time feedback
       setFormData(prev => ({
         ...prev,
         images: [...prev.images, result.filePath]
@@ -413,14 +443,27 @@ const PackageModal: React.FC<PackageModalProps> = ({
         newSet.delete(imageId);
         return newSet;
       });
+
+      // Reset file input to allow re-uploading the same file
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
   }, [errors.images, formData.images.length, showToast]);
 
   const handleRemoveImage = useCallback((index: number) => {
-    setFormData(prev => ({
-      ...prev,
-      images: prev.images.filter((_, i) => i !== index)
-    }));
+    console.log('Removing image at index:', index);
+
+    setFormData(prev => {
+      console.log('Current images before removal:', prev.images);
+      const newImages = prev.images.filter((_, i) => i !== index);
+      console.log('New images after removal:', newImages);
+      return {
+        ...prev,
+        images: newImages
+      };
+    });
+
     showToast('Image removed successfully', 'success');
   }, [showToast]);
 
@@ -481,12 +524,18 @@ const PackageModal: React.FC<PackageModalProps> = ({
         throw new Error(errorMessage);
       }
 
-      showToast(
-        mode === 'create' ? 'Package created successfully!' : 'Package updated successfully!',
-        'success'
-      );
+      // Show success state
+      setIsSuccess(true);
 
-      handleSuccess();
+      // Wait for success animation before closing
+      setTimeout(() => {
+        onClose();
+        onSuccess();
+        // Reset success state after closing
+        setTimeout(() => {
+          setIsSuccess(false);
+        }, 300);
+      }, 2000);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : `Failed to ${mode} package`;
       setErrors({ submit: errorMessage });
@@ -494,17 +543,7 @@ const PackageModal: React.FC<PackageModalProps> = ({
     } finally {
       setIsSubmitting(false);
     }
-  }, [formData, mode, packageId, validateForm, showToast]);
-
-  // Success animation handler
-  const handleSuccess = () => {
-    setShowSuccess(true);
-    setTimeout(() => {
-      setShowSuccess(false);
-      onSuccess();
-      onClose();
-    }, 1500);
-  };
+  }, [formData, mode, packageId, validateForm, showToast, onClose, onSuccess]);
 
   if (!isOpen) return null;
 
@@ -513,32 +552,77 @@ const PackageModal: React.FC<PackageModalProps> = ({
       <div className="fixed inset-0 bg-black bg-opacity-50" onClick={onClose}></div>
       <div className="relative bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
         {/* Header section */}
-        <div className="mb-8 bg-white rounded-xl shadow-sm p-4 sm:p-6">
-          <div className="flex items-center">
-            <button onClick={onClose} className="mr-3 p-2 rounded-full hover:bg-gray-100" aria-label="Go back">
-              <XMarkIcon className="h-5 w-5 text-gray-600" />
-            </button>
-            <div>
-              <h1 className="text-xl sm:text-2xl font-semibold text-gray-800">
-                {mode === 'create' ? 'Create New Package' : 'Edit Package'}
-              </h1>
-              <p className="text-sm sm:text-base text-gray-600 mt-1">
-                {mode === 'create' ? 'Add a new service package to your offerings' : 'Update your service package details'}
-              </p>
-            </div>
+        <div className="bg-[var(--primary-green)] text-white px-4 sm:px-6 py-3 sm:py-4 flex justify-between items-center">
+          <div className="flex items-center min-w-0 flex-1">
+            <h1 className="text-lg sm:text-xl font-medium text-white">
+              {mode === 'create' ? 'Create New Package' : 'Edit Package'}
+            </h1>
           </div>
+          <button
+            onClick={onClose}
+            className="text-white hover:text-white/80 transition-colors duration-200 flex-shrink-0 ml-2"
+            aria-label="Close modal"
+          >
+            <XMarkIcon className="w-5 h-5 sm:w-6 sm:h-6" />
+          </button>
         </div>
 
         {/* Form */}
         <div className="bg-white rounded-xl shadow-sm overflow-hidden max-h-[calc(90vh-120px)] overflow-y-auto">
-          {isLoading ? (
-            <div className="flex items-center justify-center h-64">
-              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[var(--primary-green)]"></div>
-            </div>
-          ) : (
+          <AnimatePresence mode="wait">
+            {isLoading ? (
+              <div className="flex items-center justify-center h-64">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[var(--primary-green)]"></div>
+              </div>
+            ) : isSuccess ? (
+              <motion.div
+                key="success"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="flex flex-col items-center justify-center py-12 px-6"
+              >
+                <motion.div
+                  className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center mb-6"
+                  initial={{ scale: 0.8 }}
+                  animate={{ scale: [0.8, 1.2, 1] }}
+                  transition={{ duration: 0.6 }}
+                >
+                  <CheckIcon className="h-10 w-10 text-green-500" />
+                </motion.div>
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                  {mode === 'create' ? 'Package Created Successfully!' : 'Package Updated Successfully!'}
+                </h3>
+                <p className="text-gray-600 text-center mb-6">
+                  {mode === 'create'
+                    ? 'Your new package has been created and is now available for booking.'
+                    : 'Your package changes have been saved and are now live.'
+                  }
+                </p>
+                <div className="w-full max-w-xs bg-gray-200 rounded-full h-2 mb-6">
+                  <motion.div
+                    className="bg-green-500 h-2 rounded-full"
+                    initial={{ width: 0 }}
+                    animate={{ width: "100%" }}
+                    transition={{ duration: 2 }}
+                  />
+                </div>
+                <button
+                  onClick={() => {
+                    onClose();
+                    onSuccess();
+                    setIsSuccess(false);
+                  }}
+                  className="px-6 py-2 bg-[var(--primary-green)] text-white rounded-lg hover:bg-[var(--primary-green-hover)] transition-colors duration-200 font-medium"
+                >
+                  Continue
+                </button>
+              </motion.div>
+            ) : (
             <form onSubmit={handleSubmit} className="p-6 max-w-4xl mx-auto">
                 {/* Package Images */}
                 <ImageUploader
+                  key={`images-${formData.images.length}-${formData.images.join(',')}`}
                   images={formData.images}
                   uploadingImages={uploadingImages}
                   fileInputRef={fileInputRef}
@@ -842,24 +926,18 @@ const PackageModal: React.FC<PackageModalProps> = ({
                 )}
 
                 {/* Submit buttons */}
-                <div className="flex flex-col sm:flex-row sm:justify-end space-y-3 sm:space-y-0 sm:space-x-3">
-                  <button
-                    type="button"
-                    onClick={onClose}
-                    className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--primary-green)]"
-                  >
-                    Cancel
-                  </button>
+                <div className="flex justify-end">
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[var(--primary-green)] hover:bg-[var(--primary-green-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--primary-green)] disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-6 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[var(--primary-green)] hover:bg-[var(--primary-green-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--primary-green)] disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {isSubmitting ? 'Saving...' : (mode === 'create' ? 'Create Package' : 'Save Changes')}
                   </button>
                 </div>
               </form>
             )}
+          </AnimatePresence>
         </div>
       </div>
     </div>

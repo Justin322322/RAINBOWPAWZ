@@ -79,13 +79,13 @@ const DeclineModal: React.FC<DeclineModalProps> = ({
             className="relative bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex justify-between items-center px-6 py-4 border-b border-gray-200">
-              <h3 className="text-lg font-medium text-gray-900">{title}</h3>
+            <div className="bg-[var(--primary-green)] text-white px-4 sm:px-6 py-3 sm:py-4 flex justify-between items-center">
+              <h3 className="text-lg sm:text-xl font-medium text-white">{title}</h3>
               <button
                 onClick={onClose}
-                className="text-gray-400 hover:text-gray-500"
+                className="text-white hover:text-white/80 transition-colors duration-200 flex-shrink-0 ml-2"
               >
-                <XMarkIcon className="h-5 w-5" />
+                <XMarkIcon className="w-5 h-5 sm:w-6 sm:h-6" />
               </button>
             </div>
 

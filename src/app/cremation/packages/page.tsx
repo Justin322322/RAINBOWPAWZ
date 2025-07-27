@@ -1,20 +1,17 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import CremationDashboardLayout from '@/components/navigation/CremationDashboardLayout';
 import withBusinessVerification from '@/components/withBusinessVerification';
 import {
   MagnifyingGlassIcon,
   PlusIcon,
-  TrashIcon,
-  ArrowPathIcon,
   ViewColumnsIcon,
   TableCellsIcon,
+  TrashIcon,
   EyeIcon,
   EyeSlashIcon
 } from '@heroicons/react/24/outline';
-import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 import { toast } from 'react-hot-toast';
 import { LoadingSpinner } from '@/app/cremation/components/LoadingComponents';
 
@@ -24,6 +21,7 @@ import { PackageCards } from '@/components/packages/PackageCards';
 import { EmptyState } from '@/components/packages/EmptyState';
 import { PackageDetailsModal } from '@/components/packages/PackageDetailsModal';
 import PackageModal from '@/components/packages/PackageModal';
+import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 import { usePackages } from '@/hooks/usePackages';
 import { ViewMode, PackageData } from '@/types/packages';
 interface PackagesPageProps {
@@ -31,9 +29,7 @@ interface PackagesPageProps {
 }
 
 function PackagesPage({ userData }: PackagesPageProps) {
-  const router = useRouter();
   const [viewMode, setViewMode] = useState<ViewMode>('card');
-  const [isCreatingPackage, setIsCreatingPackage] = useState(false);
 
   // Modal states
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -54,16 +50,18 @@ function PackagesPage({ userData }: PackagesPageProps) {
     setSearchTerm,
     categoryFilter,
     setCategoryFilter,
-    showDeleteModal,
-    setShowDeleteModal,
-    packageToDelete,
-    handleDeleteClick,
-    confirmDelete,
     toggleLoading,
     handleToggleActive,
     filteredPackages,
     fetchPackages,
+    handleDeleteClick,
+    confirmDelete,
+    showDeleteModal,
+    setShowDeleteModal,
+    packageToDelete,
   } = usePackages({ userData });
+
+  // The usePackages hook already provides handleDeleteClick with proper modal
 
   // Modal handlers
   const handleEditPackage = useCallback((packageId: number) => {
@@ -75,8 +73,13 @@ function PackagesPage({ userData }: PackagesPageProps) {
     setShowCreateModal(true);
   }, []);
 
-  const handleModalSuccess = useCallback(() => {
-    // Refresh packages list to show updated data including images
+  const handleCreateSuccess = useCallback(() => {
+    // Refresh packages list to show the new package
+    fetchPackages();
+  }, [fetchPackages]);
+
+  const handleEditSuccess = useCallback(() => {
+    // Refresh packages list to show updated package data including images
     fetchPackages();
   }, [fetchPackages]);
 
@@ -168,15 +171,10 @@ function PackagesPage({ userData }: PackagesPageProps) {
             <button
               onClick={handleCreatePackage}
               className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[var(--primary-green)] hover:bg-[var(--primary-green-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--primary-green)]"
-              disabled={isCreatingPackage}
               aria-label="Create new package"
             >
-              {isCreatingPackage ? (
-                <ArrowPathIcon className="animate-spin -ml-1 mr-2 h-5 w-5" />
-              ) : (
-                <PlusIcon className="-ml-1 mr-2 h-5 w-5" />
-              )}
-              {isCreatingPackage ? 'Creating...' : 'Create Package'}
+              <PlusIcon className="-ml-1 mr-2 h-5 w-5" />
+              Create Package
             </button>
           </div>
         </div>
@@ -229,7 +227,6 @@ function PackagesPage({ userData }: PackagesPageProps) {
         <EmptyState
           hasFilters={hasFiltersApplied}
           onCreatePackage={handleCreatePackage}
-          isCreatingPackage={isCreatingPackage}
           onRefresh={() => {
             setSearchTerm('');
             setCategoryFilter('all');
@@ -261,23 +258,13 @@ function PackagesPage({ userData }: PackagesPageProps) {
         />
       )}
 
-      {/* Delete confirmation modal */}
-      <ConfirmationModal
-        isOpen={showDeleteModal}
-        onClose={() => setShowDeleteModal(false)}
-        onConfirm={confirmDelete}
-        title="Confirm Deletion"
-        message={`Are you sure you want to delete the package "${packages.find(pkg => pkg.id === packageToDelete)?.name}"? This action cannot be undone.`}
-        confirmText="Delete"
-        variant="danger"
-        icon={<TrashIcon className="h-6 w-6 text-red-600" />}
-      />
+
 
       {/* Create Package Modal */}
       <PackageModal
         isOpen={showCreateModal}
         onClose={handleCloseModals}
-        onSuccess={handleModalSuccess}
+        onSuccess={handleCreateSuccess}
         mode="create"
       />
 
@@ -285,7 +272,7 @@ function PackagesPage({ userData }: PackagesPageProps) {
       <PackageModal
         isOpen={showEditModal}
         onClose={handleCloseModals}
-        onSuccess={handleModalSuccess}
+        onSuccess={handleEditSuccess}
         mode="edit"
         packageId={editingPackageId}
       />
@@ -297,6 +284,32 @@ function PackagesPage({ userData }: PackagesPageProps) {
         package={selectedPackage}
       />
 
+      {/* Delete Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        onConfirm={confirmDelete}
+        title="Delete Package"
+        message={
+          packageToDelete ? (
+            <div>
+              <p className="mb-2">
+                Are you sure you want to delete the package <strong>"{packages.find(pkg => pkg.id === packageToDelete)?.name}"</strong>?
+              </p>
+              <p className="text-sm text-red-600">
+                This action cannot be undone and will permanently remove the package and all its data.
+              </p>
+            </div>
+          ) : (
+            "Are you sure you want to delete this package?"
+          )
+        }
+        confirmText="Delete Package"
+        cancelText="Cancel"
+        variant="danger"
+        icon={<TrashIcon className="h-6 w-6 text-red-600" />}
+        successMessage="Package deleted successfully!"
+      />
       {/* Toggle Status Confirmation Modal */}
       <ConfirmationModal
         isOpen={showToggleModal}
@@ -329,6 +342,7 @@ function PackagesPage({ userData }: PackagesPageProps) {
         }
         successMessage={`Package ${packageToToggle?.isActive ? 'deactivated' : 'activated'} successfully!`}
       />
+
     </CremationDashboardLayout>
   );
 }

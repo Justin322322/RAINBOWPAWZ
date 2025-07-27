@@ -141,11 +141,17 @@ export async function GET(
       let contentType = getContentType(extension);
 
 
+      // Determine cache control based on image type
+      const isPackageImage = imagePath.includes('packages/');
+      const cacheControl = isPackageImage
+        ? 'public, max-age=10, s-maxage=10'
+        : 'public, max-age=60, s-maxage=60';
+
       // Return the image with appropriate headers
       return new NextResponse(image, {
         headers: {
           'Content-Type': contentType,
-          'Cache-Control': 'public, max-age=60, s-maxage=60',
+          'Cache-Control': cacheControl,
         },
       });
     }
@@ -160,10 +166,17 @@ export async function GET(
       const fallbackPath = join(process.cwd(), 'public', 'bg_4.png');
       if (fs.existsSync(fallbackPath)) {
         const fallbackImage = fs.readFileSync(fallbackPath);
+        // Reconstruct imagePath from params for cache control logic
+        const pathParams = await Promise.resolve(params);
+        const imagePath = pathParams.path.join('/');
+        const isPackageImage = imagePath.includes('packages/');
+        const cacheControl = isPackageImage
+          ? 'public, max-age=10, s-maxage=10'
+          : 'public, max-age=60, s-maxage=60';
         return new NextResponse(fallbackImage, {
           headers: {
             'Content-Type': 'image/png',
-            'Cache-Control': 'public, max-age=60, s-maxage=60',
+            'Cache-Control': cacheControl,
           },
         });
       }
