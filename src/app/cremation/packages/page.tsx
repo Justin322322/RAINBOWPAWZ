@@ -10,7 +10,9 @@ import {
   TrashIcon,
   ArrowPathIcon,
   ViewColumnsIcon,
-  TableCellsIcon
+  TableCellsIcon,
+  EyeIcon,
+  EyeSlashIcon
 } from '@heroicons/react/24/outline';
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 import { toast } from 'react-hot-toast';
@@ -40,6 +42,10 @@ function PackagesPage({ userData }: PackagesPageProps) {
   const [editingPackageId, setEditingPackageId] = useState<number | undefined>();
   const [selectedPackage, setSelectedPackage] = useState<PackageData | null>(null);
 
+  // Toggle confirmation modal states
+  const [showToggleModal, setShowToggleModal] = useState(false);
+  const [packageToToggle, setPackageToToggle] = useState<{id: number, isActive: boolean, name: string} | null>(null);
+
   // Use our custom hook for packages data and actions
   const {
     packages,
@@ -56,6 +62,7 @@ function PackagesPage({ userData }: PackagesPageProps) {
     toggleLoading,
     handleToggleActive,
     filteredPackages,
+    fetchPackages,
   } = usePackages({ userData });
 
   // Modal handlers
@@ -69,11 +76,9 @@ function PackagesPage({ userData }: PackagesPageProps) {
   }, []);
 
   const handleModalSuccess = useCallback(() => {
-    // Refresh packages list by refetching data
-    // If usePackages hook has a refetch method:
-    //   refetch();
-    // Or reset any cache/state that triggers a re-fetch
-  }, []);
+    // Refresh packages list to show updated data including images
+    fetchPackages();
+  }, [fetchPackages]);
 
   const handleDetailsPackage = useCallback((packageId: number) => {
     const pkg = packages.find(p => p.id === packageId);
@@ -90,6 +95,26 @@ function PackagesPage({ userData }: PackagesPageProps) {
     setEditingPackageId(undefined);
     setSelectedPackage(null);
   }, []);
+
+  // Handle toggle with confirmation
+  const handleToggleWithConfirmation = useCallback((packageId: number, isActive: boolean) => {
+    const pkg = packages.find(p => p.id === packageId);
+    if (pkg) {
+      setPackageToToggle({
+        id: packageId,
+        isActive: isActive,
+        name: pkg.name
+      });
+      setShowToggleModal(true);
+    }
+  }, [packages]);
+
+  const confirmToggle = useCallback(async () => {
+    if (packageToToggle) {
+      await handleToggleActive(packageToToggle.id, packageToToggle.isActive);
+      setPackageToToggle(null);
+    }
+  }, [packageToToggle, handleToggleActive]);
 
   // Check if filters are applied (for empty state messaging)
   const hasFiltersApplied = searchTerm !== '' || categoryFilter !== 'all';
@@ -219,7 +244,7 @@ function PackagesPage({ userData }: PackagesPageProps) {
           onEdit={handleEditPackage}
           onDelete={handleDeleteClick}
           onDetails={handleDetailsPackage}
-          onToggleActive={handleToggleActive}
+          onToggleActive={handleToggleWithConfirmation}
           toggleLoading={toggleLoading}
         />
       )}
@@ -231,7 +256,7 @@ function PackagesPage({ userData }: PackagesPageProps) {
           onEdit={handleEditPackage}
           onDelete={handleDeleteClick}
           onDetails={handleDetailsPackage}
-          onToggleActive={handleToggleActive}
+          onToggleActive={handleToggleWithConfirmation}
           toggleLoading={toggleLoading}
         />
       )}
@@ -270,6 +295,39 @@ function PackagesPage({ userData }: PackagesPageProps) {
         isOpen={showDetailsModal}
         onClose={handleCloseModals}
         package={selectedPackage}
+      />
+
+      {/* Toggle Status Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showToggleModal}
+        onClose={() => setShowToggleModal(false)}
+        onConfirm={confirmToggle}
+        title={packageToToggle?.isActive ? "Deactivate Package" : "Activate Package"}
+        message={
+          packageToToggle ? (
+            <div>
+              <p className="mb-2">
+                Are you sure you want to {packageToToggle.isActive ? 'deactivate' : 'activate'} the package <strong>"{packageToToggle.name}"</strong>?
+              </p>
+              <p className="text-sm text-gray-600">
+                {packageToToggle.isActive
+                  ? "Deactivating this package will hide it from customers and prevent new bookings."
+                  : "Activating this package will make it visible to customers for booking."
+                }
+              </p>
+            </div>
+          ) : (
+            "Are you sure you want to change this package status?"
+          )
+        }
+        confirmText={packageToToggle?.isActive ? "Deactivate" : "Activate"}
+        cancelText="Cancel"
+        variant={packageToToggle?.isActive ? "warning" : "success"}
+        icon={packageToToggle?.isActive ?
+          <EyeSlashIcon className="h-6 w-6 text-amber-600" /> :
+          <EyeIcon className="h-6 w-6 text-green-600" />
+        }
+        successMessage={`Package ${packageToToggle?.isActive ? 'deactivated' : 'activated'} successfully!`}
       />
     </CremationDashboardLayout>
   );
