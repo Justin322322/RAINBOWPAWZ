@@ -389,19 +389,19 @@ function CremationBookingsPage({ userData }: { userData: any }) {
         <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             {/* Header */}
-            <div className="px-6 py-4 border-b border-gray-200 bg-gray-50 rounded-t-2xl">
+            <div className="bg-[var(--primary-green)] text-white px-4 sm:px-6 py-3 sm:py-4">
               <div className="flex justify-between items-center">
                 <div>
-                  <h1 className="text-xl font-semibold text-gray-900">Booking Details</h1>
-                  <p className="text-sm text-gray-600 mt-1">
+                  <h1 className="text-lg sm:text-xl font-medium text-white">Booking Details</h1>
+                  <p className="text-sm text-white/80 mt-1">
                     Booking #{selectedBooking.id} • {selectedBooking.scheduledDate}
                   </p>
                 </div>
                 <button
                   onClick={() => setShowDetailsModal(false)}
-                  className="text-gray-400 hover:text-gray-600 p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                  className="text-white hover:text-white/80 transition-colors duration-200 p-2 rounded-lg hover:bg-white/10 flex-shrink-0 ml-2"
                 >
-                  <XMarkIcon className="h-5 w-5" />
+                  <XMarkIcon className="w-5 h-5 sm:w-6 sm:h-6" />
                 </button>
               </div>
             </div>

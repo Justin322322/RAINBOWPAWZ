@@ -42,7 +42,9 @@ export const ProductionSafeImage: React.FC<ProductionSafeImageProps> = ({
 
   // Handle image load error
   const handleError = () => {
+    console.warn('Image failed to load:', imgSrc);
     if (imgSrc !== fallbackSrc) {
+      console.log('Falling back to:', fallbackSrc);
       setImgSrc(fallbackSrc);
       setError(true);
     }
@@ -50,7 +52,18 @@ export const ProductionSafeImage: React.FC<ProductionSafeImageProps> = ({
 
   // Use our utility function to get a production-ready image path
   // Always use the API route in production for better reliability
-  const finalSrc = error ? fallbackSrc : getProductionImagePath(imgSrc);
+  // But avoid double-processing if the image is already an API path
+  const finalSrc = error ? fallbackSrc : (
+    imgSrc.startsWith('/api/image/')
+      ? imgSrc // Already processed, just use as-is to avoid double-processing
+      : getProductionImagePath(imgSrc)
+  );
+
+  // Debug logging for image URLs
+  console.log('ProductionSafeImage - Original src:', src);
+  console.log('ProductionSafeImage - Current imgSrc:', imgSrc);
+  console.log('ProductionSafeImage - Final src:', finalSrc);
+  console.log('ProductionSafeImage - Error state:', error);
 
   // Use Next.js Image component for better optimization
   return fill ? (

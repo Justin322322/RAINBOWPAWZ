@@ -3,9 +3,6 @@
 import React, { createContext, useContext, useState, ReactNode, useRef, useEffect } from 'react';
 import ToastContainer, { ToastMessage, ToastType } from '@/components/ui/ToastContainer';
 
-// Re-export ToastType for external use
-export type { ToastType };
-
 interface ToastContextType {
   showToast: (message: string, type: ToastType, duration?: number) => void;
   hideToast: (id: string) => void;

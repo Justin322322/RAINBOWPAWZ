@@ -7,14 +7,14 @@ interface EmptyStateProps {
   hasFilters: boolean;
   onCreatePackage: () => void;
   onRefresh?: () => void;
-  isCreatingPackage: boolean;
+  isCreatingPackage?: boolean;
 }
 
 export const EmptyState: React.FC<EmptyStateProps> = ({
   hasFilters,
   onCreatePackage,
   onRefresh,
-  isCreatingPackage
+  isCreatingPackage = false
 }) => {
   return (
     <div className="bg-white rounded-xl shadow-sm p-8 text-center">
