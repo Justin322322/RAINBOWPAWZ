@@ -245,15 +245,36 @@ export async function GET(request: NextRequest) {
         pkg.images = images.map((img: any) => {
           const imagePath = img.image_path;
 
-          if (imagePath.startsWith('blob:')) {
+          if (!imagePath || imagePath.startsWith('blob:')) {
             return null;
-          } else if (imagePath.startsWith('/uploads/') || imagePath.startsWith('uploads/')) {
-            return imagePath.startsWith('/') ? imagePath : `/${imagePath}`;
-          } else if (imagePath.startsWith('packages/')) {
-            return `/uploads/${imagePath}`;
-          } else {
-            return `/uploads/packages/${imagePath}`;
           }
+          
+          // Ensure all package images use the API route
+          if (imagePath.startsWith('/api/image/')) {
+            return imagePath; // Already correct
+          }
+          if (imagePath.startsWith('/uploads/packages/')) {
+            return `/api/image/packages/${imagePath.substring('/uploads/packages/'.length)}`;
+          }
+          if (imagePath.startsWith('uploads/packages/')) {
+            return `/api/image/packages/${imagePath.substring('uploads/packages/'.length)}`;
+          }
+          if (imagePath.includes('packages/')) {
+            const parts = imagePath.split('packages/');
+            if (parts.length > 1) {
+              return `/api/image/packages/${parts[1]}`;
+            }
+          }
+          // For legacy paths, try to convert to API route
+          if (imagePath.startsWith('/uploads/')) {
+            return `/api/image/${imagePath.substring('/uploads/'.length)}`;
+          }
+          if (imagePath.startsWith('uploads/')) {
+            return `/api/image/${imagePath}`;
+          }
+          
+          // Default fallback to API route
+          return `/api/image/packages/${imagePath}`;
         }).filter(Boolean);
 
         if (pkg.images.length > 0) {

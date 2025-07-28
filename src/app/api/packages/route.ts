@@ -451,7 +451,26 @@ async function enhancePackagesWithDetails(pkgs: any[]) {
       .map((i: any) => {
         const path = i.image_path;
         if (!path || path.startsWith('blob:')) return null;
-        return path.startsWith('http') ? path : getImagePath(path);
+        if (path.startsWith('http')) return path;
+        
+        // Ensure all package images use the API route
+        if (path.startsWith('/api/image/')) {
+          return path; // Already correct
+        }
+        if (path.startsWith('/uploads/packages/')) {
+          return `/api/image/packages/${path.substring('/uploads/packages/'.length)}`;
+        }
+        if (path.startsWith('uploads/packages/')) {
+          return `/api/image/packages/${path.substring('uploads/packages/'.length)}`;
+        }
+        if (path.includes('packages/')) {
+          const parts = path.split('packages/');
+          if (parts.length > 1) {
+            return `/api/image/packages/${parts[1]}`;
+          }
+        }
+        // For other paths, use the standard function
+        return getImagePath(path);
       })
       .filter(Boolean);
 

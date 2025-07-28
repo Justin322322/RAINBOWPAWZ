@@ -95,30 +95,7 @@ export function getProductionImagePath(path: string): string {
 
 
 
-/**
- * Get all available images for a package
- * @param packageId The package ID
- * @returns Array of image URLs
- */
-export async function getAllPackageImages(packageId: number | string): Promise<string[]> {
-  try {
-    // Try to fetch available images from our API
-    const response = await fetch(`/api/packages/available-images?id=${packageId}`);
-    const data = await response.json();
 
-    // If we found images, return them all
-    if (data.success && data.imagesFound && data.imagesFound.length > 0) {
-      // Ensure all images use the API route for better production compatibility
-      return data.imagesFound.map((img: string) => getImagePath(img));
-    }
-
-    // Fallback to a reliable fallback image
-    return [`/bg_4.png`];
-  } catch {
-    // Default fallback
-    return [`/bg_4.png`];
-  }
-}
 
 /**
  * Get profile picture URL without cache busting to prevent flickering during navigation

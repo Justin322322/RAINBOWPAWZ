@@ -13,7 +13,7 @@ import {
 import FurParentPageSkeleton from '@/components/ui/FurParentPageSkeleton';
 import { useCart } from '@/contexts/CartContext';
 import CartSidebar from '@/components/cart/CartSidebar';
-import { getAllPackageImages, handleImageError } from '@/utils/imageUtils';
+import { handleImageError } from '@/utils/imageUtils';
 import { useToast } from '@/context/ToastContext';
 
 interface PackageDetailPageProps {
@@ -72,16 +72,7 @@ function PackageDetailPage({ userData: _userData }: PackageDetailPageProps) {
           throw new Error('Package data is invalid or empty');
         }
 
-
-        // Use our utility to get verified package images
-        try {
-          const verifiedImages = await getAllPackageImages(String(packageId));
-          if (verifiedImages && verifiedImages.length > 0) {
-            packageData.package.images = verifiedImages;
-          }
-        } catch {
-        }
-
+        // Images are already included in the package data from the API
         setPackageData(packageData.package);
       } catch (err: any) {
         setError(err.message || 'Failed to load package details');
@@ -180,12 +171,30 @@ function PackageDetailPage({ userData: _userData }: PackageDetailPageProps) {
                           </button>
                         </>
                       )}
+
+                      {/* Dot indicators - only show if there are multiple images */}
+                      {packageData.images.length > 1 && (
+                        <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2 bg-black/30 px-3 py-1.5 rounded-full">
+                          {packageData.images.map((_: any, index: number) => (
+                            <button
+                              key={index}
+                              onClick={() => setCurrentImageIndex(index)}
+                              className={`h-2.5 w-2.5 rounded-full transition-all duration-300 ${
+                                currentImageIndex === index
+                                  ? 'bg-white scale-110 ring-2 ring-white/50'
+                                  : 'bg-white/50 hover:bg-white/80'
+                              }`}
+                              aria-label={`View image ${index + 1} of ${packageData.images.length}`}
+                            />
+                          ))}
+                        </div>
+                      )}
                     </>
                   ) : (
                     <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
                       <div className="text-center p-4">
                         <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                         </svg>
                         <p className="mt-2 text-sm text-gray-500">No image available</p>
                       </div>

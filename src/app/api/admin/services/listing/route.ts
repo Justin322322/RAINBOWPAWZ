@@ -4,8 +4,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { query, checkTableExists } from '@/lib/db';
 import { verifySecureAuth } from '@/lib/secureAuth';
 import { calculateRevenue, formatRevenue } from '@/lib/revenueCalculator';
-import fs from 'fs';
-import path from 'path';
 
 type RawServiceRow = Record<string, any>;
 type PackageResponse = {
@@ -31,36 +29,7 @@ type PackageResponse = {
   addOns: string[];
 };
 
-async function listImagePaths(packageId: number): Promise<string[]> {
-  const baseDir = path.join(process.cwd(), 'public', 'uploads', 'packages');
-  const result: string[] = [];
-
-  // Check package-specific folder
-  const pkgDir = path.join(baseDir, String(packageId));
-  if (fs.existsSync(pkgDir)) {
-    for (const file of fs.readdirSync(pkgDir)) {
-      if (/\.(jpe?g|png|gif|webp|svg)$/i.test(file)) {
-        result.push(`/uploads/packages/${packageId}/${file}`);
-      }
-    }
-    if (result.length) return result;
-  }
-
-  // Fallback to flat files
-  if (fs.existsSync(baseDir)) {
-    for (const file of fs.readdirSync(baseDir)) {
-      if (
-        file.startsWith(`package_${packageId}_`) ||
-        file === `${packageId}.jpg` ||
-        file === `${packageId}.png`
-      ) {
-        result.push(`/uploads/packages/${file}`);
-      }
-    }
-  }
-
-  return result;
-}
+// Removed listImagePaths function - now using database-based image fetching
 
 export async function GET(request: NextRequest) {
   // --- Authentication ---
@@ -253,6 +222,49 @@ export async function GET(request: NextRequest) {
     }
   }
 
+  // Get images from database for all packages
+  let allImages: Record<number, string[]> = {};
+  try {
+    const packageIds = rows.map(r => r.package_id);
+    if (packageIds.length > 0) {
+      const imageResults = await query(
+        `SELECT package_id, image_path FROM package_images WHERE package_id IN (${packageIds.map(() => '?').join(',')}) ORDER BY display_order`,
+        packageIds
+      ) as any[];
+
+      // Group images by package ID and convert to API paths
+      imageResults.forEach((img: any) => {
+        if (!allImages[img.package_id]) {
+          allImages[img.package_id] = [];
+        }
+        
+        const imagePath = img.image_path;
+        if (imagePath && !imagePath.startsWith('blob:')) {
+          // Convert to API path
+          let apiPath;
+          if (imagePath.startsWith('/api/image/')) {
+            apiPath = imagePath; // Already correct
+          } else if (imagePath.startsWith('/uploads/packages/')) {
+            apiPath = `/api/image/packages/${imagePath.substring('/uploads/packages/'.length)}`;
+          } else if (imagePath.startsWith('uploads/packages/')) {
+            apiPath = `/api/image/packages/${imagePath.substring('uploads/packages/'.length)}`;
+          } else if (imagePath.includes('packages/')) {
+            const parts = imagePath.split('packages/');
+            if (parts.length > 1) {
+              apiPath = `/api/image/packages/${parts[1]}`;
+            }
+          } else {
+            // Default fallback
+            apiPath = `/api/image/packages/${imagePath}`;
+          }
+          allImages[img.package_id].push(apiPath);
+        }
+      });
+    }
+  } catch (error) {
+    console.error('Error fetching package images:', error);
+  }
+
   // Process services in parallel but with reduced database queries
   const services: PackageResponse[] = await Promise.all(
     rows.map(async r => {
@@ -260,8 +272,8 @@ export async function GET(request: NextRequest) {
       const priceVal = +r.price;
       const priceFmt = `₱${priceVal.toLocaleString('en-US',{ minimumFractionDigits:2, maximumFractionDigits:2 })}`;
 
-      // Get images (this is file system based, not database)
-      const images = await listImagePaths(r.package_id);
+      // Get images from pre-fetched database results
+      const images = allImages[r.package_id] || [];
       const [image] = images;
 
       // Get inclusions and addons from pre-fetched data

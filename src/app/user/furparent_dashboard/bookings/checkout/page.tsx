@@ -1012,7 +1012,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                       <div className="space-y-4">
                         <div className={validationErrors.petName && validationErrors.formSubmitted ? 'error-field' : ''}>
                           <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Name of Your Pet <span className="text-red-500">*</span>
+                            Name of Your Pet
                           </label>
                           <div className="relative">
                             <input
@@ -1046,7 +1046,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
 
                         <div className={validationErrors.petType && validationErrors.formSubmitted ? 'error-field' : ''}>
                           <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Type of Pet <span className="text-red-500">*</span>
+                            Type of Pet
                           </label>
                           <div className="relative">
                             <select
@@ -1173,7 +1173,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
 
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Cause of Death
+                            Cause of Death <span className="text-gray-500 text-xs">(optional)</span>
                           </label>
                           <input
                             type="text"
@@ -1186,7 +1186,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
 
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Special Notes
+                            Special Notes <span className="text-gray-500 text-xs">(optional)</span>
                           </label>
                           <textarea
                             value={petSpecialNotes}
@@ -1199,7 +1199,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
 
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Upload Pet Photo
+                            Upload Pet Photo <span className="text-gray-500 text-xs">(optional)</span>
                           </label>
                           <div className="mt-1 flex items-center space-x-4">
                             {petImagePreview ? (
@@ -1413,7 +1413,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                               <div className="mb-3">
                                 <p className="text-sm font-medium text-gray-700">Delivery Address:</p>
                                                   <p className="text-sm text-gray-600 mt-1">{currentUserData.address}</p>
-                  <p className="text-sm text-gray-600">{currentUserData.city}, {currentUserData.region}</p>
+                  <p className="text-sm text-gray-600">{currentUserData.city}</p>
                               </div>
                             ) : (
                               <div className="mb-3 p-2 bg-red-50 border border-red-200 rounded-md">
@@ -1451,7 +1451,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                   {(error || Object.keys(validationErrors).filter(key => key !== 'formSubmitted').length > 0) && validationErrors.formSubmitted && (
                     <div className="mt-6 text-center">
                       <p className="text-sm text-gray-600">
-                        Please complete all required fields marked with <span className="text-red-500">*</span> before proceeding.
+                        Please complete all required fields before proceeding.
                       </p>
                     </div>
                   )}
@@ -1538,9 +1538,18 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
 
                   <div className="space-y-3 mb-6">
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Package Price</span>
+                      <span className="text-gray-600">Base Package Price</span>
                       <span className="font-medium">₱{bookingData.package.price.toLocaleString()}</span>
                     </div>
+
+                    {bookingData?.package?.pricePerKg > 0 && petWeight && !isNaN(parseFloat(petWeight)) && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">
+                          Weight Price ({parseFloat(petWeight).toFixed(1)}kg × ₱{Number(bookingData.package.pricePerKg).toLocaleString()}/kg)
+                        </span>
+                        <span className="font-medium">₱{(parseFloat(petWeight) * Number(bookingData.package.pricePerKg)).toLocaleString()}</span>
+                      </div>
+                    )}
 
                     {deliveryOption === 'delivery' && deliveryFee > 0 && (
                       <div className="flex justify-between">

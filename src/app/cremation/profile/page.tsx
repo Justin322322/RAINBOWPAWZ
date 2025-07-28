@@ -31,7 +31,7 @@ import {
 } from '@/components/ui/ProfileLayout';
 import {
   ProfileInput,
-  ProfileTextarea,
+  ProfileTextArea,
   ProfileButton,
   ProfileAlert
 } from '@/components/ui/ProfileFormComponents';
@@ -1165,7 +1165,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
                     icon={<BuildingStorefrontIcon className="h-5 w-5" />}
                   />
 
-                  <ProfileTextarea
+                  <ProfileTextArea
                     label="Business Description"
                     value={businessInfo.description}
                     onChange={(value) => setBusinessInfo({...businessInfo, description: value})}
@@ -1254,7 +1254,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
                   <div className="space-y-2">
                     <label className="block text-sm font-medium text-gray-700">
                       Address
-                      <span className="text-red-500 ml-1">*</span>
+      
                     </label>
                     <div className="relative">
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">

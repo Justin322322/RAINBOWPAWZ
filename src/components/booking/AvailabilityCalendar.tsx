@@ -1393,7 +1393,7 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
             {/* Service Selection */}
             <div className="mb-4">
               <label className="block text-sm font-medium text-blue-800 mb-2">
-                Select Services for Time Slots: <span className="text-red-500">*</span>
+                Select Services for Time Slots:
               </label>
               {serviceSelectionError && (
                 <div className="flex items-center mb-2 text-sm text-red-600">
@@ -1719,7 +1719,7 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Start Time <span className="text-red-500">*</span>
+                                        Start Time
                 </label>
                 <input
                   type="time"
@@ -1731,7 +1731,7 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  End Time <span className="text-red-500">*</span>
+                                        End Time
                 </label>
                 <input
                   type="time"
@@ -1744,7 +1744,7 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Available Services for this Time Slot <span className="text-red-500">*</span>
+                                        Available Services for this Time Slot
                 </label>
                 {serviceSelectionError && (
                   <div className="flex items-center mt-1 mb-2 text-sm text-red-600">

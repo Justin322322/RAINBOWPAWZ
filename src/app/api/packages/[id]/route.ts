@@ -86,7 +86,27 @@ export async function GET(
         addOns: addOns.map((a) => ({ id: a.id, name: a.description, price: Number(a.price) })),
         images: images
           .map((i) => i.image_path)
-          .map((p) => getImagePath(p)),
+          .filter(path => path && !path.startsWith('blob:'))
+          .map((p) => {
+            // Ensure all package images use the API route
+            if (p.startsWith('/api/image/')) {
+              return p; // Already correct
+            }
+            if (p.startsWith('/uploads/packages/')) {
+              return `/api/image/packages/${p.substring('/uploads/packages/'.length)}`;
+            }
+            if (p.startsWith('uploads/packages/')) {
+              return `/api/image/packages/${p.substring('uploads/packages/'.length)}`;
+            }
+            if (p.includes('packages/')) {
+              const parts = p.split('packages/');
+              if (parts.length > 1) {
+                return `/api/image/packages/${parts[1]}`;
+              }
+            }
+            // For other paths, use the standard function
+            return getImagePath(p);
+          }),
         // New enhanced features
         hasSizePricing: Boolean(pkg.has_size_pricing),
         sizePricing: sizePricing.map((sp) => ({

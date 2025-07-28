@@ -62,6 +62,7 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
 
   // State for package carousel
   const [currentPackageIndex, setCurrentPackageIndex] = useState(0);
+  const [packageImageIndexes, setPackageImageIndexes] = useState<Record<number, number>>({});
   const [sortBy, setSortBy] = useState('all');
 
   // Get user location from profile with coordinates support
@@ -186,32 +187,13 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
 
         const packagesData = await packagesResponse.json();
 
-        // Process packages to fetch images
+        // The packages already contain images from the database via the /api/packages endpoint
         const packages = packagesData.packages || [];
 
-        // Get images for each package
-        const packagesWithImages = await Promise.all(
-          packages.map(async (pkg: any) => {
-            try {
-              // Use our imageUtils function to get the verified images
-              const responseImages = await fetch(`/api/packages/available-images?id=${pkg.id}`);
-              const imagesData = await responseImages.json();
-
-              if (imagesData.success && imagesData.imagesFound && imagesData.imagesFound.length > 0) {
-                return { ...pkg, images: imagesData.imagesFound };
-              }
-
-              return pkg;
-            } catch {
-              return pkg;
-            }
-          })
-        );
-
-        // Combine provider data with packages
+        // Combine provider data with packages (images are already included)
         const providerWithPackages = {
           ...providerData.provider,
-          packages: packagesWithImages
+          packages: packages
         };
 
         setProvider(providerWithPackages);
@@ -261,6 +243,28 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
 
   const handleViewPackage = (packageId: number) => {
     router.push(`/user/furparent_dashboard/services/${providerId}/packages/${packageId}`);
+  };
+
+  // Functions for individual package image carousels
+  const handlePackageImageNext = (packageId: number, imageCount: number) => {
+    setPackageImageIndexes(prev => ({
+      ...prev,
+      [packageId]: ((prev[packageId] || 0) + 1) % imageCount
+    }));
+  };
+
+  const handlePackageImagePrev = (packageId: number, imageCount: number) => {
+    setPackageImageIndexes(prev => ({
+      ...prev,
+      [packageId]: ((prev[packageId] || 0) - 1 + imageCount) % imageCount
+    }));
+  };
+
+  const handlePackageImageDot = (packageId: number, imageIndex: number) => {
+    setPackageImageIndexes(prev => ({
+      ...prev,
+      [packageId]: imageIndex
+    }));
   };
 
   const _handleSubmitBooking = async (e: React.FormEvent) => {
@@ -486,10 +490,10 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full mx-4">
                         {getSortedPackages().slice(currentPackageIndex, currentPackageIndex + 3).map((pkg: any) => (
                           <div key={pkg.id} className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
-                            <div className="h-48 relative overflow-hidden bg-gray-100">
+                            <div className="h-48 relative overflow-hidden bg-gray-100 group">
                               {pkg.images && pkg.images.length > 0 ? (
                                 <Image
-                                  src={pkg.images[0]}
+                                  src={pkg.images[packageImageIndexes[pkg.id] || 0]}
                                   alt={pkg.name}
                                   fill
                                   className="object-cover"
@@ -504,6 +508,51 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
                                   onError={(e) => handleImageError(e)}
                                 />
                               )}
+
+                              {/* Navigation arrows - only show if there are multiple images */}
+                              {pkg.images && pkg.images.length > 1 && (
+                                <>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handlePackageImagePrev(pkg.id, pkg.images.length);
+                                    }}
+                                    className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                                  >
+                                    <ChevronLeftIcon className="h-4 w-4" />
+                                  </button>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handlePackageImageNext(pkg.id, pkg.images.length);
+                                    }}
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                                  >
+                                    <ChevronRightIcon className="h-4 w-4" />
+                                  </button>
+                                </>
+                              )}
+
+                              {/* Dot indicators - only show if there are multiple images */}
+                              {pkg.images && pkg.images.length > 1 && (
+                                <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex space-x-1">
+                                  {pkg.images.map((_: any, index: number) => (
+                                    <button
+                                      key={index}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handlePackageImageDot(pkg.id, index);
+                                      }}
+                                      className={`h-2 w-2 rounded-full transition-all duration-200 ${
+                                        (packageImageIndexes[pkg.id] || 0) === index
+                                          ? 'bg-white scale-110'
+                                          : 'bg-white/50 hover:bg-white/80'
+                                      }`}
+                                    />
+                                  ))}
+                                </div>
+                              )}
+
                               {/* Price Badge */}
                               <div className="absolute top-3 right-3 bg-white/95 backdrop-blur-sm px-3 py-1 rounded-full shadow-sm">
                                 <span className="text-[var(--primary-green)] font-bold text-lg">

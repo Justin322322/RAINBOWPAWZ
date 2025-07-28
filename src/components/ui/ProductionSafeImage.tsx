@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { getProductionImagePath } from '@/utils/imageUtils';
+import { getProductionImagePath, getImagePath } from '@/utils/imageUtils';
 
 interface ProductionSafeImageProps {
   src: string;
@@ -53,10 +53,13 @@ export const ProductionSafeImage: React.FC<ProductionSafeImageProps> = ({
   // Use our utility function to get a production-ready image path
   // Always use the API route in production for better reliability
   // But avoid double-processing if the image is already an API path
+  // Disable cache busting for package images to prevent flickering
   const finalSrc = error ? fallbackSrc : (
     imgSrc.startsWith('/api/image/')
       ? imgSrc // Already processed, just use as-is to avoid double-processing
-      : getProductionImagePath(imgSrc)
+      : (imgSrc.includes('packages/') 
+          ? getImagePath(imgSrc, false) // Disable cache busting for package images
+          : getProductionImagePath(imgSrc))
   );
 
   // Debug logging for image URLs

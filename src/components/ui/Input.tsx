@@ -76,7 +76,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
               labelClassName
             )}
           >
-            {label} {required && <span className="text-red-500">*</span>}
+            {label} {!required && <span className="text-gray-500 text-xs">(optional)</span>}
           </label>
         )}
         

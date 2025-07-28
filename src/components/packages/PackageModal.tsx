@@ -635,7 +635,7 @@ const PackageModal: React.FC<PackageModalProps> = ({
                   <h2 className="text-lg font-medium text-gray-800 mb-4">Basic Information</h2>
                   <div className="space-y-4">
                     <div>
-                      <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">Package Name*</label>
+                      <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">Package Name</label>
                       <input
                         id="name"
                         name="name"
@@ -650,7 +650,7 @@ const PackageModal: React.FC<PackageModalProps> = ({
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
-                        <label htmlFor="price" className="block text-sm font-medium text-gray-700 mb-1">Price (₱)*</label>
+                        <label htmlFor="price" className="block text-sm font-medium text-gray-700 mb-1">Price (₱)</label>
                         <input
                           id="price"
                           name="price"
@@ -665,7 +665,7 @@ const PackageModal: React.FC<PackageModalProps> = ({
                         {errors.price && <p className="mt-1 text-sm text-red-600">{errors.price}</p>}
                       </div>
                       <div>
-                        <label htmlFor="pricePerKg" className="block text-sm font-medium text-gray-700 mb-1">Price Per Kg (₱)</label>
+                        <label htmlFor="pricePerKg" className="block text-sm font-medium text-gray-700 mb-1">Price Per Kg (₱) <span className="text-gray-500 text-xs">(optional)</span></label>
                         <input
                           id="pricePerKg"
                           name="pricePerKg"
@@ -682,7 +682,7 @@ const PackageModal: React.FC<PackageModalProps> = ({
                     </div>
 
                     <div>
-                      <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">Description*</label>
+                      <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">Description</label>
                       <textarea
                         id="description"
                         name="description"
@@ -792,7 +792,7 @@ const PackageModal: React.FC<PackageModalProps> = ({
                 {/* Inclusions */}
                 <div className="mb-8">
                   <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4">
-                    <h2 className="text-lg font-medium text-gray-800">Inclusions*</h2>
+                    <h2 className="text-lg font-medium text-gray-800">Inclusions</h2>
                     {errors.inclusions && (
                       <p className="text-sm text-red-600 flex items-center mt-1 sm:mt-0">
                         <ExclamationTriangleIcon className="h-4 w-4 mr-1" />
@@ -902,7 +902,7 @@ const PackageModal: React.FC<PackageModalProps> = ({
                 {/* Conditions */}
                 <div className="mb-8">
                   <label htmlFor="conditions" className="block text-sm font-medium text-gray-700 mb-1">
-                    Conditions and Restrictions*
+                    Conditions and Restrictions
                   </label>
                   <textarea
                     id="conditions"

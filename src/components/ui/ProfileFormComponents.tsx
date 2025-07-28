@@ -74,7 +74,7 @@ export const ProfileInput: React.FC<ProfileInputProps> = ({
     <div className={`space-y-2 ${className}`}>
       <label className="block text-sm font-medium text-gray-700">
         {label}
-        {required && <span className="text-red-500 ml-1">*</span>}
+        {!required && <span className="text-gray-500 text-xs ml-1">(optional)</span>}
       </label>
       <div className="relative">
         {icon && (
@@ -110,7 +110,7 @@ export const ProfileInput: React.FC<ProfileInputProps> = ({
 };
 
 // Profile Textarea Component
-export const ProfileTextarea: React.FC<ProfileTextareaProps> = ({
+export const ProfileTextArea: React.FC<ProfileTextareaProps> = ({
   label,
   value,
   onChange,
@@ -118,14 +118,14 @@ export const ProfileTextarea: React.FC<ProfileTextareaProps> = ({
   required = false,
   disabled = false,
   error,
-  rows = 4,
+  rows = 3,
   className = ''
 }) => {
   return (
     <div className={`space-y-2 ${className}`}>
       <label className="block text-sm font-medium text-gray-700">
         {label}
-        {required && <span className="text-red-500 ml-1">*</span>}
+        {!required && <span className="text-gray-500 text-xs ml-1">(optional)</span>}
       </label>
       <textarea
         value={value}
@@ -138,9 +138,9 @@ export const ProfileTextarea: React.FC<ProfileTextareaProps> = ({
           block w-full rounded-lg border border-gray-300 shadow-sm bg-white
           focus:border-[var(--primary-green)] focus:ring-[var(--primary-green)] focus:ring-1
           disabled:bg-gray-50 disabled:text-gray-500
-          px-3 py-2.5 resize-vertical text-gray-900
+          px-3 py-2.5 resize-y
           ${error ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : 'border-gray-300'}
-          transition-colors duration-200
+          transition-colors duration-200 text-gray-900
         `}
       />
       {error && (
