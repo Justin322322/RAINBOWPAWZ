@@ -127,9 +127,9 @@ export default function MapFilters({ providers, filters, onFilterChange, classNa
     }
 
     // Distance filter
-    if (filters.maxDistance !== null) {
+    if (filters.maxDistance !== null && filters.maxDistance !== undefined) {
       filtered = filtered.filter(provider => 
-        provider.distanceValue <= filters.maxDistance!
+        provider.distanceValue <= filters.maxDistance
       );
     }
 
@@ -141,9 +141,9 @@ export default function MapFilters({ providers, filters, onFilterChange, classNa
     }
 
     // Package count filter
-    if (filters.minPackages !== null) {
+    if (filters.minPackages !== null && filters.minPackages !== undefined) {
       filtered = filtered.filter(provider =>
-        provider.packages >= filters.minPackages!
+        provider.packages >= filters.minPackages
       );
     }
 
