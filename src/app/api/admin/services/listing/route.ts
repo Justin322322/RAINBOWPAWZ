@@ -27,6 +27,7 @@ type PackageResponse = {
   images: string[];
   inclusions: string[];
   addOns: string[];
+  reviewsCount: number;
 };
 
 // Removed listImagePaths function - now using database-based image fetching
@@ -168,7 +169,7 @@ export async function GET(request: NextRequest) {
   const inclusionsTableExists = await checkTableExists('package_inclusions');
   const addonsTableExists = await checkTableExists('package_addons');
   const _bookingsTableExists = await checkTableExists('bookings');
-  const _reviewsTableExists = await checkTableExists('reviews');
+  const reviewsTableExists = await checkTableExists('reviews');
 
   // Batch fetch inclusions and addons for all packages
   let allInclusions: Record<number, string[]> = {};
@@ -219,6 +220,37 @@ export async function GET(request: NextRequest) {
       }
     } catch (error) {
       console.error('Error fetching addons:', error);
+    }
+  }
+
+  // Batch fetch reviews count and average rating
+  let allReviews: Record<number, { reviewsCount: number; rating: number }> = {};
+  if (reviewsTableExists) {
+    try {
+      const packageIds = rows.map(r => r.package_id);
+      if (packageIds.length > 0) {
+        const placeholders = packageIds.map(() => '?').join(',');
+        const reviewsResult = await query(
+          `SELECT 
+             sb.package_id, 
+             COUNT(r.id) as reviewsCount, 
+             AVG(r.rating) as rating 
+           FROM reviews r
+           JOIN service_bookings sb ON r.booking_id = sb.id
+           WHERE sb.package_id IN (${placeholders}) 
+           GROUP BY sb.package_id`,
+          packageIds
+        ) as any[];
+
+        reviewsResult.forEach(review => {
+          allReviews[review.package_id] = {
+            reviewsCount: parseInt(review.reviewsCount, 10) || 0,
+            rating: parseFloat(review.rating) || 0
+          };
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching reviews data:', error);
     }
   }
 
@@ -279,6 +311,7 @@ export async function GET(request: NextRequest) {
       // Get inclusions and addons from pre-fetched data
       const incs = allInclusions[r.package_id] || [];
       const adds = allAddons[r.package_id] || [];
+      const reviewData = allReviews[r.package_id] || { reviewsCount: 0, rating: 0 };
 
       // Default values for bookings and rating
       let bookings = 0, rating = 0;
@@ -297,8 +330,9 @@ export async function GET(request: NextRequest) {
         status,
         cremationCenter: r.providerName,
         providerId: r.providerId,
-        rating,
+        rating: reviewData.rating,
         bookings,
+        reviewsCount: reviewData.reviewsCount,
         revenue: 0,
         formattedRevenue: `₱0.00`,
         image: image || null,

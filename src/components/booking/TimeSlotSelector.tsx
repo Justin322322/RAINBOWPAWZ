@@ -404,9 +404,11 @@ export default function TimeSlotSelector({
                       }`}
                     >
                       {day.type === 'day' && day.date ? day.date.getDate() : ''}
-                      {day.isAvailable && day.timeSlots && day.timeSlots.length > 0 && (
+                      {day.isAvailable && day.timeSlots && day.timeSlots.length > 0 ? (
                         <span className="text-[8px] mt-0.5">{day.timeSlots.length} slots</span>
-                      )}
+                      ) : day.type === 'day' && !day.isAvailable ? (
+                        <span className="text-[8px] mt-0.5 text-center leading-tight">Not Available</span>
+                      ) : null}
                     </button>
                   )}
                 </div>

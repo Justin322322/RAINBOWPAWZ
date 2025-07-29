@@ -19,6 +19,7 @@ import FurParentPageSkeleton from '@/components/ui/FurParentPageSkeleton';
 import { handleImageError } from '@/utils/imageUtils';
 import ReviewsList from '@/components/reviews/ReviewsList';
 import withUserAuth from '@/components/withUserAuth';
+import { formatPrice } from '@/utils/numberUtils';
 // LocationData type removed with geolocation utils
 type LocationData = {
   address: string;
@@ -556,7 +557,7 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
                               {/* Price Badge */}
                               <div className="absolute top-3 right-3 bg-white/95 backdrop-blur-sm px-3 py-1 rounded-full shadow-sm">
                                 <span className="text-[var(--primary-green)] font-bold text-lg">
-                                  ₱{pkg.price.toLocaleString()}
+                                  ₱{formatPrice(pkg.price)}
                                   {pkg.pricePerKg > 0 && <span className="text-xs">+/kg</span>}
                                 </span>
                               </div>
@@ -642,7 +643,7 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
                                     <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
                                       <path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
                                     </svg>
-                                    <span>₱{pkg.pricePerKg.toLocaleString()}/kg additional</span>
+                                    <span>₱{formatPrice(pkg.pricePerKg)}/kg additional</span>
                                   </div>
                                 </div>
                               )}
@@ -652,7 +653,7 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
                                 <div className="mb-4 p-2 bg-gray-50 rounded-lg">
                                   <div className="flex items-center text-xs text-gray-600">
                                     <MapPinIcon className="w-3 h-3 mr-1" />
-                                    <span>Delivery: ₱{pkg.deliveryFeePerKm}/km</span>
+                                    <span>Delivery: ₱{formatPrice(pkg.deliveryFeePerKm)}/km</span>
                                   </div>
                                 </div>
                               )}
