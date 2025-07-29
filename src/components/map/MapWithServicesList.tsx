@@ -84,8 +84,9 @@ export default function MapWithServicesList({
 
       // Distance filter
       if (filters.maxDistance !== null && filters.maxDistance !== undefined) {
+        const maxDistance = filters.maxDistance;
         filtered = filtered.filter(provider => 
-          provider.distanceValue <= filters.maxDistance
+          provider.distanceValue <= maxDistance
         );
       }
 
@@ -98,8 +99,9 @@ export default function MapWithServicesList({
 
       // Package count filter
       if (filters.minPackages !== null && filters.minPackages !== undefined) {
+        const minPackages = filters.minPackages;
         filtered = filtered.filter(provider =>
-          provider.packages >= filters.minPackages
+          provider.packages >= minPackages
         );
       }
 

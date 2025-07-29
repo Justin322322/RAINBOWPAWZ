@@ -143,8 +143,9 @@ export default function MapFilters({ providers, filters, onFilterChange, classNa
 
     // Package count filter
     if (filters.minPackages !== null && filters.minPackages !== undefined) {
+      const minPackages = filters.minPackages;
       filtered = filtered.filter(provider =>
-        provider.packages >= filters.minPackages
+        provider.packages >= minPackages
       );
     }
 
