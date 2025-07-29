@@ -4,6 +4,7 @@ import React from 'react';
 import { PackageData } from '@/types/packages';
 import { Modal } from '@/components/ui';
 import { PackageImage } from './PackageImage';
+import { formatPrice } from '@/utils/numberUtils';
 import {
   XMarkIcon,
   CheckCircleIcon,
@@ -94,7 +95,7 @@ export const PackageDetailsModal: React.FC<PackageDetailsModalProps> = ({
                   <CurrencyDollarIcon className="h-5 w-5 text-blue-600 mr-2" />
                   <span className="text-sm font-medium text-blue-900">Price</span>
                 </div>
-                <p className="text-xl font-bold text-blue-900">₱{pkg.price.toLocaleString()}</p>
+                <p className="text-xl font-bold text-blue-900">₱{formatPrice(pkg.price)}</p>
               </div>
 
               <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
@@ -172,7 +173,7 @@ export const PackageDetailsModal: React.FC<PackageDetailsModalProps> = ({
                       </div>
                       {typeof addon !== 'string' && addon.price && (
                         <span className="text-sm font-medium text-amber-700 bg-amber-100 px-2 py-1 rounded">
-                          +₱{addon.price.toLocaleString()}
+                          +₱{formatPrice(addon.price)}
                         </span>
                       )}
                     </div>

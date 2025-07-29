@@ -18,6 +18,10 @@ interface ServiceProvider {
   id: number;
   name: string;
   address: string;
+  type?: string;
+  distance?: string;
+  distanceValue?: number;
+  packages?: number;
 }
 
 interface MapComponentProps {
@@ -25,6 +29,8 @@ interface MapComponentProps {
   userCoordinates?: [number, number]; // Optional coordinates if already available
   serviceProviders: ServiceProvider[];
   selectedProviderId?: number | null;
+  filteredProviders?: ServiceProvider[]; // Optional filtered providers for map display
+  maxDistance?: number | null; // Maximum distance filter for zoom adjustment
 }
 
 interface RouteInstructions {
@@ -41,7 +47,9 @@ export default function MapComponent({
   userAddress,
   userCoordinates: initialUserCoordinates,
   serviceProviders,
-  selectedProviderId
+  selectedProviderId,
+  filteredProviders,
+  maxDistance
 }: MapComponentProps) {
   const mapRef = useRef<L.Map | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -62,6 +70,7 @@ export default function MapComponent({
   // Refs for proper cleanup
   const buttonEventListenersRef = useRef<{ element: HTMLElement; event: string; handler: () => void }[]>([]);
   const timeoutIdsRef = useRef<NodeJS.Timeout[]>([]);
+  const isRoutingRef = useRef(false); // Track routing state with ref to avoid dependency loops
 
   // Add user marker
   const addUserMarker = useCallback((coordinates: [number, number]) => {
@@ -283,7 +292,11 @@ export default function MapComponent({
     });
     timeoutIdsRef.current = [];
 
-    serviceProviders.forEach(provider => {
+    // Use filtered providers if provided, otherwise use all service providers
+    const providersToShow = filteredProviders !== undefined ? filteredProviders : serviceProviders;
+    
+    // Only show markers for providers that have coordinates AND are in the filtered list
+    providersToShow.forEach(provider => {
       const coordinates = providerCoordinates.get(provider.id);
       if (!coordinates) return;
 
@@ -359,11 +372,17 @@ export default function MapComponent({
       providerMarkersRef.current.push(marker);
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [serviceProviders, providerCoordinates]); // displayRouteToProviderEnhanced is accessed via closure to avoid circular dependency
+  }, [serviceProviders, filteredProviders, providerCoordinates]); // displayRouteToProviderEnhanced is accessed via closure to avoid circular dependency
 
   // Function to adjust map view to show all markers (user + providers)
   const adjustMapViewToShowAllMarkers = useCallback(() => {
-    if (!mapRef.current || !userCoordinates || providerCoordinates.size === 0) return;
+    if (!mapRef.current || !userCoordinates) return;
+  
+    const providersToShow = filteredProviders !== undefined ? filteredProviders : serviceProviders;
+    if (providersToShow.length === 0) {
+      mapRef.current.setView(userCoordinates, 13); // Reset to user location if no providers shown
+      return;
+    }
 
     // Create bounds that include user location and all provider locations
     const bounds = L.latLngBounds([]);
@@ -371,9 +390,12 @@ export default function MapComponent({
     // Add user coordinates to bounds
     bounds.extend([userCoordinates[0], userCoordinates[1]]);
 
-    // Add all provider coordinates to bounds
-    providerCoordinates.forEach(coords => {
-      bounds.extend([coords[0], coords[1]]);
+    // Add all visible provider coordinates to bounds
+    providersToShow.forEach(provider => {
+      const coords = providerCoordinates.get(provider.id);
+      if (coords) {
+        bounds.extend(coords);
+      }
     });
 
     // Fit the map to show all markers with some padding
@@ -382,11 +404,42 @@ export default function MapComponent({
       padding: [20, 20], // 20px padding on all sides
       maxZoom: 15 // Don't zoom in too much even if markers are close
     });
-  }, [userCoordinates, providerCoordinates]);
+  }, [userCoordinates, providerCoordinates, serviceProviders, filteredProviders]);
+
+  // Function to adjust map zoom based on distance filter
+  const adjustMapZoomByDistance = useCallback(() => {
+    if (!mapRef.current || !userCoordinates || !maxDistance) return;
+
+    // Calculate appropriate zoom level based on distance
+    // These zoom levels are approximate for different distances
+    let zoomLevel: number;
+    if (maxDistance <= 5) {
+      zoomLevel = 14; // Close zoom for 5km
+    } else if (maxDistance <= 10) {
+      zoomLevel = 13; // Medium zoom for 10km
+    } else if (maxDistance <= 20) {
+      zoomLevel = 12; // Wide zoom for 20km
+    } else if (maxDistance <= 50) {
+      zoomLevel = 11; // Very wide zoom for 50km
+    } else if (maxDistance <= 100) {
+      zoomLevel = 10; // Ultra wide zoom for 100km
+    } else {
+      zoomLevel = 9; // Default very wide zoom
+    }
+
+    // Set view to user location with calculated zoom
+    mapRef.current.setView(userCoordinates, zoomLevel);
+  }, [userCoordinates, maxDistance]);
 
   // Enhanced function to display route on map using multiple routing services
   const displayRouteToProviderEnhanced = useCallback(async (providerCoords: [number, number], providerName: string) => {
     if (!mapRef.current || !userCoordinates) return;
+
+    // Prevent multiple simultaneous routing requests
+    if (isRoutingRef.current) {
+      console.log('Route calculation already in progress, skipping...');
+      return;
+    }
 
     // Clear existing route
     if (routeLayerRef.current && mapRef.current) {
@@ -396,6 +449,7 @@ export default function MapComponent({
 
     // Set loading state
     setIsRouting(true);
+    isRoutingRef.current = true;
     setRouteInstructions({ distance: "Calculating...", duration: "Calculating...", steps: [] });
 
     try {
@@ -407,6 +461,12 @@ export default function MapComponent({
 
       // Get route using the enhanced routing service
       const routeResult = await routingService.getRoute(startCoords, providerCoords, { trafficAware: true });
+
+      // Check if component is still mounted and routing state is still active
+      if (!mapRef.current || !isRoutingRef.current) {
+        console.log('Component unmounted or routing cancelled, aborting route display');
+        return;
+      }
 
       // Create route polyline
       routeLayerRef.current = L.polyline(routeResult.route, {
@@ -440,8 +500,9 @@ export default function MapComponent({
       }, 5000);
     } finally {
       setIsRouting(false);
+      isRoutingRef.current = false;
     }
-  }, [userCoordinates]);
+  }, [userCoordinates]); // Removed isRouting to dependencies
 
   // When user coordinates change, update the marker
   useEffect(() => {
@@ -497,14 +558,27 @@ export default function MapComponent({
   useEffect(() => {
     if (mapRef.current && providerCoordinates.size > 0) {
       addProviderMarkers();
-      // Auto-adjust zoom to show all markers when providers are loaded
-      adjustMapViewToShowAllMarkers();
+      
+      // Use distance-based zoom if maxDistance is set, otherwise auto-adjust to show all markers
+      if (maxDistance) {
+        adjustMapZoomByDistance();
+      } else {
+        // Auto-adjust zoom to show all markers when providers are loaded
+        adjustMapViewToShowAllMarkers();
+      }
     }
-  }, [providerCoordinates, addProviderMarkers, adjustMapViewToShowAllMarkers]);
+  }, [providerCoordinates, addProviderMarkers, adjustMapViewToShowAllMarkers, adjustMapZoomByDistance, filteredProviders, maxDistance]);
+
+  // Handle maxDistance filter changes for immediate zoom adjustment
+  useEffect(() => {
+    if (mapRef.current && userCoordinates && maxDistance) {
+      adjustMapZoomByDistance();
+    }
+  }, [maxDistance, adjustMapZoomByDistance, userCoordinates]);
 
   // Handle selectedProviderId changes - trigger directions when selected from card
   useEffect(() => {
-    if (selectedProviderId && mapRef.current && providerCoordinates.size > 0 && mapLoaded) {
+    if (selectedProviderId && mapRef.current && providerCoordinates.size > 0 && mapLoaded && !isRoutingRef.current) {
       const coordinates = providerCoordinates.get(selectedProviderId);
       if (coordinates) {
         // Find the provider to get its name
@@ -515,7 +589,7 @@ export default function MapComponent({
         }
       }
     }
-  }, [selectedProviderId, providerCoordinates, mapLoaded, serviceProviders, displayRouteToProviderEnhanced]);
+  }, [selectedProviderId, providerCoordinates, mapLoaded, serviceProviders]); // Removed isRouting dependency and now using ref
 
   // Initialize cache cleanup on component mount
   useEffect(() => {
@@ -577,6 +651,10 @@ export default function MapComponent({
 
       // Clear route instructions
       setRouteInstructions(null);
+
+      // Reset routing state
+      setIsRouting(false);
+      isRoutingRef.current = false;
 
       // Remove map
       if (mapRef.current) {

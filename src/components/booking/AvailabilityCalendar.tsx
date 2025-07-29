@@ -165,25 +165,34 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
       setLoading(true);
       setError(null);
 
-      // Get the first and last day that will be displayed in the calendar
-      const year = currentMonth.getFullYear();
-      const month = currentMonth.getMonth();
+      let startDate, endDate, monthString;
 
-      // First day of the month
-      const _firstDay = new Date(year, month, 1);
-      // Last day of the month
-      const _lastDay = new Date(year, month + 1, 0);
+      // Determine date range based on view mode
+      if (viewMode === 'year') {
+        // For year view, fetch entire year
+        const yearStart = new Date(currentYear, 0, 1);
+        const yearEnd = new Date(currentYear, 11, 31);
+        
+        startDate = yearStart.toISOString().split('T')[0];
+        endDate = yearEnd.toISOString().split('T')[0];
+        monthString = `${currentYear}`;
+        
+      } else {
+        // For month view, fetch single month
+        const year = currentMonth.getFullYear();
+        const month = currentMonth.getMonth();
 
-      // First day shown in calendar (could be previous month)
-      const firstCalendarDay = new Date(year, month, 1);
-      // Last day shown in calendar (could be next month)
-      const lastCalendarDay = new Date(year, month + 1, 0);
+        // First day shown in calendar (could be previous month)
+        const firstCalendarDay = new Date(year, month, 1);
+        // Last day shown in calendar (could be next month)
+        const lastCalendarDay = new Date(year, month + 1, 0);
 
-      // Format dates for API
-      const startDate = firstCalendarDay.toISOString().split('T')[0];
-      const endDate = lastCalendarDay.toISOString().split('T')[0];
-
-      const monthString = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}`;
+        // Format dates for API
+        startDate = firstCalendarDay.toISOString().split('T')[0];
+        endDate = lastCalendarDay.toISOString().split('T')[0];
+        monthString = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}`;
+        
+      }
 
       // Add a timestamp to force fresh data
       const timestamp = new Date().getTime();
@@ -231,10 +240,28 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
           const bookings = bookingsData.bookings || [];
           bookedSlots = bookings
             .filter((booking: any) => booking.status !== 'cancelled')
-            .map((booking: any) => ({
-              date: booking.booking_date ? booking.booking_date.split('T')[0] : null,
-              time: booking.booking_time ? booking.booking_time.substring(0, 5) : null
-            }))
+            .map((booking: any) => {
+              // Handle both raw database format and formatted API response
+              let timeForComparison = null;
+              
+              // Try to get raw booking_time first (from database)
+              if (booking.booking_time) {
+                // Raw format: "09:00:00" or "09:00"
+                timeForComparison = booking.booking_time.substring(0, 5);
+              } 
+              // Fallback to formatted scheduledTime
+              else if (booking.scheduledTime) {
+                // Formatted: "09:00 AM" -> extract "09:00"
+                const timeMatch = booking.scheduledTime.match(/(\d{1,2}:\d{2})/);
+                timeForComparison = timeMatch ? timeMatch[1] : null;
+              }
+              
+              return {
+                date: booking.booking_date ? booking.booking_date.split('T')[0] : null,
+                time: timeForComparison,
+                status: booking.status
+              };
+            })
             .filter((booking: any) => booking.date && booking.time);
         }
       } catch (bookingError) {
@@ -276,11 +303,19 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
           };
         });
 
-        // Log overall availability stats
-        const _availableDays = validatedData.filter((day: DayAvailability) => day.isAvailable).length;
-        const _daysWithTimeSlots = validatedData.filter((day: DayAvailability) => day.timeSlots && day.timeSlots.length > 0).length;
-        const _totalTimeSlots = validatedData.reduce((total: number, day: DayAvailability) => total + (day.timeSlots ? day.timeSlots.length : 0), 0);
-
+        // Additional validation: Double-check booking status for all data
+        // This ensures isBooked is set correctly for year view calculations
+        validatedData.forEach((day: DayAvailability) => {
+          day.timeSlots.forEach((slot: TimeSlot) => {
+            const shouldBeBooked = bookedSlots.some(
+              booking => booking.date === day.date && booking.time === slot.start
+            );
+            if (slot.isBooked !== shouldBeBooked) {
+              slot.isBooked = shouldBeBooked;
+            }
+          });
+        });
+        
         setAvailabilityData(prevData => {
           // If clearExisting is true, just use the new data
           if (clearExisting) {
@@ -290,34 +325,24 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
           // Otherwise, merge old and new data with new data taking precedence
           const finalDataMap = new Map(prevData.map((item: DayAvailability) => [item.date, item]));
 
-          // Log the dates we're updating
           validatedData.forEach((item: DayAvailability) => {
-            const existing = finalDataMap.get(item.date);
-            if (existing) {
-              // Updated existing date
-            } else {
-              // New date added
-            }
             finalDataMap.set(item.date, item);
           });
 
           const sortedData = Array.from(finalDataMap.values()).sort((a, b) => {
             const dateA = new Date(a.date);
             const dateB = new Date(b.date);
-            // Handle cases where dates might be invalid, though they should be YYYY-MM-DD strings
             if (isNaN(dateA.getTime())) return 1;
             if (isNaN(dateB.getTime())) return -1;
             return dateA.getTime() - dateB.getTime();
           });
-
-          const _daysWithSlots = sortedData.filter(d => d.timeSlots.length > 0);
 
           return sortedData;
         });
 
         // Force calendar re-render
         forceCalendarRefresh();
-
+          
         if (validatedData.length === 0) {
           setError('No availability data found for this month.');
         } else {
@@ -355,7 +380,7 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
       setLoading(false);
       forceCalendarRefresh(); // Always force refresh calendar after data fetching completes
     }
-  }, [providerId, currentMonth, onAvailabilityChange]);
+  }, [providerId, currentMonth, onAvailabilityChange, viewMode, currentYear]);
 
   // Force calendar to re-render
   const forceCalendarRefresh = () => {
@@ -407,6 +432,23 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
       fetchAvailabilityData(false); // Don't clear existing data
     }
   }, [currentMonth, providerId, fetchAvailabilityData]);
+
+  // Add effect to refetch data when view mode changes
+  useEffect(() => {
+    if (providerId && providerId > 0) {
+      fetchAvailabilityData(true); // Clear existing data when switching views
+    }
+  }, [viewMode, currentYear, providerId, fetchAvailabilityData]);
+
+  // Force refresh when switching to year view to ensure booking data is current
+  useEffect(() => {
+    if (viewMode === 'year' && providerId && providerId > 0) {
+      // Small delay to avoid double-fetching
+      setTimeout(() => {
+        fetchAvailabilityData(true);
+      }, 100);
+    }
+  }, [viewMode]);
 
   useEffect(() => {
     if (showSuccessMessage) {
@@ -589,8 +631,52 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
         return date.getFullYear() === currentYear && date.getMonth() === month;
       });
       
-      const availableDays = monthData.filter(day => day.timeSlots.length > 0).length;
-      const totalTimeSlots = monthData.reduce((total, day) => total + day.timeSlots.length, 0);
+      // Only count days that have at least one NON-BOOKED time slot AND are not in the past
+      const availableDays = monthData.filter(day => {
+        // Check if the day is in the past
+        const dayDate = new Date(day.date);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // Reset time to start of day for accurate comparison
+        dayDate.setHours(0, 0, 0, 0);
+        
+        const isPastDay = dayDate < today;
+        
+        // If it's a past day, don't count it as available
+        if (isPastDay) {
+          return false;
+        }
+        
+        const availableSlots = day.timeSlots.filter(slot => {
+          // Explicitly check for isBooked being false or undefined
+          // If isBooked is undefined, consider it available (legacy data)
+          // If isBooked is explicitly true, consider it booked
+          const isSlotBooked = slot.isBooked === true;
+          return !isSlotBooked;
+        });
+        return availableSlots.length > 0;
+      }).length;
+      
+      // Only count NON-BOOKED time slots from NON-PAST days
+      const totalTimeSlots = monthData.reduce((total, day) => {
+        // Check if the day is in the past
+        const dayDate = new Date(day.date);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        dayDate.setHours(0, 0, 0, 0);
+        
+        const isPastDay = dayDate < today;
+        
+        // If it's a past day, don't count any slots
+        if (isPastDay) {
+          return total;
+        }
+        
+        const availableSlots = day.timeSlots.filter(slot => {
+          const isSlotBooked = slot.isBooked === true;
+          return !isSlotBooked;
+        });
+        return total + availableSlots.length;
+      }, 0);
       
       months.push({
         date: monthDate,
@@ -1128,6 +1214,12 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
       // Force calendar re-render
       forceCalendarRefresh();
 
+      // Refetch availability data to ensure booking status is up to date
+      // Use a small delay to allow database changes to propagate
+      setTimeout(() => {
+        fetchAvailabilityData(false); // Don't clear existing data, just refresh
+      }, 500);
+
     } catch (error) {
       console.error('Error removing time slot:', error);
       showToast(`Failed to remove time slot: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
@@ -1555,7 +1647,7 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
       ) : (
         <>
           {/* Yearly Calendar Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div key={`year-${calendarKey}-${availabilityData.length}`} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {getMonthsInYear().map((month, index) => (
               <div
                 key={index}
@@ -1581,7 +1673,7 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
                     <span className="font-medium">{month.availableDays}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>Time Slots:</span>
+                    <span>Available Slots:</span>
                     <span className="font-medium">{month.totalTimeSlots}</span>
                   </div>
                 </div>

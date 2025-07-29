@@ -212,7 +212,7 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16 sm:h-20">
             <a onClick={handleScrollToTop} className="flex items-center space-x-2 sm:space-x-3 cursor-pointer touch-target">
-              <Image src="/logo.png" alt="Rainbow Paws Logo" width={40} height={40} className="h-8 sm:h-10 w-auto" />
+              <Image src="/logo.png" alt="Rainbow Paws Logo" width={40} height={40} className="h-8 sm:h-10 w-auto" style={{ width: "auto" }} />
               <span className="text-lg sm:text-xl modern-heading text-white tracking-wide">RainbowPaws</span>
             </a>
             

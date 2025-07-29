@@ -4,6 +4,7 @@ import React, { useCallback } from 'react';
 import { PackageData } from '@/types/packages';
 import { PackageImage } from './PackageImage';
 import { PencilIcon, TrashIcon, EyeIcon, EyeSlashIcon, InformationCircleIcon } from '@heroicons/react/24/outline';
+import { formatPrice } from '@/utils/numberUtils';
 
 interface PackageCardsProps {
   packages: PackageData[];
@@ -71,7 +72,7 @@ const PackageCard = React.memo<{
       <div className="p-4">
         <div className="flex justify-between mb-2">
           <h3 className="text-lg font-medium text-gray-800">{pkg.name}</h3>
-          <span className="text-lg font-semibold text-gray-800">₱{pkg.price.toLocaleString()}</span>
+          <span className="text-lg font-semibold text-gray-800">₱{formatPrice(pkg.price)}</span>
         </div>
 
         {/* Category and Cremation Type */}
@@ -114,7 +115,7 @@ const PackageCard = React.memo<{
                 <li key={idx}>
                   {typeof addon === 'string'
                     ? addon
-                    : addon.name + (addon.price ? ` (+₱${addon.price.toLocaleString()})` : '')}
+                    : addon.name + (addon.price ? ` (+₱${formatPrice(addon.price)})` : '')}
                 </li>
               ))}
               {pkg.addOns.length > 2 && (
