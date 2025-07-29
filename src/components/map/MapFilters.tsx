@@ -128,8 +128,9 @@ export default function MapFilters({ providers, filters, onFilterChange, classNa
 
     // Distance filter
     if (filters.maxDistance !== null && filters.maxDistance !== undefined) {
+      const maxDistance = filters.maxDistance;
       filtered = filtered.filter(provider => 
-        provider.distanceValue <= filters.maxDistance
+        provider.distanceValue <= maxDistance
       );
     }
 
