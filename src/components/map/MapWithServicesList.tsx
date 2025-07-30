@@ -71,11 +71,21 @@ export default function MapWithServicesList({
 
   useEffect(() => {
     const applyFilters = () => {
+      // Destructure all needed filter properties once at the start
+      const { 
+        searchQuery, 
+        maxDistance, 
+        serviceType, 
+        minPackages, 
+        sortBy, 
+        sortOrder 
+      } = filters;
+
       let filtered = [...serviceProviders];
 
       // Search filter
-      if (filters.searchQuery.trim()) {
-        const query = filters.searchQuery.toLowerCase().trim();
+      if (searchQuery.trim()) {
+        const query = searchQuery.toLowerCase().trim();
         filtered = filtered.filter(provider =>
           provider.name.toLowerCase().includes(query) ||
           provider.address.toLowerCase().includes(query)
@@ -83,23 +93,23 @@ export default function MapWithServicesList({
       }
 
       // Distance filter
-      if (filters.maxDistance !== null && filters.maxDistance !== undefined) {
+      if (maxDistance !== null && maxDistance !== undefined) {
         filtered = filtered.filter(provider => 
-          provider.distanceValue <= filters.maxDistance
+          provider.distanceValue <= maxDistance
         );
       }
 
       // Service type filter
-      if (filters.serviceType) {
+      if (serviceType) {
         filtered = filtered.filter(provider =>
-          provider.type.toLowerCase().includes(filters.serviceType.toLowerCase())
+          provider.type.toLowerCase().includes(serviceType.toLowerCase())
         );
       }
 
       // Package count filter
-      if (filters.minPackages !== null && filters.minPackages !== undefined) {
+      if (minPackages !== null && minPackages !== undefined) {
         filtered = filtered.filter(provider =>
-          provider.packages >= filters.minPackages
+          provider.packages >= minPackages
         );
       }
 
@@ -107,7 +117,7 @@ export default function MapWithServicesList({
       filtered.sort((a, b) => {
         let comparison = 0;
         
-        switch (filters.sortBy) {
+        switch (sortBy) {
           case 'distance':
             comparison = a.distanceValue - b.distanceValue;
             break;
@@ -119,7 +129,7 @@ export default function MapWithServicesList({
             break;
         }
         
-        return filters.sortOrder === 'desc' ? -comparison : comparison;
+        return sortOrder === 'desc' ? -comparison : comparison;
       });
 
       setFilteredProviders(filtered);
