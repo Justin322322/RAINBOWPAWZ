@@ -803,47 +803,47 @@ flowchart TD
     end
 
     subgraph "Frontend Pages"
-        HOME[Home Page & Auth]
-        USER_DASH[/user - Fur Parent Dashboard]
-        CREMATION_DASH[/cremation - Business Dashboard]
-        ADMIN_DASH[/admin - Admin Dashboard]
-        APPEALS[/appeals - Appeal System]
-        PAYMENT_PAGES[/payment - Payment Flow]
-        VERIFY_OTP[/verify-otp - OTP Verification]
-        RESET_PWD[/reset-password - Password Reset]
-        RESTRICTED[/restricted - Restricted Access]
+        HOME["Home Page & Auth"]
+        USER_DASH["Fur Parent Dashboard (/user)"]
+        CREMATION_DASH["Business Dashboard (/cremation)"]
+        ADMIN_DASH["Admin Dashboard (/admin)"]
+        APPEALS["Appeal System (/appeals)"]
+        PAYMENT_PAGES["Payment Flow (/payment)"]
+        VERIFY_OTP["OTP Verification (/verify-otp)"]
+        RESET_PWD["Password Reset (/reset-password)"]
+        RESTRICTED["Restricted Access (/restricted)"]
     end
 
     subgraph "Next.js Middleware"
-        MIDDLEWARE[Route Protection & Auth Check]
-        IMAGE_SERVE[Image Serving /uploads/*]
+        MIDDLEWARE["Route Protection & Auth Check"]
+        IMAGE_SERVE["Image Serving (/uploads/*)"]
     end
 
     subgraph "API Routes"
-        AUTH_API[/api/auth/* - Authentication]
-        USER_API[/api/users/* - User Management]
-        PET_API[/api/pets/* - Pet Management]
-        BOOKING_API[/api/bookings/* - Booking System]
-        PAYMENT_API[/api/payments/* - Payment Processing]
-        ADMIN_API[/api/admin/* - Admin Operations]
-        CREMATION_API[/api/cremation/* - Business Operations]
-        NOTIFICATION_API[/api/notifications/* - Notifications]
-        EMAIL_API[/api/email/* - Email System]
-        UPLOAD_API[/api/upload/* - File Uploads]
-        HEALTH_API[/api/health & /api/version - System Health]
+        AUTH_API["Authentication (/api/auth/*)"]
+        USER_API["User Management (/api/users/*)"]
+        PET_API["Pet Management (/api/pets/*)"]
+        BOOKING_API["Booking System (/api/bookings/*)"]
+        PAYMENT_API["Payment Processing (/api/payments/*)"]
+        ADMIN_API["Admin Operations (/api/admin/*)"]
+        CREMATION_API["Business Operations (/api/cremation/*)"]
+        NOTIFICATION_API["Notifications (/api/notifications/*)"]
+        EMAIL_API["Email System (/api/email/*)"]
+        UPLOAD_API["File Uploads (/api/upload/*)"]
+        HEALTH_API["System Health (/api/health & /api/version)"]
     end
 
     subgraph "Database Operations"
-        DB_QUERY[Direct SQL Queries via query()]
-        DB_TRANSACTION[Transaction Management]
-        MYSQL[(MySQL Database)]
+        DB_QUERY["Direct SQL Queries via query()"]
+        DB_TRANSACTION["Transaction Management"]
+        MYSQL[("MySQL Database")]
     end
 
     subgraph "External Integrations"
-        PAYMONGO[PayMongo API]
-        TWILIO[Twilio SMS]
-        SMTP[SMTP Email Server]
-        LOCAL_FILES[Local File System]
+        PAYMONGO["PayMongo API"]
+        TWILIO["Twilio SMS"]
+        SMTP["SMTP Email Server"]
+        LOCAL_FILES["Local File System"]
     end
 
     %% External Actors to Frontend
