@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import {
   UserIcon,
   ChevronDownIcon,
@@ -33,27 +33,24 @@ interface AdminNavbarProps {
 
 export default function AdminNavbar({ activePage: propActivePage, userName = 'Admin', onMenuToggle: _onMenuToggle }: AdminNavbarProps) {
   const pathname = usePathname();
-  const _router = useRouter();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [activePage, setActivePage] = useState('');
   const [showLogoutModal, setShowLogoutModal] = useState(false);
-  const [_isNavigating, setIsNavigating] = useState(false);
-  const [profilePicture, setProfilePicture] = useState<string | null>(() => {
-    // Initialize immediately from session storage
-    if (typeof window !== 'undefined') {
-      const adminData = sessionStorage.getItem('admin_data');
-      if (adminData) {
-        try {
-          const admin = JSON.parse(adminData);
-          return admin.profile_picture || null;
-        } catch {
-          return null;
-        }
-      }
-    }
-    return null;
-  });
+  const [profilePicture, setProfilePicture] = useState<string | null>(null);
+
+  // Derive active page from pathname instead of managing separate state
+  const getActivePageFromPath = (path: string) => {
+    if (path.includes('/applications')) return 'applications';
+    if (path.includes('/services')) return 'services';
+    if (path.includes('/reviews')) return 'reviews';
+    if (path.includes('/refunds')) return 'refunds';
+    if (path.includes('/logs')) return 'logs';
+    if (path.includes('/profile')) return 'profile';
+    if (path.includes('/settings')) return 'settings';
+    return 'dashboard';
+  };
+
+  const activePage = propActivePage || getActivePageFromPath(pathname);
 
   // Function to update profile picture from session storage or API
   const updateProfilePictureFromStorage = async () => {
@@ -121,10 +118,9 @@ export default function AdminNavbar({ activePage: propActivePage, userName = 'Ad
   };
 
   // Handle navigation item click
-  const handleNavItemClick = (_id: string) => {
-    setIsNavigating(true);
+  const handleNavItemClick = () => {
     setIsDropdownOpen(false);
-    // Don't set active page here, let the useEffect handle it after navigation
+    setIsMobileMenuOpen(false);
   };
 
   // Navigation items for mobile menu
@@ -224,24 +220,7 @@ export default function AdminNavbar({ activePage: propActivePage, userName = 'Ad
     };
   }, [isDropdownOpen, isMobileMenuOpen]);
 
-  // Determine active page based on pathname or prop
-  useEffect(() => {
-    if (propActivePage) {
-      setActivePage(propActivePage);
-      setIsNavigating(false);
-    } else {
-      if (pathname === '/admin/dashboard') {
-        setActivePage('dashboard');
-      } else if (pathname === '/admin/applications') {
-        setActivePage('applications');
-      } else if (pathname === '/admin/services') {
-        setActivePage('services');
-      } else if (pathname.includes('/admin/users')) {
-        setActivePage('users');
-      }
-      setIsNavigating(false);
-    }
-  }, [pathname, propActivePage]);
+  // Active page is now derived from pathname, no need for useEffect
 
   return (
     <header className="bg-[var(--primary-green)] shadow-[0_4px_10px_rgba(0,0,0,0.3)] fixed top-0 left-0 lg:left-64 right-0 z-50 w-full lg:w-auto">
@@ -308,21 +287,21 @@ export default function AdminNavbar({ activePage: propActivePage, userName = 'Ad
                   <Link
                     href="/admin/dashboard"
                     className="block px-4 py-2 text-sm modern-text text-gray-700 hover:bg-gray-100 font-medium"
-                    onClick={() => handleNavItemClick('dashboard')}
+                    onClick={handleNavItemClick}
                   >
                     Dashboard
                   </Link>
                   <Link
                     href="/admin/profile"
                     className="block px-4 py-2 text-sm modern-text text-gray-700 hover:bg-gray-100"
-                    onClick={() => handleNavItemClick('profile')}
+                    onClick={handleNavItemClick}
                   >
                     Profile
                   </Link>
                   <Link
                     href="/admin/settings"
                     className="block px-4 py-2 text-sm modern-text text-gray-700 hover:bg-gray-100"
-                    onClick={() => handleNavItemClick('settings')}
+                    onClick={handleNavItemClick}
                   >
                     <span>Settings</span>
                   </Link>
@@ -363,7 +342,6 @@ export default function AdminNavbar({ activePage: propActivePage, userName = 'Ad
                       isActive ? 'bg-white/20 font-medium' : ''
                     }`}
                     onClick={() => {
-                      setActivePage(item.id);
                       setIsMobileMenuOpen(false);
                     }}
                   >
@@ -389,7 +367,6 @@ export default function AdminNavbar({ activePage: propActivePage, userName = 'Ad
                       isActive ? 'bg-white/20 font-medium' : ''
                     }`}
                     onClick={() => {
-                      setActivePage(item.id);
                       setIsMobileMenuOpen(false);
                     }}
                   >

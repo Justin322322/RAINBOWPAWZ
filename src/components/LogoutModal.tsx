@@ -9,7 +9,7 @@ import { useToast } from '@/context/ToastContext';
 import { clearGlobalAdminAuthState } from '@/components/withAdminAuth';
 import { clearGlobalBusinessAuthState } from '@/components/withBusinessVerification';
 import { clearGlobalUserAuthState } from '@/components/withUserAuth';
-import Modal from './Modal';
+import { Modal } from '@/components/ui/Modal';
 
 interface LogoutModalProps {
   isOpen: boolean;

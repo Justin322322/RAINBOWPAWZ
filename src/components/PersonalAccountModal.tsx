@@ -123,20 +123,17 @@ const PersonalAccountModal: React.FC<PersonalAccountModalProps> = ({ isOpen, onC
         }
 
         if (!response.ok) {
-          // Handle specific error cases
-          if (data.error === 'Email already exists') {
-            setErrorMessage('This email is already registered. Please use a different email or try logging in.');
-            showToast('This email is already registered. Please use a different email or try logging in.', 'error');
-          } else {
-            // Instead of throwing an error, set the error message and show a toast
-            const errorMsg = data.error || data.message || 'Registration failed';
-            setErrorMessage(errorMsg);
-            showToast(errorMsg, 'error');
-          }
+          // Handle server errors with both inline and toast notifications
+          const errorMsg = data.error === 'Email already exists'
+            ? 'This email is already registered. Please use a different email or try logging in.'
+            : data.error || data.message || 'Registration failed. Please try again.';
+          
+          setErrorMessage(errorMsg);
+          showToast(errorMsg, 'error');
           return;
         }
 
-        // Show success toast notification and close modal immediately
+        // Show success message and close modal
         showToast('Registration successful! Check your email for confirmation.', 'success');
         onClose();
       } catch (fetchError: any) {

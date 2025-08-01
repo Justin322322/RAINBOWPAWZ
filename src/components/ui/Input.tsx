@@ -6,7 +6,7 @@ import { cva, type VariantProps } from 'class-variance-authority';
 
 // Define input variants
 const inputVariants = cva(
-  "flex w-full border border-gray-300 bg-white text-gray-900 transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-gray-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary-green)] focus-visible:border-transparent disabled:cursor-not-allowed disabled:opacity-50",
+  "flex w-full border border-gray-300 bg-white text-gray-900 transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-gray-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary-green,#10b981)] focus-visible:border-transparent disabled:cursor-not-allowed disabled:opacity-50",
   {
     variants: {
       size: {
@@ -69,8 +69,8 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
     return (
       <div className={cn("space-y-2", fullWidth && "w-full", containerClassName)}>
         {label && (
-          <label 
-            htmlFor={props.id} 
+          <label
+            htmlFor={props.id}
             className={cn(
               "block text-sm font-medium text-gray-700",
               labelClassName
@@ -95,6 +95,8 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
               className
             )}
             ref={ref}
+            aria-invalid={error ? 'true' : 'false'}
+            aria-describedby={error ? `${props.id}-error` : undefined}
             {...props}
           />
           
@@ -106,7 +108,11 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
         </div>
         
         {error && (
-          <p className={cn("text-sm text-red-500", errorClassName)}>
+          <p
+            id={`${props.id || 'input'}-error`}
+            className={cn("text-sm text-red-500", errorClassName)}
+            role="alert"
+          >
             {error}
           </p>
         )}

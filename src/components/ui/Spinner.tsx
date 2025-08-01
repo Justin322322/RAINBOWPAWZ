@@ -31,7 +31,7 @@ export const Spinner: React.FC<SpinnerProps> = ({
   };
 
   const colorClasses = {
-    primary: 'text-[var(--primary-green)]',
+    primary: 'text-[var(--primary-green,#10b981)]',
     white: 'text-white',
     gray: 'text-gray-500',
     black: 'text-black',

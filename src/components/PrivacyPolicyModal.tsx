@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import Modal from './Modal';
+import { Modal } from './ui/Modal';
 
 type PrivacyPolicyModalProps = {
   isOpen: boolean;

@@ -72,7 +72,9 @@ Rainbow Paws is a full-featured web application that facilitates pet memorial se
 - **Payment**: PayMongo integration
 - **Notifications**: Twilio SMS, Nodemailer
 - **Maps**: Leaflet with React-Leaflet
-- **Validation**: Zod schema validation
+- **Validation**: Custom validation with TypeScript
+- **Caching**: Client-side localStorage for geocoding/routing
+- **Rate Limiting**: Database-based request limiting
 - **State Management**: React Context API
 
 ## System Architecture
@@ -82,6 +84,7 @@ graph TB
     subgraph "Client Layer"
         WEB[Web Browser]
         MOBILE[Mobile Browser]
+        CACHE_CLIENT[localStorage Cache]
     end
 
     subgraph "Application Layer"
@@ -89,19 +92,33 @@ graph TB
         API[API Routes]
         AUTH[Authentication]
         MIDDLEWARE[Middleware]
+        RATE_LIMIT[Rate Limiting]
     end
 
     subgraph "Service Layer"
-        EMAIL[Email Service]
+        EMAIL_QUEUE[Email Queue Service]
+        EMAIL_LOG[Email Logging]
         SMS[SMS Service]
         PAYMENT[Payment Service]
-        UPLOAD[File Upload]
-        CACHE[Cache Service]
+        UPLOAD[File Upload Service]
+        NOTIFICATION[Notification Service]
+        SSE[Server-Sent Events]
+        HEALTH[Health Check Service]
+    end
+
+    subgraph "Business Logic Layer"
+        APPEAL[Appeal Management]
+        REVIEW[Review System]
+        AVAILABILITY[Availability Management]
+        DOCUMENT[Document Verification]
+        ADMIN_LOG[Admin Audit Trail]
     end
 
     subgraph "Data Layer"
         DB[(MySQL Database)]
-        FILES[File Storage]
+        FILES[Local File Storage]
+        RATE_DB[Rate Limit Storage]
+        EMAIL_DB[Email Queue Storage]
     end
 
     subgraph "External Services"
@@ -112,28 +129,51 @@ graph TB
 
     WEB --> NEXTJS
     MOBILE --> NEXTJS
+    WEB --> CACHE_CLIENT
+    MOBILE --> CACHE_CLIENT
+
     NEXTJS --> API
     API --> AUTH
     API --> MIDDLEWARE
+    API --> RATE_LIMIT
 
-    API --> EMAIL
+    API --> EMAIL_QUEUE
     API --> SMS
     API --> PAYMENT
     API --> UPLOAD
-    API --> CACHE
+    API --> NOTIFICATION
+    API --> SSE
+    API --> HEALTH
 
-    EMAIL --> SMTP
+    API --> APPEAL
+    API --> REVIEW
+    API --> AVAILABILITY
+    API --> DOCUMENT
+    API --> ADMIN_LOG
+
+    EMAIL_QUEUE --> EMAIL_LOG
+    EMAIL_QUEUE --> SMTP
     SMS --> TWILIO
     PAYMENT --> PAYMONGO
+    NOTIFICATION --> SSE
 
     API --> DB
     UPLOAD --> FILES
-    CACHE --> DB
+    RATE_LIMIT --> RATE_DB
+    EMAIL_QUEUE --> EMAIL_DB
+
+    APPEAL --> DB
+    REVIEW --> DB
+    AVAILABILITY --> DB
+    DOCUMENT --> DB
+    ADMIN_LOG --> DB
 
     style NEXTJS fill:#0070f3
     style DB fill:#4479a1
     style TWILIO fill:#f22f46
     style PAYMONGO fill:#00d4aa
+    style EMAIL_QUEUE fill:#ff9800
+    style SSE fill:#9c27b0
 ```
 
 ## Prerequisites
@@ -223,6 +263,7 @@ erDiagram
         varchar profile_picture
         enum role
         enum status
+        enum restriction_status
         boolean is_verified
         boolean is_otp_verified
         timestamp last_login
@@ -247,6 +288,7 @@ erDiagram
         int user_id FK
         varchar name
         enum provider_type
+        enum business_entity_type
         varchar contact_first_name
         varchar contact_last_name
         varchar phone
@@ -323,6 +365,7 @@ erDiagram
         int user_id FK
         int provider_id FK
         int package_id FK
+        int service_type_id FK
         varchar pet_name
         varchar pet_type
         text cause_of_death
@@ -456,6 +499,137 @@ erDiagram
         timestamp updated_at
     }
 
+    service_types {
+        int id PK
+        varchar name
+        text description
+        enum category
+        boolean is_active
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    admin_logs {
+        int id PK
+        int admin_id FK
+        varchar action
+        varchar entity_type
+        int entity_id
+        text details
+        varchar ip_address
+        timestamp created_at
+    }
+
+    admin_notifications {
+        int id PK
+        varchar type
+        varchar title
+        text message
+        varchar entity_type
+        int entity_id
+        boolean is_read
+        timestamp created_at
+    }
+
+    business_notifications {
+        int id PK
+        int user_id FK
+        varchar title
+        text message
+        enum type
+        boolean is_read
+        varchar link
+        timestamp created_at
+    }
+
+    business_custom_options {
+        int id PK
+        int provider_id FK
+        enum option_type
+        varchar option_value
+        boolean is_active
+        timestamp created_at
+    }
+
+    business_pet_types {
+        int id PK
+        int provider_id FK
+        varchar pet_type
+        boolean is_active
+        timestamp created_at
+    }
+
+    package_size_pricing {
+        int id PK
+        int package_id FK
+        enum size_category
+        decimal weight_range_min
+        decimal weight_range_max
+        decimal price
+        timestamp created_at
+    }
+
+    provider_availability {
+        int id PK
+        int provider_id FK
+        date date
+        boolean is_available
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    provider_time_slots {
+        int id PK
+        int provider_id FK
+        date date
+        time start_time
+        time end_time
+        boolean is_available
+        int booking_id FK
+        timestamp created_at
+    }
+
+    reviews {
+        int id PK
+        int user_id FK
+        int service_provider_id FK
+        int booking_id FK
+        int rating
+        text comment
+        timestamp created_at
+        timestamp expires_at
+    }
+
+    email_queue {
+        int id PK
+        varchar to_email
+        varchar subject
+        text html
+        text text
+        enum status
+        int retry_count
+        timestamp scheduled_at
+        timestamp sent_at
+        timestamp created_at
+    }
+
+    email_log {
+        int id PK
+        varchar recipient
+        varchar subject
+        varchar message_id
+        timestamp sent_at
+    }
+
+    rate_limits {
+        int id PK
+        varchar identifier
+        varchar action
+        int request_count
+        timestamp window_start
+        timestamp updated_at
+    }
+
     %% Relationships - All foreign key constraints
     users ||--o{ admin_profiles : "has"
     users ||--o{ service_providers : "has"
@@ -469,19 +643,33 @@ erDiagram
     users ||--o{ appeal_history : "processes"
     users ||--o{ service_bookings : "makes"
     users ||--o{ refunds : "processes"
+    users ||--o{ business_notifications : "receives"
+    users ||--o{ reviews : "writes"
 
     service_providers ||--o{ service_packages : "offers"
     service_providers ||--o{ service_bookings : "receives"
+    service_providers ||--o{ business_custom_options : "configures"
+    service_providers ||--o{ business_pet_types : "supports"
+    service_providers ||--o{ provider_availability : "manages"
+    service_providers ||--o{ provider_time_slots : "schedules"
+    service_providers ||--o{ reviews : "receives"
 
     service_packages ||--o{ package_inclusions : "includes"
     service_packages ||--o{ package_addons : "has"
     service_packages ||--o{ package_images : "has"
     service_packages ||--o{ service_bookings : "booked_as"
+    service_packages ||--o{ package_size_pricing : "has_pricing"
+
+    service_types ||--o{ service_bookings : "categorizes"
 
     service_bookings ||--o{ payment_transactions : "has"
     service_bookings ||--o{ refunds : "may_have"
+    service_bookings ||--o{ reviews : "generates"
+    service_bookings ||--o{ provider_time_slots : "reserves"
 
     user_appeals ||--o{ appeal_history : "tracks"
+
+    admin_profiles ||--o{ admin_logs : "creates"
 ```
 
 ### Key Database Features
@@ -520,16 +708,31 @@ erDiagram
 - **Reviews**: Rating system with expiration dates
 - **Package Management**: Flexible service packages with addons and images
 
-#### Tables Not Shown in ERD
-The following tables exist in the database but are excluded from the ERD as they are primarily operational/logging tables:
-- **Admin Logs**: Audit trail for admin actions (optimized)
-- **Admin Notifications**: Admin-specific notifications
-- **Business Notifications**: Business-specific notifications
-- **Email Queue/Log**: Email delivery and tracking system (optimized)
-- **Rate Limits**: API rate limiting protection (optimized)
-- **Reviews**: Customer feedback and rating system
-- **Provider Availability/Time Slots**: Scheduling and availability system
-- **Migration History**: Database migration tracking
+#### Additional Database Features
+
+**Operational & Logging Tables (Now Included in ERD):**
+- **Admin Logs**: Comprehensive audit trail for all admin actions
+- **Admin Notifications**: Admin-specific notification system
+- **Business Notifications**: Business-specific notifications with read status
+- **Email Queue/Log**: Sophisticated email delivery and tracking system
+- **Rate Limits**: Database-based API rate limiting protection
+- **Reviews**: Customer feedback and rating system with expiration
+- **Provider Availability/Time Slots**: Detailed scheduling and availability management
+- **Migration History**: Database migration tracking and rollback support
+
+**Business Configuration Tables:**
+- **Business Custom Options**: Flexible business configuration system
+- **Business Pet Types**: Pet types supported by each business
+- **Package Size Pricing**: Size-based pricing for service packages
+- **Service Types**: Categorization of different service offerings
+
+**Enhanced Features:**
+- **Email Queue System**: Reliable email delivery with retry logic and status tracking
+- **Rate Limiting**: Prevents API abuse with configurable limits per user/action
+- **Appeal System**: Complete workflow for user appeals and admin responses
+- **Review System**: Time-limited reviews with rating aggregation
+- **Availability Management**: Complex scheduling system for service providers
+- **Document Verification**: Business document upload and verification workflow
 
 ### Automatic Setup (Recommended)
 The application automatically creates necessary database tables on first run. The included SQL file has been cleaned and optimized for production use. Simply:
@@ -641,6 +844,7 @@ flowchart TD
         ADMIN_UI[Admin Dashboard]
         BOOKING_UI[Booking Interface]
         PAYMENT_UI[Payment Interface]
+        BUSINESS_UI[Business Dashboard]
     end
 
     subgraph "API Gateway Layer"
@@ -648,6 +852,7 @@ flowchart TD
         AUTH_MW[Auth Middleware]
         RATE_LIMIT[Rate Limiter]
         VALIDATOR[Request Validator]
+        HEALTH_CHECK[Health Check]
     end
 
     subgraph "Business Logic Layer"
@@ -659,6 +864,11 @@ flowchart TD
         NOTIFICATION_SVC[Notification Service]
         ADMIN_SVC[Admin Service]
         FILE_SVC[File Upload Service]
+        EMAIL_QUEUE_SVC[Email Queue Service]
+        APPEAL_SVC[Appeal Management Service]
+        REVIEW_SVC[Review System Service]
+        AVAILABILITY_SVC[Availability Management]
+        DOCUMENT_SVC[Document Verification]
     end
 
     subgraph "Data Access Layer"
@@ -668,18 +878,22 @@ flowchart TD
         PAYMENT_REPO[Payment Repository]
         PROVIDER_REPO[Provider Repository]
         NOTIFICATION_REPO[Notification Repository]
+        EMAIL_REPO[Email Repository]
+        ADMIN_REPO[Admin Repository]
+        REVIEW_REPO[Review Repository]
+        RATE_LIMIT_REPO[Rate Limit Repository]
     end
 
     subgraph "Database Layer"
         MYSQL[(MySQL Database)]
-        CACHE[(Redis Cache)]
+        LOCAL_CACHE[Client-side Cache]
     end
 
     subgraph "External Services"
         PAYMONGO[PayMongo API]
         TWILIO[Twilio SMS]
         SMTP[SMTP Server]
-        STORAGE[File Storage]
+        LOCAL_STORAGE[Local File Storage]
     end
 
     subgraph "Data Stores"
@@ -690,11 +904,15 @@ flowchart TD
         PROVIDER_DATA[Service Providers]
         NOTIFICATION_DATA[Notifications]
         FILE_DATA[Uploaded Files]
+        EMAIL_DATA[Email Queue & Logs]
+        ADMIN_DATA[Admin Logs & Appeals]
+        REVIEW_DATA[Reviews & Ratings]
+        RATE_LIMIT_DATA[Rate Limiting Data]
     end
 
     %% External Actors to UI
     FP --> WEB
-    SP --> WEB
+    SP --> BUSINESS_UI
     AD --> ADMIN_UI
     GU --> AUTH_UI
 
@@ -705,11 +923,13 @@ flowchart TD
     ADMIN_UI --> API_ROUTER
     BOOKING_UI --> API_ROUTER
     PAYMENT_UI --> API_ROUTER
+    BUSINESS_UI --> API_ROUTER
 
     %% API Gateway Processing
     API_ROUTER --> AUTH_MW
     AUTH_MW --> RATE_LIMIT
     RATE_LIMIT --> VALIDATOR
+    API_ROUTER --> HEALTH_CHECK
 
     %% API Gateway to Business Logic
     VALIDATOR --> AUTH_SVC
@@ -720,6 +940,11 @@ flowchart TD
     VALIDATOR --> NOTIFICATION_SVC
     VALIDATOR --> ADMIN_SVC
     VALIDATOR --> FILE_SVC
+    VALIDATOR --> EMAIL_QUEUE_SVC
+    VALIDATOR --> APPEAL_SVC
+    VALIDATOR --> REVIEW_SVC
+    VALIDATOR --> AVAILABILITY_SVC
+    VALIDATOR --> DOCUMENT_SVC
 
     %% Business Logic to Data Access
     AUTH_SVC --> USER_REPO
@@ -731,7 +956,14 @@ flowchart TD
     NOTIFICATION_SVC --> NOTIFICATION_REPO
     ADMIN_SVC --> USER_REPO
     ADMIN_SVC --> BOOKING_REPO
-    FILE_SVC --> STORAGE
+    ADMIN_SVC --> ADMIN_REPO
+    FILE_SVC --> LOCAL_STORAGE
+    EMAIL_QUEUE_SVC --> EMAIL_REPO
+    APPEAL_SVC --> USER_REPO
+    REVIEW_SVC --> REVIEW_REPO
+    AVAILABILITY_SVC --> PROVIDER_REPO
+    DOCUMENT_SVC --> PROVIDER_REPO
+    RATE_LIMIT --> RATE_LIMIT_REPO
 
     %% Data Access to Database
     USER_REPO --> MYSQL
@@ -740,16 +972,19 @@ flowchart TD
     PAYMENT_REPO --> MYSQL
     PROVIDER_REPO --> MYSQL
     NOTIFICATION_REPO --> MYSQL
+    EMAIL_REPO --> MYSQL
+    ADMIN_REPO --> MYSQL
+    REVIEW_REPO --> MYSQL
+    RATE_LIMIT_REPO --> MYSQL
 
-    %% Cache Integration
-    AUTH_SVC --> CACHE
-    USER_SVC --> CACHE
-    BOOKING_SVC --> CACHE
+    %% Client-side Cache Integration
+    WEB --> LOCAL_CACHE
+    BUSINESS_UI --> LOCAL_CACHE
 
     %% External Service Integration
     PAYMENT_SVC --> PAYMONGO
     NOTIFICATION_SVC --> TWILIO
-    NOTIFICATION_SVC --> SMTP
+    EMAIL_QUEUE_SVC --> SMTP
 
     %% Database to Data Stores
     MYSQL --> USER_DATA
@@ -758,7 +993,11 @@ flowchart TD
     MYSQL --> PAYMENT_DATA
     MYSQL --> PROVIDER_DATA
     MYSQL --> NOTIFICATION_DATA
-    STORAGE --> FILE_DATA
+    MYSQL --> EMAIL_DATA
+    MYSQL --> ADMIN_DATA
+    MYSQL --> REVIEW_DATA
+    MYSQL --> RATE_LIMIT_DATA
+    LOCAL_STORAGE --> FILE_DATA
 
     %% Data Flow Styling
     classDef userLayer fill:#e1f5fe,stroke:#01579b,stroke-width:2px
@@ -768,12 +1007,12 @@ flowchart TD
     classDef externalLayer fill:#ffebee,stroke:#b71c1c,stroke-width:2px
     classDef storageLayer fill:#f1f8e9,stroke:#33691e,stroke-width:2px
 
-    class WEB,AUTH_UI,DASH,ADMIN_UI,BOOKING_UI,PAYMENT_UI userLayer
-    class API_ROUTER,AUTH_MW,RATE_LIMIT,VALIDATOR apiLayer
-    class AUTH_SVC,USER_SVC,PET_SVC,BOOKING_SVC,PAYMENT_SVC,NOTIFICATION_SVC,ADMIN_SVC,FILE_SVC businessLayer
-    class USER_REPO,PET_REPO,BOOKING_REPO,PAYMENT_REPO,PROVIDER_REPO,NOTIFICATION_REPO,MYSQL,CACHE dataLayer
-    class PAYMONGO,TWILIO,SMTP,STORAGE externalLayer
-    class USER_DATA,PET_DATA,BOOKING_DATA,PAYMENT_DATA,PROVIDER_DATA,NOTIFICATION_DATA,FILE_DATA storageLayer
+    class WEB,AUTH_UI,DASH,ADMIN_UI,BOOKING_UI,PAYMENT_UI,BUSINESS_UI userLayer
+    class API_ROUTER,AUTH_MW,RATE_LIMIT,VALIDATOR,HEALTH_CHECK apiLayer
+    class AUTH_SVC,USER_SVC,PET_SVC,BOOKING_SVC,PAYMENT_SVC,NOTIFICATION_SVC,ADMIN_SVC,FILE_SVC,EMAIL_QUEUE_SVC,APPEAL_SVC,REVIEW_SVC,AVAILABILITY_SVC,DOCUMENT_SVC businessLayer
+    class USER_REPO,PET_REPO,BOOKING_REPO,PAYMENT_REPO,PROVIDER_REPO,NOTIFICATION_REPO,EMAIL_REPO,ADMIN_REPO,REVIEW_REPO,RATE_LIMIT_REPO,MYSQL,LOCAL_CACHE dataLayer
+    class PAYMONGO,TWILIO,SMTP,LOCAL_STORAGE externalLayer
+    class USER_DATA,PET_DATA,BOOKING_DATA,PAYMENT_DATA,PROVIDER_DATA,NOTIFICATION_DATA,FILE_DATA,EMAIL_DATA,ADMIN_DATA,REVIEW_DATA,RATE_LIMIT_DATA storageLayer
 ```
 
 ### Data Flow Process Description
@@ -791,18 +1030,23 @@ flowchart TD
 **3. Data Persistence**
 - Business services interact with data repositories
 - Repositories abstract database operations
-- Data is stored in MySQL with Redis caching for performance
+- Data is stored in MySQL with comprehensive logging
+- Client-side localStorage caching for geocoding and routing data
+- Database-based rate limiting for API protection
 
 **4. External Integration**
 - Payment processing through PayMongo API
 - SMS notifications via Twilio
-- Email delivery through SMTP servers
-- File storage for images and documents
+- Email delivery through SMTP servers with queue management
+- Local file storage for images and documents
+- Health monitoring for system status
 
 **5. Response Flow**
 - Data flows back through the same layers
 - Responses are formatted and returned to the UI
-- Real-time updates via notifications and cache invalidation
+- Real-time updates via Server-Sent Events (SSE)
+- Email queue processing for reliable delivery
+- Admin audit trails for all administrative actions
 
 ## API Documentation
 
@@ -825,19 +1069,82 @@ flowchart TD
 - `DELETE /api/pets/[id]` - Delete pet
 
 ### Booking System
-- `GET /api/cremation/bookings` - Get user bookings
-- `POST /api/cremation/bookings` - Create new booking
-- `GET /api/cremation/bookings/[id]` - Get booking details
-- `PUT /api/cremation/bookings/[id]` - Update booking
-- `POST /api/cremation/bookings/[id]/cancel` - Cancel booking
+- `GET /api/bookings` - Get user bookings
+- `POST /api/bookings` - Create new booking
+- `GET /api/bookings/[id]` - Get booking details
+- `PUT /api/bookings/[id]` - Update booking
+- `DELETE /api/bookings/[id]` - Cancel booking
+- `GET /api/cremation/bookings` - Get cremation business bookings
+- `GET /api/cart-bookings` - Get cart bookings
+
+### Service Management
+- `GET /api/packages` - Get service packages
+- `POST /api/packages` - Create service package
+- `GET /api/packages/[id]` - Get specific package
+- `PUT /api/packages/[id]` - Update package
+- `DELETE /api/packages/[id]` - Delete package
+- `GET /api/service-providers` - Get service providers
+- `GET /api/service-providers/[id]` - Get specific provider
 
 ### Payment Processing
 - `POST /api/payments/create-intent` - Create payment intent
 - `GET /api/payments/status` - Check payment status
 - `POST /api/payments/webhook` - Payment webhook handler
+- `POST /api/payments/cleanup` - Cleanup expired payments
+
+### Business Management
+- `GET /api/businesses/applications` - Get business applications
+- `POST /api/businesses/upload-documents` - Upload business documents
+- `GET /api/cremation/availability` - Get provider availability
+- `POST /api/cremation/availability` - Set provider availability
+
+### Review System
+- `GET /api/reviews` - Get reviews
+- `POST /api/reviews` - Create review
+- `GET /api/reviews/provider/[id]` - Get provider reviews
+- `GET /api/reviews/user/[id]` - Get user reviews
+- `GET /api/reviews/pending` - Get pending reviews
+
+### Appeal System
+- `GET /api/appeals` - Get user appeals
+- `POST /api/appeals` - Create new appeal
+- `GET /api/appeals/[id]` - Get specific appeal
+- `PUT /api/appeals/[id]` - Update appeal status
+
+### Notification System
+- `GET /api/notifications` - Get user notifications
+- `POST /api/notifications/mark-read` - Mark notifications as read
+- `GET /api/notifications/sse` - Server-sent events for real-time notifications
+- `POST /api/notifications/process-reminders` - Process notification reminders
+
+### Email Management
+- `POST /api/email` - Send email
+- `GET /api/email/queue` - Get email queue status
+- `POST /api/email/queue` - Queue email for delivery
+
+### File Upload
+- `POST /api/upload/pet-image` - Upload pet image
+- `POST /api/upload/package-image` - Upload package image
+- `GET /api/image/[...path]` - Serve uploaded images
+
+### Admin Management
+- `GET /api/admin/dashboard` - Get admin dashboard data
+- `GET /api/admin/dashboard-stats` - Get dashboard statistics
+- `GET /api/admin/users` - Get all users
+- `PUT /api/admin/users/[id]` - Update user status
+- `GET /api/admin/cremation-businesses` - Get cremation businesses
+- `PUT /api/admin/cremation-businesses/[id]` - Update business status
+- `GET /api/admin/bookings` - Get all bookings
+- `GET /api/admin/payments` - Get payment transactions
+- `GET /api/admin/refunds` - Get refund requests
+- `POST /api/admin/refunds` - Process refund
+- `GET /api/admin/logs` - Get admin activity logs
+- `GET /api/admin/reviews` - Get all reviews
+- `GET /api/admin/notifications` - Get admin notifications
 
 ### System Endpoints
 - `GET /api/health` - Health check endpoint for monitoring
+- `GET /api/db-health` - Database health check
 - `GET /api/version` - Get application version and build information
 
 #### Version Endpoint Response

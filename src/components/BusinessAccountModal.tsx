@@ -123,15 +123,14 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
       const regData = await regResponse.json();
 
       if (!regResponse.ok) {
-        // Handle specific error cases
+        // Handle specific error cases with inline errors only
         if (regData.error === 'Email already exists') {
           setErrorMessage('This email is already registered. Please use a different email or try logging in.');
-          showToast('This email is already registered. Please use a different email or try logging in.', 'error');
-          setIsLoading(false);
-          return;
         } else {
-          throw new Error(regData.error || regData.message || 'Registration failed');
+          setErrorMessage(regData.error || regData.message || 'Registration failed. Please try again.');
         }
+        setIsLoading(false);
+        return;
       }
 
       // Now upload the documents if registration was successful
@@ -186,7 +185,6 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
       }, 1500);
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Failed to create account. Please try again.';
-      showToast(errorMsg, 'error');
       setErrorMessage(errorMsg);
     } finally {
       setIsLoading(false);

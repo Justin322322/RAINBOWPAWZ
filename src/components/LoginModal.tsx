@@ -71,24 +71,21 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onShowSignup }
       }
 
       if (!response.ok) {
-        // For 401 Unauthorized (invalid credentials), show the specific error message from the API
+        // Handle all error cases with inline error messages only
         if (response.status === 401) {
           setErrorMessage(data.message || 'Invalid email or password. Please try again.');
-          return; // Don't throw an error, just show the message
-        }
-
-        // For 500 Server Error, show a more user-friendly message
-        if (response.status === 500) {
+        } else if (response.status === 500) {
           setErrorMessage('Server error. Please try again later or contact support if the problem persists.');
-          return;
+        } else {
+          setErrorMessage(data.error || data.message || 'Login failed. Please try again.');
         }
-
-        throw new Error(data.error || data.message || 'Login failed');
+        return;
       }
 
       // Validate the response data
       if (!data.success || !data.user || !data.account_type) {
-        throw new Error('Invalid response from server. Please try again.');
+        setErrorMessage('Invalid response from server. Please try again.');
+        return;
       }
 
       // Get user ID and account type from response

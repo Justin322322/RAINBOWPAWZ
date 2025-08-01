@@ -25,7 +25,7 @@ export default function CremationSidebar({
   const _router = useRouter();
   const [activePage, setActivePage] = useState('');
   const [isNavigating, setIsNavigating] = useState(false);
-  const [currentYear, setCurrentYear] = useState<number>(2024); // Default to prevent hydration mismatch
+  const [currentYear, setCurrentYear] = useState<number>(() => new Date().getFullYear());
 
   // Navigation items
   const navigationItems = [
@@ -118,7 +118,7 @@ export default function CremationSidebar({
   return (
     <div className="h-screen w-64 bg-[var(--primary-green)] shadow-lg fixed left-0 top-0 z-40 hidden lg:block">
       {/* Logo and website name */}
-      <div className="h-16 flex items-center px-6 border-b border-white/20">
+      <div className="h-16 md:h-20 flex items-center px-6 border-b border-white/20">
         <Link href="/cremation/dashboard" className="flex items-center space-x-3">
           <Image src="/logo.png" alt="Rainbow Paws Logo" width={40} height={40} className="h-10 w-auto" />
           <span className="text-xl modern-heading text-white tracking-wide">RainbowPaws</span>

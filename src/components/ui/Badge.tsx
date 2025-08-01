@@ -10,7 +10,7 @@ const badgeVariants = cva(
     variants: {
       variant: {
         default: "bg-gray-100 text-gray-800 hover:bg-gray-200/80",
-        primary: "bg-[var(--primary-green-bg)] text-[var(--primary-green)] hover:bg-[var(--primary-green-bg)]/80",
+        primary: "bg-[--primary-green-bg] text-[--primary-green] hover:bg-[--primary-green-bg]/80 [--primary-green-bg:theme(colors.emerald.50)] [--primary-green:theme(colors.emerald.600)]",
         secondary: "bg-gray-100 text-gray-900 hover:bg-gray-200/80",
         success: "bg-green-100 text-green-800 hover:bg-green-200/80",
         warning: "bg-amber-100 text-amber-800 hover:bg-amber-200/80",

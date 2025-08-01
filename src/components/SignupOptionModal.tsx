@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import Modal from './Modal';
+import { Modal } from './ui/Modal';
 import { motion } from 'framer-motion';
 import { UserIcon, BuildingStorefrontIcon, ArrowRightIcon } from '@heroicons/react/24/outline';
 

@@ -200,18 +200,15 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
     setValidationErrors({ formSubmitted: false });
   };
 
-  // Validate a field and show toast if invalid
+  // Validate a field - use inline errors only
   const validateField = (fieldName: string, value: string, displayName: string) => {
     if (!value.trim()) {
-      // Set validation error
+      // Set validation error for inline display
       setValidationErrors(prev => ({
         ...prev,
         [fieldName]: `${displayName} is required`,
-        formSubmitted: true // Set this to true to show the error immediately
+        formSubmitted: true
       }));
-
-      // Show toast notification
-      showToast(`${displayName} is required`, 'error');
       return false;
     }
 
@@ -231,9 +228,12 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
     }
   };
 
-  // Handle pet name blur with validation
+  // Handle pet name blur - only clear errors, don't validate aggressively
   const handlePetNameBlur = () => {
-    validateField('petName', petName, 'Pet name');
+    // Only clear error if field has value, don't show error on blur
+    if (petName.trim()) {
+      clearValidationError('petName');
+    }
   };
 
   // Handle pet type change with validation
@@ -247,9 +247,12 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
     }
   };
 
-  // Handle pet type blur with validation
+  // Handle pet type blur - only clear errors, don't validate aggressively
   const handlePetTypeBlur = () => {
-    validateField('petType', petType, 'Pet type');
+    // Only clear error if field has value, don't show error on blur
+    if (petType) {
+      clearValidationError('petType');
+    }
   };
 
   // Handle delivery option change with validation
@@ -260,13 +263,12 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
     if (option === 'pickup') {
       clearValidationError('deliveryAddress');
     } else if (option === 'delivery' && currentUserData && (!currentUserData.address && !currentUserData.city)) {
-      // If switching to delivery and user doesn't have an address, show validation error
+      // If switching to delivery and user doesn't have an address, show inline validation error only
       setValidationErrors(prev => ({
         ...prev,
         deliveryAddress: "Your profile does not have a delivery address. Please update your profile before selecting delivery.",
         formSubmitted: true
       }));
-      showToast("Your profile does not have a delivery address. Please update your profile.", 'error');
     }
   };
 
@@ -278,7 +280,6 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
         deliveryAddress: "Your profile does not have a delivery address. Please update your profile before selecting delivery.",
         formSubmitted: true
       }));
-      showToast("Your profile does not have a delivery address. Please update your profile.", 'error');
       return false;
     }
     return true;
@@ -292,7 +293,6 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
         selectedDate: "Please select a date for your booking",
         formSubmitted: true
       }));
-      showToast("Please select a date for your booking", 'error');
       return false;
     }
     return true;
@@ -306,7 +306,6 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
         selectedTimeSlot: "Please select a time slot for your booking",
         formSubmitted: true
       }));
-      showToast("Please select a time slot for your booking", 'error');
       return false;
     }
     return true;

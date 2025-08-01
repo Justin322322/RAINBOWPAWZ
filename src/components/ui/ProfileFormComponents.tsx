@@ -91,7 +91,7 @@ export const ProfileInput: React.FC<ProfileInputProps> = ({
           disabled={disabled}
           className={`
             block w-full rounded-lg border border-gray-300 shadow-sm bg-white
-            focus:border-[var(--primary-green)] focus:ring-[var(--primary-green)] focus:ring-1
+            focus:border-[var(--primary-green,#10b981)] focus:ring-[var(--primary-green,#10b981)] focus:ring-1
             disabled:bg-gray-50 disabled:text-gray-500
             ${icon ? 'pl-10' : 'pl-3'} pr-3 py-2.5
             ${error ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : 'border-gray-300'}
@@ -136,7 +136,7 @@ export const ProfileTextArea: React.FC<ProfileTextareaProps> = ({
         rows={rows}
         className={`
           block w-full rounded-lg border border-gray-300 shadow-sm bg-white
-          focus:border-[var(--primary-green)] focus:ring-[var(--primary-green)] focus:ring-1
+          focus:border-[var(--primary-green,#10b981)] focus:ring-[var(--primary-green,#10b981)] focus:ring-1
           disabled:bg-gray-50 disabled:text-gray-500
           px-3 py-2.5 resize-y
           ${error ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : 'border-gray-300'}
@@ -168,7 +168,7 @@ export const ProfileButton: React.FC<ProfileButtonProps> = ({
   className = ''
 }) => {
   const variants = {
-    primary: 'bg-[var(--primary-green)] hover:bg-[var(--primary-green-hover)] text-white border-transparent',
+    primary: 'bg-[var(--primary-green,#10b981)] hover:bg-[var(--primary-green-hover,#059669)] text-white border-transparent',
     secondary: 'bg-white hover:bg-gray-50 text-gray-700 border-gray-300',
     danger: 'bg-red-600 hover:bg-red-700 text-white border-transparent',
     success: 'bg-emerald-600 hover:bg-emerald-700 text-white border-transparent'
@@ -189,7 +189,7 @@ export const ProfileButton: React.FC<ProfileButtonProps> = ({
       whileTap={{ scale: disabled ? 1 : 0.98 }}
       className={`
         inline-flex items-center justify-center font-medium rounded-lg border
-        focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--primary-green)]
+        focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--primary-green,#10b981)]
         disabled:opacity-50 disabled:cursor-not-allowed
         transition-all duration-200
         ${variants[variant]}

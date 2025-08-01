@@ -11,13 +11,17 @@ import {
 } from '@heroicons/react/24/outline';
 import { useCart } from '@/contexts/CartContext';
 
-interface _CartItem {
-  id: number;
+interface CartItem {
+  id: string;
   providerId: number;
   providerName: string;
   packageId: number;
   packageName: string;
   price: number;
+  quantity: number;
+  image?: string;
+  petId?: string;
+  petName?: string;
   date?: string;
   time?: string;
 }
@@ -33,6 +37,7 @@ const CartDropdown = ({ isOpen, onClose }: CartDropdownProps) => {
 
   // Get cart items from context
   const { items: cartItems, removeItem, totalPrice } = useCart();
+  const typedCartItems = cartItems as CartItem[];
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -64,12 +69,12 @@ const CartDropdown = ({ isOpen, onClose }: CartDropdownProps) => {
 
   const proceedToCheckout = () => {
     // Check if we have cart items and valid data before proceeding
-    if (cartItems.length === 0) {
+    if (typedCartItems.length === 0) {
       onClose();
       return;
     }
 
-    const item = cartItems[0];
+    const item = typedCartItems[0];
     
     // Validate that we have the required IDs for direct checkout
     if (item.providerId && item.packageId) {
@@ -99,10 +104,10 @@ const CartDropdown = ({ isOpen, onClose }: CartDropdownProps) => {
       className="absolute right-0 top-full mt-2 w-80 max-w-[90vw] bg-white rounded-lg shadow-xl border border-gray-200 z-[60] overflow-hidden"
       data-cart-dropdown
     >
-      <div className="p-4 bg-[var(--primary-green)] text-white flex justify-between items-center">
+      <div className="p-4 bg-[var(--primary-green,#10b981)] text-white flex justify-between items-center">
         <h3 className="font-medium flex items-center">
           <ShoppingCartIcon className="h-5 w-5 mr-2" />
-          Your Cart ({cartItems.reduce((total, item) => total + item.quantity, 0)})
+          Your Cart ({typedCartItems.reduce((total, item) => total + item.quantity, 0)})
         </h3>
         <button
           onClick={onClose}
@@ -113,14 +118,14 @@ const CartDropdown = ({ isOpen, onClose }: CartDropdownProps) => {
       </div>
 
       <div className="max-h-96 overflow-y-auto">
-        {cartItems.length === 0 ? (
+        {typedCartItems.length === 0 ? (
           <div className="p-6 text-center text-gray-500">
             <ShoppingCartIcon className="h-12 w-12 mx-auto text-gray-300 mb-2" />
             <p>Your cart is empty</p>
           </div>
         ) : (
           <ul className="divide-y divide-gray-200">
-            {cartItems.map(item => (
+            {typedCartItems.map(item => (
               <li key={item.id} className="p-4 hover:bg-gray-50">
                 <div className="flex">
                   {/* Item Image */}
@@ -147,7 +152,7 @@ const CartDropdown = ({ isOpen, onClose }: CartDropdownProps) => {
                         <p className="text-xs text-gray-500">Qty: {item.quantity}</p>
                       </div>
                       <div className="text-right">
-                        <p className="font-medium text-[var(--primary-green)]">₱{item.price.toLocaleString()}</p>
+                        <p className="font-medium text-[var(--primary-green,#10b981)]">₱{item.price.toLocaleString()}</p>
                         <button
                           onClick={(e) => handleRemoveItem(item.id, e)}
                           className="text-red-500 hover:text-red-700 text-xs flex items-center mt-1 ml-auto"
@@ -169,20 +174,20 @@ const CartDropdown = ({ isOpen, onClose }: CartDropdownProps) => {
         <div className="p-4 border-t border-gray-200">
           <div className="flex justify-between mb-4">
             <span className="font-medium">Total:</span>
-            <span className="font-bold text-[var(--primary-green)]">₱{totalPrice.toLocaleString()}</span>
+            <span className="font-bold text-[var(--primary-green,#10b981)]">₱{totalPrice.toLocaleString()}</span>
           </div>
 
           <div className="space-y-2">
             <button
               onClick={proceedToCheckout}
-              className="w-full py-2 px-4 bg-[var(--primary-green)] text-white rounded-md hover:bg-[var(--primary-green-hover)] transition-colors flex items-center justify-center"
+              className="w-full py-2 px-4 bg-[var(--primary-green,#10b981)] text-white rounded-md hover:bg-[var(--primary-green-hover)] transition-colors flex items-center justify-center"
             >
               Checkout <ArrowRightIcon className="h-4 w-4 ml-2" />
             </button>
 
             <button
               onClick={viewCart}
-              className="w-full py-2 px-4 border border-[var(--primary-green)] text-[var(--primary-green)] rounded-md hover:bg-green-50 transition-colors"
+              className="w-full py-2 px-4 border border-[var(--primary-green,#10b981)] text-[var(--primary-green,#10b981)] rounded-md hover:bg-green-50 transition-colors"
             >
               View Cart
             </button>

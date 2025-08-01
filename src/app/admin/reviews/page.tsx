@@ -15,7 +15,7 @@ import AdminDashboardLayout from '@/components/navigation/AdminDashboardLayout';
 import withAdminAuth from '@/components/withAdminAuth';
 import { useToast } from '@/context/ToastContext';
 import StarRating from '@/components/ui/StarRating';
-import Modal from '@/components/Modal';
+import { Modal } from '@/components/ui/Modal';
 import { SectionLoader } from '@/components/ui/SectionLoader';
 
 interface Review {

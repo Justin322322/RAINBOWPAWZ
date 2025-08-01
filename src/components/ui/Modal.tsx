@@ -1,6 +1,6 @@
 'use client';
 
-import React, { ReactNode, useEffect } from 'react';
+import React, { ReactNode, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/utils/classNames';
 import { XMarkIcon, ArrowLeftIcon } from '@heroicons/react/24/outline';
@@ -10,11 +10,12 @@ interface ModalProps {
   onClose: () => void;
   title?: string;
   children: ReactNode;
-  size?: 'small' | 'medium' | 'large' | 'xlarge' | 'fullscreen';
+  size?: 'small' | 'medium' | 'large' | 'xlarge' | '2xl' | 'fullscreen';
   showCloseButton?: boolean;
   className?: string;
   contentClassName?: string;
   headerClassName?: string;
+  dialogClassName?: string; // Additional class names for the modal dialog container
   onBack?: () => void;
   closeOnOverlayClick?: boolean;
   closeOnEsc?: boolean;
@@ -22,6 +23,10 @@ interface ModalProps {
   headerContent?: ReactNode;
   footerContent?: ReactNode;
   variant?: 'default' | 'danger' | 'success' | 'warning' | 'info';
+  // Accessibility props
+  ariaLabel?: string;
+  ariaDescribedBy?: string;
+  initialFocus?: React.RefObject<HTMLElement>;
 }
 
 const Modal: React.FC<ModalProps> = ({
@@ -34,6 +39,7 @@ const Modal: React.FC<ModalProps> = ({
   className = '',
   contentClassName = '',
   headerClassName = '',
+  dialogClassName = '',
   onBack,
   closeOnOverlayClick = true,
   closeOnEsc = true,
@@ -41,33 +47,64 @@ const Modal: React.FC<ModalProps> = ({
   headerContent,
   footerContent,
   variant = 'default',
+  ariaLabel,
+  ariaDescribedBy,
+  initialFocus,
 }) => {
+  const modalRef = useRef<HTMLDivElement>(null);
+  const previousActiveElement = useRef<HTMLElement | null>(null);
+
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && closeOnEsc) onClose();
+      if (e.key === 'Escape' && closeOnEsc) {
+        e.preventDefault();
+        onClose();
+      }
     };
 
     if (isOpen) {
+      // Store the previously focused element
+      previousActiveElement.current = document.activeElement as HTMLElement;
+
+      // Prevent body scroll
       document.body.style.overflow = 'hidden';
+
+      // Add event listeners
       window.addEventListener('keydown', handleEscape);
+
+      // Focus management
+      if (initialFocus?.current) {
+        initialFocus.current.focus();
+      } else if (modalRef.current) {
+        modalRef.current.focus();
+      }
     }
 
     return () => {
       document.body.style.overflow = 'auto';
       window.removeEventListener('keydown', handleEscape);
     };
-  }, [isOpen, onClose, closeOnEsc]);
+  }, [isOpen, onClose, closeOnEsc, initialFocus]);
+
+  // Separate useEffect for focus restoration
+  useEffect(() => {
+    // Only restore focus when the modal closes
+    if (!isOpen && previousActiveElement.current) {
+      previousActiveElement.current.focus();
+    }
+  }, [isOpen]);
 
   const sizeClasses = {
     small: 'max-w-md w-full mx-4 sm:mx-auto',
     medium: 'max-w-lg w-full mx-4 sm:mx-auto',
     large: 'max-w-2xl w-full mx-4 sm:mx-auto',
     xlarge: 'max-w-4xl w-full mx-4 sm:mx-auto',
+    '2xl': 'max-w-5xl w-full mx-4 sm:mx-auto', 
     fullscreen: 'max-w-[95vw] sm:max-w-[80vw] max-h-[95vh] sm:max-h-[90vh] w-full mx-2 sm:mx-auto'
   };
 
   const variantClasses = {
-    default: 'bg-[var(--primary-green)] text-white',
+    default: 'bg-[var(--primary-green,#10b981)] text-white',
     danger: 'bg-red-600 text-white',
     success: 'bg-green-600 text-white',
     warning: 'bg-amber-500 text-white',
@@ -82,17 +119,21 @@ const Modal: React.FC<ModalProps> = ({
           role="dialog"
           aria-modal="true"
           aria-labelledby={title ? "modal-title" : undefined}
+          aria-label={ariaLabel}
+          aria-describedby={ariaDescribedBy}
         >
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15, ease: "easeOut" }}
-            className="fixed inset-0 bg-black/60"
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm"
             onClick={closeOnOverlayClick ? onClose : undefined}
+            aria-hidden="true"
           />
 
           <motion.div
+            ref={modalRef}
             initial={{ scale: 0.98, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.98, opacity: 0 }}
@@ -101,9 +142,11 @@ const Modal: React.FC<ModalProps> = ({
               "relative bg-white rounded-lg sm:rounded-xl shadow-2xl",
               sizeClasses[size],
               "max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col",
-              "z-[9999]",
-              className
+              "z-[9999] focus:outline-none",
+              className,
+              dialogClassName // For backward compatibility
             )}
+            tabIndex={-1}
           >
             {!hideHeader && (headerContent || title) && (
               <div className={cn(
@@ -135,8 +178,9 @@ const Modal: React.FC<ModalProps> = ({
                 {showCloseButton && (
                   <button
                     onClick={onClose}
-                    className="text-white hover:text-white/80 transition-colors duration-200 flex-shrink-0 ml-2"
+                    className="text-white hover:text-white/80 transition-colors duration-200 flex-shrink-0 ml-2 focus:outline-none focus:ring-2 focus:ring-white/50 rounded-md p-1"
                     aria-label="Close modal"
+                    type="button"
                   >
                     <XMarkIcon className="w-5 h-5 sm:w-6 sm:h-6" />
                   </button>

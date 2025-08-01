@@ -18,7 +18,7 @@ import AdminDashboardLayout from '@/components/navigation/AdminDashboardLayout';
 import withAdminAuth from '@/components/withAdminAuth';
 import { useToast } from '@/context/ToastContext';
 import { SectionLoader } from '@/components/ui/SectionLoader';
-import Modal from '@/components/Modal';
+import { Modal } from '@/components/ui/Modal';
 import Select from '@/components/ui/Select';
 
 interface AdminLog {

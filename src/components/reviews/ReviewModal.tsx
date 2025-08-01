@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import Modal from '@/components/Modal';
+import { Modal } from '@/components/ui/Modal';
 import ReviewForm from './ReviewForm';
 import { CheckCircleIcon } from '@heroicons/react/24/outline';
 import { LoadingSpinner } from '@/app/cremation/components/LoadingComponents';
