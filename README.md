@@ -796,224 +796,180 @@ The following Data Flow Diagram illustrates how data flows through the Rainbow P
 ```mermaid
 flowchart TD
     subgraph "External Actors"
+        VISITOR[Visitors/Unregistered Users]
         FP[Fur Parents]
         SP[Service Providers]
         AD[Administrators]
-        VISITOR[Visitors/Unregistered Users]
     end
 
-    subgraph "User Interface Layer"
-        PUBLIC_WEB[Public Website & Auth]
-        FUR_PARENT_UI[Fur Parent Dashboard]
-        BUSINESS_UI[Business Dashboard]
-        ADMIN_UI[Admin Dashboard]
+    subgraph "Frontend Pages"
+        HOME[Home Page & Auth]
+        USER_DASH[/user - Fur Parent Dashboard]
+        CREMATION_DASH[/cremation - Business Dashboard]
+        ADMIN_DASH[/admin - Admin Dashboard]
+        APPEALS[/appeals - Appeal System]
+        PAYMENT_PAGES[/payment - Payment Flow]
+        VERIFY_OTP[/verify-otp - OTP Verification]
+        RESET_PWD[/reset-password - Password Reset]
+        RESTRICTED[/restricted - Restricted Access]
     end
 
-    subgraph "API Gateway Layer"
-        API_ROUTER[API Router]
-        AUTH_MW[Auth Middleware]
-        RATE_LIMIT[Rate Limiter]
-        VALIDATOR[Request Validator]
-        HEALTH_CHECK[Health Check]
+    subgraph "Next.js Middleware"
+        MIDDLEWARE[Route Protection & Auth Check]
+        IMAGE_SERVE[Image Serving /uploads/*]
     end
 
-    subgraph "Business Logic Layer"
-        AUTH_SVC[Authentication Service]
-        USER_SVC[User Management Service]
-        PET_SVC[Pet Management Service]
-        BOOKING_SVC[Booking Service]
-        PAYMENT_SVC[Payment Service]
-        NOTIFICATION_SVC[Notification Service]
-        ADMIN_SVC[Admin Service]
-        FILE_SVC[File Upload Service]
-        EMAIL_QUEUE_SVC[Email Queue Service]
-        APPEAL_SVC[Appeal Management Service]
-        REVIEW_SVC[Review System Service]
-        AVAILABILITY_SVC[Availability Management]
-        DOCUMENT_SVC[Document Verification]
+    subgraph "API Routes"
+        AUTH_API[/api/auth/* - Authentication]
+        USER_API[/api/users/* - User Management]
+        PET_API[/api/pets/* - Pet Management]
+        BOOKING_API[/api/bookings/* - Booking System]
+        PAYMENT_API[/api/payments/* - Payment Processing]
+        ADMIN_API[/api/admin/* - Admin Operations]
+        CREMATION_API[/api/cremation/* - Business Operations]
+        NOTIFICATION_API[/api/notifications/* - Notifications]
+        EMAIL_API[/api/email/* - Email System]
+        UPLOAD_API[/api/upload/* - File Uploads]
+        HEALTH_API[/api/health & /api/version - System Health]
     end
 
-    subgraph "Data Access Layer"
-        USER_REPO[User Repository]
-        PET_REPO[Pet Repository]
-        BOOKING_REPO[Booking Repository]
-        PAYMENT_REPO[Payment Repository]
-        PROVIDER_REPO[Provider Repository]
-        NOTIFICATION_REPO[Notification Repository]
-        EMAIL_REPO[Email Repository]
-        ADMIN_REPO[Admin Repository]
-        REVIEW_REPO[Review Repository]
-        RATE_LIMIT_REPO[Rate Limit Repository]
-    end
-
-    subgraph "Database Layer"
+    subgraph "Database Operations"
+        DB_QUERY[Direct SQL Queries via query()]
+        DB_TRANSACTION[Transaction Management]
         MYSQL[(MySQL Database)]
-        LOCAL_CACHE[Client-side Cache]
     end
 
-    subgraph "External Services"
+    subgraph "External Integrations"
         PAYMONGO[PayMongo API]
         TWILIO[Twilio SMS]
-        SMTP[SMTP Server]
-        LOCAL_STORAGE[Local File Storage]
+        SMTP[SMTP Email Server]
+        LOCAL_FILES[Local File System]
     end
 
-    subgraph "Data Stores"
-        USER_DATA[User Data]
-        PET_DATA[Pet Profiles]
-        BOOKING_DATA[Booking Records]
-        PAYMENT_DATA[Payment Transactions]
-        PROVIDER_DATA[Service Providers]
-        NOTIFICATION_DATA[Notifications]
-        FILE_DATA[Uploaded Files]
-        EMAIL_DATA[Email Queue & Logs]
-        ADMIN_DATA[Admin Logs & Appeals]
-        REVIEW_DATA[Reviews & Ratings]
-        RATE_LIMIT_DATA[Rate Limiting Data]
-    end
+    %% External Actors to Frontend
+    VISITOR --> HOME
+    FP --> USER_DASH
+    SP --> CREMATION_DASH
+    AD --> ADMIN_DASH
 
-    %% External Actors to UI
-    VISITOR --> PUBLIC_WEB
-    FP --> FUR_PARENT_UI
-    SP --> BUSINESS_UI
-    AD --> ADMIN_UI
+    %% Authentication & Registration Flow
+    VISITOR --> VERIFY_OTP
+    VISITOR --> RESET_PWD
 
-    %% Authentication Flow
-    VISITOR --> FUR_PARENT_UI
-    VISITOR --> BUSINESS_UI
-    VISITOR --> ADMIN_UI
+    %% Special Pages
+    FP --> APPEALS
+    SP --> APPEALS
+    FP --> PAYMENT_PAGES
+    FP --> RESTRICTED
+    SP --> RESTRICTED
 
-    %% UI Layer to API Gateway
-    PUBLIC_WEB --> API_ROUTER
-    FUR_PARENT_UI --> API_ROUTER
-    BUSINESS_UI --> API_ROUTER
-    ADMIN_UI --> API_ROUTER
+    %% Middleware Processing
+    HOME --> MIDDLEWARE
+    USER_DASH --> MIDDLEWARE
+    CREMATION_DASH --> MIDDLEWARE
+    ADMIN_DASH --> MIDDLEWARE
+    APPEALS --> MIDDLEWARE
 
-    %% API Gateway Processing
-    API_ROUTER --> AUTH_MW
-    AUTH_MW --> RATE_LIMIT
-    RATE_LIMIT --> VALIDATOR
-    API_ROUTER --> HEALTH_CHECK
+    %% Image Serving
+    MIDDLEWARE --> IMAGE_SERVE
 
-    %% API Gateway to Business Logic
-    VALIDATOR --> AUTH_SVC
-    VALIDATOR --> USER_SVC
-    VALIDATOR --> PET_SVC
-    VALIDATOR --> BOOKING_SVC
-    VALIDATOR --> PAYMENT_SVC
-    VALIDATOR --> NOTIFICATION_SVC
-    VALIDATOR --> ADMIN_SVC
-    VALIDATOR --> FILE_SVC
-    VALIDATOR --> EMAIL_QUEUE_SVC
-    VALIDATOR --> APPEAL_SVC
-    VALIDATOR --> REVIEW_SVC
-    VALIDATOR --> AVAILABILITY_SVC
-    VALIDATOR --> DOCUMENT_SVC
+    %% Frontend to API Routes
+    HOME --> AUTH_API
+    USER_DASH --> USER_API
+    USER_DASH --> PET_API
+    USER_DASH --> BOOKING_API
+    USER_DASH --> PAYMENT_API
+    USER_DASH --> NOTIFICATION_API
+    CREMATION_DASH --> CREMATION_API
+    CREMATION_DASH --> UPLOAD_API
+    ADMIN_DASH --> ADMIN_API
+    APPEALS --> AUTH_API
+    PAYMENT_PAGES --> PAYMENT_API
+    VERIFY_OTP --> AUTH_API
+    RESET_PWD --> AUTH_API
 
-    %% Business Logic to Data Access
-    AUTH_SVC --> USER_REPO
-    USER_SVC --> USER_REPO
-    PET_SVC --> PET_REPO
-    BOOKING_SVC --> BOOKING_REPO
-    BOOKING_SVC --> PROVIDER_REPO
-    PAYMENT_SVC --> PAYMENT_REPO
-    NOTIFICATION_SVC --> NOTIFICATION_REPO
-    ADMIN_SVC --> USER_REPO
-    ADMIN_SVC --> BOOKING_REPO
-    ADMIN_SVC --> ADMIN_REPO
-    FILE_SVC --> LOCAL_STORAGE
-    EMAIL_QUEUE_SVC --> EMAIL_REPO
-    APPEAL_SVC --> USER_REPO
-    REVIEW_SVC --> REVIEW_REPO
-    AVAILABILITY_SVC --> PROVIDER_REPO
-    DOCUMENT_SVC --> PROVIDER_REPO
-    RATE_LIMIT --> RATE_LIMIT_REPO
+    %% API Routes to Database Operations
+    AUTH_API --> DB_QUERY
+    USER_API --> DB_QUERY
+    PET_API --> DB_QUERY
+    BOOKING_API --> DB_QUERY
+    BOOKING_API --> DB_TRANSACTION
+    PAYMENT_API --> DB_QUERY
+    ADMIN_API --> DB_QUERY
+    CREMATION_API --> DB_QUERY
+    NOTIFICATION_API --> DB_QUERY
+    EMAIL_API --> DB_QUERY
+    UPLOAD_API --> LOCAL_FILES
+    HEALTH_API --> DB_QUERY
 
-    %% Data Access to Database
-    USER_REPO --> MYSQL
-    PET_REPO --> MYSQL
-    BOOKING_REPO --> MYSQL
-    PAYMENT_REPO --> MYSQL
-    PROVIDER_REPO --> MYSQL
-    NOTIFICATION_REPO --> MYSQL
-    EMAIL_REPO --> MYSQL
-    ADMIN_REPO --> MYSQL
-    REVIEW_REPO --> MYSQL
-    RATE_LIMIT_REPO --> MYSQL
-
-    %% Client-side Cache Integration
-    WEB --> LOCAL_CACHE
-    BUSINESS_UI --> LOCAL_CACHE
+    %% Database Operations
+    DB_QUERY --> MYSQL
+    DB_TRANSACTION --> MYSQL
 
     %% External Service Integration
-    PAYMENT_SVC --> PAYMONGO
-    NOTIFICATION_SVC --> TWILIO
-    EMAIL_QUEUE_SVC --> SMTP
-
-    %% Database to Data Stores
-    MYSQL --> USER_DATA
-    MYSQL --> PET_DATA
-    MYSQL --> BOOKING_DATA
-    MYSQL --> PAYMENT_DATA
-    MYSQL --> PROVIDER_DATA
-    MYSQL --> NOTIFICATION_DATA
-    MYSQL --> EMAIL_DATA
-    MYSQL --> ADMIN_DATA
-    MYSQL --> REVIEW_DATA
-    MYSQL --> RATE_LIMIT_DATA
-    LOCAL_STORAGE --> FILE_DATA
+    PAYMENT_API --> PAYMONGO
+    AUTH_API --> SMTP
+    EMAIL_API --> SMTP
+    NOTIFICATION_API --> TWILIO
+    UPLOAD_API --> LOCAL_FILES
+    IMAGE_SERVE --> LOCAL_FILES
 
     %% Data Flow Styling
-    classDef userLayer fill:#e1f5fe,stroke:#01579b,stroke-width:2px
-    classDef apiLayer fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
-    classDef businessLayer fill:#e8f5e8,stroke:#1b5e20,stroke-width:2px
-    classDef dataLayer fill:#fff3e0,stroke:#e65100,stroke-width:2px
-    classDef externalLayer fill:#ffebee,stroke:#b71c1c,stroke-width:2px
-    classDef storageLayer fill:#f1f8e9,stroke:#33691e,stroke-width:2px
+    classDef frontendLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    classDef middlewareLayer fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    classDef apiLayer fill:#e8f5e8,stroke:#388e3c,stroke-width:2px
+    classDef dataLayer fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    classDef externalLayer fill:#ffebee,stroke:#d32f2f,stroke-width:2px
 
-    class PUBLIC_WEB,FUR_PARENT_UI,BUSINESS_UI,ADMIN_UI userLayer
-    class API_ROUTER,AUTH_MW,RATE_LIMIT,VALIDATOR,HEALTH_CHECK apiLayer
-    class AUTH_SVC,USER_SVC,PET_SVC,BOOKING_SVC,PAYMENT_SVC,NOTIFICATION_SVC,ADMIN_SVC,FILE_SVC,EMAIL_QUEUE_SVC,APPEAL_SVC,REVIEW_SVC,AVAILABILITY_SVC,DOCUMENT_SVC businessLayer
-    class USER_REPO,PET_REPO,BOOKING_REPO,PAYMENT_REPO,PROVIDER_REPO,NOTIFICATION_REPO,EMAIL_REPO,ADMIN_REPO,REVIEW_REPO,RATE_LIMIT_REPO,MYSQL,LOCAL_CACHE dataLayer
-    class PAYMONGO,TWILIO,SMTP,LOCAL_STORAGE externalLayer
-    class USER_DATA,PET_DATA,BOOKING_DATA,PAYMENT_DATA,PROVIDER_DATA,NOTIFICATION_DATA,FILE_DATA,EMAIL_DATA,ADMIN_DATA,REVIEW_DATA,RATE_LIMIT_DATA storageLayer
+    class HOME,USER_DASH,CREMATION_DASH,ADMIN_DASH,APPEALS,PAYMENT_PAGES,VERIFY_OTP,RESET_PWD,RESTRICTED frontendLayer
+    class MIDDLEWARE,IMAGE_SERVE middlewareLayer
+    class AUTH_API,USER_API,PET_API,BOOKING_API,PAYMENT_API,ADMIN_API,CREMATION_API,NOTIFICATION_API,EMAIL_API,UPLOAD_API,HEALTH_API apiLayer
+    class DB_QUERY,DB_TRANSACTION,MYSQL dataLayer
+    class PAYMONGO,TWILIO,SMTP,LOCAL_FILES externalLayer
 ```
 
 ### Data Flow Process Description
 
-**1. User Interaction Flow**
-- **Visitors/Unregistered Users** access the public website for registration and authentication
-- **Fur Parents** use their dedicated dashboard for pet management, service booking, and payment
-- **Service Providers** use the business dashboard for managing services, bookings, and availability
-- **Administrators** use the admin dashboard for system management, user oversight, and business verification
-- All users can access their respective dashboards after authentication through the public website
-- All requests flow through the API Gateway with authentication, rate limiting, and request validation
+**1. User Authentication & Route Protection**
+- **Visitors** start at the home page for registration and login
+- **Next.js Middleware** protects routes based on user roles:
+  - `/user/*` requires `user` account type (Fur Parents)
+  - `/cremation/*` requires `business` account type (Service Providers)
+  - `/admin/*` requires `admin` account type (Administrators)
+- **Authentication cookies** are validated on each protected route access
+- **Unauthorized users** are redirected to the home page
 
-**2. Business Logic Processing**
-- Validated requests are processed by appropriate business services
-- Services implement core business rules and workflows
-- Cross-service communication handles complex operations
+**2. Frontend to API Communication**
+- **Frontend pages** make direct HTTP requests to specific API routes
+- **No centralized API gateway** - each API route handles its own logic
+- **Authentication verification** happens individually in each API route using `verifySecureAuth()`
+- **Rate limiting** is implemented at the database level using `rateLimitUtils`
 
-**3. Data Persistence**
-- Business services interact with data repositories
-- Repositories abstract database operations
-- Data is stored in MySQL with comprehensive logging
-- Client-side localStorage caching for geocoding and routing data
-- Database-based rate limiting for API protection
+**3. API Route Processing**
+- **API routes** directly execute SQL queries using the `query()` function
+- **No service layer abstraction** - business logic is embedded in API routes
+- **Database transactions** are used for complex operations via `withTransaction()`
+- **Input validation** and error handling occur within each API route
 
-**4. External Integration**
-- Payment processing through PayMongo API
-- SMS notifications via Twilio
-- Email delivery through SMTP servers with queue management
-- Local file storage for images and documents
-- Health monitoring for system status
+**4. Database Operations**
+- **Direct SQL queries** to MySQL database using connection pooling
+- **No ORM or repository pattern** - raw SQL with parameter binding
+- **Transaction management** for data consistency in complex operations
+- **Connection pooling** handles concurrent database access
 
-**5. Response Flow**
-- Data flows back through the same layers
-- Responses are formatted and returned to the UI
-- Real-time updates via Server-Sent Events (SSE)
-- Email queue processing for reliable delivery
-- Admin audit trails for all administrative actions
+**5. External Service Integration**
+- **PayMongo API** integration for payment processing (GCash, card payments)
+- **Twilio SMS** service for notifications (optional, configurable)
+- **SMTP email** delivery with queue management and retry logic
+- **Local file system** storage for uploaded images and documents
+- **Image serving** through `/api/image/*` route with middleware rewriting
+
+**6. Real Implementation Characteristics**
+- **Monolithic API structure** - no microservices or complex service layers
+- **Direct database access** - no abstraction layers or repositories
+- **File-based routing** - Next.js App Router with API routes
+- **Cookie-based authentication** - HTTP-only cookies with JWT support
+- **Environment-based configuration** - external services are optional
 
 ## API Documentation
 
