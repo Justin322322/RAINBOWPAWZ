@@ -799,16 +799,14 @@ flowchart TD
         FP[Fur Parents]
         SP[Service Providers]
         AD[Administrators]
+        VISITOR[Visitors/Unregistered Users]
     end
 
     subgraph "User Interface Layer"
-        WEB[Web Application]
-        AUTH_UI[Authentication Pages]
-        DASH[User Dashboard]
-        ADMIN_UI[Admin Dashboard]
-        BOOKING_UI[Booking Interface]
-        PAYMENT_UI[Payment Interface]
+        PUBLIC_WEB[Public Website & Auth]
+        FUR_PARENT_UI[Fur Parent Dashboard]
         BUSINESS_UI[Business Dashboard]
+        ADMIN_UI[Admin Dashboard]
     end
 
     subgraph "API Gateway Layer"
@@ -875,18 +873,21 @@ flowchart TD
     end
 
     %% External Actors to UI
-    FP --> WEB
+    VISITOR --> PUBLIC_WEB
+    FP --> FUR_PARENT_UI
     SP --> BUSINESS_UI
     AD --> ADMIN_UI
 
+    %% Authentication Flow
+    VISITOR --> FUR_PARENT_UI
+    VISITOR --> BUSINESS_UI
+    VISITOR --> ADMIN_UI
+
     %% UI Layer to API Gateway
-    WEB --> API_ROUTER
-    AUTH_UI --> API_ROUTER
-    DASH --> API_ROUTER
-    ADMIN_UI --> API_ROUTER
-    BOOKING_UI --> API_ROUTER
-    PAYMENT_UI --> API_ROUTER
+    PUBLIC_WEB --> API_ROUTER
+    FUR_PARENT_UI --> API_ROUTER
     BUSINESS_UI --> API_ROUTER
+    ADMIN_UI --> API_ROUTER
 
     %% API Gateway Processing
     API_ROUTER --> AUTH_MW
@@ -970,7 +971,7 @@ flowchart TD
     classDef externalLayer fill:#ffebee,stroke:#b71c1c,stroke-width:2px
     classDef storageLayer fill:#f1f8e9,stroke:#33691e,stroke-width:2px
 
-    class WEB,AUTH_UI,DASH,ADMIN_UI,BOOKING_UI,PAYMENT_UI,BUSINESS_UI userLayer
+    class PUBLIC_WEB,FUR_PARENT_UI,BUSINESS_UI,ADMIN_UI userLayer
     class API_ROUTER,AUTH_MW,RATE_LIMIT,VALIDATOR,HEALTH_CHECK apiLayer
     class AUTH_SVC,USER_SVC,PET_SVC,BOOKING_SVC,PAYMENT_SVC,NOTIFICATION_SVC,ADMIN_SVC,FILE_SVC,EMAIL_QUEUE_SVC,APPEAL_SVC,REVIEW_SVC,AVAILABILITY_SVC,DOCUMENT_SVC businessLayer
     class USER_REPO,PET_REPO,BOOKING_REPO,PAYMENT_REPO,PROVIDER_REPO,NOTIFICATION_REPO,EMAIL_REPO,ADMIN_REPO,REVIEW_REPO,RATE_LIMIT_REPO,MYSQL,LOCAL_CACHE dataLayer
@@ -981,10 +982,11 @@ flowchart TD
 ### Data Flow Process Description
 
 **1. User Interaction Flow**
-- Three types of authenticated users (Fur Parents, Service Providers, Admins) interact with their respective interfaces
-- Fur Parents use the main web application for booking services
-- Service Providers use the business dashboard for managing their services
-- Administrators use the admin dashboard for system management
+- **Visitors/Unregistered Users** access the public website for registration and authentication
+- **Fur Parents** use their dedicated dashboard for pet management, service booking, and payment
+- **Service Providers** use the business dashboard for managing services, bookings, and availability
+- **Administrators** use the admin dashboard for system management, user oversight, and business verification
+- All users can access their respective dashboards after authentication through the public website
 - All requests flow through the API Gateway with authentication, rate limiting, and request validation
 
 **2. Business Logic Processing**
