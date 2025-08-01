@@ -796,10 +796,10 @@ The following Data Flow Diagram illustrates how data flows through the Rainbow P
 ```mermaid
 flowchart TD
     subgraph "External Actors"
-        VISITOR[Visitors/Unregistered Users]
-        FP[Fur Parents]
-        SP[Service Providers]
-        AD[Administrators]
+        VISITOR["Visitors/Unregistered Users"]
+        FP["Fur Parents"]
+        SP["Service Providers"]
+        AD["Administrators"]
     end
 
     subgraph "Frontend Pages"
