@@ -846,6 +846,21 @@ flowchart TD
         LOCAL_FILES["Local File System"]
     end
 
+    subgraph "Data Stores"
+        USER_DATA["User Accounts & Profiles"]
+        PET_DATA["Pet Profiles & Information"]
+        BOOKING_DATA["Service Bookings & History"]
+        PAYMENT_DATA["Payment Transactions & Refunds"]
+        PROVIDER_DATA["Service Providers & Packages"]
+        NOTIFICATION_DATA["User & Business Notifications"]
+        ADMIN_DATA["Admin Logs & Appeals"]
+        EMAIL_DATA["Email Queue & Delivery Logs"]
+        REVIEW_DATA["Reviews & Ratings"]
+        FILE_DATA["Uploaded Images & Documents"]
+        RATE_LIMIT_DATA["API Rate Limiting Records"]
+        AUTH_DATA["OTP Codes & Password Reset Tokens"]
+    end
+
     %% External Actors to Frontend
     VISITOR --> HOME
     FP --> USER_DASH
@@ -914,18 +929,36 @@ flowchart TD
     UPLOAD_API --> LOCAL_FILES
     IMAGE_SERVE --> LOCAL_FILES
 
+    %% Database to Data Stores
+    MYSQL --> USER_DATA
+    MYSQL --> PET_DATA
+    MYSQL --> BOOKING_DATA
+    MYSQL --> PAYMENT_DATA
+    MYSQL --> PROVIDER_DATA
+    MYSQL --> NOTIFICATION_DATA
+    MYSQL --> ADMIN_DATA
+    MYSQL --> EMAIL_DATA
+    MYSQL --> REVIEW_DATA
+    MYSQL --> RATE_LIMIT_DATA
+    MYSQL --> AUTH_DATA
+
+    %% File System to Data Stores
+    LOCAL_FILES --> FILE_DATA
+
     %% Data Flow Styling
     classDef frontendLayer fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
     classDef middlewareLayer fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
     classDef apiLayer fill:#e8f5e8,stroke:#388e3c,stroke-width:2px
     classDef dataLayer fill:#fff3e0,stroke:#f57c00,stroke-width:2px
     classDef externalLayer fill:#ffebee,stroke:#d32f2f,stroke-width:2px
+    classDef storageLayer fill:#f1f8e9,stroke:#33691e,stroke-width:2px
 
     class HOME,USER_DASH,CREMATION_DASH,ADMIN_DASH,APPEALS,PAYMENT_PAGES,VERIFY_OTP,RESET_PWD,RESTRICTED frontendLayer
     class MIDDLEWARE,IMAGE_SERVE middlewareLayer
     class AUTH_API,USER_API,PET_API,BOOKING_API,PAYMENT_API,ADMIN_API,CREMATION_API,NOTIFICATION_API,EMAIL_API,UPLOAD_API,HEALTH_API apiLayer
     class DB_QUERY,DB_TRANSACTION,MYSQL dataLayer
     class PAYMONGO,TWILIO,SMTP,LOCAL_FILES externalLayer
+    class USER_DATA,PET_DATA,BOOKING_DATA,PAYMENT_DATA,PROVIDER_DATA,NOTIFICATION_DATA,ADMIN_DATA,EMAIL_DATA,REVIEW_DATA,FILE_DATA,RATE_LIMIT_DATA,AUTH_DATA storageLayer
 ```
 
 ### Data Flow Process Description
