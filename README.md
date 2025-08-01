@@ -520,16 +520,7 @@ erDiagram
         timestamp created_at
     }
 
-    admin_notifications {
-        int id PK
-        varchar type
-        varchar title
-        text message
-        varchar entity_type
-        int entity_id
-        boolean is_read
-        timestamp created_at
-    }
+
 
     business_notifications {
         int id PK
@@ -600,35 +591,7 @@ erDiagram
         timestamp expires_at
     }
 
-    email_queue {
-        int id PK
-        varchar to_email
-        varchar subject
-        text html
-        text text
-        enum status
-        int retry_count
-        timestamp scheduled_at
-        timestamp sent_at
-        timestamp created_at
-    }
 
-    email_log {
-        int id PK
-        varchar recipient
-        varchar subject
-        varchar message_id
-        timestamp sent_at
-    }
-
-    rate_limits {
-        int id PK
-        varchar identifier
-        varchar action
-        int request_count
-        timestamp window_start
-        timestamp updated_at
-    }
 
     %% Relationships - All foreign key constraints
     users ||--o{ admin_profiles : "has"
@@ -710,15 +673,17 @@ erDiagram
 
 #### Additional Database Features
 
-**Operational & Logging Tables (Now Included in ERD):**
-- **Admin Logs**: Comprehensive audit trail for all admin actions
-- **Admin Notifications**: Admin-specific notification system
-- **Business Notifications**: Business-specific notifications with read status
-- **Email Queue/Log**: Sophisticated email delivery and tracking system
-- **Rate Limits**: Database-based API rate limiting protection
-- **Reviews**: Customer feedback and rating system with expiration
-- **Provider Availability/Time Slots**: Detailed scheduling and availability management
-- **Migration History**: Database migration tracking and rollback support
+**Core Business Tables (Included in ERD):**
+- **Admin Logs**: Comprehensive audit trail for all admin actions (linked to admin_profiles)
+- **Business Notifications**: Business-specific notifications with read status (linked to users)
+- **Reviews**: Customer feedback and rating system with expiration (linked to users, providers, bookings)
+- **Provider Availability/Time Slots**: Detailed scheduling and availability management (linked to providers)
+
+**Operational & Logging Tables (Not Shown in ERD - No Foreign Key Relationships):**
+- **Admin Notifications**: Admin-specific notification system (standalone operational table)
+- **Email Queue/Log**: Sophisticated email delivery and tracking system (standalone operational tables)
+- **Rate Limits**: Database-based API rate limiting protection (standalone operational table)
+- **Migration History**: Database migration tracking and rollback support (standalone operational table)
 
 **Business Configuration Tables:**
 - **Business Custom Options**: Flexible business configuration system
@@ -834,7 +799,6 @@ flowchart TD
         FP[Fur Parents]
         SP[Service Providers]
         AD[Administrators]
-        GU[Guest Users]
     end
 
     subgraph "User Interface Layer"
@@ -914,7 +878,6 @@ flowchart TD
     FP --> WEB
     SP --> BUSINESS_UI
     AD --> ADMIN_UI
-    GU --> AUTH_UI
 
     %% UI Layer to API Gateway
     WEB --> API_ROUTER
@@ -1018,9 +981,11 @@ flowchart TD
 ### Data Flow Process Description
 
 **1. User Interaction Flow**
-- External actors (Fur Parents, Service Providers, Admins) interact with the web application
-- Requests flow through the UI layer to the API Gateway
-- API Gateway handles authentication, rate limiting, and request validation
+- Three types of authenticated users (Fur Parents, Service Providers, Admins) interact with their respective interfaces
+- Fur Parents use the main web application for booking services
+- Service Providers use the business dashboard for managing their services
+- Administrators use the admin dashboard for system management
+- All requests flow through the API Gateway with authentication, rate limiting, and request validation
 
 **2. Business Logic Processing**
 - Validated requests are processed by appropriate business services
