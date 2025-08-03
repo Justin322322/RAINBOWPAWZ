@@ -6,11 +6,29 @@ interface UserNotificationData {
   type: string;
   title: string;
   message: string;
-  entityType?: string;
-  _entityType?: string;
   entityId?: number;
   shouldSendEmail?: boolean;
   emailSubject?: string;
+}
+
+interface NotificationRecord {
+  id: number;
+  user_id: number;
+  title: string;
+  message: string;
+  type: 'info' | 'success' | 'warning' | 'error';
+  is_read: boolean;
+  link: string | null;
+  created_at: string;
+}
+
+interface TableColumnInfo {
+  Field: string;
+  Type: string;
+  Null: string;
+  Key: string;
+  Default: string | null;
+  Extra: string;
 }
 
 /**
@@ -21,26 +39,13 @@ export async function createUserNotification({
   type,
   title,
   message,
-  _entityType,
   entityId,
   shouldSendEmail = false,
   emailSubject
 }: UserNotificationData): Promise<boolean> {
   try {
-    // Determine link based on notification type
-    let link = null;
-
-    if (type === 'refund_processed' || type === 'refund_approved') {
-      // Link to the bookings page
-      link = '/user/furparent_dashboard/bookings';
-
-      // If we have a specific entity ID, link directly to that booking
-      if (entityId) {
-        link = `/user/furparent_dashboard/bookings?bookingId=${entityId}`;
-      }
-    }
-
-    // Use the notification service which supports email
+    const link = determineNotificationLink(type, entityId);
+    
     const notificationResult = await createNotification({
       userId,
       title,
@@ -53,9 +58,24 @@ export async function createUserNotification({
 
     return notificationResult.success;
   } catch (error) {
-    console.error("Error creating user notification:", error);
+    // Log error for debugging but don't expose details to client
+    if (process.env.NODE_ENV === 'development') {
+      console.error("Error creating user notification:", error);
+    }
     return false;
   }
+}
+
+/**
+ * Determine the appropriate link for a notification type
+ */
+function determineNotificationLink(type: string, entityId?: number): string | null {
+  if (type === 'refund_processed' || type === 'refund_approved') {
+    return entityId 
+      ? `/user/furparent_dashboard/bookings?bookingId=${entityId}`
+      : '/user/furparent_dashboard/bookings';
+  }
+  return null;
 }
 
 /**
@@ -63,16 +83,14 @@ export async function createUserNotification({
  */
 async function ensureNotificationsTable(): Promise<boolean> {
   try {
-    // Check if the table exists
     const tableExists = await query(`
       SELECT COUNT(*) as count
       FROM information_schema.tables
       WHERE table_schema = DATABASE()
       AND table_name = 'notifications'
-    `) as any[];
+    `) as Array<{ count: number }>;
 
     if (tableExists[0].count === 0) {
-      // Create the table if it doesn't exist - Match the database schema without foreign key
       await query(`
         CREATE TABLE IF NOT EXISTS notifications (
           id INT AUTO_INCREMENT PRIMARY KEY,
@@ -92,49 +110,51 @@ async function ensureNotificationsTable(): Promise<boolean> {
 
     return true;
   } catch (error) {
-    console.error("Error ensuring notifications table exists:", error);
+    if (process.env.NODE_ENV === 'development') {
+      console.error("Error ensuring notifications table exists:", error);
+    }
     return false;
+  }
+}
+
+/**
+ * Get the correct ID column name for the notifications table
+ */
+async function getNotificationIdColumn(): Promise<'id' | 'notification_id'> {
+  try {
+    const tableInfo = await query(`DESCRIBE notifications`) as TableColumnInfo[];
+    const hasNotificationId = tableInfo.some(col => col.Field === 'notification_id');
+    const hasId = tableInfo.some(col => col.Field === 'id');
+    
+    return hasNotificationId && !hasId ? 'notification_id' : 'id';
+  } catch (error) {
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('Could not describe notifications table:', error);
+    }
+    return 'id'; // Default fallback
   }
 }
 
 /**
  * Get notifications for a specific user
  */
-export async function getUserNotifications(userId: number, limit: number = 10): Promise<any[]> {
+export async function getUserNotifications(userId: number, limit: number = 10): Promise<NotificationRecord[]> {
   try {
-    // Ensure the notifications table exists first
     await ensureNotificationsTable();
+    const idColumn = await getNotificationIdColumn();
     
-    // Check which column name to use (id or notification_id)
-    let idColumn = 'id';
-    try {
-      // Try to describe the table to see which column exists
-      const tableInfo = await query(`DESCRIBE notifications`) as any[];
-      const hasNotificationId = tableInfo.some((col: any) => col.Field === 'notification_id');
-      const hasId = tableInfo.some((col: any) => col.Field === 'id');
-      
-      if (hasNotificationId && !hasId) {
-        idColumn = 'notification_id';
-      }
-    } catch (describeError) {
-      console.warn('Could not describe notifications table:', describeError);
-    }
+    const selectQuery = idColumn === 'notification_id'
+      ? `SELECT notification_id as id, user_id, title, message, type, is_read, link, created_at 
+         FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT ?`
+      : `SELECT id, user_id, title, message, type, is_read, link, created_at 
+         FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT ?`;
     
-    // SECURITY FIX: Build safe query without template literals
-    let selectQuery;
-    if (idColumn === 'notification_id') {
-      selectQuery = `SELECT notification_id as id, user_id, title, message, type, is_read, link, created_at 
-                     FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT ?`;
-    } else {
-      selectQuery = `SELECT id, user_id, title, message, type, is_read, link, created_at 
-                     FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT ?`;
-    }
-    
-    const notifications = await query(selectQuery, [userId, limit]) as any[];
-
+    const notifications = await query(selectQuery, [userId, limit]) as NotificationRecord[];
     return notifications || [];
   } catch (error) {
-    console.error("Error fetching user notifications:", error);
+    if (process.env.NODE_ENV === 'development') {
+      console.error("Error fetching user notifications:", error);
+    }
     return [];
   }
 }
@@ -144,33 +164,18 @@ export async function getUserNotifications(userId: number, limit: number = 10): 
  */
 export async function markNotificationAsRead(notificationId: number, userId: number): Promise<boolean> {
   try {
-    // Check which column name to use (id or notification_id)
-    let idColumn = 'id';
-    try {
-      const tableInfo = await query(`DESCRIBE notifications`) as any[];
-      const hasNotificationId = tableInfo.some((col: any) => col.Field === 'notification_id');
-      const hasId = tableInfo.some((col: any) => col.Field === 'id');
-      
-      if (hasNotificationId && !hasId) {
-        idColumn = 'notification_id';
-      }
-    } catch (describeError) {
-      console.warn('Could not describe notifications table:', describeError);
-    }
-
-    // SECURITY FIX: Build safe query without template literals
-    let updateQuery;
-    if (idColumn === 'notification_id') {
-      updateQuery = 'UPDATE notifications SET is_read = TRUE WHERE notification_id = ? AND user_id = ?';
-    } else {
-      updateQuery = 'UPDATE notifications SET is_read = TRUE WHERE id = ? AND user_id = ?';
-    }
+    const idColumn = await getNotificationIdColumn();
+    
+    const updateQuery = idColumn === 'notification_id'
+      ? 'UPDATE notifications SET is_read = TRUE WHERE notification_id = ? AND user_id = ?'
+      : 'UPDATE notifications SET is_read = TRUE WHERE id = ? AND user_id = ?';
     
     await query(updateQuery, [notificationId, userId]);
-
     return true;
   } catch (error) {
-    console.error("Error marking notification as read:", error);
+    if (process.env.NODE_ENV === 'development') {
+      console.error("Error marking notification as read:", error);
+    }
     return false;
   }
 }
@@ -185,10 +190,11 @@ export async function markAllNotificationsAsRead(userId: number): Promise<boolea
       SET is_read = TRUE 
       WHERE user_id = ? AND is_read = FALSE
     `, [userId]);
-
     return true;
   } catch (error) {
-    console.error("Error marking all notifications as read:", error);
+    if (process.env.NODE_ENV === 'development') {
+      console.error("Error marking all notifications as read:", error);
+    }
     return false;
   }
 }

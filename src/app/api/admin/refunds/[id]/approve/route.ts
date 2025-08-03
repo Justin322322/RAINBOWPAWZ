@@ -139,7 +139,6 @@ export async function POST(
                 type: 'refund_approved',
                 title: 'Refund Approved',
                 message: `Your refund request for ${refund.pet_name} has been approved and is being processed. You will receive your refund within 5-10 business days.`,
-                entityType: 'booking',
                 entityId: refund.booking_id
               });
             } catch (notificationError) {
@@ -209,7 +208,6 @@ export async function POST(
                 type: 'refund_processed',
                 title: 'Refund Processed',
                 message: `Your refund for ${refund.pet_name} has been processed successfully. The amount of ₱${refund.amount.toFixed(2)} has been refunded.`,
-                entityType: 'booking',
                 entityId: refund.booking_id
               });
             } catch (notificationError) {
@@ -279,7 +277,6 @@ export async function POST(
               type: 'refund_processed',
               title: 'Refund Processed',
               message: `Your refund for ${refund.pet_name} has been processed successfully. The amount of ₱${refund.amount.toFixed(2)} has been refunded.`,
-              entityType: 'booking',
               entityId: refund.booking_id
             });
           } catch (notificationError) {
@@ -348,7 +345,6 @@ export async function POST(
             type: 'refund_processed',
             title: 'Refund Processed',
             message: `Your refund for ${refund.pet_name} has been processed successfully. The amount of ₱${refund.amount.toFixed(2)} has been refunded.`,
-            entityType: 'booking',
             entityId: refund.booking_id
           });
         } catch (notificationError) {

@@ -1,5 +1,6 @@
 import { query } from '@/lib/db';
 import { sendEmail } from '@/lib/consolidatedEmailService';
+import { OkPacket, ResultSetHeader } from 'mysql2';
 
 // Import the standardized base email template
 const baseEmailTemplate = (content: string) => `
@@ -90,9 +91,6 @@ const baseEmailTemplate = (content: string) => `
 </html>
 `;
 
-/**
- * Interface for creating a new notification
- */
 interface CreateNotificationParams {
   userId: number;
   title: string;
@@ -103,9 +101,21 @@ interface CreateNotificationParams {
   emailSubject?: string;
 }
 
-/**
- * Create a new notification for a user
- */
+interface NotificationResult {
+  success: boolean;
+  notificationId?: number;
+  error?: string;
+}
+
+interface UserEmailData {
+  email: string;
+  first_name: string;
+  email_notifications: number;
+}
+
+// Type for INSERT query results that have insertId
+type InsertResult = OkPacket | ResultSetHeader;
+
 /**
  * Create a notification with minimal overhead (for critical operations)
  */
@@ -121,137 +131,22 @@ export async function createNotificationFast({
   message: string;
   type?: 'info' | 'success' | 'warning' | 'error';
   link?: string | null;
-}): Promise<{ success: boolean; notificationId?: number; error?: string }> {
+}): Promise<NotificationResult> {
   try {
-    // Simple insert without table checks (assumes table exists)
     const result = await query(
       `INSERT INTO notifications (user_id, title, message, type, link)
        VALUES (?, ?, ?, ?, ?)`,
       [userId, title, message, type, link]
-    ) as any;
-
-    return {
-      success: true,
-      notificationId: result.insertId
-    };
-  } catch (error: any) {
-    console.error('Fast notification creation failed:', error);
-    return {
-      success: false,
-      error: error.message
-    };
-  }
-}
-
-export async function createNotification({
-  userId,
-  title,
-  message,
-  type = 'info',
-  link = null,
-  shouldSendEmail = false,
-  emailSubject
-}: CreateNotificationParams): Promise<{ success: boolean; notificationId?: number; error?: string }> {
-  try {
-    // Ensure the notifications table exists with shorter timeout
-    await Promise.race([
-      ensureNotificationsTable(),
-      new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Table creation timeout')), 3000)
-      )
-    ]);
-
-    // Insert the notification with timeout and retry logic
-    let result: any;
-    let retryCount = 0;
-    const maxRetries = 3;
-
-    while (retryCount < maxRetries) {
-      try {
-        result = await Promise.race([
-          query(
-            `INSERT INTO notifications (user_id, title, message, type, link)
-             VALUES (?, ?, ?, ?, ?)`,
-            [userId, title, message, type, link]
-          ),
-          new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Insert query timeout')), 5000)
-          )
-        ]) as any;
-        break; // Success, exit retry loop
-      } catch (insertError: any) {
-        retryCount++;
-        console.warn(`Notification insert attempt ${retryCount} failed:`, {
-          code: insertError.code,
-          message: insertError.message,
-          sql: insertError.sql,
-          params: [userId, title, message, type, link]
-        });
-
-        if (retryCount >= maxRetries) {
-          console.error(`All ${maxRetries} notification insert attempts failed for user ${userId}`);
-          throw insertError;
-        }
-
-        console.log(`Retrying query in ${500 * retryCount}ms due to ${insertError.code}`);
-        // Wait before retry (shorter backoff)
-        await new Promise(resolve => setTimeout(resolve, 500 * retryCount));
-      }
-    }
-
-    // If requested, also send an email notification
-    if (shouldSendEmail) {
-      // Get user email and notification preferences - safely handle email_notifications column
-      let userResult: any[];
-      
-      try {
-        userResult = await query(`
-          SELECT 
-            email, 
-            first_name, 
-            COALESCE(email_notifications, 1) as email_notifications 
-          FROM users 
-          WHERE user_id = ?
-        `, [userId]) as any[];
-      } catch (queryError) {
-        // Fallback query without email_notifications column if it doesn't exist
-        console.warn('Error querying email_notifications, falling back to basic query:', queryError);
-        userResult = await query(`
-          SELECT 
-            email, 
-            first_name, 
-            1 as email_notifications
-          FROM users 
-          WHERE user_id = ?
-        `, [userId]) as any[];
-      }
-
-      if (userResult && userResult.length > 0) {
-        const { email, first_name, email_notifications } = userResult[0];
-
-        // Check if user has email notifications enabled (default to true)
-        const emailNotificationsEnabled = email_notifications !== null ? Boolean(email_notifications) : true;
-
-        if (emailNotificationsEnabled && email) {
-          // Send the email notification
-          await sendEmail({
-            to: email,
-            subject: emailSubject || title,
-            html: createEmailHtml(first_name, title, message, type, link),
-            text: createEmailText(first_name, title, message, link)
-          });
-        } else if (!emailNotificationsEnabled) {
-        } else if (!email) {
-          console.warn(`No email address found for user ${userId}`);
-        }
-      }
-    }
+    ) as unknown as InsertResult;
 
     return {
       success: true,
       notificationId: result.insertId
     };
   } catch (error) {
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Fast notification creation failed:', error);
+    }
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error'
@@ -260,11 +155,165 @@ export async function createNotification({
 }
 
 /**
- * Create HTML email content for notification using the Rainbow Paws base template
+ * Create a new notification for a user with email support
+ */
+export async function createNotification({
+  userId,
+  title,
+  message,
+  type = 'info',
+  link = null,
+  shouldSendEmail = false,
+  emailSubject
+}: CreateNotificationParams): Promise<NotificationResult> {
+  try {
+    await ensureNotificationsTable();
+    const result = await insertNotificationWithRetry(userId, title, message, type, link);
+
+    if (shouldSendEmail) {
+      await sendEmailNotification(userId, title, message, type, link, emailSubject);
+    }
+
+    return {
+      success: true,
+      notificationId: result.insertId
+    };
+  } catch (error) {
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Notification creation failed:', error);
+    }
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
+  }
+}
+
+/**
+ * Insert notification with retry logic
+ */
+async function insertNotificationWithRetry(
+  userId: number,
+  title: string,
+  message: string,
+  type: string,
+  link: string | null
+): Promise<InsertResult> {
+  const maxRetries = 3;
+  let lastError: Error = new Error('No attempts made');
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await query(
+        `INSERT INTO notifications (user_id, title, message, type, link)
+         VALUES (?, ?, ?, ?, ?)`,
+        [userId, title, message, type, link]
+      ) as unknown as InsertResult;
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error('Unknown error');
+      
+      if (attempt === maxRetries) {
+        if (process.env.NODE_ENV === 'development') {
+          console.error(`All ${maxRetries} notification insert attempts failed for user ${userId}:`, lastError);
+        }
+        throw lastError;
+      }
+
+      if (process.env.NODE_ENV === 'development') {
+        console.warn(`Notification insert attempt ${attempt} failed, retrying...`);
+      }
+      
+      // Exponential backoff
+      await new Promise(resolve => setTimeout(resolve, 500 * attempt));
+    }
+  }
+
+  throw lastError!;
+}
+/**
+ * Send email notification if user has email notifications enabled
+ */
+async function sendEmailNotification(
+  userId: number,
+  title: string,
+  message: string,
+  type: string,
+  link: string | null,
+  emailSubject?: string
+): Promise<void> {
+  try {
+    const userData = await getUserEmailData(userId);
+    
+    if (!userData) {
+      if (process.env.NODE_ENV === 'development') {
+        console.warn(`No email address found for user ${userId}`);
+      }
+      return;
+    }
+
+    const { email, first_name, email_notifications } = userData;
+    const emailNotificationsEnabled = email_notifications !== null ? Boolean(email_notifications) : true;
+
+    if (emailNotificationsEnabled && email) {
+      await sendEmail({
+        to: email,
+        subject: emailSubject || title,
+        html: createEmailHtml(first_name, title, message, type, link),
+        text: createEmailText(first_name, title, message, link)
+      });
+    }
+  } catch (error) {
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Error sending email notification:', error);
+    }
+  }
+}
+
+/**
+ * Get user email data with fallback for missing email_notifications column
+ */
+async function getUserEmailData(userId: number): Promise<UserEmailData | null> {
+  try {
+    const userResult = await query(`
+      SELECT 
+        email, 
+        first_name, 
+        COALESCE(email_notifications, 1) as email_notifications 
+      FROM users 
+      WHERE user_id = ?
+    `, [userId]) as UserEmailData[];
+
+    return userResult.length > 0 ? userResult[0] : null;
+  } catch (error) {
+    // Fallback query without email_notifications column
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('Error querying email_notifications, falling back to basic query:', error);
+    }
+    
+    try {
+      const userResult = await query(`
+        SELECT 
+          email, 
+          first_name, 
+          1 as email_notifications
+        FROM users 
+        WHERE user_id = ?
+      `, [userId]) as UserEmailData[];
+
+      return userResult.length > 0 ? userResult[0] : null;
+    } catch (fallbackError) {
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Fallback query also failed:', fallbackError);
+      }
+      return null;
+    }
+  }
+}
+
+/**
+ * Create HTML email content for notification
  */
 function createEmailHtml(firstName: string, title: string, message: string, type: string, link: string | null): string {
-
-  // Button text based on notification type
   const getButtonText = () => {
     if (title.includes('Booking')) return 'View Booking';
     if (title.includes('Profile')) return 'View Profile';
@@ -310,30 +359,28 @@ This is an automated message, please do not reply to this email.
   `.trim();
 }
 
-
-
 // Cache for table existence check
 let notificationsTableExists: boolean | null = null;
 
 /**
- * Helper function to ensure the notifications table exists (with caching)
+ * Ensure the notifications table exists (with caching)
  */
-async function ensureNotificationsTable() {
+async function ensureNotificationsTable(): Promise<void> {
   try {
-    // Use cached result if available
     if (notificationsTableExists === true) {
       return;
     }
 
-    // Check if the table exists
     const tableExists = await query(
       `SELECT COUNT(*) as count FROM information_schema.tables
        WHERE table_schema = DATABASE() AND table_name = 'notifications'`
-    ) as any[];
+    ) as Array<{ count: number }>;
 
     if (tableExists[0].count === 0) {
-      console.log('Creating notifications table...');
-      // Create the table if it doesn't exist - Simplified without foreign key for better performance
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Creating notifications table...');
+      }
+      
       await query(`
         CREATE TABLE IF NOT EXISTS notifications (
           id INT AUTO_INCREMENT PRIMARY KEY,
@@ -350,14 +397,17 @@ async function ensureNotificationsTable() {
           INDEX idx_created_at (created_at)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
       `);
-      console.log('Notifications table created successfully');
+      
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Notifications table created successfully');
+      }
     }
 
-    // Cache the result
     notificationsTableExists = true;
   } catch (error) {
-    console.error('Error ensuring notifications table exists:', error);
-    // Reset cache on error
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Error ensuring notifications table exists:', error);
+    }
     notificationsTableExists = null;
     throw error;
   }

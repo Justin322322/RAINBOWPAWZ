@@ -218,7 +218,6 @@ async function handleRefundSucceeded(refundData: any) {
           type: 'refund_processed',
           title: 'Refund Processed',
           message: `Your refund for ${pet_name} has been processed successfully. The amount of ₱${parseFloat(amount).toFixed(2)} has been refunded to your account.`,
-          entityType: 'booking',
           entityId: booking_id,
           shouldSendEmail: true,
           emailSubject: 'Refund Completed - Rainbow Paws'

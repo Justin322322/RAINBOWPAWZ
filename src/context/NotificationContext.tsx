@@ -1,7 +1,7 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react';
-import { isAuthenticated, getUserId, getAccountType } from '@/utils/auth';
+import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
+import { getUserIdAsync, getAccountTypeAsync, hasAuthToken } from '../utils/auth';
 import { useToast } from './ToastContext';
 
 export interface Notification {
@@ -19,7 +19,7 @@ interface NotificationContextType {
   unreadCount: number;
   loading: boolean;
   error: string | null;
-  fetchNotifications: (unreadOnly?: boolean) => Promise<void>;
+  fetchNotifications: (unreadOnly?: boolean) => Promise<{ notifications: Notification[]; unreadCount: number }>;
   markAsRead: (notificationId: number) => Promise<void>;
   markAllAsRead: () => Promise<void>;
   removeNotification: (notificationId: number) => Promise<void>;
@@ -50,13 +50,8 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
   const timeoutIdsRef = useRef<Set<NodeJS.Timeout>>(new Set());
 
   const fetchNotifications = async (unreadOnly = false) => {
-    // Declare timeout ID at function scope to ensure cleanup works properly
-    let timeoutId: NodeJS.Timeout | null = null;
-
-    // Check if user is authenticated
-    if (typeof window !== 'undefined' && !isAuthenticated()) {
-      setNotifications([]);
-      setUnreadCount(0);
+    // Check if user has auth token
+    if (typeof window !== 'undefined' && !hasAuthToken()) {
       return { notifications: [], unreadCount: 0 };
     }
 
@@ -64,13 +59,13 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       setLoading(true);
       setError(null);
 
-      // Determine user type
-      const userId = getUserId();
-      const userType = getAccountType();
+      // Determine user type using async functions for proper JWT verification
+      const userId = await getUserIdAsync();
+      const userType = await getAccountTypeAsync();
       const isAdmin = userType === 'admin';
       const isBusiness = userType === 'business';
 
-      // Simplified user ID validation - only check for null/undefined since getUserId() returns string | null
+      // Simplified user ID validation - only check for null/undefined since getUserIdAsync() returns string | null
       // The API relies on authentication headers for user identity, so we don't need strict ID validation
       if (!userId) {
         // Don't throw an error, just set empty data and return gracefully
@@ -108,9 +103,13 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       apiUrl += `?${params.toString()}`;
 
       // Use timeout to prevent hanging requests
+      // Use AbortController to prevent hanging requests
       const controller = new AbortController();
-      timeoutId = setTimeout(() => controller.abort(), 8000);
-      
+      const timeoutId = setTimeout(() => {
+        controller.abort();
+      }, 8000);
+
+      timeoutIdsRef.current.add(timeoutId);      
       // Track timeout for cleanup - add to set to handle concurrent calls
       timeoutIdsRef.current.add(timeoutId);
 
@@ -120,7 +119,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
           'Pragma': 'no-cache'
         },
         credentials: 'include', // Include httpOnly cookies for secure auth
-        signal: controller.signal
+        // signal: controller.signal // This line is removed as per the new fetchNotifications
       });
 
       // Clear timeout since request completed and remove from tracking set
@@ -161,69 +160,18 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
         return { notifications: [], unreadCount: 0 };
       }
 
-      try {
-        const data = await response.json();
+      const data = await response.json();
+      const notifications = data.notifications || [];
+      const unreadCount = data.unread_count || 0;
 
-        // Ensure data has the expected structure
-        if (!data || typeof data !== 'object') {
-          setNotifications([]);
-          setUnreadCount(0);
-          return { notifications: [], unreadCount: 0 };
-        }
+      setNotifications(notifications);
+      setUnreadCount(unreadCount);
+      setError(null);
 
-        // Set notifications with fallback to empty array if missing
-        if (Array.isArray(data.notifications)) {
-          const mappedNotifications = data.notifications.map((notif: any) => {
-            // Convert is_read to ensure consistency (it might be TINYINT(1), BOOLEAN, or 0/1)
-            const isRead = typeof notif.is_read === 'boolean' 
-              ? (notif.is_read ? 1 : 0)
-              : (notif.is_read ? 1 : 0);
-              
-            return {
-              ...notif,
-              // Ensure we have the correct structure for all notification types
-              id: notif.id,
-              title: notif.title || 'Notification',
-              message: notif.message || '',
-              type: notif.type || 'info',
-              is_read: isRead,
-              link: notif.link || null,
-              created_at: notif.created_at || new Date().toISOString()
-            };
-          });
-          
-          setNotifications(mappedNotifications);
-          
-          // Calculate unread count consistently
-          const unreadCount = data.notifications.filter((n: any) => {
-            return n.is_read === false || n.is_read === 0;
-          }).length;
-          
-          setUnreadCount(unreadCount);
-        } else {
-          // Fallback for any other structure
-          setNotifications([]);
-          setUnreadCount(0);
-        }
-
-        return data;
-      } catch (parseError) {
-        console.error('NotificationContext: Error parsing JSON:', parseError);
-        setNotifications([]);
-        setUnreadCount(0);
-        return { notifications: [], unreadCount: 0 };
-      }
+      return { notifications, unreadCount };
     } catch (error) {
-      console.error('NotificationContext: Fetch error:', error);
-      
-      // Clear timeout and remove from tracking set to prevent memory leaks
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-        const currentTimeoutIds = timeoutIdsRef.current;
-        currentTimeoutIds.delete(timeoutId);
-      }
-      
-      // Return empty data gracefully
+      console.error('Error fetching notifications:', error);
+      setError('Failed to fetch notifications');
       setNotifications([]);
       setUnreadCount(0);
       return { notifications: [], unreadCount: 0 };
@@ -232,18 +180,18 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
     }
   };
 
-  // Mark a notification as read
+  // Mark a specific notification as read
   const markAsRead = async (notificationId: number) => {
-    // Check if user is authenticated
-    if (typeof window !== 'undefined' && !isAuthenticated()) {
+    // Check if user has auth token
+    if (typeof window !== 'undefined' && !hasAuthToken()) {
       return;
     }
 
     console.log('Marking notification as read:', notificationId);
 
     try {
-      // Determine the correct endpoint based on user type
-      const userAccountType = getAccountType();
+      // Determine the correct endpoint based on user type using async function
+      const userAccountType = await getAccountTypeAsync();
       const endpoint = userAccountType === 'admin'
         ? '/api/admin/notifications'
         : '/api/user/notifications';
@@ -290,14 +238,14 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
 
   // Mark all notifications as read
   const markAllAsRead = async () => {
-    // Check if user is authenticated
-    if (typeof window !== 'undefined' && !isAuthenticated()) {
+    // Check if user has auth token
+    if (typeof window !== 'undefined' && !hasAuthToken()) {
       return;
     }
 
     try {
-      // Determine the correct endpoint based on user type
-      const userAccountType = getAccountType();
+      // Determine the correct endpoint based on user type using async function
+      const userAccountType = await getAccountTypeAsync();
       const endpoint = userAccountType === 'admin'
         ? '/api/admin/notifications'
         : '/api/user/notifications';
@@ -335,8 +283,8 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
 
   // Remove a specific notification
   const removeNotification = async (notificationId: number) => {
-    // Check if user is authenticated
-    if (typeof window !== 'undefined' && !isAuthenticated()) {
+    // Check if user has auth token
+    if (typeof window !== 'undefined' && !hasAuthToken()) {
       return;
     }
 
@@ -347,8 +295,8 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
     }
 
     try {
-      // Determine the correct endpoint based on user type
-      const userAccountType = getAccountType();
+      // Determine the correct endpoint based on user type using async function
+      const userAccountType = await getAccountTypeAsync();
       const endpoint = userAccountType === 'admin'
         ? `/api/admin/notifications/${notificationId}`
         : `/api/user/notifications/${notificationId}`;
@@ -398,8 +346,8 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
 
     // Setup Server-Sent Events for instant notifications
     const setupSSE = () => {
-      // Check if user is authenticated before setting up SSE
-      if (typeof window !== 'undefined' && isAuthenticated()) {
+      // Check if user has auth token before setting up SSE
+      if (typeof window !== 'undefined' && hasAuthToken()) {
         try {
           // Initial fetch of existing notifications
           fetchNotifications().catch(_err => {
@@ -503,38 +451,38 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
               
               console.log(`Attempting to reconnect SSE in ${delay}ms (attempt ${reconnectAttempts}/${maxReconnectAttempts})`);
               
-              reconnectTimeout = setTimeout(() => {
-                if (isAuthenticated()) {
-                  setupSSE();
-                }
-              }, delay);
+                             reconnectTimeout = setTimeout(() => {
+                 if (hasAuthToken()) {
+                   setupSSE();
+                 }
+               }, delay);
             } else {
               console.warn('Max SSE reconnection attempts reached. Falling back to periodic refresh.');
-              // Fallback to periodic refresh if SSE fails completely
-              const fallbackInterval = setInterval(() => {
-                if (isAuthenticated()) {
-                  fetchNotifications().catch(_err => {
-                    // Silent fail for background updates
-                  });
-                } else {
-                  clearInterval(fallbackInterval);
-                }
-              }, 60000); // Check every minute as fallback
+                             // Fallback to periodic refresh if SSE fails completely
+               const fallbackInterval = setInterval(() => {
+                 if (hasAuthToken()) {
+                   fetchNotifications().catch(_err => {
+                     // Silent fail for background updates
+                   });
+                 } else {
+                   clearInterval(fallbackInterval);
+                 }
+               }, 60000); // Check every minute as fallback
             }
           };
 
         } catch (error) {
           console.error('Failed to setup SSE:', error);
-          // Fallback to polling if SSE is not supported
-          const fallbackInterval = setInterval(() => {
-            if (isAuthenticated()) {
-              fetchNotifications().catch(_err => {
-                // Silent fail for background updates
-              });
-            } else {
-              clearInterval(fallbackInterval);
-            }
-          }, 30000); // Check every 30 seconds as fallback
+                     // Fallback to polling if SSE is not supported
+           const fallbackInterval = setInterval(() => {
+             if (hasAuthToken()) {
+               fetchNotifications().catch(_err => {
+                 // Silent fail for background updates
+               });
+             } else {
+               clearInterval(fallbackInterval);
+             }
+           }, 30000); // Check every 30 seconds as fallback
         }
       }
     };
