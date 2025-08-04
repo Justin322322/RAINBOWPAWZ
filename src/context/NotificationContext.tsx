@@ -341,6 +341,10 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
     let reconnectAttempts = 0;
     const maxReconnectAttempts = 5;
     
+    // Variables to hold fallback interval IDs for proper cleanup
+    let fallbackInterval: NodeJS.Timeout | null = null;
+    let sseFallbackInterval: NodeJS.Timeout | null = null;
+    
     // Capture ref value at the beginning of the effect to avoid ref warnings
     const timeoutIds = timeoutIdsRef.current;
 
@@ -458,31 +462,37 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
                }, delay);
             } else {
               console.warn('Max SSE reconnection attempts reached. Falling back to periodic refresh.');
-                             // Fallback to periodic refresh if SSE fails completely
-               const fallbackInterval = setInterval(() => {
-                 if (hasAuthToken()) {
-                   fetchNotifications().catch(_err => {
-                     // Silent fail for background updates
-                   });
-                 } else {
-                   clearInterval(fallbackInterval);
-                 }
-               }, 60000); // Check every minute as fallback
+              // Fallback to periodic refresh if SSE fails completely
+              fallbackInterval = setInterval(() => {
+                if (hasAuthToken()) {
+                  fetchNotifications().catch(_err => {
+                    // Silent fail for background updates
+                  });
+                } else {
+                  if (fallbackInterval) {
+                    clearInterval(fallbackInterval);
+                    fallbackInterval = null;
+                  }
+                }
+              }, 60000); // Check every minute as fallback
             }
           };
 
         } catch (error) {
           console.error('Failed to setup SSE:', error);
-                     // Fallback to polling if SSE is not supported
-           const fallbackInterval = setInterval(() => {
-             if (hasAuthToken()) {
-               fetchNotifications().catch(_err => {
-                 // Silent fail for background updates
-               });
-             } else {
-               clearInterval(fallbackInterval);
-             }
-           }, 30000); // Check every 30 seconds as fallback
+          // Fallback to polling if SSE is not supported
+          sseFallbackInterval = setInterval(() => {
+            if (hasAuthToken()) {
+              fetchNotifications().catch(_err => {
+                // Silent fail for background updates
+              });
+            } else {
+              if (sseFallbackInterval) {
+                clearInterval(sseFallbackInterval);
+                sseFallbackInterval = null;
+              }
+            }
+          }, 30000); // Check every 30 seconds as fallback
         }
       }
     };
@@ -500,6 +510,17 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       if (reconnectTimeout) {
         clearTimeout(reconnectTimeout);
         reconnectTimeout = null;
+      }
+      
+      // Clear fallback intervals
+      if (fallbackInterval) {
+        clearInterval(fallbackInterval);
+        fallbackInterval = null;
+      }
+      
+      if (sseFallbackInterval) {
+        clearInterval(sseFallbackInterval);
+        sseFallbackInterval = null;
       }
       
       // Clear any pending timeouts from fetchNotifications
