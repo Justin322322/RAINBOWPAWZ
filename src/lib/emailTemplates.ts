@@ -111,7 +111,7 @@ export const createWelcomeEmail = (firstName: string, accountType: 'personal' | 
     ${accountSpecificContent}
     ${accountType === 'personal' ? `
     <div style="text-align: center;">
-      <a href="${process.env.NEXT_PUBLIC_APP_URL || ''}/?showLogin=true" class="button">Get Started</a>
+      <a href="${getServerAppUrl()}/?showLogin=true" class="button">Get Started</a>
     </div>
     <p>If you have any questions, our support team is here to help.</p>
     ` : ''}
@@ -356,7 +356,7 @@ export const createBookingStatusUpdateEmail = (bookingDetails: {
     <p>${additionalInfo}</p>
 
     <div style="text-align: center;">
-      <a href="${process.env.NEXT_PUBLIC_APP_URL || ''}/user/furparent_dashboard/bookings" class="button">View Booking</a>
+      <a href="${getServerAppUrl()}/user/furparent_dashboard/bookings" class="button">View Booking</a>
     </div>
 
     <p>Thank you for choosing Rainbow Paws for your pet memorial needs.</p>
@@ -453,7 +453,7 @@ export const createBusinessVerificationEmail = (businessDetails: {
         <p>Congratulations! Your business <strong>${businessDetails.businessName}</strong> has been verified and approved on Rainbow Paws.</p>
         <p>You can now start managing your services and receiving bookings from pet owners.</p>
         <div style="text-align: center;">
-          <a href="${process.env.NEXT_PUBLIC_APP_URL || ''}/login" class="button">Login</a>
+          <a href="${getServerAppUrl()}/login" class="button">Login</a>
         </div>
       `;
       break;
@@ -496,7 +496,7 @@ export const createBusinessVerificationEmail = (businessDetails: {
         ` : ''}
         <p>Please log in to your account and upload the required documents as soon as possible.</p>
         <div style="text-align: center;">
-          <a href="${process.env.NEXT_PUBLIC_APP_URL || ''}/cremation/documents" class="button">Upload Documents</a>
+          <a href="${getServerAppUrl()}/cremation/documents" class="button">Upload Documents</a>
         </div>
       `;
       break;
@@ -598,7 +598,7 @@ export const createRefundNotificationEmail = (refundDetails: {
 
     ${refundDetails.status !== 'failed' ? `
     <div style="text-align: center;">
-      <a href="${process.env.NEXT_PUBLIC_APP_URL || ''}/user/furparent_dashboard/bookings" class="button">View Booking</a>
+      <a href="${getServerAppUrl()}/user/furparent_dashboard/bookings" class="button">View Booking</a>
     </div>
     ` : ''}
 

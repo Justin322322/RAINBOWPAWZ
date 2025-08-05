@@ -369,7 +369,7 @@ async function notifyUserOfRestriction(userId: number, reason: string, duration?
         await Promise.race([
           sendSMS({
             to: user.phone,
-            message: `🚨 Your RainbowPaws cremation center account has been restricted. Reason: ${reason}. You can submit an appeal at ${process.env.NEXT_PUBLIC_BASE_URL}/appeals`
+            message: `🚨 Your RainbowPaws cremation center account has been restricted. Reason: ${reason}. You can submit an appeal at ${getServerAppUrl()}/appeals`
           }),
           new Promise((_, reject) =>
             setTimeout(() => reject(new Error('SMS sending timeout')), 10000)

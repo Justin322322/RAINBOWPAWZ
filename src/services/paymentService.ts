@@ -83,10 +83,20 @@ export async function createPayment(request: CreatePaymentRequest): Promise<Paym
 
     // For GCash payments, create PayMongo source
     if (request.payment_method === 'gcash') {
-      const baseUrl = getServerAppUrl();
-      const returnUrl = request.return_url || `${baseUrl}/payment/success?booking_id=${request.booking_id}`;
-      const failureUrl = request.cancel_url || `${baseUrl}/payment/failed?booking_id=${request.booking_id}`;
+// Ensure baseUrl never has a trailing slash
+const baseUrl = getServerAppUrl().replace(/\/$/, '');
 
+// Accept external URLs only if they are same-origin to avoid open-redirects
+const sanitizeRedirect = (url?: string): string | undefined =>
+  url && url.startsWith(baseUrl) ? url : undefined;
+
+const returnUrl =
+  sanitizeRedirect(request.return_url) ??
+  `${baseUrl}/payment/success?booking_id=${encodeURIComponent(request.booking_id)}`;
+
+const failureUrl =
+  sanitizeRedirect(request.cancel_url) ??
+  `${baseUrl}/payment/failed?booking_id=${encodeURIComponent(request.booking_id)}`;
       const sourceData = {
         amount: phpToCentavos(request.amount),
         currency: request.currency || 'PHP',

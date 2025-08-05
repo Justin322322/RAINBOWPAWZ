@@ -212,18 +212,15 @@ function getAuthTokenFromLocalStorage(): string | null {
   const currentPort = getCurrentPort();
   const portNum = parseInt(currentPort);
 
-  // Allow for localhost and common development ports
-  if (hostname === 'localhost' || hostname === '127.0.0.1') {
-    if (!isNaN(portNum) && portNum >= 3000 && portNum <= 9999) {
-      // Allow any reasonable development port
-    } else {
-      return null;
-    }
-  } else {
-    // For non-localhost, be more restrictive
+  // Only allow localhost with common development ports
+  if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
     return null;
   }
 
+  // Restrict to common development ports for security
+  if (isNaN(portNum) || portNum < 3000 || portNum > 3010) {
+    return null;
+  }
   try {
     const localStorageToken = localStorage.getItem(AUTH_TOKEN_3000);
     return localStorageToken && isValidTokenFormat(localStorageToken) ? localStorageToken : null;
