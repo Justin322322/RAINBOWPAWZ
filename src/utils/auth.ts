@@ -16,6 +16,7 @@
  */
 import { NextRequest } from 'next/server';
 import { extractTokenFromHeader, type JWTPayload } from '@/lib/jwt';
+import { getCurrentPort } from './appUrl';
 
 // Constants
 const AUTH_TOKEN_COOKIE = 'auth_token';
@@ -201,7 +202,25 @@ function getAuthTokenFromDocumentCookies(): string | null {
  * Get auth token from localStorage (development only)
  */
 function getAuthTokenFromLocalStorage(): string | null {
-  if (typeof window === 'undefined' || window.location.port !== '3000') {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  // Allow localStorage access for development environments
+  // Check if we're in development mode (localhost or development ports)
+  const hostname = window.location.hostname;
+  const currentPort = getCurrentPort();
+  const portNum = parseInt(currentPort);
+
+  // Allow for localhost and common development ports
+  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    if (!isNaN(portNum) && portNum >= 3000 && portNum <= 9999) {
+      // Allow any reasonable development port
+    } else {
+      return null;
+    }
+  } else {
+    // For non-localhost, be more restrictive
     return null;
   }
 

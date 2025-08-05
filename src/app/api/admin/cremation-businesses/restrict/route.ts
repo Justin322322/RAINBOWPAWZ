@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { verifySecureAuth } from '@/lib/secureAuth';
+import { getServerAppUrl } from '@/utils/appUrl';
 import { createNotification } from '@/utils/notificationService';
 import { sendEmail } from '@/lib/consolidatedEmailService';
 import { sendSMS } from '@/lib/smsService';
@@ -398,7 +399,7 @@ function createRestrictionNotificationEmail({
   userType?: string;
 }) {
   const subject = '🚨 Account Restricted - Action Required';
-  const appUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+  const appUrl = getServerAppUrl();
 
   const html = `
     <!DOCTYPE html>

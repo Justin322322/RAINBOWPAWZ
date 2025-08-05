@@ -123,10 +123,12 @@ export const createWelcomeEmail = (firstName: string, accountType: 'personal' | 
   };
 };
 
+import { getServerAppUrl } from '@/utils/appUrl';
+
 // Password reset email template
 export const createPasswordResetEmail = (resetToken: string) => {
-  // Make sure we have a valid app URL
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+  // Use dynamic app URL detection
+  const appUrl = getServerAppUrl();
   const resetLink = `${appUrl}/reset-password?token=${resetToken}`;
 
   // Log the link in development mode
@@ -275,7 +277,7 @@ export const createBookingConfirmationEmail = (bookingDetails: {
     <p>You will receive another email once the service provider confirms your booking.</p>
 
     <div style="text-align: center;">
-      <a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/user/furparent_dashboard/bookings" class="button">View Booking</a>
+      <a href="${getServerAppUrl()}/user/furparent_dashboard/bookings" class="button">View Booking</a>
     </div>
 
     <p>Thank you for choosing Rainbow Paws for your pet memorial needs.</p>

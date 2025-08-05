@@ -1,5 +1,6 @@
 import { query } from '@/lib/db';
 import { sendEmail } from '@/lib/consolidatedEmailService';
+import { getServerAppUrl } from '@/utils/appUrl';
 
 // Import the standardized base email template
 const baseEmailTemplate = (content: string) => `
@@ -233,7 +234,7 @@ function createBusinessEmailHtml(
     return 'View Details';
   };
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+  const appUrl = getServerAppUrl();
 
   const content = `
     <h2>Business Notification</h2>
@@ -260,7 +261,7 @@ function createBusinessEmailText(
   message: string,
   link: string | null
 ): string {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+  const appUrl = getServerAppUrl();
 
   return `
 Rainbow Paws Business Notification

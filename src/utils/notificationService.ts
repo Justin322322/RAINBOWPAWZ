@@ -1,5 +1,6 @@
 import { query } from '@/lib/db';
 import { sendEmail } from '@/lib/consolidatedEmailService';
+import { getServerAppUrl } from '@/utils/appUrl';
 import { OkPacket, ResultSetHeader } from 'mysql2';
 
 // Import the standardized base email template
@@ -321,7 +322,7 @@ function createEmailHtml(firstName: string, title: string, message: string, type
     return 'View Details';
   };
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+  const appUrl = getServerAppUrl();
 
   const content = `
     <h2>Notification</h2>
@@ -340,7 +341,7 @@ function createEmailHtml(firstName: string, title: string, message: string, type
  * Create plain text email content for notification
  */
 function createEmailText(firstName: string, title: string, message: string, link: string | null): string {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+  const appUrl = getServerAppUrl();
 
   return `
 Rainbow Paws Notification

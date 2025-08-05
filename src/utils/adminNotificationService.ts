@@ -1,5 +1,6 @@
 import { query } from '@/lib/db';
 import { sendEmail } from '@/lib/consolidatedEmailService';
+import { getServerAppUrl } from '@/utils/appUrl';
 
 interface AdminNotificationParams {
   type: string;
@@ -237,7 +238,7 @@ function createAdminEmailHtml(firstName: string, title: string, message: string,
     return 'View Details';
   };
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+  const appUrl = getServerAppUrl();
 
   const content = `
     <h2>Admin Notification</h2>
@@ -258,7 +259,7 @@ function createAdminEmailHtml(firstName: string, title: string, message: string,
  * Create plain text email content for admin notification
  */
 function createAdminEmailText(firstName: string, title: string, message: string, link: string | null): string {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+  const appUrl = getServerAppUrl();
 
   return `
 Rainbow Paws Admin Notification

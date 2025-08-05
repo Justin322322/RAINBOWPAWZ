@@ -5,6 +5,7 @@
 
 import { query } from '@/lib/db';
 import { createSource, phpToCentavos } from '@/lib/paymongo';
+import { getServerAppUrl } from '@/utils/appUrl';
 import {
   PaymentTransaction,
   CreatePaymentRequest,
@@ -82,7 +83,7 @@ export async function createPayment(request: CreatePaymentRequest): Promise<Paym
 
     // For GCash payments, create PayMongo source
     if (request.payment_method === 'gcash') {
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+      const baseUrl = getServerAppUrl();
       const returnUrl = request.return_url || `${baseUrl}/payment/success?booking_id=${request.booking_id}`;
       const failureUrl = request.cancel_url || `${baseUrl}/payment/failed?booking_id=${request.booking_id}`;
 
