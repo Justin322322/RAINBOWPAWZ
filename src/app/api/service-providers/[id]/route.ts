@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { calculateDistance, getBataanCoordinates } from '@/utils/distance';
+import { routingService } from '@/utils/routing';
+import { serverCache } from '@/utils/server-cache';
 
 export async function GET(
   request: NextRequest,
@@ -130,13 +132,76 @@ export async function GET(
             provider.distanceValue = null;
           } else {
             try {
-              // Use simple distance calculation (enhanced routing removed)
-              const distance = calculateDistance(userCoordinates, providerCoordinates);
-              provider.distance = `${distance.toFixed(1)} km`;
-              provider.distanceValue = distance;
-            } catch (error) {
+              // Try server cache first for faster response
+              const cachedRoute = serverCache.getRoutingData(
+                [userCoordinates.lat, userCoordinates.lng],
+                [providerCoordinates.lat, providerCoordinates.lng]
+              );
+
+              if (cachedRoute) {
+                // Use cached data for immediate response
+                provider.distance = cachedRoute.distance;
+                provider.distanceValue = cachedRoute.distanceValue;
+                console.log(`📍 [Server Cache Hit] Provider ${provider.id}: ${cachedRoute.distance} (${cachedRoute.provider})`);
+              } else {
+                // Try to get actual routing distance with timeout and enhanced caching
+                try {
+                  // Use the enhanced routing service with timeout
+                  const routeResult = await routingService.getRoute(
+                    [userCoordinates.lat, userCoordinates.lng],
+                    [providerCoordinates.lat, providerCoordinates.lng],
+                    { timeout: 5000 } // 5 second timeout
+                  );
+
+                  // Validate that distance exists in the response
+                  if (!routeResult?.distance) {
+                    throw new Error('Invalid route response: missing distance');
+                  }
+
+                  // Extract numeric distance value with improved parsing (handles commas)
+                  const cleanDistance = routeResult.distance.replace(/,/g, '');
+                  const distanceMatch = cleanDistance.match(/(\d+(?:\.\d+)?)/);
+
+                  if (!distanceMatch || isNaN(parseFloat(distanceMatch[1]))) {
+                    throw new Error(`Unable to parse distance from: ${routeResult.distance}`);
+                  }
+
+                  let numericDistance = parseFloat(distanceMatch[1]);
+
+                  // Convert meters to kilometers if needed
+                  if (cleanDistance.toLowerCase().includes('m') && !cleanDistance.toLowerCase().includes('km')) {
+                    numericDistance = numericDistance / 1000;
+                  }
+
+                  provider.distance = routeResult.distance;
+                  provider.distanceValue = numericDistance;
+
+                  // Cache the result in server cache for future requests
+                  serverCache.setRoutingData(
+                    [userCoordinates.lat, userCoordinates.lng],
+                    [providerCoordinates.lat, providerCoordinates.lng],
+                    {
+                      distance: routeResult.distance,
+                      duration: routeResult.duration,
+                      distanceValue: numericDistance,
+                      provider: routeResult.provider,
+                      trafficAware: routeResult.trafficAware
+                    }
+                  );
+
+                  console.log(`📍 [Routing] Provider ${provider.id}: ${routeResult.distance} (${routeResult.provider})`);
+                } catch (routingError) {
+                  const errorMessage = routingError instanceof Error ? routingError.message : 'Unknown routing error';
+                  console.warn(`📍 [Routing] Failed for provider ${provider.id} (${errorMessage}), falling back to straight-line distance`);
+
+                  // Fallback to simple distance calculation
+                  const distance = calculateDistance(userCoordinates, providerCoordinates);
+                  provider.distance = `${distance.toFixed(1)} km`;
+                  provider.distanceValue = distance;
+                }
+              }            } catch (error) {
               console.error('Distance calculation failed:', error);
-              // Fallback to simple calculation
+              // Final fallback
               const distanceValue = calculateDistance(userCoordinates, providerCoordinates);
               provider.distance = `${distanceValue} km away`;
               provider.distanceValue = distanceValue;

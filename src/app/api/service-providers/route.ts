@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { calculateDistance, getBataanCoordinates } from '@/utils/distance';
+import { routingService } from '@/utils/routing';
+import { serverCache } from '@/utils/server-cache';
 
 export async function GET(request: Request) {
   // Extract user location from query parameters
@@ -155,71 +157,178 @@ export async function GET(request: Request) {
       `) as any[];
 
       if (providersResult && providersResult.length > 0) {
+        const parseDistanceValue = (distanceString: string): number => {
+          if (!distanceString || typeof distanceString !== 'string') {
+            return 0;
+          }
 
-        // Get the number of packages for each provider
-        for (const provider of providersResult) {
+          // Remove commas and extract numeric value with improved regex
+          // This handles formats like: "1,234.5 km", "1.5 km", "500 m", "1,000 m"
+          const cleanDistance = distanceString.replace(/,/g, '');
+          const distanceMatch = cleanDistance.match(/^.*?(\d+(?:\.\d+)?).*?(?:km|m).*?$/i);
+
+          if (!distanceMatch) {
+            return 0;
+          }
+
+          const numericValue = parseFloat(distanceMatch[1]);
+
+          // Convert meters to kilometers if needed (more precise unit detection)
+          if (/^\s*\d+(?:\.\d+)?\s*m\s*$/i.test(cleanDistance.trim())) {
+            return numericValue / 1000;
+          }
+
+          return numericValue;
+        };
+        // Async function to calculate distance for a single provider with server caching
+        const calculateProviderDistance = async (provider: any, userCoords: any): Promise<void> => {
+          const providerCoordinates = getBataanCoordinates(provider.address || 'Bataan');
+
+          // Check if providerCoordinates is null and skip distance calculation
+          if (!providerCoordinates) {
+            console.warn('📍 [Distance] Provider coordinates are null, skipping distance calculation for provider:', provider.id);
+            provider.distance = 'Location not available';
+            provider.distanceValue = 0;
+            return;
+          }
+
+          // Try server cache first for faster response
+          const cachedRoute = serverCache.getRoutingData(
+            [userCoords.lat, userCoords.lng],
+            [providerCoordinates.lat, providerCoordinates.lng]
+          );
+
+          if (cachedRoute) {
+            // Use cached data for immediate response
+            provider.distance = cachedRoute.distance;
+            provider.distanceValue = cachedRoute.distanceValue;
+            console.log(`📍 [Server Cache Hit] Provider ${provider.id}: ${cachedRoute.distance} (${cachedRoute.provider})`);
+            return;
+          }
+
           try {
-            // Check if service_packages table has service_provider_id or provider_id column
-            const packageColumnsResult = await query(`
-              SHOW COLUMNS FROM service_packages
-              WHERE Field IN ('service_provider_id', 'provider_id')
-            `) as any[];
+            // Try to get actual routing distance with timeout
+            const routeResult = await routingService.getRoute(
+              [userCoords.lat, userCoords.lng],
+              [providerCoordinates.lat, providerCoordinates.lng],
+              { timeout: 5000 } // 5 second timeout
+            );
 
-            const packageColumns = packageColumnsResult.map(col => col.Field);
-            const useServiceProviderIdColumn = packageColumns.includes('service_provider_id');
-            const useProviderIdColumn = packageColumns.includes('provider_id');
+            // Validate that distance exists in the response before parsing
+            if (!routeResult?.distance) {
+              throw new Error('Invalid route response: missing distance');
+            }
 
+            // Extract numeric distance value with improved parsing
+            const numericDistance = parseDistanceValue(routeResult.distance);
+
+            if (numericDistance === 0) {
+              throw new Error(`Unable to parse distance from: ${routeResult.distance}`);
+            }
+
+            provider.distance = routeResult.distance;
+            provider.distanceValue = numericDistance;
+
+            // Cache the result in server cache for future requests
+            serverCache.setRoutingData(
+              [userCoords.lat, userCoords.lng],
+              [providerCoordinates.lat, providerCoordinates.lng],
+              {
+                distance: routeResult.distance,
+                duration: routeResult.duration,
+                distanceValue: numericDistance,
+                provider: routeResult.provider,
+                trafficAware: routeResult.trafficAware
+              }
+            );
+
+            console.log(`📍 [Routing] Provider ${provider.id}: ${routeResult.distance} (${routeResult.provider})`);
+          } catch (routingError) {
+            console.warn(`📍 [Routing] Failed for provider ${provider.id}, falling back to straight-line distance:`, routingError);
+
+            // Fallback to simple distance calculation
+            const distance = calculateDistance(userCoords, providerCoordinates);
+            provider.distance = `${distance.toFixed(1)} km`;
+            provider.distanceValue = distance;
+          }
+        };
+
+        // Check if service_packages table has service_provider_id or provider_id column (once)
+        const packageColumnsResult = await query(`
+          SHOW COLUMNS FROM service_packages
+          WHERE Field IN ('service_provider_id', 'provider_id')
+        `) as any[];
+
+        const packageColumns = packageColumnsResult.map(col => col.Field);
+        const useServiceProviderIdColumn = packageColumns.includes('service_provider_id');
+        const useProviderIdColumn = packageColumns.includes('provider_id');
+
+        // Prepare concurrent operations for all providers
+        const providerOperations = providersResult.map(async (provider) => {
+          try {
+            // Get package count for this provider
             let packagesResult;
             if (useProviderIdColumn) {
-              // Use provider_id which matches our database schema
               packagesResult = await query(`
                 SELECT COUNT(*) as package_count
                 FROM service_packages
                 WHERE provider_id = ? AND is_active = 1
               `, [provider.id]) as any[];
-
             } else if (useServiceProviderIdColumn) {
               packagesResult = await query(`
                 SELECT COUNT(*) as package_count
                 FROM service_packages
                 WHERE service_provider_id = ? AND is_active = 1
               `, [provider.id]) as any[];
-
             } else {
               packagesResult = [{ package_count: 0 }];
-
             }
 
             provider.packages = packagesResult[0]?.package_count || 0;
 
-            // Calculate actual distance based on coordinates
+            // Calculate distance using the dedicated async function
+            await calculateProviderDistance(provider, userCoordinates);
+
+          } catch (error) {
+            console.error('📍 [Provider Processing] Failed to process provider:', provider.id, error);
+            // Final fallback
             const providerCoordinates = getBataanCoordinates(provider.address || 'Bataan');
-
-            // Check if providerCoordinates is null and skip processing if so
-            if (!providerCoordinates) {
-              console.warn('📍 [Distance] Provider coordinates are null, skipping provider:', provider.id);
-              continue;
-            }
-
-            try {
-              // Use simple distance calculation (enhanced routing removed)
-              const distance = calculateDistance(userCoordinates, providerCoordinates);
-              provider.distance = `${distance.toFixed(1)} km`;
-              provider.distanceValue = distance; // Store numeric value for sorting
-            } catch (error) {
-              console.error('📍 [Distance] Distance calculation failed:', error);
-              // Fallback to simple calculation
+            if (providerCoordinates) {
               const distanceValue = calculateDistance(userCoordinates, providerCoordinates);
-              provider.distance = `${distanceValue} km away`;
+              provider.distance = `${distanceValue.toFixed(1)} km`;
               provider.distanceValue = distanceValue;
+            } else {
+              provider.distance = 'Distance unavailable';
+              provider.distanceValue = 0;
             }
-          } catch {
-            provider.packages = 0;
-            provider.distance = 'Distance unavailable';
+            provider.packages = provider.packages || 0;
           }
-        }
 
-        return NextResponse.json({ providers: providersResult });
+          return provider;
+        });
+
+        // Execute all provider operations concurrently using Promise.allSettled
+        // This ensures that if one provider fails, others can still complete successfully
+        const results = await Promise.allSettled(providerOperations);
+
+        // Process results and filter out any rejected promises
+        const processedProviders = results
+          .map((result, index) => {
+            if (result.status === 'fulfilled') {
+              return result.value;
+            } else {
+              console.error(`📍 [Provider Processing] Failed to process provider ${providersResult[index]?.id}:`, result.reason);
+              // Return the original provider with fallback values
+              const provider = providersResult[index];
+              provider.packages = 0;
+              provider.distance = 'Distance unavailable';
+              provider.distanceValue = 0;
+              return provider;
+            }
+          })
+          .filter(provider => provider !== null); // Filter out any null providers
+
+        return NextResponse.json({ providers: processedProviders });
       }
 
       // If no providers found, return empty array
