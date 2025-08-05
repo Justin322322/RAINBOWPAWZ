@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import CremationDashboardLayout from '@/components/navigation/CremationDashboardLayout';
 import withBusinessVerification from '@/components/withBusinessVerification';
 import { useToast } from '@/context/ToastContext';
+import { validatePasswordStrength } from '@/utils/passwordValidation';
 import {
   CheckCircleIcon,
   UserIcon,
@@ -351,8 +352,10 @@ function CremationProfilePage({ userData }: { userData: any }) {
       return;
     }
 
-    if (newPassword.length < 8) {
-      setPasswordError('Password must be at least 8 characters long');
+    // Validate password strength using the same criteria as registration
+    const passwordValidation = validatePasswordStrength(newPassword);
+    if (!passwordValidation.isValid) {
+      setPasswordError(passwordValidation.message);
       return;
     }
 

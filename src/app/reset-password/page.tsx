@@ -5,6 +5,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
+import PasswordCriteria from '@/components/ui/PasswordCriteria';
+import { validatePasswordStrength } from '@/utils/passwordValidation';
 
 // Component to handle the search params
 function ResetPasswordForm() {
@@ -22,6 +24,8 @@ function ResetPasswordForm() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [tokenValid, setTokenValid] = useState(true);
+  const [passwordStrength, setPasswordStrength] = useState(0);
+  const [isPasswordValid, setIsPasswordValid] = useState(false);
 
   useEffect(() => {
     // Check if token is present
@@ -31,11 +35,10 @@ function ResetPasswordForm() {
     }
   }, [token]);
 
-  const validatePassword = (password: string) => {
-    if (password.length < 8) {
-      return 'Password must be at least 8 characters long';
-    }
-    return '';
+  // Handle password strength changes from PasswordCriteria component
+  const handlePasswordStrengthChange = (strength: number, isValid: boolean) => {
+    setPasswordStrength(strength);
+    setIsPasswordValid(isValid);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -50,10 +53,10 @@ function ResetPasswordForm() {
       return;
     }
 
-    // Validate password
-    const passwordError = validatePassword(password);
-    if (passwordError) {
-      setError(passwordError);
+    // Validate password using the same criteria as registration
+    const passwordValidation = validatePasswordStrength(password);
+    if (!passwordValidation.isValid) {
+      setError(passwordValidation.message);
       return;
     }
 
@@ -196,6 +199,7 @@ function ResetPasswordForm() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)] sm:text-sm"
+                    placeholder="Create a strong password"
                   />
                   <button
                     type="button"
@@ -209,9 +213,10 @@ function ResetPasswordForm() {
                     )}
                   </button>
                 </div>
-                <p className="mt-1 text-xs text-gray-500">
-                  Password must be at least 8 characters long
-                </p>
+                <PasswordCriteria
+                  password={password}
+                  onStrengthChange={handlePasswordStrengthChange}
+                />
               </div>
 
               <div>
@@ -227,7 +232,14 @@ function ResetPasswordForm() {
                     required
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)] sm:text-sm"
+                    className={`appearance-none block w-full px-3 py-2 border rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)] sm:text-sm ${
+                      confirmPassword && password !== confirmPassword
+                        ? 'border-red-300 focus:ring-red-500 focus:border-red-500'
+                        : confirmPassword && password === confirmPassword
+                        ? 'border-green-300 focus:ring-green-500 focus:border-green-500'
+                        : 'border-gray-300'
+                    }`}
+                    placeholder="Confirm your new password"
                   />
                   <button
                     type="button"
@@ -241,15 +253,24 @@ function ResetPasswordForm() {
                     )}
                   </button>
                 </div>
+                {confirmPassword && (
+                  <p className={`mt-1 text-xs ${
+                    password === confirmPassword ? 'text-green-600' : 'text-red-600'
+                  }`}>
+                    {password === confirmPassword ? '✓ Passwords match' : '✗ Passwords do not match'}
+                  </p>
+                )}
               </div>
 
               <div>
                 <button
                   type="submit"
-                  disabled={isLoading}
-                  className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[var(--primary-green)] hover:bg-[var(--primary-green-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--primary-green)] ${
-                    isLoading ? 'opacity-70 cursor-not-allowed' : ''
-                  }`}
+                  disabled={isLoading || !isPasswordValid || password !== confirmPassword}
+                  className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${
+                    isLoading || !isPasswordValid || password !== confirmPassword
+                      ? 'bg-gray-400 cursor-not-allowed'
+                      : 'bg-[var(--primary-green)] hover:bg-[var(--primary-green-hover)]'
+                  } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--primary-green)]`}
                 >
                   {isLoading ? (
                     <>
@@ -263,6 +284,14 @@ function ResetPasswordForm() {
                     'Reset Password'
                   )}
                 </button>
+                {(!isPasswordValid || password !== confirmPassword) && (
+                  <p className="mt-2 text-xs text-gray-500 text-center">
+                    {!isPasswordValid
+                      ? 'Please ensure your password meets all requirements above'
+                      : 'Passwords must match'
+                    }
+                  </p>
+                )}
               </div>
             </form>
           )}

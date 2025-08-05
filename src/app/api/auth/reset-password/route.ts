@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import bcrypt from 'bcryptjs';
+import { validatePasswordStrength } from '@/utils/passwordValidation';
 
 // Specify that this route should use the Node.js runtime, not the Edge runtime
 export const runtime = 'nodejs';
@@ -17,10 +18,13 @@ export async function POST(request: Request) {
       }, { status: 400 });
     }
 
-    // Validate password length
-    if (password.length < 8) {
+    // Validate password strength using the same criteria as registration
+    const passwordValidation = validatePasswordStrength(password);
+    if (!passwordValidation.isValid) {
       return NextResponse.json({
-        error: 'Password must be at least 8 characters long'
+        error: 'Password does not meet requirements',
+        message: passwordValidation.message,
+        requirements: passwordValidation.requirements
       }, { status: 400 });
     }
 
