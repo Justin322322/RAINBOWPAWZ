@@ -61,21 +61,32 @@ Rainbow Paws is a full-featured web application that facilitates pet memorial se
 - System analytics and monitoring
 - Platform configuration
 - Payment and refund oversight
+- Real-time system health monitoring
+- Advanced debugging and diagnostic tools
+
+### System Features
+- **Dynamic Port Detection**: Intelligent port management that eliminates configuration conflicts
+- **Real-time Notifications**: Server-Sent Events with automatic fallback mechanisms
+- **Enhanced Security**: Comprehensive password reset system with token validation
+- **Robust Error Handling**: Graceful degradation and automatic recovery systems
+- **Development Tools**: Built-in debugging endpoints for development and troubleshooting
 
 ## Technology Stack
 
-- **Frontend**: Next.js 15, React 19, TypeScript
-- **Styling**: Tailwind CSS, Framer Motion
+- **Frontend**: Next.js 15.4.2, React 19, TypeScript 5.8.3
+- **Styling**: Tailwind CSS 3.4.17, Framer Motion 12.10.4
 - **Backend**: Next.js API Routes, Node.js
-- **Database**: MySQL with connection pooling
+- **Database**: MySQL 3.14.1 with connection pooling
 - **Authentication**: JWT with secure HTTP-only cookies
 - **Payment**: PayMongo integration
-- **Notifications**: Twilio SMS, Nodemailer
-- **Maps**: Leaflet with React-Leaflet
+- **Notifications**: Twilio SMS 5.6.1, Nodemailer 7.0.3
+- **Maps**: Leaflet 1.9.4 with React-Leaflet
 - **Validation**: Custom validation with TypeScript
 - **Caching**: Client-side localStorage for geocoding/routing
 - **Rate Limiting**: Database-based request limiting
 - **State Management**: React Context API
+- **Real-time**: Server-Sent Events (SSE) with automatic fallback
+- **Port Management**: Dynamic port detection and configuration
 
 ## System Architecture
 
@@ -219,9 +230,9 @@ DB_PASSWORD=
 DB_NAME=rainbow_paws
 
 # Application Configuration
-PORT=3001
+PORT=3001                                    # Optional - app will auto-detect if not set
 NODE_ENV=development
-NEXT_PUBLIC_APP_URL=http://localhost:3001
+NEXT_PUBLIC_APP_URL=http://localhost:3001    # Optional - auto-generated with detected port
 
 # JWT Secret (generate a secure random string)
 JWT_SECRET=your-super-secure-jwt-secret-key-here-minimum-32-characters
@@ -726,7 +737,13 @@ node run_migrations.js
 ```bash
 npm run dev
 ```
-The application will be available at `http://localhost:3001` (or your configured PORT)
+The application will automatically detect and use an available port. By default, it tries port 3001, but will automatically find an alternative if that port is busy.
+
+**Dynamic Port Detection**: The application now features intelligent port detection that:
+- Automatically finds available ports if the default (3001) is in use
+- Updates all internal URLs and configurations dynamically
+- Eliminates port conflicts during development
+- Works seamlessly across different development environments
 
 ### Production Mode
 ```bash
@@ -737,15 +754,24 @@ npm run build
 npm run start
 ```
 
-### Custom Port
+### Custom Port Configuration
 ```bash
-# Development with custom port
+# Set specific port via environment variable
+PORT=3005 npm run dev
+
+# Or use Next.js port flag
 npx next dev -p 3005
 
-# Production with custom port
-npm run build
-npx next start -p 3005
+# For production
+PORT=3005 npm run build
+PORT=3005 npm run start
 ```
+
+### Port Detection Features
+- **Automatic Detection**: No manual port configuration needed in most cases
+- **Environment Variables**: Respects `PORT` environment variable when set
+- **URL Generation**: All internal URLs automatically use the detected port
+- **Development Tools**: Use `/api/auth/check-port` to verify current port and configuration
 
 ## Email Configuration
 
@@ -1011,6 +1037,9 @@ flowchart TD
 - `POST /api/auth/login` - User login
 - `POST /api/auth/logout` - User logout
 - `GET /api/auth/check` - Check authentication status
+- `POST /api/auth/forgot-password` - Request password reset
+- `POST /api/auth/reset-password` - Reset password with token
+- `GET /api/auth/check-port` - Development endpoint for port and configuration verification
 
 ### User Management
 - `GET /api/users` - Get user profile
@@ -1110,9 +1139,37 @@ flowchart TD
   "data": {
     "version": "0.1.0",
     "name": "app_rainbowpaws",
-    "timestamp": "2025-01-20T10:30:00.000Z",
-    "environment": "production"
+    "timestamp": "2025-08-06T10:30:00.000Z",
+    "environment": "development"
   }
+}
+```
+
+#### Development & Debugging Endpoints
+- `GET /api/auth/check-port` - Port detection and configuration verification (development only)
+
+#### Check Port Endpoint Response
+```json
+{
+  "success": true,
+  "requestInfo": {
+    "host": "localhost:3001",
+    "port": "3001",
+    "protocol": "http:",
+    "origin": "http://localhost:3001"
+  },
+  "authentication": {
+    "isAuthenticated": true,
+    "userId": "123",
+    "accountType": "user",
+    "email": "user@example.com"
+  },
+  "cookies": {
+    "hasAuthCookie": true,
+    "hasCsrfCookie": true,
+    "authCookieLength": 245
+  },
+  "environment": "development"
 }
 ```
 
@@ -1232,13 +1289,24 @@ Error: Database connection failed
 Error: Port 3001 is already in use
 ```
 **Solution**:
+With the new dynamic port detection system, this should rarely occur. However, if you encounter port issues:
+
 ```bash
-# Use different port
+# The application will automatically find an available port
+npm run dev
+
+# Or manually specify a port
+PORT=3002 npm run dev
 npx next dev -p 3002
 
-# Or kill process using the port
+# Check current port and configuration
+curl http://localhost:3001/api/auth/check-port
+
+# Or kill process using the port (if needed)
 npx kill-port 3001
 ```
+
+**Note**: The dynamic port detection feature automatically handles port conflicts, so manual intervention is usually unnecessary.
 
 #### JWT Secret Error
 ```bash
@@ -1251,6 +1319,21 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
 
 Or use an online generator: [JWT Secret Generator](https://generate-secret.vercel.app/32)
+
+#### Real-time Notifications Not Working
+```bash
+Notifications not updating in real-time
+```
+**Solution**:
+The application uses Server-Sent Events (SSE) for real-time notifications with automatic fallback:
+
+1. **Check browser console** for SSE connection errors
+2. **Verify authentication** - SSE requires valid login
+3. **Network issues** - The app automatically falls back to polling
+4. **Browser compatibility** - Most modern browsers support SSE
+5. **Firewall/Proxy** - Some corporate networks block SSE connections
+
+The system automatically handles connection failures and implements exponential backoff for reconnection attempts.
 
 ### Development Tips
 - Use browser dev tools for debugging
@@ -1318,32 +1401,41 @@ When creating an issue, please use the appropriate template:
 - Email: rainbowpaws2025@gmail.com
 - Facebook: [@justinmarlosibonga](https://www.facebook.com/justinmarlosibonga)
 
-## Recent Updates (2025-07-07)
+## Recent Updates (2025-08-06)
 
-### Mobile Responsiveness Improvements
-- **Admin Dashboard**: Enhanced mobile card views for recent applications
-- **User Management**: Improved mobile interface for cremation centers and fur parents
-- **Admin Logs**: Fixed mobile view with custom Select components
-- **Touch-Friendly Buttons**: Larger, more accessible action buttons on mobile
-- **Modal Improvements**: Better mobile modal experience with proper warnings
+### Dynamic Port Detection System
+- **Smart Port Management**: Implemented intelligent port detection that eliminates hardcoded port dependencies
+- **Flexible Deployment**: Application now automatically adapts to any available port during development and production
+- **Environment Agnostic**: Works seamlessly across different hosting environments and development setups
+- **URL Generation**: Enhanced URL generation utilities that dynamically detect and use the correct port
+- **Development Experience**: No more port conflicts - the app intelligently finds and uses available ports
 
-### Codebase Optimization
-- **File Cleanup**: Removed 45+ unused legacy files and components
-- **Bundle Optimization**: Reduced application size through dead code elimination
-- **Build Performance**: Improved compilation speed and reduced memory usage
-- **Type Safety**: Enhanced TypeScript coverage and error handling
+### Enhanced Password Reset System
+- **Comprehensive Validation**: Improved password reset flow with better error handling and user feedback
+- **Security Enhancements**: Enhanced token validation and expiration handling
+- **User Experience**: Clearer messaging and more intuitive reset process
+- **Email Integration**: Improved email delivery for password reset instructions
+- **Error Recovery**: Better handling of edge cases and network failures
 
-### Bug Fixes & Stability
-- **Build Errors**: Fixed all TypeScript compilation errors
-- **Mobile UX**: Resolved touch target issues and improved accessibility
-- **Modal Warnings**: Ensured restriction warnings appear on all devices
-- **Production Ready**: Zero-error build suitable for deployment
+### Server-Sent Events (SSE) Improvements
+- **Robust Error Handling**: Enhanced SSE connection management with automatic reconnection
+- **Exponential Backoff**: Intelligent retry mechanism that prevents server overload
+- **Fallback Mechanisms**: Automatic fallback to polling when SSE connections fail
+- **Connection Resilience**: Improved handling of network interruptions and connection drops
+- **Performance Optimization**: Reduced resource usage and improved real-time notification delivery
 
-### UI/UX Enhancements
-- **Consistent Design**: Unified card styling across all admin pages
-- **Better Navigation**: Improved mobile menu and touch interactions
-- **Loading States**: Enhanced skeleton loading components
-- **Responsive Tables**: Better mobile table handling with proper overflow
+### Codebase Optimization & Cleanup
+- **Code Cleanup**: Removed unused variables, functions, and legacy code components
+- **Bundle Optimization**: Further reduced application size through dead code elimination
+- **Type Safety**: Enhanced TypeScript coverage and improved error handling
+- **Performance**: Optimized build process and reduced memory usage during compilation
+- **Maintainability**: Improved code organization and removed technical debt
+
+### API Enhancements
+- **New Endpoints**: Added `/api/auth/check-port` for development debugging and port verification
+- **Enhanced Version API**: Improved `/api/version` endpoint with more detailed application information
+- **Better Error Handling**: Standardized error responses across all API endpoints
+- **Rate Limiting**: Enhanced rate limiting implementation for better security
 
 ---
 
