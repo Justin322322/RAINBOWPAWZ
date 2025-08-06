@@ -61,14 +61,7 @@ export function getAppBaseUrl(): string {
   return envUrl;
 }
 
-/**
- * Get the application URL with dynamic port detection
- * This is the recommended function to use for generating URLs in the application
- * Works both client-side and server-side
- */
-export function getAppUrl(): string {
-  return getAppBaseUrl();
-}
+
 
 /**
  * Get the application URL for server-side use (emails, notifications, etc.)

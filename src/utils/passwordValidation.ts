@@ -3,7 +3,7 @@
  * Used across registration, password reset, and other password-related features
  */
 
-export interface PasswordValidationResult {
+interface PasswordValidationResult {
   isValid: boolean;
   message: string;
   requirements: string[];
@@ -65,7 +65,7 @@ export function validatePasswordStrength(password: string): PasswordValidationRe
  * Password criteria for UI components
  * Matches the criteria used in PasswordCriteria component
  */
-export const PASSWORD_CRITERIA = [
+const PASSWORD_CRITERIA = [
   {
     id: 'length',
     label: 'At least 8 characters',
@@ -103,15 +103,8 @@ export const PASSWORD_CRITERIA = [
  * @param password - The password to evaluate
  * @returns Number of criteria met (0-5)
  */
-export function calculatePasswordStrength(password: string): number {
+function calculatePasswordStrength(password: string): number {
   return PASSWORD_CRITERIA.filter(criterion => criterion.test(password)).length;
 }
 
-/**
- * Check if password meets all requirements
- * @param password - The password to check
- * @returns boolean indicating if password is valid
- */
-export function isPasswordValid(password: string): boolean {
-  return calculatePasswordStrength(password) === PASSWORD_CRITERIA.length;
-}
+
