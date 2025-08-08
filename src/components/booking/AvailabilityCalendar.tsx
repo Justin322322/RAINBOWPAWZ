@@ -1,43 +1,17 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useToast } from '@/context/ToastContext';
-import {
-  CalendarIcon,
-  ClockIcon,
-  PlusIcon,
-  TrashIcon,
-  XMarkIcon,
-  ExclamationCircleIcon,
-  ArrowPathIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
-  CalendarDaysIcon,
-  DocumentDuplicateIcon,
-  SparklesIcon
-} from '@heroicons/react/24/outline';
+import CalendarHeader from './CalendarHeader';
+import QuickPresetsPanel from './QuickPresetsPanel';
+import TimeSlotModal from './TimeSlotModal';
+import MonthGrid from './MonthGrid';
+import YearOverview from './YearOverview';
+import { TimeSlot, DayAvailability, CalendarDay } from './types';
+import { PlusIcon, TrashIcon, ExclamationCircleIcon } from '@heroicons/react/24/outline';
 
-type TimeSlot = {
-  id: string;
-  start: string;
-  end: string;
-  availableServices?: number[];
-  isBooked?: boolean;
-};
-
-type DayAvailability = {
-  date: string;
-  isAvailable: boolean;
-  timeSlots: TimeSlot[];
-};
-
-type CalendarDay = {
-  type: 'empty' | 'day';
-  date?: Date;
-  dateString?: string;
-  isAvailable?: boolean;
-  timeSlots?: TimeSlot[];
-};
+// Types moved to ./types for reuse
 
 interface AvailabilityCalendarProps {
   providerId: number;
@@ -98,6 +72,8 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
     return [];
   });
   const [loading, setLoading] = useState<boolean>(false);
+  const [savingSlot, setSavingSlot] = useState<boolean>(false);
+  const [deletingSlot, setDeletingSlot] = useState<boolean>(false);
   const [_error, setError] = useState<string | null>(null);
   const [showTimeSlotModal, setShowTimeSlotModal] = useState<boolean>(false);
   const [timeSlotStart, setTimeSlotStart] = useState<string>("09:00");
@@ -113,6 +89,17 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
   const [showConflictMessage, setShowConflictMessage] = useState<boolean>(false);
   const [_conflictMessage, setConflictMessage] = useState<string>('');
   const [calendarKey, setCalendarKey] = useState<number>(0);
+  const latestSaveControllerRef = useRef<AbortController | null>(null);
+
+  // Abort any in-flight save on unmount
+  useEffect(() => {
+    return () => {
+      if (latestSaveControllerRef.current) {
+        latestSaveControllerRef.current.abort();
+        latestSaveControllerRef.current = null;
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -155,15 +142,19 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
     }
   }, [providerId]);
 
-  const fetchAvailabilityData = useCallback(async (clearExisting = true) => {
+  const fetchAvailabilityData = useCallback(async (clearExisting = true, silent = false) => {
     if (!providerId || providerId <= 0) {
-      setError("Cannot fetch availability without a valid Provider ID.");
+      if (!silent) {
+        setError("Cannot fetch availability without a valid Provider ID.");
+      }
       if (clearExisting) setAvailabilityData([]);
       return;
     }
     try {
-      setLoading(true);
-      setError(null);
+      if (!silent) setLoading(true);
+      if (!silent) {
+        setError(null);
+      }
 
       let startDate, endDate, monthString;
 
@@ -340,23 +331,31 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
           return sortedData;
         });
 
-        // Force calendar re-render
-        forceCalendarRefresh();
+        // Force calendar re-render when not silent
+        if (!silent) forceCalendarRefresh();
           
         if (validatedData.length === 0) {
-          setError('No availability data found for this month.');
+          if (!silent) {
+            setError('No availability data found for this month.');
+          }
         } else {
-          setError(null);
+          if (!silent) {
+            setError(null);
+          }
         }
 
         if (onAvailabilityChange) onAvailabilityChange(validatedData);
       } else {
         // Don't clear the entire state, just log the error
-        setError('Unexpected response from server.');
+        if (!silent) {
+          setError('Unexpected response from server.');
+        }
       }
     } catch (err) {
       console.error('Error fetching availability data:', err);
-      setError(`Failed to fetch availability: ${err instanceof Error ? err.message : String(err)}`);
+      if (!silent) {
+        setError(`Failed to fetch availability: ${err instanceof Error ? err.message : String(err)}`);
+      }
       // Don't clear availability data on error to preserve existing state
       
       // If this is a network error, try to fallback to cached data
@@ -368,7 +367,9 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
               const parsed = JSON.parse(cachedData);
               if (Array.isArray(parsed) && parsed.length > 0) {
                 setAvailabilityData(parsed);
-                setError('Using cached data due to network error');
+                if (!silent) {
+                  setError('Using cached data due to network error');
+                }
               }
             } catch (parseError) {
               console.error('Error parsing cached data:', parseError);
@@ -377,8 +378,8 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
         }
       }
     } finally {
-      setLoading(false);
-      forceCalendarRefresh(); // Always force refresh calendar after data fetching completes
+      if (!silent) setLoading(false);
+      if (!silent) forceCalendarRefresh();
     }
   }, [providerId, currentMonth, onAvailabilityChange, viewMode, currentYear]);
 
@@ -417,9 +418,8 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
 
   useEffect(() => {
     if (providerId && providerId > 0) {
-      // Clear any existing data first to ensure we get fresh data
-      setAvailabilityData([]);
-      fetchAvailabilityData(true);
+      // Ajax-like: do not clear UI; fetch silently to avoid flashes
+      fetchAvailabilityData(true, true);
       fetchProviderPackages();
     } else {
       setAvailabilityData([]);
@@ -429,26 +429,19 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
 
   useEffect(() => {
     if (providerId && providerId > 0) {
-      fetchAvailabilityData(false); // Don't clear existing data
+      fetchAvailabilityData(false, true); // silent refresh on month change
     }
   }, [currentMonth, providerId, fetchAvailabilityData]);
 
   // Add effect to refetch data when view mode changes
   useEffect(() => {
     if (providerId && providerId > 0) {
-      fetchAvailabilityData(true); // Clear existing data when switching views
+      fetchAvailabilityData(true, true); // silent refresh on view change
     }
   }, [viewMode, currentYear, providerId, fetchAvailabilityData]);
 
   // Force refresh when switching to year view to ensure booking data is current
-  useEffect(() => {
-    if (viewMode === 'year' && providerId && providerId > 0) {
-      // Small delay to avoid double-fetching
-      setTimeout(() => {
-        fetchAvailabilityData(true);
-      }, 100);
-    }
-  }, [viewMode]);
+  // Remove extra year-view forced fetch to keep UI static
 
   useEffect(() => {
     if (showSuccessMessage) {
@@ -481,13 +474,16 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
 
 
 
-  const saveAvailability = async (updatedDayAvailability: DayAvailability) => {
+  const saveAvailability = async (
+    updatedDayAvailability: DayAvailability,
+    options?: { silent?: boolean; signal?: AbortSignal }
+  ) => {
     if (!providerId || providerId <= 0) {
       setError("Cannot save availability without a valid Provider ID.");
       return;
     }
     try {
-      setLoading(true);
+      if (!options?.silent) setLoading(true);
       setError(null);
 
       // Update local state FIRST for immediate feedback
@@ -529,6 +525,7 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
           'Pragma': 'no-cache'
         },
         body: JSON.stringify(payload),
+        signal: options?.signal,
       });
 
       if (!response.ok) {
@@ -544,28 +541,32 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
 
       const _responseData = await response.json();
 
-      // After successfully saving to the server, force a refresh to get the latest data
-      // Add a slight delay to ensure database commit
+      // After saving, refresh in the background (silent when requested)
       setTimeout(() => {
-        fetchAvailabilityData(true); // Force clear and fetch fresh data
-      }, 500);
+        fetchAvailabilityData(true, Boolean(options?.silent));
+      }, 300);
 
-      // Force calendar re-render to ensure UI reflects the latest data
-      forceCalendarRefresh();
+      // Force calendar re-render when not silent
+      if (!options?.silent) forceCalendarRefresh();
 
-      // Show success message
+      if (!options?.silent) {
       setSuccessMessage('Time slot updated successfully!');
       setShowSuccessMessage(true);
+      }
 
       // Call the callback
       onSaveSuccess?.();
 
     } catch (err) {
+      // Ignore abort errors quietly; a newer save is in-flight
+      if ((err as any)?.name === 'AbortError') {
+        return;
+      }
       setError(`Failed to save: ${err instanceof Error ? err.message : String(err)}`);
 
       // Don't refresh data on error to preserve local changes
     } finally {
-      setLoading(false);
+      if (!options?.silent) setLoading(false);
     }
   };
 
@@ -601,12 +602,11 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
         : [];
 
       // A day is available if it has time slots or is explicitly marked as available
-      const isAvailable = timeSlots.length > 0 || (availabilityInfo && availabilityInfo.isAvailable);
+      const isAvailable = timeSlots.length > 0 || Boolean(availabilityInfo?.isAvailable);
 
       days.push({
         type: 'day',
         date,
-        dateString,
         isAvailable,
         timeSlots,
       });
@@ -1064,8 +1064,18 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
       timeSlots: existingDay?.timeSlots || []
     };
 
-    // Save the availability
-    saveAvailability(updatedDay);
+    // Save the availability with cancellation to avoid overlapping saves
+    if (latestSaveControllerRef.current) {
+      latestSaveControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    latestSaveControllerRef.current = controller;
+    saveAvailability(updatedDay, { signal: controller.signal })
+      .finally(() => {
+        if (latestSaveControllerRef.current === controller) {
+          latestSaveControllerRef.current = null;
+        }
+      });
   };
 
 
@@ -1130,9 +1140,9 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
       }
     }
 
-    // Build the new time slot
+    // Build the new time slot (temporary negative id for stable optimistic key)
     const newTimeSlot: TimeSlot = {
-      id: Date.now().toString(),
+      id: `temp-${Date.now()}`,
       start: timeSlotStart,
       end: timeSlotEnd,
       availableServices: selectedPackages // Always include selected packages
@@ -1142,14 +1152,31 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
     const updatedDay: DayAvailability = {
       date: dateString,
       isAvailable: true, // Always make the day available when adding a time slot
-      timeSlots: existingDay && Array.isArray(existingDay.timeSlots)
-        ? [...existingDay.timeSlots, newTimeSlot]
-        : [newTimeSlot]
+      timeSlots: (() => {
+        const base = existingDay && Array.isArray(existingDay.timeSlots)
+          ? [...existingDay.timeSlots, newTimeSlot]
+          : [newTimeSlot];
+        return base.sort((a, b) => a.start.localeCompare(b.start));
+      })()
     };
 
 
-    // Save the availability to backend
-    saveAvailability(updatedDay);
+    // Save the availability to backend silently for smooth animation with cancellation
+    setSavingSlot(true);
+    // Abort any previous in-flight save
+    if (latestSaveControllerRef.current) {
+      latestSaveControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    latestSaveControllerRef.current = controller;
+    saveAvailability(updatedDay, { silent: true, signal: controller.signal })
+      .finally(() => {
+        // Clear ref if this is still the latest controller
+        if (latestSaveControllerRef.current === controller) {
+          latestSaveControllerRef.current = null;
+        }
+        setSavingSlot(false);
+      });
 
     // Close modal and reset state
     setShowTimeSlotModal(false);
@@ -1164,7 +1191,7 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
   const handleRemoveTimeSlot = async (dateString: string, timeSlotId: string) => {
     try {
       // Show loading state
-      setLoading(true);
+      setDeletingSlot(true);
       setError(null);
 
       // First update local state for immediate feedback
@@ -1176,7 +1203,9 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
       }
 
       // Update local state
-      const updatedSlots = existingDay.timeSlots.filter(slot => slot.id !== timeSlotId);
+      const updatedSlots = existingDay.timeSlots
+        .filter(slot => slot.id !== timeSlotId)
+        .sort((a, b) => a.start.localeCompare(b.start));
       const updatedDay: DayAvailability = { ...existingDay, timeSlots: updatedSlots };
 
       // Call the API to delete the time slot from the database
@@ -1193,8 +1222,15 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
         throw new Error(responseData.error || `Failed to delete time slot (HTTP ${response.status})`);
       }
 
-      // Get response data for successful deletion
-      const _responseData = await response.json();
+      // Consume response (ignore body), but surface parsing issues for visibility
+      try {
+        await response.json();
+      } catch (parseError) {
+        console.warn(
+          'Failed to parse JSON response after deleting time slot; response may have no body or be non-JSON.',
+          parseError
+        );
+      }
 
       // After successfully deleting from the database, update the local state
       setAvailabilityData(prevData => {
@@ -1211,49 +1247,22 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
       // Show success message for time slot deletion
       showToast('Time slot deleted successfully!', 'success');
 
-      // Force calendar re-render
-      forceCalendarRefresh();
+      // Force calendar re-render handled by state update + animations
 
       // Refetch availability data to ensure booking status is up to date
       // Use a small delay to allow database changes to propagate
       setTimeout(() => {
-        fetchAvailabilityData(false); // Don't clear existing data, just refresh
-      }, 500);
+        fetchAvailabilityData(false, true); // Silent refresh
+      }, 300);
 
     } catch (error) {
       console.error('Error removing time slot:', error);
       showToast(`Failed to remove time slot: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
 
-      // Try one more approach - clear all slots for the date
-      try {
-        const clearResponse = await fetch(`/api/cremation/availability/debug?action=clear-date&date=${dateString}&providerId=${providerId}`, {
-          method: 'GET',
-          headers: {
-            'Cache-Control': 'no-cache',
-            'Pragma': 'no-cache'
-          }
-        });
-
-        const clearResponseData = await clearResponse.json();
-
-        if (clearResponse.ok && clearResponseData.affectedRows > 0) {
-          showToast(`Cleared ${clearResponseData.affectedRows} time slots for ${dateString}`, 'success');
-
-          // Force refresh after clearing
-          setTimeout(() => {
-            fetchAvailabilityData(true);
-          }, 1000);
-        } else {
-          // Revert local state changes on error
-          fetchAvailabilityData(true);
-        }
-      } catch (clearErr) {
-        console.error('Error clearing date slots:', clearErr);
-        // Revert local state changes on error
-        fetchAvailabilityData(true);
-      }
+      // Final fallback: refresh data to sync state silently
+      fetchAvailabilityData(true, true);
     } finally {
-      setLoading(false);
+      setDeletingSlot(false);
     }
   };
 
@@ -1266,11 +1275,8 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
   const selectedDayData = selectedDate ? availabilityData.find(day => day.date === formatDateToString(selectedDate)) : null;
 
   const handleRefreshData = () => {
-    // Clear any stale data first
-    setAvailabilityData([]);
-    // Then fetch fresh data
-    fetchAvailabilityData();
-    forceCalendarRefresh();
+    // Ajax-like: fetch fresh data silently without clearing state
+    fetchAvailabilityData(false, true);
   };
 
   const isDisabled = !providerId || providerId <= 0;
@@ -1294,398 +1300,68 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
 
   return (
     <div className="w-full">
-      {/* Enhanced Calendar Header */}
-      <div className="space-y-4 mb-4">
-        {/* View Toggle & Quick Actions */}
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center space-x-2">
-            {/* View Mode Toggle */}
-            <div className="flex bg-gray-100 rounded-lg p-1">
-              <button
-                type="button"
-                onClick={() => setViewMode('month')}
-                className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
-                  viewMode === 'month' 
-                    ? 'bg-white text-[var(--primary-green)] shadow-sm' 
-                    : 'text-gray-600 hover:text-gray-800'
-                }`}
-              >
-                <CalendarIcon className="h-4 w-4 inline mr-1" />
-                Month
-              </button>
-              <button
-                type="button"
-                onClick={() => setViewMode('year')}
-                className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
-                  viewMode === 'year' 
-                    ? 'bg-white text-[var(--primary-green)] shadow-sm' 
-                    : 'text-gray-600 hover:text-gray-800'
-                }`}
-              >
-                <CalendarDaysIcon className="h-4 w-4 inline mr-1" />
-                Year
-              </button>
-            </div>
-          </div>
-
-          {/* Quick Action Buttons */}
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setShowQuickPresets(!showQuickPresets)}
-              className="px-3 py-1 bg-blue-50 text-blue-700 rounded-md text-xs font-medium hover:bg-blue-100 transition-colors"
-              disabled={isDisabled}
-            >
-              <SparklesIcon className="h-4 w-4 inline mr-1" />
-              Quick Setup
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowCopyModal(true)}
-              className="px-3 py-1 bg-purple-50 text-purple-700 rounded-md text-xs font-medium hover:bg-purple-100 transition-colors"
-              disabled={isDisabled}
-            >
-              <DocumentDuplicateIcon className="h-4 w-4 inline mr-1" />
-              <span className="hidden sm:inline">Copy Month</span>
-              <span className="sm:hidden">Copy</span>
-            </button>
-            <button
-              type="button"
-              onClick={handleRefreshData}
-              className="px-3 py-1 bg-gray-50 text-gray-700 rounded-md text-xs font-medium hover:bg-gray-100 transition-colors"
-              disabled={isDisabled}
-            >
-              <ArrowPathIcon className="h-4 w-4 inline mr-1" />
-              <span className="hidden sm:inline">Refresh</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Navigation Header */}
-        {viewMode === 'month' ? (
-          <div className="flex justify-between items-center">
-            <button
-              type="button"
-              onClick={handlePreviousMonth}
-              className="p-2 hover:bg-gray-100 rounded-full"
-              disabled={isDisabled}
-            >
-              <ChevronLeftIcon className="h-5 w-5 text-gray-600" />
-            </button>
-            <div className="flex items-center space-x-3">
-              <h2 className="text-lg font-semibold">
-                {currentMonth.toLocaleString('default', { month: 'long', year: 'numeric' })}
-              </h2>
-              <button
-                type="button"
-                onClick={() => {
+      <CalendarHeader
+        viewMode={viewMode}
+        setViewMode={setViewMode}
+        currentMonth={currentMonth}
+        currentYear={currentYear}
+        onPrevMonth={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))}
+        onNextMonth={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))}
+        onPrevYear={() => setCurrentYear((prev) => prev - 1)}
+        onNextYear={() => setCurrentYear((prev) => prev + 1)}
+        onToday={() => {
                   const now = new Date();
                   setCurrentMonth(new Date(now.getFullYear(), now.getMonth(), 1));
                 }}
-                className="px-2 py-1 text-xs bg-[var(--primary-green)] text-white rounded-md hover:bg-green-700 transition-colors"
-                disabled={isDisabled}
-              >
-                Today
-              </button>
-            </div>
-            <button
-              type="button"
-              onClick={handleNextMonth}
-              className="p-2 hover:bg-gray-100 rounded-full"
-              disabled={isDisabled}
-            >
-              <ChevronRightIcon className="h-5 w-5 text-gray-600" />
-            </button>
-          </div>
-        ) : (
-          <div className="flex justify-between items-center">
-            <button
-              type="button"
-              onClick={handlePreviousYear}
-              className="p-2 hover:bg-gray-100 rounded-full"
-              disabled={isDisabled}
-            >
-              <ChevronLeftIcon className="h-5 w-5 text-gray-600" />
-            </button>
-            <h2 className="text-lg font-semibold">{currentYear}</h2>
-            <button
-              type="button"
-              onClick={handleNextYear}
-              className="p-2 hover:bg-gray-100 rounded-full"
-              disabled={isDisabled}
-            >
-              <ChevronRightIcon className="h-5 w-5 text-gray-600" />
-            </button>
-          </div>
-        )}
+        isDisabled={isDisabled}
+        showQuickPresets={showQuickPresets}
+        setShowQuickPresets={setShowQuickPresets}
+        onShowCopyMonth={() => setShowCopyModal(true)}
+        onRefresh={handleRefreshData}
+      />
 
-        {/* Quick Presets Panel */}
-        {showQuickPresets && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <h3 className="text-sm font-medium text-blue-800 mb-3">Quick Setup Options</h3>
-            
-            {/* Time Settings */}
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-blue-800 mb-2">
-                Time Slot Settings
-              </label>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-3">
-                {/* Weekday Times */}
-                <div className="bg-white border border-blue-200 rounded-md p-3">
-                  <h4 className="text-sm font-medium text-gray-700 mb-2">Weekdays (Mon-Fri)</h4>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-xs text-gray-600 mb-1">Start</label>
-                      <input
-                        type="time"
-                        value={weekdayStartTime}
-                        onChange={(e) => setWeekdayStartTime(e.target.value)}
-                        className="w-full p-1 border border-gray-300 rounded text-xs"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-600 mb-1">End</label>
-                      <input
-                        type="time"
-                        value={weekdayEndTime}
-                        onChange={(e) => setWeekdayEndTime(e.target.value)}
-                        className="w-full p-1 border border-gray-300 rounded text-xs"
-                      />
-                    </div>
-                  </div>
-                </div>
-                
-                {/* Weekend Times */}
-                <div className="bg-white border border-blue-200 rounded-md p-3">
-                  <h4 className="text-sm font-medium text-gray-700 mb-2">Weekends (Sat-Sun)</h4>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-xs text-gray-600 mb-1">Start</label>
-                      <input
-                        type="time"
-                        value={weekendStartTime}
-                        onChange={(e) => setWeekendStartTime(e.target.value)}
-                        className="w-full p-1 border border-gray-300 rounded text-xs"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-600 mb-1">End</label>
-                      <input
-                        type="time"
-                        value={weekendEndTime}
-                        onChange={(e) => setWeekendEndTime(e.target.value)}
-                        className="w-full p-1 border border-gray-300 rounded text-xs"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Service Selection */}
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-blue-800 mb-2">
-                Select Services for Time Slots:
-              </label>
-              {serviceSelectionError && (
-                <div className="flex items-center mb-2 text-sm text-red-600">
-                  <ExclamationCircleIcon className="h-4 w-4 mr-1 flex-shrink-0" />
-                  {serviceSelectionError}
-                </div>
-              )}
-              {loadingPackages ? (
-                <div className="text-center py-2">
-                  <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-blue-600 mx-auto"></div>
-                </div>
-              ) : availablePackages.length > 0 ? (
-                <div className="max-h-32 overflow-y-auto border border-blue-200 rounded-md p-2 bg-white">
-                  {availablePackages.map((pkg: any) => (
-                    <div key={pkg.id} className="flex items-center py-1">
-                      <input
-                        type="checkbox"
-                        id={`quick-setup-package-${pkg.id}`}
-                        checked={selectedQuickSetupPackages.includes(pkg.id)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setSelectedQuickSetupPackages([...selectedQuickSetupPackages, pkg.id]);
-                          } else {
-                            setSelectedQuickSetupPackages(selectedQuickSetupPackages.filter(id => id !== pkg.id));
-                          }
+      {showQuickPresets && (
+        <QuickPresetsPanel
+          weekdayStartTime={weekdayStartTime}
+          setWeekdayStartTime={setWeekdayStartTime}
+          weekdayEndTime={weekdayEndTime}
+          setWeekdayEndTime={setWeekdayEndTime}
+          weekendStartTime={weekendStartTime}
+          setWeekendStartTime={setWeekendStartTime}
+          weekendEndTime={weekendEndTime}
+          setWeekendEndTime={setWeekendEndTime}
+          serviceSelectionError={serviceSelectionError}
+          loadingPackages={loadingPackages}
+          availablePackages={availablePackages}
+          selectedQuickSetupPackages={selectedQuickSetupPackages}
+          setSelectedQuickSetupPackages={setSelectedQuickSetupPackages}
+          onApplyWeekdays={applyWeekdaysOnly}
+          onApplyWeekends={applyWeekendsOnly}
+          onClearAll={clearAllAvailability}
+          onClose={() => {
+            setShowQuickPresets(false);
                           setServiceSelectionError(null);
                         }}
-                        className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                      />
-                      <label htmlFor={`quick-setup-package-${pkg.id}`} className="ml-2 text-sm text-gray-700">
-                        {pkg.name} (₱{pkg.price?.toLocaleString()})
-                      </label>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-sm text-gray-600 bg-white border border-blue-200 rounded-md p-2">
-                  No service packages available. Please create packages first.
-                </div>
-              )}
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-              <button
-                type="button"
-                onClick={applyWeekdaysOnly}
-                disabled={selectedQuickSetupPackages.length === 0}
-                className="px-3 py-2 bg-green-100 text-green-800 rounded-md text-xs font-medium hover:bg-green-200 transition-colors disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
-              >
-                <ClockIcon className="h-4 w-4 inline mr-1" />
-                Weekdays ({weekdayStartTime}-{weekdayEndTime})
-              </button>
-              <button
-                type="button"
-                onClick={applyWeekendsOnly}
-                disabled={selectedQuickSetupPackages.length === 0}
-                className="px-3 py-2 bg-orange-100 text-orange-800 rounded-md text-xs font-medium hover:bg-orange-200 transition-colors disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
-              >
-                <CalendarIcon className="h-4 w-4 inline mr-1" />
-                Weekends ({weekendStartTime}-{weekendEndTime})
-              </button>
-              <button
-                type="button"
-                onClick={clearAllAvailability}
-                className="px-3 py-2 bg-red-100 text-red-800 rounded-md text-xs font-medium hover:bg-red-200 transition-colors sm:col-span-2 lg:col-span-1"
-              >
-                <TrashIcon className="h-4 w-4 inline mr-1" />
-                Clear All
-              </button>
-            </div>
-            <div className="mt-3 pt-3 border-t border-blue-200 flex justify-between items-center">
-              <div className="text-xs text-blue-700">
-                {selectedQuickSetupPackages.length > 0 ? 
-                  `${selectedQuickSetupPackages.length} service(s) selected` : 
-                  'Select services first'
-                }
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowQuickPresets(false);
-                  setServiceSelectionError(null);
-                }}
-                className="text-xs text-blue-600 hover:text-blue-800"
-              >
-                Close Panel
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
+        />
+      )}
 
       {/* Calendar Content */}
       {viewMode === 'month' ? (
-        <>
-          {/* Monthly Calendar Grid */}
-          <div className="grid grid-cols-7 gap-1 mb-2">
-            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
-              <div key={day} className="text-center text-xs sm:text-sm font-medium text-gray-600 py-2">
-                {day}
-              </div>
-            ))}
-          </div>
-
-          <div key={calendarKey} className="grid grid-cols-7 gap-0.5 sm:gap-1">
-            {getDaysInMonth().map((day, index) => {
-              const isPastDay = day.date && day.date < new Date(new Date().setHours(0, 0, 0, 0));
-
-              return (
-                <div key={index} className="aspect-square p-0.5">
-                  {day.type === 'empty' ? (
-                    <div className="h-full"></div>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => !isPastDay && handleDayClick(day.date!)}
-                      disabled={isPastDay}
-                      className={`
-                        h-full w-full flex flex-col items-center justify-center rounded-md p-0.5 sm:p-1 transition-colors text-xs sm:text-sm
-                        ${isPastDay ? 'bg-gray-100 text-gray-400 cursor-not-allowed' :
-                          day.timeSlots && day.timeSlots.length > 0
-                            ? 'bg-green-100 hover:bg-green-200 text-green-800 border border-green-300'
-                            : 'bg-gray-50 hover:bg-gray-100 text-gray-800'
-                        }
-                        ${selectedDate && day.dateString === formatDateToString(selectedDate)
-                          ? 'ring-2 ring-[var(--primary-green)]'
-                          : ''
-                        }
-                      `}
-                    >
-                      <span className="text-xs sm:text-sm font-medium">
-                        {day.date!.getDate()}
-                      </span>
-                      {day.timeSlots && day.timeSlots.length > 0 && !isPastDay && (
-                        <div className="flex flex-col items-center mt-0.5 sm:mt-1">
-                          <div className={`px-1 py-0.5 rounded-sm text-xs font-medium ${
-                            day.timeSlots.some(slot => slot.isBooked) 
-                              ? 'bg-orange-200 text-orange-800' 
-                              : 'bg-green-200 text-green-800'
-                          }`}>
-                            <span className="hidden sm:inline">{day.timeSlots.length} slots</span>
-                            <span className="sm:hidden">{day.timeSlots.length}</span>
-                          </div>
-                          {day.timeSlots.some(slot => slot.isBooked) && (
-                            <div className="mt-0.5 px-1 py-0.5 bg-red-200 rounded-sm text-xs font-medium text-red-800">
-                              <span className="hidden sm:inline">Has bookings</span>
-                              <span className="sm:hidden">Booked</span>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </button>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </>
+        <MonthGrid
+          days={_days}
+          selectedDate={selectedDate}
+          formatDateToString={formatDateToString}
+          onDayClick={handleDayClick}
+        />
       ) : (
-        <>
-          {/* Yearly Calendar Grid */}
-          <div key={`year-${calendarKey}-${availabilityData.length}`} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {getMonthsInYear().map((month, index) => (
-              <div
-                key={index}
-                className={`border rounded-lg p-4 cursor-pointer transition-all hover:shadow-md ${
-                  month.hasAvailability
-                    ? 'border-green-200 bg-green-50 hover:bg-green-100'
-                    : 'border-gray-200 bg-gray-50 hover:bg-gray-100'
-                }`}
-                onClick={() => {
-                  setCurrentMonth(month.date);
+        <YearOverview
+          calendarKey={calendarKey}
+          getMonthsInYear={getMonthsInYear}
+          onSelectMonth={(date) => {
+            setCurrentMonth(date);
                   setViewMode('month');
                 }}
-              >
-                <div className="flex justify-between items-center mb-2">
-                  <h3 className="font-medium text-gray-800">{month.name}</h3>
-                  {month.hasAvailability && (
-                    <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                  )}
-                </div>
-                <div className="space-y-1 text-xs text-gray-600">
-                  <div className="flex justify-between">
-                    <span>Available Days:</span>
-                    <span className="font-medium">{month.availableDays}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Available Slots:</span>
-                    <span className="font-medium">{month.totalTimeSlots}</span>
-                  </div>
-                </div>
-                {month.hasAvailability && (
-                  <div className="mt-2 text-xs text-green-700 font-medium">
-                    Click to view details
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </>
+        />
       )}
 
       {/* Messages and Status */}
@@ -1710,18 +1386,14 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
         </div>
       )}
 
-      {loading && !isDisabled ? (
-        <div className="flex justify-center py-10">
-          <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-[var(--primary-green)]"></div>
-        </div>
-      ) : (
-        selectedDate ? (
+      {selectedDate ? (
           <div className="mt-6 border-t pt-4">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-md font-medium">
                 {selectedDate.toLocaleDateString('default', { weekday: 'long', month: 'long', day: 'numeric' })}
               </h3>
-              <button
+              <motion.button
+                whileTap={{ scale: 0.98 }}
                 type="button"
                 onClick={() => {
                   setServiceSelectionError(null);
@@ -1732,16 +1404,22 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
               >
                 <PlusIcon className="h-3 w-3 mr-1" />
                 Add Time Slot
-              </button>
+              </motion.button>
             </div>
 
             {selectedDayData && selectedDayData.timeSlots.length > 0 ? (
               <div className="space-y-2 mt-2">
                 <h4 className="text-sm font-medium text-gray-600">Time Slots:</h4>
                 <div className="grid grid-cols-1 gap-2">
+                  <AnimatePresence initial={false}>
                   {selectedDayData.timeSlots.map((slot) => (
-                    <div
+                    <motion.div
+                      layout
                       key={slot.id}
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      transition={{ duration: 0.18, ease: 'easeOut' }}
                       className={`flex flex-col sm:flex-row sm:justify-between sm:items-center p-3 rounded-md border gap-2 ${
                         slot.isBooked 
                           ? 'bg-red-50 border-red-200 hover:bg-red-100' 
@@ -1773,8 +1451,9 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
                       >
                         <TrashIcon className="h-4 w-4" />
                       </button>
-                    </div>
+                    </motion.div>
                   ))}
+                  </AnimatePresence>
                 </div>
               </div>
             ) : (
@@ -1790,110 +1469,23 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
               <p>Please select a date on the calendar to add or view time slots.</p>
             </div>
           )
-        )
-      )}
+        )}
 
       {/* Modals */}
-      {showTimeSlotModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg max-w-md w-full max-h-[90vh] overflow-hidden">
-            <div className="bg-[var(--primary-green)] text-white px-4 sm:px-6 py-3 sm:py-4 flex justify-between items-center">
-              <h3 className="text-lg sm:text-xl font-medium text-white">Add Time Slot</h3>
-              <button
-                type="button"
-                onClick={() => setShowTimeSlotModal(false)}
-                className="text-white hover:text-white/80 transition-colors duration-200 flex-shrink-0 ml-2"
-              >
-                <XMarkIcon className="w-5 h-5 sm:w-6 sm:h-6" />
-              </button>
-            </div>
-            <div className="p-4 sm:p-6 overflow-y-auto">
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Start Time
-                </label>
-                <input
-                  type="time"
-                  value={timeSlotStart}
-                  onChange={(e) => setTimeSlotStart(e.target.value)}
-                  className="w-full p-2 border border-gray-300 rounded-md"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        End Time
-                </label>
-                <input
-                  type="time"
-                  value={timeSlotEnd}
-                  onChange={(e) => setTimeSlotEnd(e.target.value)}
-                  className="w-full p-2 border border-gray-300 rounded-md"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Available Services for this Time Slot
-                </label>
-                {serviceSelectionError && (
-                  <div className="flex items-center mt-1 mb-2 text-sm text-red-600">
-                    <ExclamationCircleIcon className="h-4 w-4 mr-1 flex-shrink-0" />
-                    {serviceSelectionError}
-                  </div>
-                )}
-                {loadingPackages ? (
-                  <div className="text-center py-2">
-                    <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-[var(--primary-green)] mx-auto"></div>
-                  </div>
-                ) : availablePackages.length > 0 ? (
-                  <div className="max-h-32 sm:max-h-40 overflow-y-auto border border-gray-200 rounded-md p-2">
-                    {availablePackages.map((pkg: any) => (
-                      <div key={pkg.id} className="flex items-center py-1">
-                        <input
-                          type="checkbox"
-                          id={`package-${pkg.id}`}
-                          checked={selectedPackages.includes(pkg.id)}
-                          onChange={() => togglePackageSelection(pkg.id)}
-                          className="h-4 w-4 text-[var(--primary-green)] border-gray-300 rounded focus:ring-[var(--primary-green)]"
-                        />
-                        <label htmlFor={`package-${pkg.id}`} className="ml-2 text-sm text-gray-700">
-                          {pkg.name} (₱{pkg.price?.toLocaleString()})
-                        </label>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div>
-                    <p className="text-sm text-gray-500 mb-2">No service packages available. Please create packages first.</p>
-                    <p className="text-xs text-amber-600">You can still create time slots, but they won&apos;t be visible to customers until packages are added.</p>
-                  </div>
-                )}
-              </div>
-
-              <div className="flex justify-end space-x-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowTimeSlotModal(false)}
-                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={handleAddTimeSlot}
-                  className="px-4 py-2 bg-[var(--primary-green)] text-white rounded-md"
-                >
-                  Add Time Slot
-                </button>
-              </div>
-            </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <TimeSlotModal
+        open={showTimeSlotModal}
+        onClose={() => setShowTimeSlotModal(false)}
+        start={timeSlotStart}
+        setStart={setTimeSlotStart}
+        end={timeSlotEnd}
+        setEnd={setTimeSlotEnd}
+        availablePackages={availablePackages}
+        selectedPackages={selectedPackages}
+        togglePackage={togglePackageSelection}
+        loadingPackages={loadingPackages}
+        error={serviceSelectionError}
+        onSubmit={handleAddTimeSlot}
+      />
     </div>
   );
 }

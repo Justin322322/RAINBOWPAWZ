@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query, withTransaction } from '@/lib/db';
+import { verifySecureAuth } from '@/lib/secureAuth';
 
 export async function POST(request: NextRequest) {
   try {
+    const user = await verifySecureAuth(request);
+    if (!user || user.accountType !== 'business') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { providerId, availabilityBatch } = await request.json();
 
     if (!providerId || !availabilityBatch || !Array.isArray(availabilityBatch)) {
@@ -18,6 +24,15 @@ export async function POST(request: NextRequest) {
         { error: 'Invalid providerId provided' },
         { status: 400 }
       );
+    }
+
+    // Authorization: ensure the authenticated business owns this providerId
+    const ownershipCheck = await query(
+      'SELECT provider_id FROM service_providers WHERE provider_id = ? AND user_id = ?',
+      [providerId, user.userId]
+    ) as any[];
+    if (!ownershipCheck || ownershipCheck.length === 0) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     // Validate batch size to prevent overwhelming the database
@@ -86,7 +101,14 @@ export async function POST(request: NextRequest) {
 
             // Insert new time slots if any
             if (isAvailable && timeSlots && timeSlots.length > 0) {
-              for (const slot of timeSlots) {
+              // Sort and reject overlaps for each day
+              const sorted = [...timeSlots].sort((a:any,b:any) => a.start.localeCompare(b.start));
+              for (let i=1;i<sorted.length;i++) {
+                if (sorted[i].start < sorted[i-1].end) {
+                  throw new Error('Overlapping time slots are not allowed');
+                }
+              }
+              for (const slot of sorted) {
                 // Validate time slot format
                 if (!slot.start || !slot.end) {
                   throw new Error('Invalid time slot format: start and end times required');

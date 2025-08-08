@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query, withTransaction } from '@/lib/db';
+import { verifySecureAuth } from '@/lib/secureAuth';
 
 export async function DELETE(request: NextRequest) {
   try {
+    const user = await verifySecureAuth(request);
+    if (!user || user.accountType !== 'business') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     // Get the time slot ID and provider ID from the URL parameters
     const url = new URL(request.url);
     const slotId = url.searchParams.get('slotId');
@@ -24,7 +29,7 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid Provider ID' }, { status: 400 });
     }
 
-    // **🔥 FIX: Check if time slot exists first (outside transaction to handle 404 properly)**
+    // Check if time slot exists first
     const checkQuery = `
       SELECT
         id,
@@ -74,7 +79,15 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // **🔥 FIX: Use proper transaction management to prevent connection leaks**
+    // Ensure slot belongs to the authenticated provider if providerId was provided
+    if (checkResult[0] && providerIdNum) {
+      const owner = await query('SELECT provider_id FROM service_providers WHERE provider_id = ? AND user_id = ?', [checkResult[0].provider_id, user.userId]) as any[];
+      if (!owner || owner.length === 0) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      }
+    }
+
+    // Use proper transaction management
     const result = await withTransaction(async (transaction) => {
       // Get the slot details for response
       const slotDetails = checkResult[0];

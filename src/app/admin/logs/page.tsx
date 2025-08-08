@@ -13,6 +13,7 @@ import {
   ClockIcon,
   UserIcon,
   EyeIcon,
+  TrashIcon,
 } from '@heroicons/react/24/outline';
 import AdminDashboardLayout from '@/components/navigation/AdminDashboardLayout';
 import withAdminAuth from '@/components/withAdminAuth';
@@ -52,6 +53,9 @@ function AdminLogsPage({ adminData }: { adminData: any }) {
   const [error, setError] = useState<string | null>(null);
   const [selectedLog, setSelectedLog] = useState<AdminLog | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [logToDelete, setLogToDelete] = useState<AdminLog | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -247,6 +251,48 @@ function AdminLogsPage({ adminData }: { adminData: any }) {
   const goToPage = (page: number) => {
     if (page >= 1 && page <= totalPages) {
       fetchLogs(page);
+    }
+  };
+
+  // Delete log handlers
+  const confirmDeleteLog = (log: AdminLog) => {
+    setLogToDelete(log);
+    setShowDeleteModal(true);
+  };
+
+  const closeDeleteModal = () => {
+    if (deleteLoading) return;
+    setShowDeleteModal(false);
+    setLogToDelete(null);
+  };
+
+  const deleteLog = async () => {
+    if (!logToDelete) return;
+    try {
+      setDeleteLoading(true);
+      const res = await fetch('/api/admin/logs', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: logToDelete.id }),
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || `Failed to delete log (${res.status})`);
+      }
+      showToast('Log deleted successfully', 'success');
+      setShowDeleteModal(false);
+      setLogToDelete(null);
+      // If we deleted the last item on the page and there are previous pages, go back a page
+      if (logs.length === 1 && currentPage > 1) {
+        fetchLogs(currentPage - 1);
+      } else {
+        fetchLogs(currentPage);
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to delete log';
+      showToast(msg, 'error');
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -447,12 +493,20 @@ function AdminLogsPage({ adminData }: { adminData: any }) {
                                   <span>{format(new Date(log.created_at), 'MMM dd, yyyy h:mm a')}</span>
                                 </div>
                               </div>
-                              <button
-                                onClick={() => viewLogDetails(log)}
-                                className="ml-2 text-[var(--primary-green)] hover:text-[var(--primary-green-hover)] flex-shrink-0"
-                              >
-                                <EyeIcon className="h-4 w-4" />
-                              </button>
+                              <div className="ml-2 flex items-center space-x-3 flex-shrink-0">
+                                <button
+                                  onClick={() => viewLogDetails(log)}
+                                  className="text-[var(--primary-green)] hover:text-[var(--primary-green-hover)]"
+                                >
+                                  <EyeIcon className="h-4 w-4" />
+                                </button>
+                                <button
+                                  onClick={() => confirmDeleteLog(log)}
+                                  className="text-red-600 hover:text-red-700"
+                                >
+                                  <TrashIcon className="h-4 w-4" />
+                                </button>
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -467,18 +521,10 @@ function AdminLogsPage({ adminData }: { adminData: any }) {
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Activity
-                      </th>
-                      <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Performed By
-                      </th>
-                      <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Date & Time
-                      </th>
-                      <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Details
-                      </th>
+                      <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[45%]">Activity</th>
+                      <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[25%]">Performed By</th>
+                      <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[20%]">Date & Time</th>
+                      <th className="px-4 sm:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-[12%]">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
@@ -530,15 +576,26 @@ function AdminLogsPage({ adminData }: { adminData: any }) {
                               </div>
                             </div>
                           </td>
-                          <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                            <button
-                              onClick={() => viewLogDetails(log)}
-                              className="text-[var(--primary-green)] hover:text-[var(--primary-green-hover)] flex items-center justify-end"
-                            >
-                              <EyeIcon className="h-4 w-4 mr-1" />
-                              <span className="hidden sm:inline">View Details</span>
-                              <span className="sm:hidden">View</span>
-                            </button>
+                          <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-center text-sm">
+                            <div className="inline-flex min-w-[180px] items-center justify-center gap-4 align-middle">
+                              <button
+                                onClick={() => viewLogDetails(log)}
+                                className="text-[var(--primary-green)] hover:text-[var(--primary-green-hover)] inline-flex items-center"
+                              >
+                                <EyeIcon className="h-4 w-4 mr-1" />
+                                <span className="hidden sm:inline">View Details</span>
+                                <span className="sm:hidden">View</span>
+                              </button>
+                              <span className="h-4 w-px bg-gray-300" aria-hidden="true" />
+                              <button
+                                onClick={() => confirmDeleteLog(log)}
+                                className="text-red-600 hover:text-red-700 inline-flex items-center"
+                              >
+                                <TrashIcon className="h-4 w-4 mr-1" />
+                                <span className="hidden sm:inline">Delete</span>
+                                <span className="sm:hidden">Del</span>
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       );
@@ -734,6 +791,46 @@ function AdminLogsPage({ adminData }: { adminData: any }) {
               )}
             </div>
           )}
+        </Modal>
+
+        {/* Delete Confirmation Modal */}
+        <Modal
+          isOpen={showDeleteModal}
+          onClose={closeDeleteModal}
+          title="Delete Log"
+          size="small"
+          variant="danger"
+        >
+          <div className="space-y-4">
+            <div className="flex items-start">
+              <ExclamationTriangleIcon className="h-5 w-5 text-red-600 mr-2 mt-0.5" />
+              <p className="text-sm text-gray-700">
+                Are you sure you want to delete this log entry? This action cannot be undone.
+              </p>
+            </div>
+            {logToDelete && (
+              <div className="bg-gray-50 rounded-md p-3 text-sm text-gray-600">
+                <div className="font-medium text-gray-800 mb-1">{getActionDescription(logToDelete)}</div>
+                <div>By {logToDelete.admin_name} on {format(new Date(logToDelete.created_at), 'MMM dd, yyyy h:mm a')}</div>
+              </div>
+            )}
+            <div className="flex justify-end space-x-3 pt-2">
+              <button
+                onClick={closeDeleteModal}
+                disabled={deleteLoading}
+                className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={deleteLog}
+                disabled={deleteLoading}
+                className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
+              >
+                {deleteLoading ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </div>
         </Modal>
       </div>
     </AdminDashboardLayout>

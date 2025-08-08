@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query, ensureAvailabilityTablesExist, withTransaction } from '@/lib/db';
+import { verifySecureAuth } from '@/lib/secureAuth';
 
 export async function GET(request: NextRequest) {
   try {
@@ -204,6 +205,11 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const user = await verifySecureAuth(request);
+    if (!user || user.accountType !== 'business') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const body = await request.json();
     const { providerId: providerIdParam, availability } = body;
 
@@ -214,6 +220,15 @@ export async function POST(request: NextRequest) {
     const providerId = parseInt(providerIdParam, 10);
     if (isNaN(providerId) || providerId <= 0) {
       return NextResponse.json({ error: 'Invalid Provider ID' }, { status: 400 });
+    }
+
+    // Authorization: ensure the authenticated business owns this providerId
+    const ownershipCheck = await query(
+      'SELECT provider_id FROM service_providers WHERE provider_id = ? AND user_id = ?',
+      [providerId, user.userId]
+    ) as any[];
+    if (!ownershipCheck || ownershipCheck.length === 0) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const { date, isAvailable, timeSlots } = availability;
@@ -253,7 +268,36 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Database error: Tables not available' }, { status: 500 });
     }
 
-    // **🔥 FIX: Use proper transaction management to prevent connection leaks**
+    // Validate time slots: format, order, and overlap
+    const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
+    for (const slot of timeSlots) {
+      if (!slot || typeof slot.start !== 'string' || typeof slot.end !== 'string') {
+        return NextResponse.json({ error: 'Invalid time slot' }, { status: 400 });
+      }
+      if (!timeRegex.test(slot.start) || !timeRegex.test(slot.end)) {
+        return NextResponse.json({ error: 'Invalid time format. Use HH:MM' }, { status: 400 });
+      }
+      if (slot.start >= slot.end) {
+        return NextResponse.json({ error: 'Start time must be before end time' }, { status: 400 });
+      }
+    }
+
+    // Sort and check overlap
+    const sortedSlots = [...timeSlots].sort((a,b) => a.start.localeCompare(b.start));
+    for (let i = 1; i < sortedSlots.length; i++) {
+      if (sortedSlots[i].start < sortedSlots[i-1].end) {
+        return NextResponse.json({ error: 'Overlapping time slots are not allowed' }, { status: 400 });
+      }
+    }
+
+    // Disallow past dates
+    const today = new Date(); today.setHours(0,0,0,0);
+    const targetDate = new Date(normalizedDate);
+    if (targetDate < today) {
+      return NextResponse.json({ error: 'Cannot modify availability for past dates' }, { status: 400 });
+    }
+
+    // **Use proper transaction management to prevent connection leaks**
     const result = await withTransaction(async (transaction) => {
       // First, update the provider_availability record
       const upsertAvailabilityQuery = `
@@ -263,46 +307,65 @@ export async function POST(request: NextRequest) {
       `;
       await transaction.query(upsertAvailabilityQuery, [providerId, normalizedDate, isAvailable ? 1 : 0]);
 
-      // Delete existing time slots for this date
-      await transaction.query('DELETE FROM provider_time_slots WHERE provider_id = ? AND date = ?', [providerId, normalizedDate]);
+      // If day is not available, remove all slots
+      if (!isAvailable) {
+        await transaction.query('DELETE FROM provider_time_slots WHERE provider_id = ? AND date = ?', [providerId, normalizedDate]);
+      } else if (sortedSlots && sortedSlots.length > 0) {
+        // Fetch existing slots for diffing
+        const existingRows = await transaction.query(
+          `SELECT id, TIME_FORMAT(start_time, '%H:%i') as start_time, TIME_FORMAT(end_time, '%H:%i') as end_time
+           FROM provider_time_slots WHERE provider_id = ? AND date = ? ORDER BY start_time`,
+          [providerId, normalizedDate]
+        ) as any[];
 
-      // Add new time slots if available
-      if (isAvailable && timeSlots && timeSlots.length > 0) {
-        for (const slot of timeSlots) {
-          if (!slot || typeof slot.start !== 'string' || typeof slot.end !== 'string') {
-            continue;
+        const existingById = new Map<number, { start_time: string; end_time: string }>();
+        for (const row of existingRows) {
+          const rowIdNumber = Number(row?.id);
+          if (row?.id !== null && row?.id !== undefined && Number.isFinite(rowIdNumber)) {
+            existingById.set(rowIdNumber, { start_time: row.start_time, end_time: row.end_time });
           }
+        }
 
-          // Format times properly
-          const startTime = slot.start.substring(0, 5); // HH:MM format
-          const endTime = slot.end.substring(0, 5);     // HH:MM format
+        const incomingIds = new Set<number>();
 
-          // Format available services
+        // Upsert incoming slots
+        for (const slot of sortedSlots) {
+          const idNum = Number(slot.id);
+          const hasExisting = Number.isFinite(idNum) && existingById.has(idNum);
+          const startTime = slot.start.substring(0, 5);
+          const endTime = slot.end.substring(0, 5);
           const availableServicesJson = Array.isArray(slot.availableServices) && slot.availableServices.length > 0
             ? JSON.stringify(slot.availableServices.filter((id: number) => id !== 0))
             : null;
 
-          // Insert the time slot with explicit column names
-          const insertSlotQuery = `
-            INSERT INTO provider_time_slots
-              (provider_id, date, start_time, end_time, available_services)
-            VALUES
-              (?, ?, ?, ?, ?)
-          `;
+          if (hasExisting) {
+            incomingIds.add(idNum);
+            await transaction.query(
+              `UPDATE provider_time_slots SET start_time = ?, end_time = ?, available_services = ? WHERE id = ? AND provider_id = ? AND date = ?`,
+              [startTime, endTime, availableServicesJson, idNum, providerId, normalizedDate]
+            );
+          } else {
+            await transaction.query(
+              `INSERT INTO provider_time_slots (provider_id, date, start_time, end_time, available_services) VALUES (?, ?, ?, ?, ?)`,
+              [providerId, normalizedDate, startTime, endTime, availableServicesJson]
+            );
+          }
+        }
 
-          await transaction.query(insertSlotQuery, [
-            providerId,
-            normalizedDate,
-            startTime,
-            endTime,
-            availableServicesJson
-          ]);
+        // Delete slots that are not present anymore
+        const idsToDelete = Array.from(existingById.keys()).filter((id) => !incomingIds.has(id));
+        if (idsToDelete.length > 0) {
+          const placeholders = idsToDelete.map(() => '?').join(',');
+          await transaction.query(
+            `DELETE FROM provider_time_slots WHERE provider_id = ? AND id IN (${placeholders})`,
+            [providerId, ...idsToDelete]
+          );
         }
       }
 
       return { 
         success: true,
-        slotsCount: timeSlots.length 
+        slotsCount: sortedSlots.length 
       };
     });
 

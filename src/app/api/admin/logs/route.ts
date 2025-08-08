@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { ensureAdminLogsTable } from './ensure-table';
+import { verifySecureAuth } from '@/lib/secureAuth';
 
 export async function GET(request: NextRequest) {
   try {
@@ -158,5 +159,50 @@ export async function GET(request: NextRequest) {
       error: 'Failed to fetch admin logs',
       message: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    // Secure admin authentication
+    const user = await verifySecureAuth(request);
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    if (user.accountType !== 'admin') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    // Ensure table exists
+    await ensureAdminLogsTable();
+
+    // Parse body for id or ids
+    const body = await request.json().catch(() => ({}));
+    const { id, ids } = body as { id?: number; ids?: number[] };
+
+    if (!id && (!ids || !Array.isArray(ids) || ids.length === 0)) {
+      return NextResponse.json({ error: 'Missing id or ids' }, { status: 400 });
+    }
+
+    if (id) {
+      // Delete single log and return actual affected rows
+      const result = (await query('DELETE FROM admin_logs WHERE id = ?', [id])) as any;
+      const affected = typeof result?.affectedRows === 'number' ? result.affectedRows : undefined;
+      return NextResponse.json({ success: true, deleted: affected });
+    }
+
+    // Delete multiple logs
+    const placeholders = ids!.map(() => '?').join(',');
+    const result = (await query(`DELETE FROM admin_logs WHERE id IN (${placeholders})`, ids)) as any;
+    const affected = typeof result?.affectedRows === 'number' ? result.affectedRows : undefined;
+    return NextResponse.json({ success: true, deleted: affected });
+  } catch (error) {
+    return NextResponse.json(
+      {
+        error: 'Failed to delete admin logs',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      },
+      { status: 500 }
+    );
   }
 }

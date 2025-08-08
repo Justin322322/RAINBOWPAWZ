@@ -16,6 +16,7 @@ export interface PackageData {
   conditions: string;
   images: string[];
   isActive: boolean;
+  supportedPetTypes?: string[];
 }
 
 interface PackageFormData {
