@@ -28,7 +28,7 @@ const SESSION_TOKEN_KEY = 'auth_token';
 interface AuthResult {
   userId: string;
   accountType: string;
-  email?: string;
+  // Email removed from JWT tokens for security - use dedicated API endpoints for user data
 }
 
 interface FastAuthResult {
@@ -69,15 +69,18 @@ async function parseJWTToken(authToken: string): Promise<AuthResult | null> {
   try {
     const { verifyToken } = await import('@/lib/jwt');
     const payload = verifyToken(authToken);
-    
-    if (!payload?.userId || !payload?.accountType) {
+
+    // Support both new 'sub' claim and legacy 'userId' for backward compatibility
+    const userId = payload?.sub || payload?.userId;
+
+    if (!userId || !payload?.accountType) {
       return null;
     }
 
     return {
-      userId: payload.userId.toString(),
+      userId: userId.toString(),
       accountType: payload.accountType,
-      email: payload.email
+      // Email removed from JWT payload for security - use dedicated API endpoints
     };
   } catch (error) {
     if (process.env.NODE_ENV === 'development') {

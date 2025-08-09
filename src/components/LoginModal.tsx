@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Modal, Input, Button, Checkbox, Alert } from '@/components/ui';
+import { Modal } from '@/components/ui/Modal';
+import { Input, Button, Checkbox, Alert } from '@/components/ui';
 import { EyeIcon, EyeSlashIcon, ArrowRightIcon, XMarkIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 import ForgotPasswordModal from './ForgotPasswordModal';
 import { redirectToDashboard } from '@/utils/auth';
@@ -24,6 +25,17 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onShowSignup }
   const [isForgotPasswordModalOpen, setIsForgotPasswordModalOpen] = useState(false);
   const [loginSuccess, setLoginSuccess] = useState(false);
   const [userName, setUserName] = useState('');
+  const redirectTimeoutRef = useRef<number | null>(null);
+
+  // Clear any pending redirect timeout when the component unmounts
+  useEffect(() => {
+    return () => {
+      if (redirectTimeoutRef.current !== null) {
+        clearTimeout(redirectTimeoutRef.current);
+        redirectTimeoutRef.current = null;
+      }
+    };
+  }, []);
 
   const handleClose = () => {
     setErrorMessage('');
@@ -112,7 +124,11 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onShowSignup }
       showToast('Login successful! Redirecting to your dashboard...', 'success');
 
       // Redirect to the appropriate dashboard after a delay for the animation
-      setTimeout(() => {
+      if (redirectTimeoutRef.current !== null) {
+        clearTimeout(redirectTimeoutRef.current);
+        redirectTimeoutRef.current = null;
+      }
+      redirectTimeoutRef.current = window.setTimeout(() => {
         let redirectUrl;
 
         if (isRestricted) {
@@ -142,7 +158,8 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onShowSignup }
       <Modal 
         isOpen={isOpen} 
         onClose={handleClose} 
-        size="small"
+        size="medium"
+        dialogClassName="sm:max-w-[514px]"
       >
         <div className="relative">
           <button
@@ -181,7 +198,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onShowSignup }
               exit={{ opacity: 0 }}
               className="p-6 pt-10"
             >
-              <div className="text-center mb-8">
+              <div className="text-center mb-6">
                 <h2 className="text-3xl font-bold text-gray-800">Welcome Back</h2>
                 <p className="text-gray-500 mt-2">Sign in to continue your journey with us.</p>
               </div>

@@ -12,11 +12,11 @@ export type DayAvailability = {
   timeSlots: TimeSlot[];
 };
 
-export type EmptyCalendarCell = {
+type EmptyCalendarCell = {
   type: 'empty';
 };
 
-export type DayCalendarCell = {
+type DayCalendarCell = {
   type: 'day';
   date: Date;
   isAvailable: boolean;

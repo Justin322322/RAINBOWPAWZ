@@ -22,7 +22,7 @@ import {
 import { useToast } from '@/context/ToastContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
-import { Badge, Button, Input } from '@/components/ui';
+  import { Badge, Button, Input } from '@/components/ui';
 import { Modal } from '@/components/ui/Modal';
 import {
   ProfileCard,
@@ -33,6 +33,7 @@ import {
 } from '@/components/ui/ProfileLayout';
 import { ProfileButton } from '@/components/ui/ProfileFormComponents';
 import { getProfilePictureUrl } from '@/utils/imageUtils';
+  import { MetricGrid } from '@/components/ui/MetricGrid';
 
 
 
@@ -92,6 +93,7 @@ export default function AdminFurParentsPage() {
   const [showAppealModal, setShowAppealModal] = useState(false);
   const [selectedAppeal, setSelectedAppeal] = useState<Appeal | null>(null);
   const [appealResponse, setAppealResponse] = useState('');
+  const [avatarError, setAvatarError] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { showToast } = useToast();
   const [pagination, setPagination] = useState({
@@ -246,6 +248,11 @@ export default function AdminFurParentsPage() {
       }
     }
   }, [users]);
+
+  // Reset avatar error when selectedUser profile picture changes
+  useEffect(() => {
+    setAvatarError(false);
+  }, [selectedUser?.profile_picture]);
 
   // Filter users based on search term and status
   const filteredUsers = users.filter(user => {
@@ -1150,7 +1157,7 @@ export default function AdminFurParentsPage() {
         onClose={() => setShowRestoreModal(false)}
         onConfirm={handleUnrestrictUser}
         title="Unrestrict Fur Parent"
-        message={`Are you sure you want to unrestrict;${userToAction?.first_name} ${userToAction?.last_name};? This will allow them to make bookings again.`}
+        message={`Are you sure you want to unrestrict ${userToAction?.first_name} ${userToAction?.last_name}? This will allow them to make bookings again.`}
         confirmText="Unrestrict Access"
         variant="success"
         icon={<CheckCircleIcon className="h-6 w-6 text-green-600" />}
@@ -1166,58 +1173,82 @@ export default function AdminFurParentsPage() {
         contentClassName="max-h-[85vh] overflow-y-auto"
       >
         <div className="space-y-6">
-          {/* Header Section */}
-          <ProfileCard className="bg-gradient-to-r from-[var(--primary-green)] to-[var(--primary-green-hover)]">
-            <div className="flex flex-col space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between space-y-4 sm:space-y-0">
-                <div className="flex items-start space-x-4">
-                  <div className="bg-white/20 backdrop-blur-sm rounded-full p-3 flex-shrink-0 overflow-hidden">
-                    {selectedUser?.profile_picture ? (
-                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full overflow-hidden bg-white">
-                        <Image
-                          src={getProfilePictureUrl(selectedUser.profile_picture)}
-                          alt={`${selectedUser.first_name} ${selectedUser.last_name}`}
-                          width={40}
-                          height={40}
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            // Fallback to icon if image fails to load
-                            const target = e.target as HTMLImageElement;
-                            target.style.display = 'none';
-                            const parent = target.parentElement;
-                            if (parent) {
-                              parent.innerHTML = '<svg class="h-8 w-8 sm:h-10 sm:w-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>';
-                            }
-                          }}
-                        />
-                      </div>
+          {/* Overview Header */}
+          <ProfileCard>
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+                  <div className="h-14 w-14 rounded-full ring-2 ring-[var(--primary-green)] ring-offset-2 overflow-hidden bg-gray-100 flex-shrink-0">
+                    {selectedUser?.profile_picture && !avatarError ? (
+                      <Image
+                        src={getProfilePictureUrl(selectedUser.profile_picture)}
+                        alt={`${selectedUser?.first_name} ${selectedUser?.last_name}`}
+                        width={56}
+                        height={56}
+                        className="h-full w-full object-cover"
+                        onError={() => setAvatarError(true)}
+                      />
                     ) : (
-                      <UserCircleIcon className="h-8 w-8 sm:h-10 sm:w-10 text-white" />
+                      <div className="h-full w-full flex items-center justify-center">
+                        {avatarError ? (
+                          <svg className="h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                          </svg>
+                        ) : (
+                          <UserCircleIcon className="h-8 w-8 text-gray-400" />
+                        )}
+                      </div>
                     )}
                   </div>
-                  <div className="text-white min-w-0 flex-1">
-                    <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold mb-2 break-words">
-                      {selectedUser?.first_name} {selectedUser?.last_name}
-                    </h1>
-                    <div className="space-y-1 text-white/90 text-sm">
-                      <div>ID: {selectedUser?.user_id}</div>
-                      <div className="flex items-center">
-                        <span className="mr-2">Account Status:</span>
-                        <div className="bg-white/20 rounded-full px-2 py-1">
-                          {selectedUser?.status === 'active' ? (
-                            <span className="text-green-200">Active</span>
-                          ) : selectedUser?.status === 'restricted' ? (
-                            <span className="text-red-200">Restricted</span>
-                          ) : (
-                            <span className="text-yellow-200">Inactive</span>
-                          )}
-                        </div>
-                      </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h1 className="text-xl sm:text-2xl font-semibold text-gray-900 truncate">
+                        {selectedUser?.first_name} {selectedUser?.last_name}
+                      </h1>
+                      {selectedUser?.is_verified && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 text-emerald-700 px-2 py-0.5 text-xs">
+                          <CheckCircleIcon className="h-4 w-4" />
+                          Verified
+                        </span>
+                      )}
+                      {selectedUser?.status === 'restricted' && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-purple-50 text-purple-700 px-2 py-0.5 text-xs">
+                          <ShieldExclamationIcon className="h-4 w-4" />
+                          Restricted
+                        </span>
+                      )}
+                    </div>
+                    <div className="mt-1 flex items-center gap-2 flex-wrap text-sm">
+                      <span className="font-mono bg-gray-50 border border-gray-200 text-gray-700 px-2 py-0.5 rounded">
+                        ID: {selectedUser?.user_id}
+                      </span>
+                      {selectedUser && (
+                        <span>
+                          {getStatusBadge(selectedUser.status)}
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
-                <div className="flex-shrink-0 self-start">
-                  {selectedUser && getStatusBadge(selectedUser.status)}
+                <div className="flex flex-wrap gap-2 sm:justify-end">
+                  {selectedUser?.email && (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-gray-50 border border-gray-200 text-gray-700">
+                      <EnvelopeIcon className="h-4 w-4 text-gray-500" />
+                      <span className="truncate max-w-[180px]">{selectedUser.email}</span>
+                    </span>
+                  )}
+                  {selectedUser?.phone_number && (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-gray-50 border border-gray-200 text-gray-700">
+                      <PhoneIcon className="h-4 w-4 text-gray-500" />
+                      <span>{selectedUser.phone_number}</span>
+                    </span>
+                  )}
+                  {selectedUser?.address && (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-gray-50 border border-gray-200 text-gray-700">
+                      <MapPinIcon className="h-4 w-4 text-gray-500" />
+                      <span className="truncate max-w-[75vw] sm:max-w-[220px]">{selectedUser.address}</span>
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
@@ -1229,19 +1260,23 @@ export default function AdminFurParentsPage() {
             subtitle="Personal contact details and account information"
           >
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <ProfileCard>
+              <ProfileCard className="border border-gray-200">
                 <ProfileFormGroup title="Contact Details" subtitle="Primary contact information">
                   <div className="space-y-4">
                     <ProfileField
                       label="Email Address"
                       value={selectedUser?.email}
                       icon={<EnvelopeIcon className="h-5 w-5" />}
+                      className="bg-white border border-gray-200"
+                      valueClassName="text-gray-800"
                     />
                     {selectedUser?.phone_number && (
                       <ProfileField
                         label="Phone Number"
                         value={selectedUser.phone_number}
                         icon={<PhoneIcon className="h-5 w-5" />}
+                        className="bg-white border border-gray-200"
+                        valueClassName="text-gray-800"
                       />
                     )}
                     {selectedUser?.address && (
@@ -1249,19 +1284,23 @@ export default function AdminFurParentsPage() {
                         label="Home Address"
                         value={<div className="break-words">{selectedUser.address}</div>}
                         icon={<MapPinIcon className="h-5 w-5" />}
+                        className="bg-white border border-gray-200"
+                        valueClassName="text-gray-800"
                       />
                     )}
                   </div>
                 </ProfileFormGroup>
               </ProfileCard>
 
-              <ProfileCard>
+              <ProfileCard className="border border-gray-200">
                 <ProfileFormGroup title="Account Details" subtitle="Registration and verification status">
                   <div className="space-y-4">
                     <ProfileField
                       label="Registration Date"
                       value={selectedUser ? formatDate(selectedUser.created_at) : 'N/A'}
                       icon={<CalendarIcon className="h-5 w-5" />}
+                      className="bg-white border border-gray-200"
+                      valueClassName="text-gray-800"
                     />
                     <ProfileField
                       label="Verification Status"
@@ -1279,6 +1318,8 @@ export default function AdminFurParentsPage() {
                         )
                       }
                       icon={<CheckCircleIcon className="h-5 w-5" />}
+                      className="bg-white border border-gray-200"
+                      valueClassName="text-gray-800"
                     />
                   </div>
                 </ProfileFormGroup>
@@ -1291,22 +1332,23 @@ export default function AdminFurParentsPage() {
             title="User Activity"
             subtitle="Pet registrations and booking history"
           >
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-              <ProfileField
-                label="Registered Pets"
-                value={selectedUser?.pets || 0}
-                icon={<HeartIcon className="h-5 w-5" />}
-                valueClassName="text-xl sm:text-2xl font-bold text-[var(--primary-green)]"
-                className="text-center sm:text-left"
-              />
-              <ProfileField
-                label="Completed Bookings"
-                value={selectedUser?.completedBookings || 0}
-                icon={<ChartBarIcon className="h-5 w-5" />}
-                valueClassName="text-xl sm:text-2xl font-bold text-[var(--primary-green)]"
-                className="text-center sm:text-left"
-              />
-            </div>
+            <MetricGrid
+              cols={2}
+              metrics={[
+                {
+                  id: 'registered-pets',
+                  label: 'Registered Pets',
+                  value: selectedUser?.pets ?? 0,
+                  icon: <HeartIcon className="h-5 w-5" />,
+                },
+                {
+                  id: 'completed-bookings',
+                  label: 'Completed Bookings',
+                  value: selectedUser?.completedBookings ?? 0,
+                  icon: <ChartBarIcon className="h-5 w-5" />,
+                },
+              ]}
+            />
           </ProfileSection>
 
           {/* Restriction Information */}

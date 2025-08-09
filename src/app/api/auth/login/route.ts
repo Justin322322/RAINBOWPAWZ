@@ -162,13 +162,12 @@ export async function POST(request: Request) {
                     headers
                   });
 
-                  // Set secure authentication cookies
+                  // Set secure authentication cookies (JWT httpOnly)
                   setSecureAuthCookies(response, user.user_id.toString(), 'admin', user.email);
-                  
-                  // Also set legacy cookie for frontend compatibility
+                  // Also set legacy cookie for client-side flows (capstone/demo). NOTE: Not secure for production.
                   response.cookies.set('auth_token', `${user.user_id}_admin`, {
                     httpOnly: false,
-                    secure: false,
+                    secure: process.env.NODE_ENV === 'production',
                     sameSite: 'lax',
                     maxAge: 7 * 24 * 60 * 60, // 7 days
                     path: '/'
@@ -222,13 +221,12 @@ export async function POST(request: Request) {
                   headers
                 });
 
-                // Set secure authentication cookies
+                // Set secure authentication cookies (JWT httpOnly)
                 setSecureAuthCookies(response, user.user_id.toString(), 'business', user.email);
-                
-                // Also set legacy cookie for frontend compatibility
+                // Also set legacy cookie for client-side flows (capstone/demo). NOTE: Not secure for production.
                 response.cookies.set('auth_token', `${user.user_id}_business`, {
                   httpOnly: false,
-                  secure: false,
+                  secure: process.env.NODE_ENV === 'production',
                   sameSite: 'lax',
                   maxAge: 7 * 24 * 60 * 60, // 7 days
                   path: '/'
@@ -257,13 +255,12 @@ export async function POST(request: Request) {
             headers
           });
 
-          // Set secure authentication cookies
+          // Set secure authentication cookies (JWT httpOnly)
           setSecureAuthCookies(response, user.user_id.toString(), accountType as 'user' | 'admin' | 'business', user.email);
-          
-          // Also set legacy cookie for frontend compatibility
+          // Also set legacy cookie for client-side flows (capstone/demo). NOTE: Not secure for production.
           response.cookies.set('auth_token', `${user.user_id}_${accountType}`, {
             httpOnly: false,
-            secure: false,
+            secure: process.env.NODE_ENV === 'production',
             sameSite: 'lax',
             maxAge: 7 * 24 * 60 * 60, // 7 days
             path: '/'

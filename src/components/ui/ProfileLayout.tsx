@@ -146,7 +146,7 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
           )}
         </div>
       )}
-      <div className={noPadding ? '' : 'p-6'}>
+      <div className={noPadding ? '' : 'p-4 sm:p-6'}>
         {children}
       </div>
     </div>
@@ -162,7 +162,7 @@ export const ProfileField: React.FC<ProfileFieldProps> = ({
   valueClassName = ''
 }) => {
   return (
-    <div className={`bg-gray-50 rounded-lg p-4 ${className}`}>
+    <div className={`bg-gray-50 rounded-lg p-3 sm:p-4 ${className}`}>
       <div className="flex items-center mb-2">
         {icon && <div className="text-gray-500 mr-2">{icon}</div>}
         <h4 className="text-sm font-medium text-gray-600 uppercase tracking-wide">{label}</h4>

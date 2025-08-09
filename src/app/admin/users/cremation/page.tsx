@@ -26,6 +26,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
+  import { MetricGrid } from '@/components/ui/MetricGrid';
 import {
   ProfileCard,
   ProfileSection,
@@ -96,8 +97,15 @@ export default function AdminCremationCentersPage() {
   const [selectedAppeal, setSelectedAppeal] = useState<Appeal | null>(null);
   const [appealResponse, setAppealResponse] = useState('');
   const [restrictReason, setRestrictReason] = useState('');
+  const [imageLoadError, setImageLoadError] = useState(false);
+  const [centerImageErrors, setCenterImageErrors] = useState<Set<string | number>>(new Set());
 
   const { showToast } = useToast();
+
+  // Helper function to handle image load errors for center list items
+  const handleCenterImageError = (centerId: string | number) => {
+    setCenterImageErrors(prev => new Set(prev).add(centerId));
+  };
 
   // Format date for display
   const formatDate = (dateString: string) => {
@@ -304,6 +312,7 @@ export default function AdminCremationCentersPage() {
     // Load center appeals when viewing details
     const appeals = await loadCenterAppeals(center.id);
     setSelectedCenter({ ...center, appeals });
+    setImageLoadError(false); // Reset image error state when viewing new center
     setShowDetailsModal(true);
   };
 
@@ -901,21 +910,15 @@ export default function AdminCremationCentersPage() {
                   >
                     <div className="flex items-start space-x-3">
                       <div className="flex-shrink-0 h-10 w-10 bg-[var(--primary-green)] text-white rounded-full flex items-center justify-center overflow-hidden">
-                        {center.profile_picture ? (
+                        {center.profile_picture && !centerImageErrors.has(center.id) ? (
                           <Image
                             src={getProfilePictureUrl(center.profile_picture)}
                             alt={center.name}
                             width={40}
                             height={40}
                             className="w-full h-full object-cover"
-                            onError={(e) => {
-                              // Fallback to icon if image fails to load
-                              const target = e.target as HTMLImageElement;
-                              target.style.display = 'none';
-                              const parent = target.parentElement;
-                              if (parent) {
-                                parent.innerHTML = '<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>';
-                              }
+                            onError={() => {
+                              handleCenterImageError(center.id);
                             }}
                           />
                         ) : (
@@ -1031,21 +1034,15 @@ export default function AdminCremationCentersPage() {
                       <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
                           <div className="flex-shrink-0 h-10 w-10 bg-[var(--primary-green)] text-white rounded-full flex items-center justify-center overflow-hidden">
-                            {center.profile_picture ? (
+                            {center.profile_picture && !centerImageErrors.has(center.id) ? (
                               <Image
                                 src={getProfilePictureUrl(center.profile_picture)}
                                 alt={center.name}
                                 width={40}
                                 height={40}
                                 className="w-full h-full object-cover"
-                                onError={(e) => {
-                                  // Fallback to icon if image fails to load
-                                  const target = e.target as HTMLImageElement;
-                                  target.style.display = 'none';
-                                  const parent = target.parentElement;
-                                  if (parent) {
-                                    parent.innerHTML = '<svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>';
-                                  }
+                                onError={() => {
+                                  handleCenterImageError(center.id);
                                 }}
                               />
                             ) : (
@@ -1210,58 +1207,79 @@ export default function AdminCremationCentersPage() {
         contentClassName="max-h-[85vh] overflow-y-auto"
       >
         <div className="space-y-6">
-          {/* Header Section */}
-          <ProfileCard className="bg-gradient-to-r from-[var(--primary-green)] to-[var(--primary-green-hover)]">
-            <div className="flex flex-col space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between space-y-4 sm:space-y-0">
-                <div className="flex items-start space-x-4">
-                  <div className="bg-white/20 backdrop-blur-sm rounded-full p-3 flex-shrink-0 overflow-hidden">
-                    {selectedCenter?.profile_picture ? (
-                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full overflow-hidden bg-white">
-                        <Image
-                          src={getProfilePictureUrl(selectedCenter.profile_picture)}
-                          alt={selectedCenter.name}
-                          width={40}
-                          height={40}
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            // Fallback to icon if image fails to load
-                            const target = e.target as HTMLImageElement;
-                            target.style.display = 'none';
-                            const parent = target.parentElement;
-                            if (parent) {
-                              parent.innerHTML = '<svg class="h-8 w-8 sm:h-10 sm:w-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>';
-                            }
-                          }}
-                        />
-                      </div>
+          {/* Overview Header */}
+          <ProfileCard>
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+                  <div className="h-14 w-14 rounded-full ring-2 ring-[var(--primary-green)] ring-offset-2 overflow-hidden bg-gray-100 flex-shrink-0">
+                    {selectedCenter?.profile_picture && !imageLoadError ? (
+                      <Image
+                        src={getProfilePictureUrl(selectedCenter.profile_picture)}
+                        alt={selectedCenter.name}
+                        width={56}
+                        height={56}
+                        className="h-full w-full object-cover"
+                        onError={() => {
+                          setImageLoadError(true);
+                        }}
+                      />
                     ) : (
-                      <BuildingStorefrontIcon className="h-8 w-8 sm:h-10 sm:w-10 text-white" />
+                      <div className="h-full w-full flex items-center justify-center">
+                        <BuildingStorefrontIcon className="h-8 w-8 text-gray-400" />
+                      </div>
                     )}
                   </div>
-                  <div className="text-white min-w-0 flex-1">
-                    <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold mb-2 break-words">{selectedCenter?.name}</h1>
-                    <div className="space-y-1 text-white/90 text-sm">
-                      <div>ID: {selectedCenter?.id}</div>
-                      <div>No ratings yet</div>
-                      <div className="flex items-center">
-                        {selectedCenter?.verification_status === 'verified' || selectedCenter?.application_status === 'approved' ? (
-                          <span className="flex items-center">
-                            <ShieldCheckIcon className="h-4 w-4 mr-1" />
-                            Verified
-                          </span>
-                        ) : selectedCenter?.verification_status === 'restricted' ? (
-                          <span className="flex items-center">
-                            <ShieldExclamationIcon className="h-4 w-4 mr-1" />
-                            Restricted
-                          </span>
-                        ) : null}
-                      </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h1 className="text-xl sm:text-2xl font-semibold text-gray-900 truncate">
+                        {selectedCenter?.name}
+                      </h1>
+                      {selectedCenter?.verification_status === 'verified' || selectedCenter?.application_status === 'approved' ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 text-emerald-700 px-2 py-0.5 text-xs">
+                          <ShieldCheckIcon className="h-4 w-4" />
+                          Verified
+                        </span>
+                      ) : selectedCenter?.verification_status === 'restricted' ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-purple-50 text-purple-700 px-2 py-0.5 text-xs">
+                          <ShieldExclamationIcon className="h-4 w-4" />
+                          Restricted
+                        </span>
+                      ) : null}
+                    </div>
+                    <div className="mt-1 flex items-center gap-2 flex-wrap text-sm">
+                      <span className="font-mono bg-gray-50 border border-gray-200 text-gray-700 px-2 py-0.5 rounded">
+                        ID: {selectedCenter?.id}
+                      </span>
+                      {selectedCenter && (
+                        <span>
+                          {getStatusBadge(selectedCenter.status, selectedCenter.verified, selectedCenter)}
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
-                <div className="flex-shrink-0 self-start">
-                  {selectedCenter && getStatusBadge(selectedCenter.status, selectedCenter.verified, selectedCenter)}
+                <div className="flex flex-wrap gap-2 sm:justify-end">
+                  {selectedCenter?.email && (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-gray-50 border border-gray-200 text-gray-700">
+                      <EnvelopeIcon className="h-4 w-4 text-gray-500" />
+                      <span className="truncate max-w-[180px]">{selectedCenter.email}</span>
+                    </span>
+                  )}
+                  {selectedCenter?.phone && (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-gray-50 border border-gray-200 text-gray-700">
+                      <PhoneIcon className="h-4 w-4 text-gray-500" />
+                      <span>{selectedCenter.phone}</span>
+                    </span>
+                  )}
+                  {(selectedCenter?.city || selectedCenter?.province) && (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-gray-50 border border-gray-200 text-gray-700">
+                      <MapPinIcon className="h-4 w-4 text-gray-500" />
+                      <span className="truncate max-w-[70vw] sm:max-w-[180px]">
+                        {[selectedCenter?.city, selectedCenter?.province].filter(Boolean).join(', ')}
+                      </span>
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
@@ -1272,23 +1290,14 @@ export default function AdminCremationCentersPage() {
             title="Business Description"
             subtitle="Overview of the cremation center's services and facilities"
           >
-            <ProfileCard className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
-              <div className="flex items-start space-x-3">
-                <div className="flex-shrink-0 mt-1">
-                  <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                    <BuildingStorefrontIcon className="h-5 w-5 text-blue-600" />
-                  </div>
-                </div>
-                <div className="flex-1">
-                  <p className="text-gray-700 leading-relaxed text-base">
-                    {selectedCenter?.description || (
-                      <span className="italic text-gray-500">
-                        No description provided for this cremation center.
-                      </span>
-                    )}
-                  </p>
-                </div>
-              </div>
+            <ProfileCard>
+              <p className="text-gray-700 leading-relaxed text-base">
+                {selectedCenter?.description || (
+                  <span className="italic text-gray-500">
+                    No description provided for this cremation center.
+                  </span>
+                )}
+              </p>
             </ProfileCard>
           </ProfileSection>
 
@@ -1298,29 +1307,35 @@ export default function AdminCremationCentersPage() {
             subtitle="Owner and business contact details"
           >
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <ProfileCard>
+              <ProfileCard className="border border-gray-200">
                 <ProfileFormGroup title="Owner Details" subtitle="Primary contact person">
                   <div className="space-y-4">
                     <ProfileField
                       label="Owner Name"
                       value={selectedCenter?.owner}
                       icon={<UserCircleIcon className="h-5 w-5" />}
+                      className="bg-white border border-gray-200"
+                      valueClassName="text-gray-800"
                     />
                     <ProfileField
                       label="Email Address"
                       value={selectedCenter?.email}
                       icon={<EnvelopeIcon className="h-5 w-5" />}
+                      className="bg-white border border-gray-200"
+                      valueClassName="text-gray-800"
                     />
                     <ProfileField
                       label="Phone Number"
                       value={selectedCenter?.phone}
                       icon={<PhoneIcon className="h-5 w-5" />}
+                      className="bg-white border border-gray-200"
+                      valueClassName="text-gray-800"
                     />
                   </div>
                 </ProfileFormGroup>
               </ProfileCard>
 
-              <ProfileCard>
+              <ProfileCard className="border border-gray-200">
                 <ProfileFormGroup title="Business Details" subtitle="Location and registration information">
                   <div className="space-y-4">
                     <ProfileField
@@ -1336,11 +1351,15 @@ export default function AdminCremationCentersPage() {
                         </div>
                       }
                       icon={<MapPinIcon className="h-5 w-5" />}
+                      className="bg-white border border-gray-200"
+                      valueClassName="text-gray-800"
                     />
                     <ProfileField
                       label="Registration Date"
                       value={selectedCenter?.registrationDate}
                       icon={<CalendarIcon className="h-5 w-5" />}
+                      className="bg-white border border-gray-200"
+                      valueClassName="text-gray-800"
                     />
                   </div>
                 </ProfileFormGroup>
@@ -1353,29 +1372,29 @@ export default function AdminCremationCentersPage() {
             title="Business Performance"
             subtitle="Key metrics and statistics for this cremation center"
           >
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-              <ProfileField
-                label="Active Services"
-                value={selectedCenter?.activeServices}
-                icon={<ChartBarIcon className="h-5 w-5" />}
-                valueClassName="text-xl sm:text-2xl font-bold text-[var(--primary-green)]"
-                className="text-center sm:text-left"
-              />
-              <ProfileField
-                label="Total Bookings"
-                value={selectedCenter?.totalBookings}
-                icon={<CalendarIcon className="h-5 w-5" />}
-                valueClassName="text-xl sm:text-2xl font-bold text-[var(--primary-green)]"
-                className="text-center sm:text-left"
-              />
-              <ProfileField
-                label="Total Revenue"
-                value={selectedCenter?.revenue}
-                icon={<CurrencyDollarIcon className="h-5 w-5" />}
-                valueClassName="text-xl sm:text-2xl font-bold text-[var(--primary-green)]"
-                className="text-center sm:text-left sm:col-span-2 lg:col-span-1"
-              />
-            </div>
+            <MetricGrid
+              cols={3}
+              metrics={[
+                {
+                  id: 'active-services',
+                  label: 'Active Services',
+                  value: selectedCenter?.activeServices ?? 0,
+                  icon: <ChartBarIcon className="h-5 w-5" />,
+                },
+                {
+                  id: 'total-bookings',
+                  label: 'Total Bookings',
+                  value: selectedCenter?.totalBookings ?? 0,
+                  icon: <CalendarIcon className="h-5 w-5" />,
+                },
+                {
+                  id: 'total-revenue',
+                  label: 'Total Revenue',
+                  value: selectedCenter?.revenue ?? '₱0.00',
+                  icon: <CurrencyDollarIcon className="h-5 w-5" />,
+                },
+              ]}
+            />
           </ProfileSection>
 
           {/* Appeals Section */}
