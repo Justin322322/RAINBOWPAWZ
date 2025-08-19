@@ -11,7 +11,7 @@
     "lint:strict": "eslint . --ext .ts,.tsx,.js,.jsx",
     "lint:unused": "eslint . --ext .ts,.tsx,.js,.jsx --rule '@typescript-eslint/no-unused-vars: error' --rule 'unused-imports/no-unused-imports: error'",
     "lint:fix": "eslint . --ext .ts,.tsx,.js,.jsx --fix",
-    "lint:unused-only": "eslint . --ext .ts,.tsx,.js,.jsx --no-eslintrc --parser @typescript-eslint/parser --rule '@typescript-eslint/no-unused-vars: error' --rule 'unused-imports/no-unused-imports: error'",
+    "lint:unused-only": "eslint . --ext .ts,.tsx,.js,.jsx --no-eslintrc --parser @typescript-eslint/parser --plugin @typescript-eslint --plugin unused-imports --rule \"@typescript-eslint/no-unused-vars: error\" --rule \"unused-imports/no-unused-imports: error\"",
     "clean": "rimraf .next tsconfig.tsbuildinfo",
     "clean:all": "rimraf .next tsconfig.tsbuildinfo node_modules package-lock.json && npm install",
     "spring-clean": "npm run clean && npm run type-check"

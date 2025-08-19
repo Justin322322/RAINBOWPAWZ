@@ -289,15 +289,20 @@ const PackageModal: React.FC<PackageModalProps> = ({
     }
   }, [packageId, showToast]);
 
+  // Track form initialization to prevent unstable dependency loops
+  const formInitialized = useRef(false);
+
   // Add useEffect after loadPackageData is defined
   useEffect(() => {
     if (mode === 'edit' && packageId && isOpen) {
       loadPackageData();
-    } else if (mode === 'create' && isOpen && !formData.name && formData.inclusions.length === 0) {
-      // Only reset form if it's truly empty (first open, not a re-open after validation error)
+      formInitialized.current = true;
+    } else if (mode === 'create' && isOpen && !formInitialized.current) {
+      // Only reset form if it hasn't been initialized yet
       resetForm();
+      formInitialized.current = true;
     }
-  }, [mode, packageId, isOpen, loadPackageData, formData.name, formData.inclusions.length]);
+  }, [mode, packageId, isOpen, loadPackageData]);
 
   // Reset form when modal closes (for next time it opens)
   useEffect(() => {
@@ -305,9 +310,11 @@ const PackageModal: React.FC<PackageModalProps> = ({
       // Add a small delay to ensure smooth closing animation
       const timeoutId = setTimeout(() => {
         resetForm();
+        formInitialized.current = false; // Reset initialization flag
       }, 300);
       return () => clearTimeout(timeoutId);
     }
+    return undefined; // Ensure all code paths return a value
   }, [isOpen, mode]);
 
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {

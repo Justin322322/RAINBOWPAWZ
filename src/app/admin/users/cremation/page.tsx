@@ -291,13 +291,28 @@ export default function AdminCremationCentersPage() {
     return matchesSearch && matchesStatus;
   });
 
-  const handleViewDetails = useCallback(async (center: any) => {
+  const loadCenterAppeals = useCallback(async (centerId: number | string) => {
+    try {
+      // For cremation centers, we need to find the user_id associated with the business
+      const response = await fetch(`/api/appeals?business_id=${centerId}`);
+      if (response.ok) {
+        const data = await response.json();
+        return data.appeals || [];
+      }
+    } catch (error) {
+      console.error('Error loading center appeals:', error);
+    }
+    return [];
+  }, []);
+
+  const handleViewDetails = useCallback(async (center: CremationCenter) => {
     // Load center appeals when viewing details
     const appeals = await loadCenterAppeals(center.id);
     setSelectedCenter({ ...center, appeals });
     setImageLoadError(false); // Reset image error state when viewing new center
     setShowDetailsModal(true);
-  }, []);
+    return appeals;
+  }, [loadCenterAppeals]);
 
   // Move the useEffect here after handleViewDetails is defined
   useEffect(() => {
@@ -310,11 +325,13 @@ export default function AdminCremationCentersPage() {
       
       if (targetCenter) {
         // Load center details and appeals
-        handleViewDetails(targetCenter).then(() => {
-          // Find the specific appeal and open the modal
-          const appeal = targetCenter.appeals?.find(a => a.appeal_id.toString() === appealId);
+        handleViewDetails(targetCenter).then((appeals) => {
+          // Find the specific appeal from the returned appeals list
+          const appeal = appeals?.find((a: Appeal) => a.appeal_id.toString() === appealId);
           if (appeal) {
             setSelectedAppeal(appeal);
+            // Close details modal before opening appeal modal to avoid dual stacking
+            setShowDetailsModal(false);
             setShowAppealModal(true);
             // Clear URL parameters after opening modal
             window.history.replaceState({}, '', window.location.pathname);
@@ -323,20 +340,6 @@ export default function AdminCremationCentersPage() {
       }
     }
   }, [cremationCenters, handleViewDetails]);
-
-  const loadCenterAppeals = async (centerId: number | string) => {
-    try {
-      // For cremation centers, we need to find the user_id associated with the business
-      const response = await fetch(`/api/appeals?business_id=${centerId}`);
-      if (response.ok) {
-        const data = await response.json();
-        return data.appeals || [];
-      }
-    } catch (error) {
-      console.error('Error loading center appeals:', error);
-    }
-    return [];
-  };
 
   const handleAppealAction = async (appealId: number, status: string, response?: string) => {
     try {

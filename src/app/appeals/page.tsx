@@ -55,7 +55,7 @@ export default function AppealsPage() {
     appeal_type: 'restriction'
   });
 
-  const checkUserStatusAndLoadAppeals = useCallback(async () => {
+  const checkUserStatusAndLoadAppeals = useCallback(async (): Promise<boolean> => {
     try {
       // Try to check authentication using the general auth endpoint first
       let authResponse = await fetch('/api/auth/check', {
@@ -70,14 +70,14 @@ export default function AppealsPage() {
       if (!authResponse.ok) {
         // If general auth fails, redirect to home page (not /login)
         router.push('/');
-        return;
+        return false;
       }
 
       const authData = await authResponse.json();
 
       if (!authData.authenticated) {
         router.push('/');
-        return;
+        return false;
       }
 
       // Now get detailed user status based on account type
@@ -89,12 +89,12 @@ export default function AppealsPage() {
       } else {
         // Admin users shouldn't access appeals page
         router.push('/admin/dashboard');
-        return;
+        return false;
       }
 
       if (!userStatusResponse.ok) {
         router.push('/');
-        return;
+        return false;
       }
 
       const statusData = await userStatusResponse.json();
@@ -104,7 +104,7 @@ export default function AppealsPage() {
         const serviceProvider = statusData.serviceProvider;
         if (!serviceProvider) {
           router.push('/cremation/pending-verification');
-          return;
+          return false;
         }
 
         const applicationStatus = serviceProvider.application_status ?
@@ -113,7 +113,7 @@ export default function AppealsPage() {
         if (applicationStatus !== 'restricted') {
           // Not restricted, redirect to dashboard
           router.push('/cremation/dashboard');
-          return;
+          return false;
         }
 
         setUserStatus('restricted');
@@ -123,16 +123,18 @@ export default function AppealsPage() {
         if (!user || user.status !== 'restricted') {
           // Not restricted, redirect to dashboard
           router.push('/user/furparent_dashboard');
-          return;
+          return false;
         }
 
         setUserStatus(user.status);
       }
 
-      // Appeals will be loaded separately
+      // User is properly authenticated and restricted, proceed with loading appeals
+      return true;
     } catch (error) {
       console.error('Error checking user status:', error);
       showToast('Error loading page', 'error');
+      return false;
     } finally {
       setLoading(false);
     }
@@ -159,8 +161,10 @@ export default function AppealsPage() {
   // Add useEffect after functions are defined
   useEffect(() => {
     const initializePage = async () => {
-      await checkUserStatusAndLoadAppeals();
-      await loadAppeals();
+      const shouldProceed = await checkUserStatusAndLoadAppeals();
+      if (shouldProceed) {
+        await loadAppeals();
+      }
     };
     initializePage();
   }, [checkUserStatusAndLoadAppeals, loadAppeals]);

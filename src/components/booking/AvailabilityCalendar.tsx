@@ -1282,7 +1282,7 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
     fetchAvailabilityData(false, true);
   };
 
-  const isDisabled = (!providerId || providerId <= 0) && !isLoading;
+  const isDisabled = (!providerId || providerId <= 0) || _loading;
 
   useEffect(() => {
     // Add this effect to trace when availabilityData changes

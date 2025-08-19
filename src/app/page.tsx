@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import type { MouseEvent } from 'react';
 
 import Image from 'next/image';
 import { motion } from 'framer-motion';
@@ -95,7 +96,7 @@ export default function Home() {
   };
 
   // Enhanced smooth scroll functionality with improved animation and visual feedback
-  const handleSmoothScroll = (e: React.MouseEvent<HTMLAnchorElement>, targetId: string) => {
+  const handleSmoothScroll = (e: MouseEvent<HTMLAnchorElement>, targetId: string) => {
     e.preventDefault();
     const element = document.getElementById(targetId);
     if (!element) return;
@@ -151,7 +152,7 @@ export default function Home() {
   };
 
   // Smooth scroll to top (hero section)
-  const handleScrollToTop = (e: React.MouseEvent) => {
+  const handleScrollToTop = (e: MouseEvent) => {
     e.preventDefault();
 
     // Add click animation to the logo

@@ -127,11 +127,12 @@ function CremationDashboardPage({ userData }: { userData: any }) {
 
   // Check availability tables after initial loading
   useEffect(() => {
-    if (!userData?.business_id || isLoading) return;
+    const providerId = userData?.business_id || userData?.provider_id;
+    if (!providerId || isLoading) return;
 
     const checkAvailabilityTables = async () => {
       try {
-        const response = await fetch('/api/cremation/availability?providerId=' + userData.business_id);
+        const response = await fetch('/api/cremation/availability?providerId=' + providerId);
 
         if (response.status === 500) {
           setAvailabilitySetupNeeded(true);
@@ -402,18 +403,21 @@ function CremationDashboardPage({ userData }: { userData: any }) {
                 </div>
               ) : null}
               <div className="w-full">
-                {userData?.business_id ? (
-                  <AvailabilityCalendar
-                    providerId={userData.business_id}
-                    onAvailabilityChange={handleAvailabilityChange}
-                    onSaveSuccess={handleSaveSuccess}
-                  />
-                ) : (
-                  <div className="flex items-center justify-center p-8">
-                    <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[var(--primary-green)]"></div>
-                    <span className="ml-3 text-gray-600">Loading availability calendar...</span>
-                  </div>
-                )}
+                {(() => {
+                  const providerId = userData?.business_id || userData?.provider_id;
+                  return providerId ? (
+                    <AvailabilityCalendar
+                      providerId={providerId}
+                      onAvailabilityChange={handleAvailabilityChange}
+                      onSaveSuccess={handleSaveSuccess}
+                    />
+                  ) : (
+                    <div className="flex items-center justify-center p-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[var(--primary-green)]"></div>
+                      <span className="ml-3 text-gray-600">Loading availability calendar...</span>
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           ) : (
