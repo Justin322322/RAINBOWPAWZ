@@ -27,7 +27,7 @@ interface ProfileTextareaProps {
   className?: string;
 }
 
-interface ProfileSelectProps {
+interface _ProfileSelectProps {
   label: string;
   value: string;
   onChange: (value: string) => void;

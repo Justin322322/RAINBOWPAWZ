@@ -37,7 +37,7 @@ const SelectInput = forwardRef<HTMLDivElement, SelectInputProps>(
     error,
     className = '',
     containerClassName = '',
-    labelClassName = '',
+    labelClassName: _ = '',
     errorClassName = '',
     disabled = false,
     required = false,

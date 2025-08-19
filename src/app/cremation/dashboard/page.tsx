@@ -402,11 +402,18 @@ function CremationDashboardPage({ userData }: { userData: any }) {
                 </div>
               ) : null}
               <div className="w-full">
-                <AvailabilityCalendar
-                  providerId={userData?.business_id || 0}
-                  onAvailabilityChange={handleAvailabilityChange}
-                  onSaveSuccess={handleSaveSuccess}
-                />
+                {userData?.business_id ? (
+                  <AvailabilityCalendar
+                    providerId={userData.business_id}
+                    onAvailabilityChange={handleAvailabilityChange}
+                    onSaveSuccess={handleSaveSuccess}
+                  />
+                ) : (
+                  <div className="flex items-center justify-center p-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[var(--primary-green)]"></div>
+                    <span className="ml-3 text-gray-600">Loading availability calendar...</span>
+                  </div>
+                )}
               </div>
             </div>
           ) : (

@@ -59,7 +59,7 @@ interface PayMongoSource {
   };
 }
 
-interface CreatePaymentIntentData {
+interface _CreatePaymentIntentData {
   amount: number; // Amount in centavos (e.g., 10000 = PHP 100.00)
   currency: string;
   description: string;

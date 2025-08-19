@@ -180,6 +180,8 @@ const PackageCard = React.memo<{
   );
 });
 
+PackageCard.displayName = 'PackageCard';
+
 // Main component that maps through packages
 export const PackageCards: React.FC<PackageCardsProps> = ({
   packages,

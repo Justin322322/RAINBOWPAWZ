@@ -47,7 +47,7 @@ export interface PaymentResponse {
   error?: string;
 }
 
-interface WebhookPayload {
+interface _WebhookPayload {
   data: {
     id: string;
     type: string;
@@ -75,7 +75,7 @@ export interface PaymentStatus {
   last_payment_date?: Date;
 }
 
-interface GCashPaymentConfig {
+interface _GCashPaymentConfig {
   public_key: string;
   return_url: string;
   cancel_url: string;
@@ -83,7 +83,7 @@ interface GCashPaymentConfig {
 }
 
 // PayMongo specific types
-interface PayMongoWebhookEvent {
+interface _PayMongoWebhookEvent {
   id: string;
   type: 'source.chargeable' | 'payment.paid' | 'payment.failed';
   attributes: {
@@ -106,7 +106,7 @@ interface PayMongoWebhookEvent {
   };
 }
 
-interface PaymentMethodInfo {
+interface _PaymentMethodInfo {
   type: 'gcash' | 'cash';
   name: string;
   description: string;
@@ -119,7 +119,7 @@ interface PaymentMethodInfo {
 
 
 
-interface PaymentError {
+interface _PaymentError {
   code: string;
   message: string;
   details?: any;

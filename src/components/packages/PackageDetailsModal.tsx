@@ -7,15 +7,13 @@ import { PackageImage } from './PackageImage';
 import { formatPrice } from '@/utils/numberUtils';
 import { Badge } from '@/components/ui/Badge';
 import {
-  XMarkIcon,
   CheckCircleIcon,
   XCircleIcon,
   ClockIcon,
   CurrencyDollarIcon,
   TagIcon,
   DocumentTextIcon,
-  SparklesIcon,
-  InformationCircleIcon
+  SparklesIcon
 } from '@heroicons/react/24/outline';
 
 interface PackageDetailsModalProps {
@@ -29,6 +27,17 @@ export const PackageDetailsModal: React.FC<PackageDetailsModalProps> = ({
   onClose,
   package: pkg
 }) => {
+  // All hooks must be called before any early returns
+  const [showFullDescription, setShowFullDescription] = useState(false);
+  const [showAllInclusions, setShowAllInclusions] = useState(false);
+  const [showConditions, setShowConditions] = useState(false);
+
+  const displayedInclusions = useMemo(() => {
+    if (!pkg?.inclusions) return [] as string[];
+    return showAllInclusions ? pkg.inclusions : pkg.inclusions.slice(0, 4);
+  }, [pkg?.inclusions, showAllInclusions]);
+
+  // Early return after all hooks have been called
   if (!pkg) return null;
 
   const hasImages = pkg.images && pkg.images.length > 0;
@@ -43,16 +52,6 @@ export const PackageDetailsModal: React.FC<PackageDetailsModalProps> = ({
   const cardBase =
     'rounded-lg border bg-white shadow-sm';
   const infoCard = `${cardBase} px-4 py-4`; // compact, consistent paddings
-
-  // Concise rendering helpers
-  const [showFullDescription, setShowFullDescription] = useState(false);
-  const [showAllInclusions, setShowAllInclusions] = useState(false);
-  const [showConditions, setShowConditions] = useState(false);
-
-  const displayedInclusions = useMemo(() => {
-    if (!pkg.inclusions) return [] as string[];
-    return showAllInclusions ? pkg.inclusions : pkg.inclusions.slice(0, 4);
-  }, [pkg.inclusions, showAllInclusions]);
 
   const remainingInclusions = (pkg.inclusions?.length || 0) - displayedInclusions.length;
 

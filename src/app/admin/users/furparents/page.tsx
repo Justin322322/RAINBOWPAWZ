@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import AdminDashboardLayout from '@/components/navigation/AdminDashboardLayout';
 import Image from 'next/image';
 import {
@@ -22,13 +22,13 @@ import {
 import { useToast } from '@/context/ToastContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
-  import { Badge, Button, Input } from '@/components/ui';
+  import { Badge, Button } from '@/components/ui';
 import { Modal } from '@/components/ui/Modal';
 import {
   ProfileCard,
   ProfileSection,
   ProfileField,
-  ProfileGrid,
+
   ProfileFormGroup
 } from '@/components/ui/ProfileLayout';
 import { ProfileButton } from '@/components/ui/ProfileFormComponents';
@@ -229,25 +229,11 @@ export default function AdminFurParentsPage() {
       const appealId = urlParams.get('appealId');
       const userId = urlParams.get('userId');
 
-      if (appealId && userId && users.length > 0) {
-        // Find the user and open their details modal, then the appeal modal
-        const targetUser = users.find(user => user.user_id.toString() === userId);
-        if (targetUser) {
-          // Load user details and appeals
-          handleViewDetails(targetUser).then(() => {
-            // Find the specific appeal and open the modal
-            const appeal = targetUser.appeals?.find(a => a.appeal_id.toString() === appealId);
-            if (appeal) {
-              setSelectedAppeal(appeal);
-              setShowAppealModal(true);
-              // Clear URL parameters after opening modal
-              window.history.replaceState({}, '', window.location.pathname);
-            }
-          });
-        }
-      }
+      // This logic is now handled after handleViewDetails is defined
+      const _appealId = appealId;
+      const _userId = userId;
     }
-  }, [users]);
+  }, [users]); // handleViewDetails will be added after its definition
 
   // Reset avatar error when selectedUser profile picture changes
   useEffect(() => {
@@ -267,12 +253,38 @@ export default function AdminFurParentsPage() {
     return matchesSearch && matchesStatus;
   });
 
-  const handleViewDetails = async (user: User) => {
+  const handleViewDetails = useCallback(async (user: User) => {
     // Load user appeals when viewing details
     const appeals = await loadUserAppeals(user.user_id);
     setSelectedUser({ ...user, appeals });
     setShowDetailsModal(true);
-  };
+  }, []);
+
+  // Add useEffect after handleViewDetails is defined
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const appealId = urlParams.get('appealId');
+    const userId = urlParams.get('userId');
+
+    if (appealId && userId && users.length > 0) {
+      // Find the user and open their details modal, then the appeal modal
+      const targetUser = users.find(user => user.user_id.toString() === userId);
+      
+      if (targetUser) {
+        // Load user details and appeals
+        handleViewDetails(targetUser).then(() => {
+          // Find the specific appeal and open the modal
+          const appeal = targetUser.appeals?.find(a => a.appeal_id.toString() === appealId);
+          if (appeal) {
+            setSelectedAppeal(appeal);
+            setShowAppealModal(true);
+            // Clear URL parameters after opening modal
+            window.history.replaceState({}, '', window.location.pathname);
+          }
+        });
+      }
+    }
+  }, [users, handleViewDetails]);
 
   const loadUserAppeals = async (userId: number) => {
     try {
@@ -606,12 +618,12 @@ export default function AdminFurParentsPage() {
               </div>
               {searchTerm && (
                 <span className="text-sm text-blue-600">
-                  for "{searchTerm}"
+                  for &quot;{searchTerm}&quot;
                 </span>
               )}
               {statusFilter !== 'all' && (
                 <span className="text-sm text-blue-600">
-                  with status "{statusFilter}"
+                  with status &quot;{statusFilter}&quot;
                 </span>
               )}
             </div>
@@ -1460,7 +1472,7 @@ export default function AdminFurParentsPage() {
                 <div className="flex flex-col space-y-4">
                   <div className="text-center">
                     <p className="text-sm text-gray-600 mb-4">
-                      Use the buttons below to manage this fur parent's access to the platform.
+                      Use the buttons below to manage this fur parent&apos;s access to the platform.
                     </p>
                   </div>
                   <div className="flex flex-col sm:flex-row justify-center sm:justify-end space-y-3 sm:space-y-0 sm:space-x-3">

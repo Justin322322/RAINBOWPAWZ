@@ -1,8 +1,7 @@
 'use client';
 
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { Button } from '@/components/ui/Button';
-import { XMarkIcon, CheckCircleIcon, ExclamationTriangleIcon, PlusIcon, CheckIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon, ExclamationTriangleIcon, PlusIcon, CheckIcon } from '@heroicons/react/24/outline';
 import { ImageUploader } from '@/components/packages/ImageUploader';
 import { useToast } from '@/context/ToastContext';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -83,7 +82,7 @@ const PackageModal: React.FC<PackageModalProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
-  const [formProgress, setFormProgress] = useState(0);
+  const [_formProgress, setFormProgress] = useState(0);
 
   // Form field states
   const [newInclusion, setNewInclusion] = useState('');
@@ -92,18 +91,12 @@ const PackageModal: React.FC<PackageModalProps> = ({
   const [uploadingImages, setUploadingImages] = useState<Set<string>>(new Set());
 
   // Enhanced features states
-  const [newCustomCategory, setNewCustomCategory] = useState('');
-  const [newCustomCremationType, setNewCustomCremationType] = useState('');
-  const [newCustomProcessingTime, setNewCustomProcessingTime] = useState('');
+  const [_newCustomCategory, setNewCustomCategory] = useState('');
+  const [_newCustomCremationType, setNewCustomCremationType] = useState('');
+  const [_newCustomProcessingTime, setNewCustomProcessingTime] = useState('');
 
   // Load package data for edit mode
-  useEffect(() => {
-    if (mode === 'edit' && packageId && isOpen) {
-      loadPackageData();
-    } else if (mode === 'create' && isOpen) {
-      resetForm();
-    }
-  }, [mode, packageId, isOpen]);
+  // This useEffect will be moved after loadPackageData is defined
 
   // Apply initial data if provided
   useEffect(() => {
@@ -224,7 +217,7 @@ const PackageModal: React.FC<PackageModalProps> = ({
     setNewCustomProcessingTime('');
   };
 
-  const loadPackageData = async () => {
+  const loadPackageData = useCallback(async () => {
     if (!packageId) return;
     
     setIsLoading(true);
@@ -294,7 +287,28 @@ const PackageModal: React.FC<PackageModalProps> = ({
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [packageId, showToast]);
+
+  // Add useEffect after loadPackageData is defined
+  useEffect(() => {
+    if (mode === 'edit' && packageId && isOpen) {
+      loadPackageData();
+    } else if (mode === 'create' && isOpen && !formData.name && formData.inclusions.length === 0) {
+      // Only reset form if it's truly empty (first open, not a re-open after validation error)
+      resetForm();
+    }
+  }, [mode, packageId, isOpen, loadPackageData, formData.name, formData.inclusions.length]);
+
+  // Reset form when modal closes (for next time it opens)
+  useEffect(() => {
+    if (!isOpen && mode === 'create') {
+      // Add a small delay to ensure smooth closing animation
+      const timeoutId = setTimeout(() => {
+        resetForm();
+      }, 300);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [isOpen, mode]);
 
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -316,14 +330,26 @@ const PackageModal: React.FC<PackageModalProps> = ({
       inclusions: [...prev.inclusions, newInclusion.trim()]
     }));
     setNewInclusion('');
+    // Clear inclusion validation error if it exists
+    if (errors.inclusions) {
+      setErrors(prev => ({
+        ...prev,
+        inclusions: undefined
+      }));
+    }
     showToast('Inclusion added successfully', 'success');
-  }, [newInclusion, showToast]);
+  }, [newInclusion, showToast, errors.inclusions]);
 
   const handleRemoveInclusion = useCallback((index: number) => {
-    setFormData(prev => ({
-      ...prev,
-      inclusions: prev.inclusions.filter((_, i) => i !== index)
-    }));
+    setFormData(prev => {
+      const newInclusions = prev.inclusions.filter((_, i) => i !== index);
+      // If removing this inclusion leaves us with none, and there was no error before, 
+      // we should potentially restore the validation error on next validation
+      return {
+        ...prev,
+        inclusions: newInclusions
+      };
+    });
     showToast('Inclusion removed', 'success');
   }, [showToast]);
 
@@ -354,7 +380,7 @@ const PackageModal: React.FC<PackageModalProps> = ({
     showToast('Add-on removed', 'success');
   }, [showToast]);
 
-  const handleTogglePetType = useCallback((petType: string) => {
+  const _handleTogglePetType = useCallback((petType: string) => {
     setFormData(prev => {
       if (prev.supportedPetTypes.includes(petType)) {
         return {
@@ -945,3 +971,4 @@ const PackageModal: React.FC<PackageModalProps> = ({
 };
 
 export default PackageModal;
+

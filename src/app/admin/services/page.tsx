@@ -532,7 +532,7 @@ function ServiceCard({
     : 0;
 
   // Ensure bookings is a valid number
-  const bookings = typeof service.bookings === 'number' && !isNaN(service.bookings)
+  const _bookings = typeof service.bookings === 'number' && !isNaN(service.bookings)
     ? service.bookings
     : 0;
 
@@ -649,7 +649,7 @@ function ServiceDetailsModal({
     : 0;
 
   // Ensure bookings is a valid number
-  const bookings = typeof service.bookings === 'number' && !isNaN(service.bookings)
+  const _bookings = typeof service.bookings === 'number' && !isNaN(service.bookings)
     ? service.bookings
     : 0;
     
@@ -801,7 +801,7 @@ function ServiceDetailsModal({
                     </div>
                     <div className="flex-1">
                       <p className="text-sm font-medium text-gray-700">Total Bookings</p>
-                      <p className="text-gray-900">{bookings}</p>
+                      <p className="text-gray-900">{_bookings}</p>
                     </div>
                   </div>
 

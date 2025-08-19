@@ -109,7 +109,7 @@ export const useOTPVerification = ({
     }
     // Removed isResending and resendCooldown from dependencies as they are state values
     // that would cause unnecessary recreations. The function handles the current state internally.
-  }, [generateOTPRequestBody, setStoredCooldownEndTime, initialOtpSentKey]);
+  }, [generateOTPRequestBody, setStoredCooldownEndTime, initialOtpSentKey, isResending, resendCooldown]);
 
   const verifyOTP = useCallback(async () => {
     const otpString = otp.join('');

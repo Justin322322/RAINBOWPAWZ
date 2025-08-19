@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import packageJson from '../../../../package.json';
 
-export async function GET(_request: NextRequest) {
+export async function GET(_: NextRequest) {
   try {
     return NextResponse.json({
       success: true,
@@ -13,7 +13,7 @@ export async function GET(_request: NextRequest) {
         environment: process.env.NODE_ENV || 'development'
       }
     });
-  } catch (error) {
+  } catch {
     return NextResponse.json({
       success: false,
       error: 'Failed to get version info'

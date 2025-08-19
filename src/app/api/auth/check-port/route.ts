@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
         isAuthenticated: !!authResult,
         userId: authResult?.userId || null,
         accountType: authResult?.accountType || null,
-        email: authResult?.email || null
+        // email removed from auth result for security
       },
       cookies: {
         hasAuthCookie: !!authCookie,

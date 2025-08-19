@@ -305,7 +305,7 @@ async function handleRefundFailed(refundData: any) {
 }
 
 // Handle GET requests (for webhook verification)
-export async function GET(_request: NextRequest) {
+export async function GET(_: NextRequest) {
   return NextResponse.json({
     message: 'PayMongo webhook endpoint',
     timestamp: new Date().toISOString()

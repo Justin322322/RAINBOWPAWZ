@@ -314,7 +314,7 @@ export async function GET(request: NextRequest) {
       const reviewData = allReviews[r.package_id] || { reviewsCount: 0, rating: 0 };
 
       // Default values for bookings and rating
-      let bookings = 0, rating = 0;
+      let bookings = 0, _rating = 0;
 
       // Map package_id to id for frontend compatibility
       return {

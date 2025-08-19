@@ -4,7 +4,7 @@ import React, { memo } from 'react';
 import { SectionLoader } from '@/components/ui/SectionLoader';
 import { PageLoader } from '@/components/ui/PageLoader';
 import { Skeleton, SkeletonText, SkeletonCard } from '@/components/ui/SkeletonLoader';
-import { cn } from '@/utils/classNames';
+
 import { useLoading } from '@/contexts/LoadingContext';
 
 /**

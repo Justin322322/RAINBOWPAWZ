@@ -194,7 +194,7 @@ const withOTPVerification = <P extends object>(
             // JWT token format
             const payload = decodeTokenUnsafe(authValue);
             if (payload) {
-              userId = payload.userId;
+              userId = payload.userId || null;
               accountType = payload.accountType;
             }
           } else {
