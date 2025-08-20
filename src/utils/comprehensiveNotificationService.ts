@@ -118,9 +118,10 @@ export async function createBookingNotification(
         const cancelledByProvider = additionalData?.cancelledBy === 'provider' || additionalData?.source === 'provider';
         
         if (cancelledByProvider) {
-          message = `Your booking for ${pet_name}'s ${service_name} has been cancelled by the service provider. ${additionalData?.reason ? `Reason: ${additionalData.reason}` : 'Please contact them for more details.'}`;
+          message = `The service provider cancelled your booking for ${pet_name}'s ${service_name}. ${additionalData?.reason ? `Reason: ${additionalData.reason}` : 'Please contact them for more details.'}`;
         } else {
-          message = `Your booking for ${pet_name}'s ${service_name} has been cancelled. ${additionalData?.reason ? `Reason: ${additionalData.reason}` : ''}`;
+          // Customer initiated
+          message = `You cancelled your booking for ${pet_name}'s ${service_name}. ${additionalData?.reason ? `Reason: ${additionalData.reason}` : ''}`;
         }
         
         type = 'warning';
@@ -175,8 +176,15 @@ export async function createBookingNotification(
     }
 
     // Create provider notification for certain events
-    if (['booking_created', 'booking_pending', 'booking_cancelled'].includes(notificationType) && provider_id) {
-      await createProviderNotification(bookingDetails, notificationType);
+    // For booking_cancelled: notify provider ONLY when the customer cancelled (not when provider cancelled)
+    const shouldNotifyProvider = (
+      notificationType === 'booking_created' ||
+      notificationType === 'booking_pending' ||
+      (notificationType === 'booking_cancelled' && additionalData?.cancelledBy !== 'provider')
+    );
+
+    if (shouldNotifyProvider && provider_id) {
+      await createProviderNotification(bookingDetails, notificationType, additionalData);
     }
 
     // Broadcast instant notification via SSE if available
@@ -589,7 +597,8 @@ async function sendBookingSMSNotification(
  */
 async function createProviderNotification(
   bookingDetails: any,
-  notificationType: BookingNotificationType
+  notificationType: BookingNotificationType,
+  additionalData?: Record<string, any>
 ): Promise<void> {
   try {
     if (!bookingDetails.provider_id) return;
@@ -632,7 +641,15 @@ async function createProviderNotification(
 
       case 'booking_cancelled':
         title = 'Booking Cancelled';
-        message = `The booking for ${bookingDetails.pet_name}'s ${bookingDetails.service_name} has been cancelled by the customer.`;
+        {
+          const cancelledByProvider = additionalData?.cancelledBy === 'provider' || additionalData?.source === 'provider';
+          if (cancelledByProvider) {
+            // Provider initiated: they already know they cancelled; don't send redundant message
+            return;
+          } else {
+            message = `The customer cancelled the booking for ${bookingDetails.pet_name}'s ${bookingDetails.service_name}.`;
+          }
+        }
         link = `/cremation/bookings/${bookingDetails.id}`;
         break;
 

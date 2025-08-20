@@ -204,13 +204,8 @@ export default function TimeSlotSelector({
   };
 
   const handleNextMonth = () => {
-    // Allow viewing up to 3 months in advance
-    const today = new Date();
-    const threeMonthsLater = new Date(today.getFullYear(), today.getMonth() + 3, 1);
-
-    if (new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1) < threeMonthsLater) {
-      setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
-    }
+    // No forward limit: allow navigating to any future month
+    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
   };
 
   const handleDateSelect = (dateString: string, timeSlots: TimeSlot[]) => {

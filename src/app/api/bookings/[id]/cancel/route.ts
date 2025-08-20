@@ -174,9 +174,11 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Send booking cancellation notifications
+    // Send booking cancellation notifications (indicate cancelled by customer)
     try {
       await createBookingNotification(parseInt(bookingId), 'booking_cancelled', {
+        cancelledBy: 'customer',
+        source: 'customer',
         reason: 'Customer requested cancellation'
       });
     } catch (notificationError) {

@@ -343,6 +343,27 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
     setCancelSuccess(false);
 
     try {
+      // Optimistically update UI immediately
+      const previousAllBookings = allBookings;
+      const optimisticUpdated = allBookings.map(booking =>
+        booking.id === selectedBooking.id
+          ? { ...booking, status: 'cancelled' as BookingData['status'] }
+          : booking
+      );
+
+      setAllBookings(optimisticUpdated);
+      if (activeFilter) {
+        setBookings(optimisticUpdated.filter(booking => booking.status === activeFilter));
+      } else {
+        setBookings(optimisticUpdated);
+      }
+
+      // Show success state early for better UX
+      setCancelSuccess(true);
+      if (selectedBooking.id) {
+        setCancelledBookingIds(prev => [...prev, selectedBooking.id]);
+      }
+
       // Make API call to cancel the booking with credentials to ensure cookies are sent
       const response = await fetch(`/api/bookings/${selectedBooking.id}/cancel`, {
         method: 'POST',
@@ -362,44 +383,38 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
           }
         } catch {
         }
+        // Roll back optimistic update on failure
+        setAllBookings(previousAllBookings);
+        if (activeFilter) {
+          setBookings(previousAllBookings.filter(booking => booking.status === activeFilter));
+        } else {
+          setBookings(previousAllBookings);
+        }
         throw new Error(errorMessage);
       }
 
       const responseData = await response.json();
 
-      // Update the booking status locally
-      const updatedBookings = allBookings.map(booking =>
+      // Merge any payment status update from the server
+      const mergedUpdated = (prev: BookingData[]) => prev.map(booking =>
         booking.id === selectedBooking.id
           ? {
               ...booking,
-              status: 'cancelled' as BookingData['status'],
               payment_status: responseData.refund ? 'refunded' as BookingData['payment_status'] : booking.payment_status
             }
           : booking
       );
+      setAllBookings(mergedUpdated);
+      setBookings(prev => mergedUpdated(prev));
 
-      setAllBookings(updatedBookings);
-
-      // Apply current filter
-      if (activeFilter) {
-        setBookings(updatedBookings.filter(booking => booking.status === activeFilter));
-      } else {
-        setBookings(updatedBookings);
-      }
-
-      // Mark this booking as successfully cancelled
-      setCancelSuccess(true);
-
-      // Add this booking ID to the list of cancelled bookings
-      if (selectedBooking.id) {
-        setCancelledBookingIds(prev => [...prev, selectedBooking.id]);
-      }
-
-      // Close the modal after a delay
+      // Auto-close the modal shortly after success, but also allow manual close
       setTimeout(() => {
         setShowCancelModal(false);
         setSelectedBooking(null);
-      }, 2000);
+      }, 1500);
+
+      // Trigger a background refresh to ensure full sync with server state
+      setRefreshCounter(prev => prev + 1);
     } catch (error) {
       // Show error message to the user
       setError(error instanceof Error ? error.message : 'Failed to cancel booking. Please try again.');
@@ -1233,6 +1248,18 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
                       <p className="mt-2 text-sm text-gray-500">
                         Your booking (ID: {selectedBooking.id}) has been successfully cancelled.
                       </p>
+                      <div className="mt-6 flex justify-center">
+                        <button
+                          type="button"
+                          className="inline-flex justify-center rounded-md border border-transparent bg-[var(--primary-green)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--primary-green-hover)] focus:outline-none"
+                          onClick={() => {
+                            setShowCancelModal(false);
+                            setSelectedBooking(null);
+                          }}
+                        >
+                          Close
+                        </button>
+                      </div>
                     </div>
                   ) : (
                     <>

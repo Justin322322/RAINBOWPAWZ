@@ -161,14 +161,17 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       }
 
       const data = await response.json();
-      const notifications = data.notifications || [];
-      const unreadCount = data.unread_count || 0;
+      const notifications: Notification[] = (data.notifications || []) as Notification[];
+      const responseUnreadRaw = (data.unreadCount !== undefined ? data.unreadCount : data.unread_count);
+      const computedUnreadCount = typeof responseUnreadRaw === 'number'
+        ? responseUnreadRaw
+        : notifications.filter(n => n.is_read === 0).length;
 
       setNotifications(notifications);
-      setUnreadCount(unreadCount);
+      setUnreadCount(computedUnreadCount);
       setError(null);
 
-      return { notifications, unreadCount };
+      return { notifications, unreadCount: computedUnreadCount };
     } catch (error) {
       console.error('Error fetching notifications:', error);
       setError('Failed to fetch notifications');
