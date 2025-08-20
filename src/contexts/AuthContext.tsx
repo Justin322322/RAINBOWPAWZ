@@ -4,7 +4,7 @@ import React, { createContext, useState, useEffect, ReactNode, useCallback } fro
 import { useRouter } from 'next/navigation';
 
 // Define the shape of user data for different user types
-export interface BaseUserData {
+interface BaseUserData {
   id: number;
   email: string;
   first_name: string;
@@ -14,14 +14,14 @@ export interface BaseUserData {
   [key: string]: any;
 }
 
-export interface AdminData extends BaseUserData {
+interface AdminData extends BaseUserData {
   username: string;
   full_name: string;
   user_type: 'admin';
   role: 'admin';
 }
 
-export interface BusinessData extends BaseUserData {
+interface BusinessData extends BaseUserData {
   user_type: 'business';
   role: 'business';
   business_id?: number;
@@ -30,7 +30,7 @@ export interface BusinessData extends BaseUserData {
   is_otp_verified: number;
 }
 
-export interface UserData extends BaseUserData {
+interface UserData extends BaseUserData {
   user_type: 'user';
   role: 'user' | 'fur_parent';
   is_otp_verified: number;
@@ -40,7 +40,8 @@ export interface UserData extends BaseUserData {
   created_at: string;
 }
 
-export type AuthUserData = AdminData | BusinessData | UserData;
+type AuthUserData = AdminData | BusinessData | UserData | any;
+
 
 interface AuthState {
   isAuthenticated: boolean;
@@ -445,5 +446,3 @@ export const useAuth = () => {
   }
   return context;
 };
-
-export default AuthContext;

@@ -19,7 +19,7 @@ import { useRouter } from 'next/navigation';
 import StatCard from '@/components/ui/StatCard';
 import { SkeletonCard } from '@/components/ui/SkeletonLoader';
 
-// The actual component that will be wrapped by withBusinessVerification HOC
+// Business dashboard page wrapped by withBusinessAuth HOC
 function CremationDashboardPage({ userData }: { userData: any }) {
   const router = useRouter();
   const _userName = userData?.business_name || userData?.first_name || 'Cremation Provider';

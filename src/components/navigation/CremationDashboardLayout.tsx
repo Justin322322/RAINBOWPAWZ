@@ -24,7 +24,7 @@ export default function CremationDashboardLayout({
 }: CremationDashboardLayoutProps) {
   const _router = useRouter();
 
-  // Since this component is wrapped by withBusinessVerification HOC,
+  // Since this layout is used under withBusinessAuth HOC,
   // we can trust that propUserData is valid and authenticated
   const userData = propUserData;
 

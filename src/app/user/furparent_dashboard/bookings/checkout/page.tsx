@@ -33,7 +33,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
   const { items, removeItem } = useCart();
   const { showToast } = useToast();
 
-  // Track if we're still waiting for userData to load from the authentication HOC
+  // Track if we're still waiting for userData to load from withUserAuth HOC
   const [isWaitingForAuth, setIsWaitingForAuth] = useState(true);
   // Local state to hold user data (either from props or session storage)
   const [currentUserData, setCurrentUserData] = useState<any>(null);
@@ -48,7 +48,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
 
   // Handle authentication state changes and get user data
   useEffect(() => {
-    // Give the authentication HOC some time to load userData
+    // Give withUserAuth some time to load userData
     const authTimeout = setTimeout(() => {
       setIsWaitingForAuth(false);
     }, 2000); // Wait 2 seconds for authentication to complete

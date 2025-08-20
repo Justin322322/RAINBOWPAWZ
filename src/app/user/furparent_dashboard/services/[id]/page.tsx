@@ -715,5 +715,5 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
   );
 }
 
-// Export the component wrapped with auth HOC
+// Export the component wrapped with withUserAuth HOC
 export default withUserAuth(ServiceDetailPage);

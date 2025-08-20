@@ -21,8 +21,8 @@ import { getCurrentPort } from './appUrl';
 // Constants
 const AUTH_TOKEN_COOKIE = 'auth_token';
 const AUTH_TOKEN_3000 = 'auth_token_3000';
-const USER_DATA_KEY = 'user_data';
-const ADMIN_DATA_KEY = 'admin_data';
+// const USER_DATA_KEY = 'user_data';
+// const ADMIN_DATA_KEY = 'admin_data';
 const SESSION_TOKEN_KEY = 'auth_token';
 
 interface AuthResult {
@@ -31,18 +31,6 @@ interface AuthResult {
   // Email removed from JWT tokens for security - use dedicated API endpoints for user data
 }
 
-interface FastAuthResult {
-  authenticated: boolean;
-  userId: string | null;
-  accountType: string | null;
-  userData: any | null;
-  adminData: any | null;
-}
-
-interface TokenParts {
-  userId: string;
-  accountType: string;
-}
 
 /**
  * Parse auth token and extract user info (for API routes)
@@ -396,114 +384,3 @@ export const redirectToDashboard = (accountType: string): string => {
       return '/';
   }
 };
-
-/**
- * Fast auth check that doesn't redirect - use for preventing flashing during navigation
- */
-export const fastAuthCheck = (): FastAuthResult => {
-  const defaultState: FastAuthResult = {
-    authenticated: false,
-    userId: null,
-    accountType: null,
-    userData: null,
-    adminData: null
-  };
-
-  try {
-    if (typeof window === 'undefined') {
-      return defaultState;
-    }
-
-    const { userData, adminData } = getCachedUserData();
-    const authToken = getAuthToken();
-    
-    if (!authToken) return defaultState;
-
-    if (authToken.includes('.')) {
-      return {
-        authenticated: true,
-        userId: null, // Don't try to decode client-side for security
-        accountType: null, // Don't try to decode client-side for security
-        userData,
-        adminData
-      };
-    }
-
-    const tokenParts = parseLegacyToken(authToken);
-    if (!tokenParts) {
-      return {
-        authenticated: true,
-        userId: null,
-        accountType: null,
-        userData,
-        adminData
-      };
-    }
-
-    return getAuthResultByAccountType(tokenParts, userData, adminData);
-  } catch {
-    return defaultState;
-  }
-};
-
-/**
- * Get cached user data from session storage
- */
-function getCachedUserData(): { userData: any | null; adminData: any | null } {
-  try {
-    const userData = typeof sessionStorage !== 'undefined' ? 
-      JSON.parse(sessionStorage.getItem(USER_DATA_KEY) || 'null') : null;
-    const adminData = typeof sessionStorage !== 'undefined' ? 
-      JSON.parse(sessionStorage.getItem(ADMIN_DATA_KEY) || 'null') : null;
-    
-    return { userData, adminData };
-  } catch {
-    return { userData: null, adminData: null };
-  }
-}
-
-/**
- * Get auth result based on account type
- */
-function getAuthResultByAccountType(
-  tokenParts: TokenParts,
-  userData: any | null,
-  adminData: any | null
-): FastAuthResult {
-  const { userId, accountType } = tokenParts;
-
-  switch (accountType) {
-    case 'admin':
-      return {
-        authenticated: true,
-        userId,
-        accountType,
-        userData: null,
-        adminData
-      };
-    case 'user':
-      return {
-        authenticated: true,
-        userId,
-        accountType,
-        userData,
-        adminData: null
-      };
-    case 'business':
-      return {
-        authenticated: true,
-        userId,
-        accountType,
-        userData: null,
-        adminData: null
-      };
-    default:
-      return {
-        authenticated: true,
-        userId,
-        accountType,
-        userData: null,
-        adminData: null
-      };
-  }
-}
