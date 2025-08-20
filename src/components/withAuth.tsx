@@ -7,7 +7,7 @@ import OTPVerificationModal from '@/components/OTPVerificationModal';
 import GetStartedModal from '@/components/GetStartedModal';
 
 // Define the shape of user data for different user types
-export interface AdminData {
+interface AdminData {
   id: number;
   username: string;
   email: string;
@@ -17,7 +17,7 @@ export interface AdminData {
   [key: string]: any;
 }
 
-export interface BusinessData {
+interface BusinessData {
   id: number;
   email: string;
   first_name: string;
@@ -47,7 +47,7 @@ export interface UserData {
   [key: string]: any;
 }
 
-export type AuthUserData = AdminData | BusinessData | UserData;
+type AuthUserData = AdminData | BusinessData | UserData;
 
 // Configuration for different user types
 interface AuthConfig {
@@ -134,7 +134,7 @@ const withAuth = <P extends object>(
     useEffect(() => {
       // Check if user type matches required type
       if (isAuthenticated && userData && authUserType !== config.requiredUserType) {
-        router.replace(config.redirectTo);
+        router.replace(config.redirectTo || '/');
         return;
       }
 
@@ -310,6 +310,3 @@ export const withBusinessAuth = <P extends object>(
 export const withUserAuth = <P extends object>(
   Component: React.ComponentType<P & { userData: UserData }>
 ) => withAuth(Component, 'user') as React.FC<Omit<P, 'userData'>>;
-
-// Export the main withAuth function
-export default withAuth;

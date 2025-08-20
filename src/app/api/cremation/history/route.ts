@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
-import { getServerSession } from '@/lib/auth';
+import { verifySecureAuth } from '@/lib/secureAuth';
 import fs from 'fs';
 import path from 'path';
 
@@ -10,13 +10,10 @@ export async function GET(request: NextRequest) {
     let providerId;
 
     try {
-      // Get the authenticated user
-      const session = await getServerSession();
-      if (!session || !session.user) {
-      } else {
-        // Get the provider ID from the user session
-        const userId = session.user.id;
-
+      // Verify secure auth via cookie token
+      const auth = await verifySecureAuth(request);
+      if (auth && auth.userId) {
+        const userId = auth.userId;
         // Fetch provider ID from the service_providers table for this user
         const userQuery = `
           SELECT provider_id as id FROM service_providers WHERE user_id = ?
@@ -25,10 +22,10 @@ export async function GET(request: NextRequest) {
 
         if (userResult && userResult.length > 0) {
           providerId = userResult[0].id;
-        } else {
         }
       }
     } catch {
+      // Ignore auth errors and fall back to default provider below
     }
 
     if (!providerId) {
