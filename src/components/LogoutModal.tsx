@@ -4,11 +4,9 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { clearAuthToken } from '@/utils/auth';
-import { useToast } from '@/context/ToastContext';
+import { useToast } from '@/contexts/ToastContext';
 
-import { clearGlobalAdminAuthState } from '@/components/withAdminAuth';
-import { clearGlobalBusinessAuthState } from '@/components/withBusinessVerification';
-import { clearGlobalUserAuthState } from '@/components/withUserAuth';
+import { useAuth } from '@/contexts/AuthContext';
 import { Modal } from '@/components/ui/Modal';
 
 interface LogoutModalProps {
@@ -20,6 +18,7 @@ interface LogoutModalProps {
 export default function LogoutModal({ isOpen, onClose, userName = 'User' }: LogoutModalProps) {
   const router = useRouter();
   const { showToast } = useToast();
+  const { clearAuthState } = useAuth();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [logoutSuccess, setLogoutSuccess] = useState(false);
 
@@ -46,14 +45,8 @@ export default function LogoutModal({ isOpen, onClose, userName = 'User' }: Logo
 
       // Clear business verification cache (functionality removed)
       
-      // Clear global admin auth state
-      clearGlobalAdminAuthState();
-      
-      // Clear global business auth state
-      clearGlobalBusinessAuthState();
-      
-      // Clear global user auth state
-      clearGlobalUserAuthState();
+      // Clear unified auth state
+      clearAuthState();
 
       // Clear session storage - be more thorough for cremation users
       sessionStorage.removeItem('user_data');
@@ -82,10 +75,8 @@ export default function LogoutModal({ isOpen, onClose, userName = 'User' }: Logo
       // Still clear the token and redirect even if the API call fails
       clearAuthToken();
       
-      // Clear business verification cache even on error (functionality removed)
-      clearGlobalAdminAuthState();
-      clearGlobalBusinessAuthState();
-      clearGlobalUserAuthState();
+      // Clear unified auth state even on error
+      clearAuthState();
       
       showToast('Logged out successfully', 'success');
       router.push('/');

@@ -143,3 +143,8 @@ init_*.js
 
 # Local configuration
 config/local.json
+
+# Consolidation and refactoring files
+CONSOLIDATION_TASKS.md
+*.consolidation.md
+*.refactor.md

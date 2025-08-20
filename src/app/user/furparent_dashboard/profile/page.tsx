@@ -13,7 +13,7 @@ import {
   XMarkIcon,
   InformationCircleIcon
 } from '@heroicons/react/24/outline';
-import withUserAuth, { UserData } from '@/components/withUserAuth';
+import { withUserAuth, UserData } from '@/components/withAuth';
 import Image from 'next/image';
 import { getProfilePictureUrl } from '@/utils/imageUtils';
 import PhilippinePhoneInput from '@/components/ui/PhilippinePhoneInput';
@@ -25,7 +25,7 @@ import {
   ProfileButton
 } from '@/components/ui/ProfileFormComponents';
 import { SkeletonCard } from '@/components/ui/SkeletonLoader';
-import { useToast } from '@/context/ToastContext';
+import { useToast } from '@/contexts/ToastContext';
 
 interface ProfilePageProps {
   userData?: UserData;

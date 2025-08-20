@@ -12,7 +12,7 @@ import {
   XCircleIcon,
   EyeIcon
 } from '@heroicons/react/24/outline';
-import { useToast } from '@/context/ToastContext';
+import { useToast } from '@/contexts/ToastContext';
 
 interface Appeal {
   appeal_id: number;

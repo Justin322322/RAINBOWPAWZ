@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { ToastProvider } from '@/context/ToastContext';
+import { ToastProvider } from '@/contexts/ToastContext';
 
 export default function ToastWrapper() {
   return (

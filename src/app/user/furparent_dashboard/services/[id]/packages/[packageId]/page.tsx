@@ -14,7 +14,7 @@ import FurParentPageSkeleton from '@/components/ui/FurParentPageSkeleton';
 import { useCart } from '@/contexts/CartContext';
 import CartSidebar from '@/components/cart/CartSidebar';
 import { handleImageError } from '@/utils/imageUtils';
-import { useToast } from '@/context/ToastContext';
+import { useToast } from '@/contexts/ToastContext';
 
 interface PackageDetailPageProps {
   userData?: any;

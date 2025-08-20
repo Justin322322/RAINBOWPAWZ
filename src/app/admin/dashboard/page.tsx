@@ -14,7 +14,7 @@ import {
   ClockIcon,
 } from '@heroicons/react/24/outline';
 import Link from 'next/link';
-import withAdminAuth from '@/components/withAdminAuth';
+import { withAdminAuth } from '@/components/withAuth';
 import StatCard from '@/components/ui/StatCard';
 import { Skeleton, SkeletonText, SkeletonCard } from '@/components/ui/SkeletonLoader';
 import LogAnalytics from '@/components/admin/LogAnalytics';

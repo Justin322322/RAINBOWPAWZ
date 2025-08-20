@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import { motion } from 'framer-motion';
 import FurParentDashboardWrapper from '@/components/navigation/FurParentDashboardWrapper';
-import { UserData } from '@/components/withUserAuth';
+import { UserData } from '@/components/withAuth';
 import { Button } from '@/components/ui/Button';
 import Link from 'next/link';
 

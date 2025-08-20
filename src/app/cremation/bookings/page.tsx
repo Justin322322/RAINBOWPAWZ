@@ -4,8 +4,8 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import CremationDashboardLayout from '@/components/navigation/CremationDashboardLayout';
-import withBusinessVerification from '@/components/withBusinessVerification';
-import { useToast } from '@/context/ToastContext';
+import { withBusinessAuth } from '@/components/withAuth';
+import { useToast } from '@/contexts/ToastContext';
 import {
   MagnifyingGlassIcon,
   CalendarIcon,
@@ -482,4 +482,4 @@ function CremationBookingsPage({ userData }: { userData: any }) {
   );
 }
 
-export default withBusinessVerification(CremationBookingsPage);
+export default withBusinessAuth(CremationBookingsPage);

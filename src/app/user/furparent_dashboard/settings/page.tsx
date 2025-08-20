@@ -8,7 +8,7 @@ import {
 } from '@heroicons/react/24/outline';
 import FurParentDashboardWrapper from '@/components/navigation/FurParentDashboardWrapper';
 import { SkeletonCard } from '@/components/ui/SkeletonLoader';
-import { useToast } from '@/context/ToastContext';
+import { useToast } from '@/contexts/ToastContext';
 
 interface SettingsPageProps {
   userData?: any;

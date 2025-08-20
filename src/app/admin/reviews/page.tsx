@@ -12,8 +12,8 @@ import {
   XCircleIcon,
 } from '@heroicons/react/24/outline';
 import AdminDashboardLayout from '@/components/navigation/AdminDashboardLayout';
-import withAdminAuth from '@/components/withAdminAuth';
-import { useToast } from '@/context/ToastContext';
+import { withAdminAuth } from '@/components/withAuth';
+import { useToast } from '@/contexts/ToastContext';
 import StarRating from '@/components/ui/StarRating';
 import { Modal } from '@/components/ui/Modal';
 import { SectionLoader } from '@/components/ui/SectionLoader';

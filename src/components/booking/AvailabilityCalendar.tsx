@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { useToast } from '@/context/ToastContext';
+import { useToast } from '@/contexts/ToastContext';
 import CalendarHeader from './CalendarHeader';
 import QuickPresetsPanel from './QuickPresetsPanel';
 import TimeSlotModal from './TimeSlotModal';
