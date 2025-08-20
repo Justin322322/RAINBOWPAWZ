@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import CremationDashboardLayout from '@/components/navigation/CremationDashboardLayout';
-import withBusinessVerification from '@/components/withBusinessVerification';
+import { withBusinessAuth } from '@/components/withAuth';
 import {
   MagnifyingGlassIcon,
   PlusIcon,
@@ -347,4 +347,4 @@ function PackagesPage({ userData }: PackagesPageProps) {
   );
 }
 
-export default withBusinessVerification(PackagesPage);
+export default withBusinessAuth(PackagesPage);

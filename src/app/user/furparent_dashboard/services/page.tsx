@@ -9,7 +9,7 @@ type LocationData = {
   source: 'profile' | 'default' | 'geolocation';
 };
 import { cacheManager } from '@/utils/cache';
-import withUserAuth from '@/components/withUserAuth';
+import { withUserAuth } from '@/components/withAuth';
 
 interface ServicesPageProps {
   userData?: any;

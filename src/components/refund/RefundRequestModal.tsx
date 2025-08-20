@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { XMarkIcon, ExclamationTriangleIcon, CurrencyDollarIcon, CalendarIcon, ClockIcon, CreditCardIcon } from '@heroicons/react/24/outline';
-import { useToast } from '@/context/ToastContext';
+import { useToast } from '@/contexts/ToastContext';
 import { REFUND_REASONS } from '@/types/refund';
 
 interface RefundRequestModalProps {

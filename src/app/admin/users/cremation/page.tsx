@@ -21,7 +21,7 @@ import {
   CurrencyDollarIcon,
   ChartBarIcon
 } from '@heroicons/react/24/outline';
-import { useToast } from '@/context/ToastContext';
+import { useToast } from '@/contexts/ToastContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 import { Modal } from '@/components/ui/Modal';

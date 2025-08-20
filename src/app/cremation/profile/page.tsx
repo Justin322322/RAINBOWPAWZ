@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import CremationDashboardLayout from '@/components/navigation/CremationDashboardLayout';
-import withBusinessVerification from '@/components/withBusinessVerification';
-import { useToast } from '@/context/ToastContext';
+import { withBusinessAuth } from '@/components/withAuth';
+import { useToast } from '@/contexts/ToastContext';
 import { validatePasswordStrength } from '@/utils/passwordValidation';
 import {
   CheckCircleIcon,
@@ -1539,4 +1539,4 @@ function CremationProfilePage({ userData }: { userData: any }) {
   );
 }
 
-export default withBusinessVerification(CremationProfilePage);
+export default withBusinessAuth(CremationProfilePage);

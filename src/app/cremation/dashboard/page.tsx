@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import CremationDashboardLayout from '@/components/navigation/CremationDashboardLayout';
-import withBusinessVerification from '@/components/withBusinessVerification';
+import { withBusinessAuth } from '@/components/withAuth';
 import {
   CalendarIcon,
   StarIcon,
@@ -12,7 +12,7 @@ import {
   BanknotesIcon,
   ArchiveBoxIcon
 } from '@heroicons/react/24/outline';
-import { useToast } from '@/context/ToastContext';
+import { useToast } from '@/contexts/ToastContext';
 import { PackageImage } from '@/components/packages/PackageImage';
 import AvailabilityCalendar from '@/components/booking/AvailabilityCalendar';
 import { useRouter } from 'next/navigation';
@@ -540,4 +540,4 @@ function CremationDashboardPage({ userData }: { userData: any }) {
 }
 
 // Wrap with HOC and export
-export default withBusinessVerification(CremationDashboardPage);
+export default withBusinessAuth(CremationDashboardPage);

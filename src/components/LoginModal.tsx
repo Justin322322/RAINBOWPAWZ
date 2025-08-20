@@ -7,7 +7,7 @@ import { Input, Button, Checkbox, Alert } from '@/components/ui';
 import { EyeIcon, EyeSlashIcon, ArrowRightIcon, XMarkIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 import ForgotPasswordModal from './ForgotPasswordModal';
 import { redirectToDashboard } from '@/utils/auth';
-import { useToast } from '@/context/ToastContext';
+import { useToast } from '@/contexts/ToastContext';
 
 type LoginModalProps = {
   isOpen: boolean;

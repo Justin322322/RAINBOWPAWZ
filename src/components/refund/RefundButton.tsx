@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { CurrencyDollarIcon } from '@heroicons/react/24/outline';
-import { useToast } from '@/context/ToastContext';
+import { useToast } from '@/contexts/ToastContext';
 import RefundRequestModal from './RefundRequestModal';
 
 interface RefundButtonProps {

@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import AdminNavbar from './AdminNavbar';
 import AdminSidebar from './AdminSidebar';
-import withAdminAuth from '@/components/withAdminAuth';
+import { withAdminAuth } from '@/components/withAuth';
 import DashboardSkeleton from '@/components/ui/DashboardSkeleton';
 
 interface AdminDashboardLayoutProps {

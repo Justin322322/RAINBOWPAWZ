@@ -19,7 +19,7 @@ import {
   PencilIcon
 } from '@heroicons/react/24/outline';
 import Link from 'next/link';
-import { useToast } from '@/context/ToastContext';
+import { useToast } from '@/contexts/ToastContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import ConfirmationModal from '@/components/ConfirmationModal';
 import Image from 'next/image';
