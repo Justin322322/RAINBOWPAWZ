@@ -12,7 +12,7 @@ interface MonthGridProps {
 }
 
 function MonthGrid({ days, selectedDate, formatDateToString, onDayClick }: MonthGridProps) {
-  const shouldReduceMotion = useReducedMotion();
+  const _shouldReduceMotion = useReducedMotion();
   return (
     <>
       <div className="grid grid-cols-7 gap-1 mb-2">

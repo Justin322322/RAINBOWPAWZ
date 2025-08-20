@@ -118,7 +118,7 @@ export async function PUT(
     const currentAppeal = currentAppeals[0];
 
     // Update the appeal
-    const result = await withTransaction(async (transaction) => {
+    const _result = await withTransaction(async (transaction) => {
       // Log the status change in appeal history
       await transaction.query(`
         INSERT INTO appeal_history (appeal_id, previous_status, new_status, admin_id, admin_response, notes)
@@ -276,7 +276,7 @@ async function notifyUserOfAppealUpdate(
   appeal: any,
   newStatus: string,
   adminResponse: string | null,
-  admin: any
+  _: any
 ) {
   try {
     let title = '';
@@ -358,7 +358,7 @@ function createAppealStatusEmail({
   userName,
   status,
   adminResponse,
-  appealSubject
+  appealSubject: _
 }: {
   userName: string;
   status: 'under_review' | 'approved' | 'rejected';

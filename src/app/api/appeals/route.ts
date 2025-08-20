@@ -390,7 +390,7 @@ async function notifyAdminsOfNewAppeal(appealId: number, user: any, subject: str
 
 // Email template for new appeal notifications
 function createAppealNotificationEmail({
-  adminName,
+  adminName: _,
   userName,
   userEmail,
   appealSubject,

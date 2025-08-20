@@ -410,7 +410,7 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
                 </p>
                 <div className="mt-8 border-l-4 border-white/30 pl-6 max-w-md mx-auto md:mx-0">
                   <p className="text-white/90 text-lg italic leading-relaxed">
-                    "{provider.description || 'Professional pet cremation services with care and compassion.'}"
+                    &quot;{provider.description || 'Professional pet cremation services with care and compassion.'}&quot;
                   </p>
                 </div>
               </div>

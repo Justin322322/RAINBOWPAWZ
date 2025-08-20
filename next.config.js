@@ -53,7 +53,6 @@ const allowedImageHosts = rawHosts
           { protocol: 'http', hostname: '*', port: '', pathname: '/**' },
           { protocol: 'https', hostname: '*', port: '', pathname: '/**' },
         ],
-    domains: isProd ? allowedImageHosts : ['localhost', '192.168.56.1'],
     dangerouslyAllowSVG: false,
     contentDispositionType: 'attachment',
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
@@ -94,9 +93,11 @@ const allowedImageHosts = rawHosts
       }
     ]
   },
-  // Temporarily allow builds with ESLint/TS issues; we'll fix incrementally
+  // Enable ESLint during builds for strict unused variable checking
   eslint: {
-    ignoreDuringBuilds: true,
+    ignoreDuringBuilds: false,
+    // Only lint files in these directories during build
+    dirs: ['src'],
   },
   typescript: {
     ignoreBuildErrors: true,

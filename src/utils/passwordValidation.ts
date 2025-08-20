@@ -103,7 +103,7 @@ const PASSWORD_CRITERIA = [
  * @param password - The password to evaluate
  * @returns Number of criteria met (0-5)
  */
-function calculatePasswordStrength(password: string): number {
+function _calculatePasswordStrength(password: string): number {
   return PASSWORD_CRITERIA.filter(criterion => criterion.test(password)).length;
 }
 

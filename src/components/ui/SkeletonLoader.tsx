@@ -204,7 +204,7 @@ export const SkeletonCard: React.FC<SkeletonCardProps> = React.memo(({
 
 SkeletonCard.displayName = 'SkeletonCard';
 
-const SkeletonLoader = {
+const _SkeletonLoader = {
   Skeleton,
   SkeletonText,
   SkeletonCard,

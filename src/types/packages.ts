@@ -19,7 +19,7 @@ export interface PackageData {
   supportedPetTypes?: string[];
 }
 
-interface PackageFormData {
+interface _PackageFormData {
   name: string;
   description: string;
   category: string;

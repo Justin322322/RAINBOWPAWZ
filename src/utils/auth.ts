@@ -15,7 +15,7 @@
  * Client-side code can continue using getUserId/getAccountType sync versions
  */
 import { NextRequest } from 'next/server';
-import { extractTokenFromHeader, type JWTPayload } from '@/lib/jwt';
+import { extractTokenFromHeader } from '@/lib/jwt';
 import { getCurrentPort } from './appUrl';
 
 // Constants

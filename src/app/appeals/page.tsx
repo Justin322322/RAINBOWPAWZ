@@ -1,12 +1,12 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import {
   ExclamationTriangleIcon,
   DocumentTextIcon,
-  PaperClipIcon,
+
   CheckCircleIcon,
   ClockIcon,
   XCircleIcon,
@@ -45,8 +45,8 @@ export default function AppealsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [appeals, setAppeals] = useState<Appeal[]>([]);
   const [showForm, setShowForm] = useState(false);
-  const [selectedAppeal, setSelectedAppeal] = useState<Appeal | null>(null);
-  const [userStatus, setUserStatus] = useState<string>('');
+  const [_selectedAppeal, setSelectedAppeal] = useState<Appeal | null>(null);
+  const [_userStatus, setUserStatus] = useState<string>('');
 
   // Form state
   const [formData, setFormData] = useState({
@@ -55,11 +55,7 @@ export default function AppealsPage() {
     appeal_type: 'restriction'
   });
 
-  useEffect(() => {
-    checkUserStatusAndLoadAppeals();
-  }, []);
-
-  const checkUserStatusAndLoadAppeals = async () => {
+  const checkUserStatusAndLoadAppeals = useCallback(async (): Promise<boolean> => {
     try {
       // Try to check authentication using the general auth endpoint first
       let authResponse = await fetch('/api/auth/check', {
@@ -74,14 +70,14 @@ export default function AppealsPage() {
       if (!authResponse.ok) {
         // If general auth fails, redirect to home page (not /login)
         router.push('/');
-        return;
+        return false;
       }
 
       const authData = await authResponse.json();
 
       if (!authData.authenticated) {
         router.push('/');
-        return;
+        return false;
       }
 
       // Now get detailed user status based on account type
@@ -93,12 +89,12 @@ export default function AppealsPage() {
       } else {
         // Admin users shouldn't access appeals page
         router.push('/admin/dashboard');
-        return;
+        return false;
       }
 
       if (!userStatusResponse.ok) {
         router.push('/');
-        return;
+        return false;
       }
 
       const statusData = await userStatusResponse.json();
@@ -108,7 +104,7 @@ export default function AppealsPage() {
         const serviceProvider = statusData.serviceProvider;
         if (!serviceProvider) {
           router.push('/cremation/pending-verification');
-          return;
+          return false;
         }
 
         const applicationStatus = serviceProvider.application_status ?
@@ -117,7 +113,7 @@ export default function AppealsPage() {
         if (applicationStatus !== 'restricted') {
           // Not restricted, redirect to dashboard
           router.push('/cremation/dashboard');
-          return;
+          return false;
         }
 
         setUserStatus('restricted');
@@ -127,23 +123,24 @@ export default function AppealsPage() {
         if (!user || user.status !== 'restricted') {
           // Not restricted, redirect to dashboard
           router.push('/user/furparent_dashboard');
-          return;
+          return false;
         }
 
         setUserStatus(user.status);
       }
 
-      // Load user's appeals
-      await loadAppeals();
+      // User is properly authenticated and restricted, proceed with loading appeals
+      return true;
     } catch (error) {
       console.error('Error checking user status:', error);
       showToast('Error loading page', 'error');
+      return false;
     } finally {
       setLoading(false);
     }
-  };
+  }, [router, showToast]);
 
-  const loadAppeals = async () => {
+  const loadAppeals = useCallback(async () => {
     try {
       const response = await fetch('/api/appeals');
       if (response.ok) {
@@ -159,7 +156,18 @@ export default function AppealsPage() {
     } catch (error) {
       console.error('Error loading appeals:', error);
     }
-  };
+  }, []);
+
+  // Add useEffect after functions are defined
+  useEffect(() => {
+    const initializePage = async () => {
+      const shouldProceed = await checkUserStatusAndLoadAppeals();
+      if (shouldProceed) {
+        await loadAppeals();
+      }
+    };
+    initializePage();
+  }, [checkUserStatusAndLoadAppeals, loadAppeals]);
 
   const loadAppealHistory = async (appealId: number) => {
     try {
@@ -445,7 +453,7 @@ export default function AppealsPage() {
                         <div className="mt-4">
                           <p className="text-sm font-medium text-gray-700 mb-2">Status History:</p>
                           <div className="space-y-2">
-                            {appeal.history.slice(-3).map((historyItem, index) => (
+                            {appeal.history.slice(-3).map((historyItem, _index) => (
                               <div key={historyItem.history_id} className="flex items-center text-xs text-gray-600">
                                 <div className={`w-2 h-2 rounded-full mr-2 ${
                                   historyItem.new_status === 'approved' ? 'bg-green-500' :

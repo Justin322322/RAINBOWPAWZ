@@ -6,7 +6,6 @@
 import { query } from '@/lib/db';
 import { createRefund as createPayMongoRefund, phpToCentavos } from '@/lib/paymongo';
 import {
-  Refund,
   RefundRequest,
   RefundEligibilityCheck,
   PayMongoRefundData,

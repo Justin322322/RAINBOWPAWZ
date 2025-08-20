@@ -51,7 +51,7 @@ function SettingsPage({ userData }: SettingsPageProps) {
     };
 
     loadSettings();
-  }, []);
+  }, [showToast]);
 
   // Skeleton loading control with minimum delay (600-800ms for fur parent standards)
   useEffect(() => {

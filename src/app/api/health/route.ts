@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-export async function GET(_request: NextRequest) {
+export async function GET(_: NextRequest) {
   try {
     // Simple health check (monitoring service removed)
     const health = {
@@ -36,7 +36,7 @@ export async function GET(_request: NextRequest) {
 }
 
 // Simple ping endpoint for basic availability checks
-export async function HEAD(_request: NextRequest) {
+export async function HEAD(_: NextRequest) {
   return new NextResponse(null, { 
     status: 200,
     headers: {

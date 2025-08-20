@@ -165,7 +165,7 @@ export default function CremationNavbar({
             userDataName = `${cache.userData.first_name} ${cache.userData.last_name || ''}`.trim();
           }
         }
-      } catch (error) {
+      } catch {
         // Ignore parsing errors
       }
 

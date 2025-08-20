@@ -7,6 +7,11 @@
     "build": "next build",
     "start": "next start",
     "type-check": "tsc --noEmit",
+    "lint": "next lint",
+    "lint:strict": "eslint . --ext .ts,.tsx,.js,.jsx",
+    "lint:unused": "eslint . --ext .ts,.tsx,.js,.jsx --rule '@typescript-eslint/no-unused-vars: error' --rule 'unused-imports/no-unused-imports: error'",
+    "lint:fix": "eslint . --ext .ts,.tsx,.js,.jsx --fix",
+    "lint:unused-only": "eslint . --ext .ts,.tsx,.js,.jsx --no-eslintrc --parser @typescript-eslint/parser --plugin @typescript-eslint --plugin unused-imports --rule \"@typescript-eslint/no-unused-vars: error\" --rule \"unused-imports/no-unused-imports: error\"",
     "clean": "rimraf .next tsconfig.tsbuildinfo",
     "clean:all": "rimraf .next tsconfig.tsbuildinfo node_modules package-lock.json && npm install",
     "spring-clean": "npm run clean && npm run type-check"
@@ -38,11 +43,23 @@
     "@types/nodemailer": "^6.4.17",
     "@types/react": "19.1.4",
     "@types/react-dom": "^19.1.5",
+    "@typescript-eslint/eslint-plugin": "^8.40.0",
+    "@typescript-eslint/parser": "^8.40.0",
     "autoprefixer": "^10.4.21",
+    "eslint": "^9.33.0",
+    "eslint-config-next": "^15.4.7",
+    "eslint-plugin-unused-imports": "^4.2.0",
     "postcss": "^8.5.3",
     "rimraf": "^6.0.1",
     "tailwindcss": "^3.4.17",
     "typescript": "5.8.3"
   },
-  "knip": {}
+  "knip": {
+    "ignoreDependencies": [
+      "@typescript-eslint/eslint-plugin",
+      "@typescript-eslint/parser",
+      "eslint-config-next",
+      "eslint-plugin-unused-imports"
+    ]
+  }
 }
