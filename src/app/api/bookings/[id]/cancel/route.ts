@@ -3,18 +3,18 @@ import { getAuthTokenFromRequest } from '@/utils/auth';
 import { query } from '@/lib/db';
 
 // Import the email templates
-import { createBookingStatusUpdateEmail, createRefundNotificationEmail } from '@/lib/emailTemplates';
+import { createBookingStatusUpdateEmail, createRefundNotificationEmail } from '@/services/EmailTemplates';
 // Import the consolidated email service
-import { sendEmail } from '@/lib/consolidatedEmailService';
+import { sendEmail } from '@/services/EmailService';
 // Import refund services
 import {
   checkRefundEligibility,
   createRefundRecord
 } from '@/services/refundService';
 import { REFUND_REASONS } from '@/types/refund';
-import { createAdminNotification } from '@/utils/adminNotificationService';
-// Import comprehensive notification service
-import { createBookingNotification } from '@/utils/comprehensiveNotificationService';
+import { createAdminNotification } from '@/services/NotificationService';
+// Import unified notification service
+import { createBookingNotification } from '@/services/NotificationService';
 
 export async function POST(request: NextRequest) {
   // Extract ID from URL

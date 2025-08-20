@@ -2,11 +2,11 @@ import { NextResponse } from 'next/server';
 import { query, testConnection, checkTableExists, withTransaction } from '@/lib/db';
 import bcrypt from 'bcryptjs';
 import { generateOtp } from '@/lib/otpService';
-import { createAdminNotification } from '@/utils/adminNotificationService';
+import { createAdminNotification } from '@/services/NotificationService';
 import { validatePasswordStrength } from '@/utils/passwordValidation';
 
 // Import the consolidated email service
-import { sendWelcomeEmail } from '@/lib/consolidatedEmailService';
+import { sendWelcomeEmail } from '@/services/EmailService';
 
 // Import phone number formatting
 import { testPhoneNumberFormatting } from '@/lib/smsService';

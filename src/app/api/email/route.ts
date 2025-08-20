@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { sendEmail, queueEmail } from '@/lib/consolidatedEmailService';
+import { sendEmail, queueEmail } from '@/services/EmailService';
 import {
   createWelcomeEmail,
   createPasswordResetEmail,
@@ -8,7 +8,7 @@ import {
   createBookingStatusUpdateEmail,
   createBusinessVerificationEmail,
   createApplicationDeclineEmail
-} from '@/lib/emailTemplates';
+} from '@/services/EmailTemplates';
 
 export async function POST(request: Request) {
   try {

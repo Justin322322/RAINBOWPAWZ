@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthTokenFromRequest } from '@/utils/auth';
-import { createSystemNotification } from '@/utils/comprehensiveNotificationService';
+import { createSystemNotification } from '@/services/NotificationService';
 import { createStandardErrorResponse, createStandardSuccessResponse } from '@/utils/rateLimitUtils';
 
 /**

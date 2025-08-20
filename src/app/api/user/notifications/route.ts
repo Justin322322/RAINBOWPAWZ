@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifySecureAuth } from '@/lib/secureAuth';
-import { getUserNotifications, markNotificationAsRead, markAllNotificationsAsRead } from '@/utils/userNotificationService';
+import { getUserNotifications, markNotificationAsRead, markAllNotificationsAsRead } from '@/services/NotificationService';
 
 /**
  * GET - Fetch user notifications

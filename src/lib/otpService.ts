@@ -1,7 +1,7 @@
 import { query } from '@/lib/db';
 
 // Import the consolidated email service
-import { sendOtpEmail as simpleSendOtpEmail } from '@/lib/consolidatedEmailService';
+import { sendOtpEmail as simpleSendOtpEmail } from '@/services/EmailService';
 
 interface VerifyOtpResult {
   success: boolean;

@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifySecureAuth } from '@/lib/secureAuth';
 import { query, withTransaction } from '@/lib/db';
-import { createNotificationFast } from '@/utils/notificationService';
-import { sendEmail } from '@/lib/consolidatedEmailService';
+import { createNotificationFast } from '@/services/NotificationService';
+import { sendEmail } from '@/services/EmailService';
 import { sendSMS } from '@/lib/smsService';
 
 // Create appeals table if it doesn't exist
@@ -166,7 +166,7 @@ export async function POST(request: NextRequest) {
       const firstName = userDetails?.[0]?.first_name || 'User';
       const lastName = userDetails?.[0]?.last_name || user.userId;
 
-      const { createAdminNotification } = await import('@/utils/adminNotificationService');
+      const { createAdminNotification } = await import('@/services/NotificationService');
       const notificationResult = await createAdminNotification({
         type: 'new_appeal',
         title: 'New Appeal Submitted',

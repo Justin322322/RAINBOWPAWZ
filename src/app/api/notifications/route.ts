@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifySecureAuth } from '@/lib/secureAuth';
 import { query } from '@/lib/db';
 import { RateLimiter, createRateLimitHeaders, createStandardErrorResponse, createStandardSuccessResponse } from '@/utils/rateLimitUtils';
-import { createNotification } from '@/utils/notificationService';
+import { createNotification } from '@/services/NotificationService';
 
 // GET endpoint to fetch notifications for the authenticated user
 export async function GET(request: NextRequest) {

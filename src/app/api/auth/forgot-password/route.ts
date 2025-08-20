@@ -3,7 +3,7 @@ import { query } from '@/lib/db';
 import crypto from 'crypto';
 
 // Import the consolidated email service
-import { sendPasswordResetEmail } from '@/lib/consolidatedEmailService';
+import { sendPasswordResetEmail } from '@/services/EmailService';
 
 // Specify that this route should use the Node.js runtime, not the Edge runtime
 export const runtime = 'nodejs';

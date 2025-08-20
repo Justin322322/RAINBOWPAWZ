@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
-import { createBookingNotification, type BookingNotificationType } from '@/utils/comprehensiveNotificationService';
-import { createAdminNotification } from '@/utils/adminNotificationService';
+import { createBookingNotification, type BookingNotificationType } from '@/services/NotificationService';
+import { createAdminNotification } from '@/services/NotificationService';
 import { checkRefundEligibility, createRefundRecord } from '@/services/refundService';
 import { REFUND_REASONS } from '@/types/refund';
 

@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { verifySecureAuth } from '@/lib/secureAuth';
 import { getServerAppUrl } from '@/utils/appUrl';
-import { createNotification } from '@/utils/notificationService';
-import { sendEmail } from '@/lib/consolidatedEmailService';
+import { createNotification } from '@/services/NotificationService';
+import { sendEmail } from '@/services/EmailService';
 import { sendSMS } from '@/lib/smsService';
 
 // API endpoint to restrict or restore access to a cremation business

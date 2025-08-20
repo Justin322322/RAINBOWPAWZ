@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { getAuthTokenFromRequest } from '@/utils/auth';
-import { createBusinessNotification } from '@/utils/businessNotificationService';
+import { createBusinessNotification } from '@/services/NotificationService';
 
 // POST endpoint to create a new review
 export async function POST(request: NextRequest) {

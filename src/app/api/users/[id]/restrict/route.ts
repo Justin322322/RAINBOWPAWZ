@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query, withTransaction } from '@/lib/db';
 import { verifySecureAuth } from '@/lib/secureAuth';
-import { createNotificationFast } from '@/utils/notificationService';
-import { sendEmail } from '@/lib/consolidatedEmailService';
+import { createNotificationFast } from '@/services/NotificationService';
+import { sendEmail } from '@/services/EmailService';
 import { sendSMS } from '@/lib/smsService';
 
 export async function PUT(request: NextRequest) {

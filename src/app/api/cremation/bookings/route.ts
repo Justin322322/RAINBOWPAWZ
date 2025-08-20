@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query, withTransaction } from '@/lib/db';
-import { createBookingNotification, scheduleBookingReminders } from '@/utils/comprehensiveNotificationService';
+import { createBookingNotification, scheduleBookingReminders } from '@/services/NotificationService';
 
 export async function GET(request: NextRequest) {
   try {

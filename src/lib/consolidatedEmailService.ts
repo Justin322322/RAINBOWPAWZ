@@ -382,7 +382,7 @@ async function recordEmailSent(recipient: string, subject: string, messageId: st
 // Export template-specific email functions for backward compatibility
 export const sendWelcomeEmail = async (email: string, firstName: string, accountType: 'personal' | 'business') => {
   // Import the email templates dynamically to avoid circular dependencies
-  const { createWelcomeEmail } = await import('@/lib/emailTemplates');
+  const { createWelcomeEmail } = await import('@/services/EmailTemplates');
 
   const { subject, html } = createWelcomeEmail(firstName, accountType);
   return sendEmail({ to: email, subject, html });
@@ -390,7 +390,7 @@ export const sendWelcomeEmail = async (email: string, firstName: string, account
 
 export const sendPasswordResetEmail = async (email: string, resetToken: string) => {
   // Import the email templates dynamically to avoid circular dependencies
-  const { createPasswordResetEmail } = await import('@/lib/emailTemplates');
+  const { createPasswordResetEmail } = await import('@/services/EmailTemplates');
 
   const { subject, html } = createPasswordResetEmail(resetToken);
   return sendEmail({ to: email, subject, html });
@@ -398,7 +398,7 @@ export const sendPasswordResetEmail = async (email: string, resetToken: string) 
 
 export const sendOtpEmail = async (email: string, otp: string) => {
   // Import the email templates dynamically to avoid circular dependencies
-  const { createOTPEmail } = await import('@/lib/emailTemplates');
+  const { createOTPEmail } = await import('@/services/EmailTemplates');
 
   const { subject, html } = createOTPEmail(otp);
   return sendEmail({ to: email, subject, html });
@@ -416,7 +416,7 @@ export const sendBusinessVerificationEmail = async (
   }
 ) => {
   // Import the email templates dynamically to avoid circular dependencies
-  const { createBusinessVerificationEmail } = await import('@/lib/emailTemplates');
+  const { createBusinessVerificationEmail } = await import('@/services/EmailTemplates');
 
   const { subject, html } = createBusinessVerificationEmail(businessDetails);
   return sendEmail({ to: email, subject, html });
@@ -431,7 +431,7 @@ export const sendApplicationDeclineEmail = async (
   }
 ) => {
   // Import the email templates dynamically to avoid circular dependencies
-  const { createApplicationDeclineEmail } = await import('@/lib/emailTemplates');
+  const { createApplicationDeclineEmail } = await import('@/services/EmailTemplates');
 
   const { subject, html } = createApplicationDeclineEmail(applicationDetails);
   return sendEmail({ to: email, subject, html });

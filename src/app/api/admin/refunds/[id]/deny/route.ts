@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { getAuthTokenFromRequest } from '@/utils/auth';
-import { sendEmail } from '@/lib/consolidatedEmailService';
-import { createAdminNotification } from '@/utils/adminNotificationService';
+import { sendEmail } from '@/services/EmailService';
+import { createAdminNotification } from '@/services/NotificationService';
 
 /**
  * POST - Deny a refund request

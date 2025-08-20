@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
-import { sendBusinessVerificationEmail, sendApplicationDeclineEmail } from '@/lib/consolidatedEmailService';
+import { sendBusinessVerificationEmail, sendApplicationDeclineEmail } from '@/services/EmailService';
 import { logAdminAction, getAdminIdFromRequest } from '@/utils/adminUtils';
 import mysql from 'mysql2/promise';
 
@@ -162,8 +162,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
 
       // Create a notification for the business owner using the business notification service
       try {
-        const { createBusinessNotification } = await import('@/utils/businessNotificationService');
-        
+        const { createBusinessNotification } = await import('@/services/NotificationService');
         await createBusinessNotification({
           userId: business.user_id,
           title: requestDocuments ? 'Additional Documents Required' : 'Application Declined',

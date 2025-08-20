@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { verifySecureAuth } from '@/lib/secureAuth';
-import { createNotification } from '@/utils/notificationService';
-import { sendEmail } from '@/lib/consolidatedEmailService';
+import { createNotification } from '@/services/NotificationService';
+import { sendEmail } from '@/services/EmailService';
 import { sendSMS } from '@/lib/smsService';
 
 export async function POST(request: NextRequest) {

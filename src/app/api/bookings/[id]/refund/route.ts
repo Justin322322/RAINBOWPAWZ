@@ -6,9 +6,9 @@ import {
 } from '@/services/refundService';
 import { REFUND_REASONS } from '@/types/refund';
 import { query } from '@/lib/db';
-import { createAdminNotification } from '@/utils/adminNotificationService';
-import { sendEmail } from '@/lib/consolidatedEmailService';
-import { createRefundNotificationEmail } from '@/lib/emailTemplates';
+import { createAdminNotification } from '@/services/NotificationService';
+import { sendEmail } from '@/services/EmailService';
+import { createRefundNotificationEmail } from '@/services/EmailTemplates';
 
 /**
  * POST - Request a refund for a booking

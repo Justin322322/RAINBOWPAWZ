@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { processPaymentWebhook } from '@/services/paymentService';
-import { createPaymentNotification } from '@/utils/comprehensiveNotificationService';
+import { createPaymentNotification } from '@/services/NotificationService';
 import { validateWebhookSignature } from '@/lib/paymongo';
 import { query } from '@/lib/db';
 
@@ -211,7 +211,7 @@ async function handleRefundSucceeded(refundData: any) {
       await createPaymentNotification(booking_id, 'payment_refunded');
 
       // Create user notification with detailed information
-      const { createUserNotification } = await import('@/utils/userNotificationService');
+      const { createUserNotification } = await import('@/services/NotificationService');
       try {
         await createUserNotification({
           userId: user_id,
@@ -228,7 +228,7 @@ async function handleRefundSucceeded(refundData: any) {
 
       // Notify service provider about the refund
       if (provider_id) {
-        const { createBusinessNotification } = await import('@/utils/businessNotificationService');
+        const { createBusinessNotification } = await import('@/services/NotificationService');
         try {
           // Get provider user ID
           let providerResult = await query('SELECT user_id FROM service_providers WHERE provider_id = ?', [provider_id]) as any[];

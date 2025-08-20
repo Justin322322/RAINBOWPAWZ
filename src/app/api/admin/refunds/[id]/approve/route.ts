@@ -6,11 +6,9 @@ import {
   completeRefund,
   hasValidPayMongoTransaction
 } from '@/services/refundService';
-import { sendEmail } from '@/lib/consolidatedEmailService';
-import { createRefundNotificationEmail } from '@/lib/emailTemplates';
-import { createUserNotification } from '@/utils/userNotificationService';
-import { createAdminNotification } from '@/utils/adminNotificationService';
-import { createBusinessNotification } from '@/utils/businessNotificationService';
+import { sendEmail } from '@/services/EmailService';
+import { createRefundNotificationEmail } from '@/services/EmailTemplates';
+import { createUserNotification, createAdminNotification, createBusinessNotification } from '@/services/NotificationService';
 
 /**
  * POST - Approve a refund request
