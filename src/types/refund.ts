@@ -2,7 +2,7 @@
  * Refund-related TypeScript interfaces and types
  */
 
-export interface Refund {
+interface Refund {
   id?: number;
   booking_id: number;
   amount: number | string;
@@ -23,7 +23,7 @@ export interface RefundRequest {
   notes?: string;
 }
 
-interface RefundResponse {
+interface _RefundResponse {
   success: boolean;
   refund?: Refund;
   message?: string;
@@ -49,7 +49,7 @@ export interface PayMongoRefundData {
   notes?: string;
 }
 
-interface PayMongoRefundResponse {
+interface _PayMongoRefundResponse {
   id: string;
   type: string;
   attributes: {
@@ -85,5 +85,5 @@ export const REFUND_STATUS = {
   CANCELLED: 'cancelled'
 } as const;
 
-type RefundReason = typeof REFUND_REASONS[keyof typeof REFUND_REASONS];
-type RefundStatus = typeof REFUND_STATUS[keyof typeof REFUND_STATUS];
+type _RefundReason = typeof REFUND_REASONS[keyof typeof REFUND_REASONS];
+type _RefundStatus = typeof REFUND_STATUS[keyof typeof REFUND_STATUS];

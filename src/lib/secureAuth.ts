@@ -48,7 +48,7 @@ export async function verifySecureAuth(request: NextRequest): Promise<{ userId: 
       accountType: accountTypeCandidate,
       // Email removed from return type for security - use dedicated API endpoints for user data
     };
-  } catch (error) {
+  } catch {
     return null;
   }
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import AdminDashboardLayout from '@/components/navigation/AdminDashboardLayout';
 import Image from 'next/image';
 import {
@@ -21,7 +21,7 @@ import {
   CurrencyDollarIcon,
   ChartBarIcon
 } from '@heroicons/react/24/outline';
-import { useToast } from '@/context/ToastContext';
+import { useToast } from '@/contexts/ToastContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 import { Modal } from '@/components/ui/Modal';
@@ -31,7 +31,7 @@ import {
   ProfileCard,
   ProfileSection,
   ProfileField,
-  ProfileGrid,
+
   ProfileFormGroup
 } from '@/components/ui/ProfileLayout';
 import { ProfileButton } from '@/components/ui/ProfileFormComponents';
@@ -251,28 +251,11 @@ export default function AdminCremationCentersPage() {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const urlParams = new URLSearchParams(window.location.search);
-      const appealId = urlParams.get('appealId');
-      const userId = urlParams.get('userId');
-
-      if (appealId && userId && cremationCenters.length > 0) {
-        // Find the cremation center and open their details modal, then the appeal modal
-        const targetCenter = cremationCenters.find(center => center.id?.toString() === userId);
-        if (targetCenter) {
-          // Load center details and appeals
-          handleViewDetails(targetCenter).then(() => {
-            // Find the specific appeal and open the modal
-            const appeal = targetCenter.appeals?.find(a => a.appeal_id.toString() === appealId);
-            if (appeal) {
-              setSelectedAppeal(appeal);
-              setShowAppealModal(true);
-              // Clear URL parameters after opening modal
-              window.history.replaceState({}, '', window.location.pathname);
-            }
-          });
-        }
-      }
+      const _appealId = urlParams.get('appealId');
+      const _userId = urlParams.get('userId');
+      // This useEffect logic is now handled after handleViewDetails is defined
     }
-  }, [cremationCenters]);
+  }, []);
 
   // Filter cremation centers based on search term and status filter
   const filteredCenters = cremationCenters.filter(center => {
@@ -308,15 +291,7 @@ export default function AdminCremationCentersPage() {
     return matchesSearch && matchesStatus;
   });
 
-  const handleViewDetails = async (center: any) => {
-    // Load center appeals when viewing details
-    const appeals = await loadCenterAppeals(center.id);
-    setSelectedCenter({ ...center, appeals });
-    setImageLoadError(false); // Reset image error state when viewing new center
-    setShowDetailsModal(true);
-  };
-
-  const loadCenterAppeals = async (centerId: number | string) => {
+  const loadCenterAppeals = useCallback(async (centerId: number | string) => {
     try {
       // For cremation centers, we need to find the user_id associated with the business
       const response = await fetch(`/api/appeals?business_id=${centerId}`);
@@ -328,7 +303,43 @@ export default function AdminCremationCentersPage() {
       console.error('Error loading center appeals:', error);
     }
     return [];
-  };
+  }, []);
+
+  const handleViewDetails = useCallback(async (center: CremationCenter) => {
+    // Load center appeals when viewing details
+    const appeals = await loadCenterAppeals(center.id);
+    setSelectedCenter({ ...center, appeals });
+    setImageLoadError(false); // Reset image error state when viewing new center
+    setShowDetailsModal(true);
+    return appeals;
+  }, [loadCenterAppeals]);
+
+  // Move the useEffect here after handleViewDetails is defined
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const appealId = urlParams.get('appeal_id');
+    const centerId = urlParams.get('center_id');
+    
+    if (appealId && centerId && cremationCenters.length > 0) {
+      const targetCenter = cremationCenters.find(center => center.id.toString() === centerId);
+      
+      if (targetCenter) {
+        // Load center details and appeals
+        handleViewDetails(targetCenter).then((appeals) => {
+          // Find the specific appeal from the returned appeals list
+          const appeal = appeals?.find((a: Appeal) => a.appeal_id.toString() === appealId);
+          if (appeal) {
+            setSelectedAppeal(appeal);
+            // Close details modal before opening appeal modal to avoid dual stacking
+            setShowDetailsModal(false);
+            setShowAppealModal(true);
+            // Clear URL parameters after opening modal
+            window.history.replaceState({}, '', window.location.pathname);
+          }
+        });
+      }
+    }
+  }, [cremationCenters, handleViewDetails]);
 
   const handleAppealAction = async (appealId: number, status: string, response?: string) => {
     try {
@@ -1467,7 +1478,7 @@ export default function AdminCremationCentersPage() {
                 <div className="flex flex-col space-y-4">
                   <div className="text-center">
                     <p className="text-sm text-gray-600 mb-4">
-                      Use the buttons below to manage this cremation center's access to the platform.
+                      Use the buttons below to manage this cremation center&apos;s access to the platform.
                     </p>
                   </div>
                   <div className="flex flex-col sm:flex-row justify-center sm:justify-end space-y-3 sm:space-y-0 sm:space-x-3">

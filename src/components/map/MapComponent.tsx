@@ -589,7 +589,7 @@ export default function MapComponent({
         }
       }
     }
-  }, [selectedProviderId, providerCoordinates, mapLoaded, serviceProviders]); // Removed isRouting dependency and now using ref
+  }, [selectedProviderId, providerCoordinates, mapLoaded, serviceProviders, displayRouteToProviderEnhanced]); // Removed isRouting dependency and now using ref
 
   // Initialize cache cleanup on component mount
   useEffect(() => {

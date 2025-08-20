@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import FurParentNavbar from './FurParentNavbar';
-import withUserAuth, { UserData } from '@/components/withUserAuth';
+import { withUserAuth, UserData } from '@/components/withAuth';
 
 interface FurParentDashboardLayoutProps {
   children: React.ReactNode;

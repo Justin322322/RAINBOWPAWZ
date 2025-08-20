@@ -50,9 +50,9 @@ const FurParentDashboardWrapper: React.FC<FurParentDashboardWrapperProps> = ({
         if (pendingCount === 0) return;
 
         // Create notification using existing system
-        const title = 'Review Reminder';
-        const message = `You have ${pendingCount} completed ${pendingCount === 1 ? 'booking' : 'bookings'} that ${pendingCount === 1 ? 'needs' : 'need'} a review`;
-        const link = '/user/furparent_dashboard/bookings?filter=completed';
+        const _title = 'Review Reminder';
+        const _message = `You have ${pendingCount} completed ${pendingCount === 1 ? 'booking' : 'bookings'} that ${pendingCount === 1 ? 'needs' : 'need'} a review`;
+        const _link = '/user/furparent_dashboard/bookings?filter=completed';
 
         // Notification creation removed - functionality disabled
 

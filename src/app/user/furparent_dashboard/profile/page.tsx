@@ -13,9 +13,9 @@ import {
   XMarkIcon,
   InformationCircleIcon
 } from '@heroicons/react/24/outline';
-import withUserAuth, { UserData } from '@/components/withUserAuth';
+import { withUserAuth, UserData } from '@/components/withAuth';
 import Image from 'next/image';
-import { getImagePath, addCacheBuster, getProfilePictureUrl } from '@/utils/imageUtils';
+import { getProfilePictureUrl } from '@/utils/imageUtils';
 import PhilippinePhoneInput from '@/components/ui/PhilippinePhoneInput';
 import {
   ProfileField
@@ -25,7 +25,7 @@ import {
   ProfileButton
 } from '@/components/ui/ProfileFormComponents';
 import { SkeletonCard } from '@/components/ui/SkeletonLoader';
-import { useToast } from '@/context/ToastContext';
+import { useToast } from '@/contexts/ToastContext';
 
 interface ProfilePageProps {
   userData?: UserData;
@@ -597,7 +597,7 @@ function ProfilePage({ userData: initialUserData }: ProfilePageProps) {
                         height={96}
                         className="w-full h-full object-cover"
                         key={profilePictureTimestamp} // Force re-render when timestamp changes
-                        onError={(e) => {
+                        onError={(_e) => {
                           console.warn('Profile picture failed to load:', userData.profile_picture);
                           // Don't clear the state, just let it fall back to the default icon
                         }}

@@ -7,7 +7,7 @@ import { Input, Button, Checkbox, Alert } from '@/components/ui';
 import { EyeIcon, EyeSlashIcon, ArrowRightIcon, XMarkIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 import ForgotPasswordModal from './ForgotPasswordModal';
 import { redirectToDashboard } from '@/utils/auth';
-import { useToast } from '@/context/ToastContext';
+import { useToast } from '@/contexts/ToastContext';
 
 type LoginModalProps = {
   isOpen: boolean;
@@ -180,7 +180,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onShowSignup }
             >
               <CheckCircleIcon className="w-20 h-20 text-green-500 mx-auto mb-4" />
               <h2 className="text-2xl font-semibold text-gray-800 mb-2">Welcome back{userName ? `, ${userName}` : ''}!</h2>
-              <p className="text-gray-600 mb-6">You've successfully logged in. Redirecting...</p>
+              <p className="text-gray-600 mb-6">You&apos;ve successfully logged in. Redirecting...</p>
               <div className="w-full bg-gray-200 rounded-full h-2.5 mt-4">
                 <motion.div
                   className="bg-green-500 h-2.5 rounded-full"

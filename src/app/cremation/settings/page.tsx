@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import CremationDashboardLayout from '@/components/navigation/CremationDashboardLayout';
-import withBusinessVerification from '@/components/withBusinessVerification';
+import { withBusinessAuth } from '@/components/withAuth';
 import {
   BellIcon,
   DevicePhoneMobileIcon,
@@ -281,4 +281,4 @@ function CremationSettingsPage({ userData }: CremationSettingsProps) {
   );
 }
 
-export default withBusinessVerification(CremationSettingsPage);
+export default withBusinessAuth(CremationSettingsPage);

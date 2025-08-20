@@ -5,7 +5,7 @@ import ClientToastProvider from "@/components/providers/ClientToastProvider";
 import ToastWrapper from "@/components/providers/ToastWrapper";
 import NotificationProvider from "@/components/providers/NotificationProvider";
 import { LoadingProvider } from "@/contexts/LoadingContext";
-import { AuthStateProvider } from "@/contexts/AuthStateContext";
+import { AuthProvider } from "@/contexts/AuthContext";
 import { LoadingOverlay } from "@/components/ui/LoadingOverlay";
 
 // Load Inter font for sans-serif text
@@ -50,7 +50,7 @@ export default function RootLayout({
         <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
       </head>
       <body className={inter.className}>
-        <AuthStateProvider>
+        <AuthProvider>
           <ClientToastProvider>
             <NotificationProvider>
               <LoadingProvider>
@@ -60,7 +60,7 @@ export default function RootLayout({
             </NotificationProvider>
           </ClientToastProvider>
           <ToastWrapper />
-        </AuthStateProvider>
+        </AuthProvider>
       </body>
     </html>
   );

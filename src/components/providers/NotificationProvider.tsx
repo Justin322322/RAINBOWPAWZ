@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { NotificationProvider as NotificationContextProvider } from '@/context/NotificationContext';
+import { NotificationProvider as NotificationContextProvider } from '@/contexts/NotificationContext';
 
 export default function NotificationProvider({ 
   children 

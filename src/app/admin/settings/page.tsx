@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import AdminDashboardLayout from '@/components/navigation/AdminDashboardLayout';
-import withAdminAuth from '@/components/withAdminAuth';
+import { withAdminAuth } from '@/components/withAuth';
 import {
   BellIcon,
   DevicePhoneMobileIcon,

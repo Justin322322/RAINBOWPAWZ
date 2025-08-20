@@ -24,7 +24,7 @@ function ResetPasswordForm() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [tokenValid, setTokenValid] = useState(true);
-  const [passwordStrength, setPasswordStrength] = useState(0);
+  const [_passwordStrength, setPasswordStrength] = useState(0);
   const [isPasswordValid, setIsPasswordValid] = useState(false);
 
   useEffect(() => {

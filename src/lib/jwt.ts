@@ -85,7 +85,7 @@ if (IS_SERVER_RUNTIME) {
   }
 }
 
-export interface JWTPayload {
+interface JWTPayload {
   /** Standard JWT subject claim - contains the user ID */
   sub: string;
   /** Custom claim for account type */

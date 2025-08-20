@@ -116,7 +116,7 @@ const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({ isOpen, onClo
               <div className="text-center mb-8">
                 <h2 className="text-3xl font-bold text-gray-800">Reset Your Password</h2>
                 <p className="text-gray-500 mt-2">
-                  Enter your email and we'll send a reset link.
+                  Enter your email and we&apos;ll send a reset link.
                 </p>
               </div>
 

@@ -18,8 +18,7 @@ import {
   CalendarIcon,
   MapPinIcon,
   ExclamationTriangleIcon,
-  BanknotesIcon,
-  CreditCardIcon,
+
   StarIcon,
   DocumentCheckIcon,
   CurrencyDollarIcon
@@ -473,7 +472,7 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
     }
   };
 
-  const getPaymentStatusClass = (status: string) => {
+  const _getPaymentStatusClass = (status: string) => {
     switch (status) {
       case 'paid':
         return 'bg-green-100 text-green-800';
@@ -488,7 +487,7 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
     }
   };
 
-  const getPaymentStatusIcon = (status: string) => {
+  const _getPaymentStatusIcon = (status: string) => {
     switch (status) {
       case 'paid':
         return <CheckCircleIcon className="h-5 w-5 text-green-500" />;

@@ -65,7 +65,7 @@ const SelectInput = forwardRef<HTMLDivElement, SelectInputProps>(
     return (
       <div className={cn("space-y-2", containerClassName)} ref={ref || selectRef}>
         {label && (
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className={cn("block text-sm font-medium text-gray-700 mb-2", labelClassName)}>
             {label} {!required && <span className="text-gray-500 text-xs">(optional)</span>}
           </label>
         )}

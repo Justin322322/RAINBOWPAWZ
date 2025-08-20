@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import CremationDashboardLayout from '@/components/navigation/CremationDashboardLayout';
-import withBusinessVerification from '@/components/withBusinessVerification';
+import { withBusinessAuth } from '@/components/withAuth';
 import {
   CalendarIcon,
   StarIcon,
@@ -12,14 +12,14 @@ import {
   BanknotesIcon,
   ArchiveBoxIcon
 } from '@heroicons/react/24/outline';
-import { useToast } from '@/context/ToastContext';
+import { useToast } from '@/contexts/ToastContext';
 import { PackageImage } from '@/components/packages/PackageImage';
 import AvailabilityCalendar from '@/components/booking/AvailabilityCalendar';
 import { useRouter } from 'next/navigation';
 import StatCard from '@/components/ui/StatCard';
 import { SkeletonCard } from '@/components/ui/SkeletonLoader';
 
-// The actual component that will be wrapped by withBusinessVerification HOC
+// Business dashboard page wrapped by withBusinessAuth HOC
 function CremationDashboardPage({ userData }: { userData: any }) {
   const router = useRouter();
   const _userName = userData?.business_name || userData?.first_name || 'Cremation Provider';
@@ -127,11 +127,12 @@ function CremationDashboardPage({ userData }: { userData: any }) {
 
   // Check availability tables after initial loading
   useEffect(() => {
-    if (!userData?.business_id || isLoading) return;
+    const providerId = userData?.business_id || userData?.provider_id;
+    if (!providerId || isLoading) return;
 
     const checkAvailabilityTables = async () => {
       try {
-        const response = await fetch('/api/cremation/availability?providerId=' + userData.business_id);
+        const response = await fetch('/api/cremation/availability?providerId=' + providerId);
 
         if (response.status === 500) {
           setAvailabilitySetupNeeded(true);
@@ -402,11 +403,21 @@ function CremationDashboardPage({ userData }: { userData: any }) {
                 </div>
               ) : null}
               <div className="w-full">
-                <AvailabilityCalendar
-                  providerId={userData?.business_id || 0}
-                  onAvailabilityChange={handleAvailabilityChange}
-                  onSaveSuccess={handleSaveSuccess}
-                />
+                {(() => {
+                  const providerId = userData?.business_id || userData?.provider_id;
+                  return providerId ? (
+                    <AvailabilityCalendar
+                      providerId={providerId}
+                      onAvailabilityChange={handleAvailabilityChange}
+                      onSaveSuccess={handleSaveSuccess}
+                    />
+                  ) : (
+                    <div className="flex items-center justify-center p-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[var(--primary-green)]"></div>
+                      <span className="ml-3 text-gray-600">Loading availability calendar...</span>
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           ) : (
@@ -529,4 +540,4 @@ function CremationDashboardPage({ userData }: { userData: any }) {
 }
 
 // Wrap with HOC and export
-export default withBusinessVerification(CremationDashboardPage);
+export default withBusinessAuth(CremationDashboardPage);

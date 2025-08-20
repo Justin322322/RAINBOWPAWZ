@@ -475,7 +475,7 @@ async function enhancePackagesWithDetails(pkgs: any[]) {
       .filter(Boolean);
 
     // Enhanced features
-    const sizePricingData = (sizeMap[p.id] || []).map((sp: any) => ({
+    const _sizePricingData = (sizeMap[p.id] || []).map((sp: any) => ({
       sizeCategory: sp.size_category,
       weightRangeMin: Number(sp.weight_range_min),
       weightRangeMax: Number(sp.weight_range_max),

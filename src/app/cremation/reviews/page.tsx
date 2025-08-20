@@ -9,8 +9,8 @@ import {
   ExclamationTriangleIcon,
 } from '@heroicons/react/24/outline';
 import CremationDashboardLayout from '@/components/navigation/CremationDashboardLayout';
-import withBusinessVerification from '@/components/withBusinessVerification';
-import { useToast } from '@/context/ToastContext';
+import { withBusinessAuth } from '@/components/withAuth';
+import { useToast } from '@/contexts/ToastContext';
 import StarRating from '@/components/ui/StarRating';
 import { LoadingSpinner } from '@/app/cremation/components/LoadingComponents';
 
@@ -385,4 +385,4 @@ function ReviewsPage({ userData }: ReviewsPageProps) {
   );
 }
 
-export default withBusinessVerification(ReviewsPage);
+export default withBusinessAuth(ReviewsPage);

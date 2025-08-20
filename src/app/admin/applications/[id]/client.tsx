@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { getProductionImagePath } from '@/utils/imageUtils';
-import { useToast } from '@/context/ToastContext';
+import { useToast } from '@/contexts/ToastContext';
 import {
   CheckCircleIcon,
   XCircleIcon,
@@ -15,7 +15,7 @@ import {
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import AdminDashboardLayout from '@/components/navigation/AdminDashboardLayout';
-import withAdminAuth from '@/components/withAdminAuth';
+import { withAdminAuth } from '@/components/withAuth';
 import ConfirmationModal from '@/components/ConfirmationModal';
 import DeclineModal from '@/components/DeclineModal';
 import DocumentViewerModal from '@/components/modals/DocumentViewerModal';

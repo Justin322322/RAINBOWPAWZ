@@ -4,8 +4,8 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import CremationDashboardLayout from '@/components/navigation/CremationDashboardLayout';
-import withBusinessVerification from '@/components/withBusinessVerification';
-import { useToast } from '@/context/ToastContext';
+import { withBusinessAuth } from '@/components/withAuth';
+import { useToast } from '@/contexts/ToastContext';
 import StatCard from '@/components/ui/StatCard';
 import {
   MagnifyingGlassIcon,
@@ -615,4 +615,4 @@ function CremationHistoryPage({ userData }: { userData: any }) {
   );
 }
 
-export default withBusinessVerification(CremationHistoryPage);
+export default withBusinessAuth(CremationHistoryPage);

@@ -4,7 +4,7 @@ import React, { useState, useRef } from 'react';
 import Image from 'next/image';
 import { CameraIcon, CheckCircleIcon, XCircleIcon, UserIcon } from '@heroicons/react/24/outline';
 import { uploadProfilePictureAjax, getImagePath, addCacheBuster } from '@/utils/imageUtils';
-import { useToast } from '@/context/ToastContext';
+import { useToast } from '@/contexts/ToastContext';
 
 interface ProfilePictureUploadProps {
   currentImagePath?: string;

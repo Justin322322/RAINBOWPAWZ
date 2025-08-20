@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import CremationDashboardLayout from '@/components/navigation/CremationDashboardLayout';
-import withBusinessVerification from '@/components/withBusinessVerification';
+import { withBusinessAuth } from '@/components/withAuth';
 import {
   MagnifyingGlassIcon,
   PlusIcon,
@@ -294,7 +294,7 @@ function PackagesPage({ userData }: PackagesPageProps) {
           packageToDelete ? (
             <div>
               <p className="mb-2">
-                Are you sure you want to delete the package <strong>"{packages.find(pkg => pkg.id === packageToDelete)?.name}"</strong>?
+                Are you sure you want to delete the package <strong>&quot;{packages.find(pkg => pkg.id === packageToDelete)?.name}&quot;</strong>?
               </p>
               <p className="text-sm text-red-600">
                 This action cannot be undone and will permanently remove the package and all its data.
@@ -320,7 +320,7 @@ function PackagesPage({ userData }: PackagesPageProps) {
           packageToToggle ? (
             <div>
               <p className="mb-2">
-                Are you sure you want to {packageToToggle.isActive ? 'deactivate' : 'activate'} the package <strong>"{packageToToggle.name}"</strong>?
+                Are you sure you want to {packageToToggle.isActive ? 'deactivate' : 'activate'} the package <strong>&quot;{packageToToggle.name}&quot;</strong>?
               </p>
               <p className="text-sm text-gray-600">
                 {packageToToggle.isActive
@@ -347,4 +347,4 @@ function PackagesPage({ userData }: PackagesPageProps) {
   );
 }
 
-export default withBusinessVerification(PackagesPage);
+export default withBusinessAuth(PackagesPage);

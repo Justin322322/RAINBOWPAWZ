@@ -18,7 +18,7 @@ import {
 import FurParentPageSkeleton from '@/components/ui/FurParentPageSkeleton';
 import { handleImageError } from '@/utils/imageUtils';
 import ReviewsList from '@/components/reviews/ReviewsList';
-import withUserAuth from '@/components/withUserAuth';
+import { withUserAuth } from '@/components/withAuth';
 import { formatPrice } from '@/utils/numberUtils';
 // LocationData type removed with geolocation utils
 type LocationData = {
@@ -410,7 +410,7 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
                 </p>
                 <div className="mt-8 border-l-4 border-white/30 pl-6 max-w-md mx-auto md:mx-0">
                   <p className="text-white/90 text-lg italic leading-relaxed">
-                    "{provider.description || 'Professional pet cremation services with care and compassion.'}"
+                    &quot;{provider.description || 'Professional pet cremation services with care and compassion.'}&quot;
                   </p>
                 </div>
               </div>
@@ -715,5 +715,5 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
   );
 }
 
-// Export the component wrapped with auth HOC
+// Export the component wrapped with withUserAuth HOC
 export default withUserAuth(ServiceDetailPage);

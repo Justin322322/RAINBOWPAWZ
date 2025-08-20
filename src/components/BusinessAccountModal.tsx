@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { Modal, Input, Button, Checkbox, Alert, SelectInput } from '@/components/ui';
 import { EyeIcon, EyeSlashIcon, ArrowRightIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import PrivacyPolicyModal from '@/components/PrivacyPolicyModal';
-import { useToast } from '@/context/ToastContext';
+import { useToast } from '@/contexts/ToastContext';
 import PhilippinePhoneInput from '@/components/ui/PhilippinePhoneInput';
 import PasswordCriteria from '@/components/ui/PasswordCriteria';
 import FileInputWithThumbnail from '@/components/ui/FileInputWithThumbnail';

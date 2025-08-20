@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { BellIcon } from '@heroicons/react/24/outline';
 import { BellAlertIcon, XMarkIcon } from '@heroicons/react/24/solid';
-import { useNotifications, Notification } from '@/context/NotificationContext';
+import { useNotifications, Notification } from '@/contexts/NotificationContext';
 import { format, formatDistanceToNow } from 'date-fns';
 import Link from 'next/link';
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import {
   MagnifyingGlassIcon,
   FunnelIcon,
@@ -360,7 +360,7 @@ export default function MapFilters({ providers, filters, onFilterChange, classNa
                     <span className="text-sm text-gray-600">Active filters:</span>
                     {filters.searchQuery && (
                       <span className="inline-flex items-center gap-1 px-2 py-1 bg-[var(--primary-green)] text-white rounded-md text-xs">
-                        Search: "{filters.searchQuery}"
+                        Search: &quot;{filters.searchQuery}&quot;
                         <button
                           onClick={() => updateFilter('searchQuery', '')}
                           className="hover:bg-white hover:bg-opacity-20 rounded"

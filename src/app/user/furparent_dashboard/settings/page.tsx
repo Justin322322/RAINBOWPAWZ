@@ -8,7 +8,7 @@ import {
 } from '@heroicons/react/24/outline';
 import FurParentDashboardWrapper from '@/components/navigation/FurParentDashboardWrapper';
 import { SkeletonCard } from '@/components/ui/SkeletonLoader';
-import { useToast } from '@/context/ToastContext';
+import { useToast } from '@/contexts/ToastContext';
 
 interface SettingsPageProps {
   userData?: any;
@@ -51,7 +51,7 @@ function SettingsPage({ userData }: SettingsPageProps) {
     };
 
     loadSettings();
-  }, []);
+  }, [showToast]);
 
   // Skeleton loading control with minimum delay (600-800ms for fur parent standards)
   useEffect(() => {

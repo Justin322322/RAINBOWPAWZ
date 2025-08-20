@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { useToast } from '@/context/ToastContext';
+import { useToast } from '@/contexts/ToastContext';
 import CalendarHeader from './CalendarHeader';
 import QuickPresetsPanel from './QuickPresetsPanel';
 import TimeSlotModal from './TimeSlotModal';
@@ -71,9 +71,9 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
     }
     return [];
   });
-  const [loading, setLoading] = useState<boolean>(false);
-  const [savingSlot, setSavingSlot] = useState<boolean>(false);
-  const [deletingSlot, setDeletingSlot] = useState<boolean>(false);
+  const [_loading, setLoading] = useState<boolean>(false);
+  const [_savingSlot, setSavingSlot] = useState<boolean>(false);
+  const [_deletingSlot, setDeletingSlot] = useState<boolean>(false);
   const [_error, setError] = useState<string | null>(null);
   const [showTimeSlotModal, setShowTimeSlotModal] = useState<boolean>(false);
   const [timeSlotStart, setTimeSlotStart] = useState<string>("09:00");
@@ -410,11 +410,9 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
       }
     }
 
-    // Only update if we're not already showing the current month
-    if (currentMonth.getMonth() !== now.getMonth() || currentMonth.getFullYear() !== now.getFullYear()) {
-      setCurrentMonth(currentDate);
-    }
-  }, [providerId]); // Reset when provider changes
+    // Reset to current month when provider changes
+    setCurrentMonth(currentDate);
+  }, [providerId]); // Only reset when provider changes, not when user navigates
 
   useEffect(() => {
     if (providerId && providerId > 0) {
@@ -425,20 +423,20 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
       setAvailabilityData([]);
       setAvailablePackages([]);
     }
-  }, [providerId, fetchAvailabilityData, fetchProviderPackages]);
+  }, [providerId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (providerId && providerId > 0) {
       fetchAvailabilityData(false, true); // silent refresh on month change
     }
-  }, [currentMonth, providerId, fetchAvailabilityData]);
+  }, [currentMonth, providerId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Add effect to refetch data when view mode changes
   useEffect(() => {
     if (providerId && providerId > 0) {
       fetchAvailabilityData(true, true); // silent refresh on view change
     }
-  }, [viewMode, currentYear, providerId, fetchAvailabilityData]);
+  }, [viewMode, currentYear, providerId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Force refresh when switching to year view to ensure booking data is current
   // Remove extra year-view forced fetch to keep UI static
@@ -701,12 +699,12 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
     // Format as YYYY-MM-DD
     return `${year}-${month}-${day}`;
   };
-  const handlePreviousMonth = () => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1));
-  const handleNextMonth = () => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
+  const _handlePreviousMonth = () => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1));
+  const _handleNextMonth = () => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
   
   // Enhanced navigation functions
-  const handlePreviousYear = () => setCurrentYear(prev => prev - 1);
-  const handleNextYear = () => setCurrentYear(prev => prev + 1);
+  const _handlePreviousYear = () => setCurrentYear(prev => prev - 1);
+  const _handleNextYear = () => setCurrentYear(prev => prev + 1);
   
   // Quick preset functions with batch operations
   const applyWeekdaysOnly = async () => {
@@ -958,15 +956,20 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
         throw new Error(result.error || 'Failed to clear availability');
       }
 
-      // Update local state
+      // Update local state to empty array to immediately reflect in UI
       setAvailabilityData([]);
+      
+      // Force calendar re-render by incrementing key
+      setCalendarKey(prev => prev + 1);
       
       // Show single consolidated toast message
       showToast(`✅ All availability cleared successfully! (${result.successCount} days processed)`, 'success');
       setShowQuickPresets(false);
       
-      // Refresh data
-      fetchAvailabilityData(false);
+      // Refresh data after a short delay to ensure UI updates
+      setTimeout(() => {
+        fetchAvailabilityData(false);
+      }, 100);
     } catch (error) {
       showToast(`Failed to clear availability: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
     } finally {
@@ -1279,7 +1282,7 @@ export default function AvailabilityCalendar({ providerId, onAvailabilityChange,
     fetchAvailabilityData(false, true);
   };
 
-  const isDisabled = !providerId || providerId <= 0;
+  const isDisabled = (!providerId || providerId <= 0) || _loading;
 
   useEffect(() => {
     // Add this effect to trace when availabilityData changes

@@ -19,8 +19,8 @@ import {
 
 } from '@heroicons/react/24/outline';
 import CremationDashboardLayout from '@/components/navigation/CremationDashboardLayout';
-import withBusinessVerification from '@/components/withBusinessVerification';
-import { useToast } from '@/context/ToastContext';
+import { withBusinessAuth } from '@/components/withAuth';
+import { useToast } from '@/contexts/ToastContext';
 import BookingTimeline from '@/components/booking/BookingTimeline';
 import CremationCertificate from '@/components/certificates/CremationCertificate';
 import { SkeletonCard } from '@/components/ui/SkeletonLoader';
@@ -690,4 +690,4 @@ function BookingDetailsPage({ userData }: BookingDetailsProps) {
   );
 }
 
-export default withBusinessVerification(BookingDetailsPage);
+export default withBusinessAuth(BookingDetailsPage);
