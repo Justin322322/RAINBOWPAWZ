@@ -58,6 +58,13 @@ export async function GET(
       join(process.cwd(), '.next', 'standalone', 'public', 'uploads', 'pets', imagePath.split('/').pop() || ''),
       join('/', 'uploads', 'pets', imagePath.split('/').pop() || ''),
 
+      // Try package image paths
+      join(process.cwd(), 'public', 'uploads', 'packages', imagePath.split('/').pop() || ''),
+      join(process.cwd(), 'uploads', 'packages', imagePath.split('/').pop() || ''),
+      join(process.cwd(), '.next', 'server', 'public', 'uploads', 'packages', imagePath.split('/').pop() || ''),
+      join(process.cwd(), '.next', 'standalone', 'public', 'uploads', 'packages', imagePath.split('/').pop() || ''),
+      join('/', 'uploads', 'packages', imagePath.split('/').pop() || ''),
+
       // Try profile picture paths
       join(process.cwd(), 'public', 'uploads', 'profile-pictures', imagePath.split('/').pop() || ''),
       join(process.cwd(), 'uploads', 'profile-pictures', imagePath.split('/').pop() || ''),
@@ -73,6 +80,12 @@ export async function GET(
         foundPath = path;
         break;
       }
+    }
+
+    // Log the search results for debugging
+    if (!foundPath) {
+      console.warn(`Image not found for path: ${imagePath}`);
+      console.log('Searched paths:', possiblePaths.map(p => ({ path: p, exists: fs.existsSync(p) })));
     }
 
     if (foundPath) {

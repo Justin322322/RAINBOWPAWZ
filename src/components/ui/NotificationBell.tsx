@@ -60,17 +60,13 @@ export default function NotificationBell() {
   // Handle notification click
   const handleNotificationClick = async (notification: Notification) => {
     try {
-      console.log('Notification clicked:', notification.id, 'is_read:', notification.is_read);
-
       // Prevent multiple rapid clicks on the same notification
       if (clickingNotificationId === notification.id) {
-        console.log('Already processing notification:', notification.id);
         return;
       }
 
       // Mark as read if unread
       if (notification.is_read === 0) {
-        console.log('Marking notification as read:', notification.id);
         setClickingNotificationId(notification.id);
 
         try {
@@ -100,7 +96,6 @@ export default function NotificationBell() {
     try {
       // Validate notification ID before attempting removal
       if (!notificationId || isNaN(notificationId) || notificationId <= 0) {
-        console.error('Invalid notification ID:', notificationId);
         return;
       }
 
