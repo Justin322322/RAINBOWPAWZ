@@ -678,6 +678,10 @@ const PackageModal: React.FC<PackageModalProps> = ({
                           placeholder="e.g., 100"
                         />
                         {errors.pricePerKg && <p className="mt-1 text-sm text-red-600">{errors.pricePerKg}</p>}
+                        <p className="mt-1 text-xs text-gray-500">
+                          When set, customers will be required to enter their pet's weight during checkout. 
+                          Final price = Base price + (Weight × Price per kg)
+                        </p>
                       </div>
                     </div>
 

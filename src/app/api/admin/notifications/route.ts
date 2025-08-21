@@ -79,6 +79,15 @@ export async function GET(request: NextRequest) {
         LIMIT 50
       `);
 
+      // Get unread count
+      const unreadResult = await query(`
+        SELECT COUNT(*) as unread 
+        FROM admin_notifications 
+        WHERE is_read = 0
+      `) as any[];
+
+      const unreadCount = unreadResult[0]?.unread || 0;
+
       // Check which table exists: business_profiles or service_providers
       const tableCheckResult = await query(`
         SELECT table_name
@@ -143,7 +152,8 @@ export async function GET(request: NextRequest) {
           return NextResponse.json({
             success: true,
             notifications: newNotifications,
-            pendingApplications: pendingCount
+            pendingApplications: pendingCount,
+            unread_count: unreadCount
           }, {
             headers: {
               'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -156,7 +166,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({
         success: true,
         notifications,
-        pendingApplications: pendingCount
+        pendingApplications: pendingCount,
+        unread_count: unreadCount
       }, {
         headers: {
           'Cache-Control': 'no-cache, no-store, must-revalidate',

@@ -3,7 +3,7 @@ import { query, withTransaction } from '@/lib/db';
 import { getAuthTokenFromRequest, parseAuthToken } from '@/utils/auth';
 import * as fs from 'fs';
 import { join } from 'path';
-import { getImagePath } from '@/utils/imagePathUtils';
+import { getImagePath } from '@/utils/imageUtils';
 
 export async function GET(request: NextRequest) {
   try {
@@ -125,6 +125,7 @@ export async function POST(request: NextRequest) {
       images = [],
       // New fields for enhanced features
       pricePerKg = 0,
+      deliveryFeePerKm = 0,
       usesCustomOptions = false,
       customCategories = [],
       customCremationTypes = [],
@@ -141,10 +142,10 @@ export async function POST(request: NextRequest) {
         `
         INSERT INTO service_packages
           (provider_id, name, description, category, cremation_type,
-           processing_time, price, price_per_kg, conditions, uses_custom_options, is_active)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE)
+           processing_time, price, price_per_kg, delivery_fee_per_km, conditions, uses_custom_options, is_active)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE)
         `,
-        [providerId, name, description, category, cremationType, processingTime, price, pricePerKg, conditions, usesCustomOptions]
+        [providerId, name, description, category, cremationType, processingTime, price, pricePerKg, deliveryFeePerKm, conditions, usesCustomOptions]
       )) as any;
       const packageId = pkgRes.insertId;
 
@@ -470,7 +471,7 @@ async function enhancePackagesWithDetails(pkgs: any[]) {
           }
         }
         // For other paths, use the standard function
-        return getImagePath(path);
+        return getImagePath(path, false); // Disable cache busting for package images
       })
       .filter(Boolean);
 

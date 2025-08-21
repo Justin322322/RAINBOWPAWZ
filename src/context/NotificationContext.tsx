@@ -187,14 +187,22 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       return;
     }
 
-    console.log('Marking notification as read:', notificationId);
-
     try {
       // Determine the correct endpoint based on user type using async function
       const userAccountType = await getAccountTypeAsync();
-      const endpoint = userAccountType === 'admin'
-        ? '/api/admin/notifications'
-        : '/api/user/notifications';
+      let endpoint;
+      let requestBody;
+      
+      if (userAccountType === 'admin') {
+        endpoint = '/api/admin/notifications';
+        requestBody = { notificationId: notificationId }; // Admin API expects notificationId (singular)
+      } else if (userAccountType === 'business') {
+        endpoint = '/api/cremation/notifications';
+        requestBody = { notificationIds: [notificationId] }; // Business API expects notificationIds (plural)
+      } else {
+        endpoint = '/api/user/notifications';
+        requestBody = { notificationId: notificationId }; // User API expects notificationId (singular)
+      }
 
       const response = await fetch(endpoint, {
         method: 'PATCH',
@@ -202,7 +210,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
           'Content-Type': 'application/json',
         },
         credentials: 'include', // Include httpOnly cookies for secure auth
-        body: JSON.stringify({ notificationId: notificationId }),
+        body: JSON.stringify(requestBody),
       });
 
       if (!response.ok) {
@@ -223,7 +231,6 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
 
         // Recalculate unread count from the updated notifications
         const newUnreadCount = updated.filter(n => n.is_read === 0).length;
-        console.log('Updated unread count:', newUnreadCount, 'for notification:', notificationId);
         setUnreadCount(newUnreadCount);
 
         return updated;
@@ -246,9 +253,14 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
     try {
       // Determine the correct endpoint based on user type using async function
       const userAccountType = await getAccountTypeAsync();
-      const endpoint = userAccountType === 'admin'
-        ? '/api/admin/notifications'
-        : '/api/user/notifications';
+      let endpoint;
+      if (userAccountType === 'admin') {
+        endpoint = '/api/admin/notifications';
+      } else if (userAccountType === 'business') {
+        endpoint = '/api/cremation/notifications';
+      } else {
+        endpoint = '/api/user/notifications';
+      }
 
       const response = await fetch(endpoint, {
         method: 'PATCH',
@@ -297,16 +309,28 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
     try {
       // Determine the correct endpoint based on user type using async function
       const userAccountType = await getAccountTypeAsync();
-      const endpoint = userAccountType === 'admin'
-        ? `/api/admin/notifications/${notificationId}`
-        : `/api/user/notifications/${notificationId}`;
+      let endpoint;
+      if (userAccountType === 'admin') {
+        endpoint = `/api/admin/notifications/${notificationId}`;
+      } else if (userAccountType === 'business') {
+        endpoint = `/api/cremation/notifications`;
+      } else {
+        endpoint = `/api/user/notifications/${notificationId}`;
+      }
+
+      // For business users, use DELETE with notificationIds array
+      const method = userAccountType === 'business' ? 'DELETE' : 'DELETE';
+      const body = userAccountType === 'business' 
+        ? JSON.stringify({ notificationIds: [notificationId] })
+        : undefined;
 
       const response = await fetch(endpoint, {
-        method: 'DELETE',
+        method,
         headers: {
           'Content-Type': 'application/json',
         },
         credentials: 'include', // Include httpOnly cookies for secure auth
+        ...(body && { body }),
       });
 
       if (!response.ok) {

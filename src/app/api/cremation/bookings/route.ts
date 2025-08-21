@@ -362,7 +362,8 @@ export async function POST(request: NextRequest) {
       deliveryDistance,
       deliveryFee,
       price,
-      selectedAddOns
+      selectedAddOns,
+      petWeight
     } = body;
 
     // Validate required fields
@@ -376,9 +377,37 @@ export async function POST(request: NextRequest) {
     if (!bookingDate) requiredFields.push('bookingDate');
     if (!bookingTime) requiredFields.push('bookingTime');
 
+    // Check if package has kg pricing and validate pet weight
+    if (packageId) {
+      try {
+        const packageQuery = 'SELECT price_per_kg FROM packages WHERE package_id = ?';
+        const packageResult = await query(packageQuery, [packageId]) as any[];
+        
+        if (packageResult && packageResult.length > 0) {
+          const packageData = packageResult[0];
+          if (packageData.price_per_kg && packageData.price_per_kg > 0) {
+            // Package uses kg pricing, so pet weight is required
+            if (!petWeight || isNaN(parseFloat(petWeight)) || parseFloat(petWeight) <= 0) {
+              requiredFields.push('petWeight');
+            }
+          }
+        }
+      } catch (packageError) {
+        console.warn('Could not validate package kg pricing:', packageError);
+        // Continue with validation even if package check fails
+      }
+    }
+
     if (requiredFields.length > 0) {
+      let errorMessage = `Missing required fields: ${requiredFields.join(', ')} are required`;
+      
+      // Provide more specific error message for kg pricing packages
+      if (requiredFields.includes('petWeight')) {
+        errorMessage = 'Pet weight is required for packages with kg-based pricing. Please enter your pet\'s weight in kilograms.';
+      }
+      
       return NextResponse.json({
-        error: `Missing required fields: ${requiredFields.join(', ')} are required`,
+        error: errorMessage,
         missingFields: requiredFields
       }, { status: 400 });
     }

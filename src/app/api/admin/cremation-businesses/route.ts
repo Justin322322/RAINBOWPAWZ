@@ -619,11 +619,12 @@ export async function POST(request: NextRequest) {
         bp.hours as business_hours,
         bp.description as service_description,
         CASE WHEN bp.application_status = 'approved' THEN 1 ELSE 0 END as is_verified,
-        bp.business_permit_path as document_path,
-        '' as bp_permit_number,
-        '' as tax_id_number,
+        bp.business_permit_path,
+        bp.bir_certificate_path,
+        bp.government_id_path,
         bp.created_at,
-        bp.updated_at
+        bp.updated_at,
+        bp.verification_date
       FROM service_providers bp
       JOIN users u ON bp.user_id = u.user_id
       WHERE bp.provider_id = ? AND bp.provider_type = 'cremation'
@@ -637,47 +638,57 @@ export async function POST(request: NextRequest) {
 
     // Get business documents
     let documents = [];
-    if (business.document_path) {
-      try {
-        documents.push({
-          type: 'Business Documents',
-          path: business.document_path,
-          uploadDate: new Date(business.updated_at).toLocaleDateString('en-US')
-        });
-      } catch {
-      }
+    
+    // Check for all document types and add them to the documents array
+    if (business.business_permit_path) {
+      documents.push({
+        type: 'Business Permit',
+        name: 'Business Permit',
+        path: business.business_permit_path,
+        url: business.business_permit_path,
+        uploadDate: new Date(business.updated_at).toLocaleDateString('en-US')
+      });
+    }
+    
+    if (business.bir_certificate_path) {
+      documents.push({
+        type: 'BIR Certificate',
+        name: 'BIR Certificate',
+        path: business.bir_certificate_path,
+        url: business.bir_certificate_path,
+        uploadDate: new Date(business.updated_at).toLocaleDateString('en-US')
+      });
+    }
+    
+    if (business.government_id_path) {
+      documents.push({
+        type: 'Government ID',
+        name: 'Government ID',
+        path: business.government_id_path,
+        url: business.government_id_path,
+        uploadDate: new Date(business.updated_at).toLocaleDateString('en-US')
+      });
     }
 
     // Format the business details
-    const formattedBusiness = {
+    const formattedBusiness: any = {
       id: business.id,
-      name: business.business_name,
-      owner: `${business.contact_first_name} ${business.contact_last_name}`,
+      businessName: business.business_name,
       email: business.email,
-      phone: business.business_phone,
-      address: business.business_address,
-      city: business.city,
-      province: business.province,
-      zip: business.zip,
-      fullAddress: `${business.business_address}, ${business.city}, ${business.province}, ${business.zip}`,
-      registrationDate: new Date(business.created_at).toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-      }),
-      lastUpdated: new Date(business.updated_at).toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-      }),
-      status: business.is_verified === 1 ? 'active' : 'pending',
+      contactPerson: business.contact_first_name && business.contact_last_name 
+        ? `${business.contact_first_name} ${business.contact_last_name}` 
+        : 'Not provided',
+      phone: business.business_phone || 'Not provided',
+      address: business.business_address || 'Not provided',
+      hours: business.business_hours || 'Not provided',
       description: business.service_description || 'No description provided',
-      verified: business.is_verified === 1,
-      businessHours: business.business_hours || 'Not specified',
-      permitNumber: business.bp_permit_number || 'Not provided',
-      taxIdNumber: business.tax_id_number || 'Not provided',
+      isVerified: business.is_verified === 1,
       documents: documents,
-      services: [] as any[],
+      submitDate: new Date(business.created_at).toLocaleDateString('en-US'),
+      verificationDate: business.verification_date 
+        ? new Date(business.verification_date).toLocaleDateString('en-US')
+        : null,
+      services: [],
       bookingStats: {
         totalBookings: 0,
         completedBookings: 0,

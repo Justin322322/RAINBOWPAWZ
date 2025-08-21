@@ -155,21 +155,24 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
             docFormData.append('governmentId', formData.governmentId);
           }
 
-          // Send the document upload request
+          // Upload documents
           const docResponse = await fetch('/api/businesses/upload-documents', {
             method: 'POST',
-            body: docFormData,
+            body: docFormData
           });
 
-          const _docData = await docResponse.json();
-
           if (!docResponse.ok) {
-            // We'll continue even if document upload fails
-            // since the user account has been created
-          } else {
+            const docError = await docResponse.json();
+            throw new Error(docError.error || 'Failed to upload documents');
           }
-        } catch {
-          // Continue with registration even if document upload fails
+
+          const docData = await docResponse.json();
+          console.log('Documents uploaded successfully:', docData);
+
+        } catch (docError) {
+          console.error('Document upload error:', docError);
+          // Don't fail the registration if document upload fails
+          // Just log the error and continue
         }
       }
 

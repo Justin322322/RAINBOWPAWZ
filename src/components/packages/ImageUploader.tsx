@@ -17,15 +17,11 @@ const ImageUploaderComponent: React.FC<ImageUploaderProps> = ({
   onUpload,
   onRemove
 }) => {
-  // Debug logging to understand image URLs
-  console.log('ImageUploader received images:', images);
-
   return (
     <div className="mb-8">
       <h2 className="text-lg font-medium text-gray-800 mb-4">Images</h2>
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
         {images.map((img, i) => {
-          console.log(`Image ${i + 1} URL:`, img);
           // Create a stable key using the image URL and index
           const imageKey = `${img}-${i}`;
           return (
@@ -41,7 +37,6 @@ const ImageUploaderComponent: React.FC<ImageUploaderProps> = ({
               <button
                 type="button"
                 onClick={() => {
-                  console.log(`Removing image at index ${i}:`, img);
                   onRemove(i);
                 }}
                 className="absolute top-2 right-2 bg-white p-1 rounded-full shadow-md hover:bg-red-50 transition-colors"

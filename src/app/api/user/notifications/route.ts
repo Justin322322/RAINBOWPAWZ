@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifySecureAuth } from '@/lib/secureAuth';
 import { getUserNotifications, markNotificationAsRead, markAllNotificationsAsRead } from '@/utils/userNotificationService';
+import { query } from '@/lib/db';
 
 /**
  * GET - Fetch user notifications
@@ -27,9 +28,19 @@ export async function GET(request: NextRequest) {
     // Fetch notifications
     const notifications = await getUserNotifications(parseInt(user.userId), limit);
 
+    // Get unread count
+    const unreadResult = await query(`
+      SELECT COUNT(*) as unread 
+      FROM notifications 
+      WHERE user_id = ? AND is_read = 0
+    `, [parseInt(user.userId)]) as any[];
+
+    const unreadCount = unreadResult[0]?.unread || 0;
+
     return NextResponse.json({
       success: true,
-      notifications
+      notifications,
+      unread_count: unreadCount
     });
 
   } catch (error) {

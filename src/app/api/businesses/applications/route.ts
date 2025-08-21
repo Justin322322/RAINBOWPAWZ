@@ -137,7 +137,9 @@ export async function GET() {
         // Add created_at if it exists
         if (serviceProviderColumns.includes('created_at')) {
           minimalSelectFields.push('sp.created_at');
-        }        // Add at least one status field if available
+        }
+        
+        // Add at least one status field if available
         if (serviceProviderColumns.includes('application_status')) {
           minimalSelectFields.push('sp.application_status');
         } else if (serviceProviderColumns.includes('verification_status')) {
@@ -145,6 +147,11 @@ export async function GET() {
         } else {
           minimalSelectFields.push("'pending' AS application_status");
         }
+
+        // Add document fields if they exist
+        if (serviceProviderColumns.includes('business_permit_path')) minimalSelectFields.push('sp.business_permit_path');
+        if (serviceProviderColumns.includes('government_id_path')) minimalSelectFields.push('sp.government_id_path');
+        if (serviceProviderColumns.includes('bir_certificate_path')) minimalSelectFields.push('sp.bir_certificate_path');
 
 
         const backupQuery = `

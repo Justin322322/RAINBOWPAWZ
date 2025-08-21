@@ -50,6 +50,12 @@ export const ProductionSafeImage: React.FC<ProductionSafeImageProps> = ({
     }
   };
 
+  // Handle successful image load
+  const handleLoad = () => {
+    setLoaded(true);
+    setError(false);
+  };
+
   // Use our utility function to get a production-ready image path
   // Always use the API route in production for better reliability
   // But avoid double-processing if the image is already an API path
@@ -62,12 +68,6 @@ export const ProductionSafeImage: React.FC<ProductionSafeImageProps> = ({
           : getProductionImagePath(imgSrc))
   );
 
-  // Debug logging for image URLs
-  console.log('ProductionSafeImage - Original src:', src);
-  console.log('ProductionSafeImage - Current imgSrc:', imgSrc);
-  console.log('ProductionSafeImage - Final src:', finalSrc);
-  console.log('ProductionSafeImage - Error state:', error);
-
   // Use Next.js Image component for better optimization
   return fill ? (
     <Image
@@ -76,7 +76,7 @@ export const ProductionSafeImage: React.FC<ProductionSafeImageProps> = ({
       fill
       className={`${className} ${loaded ? 'opacity-100' : 'opacity-0'} transition-opacity duration-300`}
       onError={handleError}
-      onLoad={() => setLoaded(true)}
+      onLoad={handleLoad}
       priority={priority}
     />
   ) : (
@@ -87,7 +87,7 @@ export const ProductionSafeImage: React.FC<ProductionSafeImageProps> = ({
       height={height || 300}
       className={`${className} ${loaded ? 'opacity-100' : 'opacity-0'} transition-opacity duration-300`}
       onError={handleError}
-      onLoad={() => setLoaded(true)}
+      onLoad={handleLoad}
       priority={priority}
     />
   );

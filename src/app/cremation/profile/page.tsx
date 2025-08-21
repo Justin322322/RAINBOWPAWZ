@@ -197,10 +197,25 @@ function CremationProfilePage({ userData }: { userData: any }) {
           businessPermitPath: null,
           birCertificatePath: null,
           governmentIdPath: null
-        }
+        },
+        hasDocuments: data.hasDocuments || false // Access hasDocuments from the root of the API response
       };
 
       setProfileData(mappedProfile);
+      setDocuments({
+        businessPermit: { 
+          file: null, 
+          preview: mappedProfile.documents?.businessPermitPath ? getImagePath(mappedProfile.documents.businessPermitPath) : null 
+        },
+        birCertificate: { 
+          file: null, 
+          preview: mappedProfile.documents?.birCertificatePath ? getImagePath(mappedProfile.documents.birCertificatePath) : null 
+        },
+        governmentId: { 
+          file: null, 
+          preview: mappedProfile.documents?.governmentIdPath ? getImagePath(mappedProfile.documents.governmentIdPath) : null 
+        }
+      });
 
       // Update form states with fetched data
       if (data.profile) {
@@ -790,6 +805,24 @@ function CremationProfilePage({ userData }: { userData: any }) {
       showToast('Documents uploaded successfully!', 'success');
       hideDocumentsModal();
 
+      // Update the documents state with the new paths from the API response
+      if (data.documents) {
+        setDocuments({
+          businessPermit: { 
+            file: null, 
+            preview: data.documents.business_permit_path ? getImagePath(data.documents.business_permit_path) : null 
+          },
+          birCertificate: { 
+            file: null, 
+            preview: data.documents.bir_certificate_path ? getImagePath(data.documents.bir_certificate_path) : null 
+          },
+          governmentId: { 
+            file: null, 
+            preview: data.documents.government_id_path ? getImagePath(data.documents.government_id_path) : null 
+          }
+        });
+      }
+
       // Refresh profile data from server to get the latest document paths
       await fetchProfileData(false); // Don't show loading indicator
 
@@ -1101,13 +1134,19 @@ function CremationProfilePage({ userData }: { userData: any }) {
         ) : (
           <>
             {/* Document Upload Reminder */}
-            {profileData && profileData.documents &&
-              (!profileData.documents.businessPermitPath &&
-               !profileData.documents.birCertificatePath &&
-               !profileData.documents.governmentIdPath) && (
+            {profileData && !profileData.hasDocuments && (
               <ProfileAlert
                 type="warning"
                 message="Your business documents are missing. Please upload your business documents to complete your registration."
+                className="mb-6"
+              />
+            )}
+
+            {/* Document Status Alert */}
+            {profileData && profileData.hasDocuments && (
+              <ProfileAlert
+                type="success"
+                message="Your business documents have been uploaded and are under review."
                 className="mb-6"
               />
             )}
@@ -1339,14 +1378,22 @@ function CremationProfilePage({ userData }: { userData: any }) {
                   {profileData?.documents?.businessPermitPath ? (
                     <div className="relative">
                       <div
-                        className="w-full h-32 bg-gray-100 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer hover:bg-gray-50"
+                        className="w-full h-32 bg-gray-100 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer hover:bg-gray-50 overflow-hidden"
                         onClick={() => openPreviewModal(profileData.documents.businessPermitPath, 'Business Permit')}
                       >
-                        <div className="text-center">
-                          <CheckCircleIcon className="h-8 w-8 text-green-500 mx-auto mb-2" />
-                          <p className="text-sm text-gray-600">Document Uploaded</p>
-                          <p className="text-xs text-gray-500">Click to view</p>
-                        </div>
+                        {documents.businessPermit.preview ? (
+                          <img
+                            src={documents.businessPermit.preview}
+                            alt="Business Permit"
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="text-center">
+                            <CheckCircleIcon className="h-8 w-8 text-green-500 mx-auto mb-2" />
+                            <p className="text-sm text-gray-600">Document Uploaded</p>
+                            <p className="text-xs text-gray-500">Click to view</p>
+                          </div>
+                        )}
                       </div>
                     </div>
                   ) : (
@@ -1392,14 +1439,22 @@ function CremationProfilePage({ userData }: { userData: any }) {
                   {profileData?.documents?.birCertificatePath ? (
                     <div className="relative">
                       <div
-                        className="w-full h-32 bg-gray-100 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer hover:bg-gray-50"
+                        className="w-full h-32 bg-gray-100 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer hover:bg-gray-50 overflow-hidden"
                         onClick={() => openPreviewModal(profileData.documents.birCertificatePath, 'BIR Certificate')}
                       >
-                        <div className="text-center">
-                          <CheckCircleIcon className="h-8 w-8 text-green-500 mx-auto mb-2" />
-                          <p className="text-sm text-gray-600">Document Uploaded</p>
-                          <p className="text-xs text-gray-500">Click to view</p>
-                        </div>
+                        {documents.birCertificate.preview ? (
+                          <img
+                            src={documents.birCertificate.preview}
+                            alt="BIR Certificate"
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="text-center">
+                            <CheckCircleIcon className="h-8 w-8 text-green-500 mx-auto mb-2" />
+                            <p className="text-sm text-gray-600">Document Uploaded</p>
+                            <p className="text-xs text-gray-500">Click to view</p>
+                          </div>
+                        )}
                       </div>
                     </div>
                   ) : (
@@ -1445,14 +1500,22 @@ function CremationProfilePage({ userData }: { userData: any }) {
                   {profileData?.documents?.governmentIdPath ? (
                     <div className="relative">
                       <div
-                        className="w-full h-32 bg-gray-100 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer hover:bg-gray-50"
+                        className="w-full h-32 bg-gray-100 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer hover:bg-gray-50 overflow-hidden"
                         onClick={() => openPreviewModal(profileData.documents.governmentIdPath, 'Government ID')}
                       >
-                        <div className="text-center">
-                          <CheckCircleIcon className="h-8 w-8 text-green-500 mx-auto mb-2" />
-                          <p className="text-sm text-gray-600">Document Uploaded</p>
-                          <p className="text-xs text-gray-500">Click to view</p>
-                        </div>
+                        {documents.governmentId.preview ? (
+                          <img
+                            src={documents.governmentId.preview}
+                            alt="Government ID"
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="text-center">
+                            <CheckCircleIcon className="h-8 w-8 text-green-500 mx-auto mb-2" />
+                            <p className="text-sm text-gray-600">Document Uploaded</p>
+                            <p className="text-xs text-gray-500">Click to view</p>
+                          </div>
+                        )}
                       </div>
                     </div>
                   ) : (

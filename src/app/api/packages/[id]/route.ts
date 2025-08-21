@@ -222,7 +222,7 @@ export async function PATCH(
         const updateResult = await transaction.query(
           `UPDATE service_packages
            SET name=?, description=?, category=?, cremation_type=?, processing_time=?,
-               price=?, delivery_fee_per_km=?, conditions=?
+               price=?, price_per_kg=?, delivery_fee_per_km=?, conditions=?
            WHERE package_id=?`,
           [
             body.name,
@@ -231,6 +231,7 @@ export async function PATCH(
             body.cremationType,
             body.processingTime,
             Number(body.price),
+            Number(body.pricePerKg) || 0,
             Number(body.deliveryFeePerKm) || 0,
             body.conditions,
             packageId

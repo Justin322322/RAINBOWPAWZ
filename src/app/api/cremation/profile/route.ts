@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
       verification_date: providerData?.verification_date || null,
       created_at: userData.created_at,
       provider_id: providerData?.provider_id || null,
-      // Include document paths for UI display
+      // Include document paths for UI display - check if documents exist
       documents: {
         businessPermitPath: providerData?.business_permit_path || null,
         birCertificatePath: providerData?.bir_certificate_path || null,
@@ -61,9 +61,15 @@ export async function GET(request: NextRequest) {
       }
     };
 
+    // Check if any documents exist to determine if documents are missing
+    const hasDocuments = !!(providerData?.business_permit_path || 
+                           providerData?.bir_certificate_path || 
+                           providerData?.government_id_path);
+
     return NextResponse.json({
       success: true,
-      profile: profileData
+      profile: profileData,
+      hasDocuments: hasDocuments
     });
 
   } catch (error) {
