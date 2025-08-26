@@ -53,6 +53,7 @@ const Modal: React.FC<ModalProps> = ({
 }) => {
   const modalRef = useRef<HTMLDivElement>(null);
   const previousActiveElement = useRef<HTMLElement | null>(null);
+  const hasInitialFocus = useRef(false);
 
   // Generate unique ID for this modal instance to prevent duplicate IDs
   const modalTitleId = useMemo(() => `modal-title-${Math.random().toString(36).substring(2, 11)}`, []);
@@ -75,12 +76,28 @@ const Modal: React.FC<ModalProps> = ({
       // Add event listeners
       window.addEventListener('keydown', handleEscape);
 
-      // Focus management
-      if (initialFocus?.current) {
-        initialFocus.current.focus();
-      } else if (modalRef.current) {
-        modalRef.current.focus();
+      // Focus management - only focus on initial modal open
+      if (!hasInitialFocus.current) {
+        if (initialFocus?.current) {
+          initialFocus.current.focus();
+        } else {
+          // Find the first input, textarea, or select element in the modal
+          const firstInput = modalRef.current?.querySelector('input, textarea, select, button[type="button"]:not([aria-label*="Close"]):not([aria-label*="close"])');
+          if (firstInput instanceof HTMLElement) {
+            setTimeout(() => {
+              if (modalRef.current && modalRef.current.contains(firstInput)) {
+                firstInput.focus();
+              }
+            }, 0);
+          } else if (modalRef.current) {
+            modalRef.current.focus();
+          }
+        }
+        hasInitialFocus.current = true;
       }
+    } else {
+      // Reset the initial focus flag when modal closes
+      hasInitialFocus.current = false;
     }
 
     return () => {

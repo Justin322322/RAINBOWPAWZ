@@ -17,7 +17,18 @@ interface NotificationRecord {
   title: string;
   message: string;
   type: 'info' | 'success' | 'warning' | 'error';
-  is_read: boolean;
+  is_read: boolean; // Database returns boolean
+  link: string | null;
+  created_at: string;
+}
+
+interface ConvertedNotificationRecord {
+  id: number;
+  user_id: number;
+  title: string;
+  message: string;
+  type: 'info' | 'success' | 'warning' | 'error';
+  is_read: number; // Frontend expects number (0 or 1)
   link: string | null;
   created_at: string;
 }
@@ -138,7 +149,7 @@ async function getNotificationIdColumn(): Promise<'id' | 'notification_id'> {
 /**
  * Get notifications for a specific user
  */
-export async function getUserNotifications(userId: number, limit: number = 10): Promise<NotificationRecord[]> {
+export async function getUserNotifications(userId: number, limit: number = 10): Promise<ConvertedNotificationRecord[]> {
   try {
     await ensureNotificationsTable();
     const idColumn = await getNotificationIdColumn();
@@ -150,7 +161,14 @@ export async function getUserNotifications(userId: number, limit: number = 10): 
          FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT ?`;
     
     const notifications = await query(selectQuery, [userId, limit]) as NotificationRecord[];
-    return notifications || [];
+    
+    // Convert boolean is_read to number (0 or 1) to match frontend expectations
+    const convertedNotifications = (notifications || []).map(notification => ({
+      ...notification,
+      is_read: notification.is_read ? 1 : 0
+    }));
+    
+    return convertedNotifications;
   } catch (error) {
     if (process.env.NODE_ENV === 'development') {
       console.error("Error fetching user notifications:", error);

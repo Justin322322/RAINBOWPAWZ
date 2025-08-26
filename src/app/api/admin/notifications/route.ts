@@ -140,10 +140,14 @@ export async function GET(request: NextRequest) {
             LIMIT 50
           `);
 
+          // Calculate unread count from the new notifications
+          const unreadCount = newNotifications.filter((notification: any) => notification.is_read === 0).length;
+
           return NextResponse.json({
             success: true,
             notifications: newNotifications,
-            pendingApplications: pendingCount
+            pendingApplications: pendingCount,
+            unread_count: unreadCount
           }, {
             headers: {
               'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -153,10 +157,14 @@ export async function GET(request: NextRequest) {
         }
       }
 
+      // Calculate unread count from the notifications
+      const unreadCount = notifications.filter((notification: any) => notification.is_read === 0).length;
+
       return NextResponse.json({
         success: true,
         notifications,
-        pendingApplications: pendingCount
+        pendingApplications: pendingCount,
+        unread_count: unreadCount
       }, {
         headers: {
           'Cache-Control': 'no-cache, no-store, must-revalidate',

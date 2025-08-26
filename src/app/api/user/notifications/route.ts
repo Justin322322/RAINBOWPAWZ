@@ -27,9 +27,13 @@ export async function GET(request: NextRequest) {
     // Fetch notifications
     const notifications = await getUserNotifications(parseInt(user.userId), limit);
 
+    // Calculate unread count from the notifications
+    const unreadCount = notifications.filter(notification => notification.is_read === 0).length;
+
     return NextResponse.json({
       success: true,
-      notifications
+      notifications,
+      unread_count: unreadCount
     });
 
   } catch (error) {

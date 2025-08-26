@@ -230,7 +230,6 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onShowSignup }
                   placeholder="you@example.com"
                   required
                   size="lg"
-                  className="transition-all duration-300"
                 />
 
                 <Input
@@ -242,7 +241,6 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onShowSignup }
                   placeholder="••••••••"
                   required
                   size="lg"
-                  className="transition-all duration-300"
                   rightIcon={
                     <button
                       type="button"

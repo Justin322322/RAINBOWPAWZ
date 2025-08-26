@@ -15,6 +15,9 @@ export default function NotificationBell() {
   const buttonRef = useRef<HTMLButtonElement>(null);
   const { notifications, unreadCount, loading, markAsRead, markAllAsRead, removeNotification, fetchNotifications } = useNotifications();
 
+  // Debug logging
+  console.log('NotificationBell render - unreadCount:', unreadCount, 'notifications:', notifications);
+
   // Calculate dropdown position to prevent overflow
   const calculateDropdownPosition = () => {
     if (buttonRef.current) {
