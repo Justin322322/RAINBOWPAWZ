@@ -145,7 +145,7 @@ export async function PUT(request: NextRequest) {
 
     // **🔥 FIX: Get updated user data using regular query (outside transaction)**
     const updatedUserResult = await query(
-      `SELECT user_id, first_name, last_name, email, phone, address, gender,
+      `SELECT user_id, first_name, last_name, email, phone, sms_notifications, address, gender,
        created_at, updated_at, is_otp_verified, role, status, is_verified
        FROM users WHERE user_id = ? LIMIT 1`,
       [userId]
@@ -226,14 +226,20 @@ async function notifyUserOfRestriction(user: any, reason: string, duration?: str
       duration
     });
 
-    await sendEmail({
-      to: user.email,
-      subject: emailTemplate.subject,
-      html: emailTemplate.html
-    });
+    // Respect user email notification preference (default true)
+    const emailOptIn = user.email_notifications !== null && user.email_notifications !== undefined
+      ? Boolean(user.email_notifications)
+      : true;
+    if (emailOptIn) {
+      await sendEmail({
+        to: user.email,
+        subject: emailTemplate.subject,
+        html: emailTemplate.html
+      });
+    }
 
-    // Send SMS notification
-    if (user.phone) {
+    // Send SMS notification if user opted-in
+    if (user.phone && (user.sms_notifications === 1 || user.sms_notifications === true)) {
       await sendSMS({
         to: user.phone,
         message: `🚨 Your RainbowPaws account has been restricted. Reason: ${reason}. You can submit an appeal at ${process.env.NEXT_PUBLIC_BASE_URL}/appeals`

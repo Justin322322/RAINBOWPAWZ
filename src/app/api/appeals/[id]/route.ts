@@ -32,6 +32,7 @@ export async function GET(
         u.last_name,
         u.email,
         u.phone,
+        u.sms_notifications,
         admin.first_name as admin_first_name,
         admin.last_name as admin_last_name
       FROM user_appeals a
@@ -329,14 +330,20 @@ async function notifyUserOfAppealUpdate(
     });
 
     // Send custom email notification
-    await sendEmail({
-      to: appeal.email,
-      subject: emailTemplate.subject,
-      html: emailTemplate.html
-    });
+    // Respect user's email notification preference if available
+    const emailOptIn = appeal.email_notifications !== null && appeal.email_notifications !== undefined
+      ? Boolean(appeal.email_notifications)
+      : true;
+    if (emailOptIn) {
+      await sendEmail({
+        to: appeal.email,
+        subject: emailTemplate.subject,
+        html: emailTemplate.html
+      });
+    }
 
     // Send SMS notification for important status changes
-    if ((newStatus === 'approved' || newStatus === 'rejected') && appeal.phone) {
+    if ((newStatus === 'approved' || newStatus === 'rejected') && appeal.phone && (appeal.sms_notifications === 1 || appeal.sms_notifications === true)) {
       const smsMessage = newStatus === 'approved'
         ? `🎉 Great news! Your appeal has been approved and your account access has been restored. You can now log in to RainbowPaws.`
         : `❌ Your appeal has been reviewed and unfortunately was not approved. ${adminResponse ? 'Reason: ' + adminResponse.substring(0, 80) + '...' : 'Please contact support for more information.'}`;

@@ -29,7 +29,7 @@ jobs:
       run: npm run type-check
     
     - name: Check unused code
-      run: npx knip
+      run: npm run knip
     
     - name: Build
       run: npm run build

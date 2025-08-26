@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
 
         // Get user details for notifications
         const userDetails = await query(`
-          SELECT user_id, first_name, last_name, email, phone
+          SELECT user_id, first_name, last_name, email, phone, sms_notifications
           FROM users
           WHERE user_id = ?
         `, [userId]) as any[];
@@ -403,14 +403,20 @@ async function notifyUserOfRestriction(user: any, reason: string, duration?: str
       duration
     });
 
-    await sendEmail({
-      to: user.email,
-      subject: emailTemplate.subject,
-      html: emailTemplate.html
-    });
+    // Respect user email notification preference (default true)
+    const emailOptIn = user.email_notifications !== null && user.email_notifications !== undefined
+      ? Boolean(user.email_notifications)
+      : true;
+    if (emailOptIn) {
+      await sendEmail({
+        to: user.email,
+        subject: emailTemplate.subject,
+        html: emailTemplate.html
+      });
+    }
 
     // Send SMS notification
-    if (user.phone) {
+    if (user.phone && (user.sms_notifications === 1 || user.sms_notifications === true)) {
       await sendSMS({
         to: user.phone,
         message: `🚨 Your RainbowPaws account has been restricted. Reason: ${reason}. You can submit an appeal at ${process.env.NEXT_PUBLIC_BASE_URL}/appeals`

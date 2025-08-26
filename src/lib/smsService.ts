@@ -59,6 +59,14 @@ export async function sendSMS({ to, message }: SendSMSParams): Promise<SendSMSRe
       };
     }
 
+    // Validate from number is E.164
+    if (!/^\+\d{7,15}$/.test(fromNumber)) {
+      return {
+        success: false,
+        error: 'Invalid TWILIO_PHONE_NUMBER format. Must be E.164 (e.g. +15551234567)'
+      };
+    }
+
     // Validate phone number format (basic validation)
     if (!to || !to.match(/^\+?[\d\s\-\(\)]+$/)) {
       return {
@@ -67,10 +75,17 @@ export async function sendSMS({ to, message }: SendSMSParams): Promise<SendSMSRe
       };
     }
 
-    // Format Philippine phone number
+    // Format destination phone number
     let formattedPhone: string;
     try {
-      formattedPhone = formatPhilippinePhoneNumber(to.trim());
+      const trimmed = to.trim();
+      if (/^\+\d{7,15}$/.test(trimmed)) {
+        // Already E.164
+        formattedPhone = trimmed;
+      } else {
+        // Assume Philippine local formats if not E.164
+        formattedPhone = formatPhilippinePhoneNumber(trimmed);
+      }
     } catch (formatError) {
       return {
         success: false,
@@ -78,18 +93,34 @@ export async function sendSMS({ to, message }: SendSMSParams): Promise<SendSMSRe
       };
     }
 
-    // Send SMS
-    const messageResponse = await client.messages.create({
-      body: message,
-      from: fromNumber,
-      to: formattedPhone
-    });
+    // Send SMS with limited retries for transient errors
+    const maxRetries = 2;
+    let lastError: any;
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        const messageResponse = await client.messages.create({
+          body: message,
+          from: fromNumber,
+          to: formattedPhone
+        });
 
-
-    return {
-      success: true,
-      messageId: messageResponse.sid
-    };
+        return {
+          success: true,
+          messageId: messageResponse.sid
+        };
+      } catch (err: any) {
+        lastError = err;
+        const transient = err?.status === 429 || err?.code === 'ETIMEDOUT' || err?.code === 'ECONNRESET' || err?.status >= 500;
+        if (transient && attempt < maxRetries) {
+          const backoff = 500 * (attempt + 1);
+          await new Promise((r) => setTimeout(r, backoff));
+          continue;
+        }
+        throw err;
+      }
+    }
+    // Should not reach here
+    throw lastError;
 
   } catch (error: any) {
     console.error('Error sending SMS:', error);
@@ -143,12 +174,14 @@ function formatPhilippinePhoneNumber(phoneNumber: string): string {
     cleanNumber = cleanNumber.substring(1);
   }
 
-  // Validate that we have exactly 10 digits after country code
+  // After removing prefixes, valid PH mobile should be 10 or 11 digits (some inputs may include leading 9 incorrectly)
+  if (cleanNumber.length === 11 && cleanNumber.startsWith('9')) {
+    // Handle accidental extra leading 9 (rare); trim to last 10
+    cleanNumber = cleanNumber.slice(-10);
+  }
   if (cleanNumber.length !== 10) {
     throw new Error(`Invalid Philippine phone number: expected 10 digits, got ${cleanNumber.length}`);
   }
-
-  // Validate that it starts with 9 (Philippine mobile numbers)
   if (!cleanNumber.startsWith('9')) {
     throw new Error('Invalid Philippine mobile number: must start with 9');
   }

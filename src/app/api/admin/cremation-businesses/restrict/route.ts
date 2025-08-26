@@ -301,7 +301,7 @@ async function notifyUserOfRestriction(userId: number, reason: string, duration?
     // Get user details for notifications with timeout
     const userResult = await Promise.race([
       query(
-        `SELECT user_id, first_name, last_name, email, phone
+        `SELECT user_id, first_name, last_name, email, phone, sms_notifications
          FROM users WHERE user_id = ? LIMIT 1`,
         [userId]
       ),
@@ -348,23 +348,29 @@ async function notifyUserOfRestriction(userId: number, reason: string, duration?
         userType: 'cremation center'
       });
 
-      await Promise.race([
-        sendEmail({
-          to: user.email,
-          subject: emailTemplate.subject,
-          html: emailTemplate.html
-        }),
-        new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('Email sending timeout')), 15000)
-        )
-      ]);
+      const emailOptIn = user.email_notifications !== null && user.email_notifications !== undefined
+        ? Boolean(user.email_notifications)
+        : true;
+
+      if (emailOptIn) {
+        await Promise.race([
+          sendEmail({
+            to: user.email,
+            subject: emailTemplate.subject,
+            html: emailTemplate.html
+          }),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Email sending timeout')), 15000)
+          )
+        ]);
+      }
     } catch (emailError) {
       console.error('Failed to send email notification:', emailError);
       // Continue with SMS even if email fails
     }
 
     // Send SMS notification (independent of other notifications)
-    if (user.phone) {
+    if (user.phone && (user.sms_notifications === 1 || user.sms_notifications === true)) {
       try {
         await Promise.race([
           sendSMS({

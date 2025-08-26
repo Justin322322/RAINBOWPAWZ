@@ -403,15 +403,21 @@ async function sendBookingEmailNotification(
   additionalData?: Record<string, any>
 ): Promise<void> {
   try {
-    // Get user email
-    const userResult = await query('SELECT email, first_name FROM users WHERE user_id = ?', [bookingDetails.user_id]) as any[];
+    // Get user email and preferences
+    const userResult = await query('SELECT email, first_name, email_notifications FROM users WHERE user_id = ?', [bookingDetails.user_id]) as any[];
 
     if (!userResult || userResult.length === 0) {
       console.warn('User email not found for booking notification');
       return;
     }
 
-    const { email, first_name } = userResult[0];
+    const { email, first_name, email_notifications } = userResult[0];
+
+    // Respect user email notification preferences (default true if null)
+    const emailOptIn = email_notifications !== null ? Boolean(email_notifications) : true;
+    if (!emailOptIn) {
+      return;
+    }
     let emailTemplate;
 
     switch (notificationType) {

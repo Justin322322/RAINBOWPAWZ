@@ -5,7 +5,8 @@ export const MYSQL_PORT = 3306;
 
 // Helper function to get SSL config
 export const getSSLConfig = () => {
-  if (process.env.NODE_ENV === "production") {
+  // Only use SSL in production and when explicitly configured
+  if (process.env.NODE_ENV === "production" && process.env.DATABASE_URL) {
     return { rejectUnauthorized: true };
   }
   return undefined; // No SSL for local development
@@ -75,7 +76,7 @@ const dbConfig = {
 };
 
 // Use environment variables for production to ensure security
-export const productionConfig = {
+const productionConfig = {
   host: process.env.DB_HOST || "localhost",
   user: process.env.DB_USER || "root",
   password: process.env.DB_PASSWORD || "",
@@ -99,43 +100,50 @@ let _pool: mysql.Pool;
 
 function initPool(): mysql.Pool {
   let pool: mysql.Pool;
-  try {
-    pool = tryCreatePoolFromDatabaseUrl() || mysql.createPool(finalConfig);
-
-    // Test the connection immediately
-    (async () => {
-      try {
-        const connection = await pool.getConnection();
-        connection.release();
-      } catch {}
-    })();
-  } catch (error) {
-    const err = error as any;
-
-    if (err.code === "ECONNREFUSED") {
-      // no-op, fallbacks below
-    } else if (err.code === "ER_ACCESS_DENIED_ERROR") {
-      // no-op
-    } else if (err.code === "ER_BAD_DB_ERROR") {
-      // no-op
-    }
-
-    // Create a fallback pool with default values
+  
+  // Strategy 1: Try cloud database only if we have a valid real PlanetScale URL
+  const databaseUrl = process.env.DATABASE_URL || process.env.MYSQL_URL;
+  
+  // Only use cloud if we have a real PlanetScale URL (not placeholder)
+  if (databaseUrl && 
+      databaseUrl.includes('psdb.cloud') && 
+      !databaseUrl.includes('your-planetscale-host') &&
+      !databaseUrl.includes('your-planetscale-username')) {
+    console.log("🔄 Attempting to connect to cloud database...");
     try {
-      pool = tryCreatePoolFromDatabaseUrl() || mysql.createPool(productionConfig);
-    } catch {
-      // Create a minimal pool as last resort using environment variables
-      pool = mysql.createPool({
-        host: process.env.DB_HOST || "localhost",
-        user: process.env.DB_USER || "root",
-        password: process.env.DB_PASSWORD || "",
-        database: process.env.DB_NAME || "rainbow_paws",
-        port: MYSQL_PORT,
-        ssl: getSSLConfig(),
-      });
+      const cloudPool = tryCreatePoolFromDatabaseUrl();
+      if (cloudPool) {
+        console.log("✅ Created cloud database pool, will test on first use");
+        return cloudPool;
+      }
+    } catch (_error) {
+      console.log("❌ Failed to create cloud pool, falling back to local database");
     }
+  } else {
+    console.log("🔄 No valid cloud database URL found, using local database");
   }
-  return pool;
+
+  // Strategy 2: Use local database (always fallback)
+  try {
+    const localConfig = {
+      host: "localhost",
+      user: "root",
+      password: "",
+      database: "rainbow_paws",
+      port: MYSQL_PORT,
+      waitForConnections: true,
+      connectionLimit: 10,
+      queueLimit: 0,
+      connectTimeout: 10000,
+      ssl: undefined, // Explicitly disable SSL for local
+    };
+    pool = mysql.createPool(localConfig);
+    console.log("✅ Created local database pool");
+    return pool;
+  } catch (error) {
+    console.error("❌ Local database connection failed:", error);
+    throw new Error("Failed to connect to local database");
+  }
 }
 
 // Initialize pool once

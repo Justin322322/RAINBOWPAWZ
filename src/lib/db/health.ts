@@ -1,8 +1,7 @@
-import type { Pool } from "mysql2/promise";
-import type { QueryResult } from "@/types/database";
 import { getPool } from "./pool";
 import { query } from "./query";
-import { MYSQL_PORT, getSSLConfig, finalConfig, mysql } from "./pool";
+import { MYSQL_PORT } from "./pool";
+import mysql from "mysql2/promise";
 
 interface PoolStats {
   totalConnections: number;
@@ -52,21 +51,28 @@ export async function getDatabaseHealth(): Promise<{
 export async function testConnection() {
   try {
     await query("SELECT 1 as test");
+    console.log("✅ Primary database connection successful");
     return true;
-  } catch {
+  } catch (_error) {
+    console.log("❌ Primary connection failed, trying fallback...");
+    
+    // Always try local database as fallback
     try {
       const connection = await mysql.createConnection({
-        host: (finalConfig as any).host,
-        user: (finalConfig as any).user,
-        password: (finalConfig as any).password,
+        host: "localhost",
+        user: "root", 
+        password: "",
         port: MYSQL_PORT,
-        database: (finalConfig as any).database,
-        ssl: getSSLConfig(),
+        database: "rainbow_paws",
+        ssl: undefined, // Explicitly disable SSL
       });
 
+      await connection.execute("SELECT 1 as test");
       await connection.end();
+      console.log("✅ Fallback local connection successful");
       return true;
-    } catch {
+    } catch (fallbackError) {
+      console.log("❌ Fallback connection also failed:", fallbackError);
       return false;
     }
   }

@@ -14,7 +14,8 @@
     "lint:unused-only": "eslint . --ext .ts,.tsx,.js,.jsx --no-eslintrc --parser @typescript-eslint/parser --plugin @typescript-eslint --plugin unused-imports --rule \"@typescript-eslint/no-unused-vars: error\" --rule \"unused-imports/no-unused-imports: error\"",
     "clean": "rimraf .next tsconfig.tsbuildinfo",
     "clean:all": "rimraf .next tsconfig.tsbuildinfo node_modules package-lock.json && npm install",
-    "spring-clean": "npm run clean && npm run type-check"
+    "spring-clean": "npm run clean && npm run type-check",
+    "knip": "knip"
   },
   "dependencies": {
     "@headlessui/react": "^2.2.2",
@@ -49,6 +50,7 @@
     "eslint": "^9.33.0",
     "eslint-config-next": "^15.4.7",
     "eslint-plugin-unused-imports": "^4.2.0",
+    "knip": "^5.0.0",
     "postcss": "^8.5.3",
     "rimraf": "^6.0.1",
     "tailwindcss": "^3.4.17",
@@ -60,6 +62,9 @@
       "@typescript-eslint/parser",
       "eslint-config-next",
       "eslint-plugin-unused-imports"
+    ],
+    "ignoreBinaries": [
+      "knip"
     ]
   }
 }
