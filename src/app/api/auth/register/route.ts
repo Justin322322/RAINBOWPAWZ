@@ -454,7 +454,8 @@ export async function POST(request: Request) {
         // Continue with registration even if OTP generation fails
       }
 
-      return NextResponse.json({
+      // Create response with authentication cookies
+      const response = NextResponse.json({
         success: true,
         message: 'Registration successful',
         userId: userId
@@ -462,6 +463,13 @@ export async function POST(request: Request) {
         status: 200,
         headers
       });
+
+      // Set authentication cookies for the newly registered user
+      const { setSecureAuthCookies } = await import('@/lib/secureAuth');
+      const accountType = data.account_type === 'personal' ? 'user' : 'business';
+      setSecureAuthCookies(response, userId.toString(), accountType, data.email);
+
+      return response;
     } else {
       throw new Error('Failed to create user account');
     }

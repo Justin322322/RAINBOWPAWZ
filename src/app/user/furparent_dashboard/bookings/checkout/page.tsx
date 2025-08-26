@@ -99,6 +99,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
   const [validationErrors, setValidationErrors] = useState<{
     petName?: string;
     petType?: string;
+    petWeight?: string;
     selectedDate?: string;
     selectedTimeSlot?: string;
     deliveryAddress?: string;
@@ -308,6 +309,35 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
       }));
       return false;
     }
+    return true;
+  };
+
+  // Validate pet weight when package has per kg pricing
+  const validatePetWeight = () => {
+    // Check if the package has per kg pricing
+    if (bookingData?.package?.pricePerKg && bookingData.package.pricePerKg > 0) {
+      if (!petWeight || petWeight.trim() === '') {
+        setValidationErrors(prev => ({
+          ...prev,
+          petWeight: "Pet weight is required for this package as it uses per kg pricing",
+          formSubmitted: true
+        }));
+        return false;
+      }
+      
+      const weight = parseFloat(petWeight);
+      if (isNaN(weight) || weight <= 0) {
+        setValidationErrors(prev => ({
+          ...prev,
+          petWeight: "Please enter a valid pet weight greater than 0",
+          formSubmitted: true
+        }));
+        return false;
+      }
+    }
+    
+    // Clear validation error if weight is valid or not required
+    clearValidationError('petWeight');
     return true;
   };
 
@@ -616,12 +646,13 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
     // Validate all required fields using our validation functions
     const isPetNameValid = validateField('petName', petName, 'Pet name');
     const isPetTypeValid = validateField('petType', petType, 'Pet type');
+    const isPetWeightValid = validatePetWeight();
     const isDateValid = validateDateSelection();
     const isTimeSlotValid = validateTimeSlotSelection();
     const isDeliveryAddressValid = validateDeliveryAddress();
 
     // Check if all validations passed
-    if (!isPetNameValid || !isPetTypeValid || !isDateValid || !isTimeSlotValid || !isDeliveryAddressValid) {
+    if (!isPetNameValid || !isPetTypeValid || !isPetWeightValid || !isDateValid || !isTimeSlotValid || !isDeliveryAddressValid) {
       // Scroll to the first error field
       const firstErrorField = document.querySelector('.error-field');
       if (firstErrorField) {
@@ -1132,7 +1163,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
 
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Weight (kg)
+                            Weight (kg) {bookingData?.package?.pricePerKg > 0 && <span className="text-red-500">*</span>}
                           </label>
                           <input
                             type="number"
@@ -1141,6 +1172,11 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                               const weight = parseFloat(e.target.value);
                               setPetWeight(e.target.value);
 
+                              // Clear validation error when user starts typing
+                              if (e.target.value.trim()) {
+                                clearValidationError('petWeight');
+                              }
+
                               // Calculate price based on weight and price per kg
                               if (!isNaN(weight) && bookingData?.package?.pricePerKg) {
                                 const basePrice = Number(bookingData.package.price);
@@ -1148,23 +1184,43 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                                 setCalculatedPrice(basePrice + weightPrice);
                               }
                             }}
+                            onBlur={() => {
+                              // Validate on blur if per kg pricing is enabled
+                              if (bookingData?.package?.pricePerKg > 0) {
+                                validatePetWeight();
+                              }
+                            }}
                             min="0"
                             step="0.1"
-                            className="w-full p-3 border border-gray-300 rounded-md focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
+                            className={`w-full p-3 border rounded-md focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)] ${
+                              validationErrors.petWeight ? 'border-red-500 error-field' : 'border-gray-300'
+                            }`}
                             placeholder="Enter weight in kilograms"
                           />
-                          {bookingData?.package?.pricePerKg > 0 && petWeight && !isNaN(parseFloat(petWeight)) && (
+                          {validationErrors.petWeight && (
+                            <p className="mt-1 text-sm text-red-600">{validationErrors.petWeight}</p>
+                          )}
+                          {bookingData?.package?.pricePerKg > 0 && (
                             <div className="mt-2 text-sm">
-                              <p className="text-gray-600">
-                                Base price: ₱{Number(bookingData.package.price).toLocaleString()}
-                              </p>
-                              <p className="text-gray-600">
-                                Weight price: {parseFloat(petWeight).toFixed(1)}kg × ₱{Number(bookingData.package.pricePerKg).toLocaleString()}/kg =
-                                ₱{(parseFloat(petWeight) * Number(bookingData.package.pricePerKg)).toLocaleString()}
-                              </p>
-                              <p className="font-medium text-[var(--primary-green)]">
-                                Total base price: ₱{calculatedPrice.toLocaleString()}
-                              </p>
+                              {!petWeight || isNaN(parseFloat(petWeight)) ? (
+                                <p className="text-blue-600 bg-blue-50 p-2 rounded">
+                                  <strong>Note:</strong> This package uses per kg pricing (₱{Number(bookingData.package.pricePerKg).toLocaleString()}/kg). 
+                                  Pet weight is required to calculate the final price.
+                                </p>
+                              ) : (
+                                <>
+                                  <p className="text-gray-600">
+                                    Base price: ₱{Number(bookingData.package.price).toLocaleString()}
+                                  </p>
+                                  <p className="text-gray-600">
+                                    Weight price: {parseFloat(petWeight).toFixed(1)}kg × ₱{Number(bookingData.package.pricePerKg).toLocaleString()}/kg =
+                                    ₱{(parseFloat(petWeight) * Number(bookingData.package.pricePerKg)).toLocaleString()}
+                                  </p>
+                                  <p className="font-medium text-[var(--primary-green)]">
+                                    Total base price: ₱{calculatedPrice.toLocaleString()}
+                                  </p>
+                                </>
+                              )}
                             </div>
                           )}
                         </div>

@@ -1,6 +1,6 @@
 interface AddOn {
   name: string;
-  price: number | null;
+  price: number;
 }
 
 export interface PackageData {

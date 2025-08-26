@@ -136,6 +136,9 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
       // Now upload the documents if registration was successful
       if (formData.birCertificate || formData.businessPermit || formData.governmentId) {
         try {
+          // Add a small delay to ensure the service provider record is fully committed
+          await new Promise(resolve => setTimeout(resolve, 2000));
+
           // Create FormData for documents upload
           const docFormData = new FormData();
 
@@ -155,26 +158,35 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
             docFormData.append('governmentId', formData.governmentId);
           }
 
-          // Send the document upload request
+          // Send the document upload request (cookies will be sent automatically)
           const docResponse = await fetch('/api/businesses/upload-documents', {
             method: 'POST',
             body: docFormData,
+            credentials: 'include' // Ensure cookies are sent
           });
 
-          const _docData = await docResponse.json();
+          const docData = await docResponse.json();
 
           if (!docResponse.ok) {
-            // We'll continue even if document upload fails
-            // since the user account has been created
+            console.error('Document upload failed:', docData);
+            const errorDetails = docData.details ? ` (${docData.details})` : '';
+            // Show warning but continue with registration
+            showToast(`Registration successful, but document upload failed: ${docData.error || 'Unknown error'}${errorDetails}. You can upload documents later in your profile.`, 'warning');
           } else {
+            if (docData.warnings && docData.warnings.length > 0) {
+              showToast(`Registration successful! Some documents had issues: ${docData.warnings.join(', ')}`, 'warning');
+            } else {
+              showToast('Registration and document upload successful!', 'success');
+            }
           }
-        } catch {
-          // Continue with registration even if document upload fails
+        } catch (docError) {
+          console.error('Document upload error:', docError);
+          // Show warning but continue with registration
+          showToast('Registration successful, but document upload failed. You can upload documents later in your profile.', 'warning');
         }
+      } else {
+        showToast('Registration successful!', 'success');
       }
-
-      // Show success toast notification
-      showToast('Registration successful!', 'success');
 
       // Close the modal
       onClose();
@@ -195,9 +207,9 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
 
   return (
     <>
-      <Modal 
-        isOpen={isOpen} 
-        onClose={onClose} 
+      <Modal
+        isOpen={isOpen}
+        onClose={onClose}
         onBack={onBack}
         size="large"
       >
@@ -220,11 +232,11 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
           >
             <XMarkIcon className="w-6 h-6" />
           </button>
-            <div className="text-center mb-8">
-              <h2 className="text-3xl font-bold text-gray-800">Cremation Center Registration</h2>
-              <p className="text-gray-500 mt-2">Join our network of trusted pet memorial service providers.</p>
-            </div>
-          
+          <div className="text-center mb-8">
+            <h2 className="text-3xl font-bold text-gray-800">Cremation Center Registration</h2>
+            <p className="text-gray-500 mt-2">Join our network of trusted pet memorial service providers.</p>
+          </div>
+
           {errorMessage && (
             <div className="mb-6">
               <Alert variant="error" title="Registration Error" onClose={() => setErrorMessage('')} dismissible>
@@ -240,7 +252,7 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
                 <Input label="First Name" id="firstName" name="firstName" value={formData.firstName} onChange={handleChange} placeholder="Juan" required size="lg" />
                 <Input label="Last Name" id="lastName" name="lastName" value={formData.lastName} onChange={handleChange} placeholder="Dela Cruz" required size="lg" />
                 <Input label="Email Address" id="email" type="email" name="email" value={formData.email} onChange={handleChange} placeholder="you@example.com" required size="lg" />
-                <SelectInput id="sex" name="sex" label="Sex" value={formData.sex} onChange={(value) => setFormData({...formData, sex: value})} options={[{ value: "", label: "Select Sex" }, { value: "male", label: "Male" }, { value: "female", label: "Female" }, { value: "other", label: "Other" }, { value: "prefer-not-to-say", label: "Prefer not to say" }]} required />
+                <SelectInput id="sex" name="sex" label="Sex" value={formData.sex} onChange={(value) => setFormData({ ...formData, sex: value })} options={[{ value: "", label: "Select Sex" }, { value: "male", label: "Male" }, { value: "female", label: "Female" }, { value: "other", label: "Other" }, { value: "prefer-not-to-say", label: "Prefer not to say" }]} required />
               </div>
             </div>
 
@@ -248,7 +260,7 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
               <h3 className="text-lg font-semibold text-gray-700 mb-4">Business Details</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <Input label="Business Name" id="businessName" name="businessName" value={formData.businessName} onChange={handleChange} placeholder="ABC Pet Cremation" required size="lg" />
-                <PhilippinePhoneInput id="businessPhone" name="businessPhone" label="Business Phone" value={formData.businessPhone} onChange={(value) => setFormData({...formData, businessPhone: value})} required />
+                <PhilippinePhoneInput id="businessPhone" name="businessPhone" label="Business Phone" value={formData.businessPhone} onChange={(value) => setFormData({ ...formData, businessPhone: value })} required />
                 <Input label="Business Email" id="businessEmail" type="email" name="businessEmail" value={formData.businessEmail} onChange={handleChange} placeholder="contact@abccremation.com" required size="lg" />
                 <Input label="Business Hours" id="businessHours" name="businessHours" value={formData.businessHours} onChange={handleChange} placeholder="e.g., Mon-Fri, 9am-5pm" size="lg" />
               </div>
@@ -261,7 +273,7 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
                   id="businessEntityType"
                   name="businessEntityType"
                   value={formData.businessEntityType}
-                  onChange={(value) => setFormData({...formData, businessEntityType: value})}
+                  onChange={(value) => setFormData({ ...formData, businessEntityType: value })}
                   required
                   options={[
                     { value: "sole_proprietorship", label: "Sole Proprietorship" },
@@ -277,7 +289,7 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
                 <textarea id="businessDescription" name="businessDescription" value={formData.businessDescription} onChange={handleChange} rows={4} className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--primary-green)] transition" placeholder="Tell us about your services..."></textarea>
               </div>
             </div>
-            
+
             <div className="border-b border-gray-200 pb-6">
               <h3 className="text-lg font-semibold text-gray-700 mb-4">Required Documents</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

@@ -619,7 +619,9 @@ export async function POST(request: NextRequest) {
         bp.hours as business_hours,
         bp.description as service_description,
         CASE WHEN bp.application_status = 'approved' THEN 1 ELSE 0 END as is_verified,
-        bp.business_permit_path as document_path,
+        bp.business_permit_path,
+        bp.bir_certificate_path,
+        bp.government_id_path,
         '' as bp_permit_number,
         '' as tax_id_number,
         bp.created_at,
@@ -635,17 +637,37 @@ export async function POST(request: NextRequest) {
 
     const business = businessResults[0];
 
-    // Get business documents
+    // Get business documents - collect all available documents
     let documents = [];
-    if (business.document_path) {
-      try {
-        documents.push({
-          type: 'Business Documents',
-          path: business.document_path,
-          uploadDate: new Date(business.updated_at).toLocaleDateString('en-US')
-        });
-      } catch {
-      }
+    
+    // Add business permit if available
+    if (business.business_permit_path) {
+      documents.push({
+        type: 'Business Permit',
+        path: business.business_permit_path,
+        url: business.business_permit_path,
+        uploadDate: new Date(business.updated_at).toLocaleDateString('en-US')
+      });
+    }
+    
+    // Add BIR certificate if available
+    if (business.bir_certificate_path) {
+      documents.push({
+        type: 'BIR Certificate',
+        path: business.bir_certificate_path,
+        url: business.bir_certificate_path,
+        uploadDate: new Date(business.updated_at).toLocaleDateString('en-US')
+      });
+    }
+    
+    // Add government ID if available
+    if (business.government_id_path) {
+      documents.push({
+        type: 'Government ID',
+        path: business.government_id_path,
+        url: business.government_id_path,
+        uploadDate: new Date(business.updated_at).toLocaleDateString('en-US')
+      });
     }
 
     // Format the business details

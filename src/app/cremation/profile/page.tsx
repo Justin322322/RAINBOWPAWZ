@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import Image from 'next/image';
 import CremationDashboardLayout from '@/components/navigation/CremationDashboardLayout';
 import withBusinessVerification from '@/components/withBusinessVerification';
 import { useToast } from '@/context/ToastContext';
@@ -15,11 +16,12 @@ import {
   ArrowUpTrayIcon,
   ExclamationTriangleIcon,
   DocumentIcon,
-  XMarkIcon
+  XMarkIcon,
+  DocumentTextIcon,
+  EyeIcon
 } from '@heroicons/react/24/outline';
 import { getImagePath } from '@/utils/imageUtils';
 import PhilippinePhoneInput from '@/components/ui/PhilippinePhoneInput';
-import Image from 'next/image';
 import ProfilePictureUpload from '@/components/profile/ProfilePictureUpload';
 
 import {
@@ -1339,15 +1341,47 @@ function CremationProfilePage({ userData }: { userData: any }) {
                   {profileData?.documents?.businessPermitPath ? (
                     <div className="relative">
                       <div
-                        className="w-full h-32 bg-gray-100 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer hover:bg-gray-50"
+                        className="w-full h-32 bg-gray-100 rounded-lg border-2 border-dashed border-gray-300 overflow-hidden cursor-pointer hover:bg-gray-50"
                         onClick={() => openPreviewModal(profileData.documents.businessPermitPath, 'Business Permit')}
                       >
-                        <div className="text-center">
-                          <CheckCircleIcon className="h-8 w-8 text-green-500 mx-auto mb-2" />
-                          <p className="text-sm text-gray-600">Document Uploaded</p>
-                          <p className="text-xs text-gray-500">Click to view</p>
+                        {/* Document Thumbnail */}
+                        <div className="relative w-full h-full">
+                          {profileData.documents.businessPermitPath.toLowerCase().endsWith('.pdf') ? (
+                            <div className="flex items-center justify-center h-full">
+                              <DocumentTextIcon className="h-12 w-12 text-red-500 mx-auto" />
+                              <span className="text-xs text-gray-600 mt-2">PDF Document</span>
+                            </div>
+                          ) : (
+                            <>
+                              <Image
+                                src={getImagePath(profileData.documents.businessPermitPath)}
+                                alt="Business Permit"
+                                fill
+                                className="object-cover"
+                                onError={(e) => {
+                                  const target = e.target as HTMLImageElement;
+                                  target.style.display = 'none';
+                                  target.nextElementSibling?.classList.remove('invisible');
+                                }}
+                              />
+                              <div className="absolute inset-0 flex items-center justify-center bg-gray-100 opacity-0 pointer-events-none">
+                                <div className="text-center">
+                                  <CheckCircleIcon className="h-8 w-8 text-green-500 mx-auto mb-2" />
+                                  <p className="text-sm text-gray-600">Document Uploaded</p>
+                                  <p className="text-xs text-gray-500">Click to view</p>
+                                </div>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                        {/* Hover Overlay */}
+                        <div className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-20 transition-all duration-200 flex items-center justify-center opacity-0 hover:opacity-100">
+                          <div className="bg-white p-2 rounded-full shadow-md">
+                            <EyeIcon className="h-4 w-4 text-gray-600" />
+                          </div>
                         </div>
                       </div>
+                      <p className="text-xs text-gray-500 mt-2 text-center">Click to view full document</p>
                     </div>
                   ) : (
                     <div className="space-y-2">
@@ -1392,15 +1426,47 @@ function CremationProfilePage({ userData }: { userData: any }) {
                   {profileData?.documents?.birCertificatePath ? (
                     <div className="relative">
                       <div
-                        className="w-full h-32 bg-gray-100 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer hover:bg-gray-50"
+                        className="w-full h-32 bg-gray-100 rounded-lg border-2 border-dashed border-gray-300 overflow-hidden cursor-pointer hover:bg-gray-50"
                         onClick={() => openPreviewModal(profileData.documents.birCertificatePath, 'BIR Certificate')}
                       >
-                        <div className="text-center">
-                          <CheckCircleIcon className="h-8 w-8 text-green-500 mx-auto mb-2" />
-                          <p className="text-sm text-gray-600">Document Uploaded</p>
-                          <p className="text-xs text-gray-500">Click to view</p>
+                        {/* Document Thumbnail */}
+                        <div className="relative w-full h-full">
+                          {profileData.documents.birCertificatePath.toLowerCase().endsWith('.pdf') ? (
+                            <div className="flex items-center justify-center h-full">
+                              <DocumentTextIcon className="h-12 w-12 text-red-500 mx-auto" />
+                              <span className="text-xs text-gray-600 mt-2">PDF Document</span>
+                            </div>
+                          ) : (
+                            <>
+                              <Image
+                                src={getImagePath(profileData.documents.birCertificatePath)}
+                                alt="BIR Certificate"
+                                fill
+                                className="object-cover"
+                                onError={(e) => {
+                                  const target = e.target as HTMLImageElement;
+                                  target.style.display = 'none';
+                                  target.nextElementSibling?.classList.remove('invisible');
+                                }}
+                              />
+                              <div className="absolute inset-0 flex items-center justify-center bg-gray-100 opacity-0 pointer-events-none">
+                                <div className="text-center">
+                                  <CheckCircleIcon className="h-8 w-8 text-green-500 mx-auto mb-2" />
+                                  <p className="text-sm text-gray-600">Document Uploaded</p>
+                                  <p className="text-xs text-gray-500">Click to view</p>
+                                </div>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                        {/* Hover Overlay */}
+                        <div className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-20 transition-all duration-200 flex items-center justify-center opacity-0 hover:opacity-100">
+                          <div className="bg-white p-2 rounded-full shadow-md">
+                            <EyeIcon className="h-4 w-4 text-gray-600" />
+                          </div>
                         </div>
                       </div>
+                      <p className="text-xs text-gray-500 mt-2 text-center">Click to view full document</p>
                     </div>
                   ) : (
                     <div className="space-y-2">
@@ -1445,15 +1511,47 @@ function CremationProfilePage({ userData }: { userData: any }) {
                   {profileData?.documents?.governmentIdPath ? (
                     <div className="relative">
                       <div
-                        className="w-full h-32 bg-gray-100 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer hover:bg-gray-50"
+                        className="w-full h-32 bg-gray-100 rounded-lg border-2 border-dashed border-gray-300 overflow-hidden cursor-pointer hover:bg-gray-50"
                         onClick={() => openPreviewModal(profileData.documents.governmentIdPath, 'Government ID')}
                       >
-                        <div className="text-center">
-                          <CheckCircleIcon className="h-8 w-8 text-green-500 mx-auto mb-2" />
-                          <p className="text-sm text-gray-600">Document Uploaded</p>
-                          <p className="text-xs text-gray-500">Click to view</p>
+                        {/* Document Thumbnail */}
+                        <div className="relative w-full h-full">
+                          {profileData.documents.governmentIdPath.toLowerCase().endsWith('.pdf') ? (
+                            <div className="flex items-center justify-center h-full">
+                              <DocumentTextIcon className="h-12 w-12 text-red-500 mx-auto" />
+                              <span className="text-xs text-gray-600 mt-2">PDF Document</span>
+                            </div>
+                          ) : (
+                            <>
+                              <Image
+                                src={getImagePath(profileData.documents.governmentIdPath)}
+                                alt="Government ID"
+                                fill
+                                className="object-cover"
+                                onError={(e) => {
+                                  const target = e.target as HTMLImageElement;
+                                  target.style.display = 'none';
+                                  target.nextElementSibling?.classList.remove('invisible');
+                                }}
+                              />
+                              <div className="absolute inset-0 flex items-center justify-center bg-gray-100 opacity-0 pointer-events-none">
+                                <div className="text-center">
+                                  <CheckCircleIcon className="h-8 w-8 text-green-500 mx-auto mb-2" />
+                                  <p className="text-sm text-gray-600">Document Uploaded</p>
+                                  <p className="text-xs text-gray-500">Click to view</p>
+                                </div>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                        {/* Hover Overlay */}
+                        <div className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-20 transition-all duration-200 flex items-center justify-center opacity-0 hover:opacity-100">
+                          <div className="bg-white p-2 rounded-full shadow-md">
+                            <EyeIcon className="h-4 w-4 text-gray-600" />
+                          </div>
                         </div>
                       </div>
+                      <p className="text-xs text-gray-500 mt-2 text-center">Click to view full document</p>
                     </div>
                   ) : (
                     <div className="space-y-2">

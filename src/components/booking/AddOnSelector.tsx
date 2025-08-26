@@ -53,10 +53,12 @@ export default function AddOnSelector({
             isCustomPrice: false
           }));
 
+          console.log('Fetched add-ons for package', packageId, ':', addOns);
           setAvailableAddOns(addOns);
           // Clear any previous errors when successful
           setError(null);
         } else {
+          console.warn('Failed to fetch add-ons:', data.error);
           setError(data.error || 'Failed to load add-ons');
           setAvailableAddOns([]);
         }
@@ -87,12 +89,12 @@ export default function AddOnSelector({
 
     if (isSelected) {
       // Add the add-on if it's not already selected
-      if (!updatedAddOns.some(a => a.id === addon.id && a.name === addon.name)) {
+      if (!updatedAddOns.some(a => a.id === addon.id || (a.name === addon.name && a.price === addon.price))) {
         updatedAddOns.push({ ...addon, isSelected: true });
       }
     } else {
       // Remove the add-on
-      const index = updatedAddOns.findIndex(a => a.id === addon.id && a.name === addon.name);
+      const index = updatedAddOns.findIndex(a => a.id === addon.id || (a.name === addon.name && a.price === addon.price));
       if (index !== -1) {
         updatedAddOns.splice(index, 1);
       }
@@ -134,20 +136,25 @@ export default function AddOnSelector({
       ) : (
         <div className="space-y-3">
           {/* Available add-ons */}
-          {availableAddOns.map((addon) => {
-            const isSelected = selectedAddOns.some(a => a.id === addon.id && a.name === addon.name);
+          {availableAddOns.map((addon, index) => {
+            const isSelected = selectedAddOns.some(a => 
+              (a.id && addon.id && a.id === addon.id) || 
+              (a.name === addon.name && a.price === addon.price)
+            );
+
+            const addonKey = addon.id ? `addon-${addon.id}` : `addon-${index}-${addon.name}`;
 
             return (
-              <div key={addon.id} className="flex items-center justify-between p-3 border rounded-md bg-gray-50">
+              <div key={addonKey} className="flex items-center justify-between p-3 border rounded-md bg-gray-50">
                 <div className="flex items-center">
                   <input
                     type="checkbox"
-                    id={`addon-${addon.id}`}
+                    id={addonKey}
                     checked={isSelected}
                     onChange={(e) => handleAddOnSelect(addon, e.target.checked)}
                     className="h-4 w-4 text-[var(--primary-green)] focus:ring-[var(--primary-green)] border-gray-300 rounded"
                   />
-                  <label htmlFor={`addon-${addon.id}`} className="ml-2 block text-sm text-gray-700">
+                  <label htmlFor={addonKey} className="ml-2 block text-sm text-gray-700">
                     {addon.name} <span className="text-[var(--primary-green)]">({formatPrice(addon.price)})</span>
                   </label>
                 </div>

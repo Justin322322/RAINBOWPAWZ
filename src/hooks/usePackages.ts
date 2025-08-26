@@ -61,7 +61,7 @@ export function usePackages({ userData }: UsePackagesProps) {
             if (typeof addon === 'string') {
               // Parse price from string if it exists
               const priceMatch = addon.match(/\(\+₱([\d,]+)\)/);
-              let price = null;
+              let price = 0; // Default price for legacy add-ons without price
               let name = addon;
 
               if (priceMatch) {
@@ -77,11 +77,11 @@ export function usePackages({ userData }: UsePackagesProps) {
                 name: addon.name || '',
                 price: addon.price !== null && addon.price !== undefined ?
                   (typeof addon.price === 'string' ? parseFloat(addon.price) : addon.price) :
-                  null
+                  0 // Default price for legacy add-ons without price
               };
             }
             // Fallback for any other format
-            return { name: String(addon), price: null };
+            return { name: String(addon), price: 0 };
           });
         }
 

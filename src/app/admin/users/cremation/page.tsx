@@ -19,7 +19,8 @@ import {
   ExclamationTriangleIcon,
   CalendarIcon,
   CurrencyDollarIcon,
-  ChartBarIcon
+  ChartBarIcon,
+  DocumentTextIcon
 } from '@heroicons/react/24/outline';
 import { useToast } from '@/context/ToastContext';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -36,10 +37,9 @@ import {
 } from '@/components/ui/ProfileLayout';
 import { ProfileButton } from '@/components/ui/ProfileFormComponents';
 import { getProfilePictureUrl } from '@/utils/imageUtils';
+import DocumentThumbnailGrid from '@/components/admin/DocumentThumbnailGrid';
 
 import { LoadingSpinner } from '@/app/admin/services/client';
-
-
 
 // Define the type for cremation center data
 interface CremationCenter {
@@ -63,6 +63,7 @@ interface CremationCenter {
   province?: string;
   profile_picture?: string;
   appeals?: Appeal[];
+  documents?: any[]; // Use any[] for now to avoid interface conflicts
 }
 
 interface Appeal {
@@ -911,94 +912,94 @@ export default function AdminCremationCentersPage() {
                 {filteredCenters.map((center) => {
                   const hasPendingAppeal = center.appeals && center.appeals.some(appeal => appeal.status === 'pending');
                   return (
-                  <div
-                    key={center.id}
-                    className={`p-4 hover:bg-gray-50 transition-all duration-300 border border-gray-200 rounded-lg ${
-                      hasPendingAppeal
-                        ? 'animate-pulse-border'
-                        : ''
-                    }`}
-                  >
-                    <div className="flex items-start space-x-3">
-                      <div className="flex-shrink-0 h-10 w-10 bg-[var(--primary-green)] text-white rounded-full flex items-center justify-center overflow-hidden">
-                        {center.profile_picture && !centerImageErrors.has(center.id) ? (
-                          <Image
-                            src={getProfilePictureUrl(center.profile_picture)}
-                            alt={center.name}
-                            width={40}
-                            height={40}
-                            className="w-full h-full object-cover"
-                            onError={() => {
-                              handleCenterImageError(center.id);
-                            }}
-                          />
-                        ) : (
-                          <BuildingStorefrontIcon className="h-5 w-5" />
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center space-x-2 mb-2">
-                              <h3 className="text-sm font-medium text-gray-900 truncate">
-                                {center.name}
-                              </h3>
-                              {getStatusBadge(center.status, center.verified, center)}
-                              {center.appeals && center.appeals.some(appeal => appeal.status === 'pending') && (
-                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
-                                  Appeal Pending
-                                </span>
-                              )}
+                    <div
+                      key={center.id}
+                      className={`p-4 hover:bg-gray-50 transition-all duration-300 border border-gray-200 rounded-lg ${
+                        hasPendingAppeal
+                          ? 'animate-pulse-border'
+                          : ''
+                      }`}
+                    >
+                      <div className="flex items-start space-x-3">
+                        <div className="flex-shrink-0 h-10 w-10 bg-[var(--primary-green)] text-white rounded-full flex items-center justify-center overflow-hidden">
+                          {center.profile_picture && !centerImageErrors.has(center.id) ? (
+                            <Image
+                              src={getProfilePictureUrl(center.profile_picture)}
+                              alt={center.name}
+                              width={40}
+                              height={40}
+                              className="w-full h-full object-cover"
+                              onError={() => {
+                                handleCenterImageError(center.id);
+                              }}
+                            />
+                          ) : (
+                            <BuildingStorefrontIcon className="h-5 w-5" />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center space-x-2 mb-2">
+                                <h3 className="text-sm font-medium text-gray-900 truncate">
+                                  {center.name}
+                                </h3>
+                                {getStatusBadge(center.status, center.verified, center)}
+                                {center.appeals && center.appeals.some(appeal => appeal.status === 'pending') && (
+                                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                                    Appeal Pending
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-xs text-gray-600 space-y-1">
+                                <div className="flex items-center">
+                                  <UserCircleIcon className="h-3 w-3 mr-1 flex-shrink-0" />
+                                  <span className="truncate">{center.owner}</span>
+                                </div>
+                                <div className="flex items-center">
+                                  <EnvelopeIcon className="h-3 w-3 mr-1 flex-shrink-0" />
+                                  <span className="truncate">{center.email}</span>
+                                </div>
+                                <div className="flex items-center">
+                                  <PhoneIcon className="h-3 w-3 mr-1 flex-shrink-0" />
+                                  <span className="truncate">{center.phone}</span>
+                                </div>
+                                <div className="flex items-center">
+                                  <MapPinIcon className="h-3 w-3 mr-1 flex-shrink-0" />
+                                  <span className="truncate">{center.address}</span>
+                                </div>
+                                <div className="text-xs text-gray-500 mt-2">
+                                  {center.activeServices} services • {center.totalBookings} bookings
+                                </div>
+                              </div>
                             </div>
-                            <div className="text-xs text-gray-600 space-y-1">
-                              <div className="flex items-center">
-                                <UserCircleIcon className="h-3 w-3 mr-1 flex-shrink-0" />
-                                <span className="truncate">{center.owner}</span>
-                              </div>
-                              <div className="flex items-center">
-                                <EnvelopeIcon className="h-3 w-3 mr-1 flex-shrink-0" />
-                                <span className="truncate">{center.email}</span>
-                              </div>
-                              <div className="flex items-center">
-                                <PhoneIcon className="h-3 w-3 mr-1 flex-shrink-0" />
-                                <span className="truncate">{center.phone}</span>
-                              </div>
-                              <div className="flex items-center">
-                                <MapPinIcon className="h-3 w-3 mr-1 flex-shrink-0" />
-                                <span className="truncate">{center.address}</span>
-                              </div>
-                              <div className="text-xs text-gray-500 mt-2">
-                                {center.activeServices} services • {center.totalBookings} bookings
-                              </div>
+                            <div className="flex flex-col space-y-2 ml-3">
+                              <button
+                                onClick={() => handleViewDetails(center)}
+                                className="px-3 py-2 bg-[var(--primary-green)] text-white rounded-md hover:bg-[var(--primary-green-hover)] text-sm font-medium min-w-[70px] text-center transition-colors"
+                              >
+                                View
+                              </button>
+                              {center.status === 'active' ? (
+                                <button
+                                  onClick={() => openRestrictModal(center)}
+                                  className="px-3 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 text-sm font-medium min-w-[70px] text-center transition-colors"
+                                >
+                                  Restrict
+                                </button>
+                              ) : center.status === 'restricted' ? (
+                                <button
+                                  onClick={() => openUnrestrictModal(center)}
+                                  className="px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm font-medium min-w-[70px] text-center transition-colors"
+                                >
+                                  Restore
+                                </button>
+                              ) : null}
                             </div>
-                          </div>
-                          <div className="flex flex-col space-y-2 ml-3">
-                            <button
-                              onClick={() => handleViewDetails(center)}
-                              className="px-3 py-2 bg-[var(--primary-green)] text-white rounded-md hover:bg-[var(--primary-green-hover)] text-sm font-medium min-w-[70px] text-center transition-colors"
-                            >
-                              View
-                            </button>
-                            {center.status === 'active' ? (
-                              <button
-                                onClick={() => openRestrictModal(center)}
-                                className="px-3 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 text-sm font-medium min-w-[70px] text-center transition-colors"
-                              >
-                                Restrict
-                              </button>
-                            ) : center.status === 'restricted' ? (
-                              <button
-                                onClick={() => openUnrestrictModal(center)}
-                                className="px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm font-medium min-w-[70px] text-center transition-colors"
-                              >
-                                Restore
-                              </button>
-                            ) : null}
                           </div>
                         </div>
                       </div>
                     </div>
-                  </div>
                   );
                 })}
               </div>
@@ -1309,6 +1310,32 @@ export default function AdminCremationCentersPage() {
                   </span>
                 )}
               </p>
+            </ProfileCard>
+          </ProfileSection>
+
+          {/* Business Documents */}
+          <ProfileSection
+            title="Business Documents"
+            subtitle="Verification documents submitted by this cremation center"
+          >
+            <ProfileCard>
+              {selectedCenter?.documents && selectedCenter.documents.length > 0 ? (
+                <DocumentThumbnailGrid
+                  documents={selectedCenter.documents}
+                  onDocumentClick={(documentUrl, _documentType) => {
+                    // Open document in new tab for viewing
+                    if (documentUrl) {
+                      window.open(documentUrl, '_blank');
+                    }
+                  }}
+                />
+              ) : (
+                <div className="text-center py-8">
+                  <DocumentTextIcon className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                  <p className="text-sm text-gray-500">No documents have been submitted yet.</p>
+                  <p className="text-xs text-gray-400 mt-1">Documents will appear here once uploaded by the business owner.</p>
+                </div>
+              )}
             </ProfileCard>
           </ProfileSection>
 

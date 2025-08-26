@@ -9,7 +9,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 // Types
 interface AddOn {
   name: string;
-  price: number | null;
+  price: number;
 }
 
 interface PackageFormData {
@@ -83,12 +83,17 @@ const PackageModal: React.FC<PackageModalProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [_formProgress, setFormProgress] = useState(0);
+  const [_forceRender, setForceRender] = useState(0);
 
   // Form field states
   const [newInclusion, setNewInclusion] = useState('');
   const [newAddOn, setNewAddOn] = useState('');
   const [newAddOnPrice, setNewAddOnPrice] = useState<string>('');
   const [uploadingImages, setUploadingImages] = useState<Set<string>>(new Set());
+  
+  // Animation states for smooth removal (simplified for now)
+  // const [removingInclusions, setRemovingInclusions] = useState<Set<number>>(new Set());
+  // const [removingAddOns, setRemovingAddOns] = useState<Set<number>>(new Set());
 
   // Enhanced features states
   const [_newCustomCategory, setNewCustomCategory] = useState('');
@@ -101,9 +106,16 @@ const PackageModal: React.FC<PackageModalProps> = ({
   // Apply initial data if provided
   useEffect(() => {
     if (initialData && isOpen) {
+      console.log('🔥 Applying initialData:', initialData);
       setFormData(prev => ({ ...prev, ...initialData }));
     }
   }, [initialData, isOpen]);
+
+  // Monitor formData changes for debugging
+  useEffect(() => {
+    console.log('🔥 FormData changed - inclusions:', formData.inclusions);
+    console.log('🔥 FormData changed - addOns:', formData.addOns);
+  }, [formData.inclusions, formData.addOns]);
 
   // Calculate form progress
   useEffect(() => {
@@ -215,11 +227,14 @@ const PackageModal: React.FC<PackageModalProps> = ({
     setNewCustomCategory('');
     setNewCustomCremationType('');
     setNewCustomProcessingTime('');
+    // setRemovingInclusions(new Set());
+    // setRemovingAddOns(new Set());
   };
 
   const loadPackageData = useCallback(async () => {
     if (!packageId) return;
     
+    console.log('🔥 loadPackageData called for packageId:', packageId);
     setIsLoading(true);
     try {
       const response = await fetch(`/api/packages/${packageId}`, {
@@ -261,6 +276,9 @@ const PackageModal: React.FC<PackageModalProps> = ({
 
       console.log('Processed images for form:', processedImages);
 
+      console.log('🔥 Setting form data with inclusions:', pkg.inclusions);
+      console.log('🔥 Setting form data with addOns:', pkg.addOns);
+      
       setFormData({
         name: pkg.name || '',
         description: pkg.description || '',
@@ -281,6 +299,10 @@ const PackageModal: React.FC<PackageModalProps> = ({
         customProcessingTimes: pkg.customProcessingTimes || [],
         supportedPetTypes: pkg.supportedPetTypes || ['Dogs', 'Cats', 'Birds', 'Rabbits']
       });
+      
+      // Reset animation states when loading edit data
+      // setRemovingInclusions(new Set());
+      // setRemovingAddOns(new Set());
     } catch (error) {
       console.error('Failed to load package:', error);
       showToast('Failed to load package data', 'error');
@@ -291,26 +313,44 @@ const PackageModal: React.FC<PackageModalProps> = ({
 
   // Track form initialization to prevent unstable dependency loops
   const formInitialized = useRef(false);
+  const dataLoaded = useRef<number | null>(null);
 
   // Add useEffect after loadPackageData is defined
   useEffect(() => {
-    if (mode === 'edit' && packageId && isOpen) {
+    console.log('🔥 Main useEffect triggered - mode:', mode, 'packageId:', packageId, 'isOpen:', isOpen);
+    console.log('🔥 dataLoaded.current:', dataLoaded.current);
+    
+    if (mode === 'edit' && packageId && isOpen && dataLoaded.current !== packageId) {
+      console.log('🔥 Calling loadPackageData');
       loadPackageData();
+      dataLoaded.current = packageId;
       formInitialized.current = true;
     } else if (mode === 'create' && isOpen && !formInitialized.current) {
       // Only reset form if it hasn't been initialized yet
+      console.log('🔥 Resetting form for create mode');
       resetForm();
       formInitialized.current = true;
     }
-  }, [mode, packageId, isOpen, loadPackageData]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, packageId, isOpen]);
 
   // Reset form when modal closes (for next time it opens)
   useEffect(() => {
-    if (!isOpen && mode === 'create') {
+    if (!isOpen) {
       // Add a small delay to ensure smooth closing animation
       const timeoutId = setTimeout(() => {
-        resetForm();
-        formInitialized.current = false; // Reset initialization flag
+        if (mode === 'create') {
+          resetForm();
+        }
+        formInitialized.current = false; // Reset initialization flag for both modes
+        dataLoaded.current = null; // Reset data loaded flag
+        // Clear any temporary states
+        setNewInclusion('');
+        setNewAddOn('');
+        setNewAddOnPrice('');
+        setErrors({});
+        // setRemovingInclusions(new Set());
+        // setRemovingAddOns(new Set());
       }, 300);
       return () => clearTimeout(timeoutId);
     }
@@ -322,7 +362,9 @@ const PackageModal: React.FC<PackageModalProps> = ({
     if (errors[name]) setErrors(prev => { const err = { ...prev }; delete err[name]; return err; });
     setFormData(prev => ({
       ...prev,
-      [name]: name === 'price' || name === 'deliveryFeePerKm' ? parseFloat(value) || 0 : value
+      [name]: name === 'price' || name === 'deliveryFeePerKm' || name === 'pricePerKg' 
+        ? parseFloat(value) || 0 
+        : value
     }));
   }, [errors]);
 
@@ -332,6 +374,13 @@ const PackageModal: React.FC<PackageModalProps> = ({
       showToast('Please enter an inclusion before adding', 'error');
       return;
     }
+    
+    // Check for duplicate inclusions
+    if (formData.inclusions.some(inclusion => inclusion.toLowerCase() === newInclusion.trim().toLowerCase())) {
+      showToast('This inclusion already exists', 'error');
+      return;
+    }
+    
     setFormData(prev => ({
       ...prev,
       inclusions: [...prev.inclusions, newInclusion.trim()]
@@ -345,18 +394,20 @@ const PackageModal: React.FC<PackageModalProps> = ({
       }));
     }
     showToast('Inclusion added successfully', 'success');
-  }, [newInclusion, showToast, errors.inclusions]);
+  }, [newInclusion, formData.inclusions, showToast, errors.inclusions]);
 
   const handleRemoveInclusion = useCallback((index: number) => {
+    console.log('🔥 Removing inclusion at index:', index);
     setFormData(prev => {
+      console.log('🔥 Current inclusions before removal:', prev.inclusions);
       const newInclusions = prev.inclusions.filter((_, i) => i !== index);
-      // If removing this inclusion leaves us with none, and there was no error before, 
-      // we should potentially restore the validation error on next validation
+      console.log('🔥 New inclusions after removal:', newInclusions);
       return {
         ...prev,
         inclusions: newInclusions
       };
     });
+    setForceRender(prev => prev + 1); // Force re-render
     showToast('Inclusion removed', 'success');
   }, [showToast]);
 
@@ -365,11 +416,22 @@ const PackageModal: React.FC<PackageModalProps> = ({
       showToast('Please enter an add-on name before adding', 'error');
       return;
     }
-    const price = newAddOnPrice ? parseFloat(newAddOnPrice) : null;
-    if (newAddOnPrice && (isNaN(price!) || price! < 0)) {
-      showToast('Please enter a valid price for the add-on', 'error');
+    if (!newAddOnPrice || newAddOnPrice.trim() === '') {
+      showToast('Price is required for all add-ons', 'error');
       return;
     }
+    const price = parseFloat(newAddOnPrice);
+    if (isNaN(price) || price <= 0) {
+      showToast('Please enter a valid price greater than 0', 'error');
+      return;
+    }
+    
+    // Check for duplicate add-on names
+    if (formData.addOns.some(addon => addon.name.toLowerCase() === newAddOn.trim().toLowerCase())) {
+      showToast('An add-on with this name already exists', 'error');
+      return;
+    }
+    
     setFormData(prev => ({
       ...prev,
       addOns: [...prev.addOns, { name: newAddOn.trim(), price }]
@@ -377,13 +439,20 @@ const PackageModal: React.FC<PackageModalProps> = ({
     setNewAddOn('');
     setNewAddOnPrice('');
     showToast('Add-on added successfully', 'success');
-  }, [newAddOn, newAddOnPrice, showToast]);
+  }, [newAddOn, newAddOnPrice, formData.addOns, showToast]);
 
   const handleRemoveAddOn = useCallback((index: number) => {
-    setFormData(prev => ({
-      ...prev,
-      addOns: prev.addOns.filter((_, i) => i !== index)
-    }));
+    console.log('🔥 Removing add-on at index:', index);
+    setFormData(prev => {
+      console.log('🔥 Current add-ons before removal:', prev.addOns);
+      const newAddOns = prev.addOns.filter((_, i) => i !== index);
+      console.log('🔥 New add-ons after removal:', newAddOns);
+      return {
+        ...prev,
+        addOns: newAddOns
+      };
+    });
+    setForceRender(prev => prev + 1); // Force re-render
     showToast('Add-on removed', 'success');
   }, [showToast]);
 
@@ -504,12 +573,17 @@ const PackageModal: React.FC<PackageModalProps> = ({
     const newErrors: Record<string, string | undefined> = {};
     const fieldOrder = ['name', 'description', 'price', 'inclusions', 'conditions', 'supportedPetTypes'];
 
+    // Core validation rules (same for both create and edit modes)
     if (!formData.name.trim()) newErrors.name = 'Package name is required';
     if (!formData.description.trim()) newErrors.description = 'Description is required';
     if (formData.price <= 0) newErrors.price = 'Price must be greater than zero';
     if (formData.inclusions.length === 0) newErrors.inclusions = 'At least one inclusion is required';
     if (!formData.conditions.trim()) newErrors.conditions = 'Conditions are required';
     if (formData.supportedPetTypes.length === 0) newErrors.supportedPetTypes = 'Please select at least one pet type';
+
+    // Optional field validation
+    if (formData.pricePerKg < 0) newErrors.pricePerKg = 'Price per kg cannot be negative';
+    if (formData.deliveryFeePerKm < 0) newErrors.deliveryFeePerKm = 'Delivery fee cannot be negative';
 
     setErrors(newErrors);
 
@@ -524,15 +598,16 @@ const PackageModal: React.FC<PackageModalProps> = ({
       }
 
       // Show appropriate toast message
+      const actionText = mode === 'create' ? 'create' : 'update';
       if (errorMessages.length === 1) {
         showToast(errorMessages[0], 'error');
       } else {
-        showToast(`Please fix ${errorMessages.length} validation errors to continue`, 'error');
+        showToast(`Please fix ${errorMessages.length} validation errors to ${actionText} the package`, 'error');
       }
     }
 
     return Object.keys(newErrors).length === 0;
-  }, [formData, showToast, scrollToErrorField]);
+  }, [formData, mode, showToast, scrollToErrorField]);
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
@@ -559,6 +634,12 @@ const PackageModal: React.FC<PackageModalProps> = ({
 
       // Show success state
       setIsSuccess(true);
+      
+      // Show success toast
+      const successMessage = mode === 'create' 
+        ? 'Package created successfully!' 
+        : 'Package updated successfully!';
+      showToast(successMessage, 'success');
 
       // Wait for success animation before closing
       setTimeout(() => {
@@ -840,27 +921,36 @@ const PackageModal: React.FC<PackageModalProps> = ({
                       onChange={(e) => setNewInclusion(e.target.value)}
                       className="flex-grow px-3 py-2 border border-gray-300 rounded-l-md shadow-sm focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)] sm:text-sm"
                       placeholder="e.g., Standard clay urn"
-                      onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddInclusion())}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleAddInclusion();
+                        }
+                      }}
                     />
                     <button
                       type="button"
                       onClick={handleAddInclusion}
-                      className="px-4 py-2 border border-transparent rounded-r-md shadow-sm text-sm font-medium text-white bg-[var(--primary-green)] hover:bg-[var(--primary-green-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--primary-green)]"
+                      disabled={!newInclusion.trim()}
+                      className="px-4 py-2 border border-transparent rounded-r-md shadow-sm text-sm font-medium text-white bg-[var(--primary-green)] hover:bg-[var(--primary-green-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--primary-green)] disabled:opacity-50 disabled:cursor-not-allowed"
+                      title="Add inclusion"
                     >
                       <PlusIcon className="h-5 w-5" />
                     </button>
                   </div>
                   <div className="space-y-2 mt-3">
                     {formData.inclusions.map((inclusion, index) => (
-                      <div key={index} className="flex items-center bg-gray-50 px-3 py-2 rounded-md">
+                      <div key={`inclusion-${inclusion.replace(/\s+/g, '-').toLowerCase()}-${index}`} className="flex items-center bg-gray-50 px-3 py-2 rounded-md">
                         <CheckIcon className="h-5 w-5 text-green-500 mr-2 flex-shrink-0" />
                         <span className="flex-grow text-sm break-words">{inclusion}</span>
                         <button
                           type="button"
                           onClick={() => handleRemoveInclusion(index)}
-                          className="text-gray-400 hover:text-red-500 flex-shrink-0 ml-2"
+                          className="text-gray-400 hover:text-red-500 flex-shrink-0 ml-2 p-1 rounded transition-colors hover:bg-red-50"
+                          title="Remove inclusion"
+                          aria-label={`Remove inclusion: ${inclusion}`}
                         >
-                          <XMarkIcon className="h-5 w-5" />
+                          <XMarkIcon className="h-4 w-4" />
                         </button>
                       </div>
                     ))}
@@ -881,47 +971,61 @@ const PackageModal: React.FC<PackageModalProps> = ({
                         onChange={(e) => setNewAddOn(e.target.value)}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)] sm:text-sm"
                         placeholder="e.g., Personalized nameplate"
-                        onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddAddOn())}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleAddAddOn();
+                          }
+                        }}
                       />
                     </div>
                     <div className="w-32">
-                      <div className="flex items-center border border-gray-300 rounded-md shadow-sm px-3 py-2">
+                      <div className="flex items-center border border-gray-300 rounded-md shadow-sm px-3 py-2 focus-within:ring-1 focus-within:ring-[var(--primary-green)] focus-within:border-[var(--primary-green)]">
                         <span className="text-gray-500 mr-1">₱</span>
                         <input
                           type="number"
-                          min="0"
+                          min="0.01"
                           step="0.01"
                           value={newAddOnPrice}
                           onChange={(e) => setNewAddOnPrice(e.target.value)}
-                          placeholder="Price"
+                          placeholder="Price*"
                           className="w-full focus:outline-none sm:text-sm"
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              handleAddAddOn();
+                            }
+                          }}
                         />
                       </div>
                     </div>
                     <button
                       type="button"
                       onClick={handleAddAddOn}
-                      className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[var(--primary-green)] hover:bg-[var(--primary-green-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--primary-green)]"
+                      disabled={!newAddOn.trim() || !newAddOnPrice.trim()}
+                      className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[var(--primary-green)] hover:bg-[var(--primary-green-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--primary-green)] disabled:opacity-50 disabled:cursor-not-allowed"
+                      title="Add add-on"
                     >
                       <PlusIcon className="h-5 w-5" />
                     </button>
                   </div>
+                  <p className="text-xs text-gray-500 mt-1">* Price is required for all add-ons</p>
                   <div className="space-y-2 mt-3">
                     {formData.addOns.map((addOn, index) => (
-                      <div key={index} className="flex items-center justify-between bg-gray-50 px-3 py-2 rounded-md">
+                      <div key={`addon-${addOn.name.replace(/\s+/g, '-').toLowerCase()}-${addOn.price}-${index}`} className="flex items-center justify-between bg-gray-50 px-3 py-2 rounded-md">
                         <span className="text-sm break-words">{addOn.name}</span>
                         <div className="flex items-center">
-                          {addOn.price !== null && (
-                            <span className="text-[var(--primary-green)] font-medium mr-3">
-                              +₱{addOn.price.toLocaleString()}
-                            </span>
-                          )}
+                          <span className="text-[var(--primary-green)] font-medium mr-3">
+                            +₱{addOn.price.toLocaleString()}
+                          </span>
                           <button
                             type="button"
                             onClick={() => handleRemoveAddOn(index)}
-                            className="text-gray-400 hover:text-red-500 flex-shrink-0"
+                            className="text-gray-400 hover:text-red-500 flex-shrink-0 p-1 rounded transition-colors hover:bg-red-50"
+                            title="Remove add-on"
+                            aria-label={`Remove add-on: ${addOn.name}`}
                           >
-                            <XMarkIcon className="h-5 w-5" />
+                            <XMarkIcon className="h-4 w-4" />
                           </button>
                         </div>
                       </div>
