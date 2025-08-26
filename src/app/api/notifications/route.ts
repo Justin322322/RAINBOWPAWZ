@@ -79,7 +79,7 @@ export async function GET(request: NextRequest) {
     try {
       // Build the query based on parameters
       let notificationsQuery = `
-        SELECT notification_id as id, title, message, type, is_read, link, created_at
+        SELECT IFNULL(notification_id, id) as id, title, message, type, is_read, link, created_at
         FROM notifications
         WHERE user_id = ?
       `;

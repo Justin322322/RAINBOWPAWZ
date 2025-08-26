@@ -391,6 +391,35 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
+    // PlanetScale: manually validate references since FKs may be unenforced
+    try {
+      const [userExists] = await query(
+        'SELECT COUNT(*) as c FROM users WHERE user_id = ? LIMIT 1',
+        [userId]
+      ) as any[];
+      if (!userExists || Number(userExists.c) === 0) {
+        return NextResponse.json({ error: 'Invalid userId' }, { status: 400 });
+      }
+
+      const [providerExists] = await query(
+        'SELECT COUNT(*) as c FROM service_providers WHERE provider_id = ? LIMIT 1',
+        [providerId]
+      ) as any[];
+      if (!providerExists || Number(providerExists.c) === 0) {
+        return NextResponse.json({ error: 'Invalid providerId' }, { status: 400 });
+      }
+
+      const [packageExists] = await query(
+        'SELECT COUNT(*) as c FROM service_packages WHERE package_id = ? LIMIT 1',
+        [packageId]
+      ) as any[];
+      if (!packageExists || Number(packageExists.c) === 0) {
+        return NextResponse.json({ error: 'Invalid packageId' }, { status: 400 });
+      }
+    } catch (refErr) {
+      return NextResponse.json({ error: 'Reference validation failed', details: String(refErr) }, { status: 500 });
+    }
+
     // Check if the service_bookings table exists
     const tableExistsQuery = `
       SELECT COUNT(*) as tableExists

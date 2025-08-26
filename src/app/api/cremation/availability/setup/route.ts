@@ -18,6 +18,9 @@ export async function GET(_: NextRequest) {
       });
     }
     
+    // Disallow runtime DDL on PlanetScale unless explicitly allowed
+    const allowDDL = process.env.ALLOW_DDL === 'true';
+
     // Check if tables exist
     const tablesCheckQuery = `
       SELECT TABLE_NAME 
@@ -34,6 +37,9 @@ export async function GET(_: NextRequest) {
       
       // Create provider_availability table if needed
       if (!existingTables.includes('provider_availability')) {
+        if (!allowDDL) {
+          return NextResponse.json({ success: false, error: 'DDL disabled in production', table: 'provider_availability' }, { status: 503 });
+        }
         const createAvailabilityTableQuery = `
           CREATE TABLE provider_availability (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -51,6 +57,9 @@ export async function GET(_: NextRequest) {
       
       // Create provider_time_slots table if needed
       if (!existingTables.includes('provider_time_slots')) {
+        if (!allowDDL) {
+          return NextResponse.json({ success: false, error: 'DDL disabled in production', table: 'provider_time_slots' }, { status: 503 });
+        }
         const createTimeSlotsTableQuery = `
           CREATE TABLE provider_time_slots (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -80,6 +89,9 @@ export async function GET(_: NextRequest) {
         
         // If the column doesn't exist, add it
         if (columnResult.length === 0) {
+          if (!allowDDL) {
+            return NextResponse.json({ success: false, error: 'DDL disabled in production', operation: 'ALTER TABLE provider_time_slots ADD available_services' }, { status: 503 });
+          }
           const addColumnQuery = `
             ALTER TABLE provider_time_slots
             ADD COLUMN available_services TEXT DEFAULT NULL

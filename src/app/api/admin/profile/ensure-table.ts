@@ -2,6 +2,7 @@ import { query } from '@/lib/db';
 
 export async function ensureAdminProfilesTableExists(): Promise<boolean> {
   try {
+    const allowDDL = process.env.ALLOW_DDL === 'true';
     // Check if admin_profiles table exists
     const tables = await query(`
       SELECT table_name
@@ -11,6 +12,10 @@ export async function ensureAdminProfilesTableExists(): Promise<boolean> {
     `) as any[];
 
     if (tables.length === 0) {
+      if (!allowDDL) {
+        console.warn('DDL disabled in this environment. Skipping CREATE TABLE admin_profiles.');
+        return false;
+      }
       // Create the table if it doesn't exist
       await query(`
         CREATE TABLE admin_profiles (
