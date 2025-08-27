@@ -458,7 +458,34 @@ function CremationProfilePage({ userData }: { userData: any }) {
                 }
                 throw new Error(message);
             }
+            let data: any = null;
+            try {
+                data = await response.json();
+            } catch {}
             showToast('Documents uploaded successfully!', 'success');
+
+            // Immediately reflect uploaded docs in UI using returned filePaths (works even if DB write is blocked)
+            if (data && data.filePaths) {
+                const newDocs = {
+                    businessPermitPath: data.filePaths.business_permit_path || null,
+                    birCertificatePath: data.filePaths.bir_certificate_path || null,
+                    governmentIdPath: data.filePaths.government_id_path || null,
+                };
+                setProfileData((prev: any) => ({
+                    ...(prev || {}),
+                    documents: {
+                        ...(prev?.documents || {}),
+                        ...newDocs,
+                    },
+                }));
+                try {
+                    sessionStorage.setItem('business_documents_cache', JSON.stringify({
+                        ...(profileData?.documents || {}),
+                        ...newDocs,
+                    }));
+                } catch {}
+            }
+
             await fetchProfileData(false);
             setDocuments({
                 businessPermit: { file: null, preview: null },

@@ -13,58 +13,17 @@ export async function POST(request: NextRequest) {
   try {
     console.log('Business document upload started');
     
-    // Get form data first to check if userId is provided directly
+    // Require secure authentication for all uploads; ignore any client-supplied userId
     const formData = await request.formData();
-    const directUserId = formData.get('userId') as string | null;
-    
-    let userId: string;
-    let accountType: string;
-    
-    if (directUserId) {
-      // During registration, userId is provided directly
-      console.log('Direct user ID provided during registration:', directUserId);
-      userId = directUserId;
-      accountType = 'business'; // During registration, we know it's a business account
-      
-      // Security check: verify the user exists and is a business account
-      try {
-        const userCheckResult = await query(
-          'SELECT u.role, sp.provider_id FROM users u LEFT JOIN service_providers sp ON u.user_id = sp.user_id WHERE u.user_id = ?',
-          [userId]
-        ) as any[];
-        
-        if (!userCheckResult || userCheckResult.length === 0) {
-          console.log('User not found during direct upload:', userId);
-          return NextResponse.json({ error: 'User not found' }, { status: 404 });
-        }
-        
-        if (userCheckResult[0].role !== 'business') {
-          console.log('User is not a business account:', userId);
-          return NextResponse.json({ error: 'Only business accounts can upload documents' }, { status: 403 });
-        }
-        
-        if (!userCheckResult[0].provider_id) {
-          console.log('Service provider record not found for user:', userId);
-          return NextResponse.json({ error: 'Service provider record not found' }, { status: 404 });
-        }
-        
-        console.log('Direct user validation successful:', { userId, accountType });
-      } catch (validationError) {
-        console.error('Error validating direct user:', validationError);
-        return NextResponse.json({ error: 'Failed to validate user account' }, { status: 500 });
-      }
-    } else {
-      // Normal flow: use secure authentication
-      const user = await verifySecureAuth(request);
-      if (!user) {
-        console.log('Authentication failed - no valid user');
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-      }
-      
-      console.log('User authenticated via session:', { userId: user.userId, accountType: user.accountType });
-      userId = user.userId;
-      accountType = user.accountType;
+    const user = await verifySecureAuth(request);
+    if (!user) {
+      console.log('Authentication failed - no valid user');
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    
+    console.log('User authenticated via session:', { userId: user.userId, accountType: user.accountType });
+    const userId: string = user.userId;
+    const accountType: string = user.accountType;
 
     // Only business accounts can upload documents
     if (accountType !== 'business') {
