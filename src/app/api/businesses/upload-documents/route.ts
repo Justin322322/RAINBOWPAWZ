@@ -3,6 +3,9 @@ import { verifySecureAuth } from '@/lib/secureAuth';
 import { query } from '@/lib/db';
 // Removed unused imports
 
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
 // Maximum file size (10MB for documents)
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
