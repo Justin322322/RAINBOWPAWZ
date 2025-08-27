@@ -52,6 +52,11 @@ const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
       return url;
     }
 
+    // If it's already a full Blob URL, return as is
+    if (url.startsWith('https://') && url.includes('.public.blob.vercel-storage.com')) {
+      return url;
+    }
+
     // If it's an absolute URL, return as is
     if (url.startsWith('http')) {
       return url;

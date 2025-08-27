@@ -36,7 +36,10 @@ const DocumentThumbnail: React.FC<DocumentThumbnailProps> = ({ document, onDocum
       let processedUrl = documentUrl;
 
       // Handle different URL formats
-      if (documentUrl.startsWith('/uploads/') || documentUrl.includes('/uploads/')) {
+      if (documentUrl.startsWith('https://') && documentUrl.includes('.public.blob.vercel-storage.com')) {
+        // If it's already a full Blob URL, use it directly
+        processedUrl = documentUrl;
+      } else if (documentUrl.startsWith('/uploads/') || documentUrl.includes('/uploads/')) {
         const uploadPath = documentUrl.substring(documentUrl.indexOf('/uploads/') + '/uploads/'.length);
         processedUrl = `/api/image/${uploadPath}`;
       } else if (documentUrl.includes('/documents/') || documentUrl.includes('/business/')) {

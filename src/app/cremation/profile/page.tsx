@@ -490,6 +490,11 @@ function CremationProfilePage({ userData }: { userData: any }) {
     const getDocumentImageSource = (documentPath: string | null | undefined): string => {
         if (!documentPath) return '';
         if (documentPath.startsWith('data:')) return documentPath;
+        // If it's already a full Blob URL, use it directly
+        if (documentPath.startsWith('https://') && documentPath.includes('.public.blob.vercel-storage.com')) {
+            return documentPath;
+        }
+        // Otherwise, use the existing image path logic
         return getImagePath(documentPath, false);
     };
 

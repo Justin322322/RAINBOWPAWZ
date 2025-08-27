@@ -266,6 +266,10 @@ function ApplicationDetailContent({ id }: ApplicationDetailContentProps) {
       else if (url.startsWith('/api/')) {
         processedUrl = url;
       }
+      // If it's already a full Blob URL, use it as is
+      else if (url.startsWith('https://') && url.includes('.public.blob.vercel-storage.com')) {
+        processedUrl = url;
+      }
       // For document paths, use the API route
       else if (url.includes('/documents/') || url.includes('/business/') || url.includes('/businesses/')) {
         const parts = url.split('/');
