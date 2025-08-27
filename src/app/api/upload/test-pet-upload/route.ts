@@ -21,7 +21,7 @@ export async function GET() {
     try {
       const [petCount] = await query('SELECT COUNT(*) as count FROM pets') as any[];
       console.log('Pets count:', petCount);
-    } catch (error) {
+    } catch {
       console.log('Pets table not accessible or does not exist');
     }
     
