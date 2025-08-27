@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifySecureAuth } from '@/lib/secureAuth';
 import { query } from '@/lib/db';
-import { writeFile, mkdir } from 'fs/promises';
-import { join } from 'path';
+// Removed unused imports
 
 // Maximum file size (10MB for documents)
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
@@ -90,7 +89,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate files
-    const filesToProcess = [];
+    const filesToProcess: Array<{ file: File; type: 'businessPermit' | 'birCertificate' | 'governmentId' }> = [];
     if (businessPermit) filesToProcess.push({ file: businessPermit, type: 'businessPermit' });
     if (birCertificate) filesToProcess.push({ file: birCertificate, type: 'birCertificate' });
     if (governmentId) filesToProcess.push({ file: governmentId, type: 'governmentId' });
@@ -125,87 +124,69 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-      // Get service provider for this user
-      console.log('Looking up service provider for user:', userId);
+      // Process each file and store as base64 data URL (Vercel FS is read-only)
+      const filePaths: any = {};
+
+      for (const { file, type } of filesToProcess) {
+        console.log(`Processing ${type} file...`);
+        
+        // Convert to base64 data URL for storage
+        const arrayBuffer = await file.arrayBuffer();
+        const base64Data = Buffer.from(arrayBuffer).toString('base64');
+        const fileExtension = file.type || `application/octet-stream`;
+        const dataUrl = `data:${fileExtension};base64,${base64Data}`;
+        console.log(`File converted to base64 for ${type}, size:`, base64Data.length);
+        
+        // Map to database column names
+        if (type === 'businessPermit') {
+          filePaths.business_permit_path = dataUrl;
+        } else if (type === 'birCertificate') {
+          filePaths.bir_certificate_path = dataUrl;
+        } else if (type === 'governmentId') {
+          filePaths.government_id_path = dataUrl;
+        }
+      }
+
+      // Try to associate to a provider if present; if not, still return success with file paths
+      console.log('Looking up service provider for user to save paths:', userId);
       const providerResult = await query(
         'SELECT provider_id FROM service_providers WHERE user_id = ?',
         [userId]
       ) as any[];
       console.log('Provider lookup result:', providerResult);
 
-      if (!providerResult || providerResult.length === 0) {
-        console.log('Service provider not found for user:', userId);
-        return NextResponse.json({
-          error: 'Service provider not found'
-        }, { status: 404 });
-      }
+      if (providerResult && providerResult.length > 0) {
+        const providerId = providerResult[0].provider_id;
+        console.log('Provider ID found, saving document paths:', providerId);
 
-      const providerId = providerResult[0].provider_id;
-      console.log('Provider ID found:', providerId);
-
-      // Create uploads directory if it doesn't exist
-      const uploadsDir = join(process.cwd(), 'public', 'uploads', 'documents', userId.toString());
-      try {
-        await mkdir(uploadsDir, { recursive: true });
-      } catch {
-        // Directory might already exist, that's fine
-      }
-
-      // Process each file and save to filesystem
-      const filePaths: any = {};
-      const timestamp = Date.now();
-
-      for (const { file, type } of filesToProcess) {
-        console.log(`Processing ${type} file...`);
+        // Update service provider with new file paths
+        const updateFields = [] as string[];
+        const updateValues = [] as any[];
         
-        // Generate unique filename
-        const fileExtension = file.name.split('.').pop();
-        const fileName = `${type}_${timestamp}.${fileExtension}`;
-        const filePath = join(uploadsDir, fileName);
-        const publicPath = `/uploads/documents/${userId}/${fileName}`;
-
-        // Save file to filesystem
-        const arrayBuffer = await file.arrayBuffer();
-        await writeFile(filePath, Buffer.from(arrayBuffer));
-        
-        console.log(`File saved: ${publicPath}`);
-        
-        // Map to database column names
-        if (type === 'businessPermit') {
-          filePaths.business_permit_path = publicPath;
-        } else if (type === 'birCertificate') {
-          filePaths.bir_certificate_path = publicPath;
-        } else if (type === 'governmentId') {
-          filePaths.government_id_path = publicPath;
+        if (filePaths.business_permit_path) {
+          updateFields.push('business_permit_path = ?');
+          updateValues.push(filePaths.business_permit_path);
         }
+        if (filePaths.bir_certificate_path) {
+          updateFields.push('bir_certificate_path = ?');
+          updateValues.push(filePaths.bir_certificate_path);
+        }
+        if (filePaths.government_id_path) {
+          updateFields.push('government_id_path = ?');
+          updateValues.push(filePaths.government_id_path);
+        }
+
+        if (updateFields.length > 0) {
+          updateValues.push(providerId);
+          const updateQuery = `UPDATE service_providers SET ${updateFields.join(', ')} WHERE provider_id = ?`;
+          console.log('Updating service provider with file paths:', updateQuery, updateValues);
+          await query(updateQuery, updateValues);
+        }
+      } else {
+        console.log('No provider found yet; returning file paths for client-side association later');
       }
 
-      // Update service provider with new file paths
-      const updateFields = [];
-      const updateValues = [];
-      
-      if (filePaths.business_permit_path) {
-        updateFields.push('business_permit_path = ?');
-        updateValues.push(filePaths.business_permit_path);
-      }
-      if (filePaths.bir_certificate_path) {
-        updateFields.push('bir_certificate_path = ?');
-        updateValues.push(filePaths.bir_certificate_path);
-      }
-      if (filePaths.government_id_path) {
-        updateFields.push('government_id_path = ?');
-        updateValues.push(filePaths.government_id_path);
-      }
-
-      if (updateFields.length > 0) {
-        updateValues.push(providerId);
-        const updateQuery = `UPDATE service_providers SET ${updateFields.join(', ')} WHERE provider_id = ?`;
-        
-        console.log('Updating service provider with file paths:', updateQuery, updateValues);
-        await query(updateQuery, updateValues);
-      }
-
-      // Return success response
+      // Return success response regardless, with filePaths for client to use if needed
       console.log('Upload successful, returning file paths:', filePaths);
       return NextResponse.json({
         success: true,

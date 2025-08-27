@@ -137,6 +137,7 @@ export async function POST(request: NextRequest) {
     }
     const providerId = prov[0].id;
 
+    const body = await request.json();
     const {
       name,
       description,
@@ -144,24 +145,125 @@ export async function POST(request: NextRequest) {
       cremationType,
       processingTime,
       price,
-      conditions: _conditions,
-    } = await request.json();
+      deliveryFeePerKm = 0,
+      pricePerKg = 0,
+      conditions = '',
+      inclusions = [],
+      addOns = [],
+      images = []
+    } = body || {};
 
     if (!name || !description || price == null) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
     const result = await withTransaction(async (transaction) => {
+      // Insert the core package record including optional fields supported by schema
       const pkgRes = (await transaction.query(
         `
         INSERT INTO service_packages
           (provider_id, name, description, category, cremation_type,
-           processing_time, price, is_active)
-        VALUES (?, ?, ?, ?, ?, ?, ?, TRUE)
+           processing_time, price, delivery_fee_per_km, price_per_kg, conditions, is_active)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE)
         `,
-        [providerId, name, description, category, cremationType, processingTime, price]
+        [
+          providerId,
+          name,
+          description,
+          category,
+          cremationType,
+          processingTime,
+          Number(price),
+          Number(deliveryFeePerKm) || 0,
+          Number(pricePerKg) || 0,
+          conditions
+        ]
       )) as any;
-      const packageId = pkgRes.insertId;
+      const packageId = pkgRes.insertId as number;
+
+      // Insert inclusions
+      if (Array.isArray(inclusions) && inclusions.length > 0) {
+        for (const inc of inclusions) {
+          if (inc && typeof inc === 'string' && inc.trim()) {
+            await transaction.query(
+              'INSERT INTO package_inclusions (package_id, description) VALUES (?, ?)',
+              [packageId, inc.trim()]
+            );
+          }
+        }
+      }
+
+      // Insert add-ons
+      if (Array.isArray(addOns) && addOns.length > 0) {
+        for (const addon of addOns) {
+          if (addon && addon.name && addon.name.trim()) {
+            await transaction.query(
+              'INSERT INTO package_addons (package_id, description, price) VALUES (?, ?, ?)',
+              [packageId, addon.name.trim(), Number(addon.price) || 0]
+            );
+          }
+        }
+      }
+
+      // Insert images with proper display order; support base64 or file path
+      if (Array.isArray(images) && images.length > 0) {
+        const normalizePath = (p: string): string => {
+          if (!p) return p;
+          if (p.startsWith('data:image/')) return p; // keep base64
+          if (p.startsWith('/api/image/packages/')) {
+            return `/uploads/packages/${p.substring('/api/image/packages/'.length)}`;
+          }
+          if (p.startsWith('api/image/packages/')) {
+            return `/uploads/packages/${p.substring('api/image/packages/'.length)}`;
+          }
+          if (p.startsWith('uploads/')) return `/${p}`;
+          return p;
+        };
+
+        for (let i = 0; i < images.length; i++) {
+          const raw = images[i];
+          const img = typeof raw === 'string' ? raw : '';
+          if (!img) continue;
+
+          if (img.startsWith('data:image/')) {
+            await transaction.query(
+              'INSERT INTO package_images (package_id, image_path, display_order, image_data) VALUES (?, ?, ?, ?)',
+              [packageId, `package_${packageId}_${Date.now()}_${i}.jpg`, i + 1, img]
+            );
+          } else {
+            const path = normalizePath(img);
+            await transaction.query(
+              'INSERT INTO package_images (package_id, image_path, display_order) VALUES (?, ?, ?)',
+              [packageId, path, i + 1]
+            );
+          }
+        }
+      }
+
+      // Upsert supported pet types for this provider if provided
+      if (Array.isArray(body.supportedPetTypes)) {
+        // Deactivate all existing pet types
+        await transaction.query(
+          'UPDATE business_pet_types SET is_active = 0 WHERE provider_id = ?',
+          [providerId]
+        );
+
+        for (const petType of body.supportedPetTypes) {
+          if (!petType || typeof petType !== 'string') continue;
+          // Try to insert; if duplicate, update is_active
+          try {
+            await transaction.query(
+              'INSERT INTO business_pet_types (provider_id, pet_type, is_active) VALUES (?, ?, 1)',
+              [providerId, petType]
+            );
+          } catch {
+            await transaction.query(
+              'UPDATE business_pet_types SET is_active = 1 WHERE provider_id = ? AND pet_type = ?',
+              [providerId, petType]
+            );
+          }
+        }
+      }
 
       return { packageId };
     });

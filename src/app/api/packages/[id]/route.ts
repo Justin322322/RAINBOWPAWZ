@@ -64,7 +64,7 @@ export async function GET(
     const petTypes = (await query(
       `SELECT pet_type FROM business_pet_types
        WHERE provider_id = ? AND is_active = 1`,
-      [pkg.providerId]
+      [pkg.provider_id]
     )) as any[];
 
     return NextResponse.json({
@@ -80,7 +80,7 @@ export async function GET(
         deliveryFeePerKm: Number(pkg.delivery_fee_per_km),
         conditions: pkg.conditions,
         isActive: Boolean(pkg.is_active),
-        providerId: pkg.providerId,
+        providerId: Number(pkg.provider_id),
         providerName: pkg.providerName,
         inclusions: inclusions.map((i) => i.description),
         addOns: addOns.map((a) => ({ id: a.id, name: a.description, price: Number(a.price) })),
@@ -231,7 +231,7 @@ export async function PATCH(
         const updateResult = await transaction.query(
           `UPDATE service_packages
            SET name=?, description=?, category=?, cremation_type=?, processing_time=?,
-               price=?, delivery_fee_per_km=?, conditions=?
+               price=?, delivery_fee_per_km=?, conditions=?, price_per_kg=?
            WHERE package_id=?`,
           [
             body.name,
@@ -242,12 +242,37 @@ export async function PATCH(
             Number(body.price),
             Number(body.deliveryFeePerKm) || 0,
             body.conditions,
+            Number(body.pricePerKg) || 0,
             packageId
           ]
         ) as any;
 
         if (updateResult.affectedRows === 0) {
           throw new Error('Package not found or no changes made');
+        }
+
+        // Upsert supported pet types for this provider if provided
+        if (Array.isArray(body.supportedPetTypes)) {
+          // Deactivate all existing pet types
+          await transaction.query(
+            'UPDATE business_pet_types SET is_active = 0 WHERE provider_id = ?',
+            [providerId]
+          );
+
+          for (const petType of body.supportedPetTypes) {
+            if (!petType || typeof petType !== 'string') continue;
+            try {
+              await transaction.query(
+                'INSERT INTO business_pet_types (provider_id, pet_type, is_active) VALUES (?, ?, 1)',
+                [providerId, petType]
+              );
+            } catch {
+              await transaction.query(
+                'UPDATE business_pet_types SET is_active = 1 WHERE provider_id = ? AND pet_type = ?',
+                [providerId, petType]
+              );
+            }
+          }
         }
 
         // delete old inclusions
@@ -289,6 +314,23 @@ export async function PATCH(
         // Handle image updates
         let filesToDelete: string[] = [];
         if (body.images && Array.isArray(body.images)) {
+          // Normalize incoming image paths so comparisons match DB-stored paths
+          const normalizePath = (p: string): string => {
+            if (!p) return p;
+            // Keep base64 data URLs as-is
+            if (p.startsWith('data:image/')) return p;
+            // Convert API image routes back to underlying uploads path expected in DB
+            if (p.startsWith('/api/image/packages/')) {
+              return `/uploads/packages/${p.substring('/api/image/packages/'.length)}`;
+            }
+            if (p.startsWith('api/image/packages/')) {
+              return `/uploads/packages/${p.substring('api/image/packages/'.length)}`;
+            }
+            // Ensure uploads path always starts with leading slash
+            if (p.startsWith('uploads/')) return `/${p}`;
+            // Leave other absolute URLs or other API paths untouched
+            return p;
+          };
           // Get current images from database
           const currentImages = await transaction.query(
             'SELECT image_path FROM package_images WHERE package_id = ?',
@@ -296,7 +338,7 @@ export async function PATCH(
           ) as any[];
           
           const currentImagePaths = currentImages.map(img => img.image_path);
-          const newImagePaths = body.images;
+          const newImagePaths = body.images.map((p: string) => normalizePath(p));
 
           // Find images to remove (in current but not in new)
           const imagesToRemove = currentImagePaths.filter((path: string) => !newImagePaths.includes(path));

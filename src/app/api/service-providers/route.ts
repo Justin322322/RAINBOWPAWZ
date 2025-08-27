@@ -146,7 +146,7 @@ export async function GET(request: Request) {
       }
 
       // Add provider_type filter if column exists
-      if (columnNames.includes('provider_type')) {
+      if (columnNames.has('provider_type')) {
         whereClause += " AND provider_type = 'cremation'";
       }
 
@@ -168,7 +168,7 @@ export async function GET(request: Request) {
           COALESCE(sp.address, u.address) as address,
           COALESCE(sp.phone, u.phone) as phone,
           sp.description,
-          sp.provider_type as type,
+          ${columnNames.has('provider_type') ? 'sp.provider_type' : "'cremation'"} as type,
           sp.created_at,
           u.profile_picture,
           ${hasApplicationStatus ? 'sp.application_status' : hasVerificationStatus ? 'sp.verification_status' : "'approved' as application_status"}
