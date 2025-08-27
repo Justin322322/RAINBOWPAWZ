@@ -432,7 +432,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
         const uploadSingle = async (file: File, type: 'businessPermit' | 'birCertificate' | 'governmentId') => {
             const contentType = file.type || 'application/octet-stream';
             const filename = file.name || `${type}_${Date.now()}`;
-            const signRes = await fetch(`/api/blob/upload-url?contentType=${encodeURIComponent(contentType)}&filename=${encodeURIComponent(filename)}`, { credentials: 'include' });
+            const signRes = await fetch(`/api/blob/upload-url?filename=${encodeURIComponent(filename)}`, { credentials: 'include' });
             if (!signRes.ok) {
                 throw new Error('Failed to prepare upload');
             }
