@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
       JOIN users u ON sb.user_id = u.user_id
       ${whereClause}
       ORDER BY r.created_at DESC
-      LIMIT ? OFFSET ?
+      LIMIT ${Number(limit)} OFFSET ${Number(offset)}
     `;
 
     queryParams.push(limit, offset);

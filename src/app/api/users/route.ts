@@ -130,16 +130,17 @@ export async function GET(request: NextRequest) {
       const finalSortBy = validSortColumns.includes(sortBy) ? sortBy : 'created_at';
 
       usersQuery += ` ORDER BY ${finalSortBy} ${sortOrder === 'asc' ? 'ASC' : 'DESC'}`;
-      usersQuery += ` LIMIT ? OFFSET ?`;
-      queryParams.push(limit, offset);
+      usersQuery += ` LIMIT ${Number(limit)} OFFSET ${Number(offset)}`;
 
+      // Build params for users query (without limit/offset as they are inlined)
+      const usersParams = [...queryParams];
 
       // Execute count query
-      const countResult = await query(countQuery, queryParams.slice(0, queryParams.length - 2)) as any[];
+      const countResult = await query(countQuery, queryParams.slice(0, queryParams.length)) as any[];
       const total = countResult[0].total;
 
       // Execute users query
-      const usersResult = await query(usersQuery, queryParams) as any[];
+      const usersResult = await query(usersQuery, usersParams) as any[];
 
       // Get appeals for all users in one query for better performance
       let userAppeals: { [key: string]: any[] } = {};

@@ -93,8 +93,7 @@ export async function GET(request: NextRequest) {
     sql += ' AND p.category = ?';
     params.push(catF);
   }
-  sql += ' ORDER BY p.created_at DESC LIMIT ? OFFSET ?';
-  params.push(limit, offset);
+  sql += ` ORDER BY p.created_at DESC LIMIT ${Number(limit)} OFFSET ${Number(offset)}`;
 
   // --- Execute main query with fallback ---
   let rows: RawServiceRow[] = [];

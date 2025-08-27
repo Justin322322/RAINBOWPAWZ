@@ -1,12 +1,12 @@
 import mysql from "mysql2/promise";
 
-// IMPORTANT: Always use 3306 for MySQL, regardless of the web server port
-export const MYSQL_PORT = 3306;
+// Use environment variable for port, fallback to 3306 for MySQL
+export const MYSQL_PORT = parseInt(process.env.DB_PORT || "3306");
 
 // Helper function to get SSL config
 export const getSSLConfig = () => {
-  // Use SSL for cloud databases in production
-  if (process.env.NODE_ENV === "production" && process.env.DATABASE_URL) {
+  // Always use SSL for Railway database if DATABASE_URL is present
+  if (process.env.DATABASE_URL || process.env.MYSQL_URL) {
     // Railway MySQL requires SSL
     if (isRailwayMySQL()) {
       return { rejectUnauthorized: false }; // Railway uses self-signed certificates
@@ -54,7 +54,9 @@ export function isRailwayMySQL(): boolean {
   return (
     /railway/i.test(url) ||
     /rlwy\.net/i.test(host) ||
-    process.env.RAILWAY === "true"
+    /gondola\.proxy\.rlwy\.net/i.test(host) ||
+    process.env.RAILWAY === "true" ||
+    (!!process.env.DB_HOST && /rlwy\.net/i.test(process.env.DB_HOST))
   );
 }
 
@@ -110,7 +112,7 @@ const productionConfig = {
   user: process.env.DB_USER || "root",
   password: process.env.DB_PASSWORD || "",
   database: process.env.DB_NAME || "rainbow_paws",
-  port: MYSQL_PORT, // Always use 3306 for MySQL
+  port: MYSQL_PORT, // Use environment variable for port
   waitForConnections: true,
   connectionLimit: process.env.NODE_ENV === "production" ? 20 : 10, // Increased pool size
   queueLimit: 0,
@@ -130,6 +132,19 @@ const globalForMysql = globalThis as unknown as GlobalWithMysql;
 let _pool: mysql.Pool;
 
 function initPool(): mysql.Pool {
+  // Always try to use DATABASE_URL first if it's available and valid
+  const databaseUrl = process.env.DATABASE_URL || process.env.MYSQL_URL;
+  if (databaseUrl &&
+      !databaseUrl.includes('your-planetscale-host') &&
+      !databaseUrl.includes('your-planetscale-username') &&
+      !databaseUrl.includes('localhost')) {
+    const cloudPool = tryCreatePoolFromDatabaseUrl();
+    if (cloudPool) {
+      console.log('Using cloud database from DATABASE_URL');
+      return cloudPool;
+    }
+  }
+
   // Production: require a valid DATABASE_URL and never fall back to localhost
   if (process.env.NODE_ENV === "production") {
     const cloudPool = tryCreatePoolFromDatabaseUrl();
@@ -139,19 +154,7 @@ function initPool(): mysql.Pool {
     return cloudPool;
   }
 
-  // Development: prefer DATABASE_URL if present, otherwise use local
-  const databaseUrl = process.env.DATABASE_URL || process.env.MYSQL_URL;
-  if (databaseUrl &&
-      !databaseUrl.includes('your-planetscale-host') &&
-      !databaseUrl.includes('your-planetscale-username') &&
-      !databaseUrl.includes('localhost')) {
-    const cloudPool = tryCreatePoolFromDatabaseUrl();
-    if (cloudPool) {
-      return cloudPool;
-    }
-  }
-
-  // Local development pool
+  // Local development pool (fallback)
   const localConfig = {
     host: "localhost",
     user: "root",
@@ -164,6 +167,7 @@ function initPool(): mysql.Pool {
     connectTimeout: 10000,
     ssl: undefined,
   } as const;
+  console.log('Using local database (fallback)');
   return mysql.createPool(localConfig);
 }
 

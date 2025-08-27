@@ -240,7 +240,8 @@ export async function GET(request: NextRequest) {
     }
 
     // Add pagination
-    queryParams.push(limit, offset);
+    // Note: LIMIT/OFFSET cannot be parameterized on some MySQL servers
+    const listParams = [...queryParams];
 
     const appeals = await query(`
       SELECT 
@@ -255,15 +256,15 @@ export async function GET(request: NextRequest) {
       LEFT JOIN users admin ON a.admin_id = admin.user_id
       ${whereClause}
       ORDER BY a.submitted_at DESC
-      LIMIT ? OFFSET ?
-    `, queryParams) as any[];
+      LIMIT ${Number(limit)} OFFSET ${Number(offset)}
+    `, listParams) as any[];
 
     // Get total count for pagination
     const countResult = await query(`
       SELECT COUNT(*) as total
       FROM user_appeals a
       ${whereClause.replace(/LIMIT.*/, '')}
-    `, queryParams.slice(0, -2)) as any[];
+    `, queryParams) as any[];
 
     const total = countResult[0]?.total || 0;
 

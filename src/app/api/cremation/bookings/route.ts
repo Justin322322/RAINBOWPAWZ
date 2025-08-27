@@ -159,8 +159,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Add order by and limit
-    sql += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
-    queryParams.push(limit, offset);
+    sql += ` ORDER BY created_at DESC LIMIT ${Number(limit)} OFFSET ${Number(offset)}`;
 
     // Execute the query
     const bookings = await query(sql, queryParams) as any[];
@@ -662,6 +661,7 @@ export async function POST(request: NextRequest) {
         const timeSlotId = timeSlots[0].id;
         await query('DELETE FROM provider_time_slots WHERE id = ?', [timeSlotId]);
       } else {
+        // Time slot not found, continue
       }
     } catch (timeSlotError) {
       // Log the error but don't fail the booking creation

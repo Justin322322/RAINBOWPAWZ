@@ -91,9 +91,7 @@ export async function GET(request: NextRequest) {
         notificationsQuery += ' AND is_read = 0';
       }
 
-      notificationsQuery += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
-      queryParams.push(limit, offset);
-
+      notificationsQuery += ` ORDER BY created_at DESC LIMIT ${Number(limit)} OFFSET ${Number(offset)}`;
       // Execute the query
       const notifications = await query(notificationsQuery, queryParams) as any[];
 

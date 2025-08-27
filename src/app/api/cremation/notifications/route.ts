@@ -51,8 +51,8 @@ export async function GET(request: NextRequest) {
       FROM notifications 
       WHERE user_id = ? 
       ORDER BY created_at DESC 
-      LIMIT ? OFFSET ?
-    `, [parseInt(user.userId), limit, offset]) as any[];
+      LIMIT ${Number(limit)} OFFSET ${Number(offset)}
+    `, [parseInt(user.userId)]) as any[];
 
     // Get total count
     const countResult = await query(`
