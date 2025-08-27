@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
 
     const data = await resp.json();
     return NextResponse.json({ uploadUrl: data.url, id: data.id, filename });
-  } catch (e) {
+  } catch {
     return NextResponse.json({ error: 'Failed to generate upload URL' }, { status: 500 });
   }
 }
