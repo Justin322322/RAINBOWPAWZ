@@ -4,12 +4,6 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
-    // Lazy import to avoid bundling if not configured
-    // eslint-disable-next-line @typescript-eslint/no-implied-eval
-    const reqFn: any = (eval('require') as any);
-    const blob = reqFn ? reqFn('@vercel/blob') : null;
-    const generateUploadUrl = blob.generateUploadUrl as (opts: any) => Promise<any>;
-
     const searchParams = request.nextUrl.searchParams;
     const contentType = searchParams.get('contentType') || 'application/octet-stream';
     const filename = searchParams.get('filename') || `upload_${Date.now()}`;
@@ -19,17 +13,25 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Blob token not configured' }, { status: 500 });
     }
 
-    const res = await generateUploadUrl({
-      access: 'public',
-      contentType,
-      token,
-      // Let Blob choose the key; filename hints the extension
-      // client will POST the file to res.url
+    // Use Vercel Blob REST API so no SDK install is required
+    const resp = await fetch('https://api.vercel.com/v2/blob/generate-upload-url', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ access: 'public', contentType })
     });
 
-    return NextResponse.json({ uploadUrl: res.url, id: res.id, filename });
-  } catch {
-    return NextResponse.json({ error: 'Failed to generate upload URL (Blob SDK not installed or misconfigured)' }, { status: 500 });
+    if (!resp.ok) {
+      const text = await resp.text().catch(() => '');
+      return NextResponse.json({ error: text || 'Failed to generate upload URL' }, { status: 500 });
+    }
+
+    const data = await resp.json();
+    return NextResponse.json({ uploadUrl: data.url, id: data.id, filename });
+  } catch (e) {
+    return NextResponse.json({ error: 'Failed to generate upload URL' }, { status: 500 });
   }
 }
 
