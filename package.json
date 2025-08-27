@@ -20,6 +20,7 @@
   "dependencies": {
     "@headlessui/react": "^2.2.2",
     "@heroicons/react": "^2.2.0",
+    "@vercel/blob": "^1.1.1",
     "bcryptjs": "^3.0.2",
     "caniuse-lite": "^1.0.30001737",
     "class-variance-authority": "^0.7.1",

@@ -10,7 +10,8 @@ export async function GET(request: NextRequest) {
 
     const token = process.env.BLOB_READ_WRITE_TOKEN;
     if (!token || token.length === 0) {
-      return NextResponse.json({ error: 'Blob token not configured' }, { status: 500 });
+      console.error('[blob/upload-url] Missing BLOB_READ_WRITE_TOKEN environment variable');
+      return NextResponse.json({ error: 'Blob storage not configured' }, { status: 503 });
     }
 
     // Use Vercel Blob REST API so no SDK install is required
@@ -25,12 +26,22 @@ export async function GET(request: NextRequest) {
 
     if (!resp.ok) {
       const text = await resp.text().catch(() => '');
-      return NextResponse.json({ error: text || 'Failed to generate upload URL' }, { status: 500 });
+      console.error('[blob/upload-url] Vercel Blob API error', {
+        status: resp.status,
+        statusText: resp.statusText,
+        body: text?.slice(0, 500)
+      });
+      return NextResponse.json({
+        error: 'Failed to generate upload URL',
+        details: text || undefined,
+        status: resp.status
+      }, { status: 502 });
     }
 
     const data = await resp.json();
     return NextResponse.json({ uploadUrl: data.url, id: data.id, filename });
-  } catch {
+  } catch (err) {
+    console.error('[blob/upload-url] Unexpected error', err);
     return NextResponse.json({ error: 'Failed to generate upload URL' }, { status: 500 });
   }
 }
