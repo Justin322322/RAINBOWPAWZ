@@ -358,14 +358,6 @@ export async function POST(request: NextRequest) {
               [providerId, petType]
             );
           }
-
-          // Insert supported pet types
-          for (const petType of supportedPetTypes) {
-            await transaction.query(
-              'INSERT INTO business_pet_types (provider_id, pet_type) VALUES (?, ?)',
-              [providerId, petType]
-            );
-          }
         });
       } catch (petTypesError) {
         console.error('Failed to process pet types for package:', result.packageId, petTypesError);
@@ -387,7 +379,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function getPackageById(packageId: number, providerId?: string) {
+async function getPackageById(packageId: number, providerId?: string): Promise<NextResponse> {
   try {
     // Build the query with optional providerId filter
     let sql = `
@@ -424,7 +416,7 @@ async function getPackageById(packageId: number, providerId?: string) {
   }
 }
 
-async function enhancePackagesWithDetails(pkgs: any[]) {
+async function enhancePackagesWithDetails(pkgs: any[]): Promise<any[]> {
   if (!pkgs.length) return [];
   const ids = pkgs.map((p) => p.id);
   const providerIds = [...new Set(pkgs.map((p) => p.providerId))];
@@ -541,10 +533,4 @@ async function moveImageToPackageFolder(imagePath: string, packageId: number): P
   return destRel;
 }
 
-async function moveImagesToPackageFolder(paths: string[], packageId: number) {
-  if (!paths.length) return [];
-  
-  return Promise.all(
-    paths.map((imagePath: string) => moveImageToPackageFolder(imagePath, packageId))
-  );
-}
+
