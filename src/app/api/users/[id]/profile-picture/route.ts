@@ -1,46 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { writeFile, mkdir } from 'fs/promises';
-import { join } from 'path';
-import { existsSync } from 'fs';
 import { query } from '@/lib/db';
 import { verifySecureAuth } from '@/lib/secureAuth';
-import { cleanupOldFiles } from '@/utils/fileSystemUtils';
-
-// Function to save profile picture to disk
-async function saveProfilePicture(file: File, userId: string): Promise<string> {
-  try {
-
-    // Create a unique filename with timestamp
-    const timestamp = Date.now();
-    const originalName = file.name.replace(/\s+/g, '_').toLowerCase();
-    const extension = originalName.split('.').pop() || 'jpg';
-    const filename = `profile_picture_${timestamp}.${extension}`;
-
-    // Create the directory path
-    const uploadsDir = join(process.cwd(), 'public', 'uploads', 'profile-pictures', userId);
-
-    // Ensure directory exists
-    if (!existsSync(uploadsDir)) {
-      await mkdir(uploadsDir, { recursive: true });
-    }
-
-    // Create file path
-    const filePath = join(uploadsDir, filename);
-
-    // Convert file to buffer and save
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-    await writeFile(filePath, buffer);
-
-    // Return the relative path
-    const relativePath = `/uploads/profile-pictures/${userId}/${filename}`;
-
-    return relativePath;
-  } catch (error) {
-    console.error(`Failed to save profile picture:`, error);
-    throw new Error(`Failed to save profile picture: ${error instanceof Error ? error.message : 'Unknown error'}`);
-  }
-}
+import { uploadFile } from '@/utils/uploadHandler';
 
 export async function POST(request: NextRequest) {
   try {
@@ -110,24 +71,18 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Save the profile picture
-    const profilePicturePath = await saveProfilePicture(profilePicture, userId.toString());
-
-    // Clean up old profile pictures in the directory (keep the new one)
-    try {
-      // First save, then clean up to ensure we always have at least one picture
-      await cleanupOldFiles(userId.toString(), 'profile-pictures', true);
-    } catch (cleanupError) {
-      console.error('Error cleaning up old profile pictures:', cleanupError);
-      // Continue with the process even if cleanup fails
-    }
+    // Convert profile picture to base64 for database storage
+    console.log('Converting profile picture to base64...');
+    const uploadResult = await uploadFile(profilePicture, 'profile-pictures', userId.toString());
+    const profilePicturePath = uploadResult.url;
+    console.log('Profile picture converted successfully');
 
     // Update the database with the new profile picture path
     try {
       console.log('Checking database schema...');
-      // First, check if the profile_picture column exists and add it if it doesn't
+      // First, check if the profile_picture column exists and ensure it can handle base64 data
       const columnCheck = await query(`
-        SELECT COLUMN_NAME
+        SELECT COLUMN_NAME, DATA_TYPE, CHARACTER_MAXIMUM_LENGTH
         FROM INFORMATION_SCHEMA.COLUMNS
         WHERE TABLE_SCHEMA = DATABASE()
         AND TABLE_NAME = 'users'
@@ -136,10 +91,14 @@ export async function POST(request: NextRequest) {
 
       if (columnCheck.length === 0) {
         console.log('Adding profile_picture column to users table...');
-        await query(`ALTER TABLE users ADD COLUMN profile_picture VARCHAR(255) NULL AFTER gender`);
+        await query(`ALTER TABLE users ADD COLUMN profile_picture LONGTEXT NULL AFTER gender`);
         console.log('Column added successfully');
+      } else if (columnCheck[0].DATA_TYPE !== 'longtext') {
+        console.log('Updating profile_picture column to handle base64 data...');
+        await query(`ALTER TABLE users MODIFY COLUMN profile_picture LONGTEXT NULL`);
+        console.log('Column updated successfully');
       } else {
-        console.log('profile_picture column already exists');
+        console.log('profile_picture column already exists with correct type');
       }
 
       // Update the user's profile picture in the database
