@@ -161,100 +161,18 @@ export async function POST(request: NextRequest) {
       if (providerResult && providerResult.length > 0) {
         const providerId = providerResult[0].provider_id;
         console.log('Provider ID found, saving document paths:', providerId);
-        
-        // Check if auxiliary table exists (DDL blocked in production)
-        const docsTableExistsRows = await query(
-          `SELECT 1 as ok FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'business_documents' LIMIT 1`
-        ) as any[];
-        const docsTableExists = Array.isArray(docsTableExistsRows) && docsTableExistsRows.length > 0;
-
-        if (docsTableExists) {
-          // Upsert base64 data into business_documents without attempting DDL
-          const existingDocs = await query(
-            'SELECT id FROM business_documents WHERE provider_id = ? LIMIT 1',
-            [providerId]
-          ) as any[];
-
-          if (existingDocs && existingDocs.length > 0) {
-            const setFields: string[] = [];
-            const setValues: any[] = [];
-            if (filePaths.business_permit_path) {
-              setFields.push('business_permit_data = ?');
-              setValues.push(filePaths.business_permit_path);
-            }
-            if (filePaths.bir_certificate_path) {
-              setFields.push('bir_certificate_data = ?');
-              setValues.push(filePaths.bir_certificate_path);
-            }
-            if (filePaths.government_id_path) {
-              setFields.push('government_id_data = ?');
-              setValues.push(filePaths.government_id_path);
-            }
-            if (setFields.length > 0) {
-              setValues.push(providerId);
-              await query(
-                `UPDATE business_documents SET ${setFields.join(', ')} WHERE provider_id = ?`,
-                setValues
-              );
-            }
-          } else {
-            await query(
-              `INSERT INTO business_documents (provider_id, business_permit_data, bir_certificate_data, government_id_data)
-               VALUES (?, ?, ?, ?)`,
-              [
-                providerId,
-                filePaths.business_permit_path || null,
-                filePaths.bir_certificate_path || null,
-                filePaths.government_id_path || null
-              ]
-            );
-          }
-
-          // Write short markers into service_providers to indicate presence (avoid large payloads)
-          const spCols = await query(
-            `SHOW COLUMNS FROM service_providers WHERE Field IN ('business_permit_path','bir_certificate_path','government_id_path')`
-          ) as any[];
-          const spColNames = new Set<string>(spCols.map((c: any) => c.Field));
-
-          const shortUpdateFields: string[] = [];
-          const shortUpdateValues: any[] = [];
-          if (spColNames.has('business_permit_path') && filePaths.business_permit_path) {
-            shortUpdateFields.push('business_permit_path = ?');
-            shortUpdateValues.push('stored');
-          }
-          if (spColNames.has('bir_certificate_path') && filePaths.bir_certificate_path) {
-            shortUpdateFields.push('bir_certificate_path = ?');
-            shortUpdateValues.push('stored');
-          }
-          if (spColNames.has('government_id_path') && filePaths.government_id_path) {
-            shortUpdateFields.push('government_id_path = ?');
-            shortUpdateValues.push('stored');
-          }
-          if (shortUpdateFields.length > 0) {
-            shortUpdateValues.push(providerId);
-            await query(
-              `UPDATE service_providers SET ${shortUpdateFields.join(', ')} WHERE provider_id = ?`,
-              shortUpdateValues
-            );
-          }
-        } else {
-          // Fallback: store base64 data directly in service_providers if columns exist (no DDL)
-          const spCols = await query(
-            `SHOW COLUMNS FROM service_providers WHERE Field IN ('business_permit_path','bir_certificate_path','government_id_path')`
-          ) as any[];
-          const spColNames = new Set<string>(spCols.map((c: any) => c.Field));
-
+        try {
           const updateFields: string[] = [];
           const updateValues: any[] = [];
-          if (spColNames.has('business_permit_path') && filePaths.business_permit_path) {
+          if (filePaths.business_permit_path) {
             updateFields.push('business_permit_path = ?');
             updateValues.push(filePaths.business_permit_path);
           }
-          if (spColNames.has('bir_certificate_path') && filePaths.bir_certificate_path) {
+          if (filePaths.bir_certificate_path) {
             updateFields.push('bir_certificate_path = ?');
             updateValues.push(filePaths.bir_certificate_path);
           }
-          if (spColNames.has('government_id_path') && filePaths.government_id_path) {
+          if (filePaths.government_id_path) {
             updateFields.push('government_id_path = ?');
             updateValues.push(filePaths.government_id_path);
           }
@@ -265,6 +183,8 @@ export async function POST(request: NextRequest) {
               updateValues
             );
           }
+        } catch (persistErr) {
+          console.error('Failed to update service_providers with document data:', persistErr);
         }
       } else {
         console.log('No provider found yet; returning file paths for client-side association later');
