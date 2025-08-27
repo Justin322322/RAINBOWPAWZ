@@ -60,8 +60,15 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     // SECURITY FIX: Check columns and update safely for each table type
     let updateResult;
     if (useServiceProvidersTable) {
-      // Check if service_providers has the application_status column
-      const columnsResult = await query('SHOW COLUMNS FROM service_providers LIKE ?', ['application_status']) as any[];
+      // Check if service_providers has the application_status column (avoid SHOW + placeholders incompatibility)
+      const columnsResult = await query(
+        `SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS 
+         WHERE TABLE_SCHEMA = DATABASE() 
+           AND TABLE_NAME = ? 
+           AND COLUMN_NAME = ? 
+         LIMIT 1`,
+        ['service_providers', 'application_status']
+      ) as any[];
       const _hasApplicationStatus = columnsResult.length > 0;
 
       updateResult = await query(
@@ -74,8 +81,15 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
         [applicationStatus, note.trim(), businessId]
       ) as unknown as mysql.ResultSetHeader;
     } else {
-      // Check if business_profiles has the application_status column
-      const columnsResult = await query('SHOW COLUMNS FROM business_profiles LIKE ?', ['application_status']) as any[];
+      // Check if business_profiles has the application_status column (avoid SHOW + placeholders incompatibility)
+      const columnsResult = await query(
+        `SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS 
+         WHERE TABLE_SCHEMA = DATABASE() 
+           AND TABLE_NAME = ? 
+           AND COLUMN_NAME = ? 
+         LIMIT 1`,
+        ['business_profiles', 'application_status']
+      ) as any[];
       const _hasApplicationStatus = columnsResult.length > 0;
 
       updateResult = await query(

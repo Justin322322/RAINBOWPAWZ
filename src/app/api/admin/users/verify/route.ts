@@ -125,8 +125,15 @@ export async function POST(request: NextRequest) {
 
           // SECURITY FIX: Check columns and update safely for each table type
           if (useServiceProvidersTable) {
-            // Check if service_providers has application_status column
-            const columnsResult = await query('SHOW COLUMNS FROM service_providers LIKE ?', ['application_status']) as any[];
+            // Check if service_providers has application_status column (avoid SHOW + placeholders incompatibility)
+            const columnsResult = await query(
+              `SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS 
+               WHERE TABLE_SCHEMA = DATABASE() 
+                 AND TABLE_NAME = ? 
+                 AND COLUMN_NAME = ? 
+               LIMIT 1`,
+              ['service_providers', 'application_status']
+            ) as any[];
             const hasApplicationStatus = columnsResult.length > 0;
 
             if (hasApplicationStatus) {
@@ -159,8 +166,15 @@ export async function POST(request: NextRequest) {
               ]);
             }
           } else {
-            // Check if business_profiles has application_status column
-            const columnsResult = await query('SHOW COLUMNS FROM business_profiles LIKE ?', ['application_status']) as any[];
+            // Check if business_profiles has application_status column (avoid SHOW + placeholders incompatibility)
+            const columnsResult = await query(
+              `SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS 
+               WHERE TABLE_SCHEMA = DATABASE() 
+                 AND TABLE_NAME = ? 
+                 AND COLUMN_NAME = ? 
+               LIMIT 1`,
+              ['business_profiles', 'application_status']
+            ) as any[];
             const hasApplicationStatus = columnsResult.length > 0;
 
             if (hasApplicationStatus) {
