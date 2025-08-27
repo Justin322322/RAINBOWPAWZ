@@ -78,9 +78,8 @@ function tryCreatePoolFromDatabaseUrl(): mysql.Pool | null {
       queueLimit: 0,
       multipleStatements: false,
       ssl: getSSLConfig(),
-      acquireTimeout: 60000,
-      timeout: 60000,
-      reconnect: true,
+      connectTimeout: 60000,
+      idleTimeout: 60000,
     });
     return pool;
   } catch {
@@ -116,12 +115,11 @@ const productionConfig = {
   connectionLimit: process.env.NODE_ENV === "production" ? 20 : 10, // Increased pool size
   queueLimit: 0,
   socketPath: undefined,
-  // PlanetScale requires SSL in production
+  // Railway/PlanetScale requires SSL in production
   ssl: getSSLConfig(),
-  // PlanetScale optimizations
-  acquireTimeout: 60000,
-  timeout: 60000,
-  reconnect: true,
+  // Database optimizations
+  connectTimeout: 60000,
+  idleTimeout: 60000,
 };
 
 export const finalConfig = process.env.NODE_ENV === "production" ? productionConfig : dbConfig;
