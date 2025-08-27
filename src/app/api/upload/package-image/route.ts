@@ -9,23 +9,54 @@ export async function POST(request: NextRequest) {
   try {
     console.log('Package image upload started');
     
-    // Use secure authentication
-    const user = await verifySecureAuth(request);
-    if (!user) {
-      console.log('Authentication failed - no valid user');
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    
-    console.log('User authenticated:', { userId: user.userId, accountType: user.accountType });
-    
-    const { userId, accountType } = user;
+    // Try secure authentication first
+    let userId: string | number | null = null;
+    let accountType: string | null = null;
+    let authenticatedViaSession = false;
 
-    // Only business accounts can upload package images
+    const sessionUser = await verifySecureAuth(request);
+    if (sessionUser) {
+      authenticatedViaSession = true;
+      userId = sessionUser.userId;
+      accountType = sessionUser.accountType;
+      console.log('User authenticated via session:', { userId, accountType });
+    }
+
+    // Parse form data early so we can support direct userId during onboarding
+    console.log('Parsing form data...');
+    const formData = await request.formData();
+    // Accept either 'file' or 'image' as the field name
+    const file = (formData.get('file') || formData.get('image')) as File | null;
+    const packageId = formData.get('packageId') as string | null;
+    const directUserId = formData.get('userId') as string | null;
+    console.log('Form data parsed:', { hasFile: !!file, packageId, directUserId });
+
+    // If not authenticated via session, allow a validated direct userId
+    if (!authenticatedViaSession && directUserId) {
+      try {
+        const userRows = await query(
+          'SELECT u.user_id, u.role, sp.provider_id FROM users u LEFT JOIN service_providers sp ON sp.user_id = u.user_id WHERE u.user_id = ?',
+          [directUserId]
+        ) as any[];
+        if (!userRows || userRows.length === 0) {
+          return NextResponse.json({ error: 'User not found' }, { status: 404 });
+        }
+        if (userRows[0].role !== 'business') {
+          return NextResponse.json({ error: 'Only business accounts can upload package images' }, { status: 403 });
+        }
+        userId = userRows[0].user_id;
+        accountType = 'business';
+        console.log('Direct user validation successful for package upload:', { userId });
+      } catch (err) {
+        console.error('Error validating direct user for package upload:', err);
+        return NextResponse.json({ error: 'Failed to validate user account' }, { status: 500 });
+      }
+    }
+
+    // Enforce business role now that we should have accountType
     if (accountType !== 'business') {
-      console.log('Non-business access attempt:', accountType);
-      return NextResponse.json({
-        error: 'Only business accounts can upload package images'
-      }, { status: 403 });
+      console.log('Non-business access attempt for package upload:', accountType);
+      return NextResponse.json({ error: 'Only business accounts can upload package images' }, { status: 403 });
     }
 
     // Get provider ID
@@ -74,13 +105,6 @@ export async function POST(request: NextRequest) {
         error: 'Database configuration issue - unable to create required table'
       }, { status: 500 });
     }
-
-    // Get form data
-    console.log('Parsing form data...');
-    const formData = await request.formData();
-    const file = formData.get('file') as File | null;
-    const packageId = formData.get('packageId') as string | null;
-    console.log('Form data parsed:', { hasFile: !!file, packageId });
 
     if (!file) {
       console.log('No file uploaded');

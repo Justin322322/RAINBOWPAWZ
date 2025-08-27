@@ -130,19 +130,13 @@ export async function PUT(request: NextRequest) {
       hours
     } = body;
 
-    // Validate required fields
-    if (!first_name || !last_name) {
-      return NextResponse.json(
-        { error: 'First name and last name are required' },
-        { status: 400 }
+    // Conditionally update user table only if personal fields are provided
+    if (first_name || last_name || phone || address) {
+      await query(
+        'UPDATE users SET first_name = COALESCE(?, first_name), last_name = COALESCE(?, last_name), phone = COALESCE(?, phone), address = COALESCE(?, address), updated_at = NOW() WHERE user_id = ? AND role = ?',
+        [first_name || null, last_name || null, phone || null, address || null, user.userId, 'business']
       );
     }
-
-    // Update user table
-    await query(
-      'UPDATE users SET first_name = ?, last_name = ?, phone = ?, address = ?, updated_at = NOW() WHERE user_id = ? AND role = ?',
-      [first_name, last_name, phone || null, address || null, user.userId, 'business']
-    );
 
     // Check if service provider record exists
     const providerResult = await query(
@@ -153,8 +147,8 @@ export async function PUT(request: NextRequest) {
     if (providerResult && providerResult.length > 0) {
       // Update existing service provider
       await query(
-        'UPDATE service_providers SET name = ?, phone = ?, address = ?, description = ?, hours = ?, updated_at = NOW() WHERE user_id = ?',
-        [business_name || null, business_phone || phone, business_address || address, description || null, hours || null, user.userId]
+        'UPDATE service_providers SET name = COALESCE(?, name), phone = COALESCE(?, phone), address = COALESCE(?, address), description = COALESCE(?, description), hours = COALESCE(?, hours), updated_at = NOW() WHERE user_id = ?',
+        [business_name || null, (business_phone || phone) || null, (business_address || address) || null, description || null, hours || null, user.userId]
       );
     } else if (business_name) {
       // Create new service provider record if business name is provided

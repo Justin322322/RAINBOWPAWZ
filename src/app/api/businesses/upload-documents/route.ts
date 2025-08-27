@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
       // Security check: verify the user exists and is a business account
       try {
         const userCheckResult = await query(
-          'SELECT u.account_type, sp.provider_id FROM users u LEFT JOIN service_providers sp ON u.user_id = sp.user_id WHERE u.user_id = ?',
+          'SELECT u.role, sp.provider_id FROM users u LEFT JOIN service_providers sp ON u.user_id = sp.user_id WHERE u.user_id = ?',
           [userId]
         ) as any[];
         
@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
           return NextResponse.json({ error: 'User not found' }, { status: 404 });
         }
         
-        if (userCheckResult[0].account_type !== 'business') {
+        if (userCheckResult[0].role !== 'business') {
           console.log('User is not a business account:', userId);
           return NextResponse.json({ error: 'Only business accounts can upload documents' }, { status: 403 });
         }

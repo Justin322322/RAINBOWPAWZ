@@ -33,9 +33,6 @@ export function getImagePath(path: string, addCacheBust: boolean = false): strin
 
   const convertedPath = convertToApiPath(path);
   const finalPath = addCacheBust ? addCacheBuster(convertedPath) : convertedPath;
-  
-  console.log('getImagePath:', { original: path, converted: convertedPath, final: finalPath });
-  
   return finalPath;
 }
 
