@@ -102,7 +102,7 @@ export async function POST(request: NextRequest) {
           if (!putFn) {
             // Silently fallback to base64
           }
-        } catch (e) {
+        } catch {
           // Silently fallback to base64
         }
       }
@@ -171,7 +171,7 @@ export async function POST(request: NextRequest) {
               updateValues
             );
           }
-        } catch (persistErr) {
+        } catch {
           // Silently continue if database update fails
         }
       }

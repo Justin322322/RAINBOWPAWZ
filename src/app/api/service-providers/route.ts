@@ -261,7 +261,7 @@ export async function GET(request: Request) {
               }
             );
 
-          } catch (routingError) {
+          } catch {
             // Fallback to simple distance calculation
             const distance = calculateDistance(userCoords, providerCoordinates);
             provider.distance = `${distance.toFixed(1)} km`;
@@ -305,7 +305,7 @@ export async function GET(request: Request) {
             // Calculate distance using the dedicated async function
             await calculateProviderDistance(provider, userCoordinates);
 
-          } catch (error) {
+          } catch {
             // Final fallback
             const providerCoordinates = getBataanCoordinates(provider.address || 'Bataan');
             if (providerCoordinates) {
@@ -347,10 +347,10 @@ export async function GET(request: Request) {
 
       // If no providers found, return empty array
       return NextResponse.json({ providers: [] });
-    } catch (dbError) {
+    } catch {
       return NextResponse.json({ providers: [], error: 'Database error' });
     }
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: 'Failed to fetch service providers' },
       { status: 500 }
