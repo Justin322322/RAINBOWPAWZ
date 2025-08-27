@@ -2,11 +2,8 @@
 // Load environment variables
 require('dotenv').config({ path: '.env.local' });
 
-// Get port from environment or default to 3001
-const port = process.env.PORT || 3001;
-
-// Always use 3306 for MySQL
-const dbPort = 3306;
+// Get port from environment (Railway will set this automatically)
+const port = process.env.PORT || '3000';
 
 // Production flag and allowed image hosts whitelist (comma-separated)
 const isProd = process.env.NODE_ENV === 'production';
@@ -18,13 +15,14 @@ const allowedImageHosts = rawHosts
   .map((s) => s.trim())
   .filter(Boolean)
   // Normalize to bare hostnames even if URLs are provided
-  .map((entry) => entry.replace(/^https?:\/\//i, '').replace(/\/.*$/, ''));const nextConfig = {
+  .map((entry) => entry.replace(/^https?:\/\//i, '').replace(/\/.*$/, ''));
+
+const nextConfig = {
   // Pass only safe environment variables to the client
   // SECURITY: Never expose database credentials to client-side
   env: {
-    // Only expose port and app URL for client-side access
-    PORT: port,
-    NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL || `http://localhost:${port}`,
+    // Only expose app URL for client-side access (PORT is not needed in client)
+    NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL || process.env.RAILWAY_STATIC_URL || `http://localhost:${port}`,
     // Don't include NODE_ENV here as it's not allowed
   },
   // Configure image handling
@@ -37,18 +35,13 @@ const allowedImageHosts = rawHosts
           pathname: '/**',
         }))
       : [
-          {
+          // Development patterns - only include if explicitly set
+          ...(process.env.NEXT_PUBLIC_APP_URL ? [{
             protocol: 'http',
             hostname: 'localhost',
             port: port.toString(),
             pathname: '/**',
-          },
-          {
-            protocol: 'http',
-            hostname: '192.168.56.1',
-            port: port.toString(),
-            pathname: '/**',
-          },
+          }] : []),
           // Broad patterns for development only
           { protocol: 'http', hostname: '*', port: '', pathname: '/**' },
           { protocol: 'https', hostname: '*', port: '', pathname: '/**' },
@@ -86,7 +79,7 @@ const allowedImageHosts = rawHosts
         source: '/:path*',
         headers: [
           { key: 'Access-Control-Allow-Credentials', value: 'true' },
-          { key: 'Access-Control-Allow-Origin', value: process.env.NEXT_PUBLIC_APP_URL || `http://localhost:${port}` },
+          { key: 'Access-Control-Allow-Origin', value: process.env.NEXT_PUBLIC_APP_URL || process.env.RAILWAY_STATIC_URL || `http://localhost:${port}` },
           { key: 'Access-Control-Allow-Methods', value: 'GET,DELETE,PATCH,POST,PUT,OPTIONS' },
           { key: 'Access-Control-Allow-Headers', value: 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization' },
         ],

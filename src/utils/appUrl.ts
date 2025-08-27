@@ -13,8 +13,8 @@ export function getCurrentPort(): string {
     return window.location.port || (window.location.protocol === 'https:' ? '443' : '80');
   }
 
-  // On the server, use environment variable or default
-  return process.env.PORT || '3001';
+  // On the server, use environment variable (Railway sets this automatically)
+  return process.env.PORT || '3000';
 }
 
 /**
@@ -38,8 +38,8 @@ export function getAppBaseUrl(): string {
   }
 
   // On the server, use the environment variable with dynamic port detection
-  const port = process.env.PORT || '3001';
-  const envUrl = process.env.NEXT_PUBLIC_APP_URL || `http://localhost:${port}`;
+  const port = process.env.PORT || '3000';
+  const envUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.RAILWAY_STATIC_URL || `http://localhost:${port}`;
 
   // If the URL already has a port, use it as is
   if (envUrl.includes(':' + port)) {
@@ -61,16 +61,48 @@ export function getAppBaseUrl(): string {
   return envUrl;
 }
 
-
-
 /**
  * Get the application URL for server-side use (emails, notifications, etc.)
  * This ensures consistent URL generation across all server-side components
+ * Priority: RAILWAY_STATIC_URL > NEXT_PUBLIC_APP_URL > dynamic port detection
  */
 export function getServerAppUrl(): string {
-  // Always use environment variable or dynamic port detection on server
-  const port = process.env.PORT || '3001';
-  return process.env.NEXT_PUBLIC_APP_URL || `http://localhost:${port}`;
+  // Check for Railway-specific environment variable first
+  if (process.env.RAILWAY_STATIC_URL) {
+    console.log('Using RAILWAY_STATIC_URL:', process.env.RAILWAY_STATIC_URL);
+    return process.env.RAILWAY_STATIC_URL;
+  }
+
+  // Check for custom app URL environment variable
+  if (process.env.NEXT_PUBLIC_APP_URL) {
+    console.log('Using NEXT_PUBLIC_APP_URL:', process.env.NEXT_PUBLIC_APP_URL);
+    return process.env.NEXT_PUBLIC_APP_URL;
+  }
+
+  // Check for Railway deployment URL pattern
+  if (process.env.RAILWAY_DEPLOYMENT_URL) {
+    console.log('Using RAILWAY_DEPLOYMENT_URL:', process.env.RAILWAY_DEPLOYMENT_URL);
+    return process.env.RAILWAY_DEPLOYMENT_URL;
+  }
+
+  // Check for Vercel deployment URL
+  if (process.env.VERCEL_URL) {
+    const protocol = process.env.VERCEL_URL.includes('localhost') ? 'http' : 'https';
+    const url = `${protocol}://${process.env.VERCEL_URL}`;
+    console.log('Using VERCEL_URL:', url);
+    return url;
+  }
+
+  // Fallback to dynamic port detection (avoid hardcoded localhost in production)
+  const port = process.env.PORT || '3000';
+  if (process.env.NODE_ENV === 'production') {
+    console.warn('No production URL configured, using fallback');
+    return `http://localhost:${port}`;
+  }
+  
+  const fallbackUrl = `http://localhost:${port}`;
+  console.log('Using fallback URL:', fallbackUrl);
+  return fallbackUrl;
 }
 
 

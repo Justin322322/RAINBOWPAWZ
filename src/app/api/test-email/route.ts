@@ -1,85 +1,87 @@
 import { NextResponse } from 'next/server';
-import { sendEmail } from '@/lib/consolidatedEmailService';
-import { createRailwayTransporter, createRailwaySSLTransporter } from '@/lib/railwayEmailConfig';
+import { sendPasswordResetEmail } from '@/lib/consolidatedEmailService';
+
+export const runtime = 'nodejs';
 
 export async function POST(request: Request) {
   try {
-    const { email, method = 'default' } = await request.json();
-    
+    const body = await request.json();
+    const { email, testToken } = body;
+
     if (!email) {
-      return NextResponse.json({ error: 'Email is required' }, { status: 400 });
+      return NextResponse.json({
+        error: 'Email is required'
+      }, { status: 400 });
     }
 
-    // Test email configuration
-    const config = {
-      SMTP_HOST: process.env.SMTP_HOST,
-      SMTP_PORT: process.env.SMTP_PORT,
-      SMTP_USER: process.env.SMTP_USER ? 'Set' : 'Not set',
-      SMTP_PASS: process.env.SMTP_PASS ? 'Set' : 'Not set',
-      SMTP_FROM: process.env.SMTP_FROM,
-      NODE_ENV: process.env.NODE_ENV,
-      DEV_EMAIL_MODE: process.env.DEV_EMAIL_MODE
-    };
+    // Use provided test token or generate one
+    const token = testToken || 'test-token-' + Date.now();
 
-    console.log('Testing SMTP with config:', config);
-
-    let result;
-
-    if (method === 'railway-starttls') {
-      // Test with Railway-specific STARTTLS configuration
-      const transporter = createRailwayTransporter();
-      const info = await transporter.sendMail({
-        from: `"Rainbow Paws" <${process.env.SMTP_USER}>`,
-        to: email,
-        subject: 'SMTP Test - Railway STARTTLS - Rainbow Paws',
-        html: '<h1>Railway STARTTLS Test Successful!</h1><p>Your Railway STARTTLS email configuration is working correctly.</p>',
-        text: 'Railway STARTTLS Test Successful! Your email configuration is working correctly.'
-      });
-      result = { success: true, messageId: info.messageId, method: 'railway-starttls' };
-    } else if (method === 'railway-ssl') {
-      // Test with Railway-specific SSL configuration
-      const transporter = createRailwaySSLTransporter();
-      const info = await transporter.sendMail({
-        from: `"Rainbow Paws" <${process.env.SMTP_USER}>`,
-        to: email,
-        subject: 'SMTP Test - Railway SSL - Rainbow Paws',
-        html: '<h1>Railway SSL Test Successful!</h1><p>Your Railway SSL email configuration is working correctly.</p>',
-        text: 'Railway SSL Test Successful! Your email configuration is working correctly.'
-      });
-      result = { success: true, messageId: info.messageId, method: 'railway-ssl' };
-    } else {
-      // Test with default consolidated email service
-      result = await sendEmail({
-        to: email,
-        subject: 'SMTP Test - Default - Rainbow Paws',
-        html: '<h1>Default SMTP Test Successful!</h1><p>Your default email configuration is working correctly.</p>',
-        text: 'Default SMTP Test Successful! Your email configuration is working correctly.'
-      });
-      result.method = 'default';
-    }
-
-    return NextResponse.json({
-      success: result.success,
-      message: result.success ? `Test email sent successfully using ${result.method} method` : 'Failed to send test email',
-      error: result.error,
-      messageId: result.messageId,
-      method: result.method,
-      config
+    console.log('Testing email service with:', {
+      email,
+      token,
+      smtpUser: process.env.SMTP_USER ? 'configured' : 'missing',
+      smtpPass: process.env.SMTP_PASS ? 'configured' : 'missing',
+      smtpHost: process.env.SMTP_HOST || 'default',
+      smtpPort: process.env.SMTP_PORT || 'default',
+      nodeEnv: process.env.NODE_ENV
     });
+
+    // Test the password reset email function
+    const result = await sendPasswordResetEmail(email, token);
+
+    if (result.success) {
+      return NextResponse.json({
+        success: true,
+        message: 'Test email sent successfully',
+        messageId: result.messageId,
+        details: {
+          email,
+          token,
+          environment: process.env.NODE_ENV,
+          smtpConfigured: !!(process.env.SMTP_USER && process.env.SMTP_PASS)
+        }
+      });
+    } else {
+      return NextResponse.json({
+        success: false,
+        error: result.error,
+        code: result.code,
+        details: {
+          email,
+          environment: process.env.NODE_ENV,
+          smtpConfigured: !!(process.env.SMTP_USER && process.env.SMTP_PASS)
+        }
+      }, { status: 500 });
+    }
   } catch (error) {
-    console.error('Test email error:', error);
+    console.error('Error in test email endpoint:', error);
     return NextResponse.json({
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
-      config: {
-        SMTP_HOST: process.env.SMTP_HOST,
-        SMTP_PORT: process.env.SMTP_PORT,
-        SMTP_USER: process.env.SMTP_USER ? 'Set' : 'Not set',
-        SMTP_PASS: process.env.SMTP_PASS ? 'Set' : 'Not set',
-        SMTP_FROM: process.env.SMTP_FROM,
-        NODE_ENV: process.env.NODE_ENV,
-        DEV_EMAIL_MODE: process.env.DEV_EMAIL_MODE
-      }
+      error: 'Failed to test email service',
+      details: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 });
   }
+}
+
+export async function GET() {
+  // Return current email configuration status
+  return NextResponse.json({
+    emailServiceStatus: {
+      smtpUser: process.env.SMTP_USER ? 'configured' : 'missing',
+      smtpPass: process.env.SMTP_PASS ? 'configured' : 'missing',
+      smtpHost: process.env.SMTP_HOST || 'smtp.gmail.com',
+      smtpPort: process.env.SMTP_PORT || '587',
+      smtpSecure: process.env.SMTP_SECURE || 'false',
+      nodeEnv: process.env.NODE_ENV || 'development',
+      appUrl: process.env.NEXT_PUBLIC_APP_URL || 'not set',
+      railwayUrl: process.env.RAILWAY_STATIC_URL || 'not set'
+    },
+    instructions: [
+      'Set SMTP_USER and SMTP_PASS environment variables',
+      'Ensure SMTP_HOST and SMTP_PORT are correct',
+      'For Gmail, use app-specific password',
+      'Set NEXT_PUBLIC_APP_URL or RAILWAY_STATIC_URL for proper reset links'
+    ]
+  });
 }

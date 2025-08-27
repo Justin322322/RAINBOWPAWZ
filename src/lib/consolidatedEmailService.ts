@@ -61,6 +61,9 @@ function createTransporter(recipientDomain?: string): nodemailer.Transporter {
   // Check if SMTP credentials are set
   if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
     console.warn('Email service not properly configured: Missing SMTP credentials');
+    console.warn('Required environment variables: SMTP_USER, SMTP_PASS');
+    console.warn('Optional: SMTP_HOST, SMTP_PORT, SMTP_SECURE');
+    
     // Return a mock transporter for development
     return nodemailer.createTransport({
       host: 'localhost',
@@ -75,6 +78,15 @@ function createTransporter(recipientDomain?: string): nodemailer.Transporter {
       }
     });
   }
+
+  // Log SMTP configuration for debugging
+  console.log('Creating email transporter with configuration:', {
+    host: process.env.SMTP_HOST || 'smtp.gmail.com',
+    port: process.env.SMTP_PORT || '587',
+    secure: process.env.SMTP_SECURE === 'true',
+    user: process.env.SMTP_USER ? '***configured***' : 'missing',
+    pass: process.env.SMTP_PASS ? '***configured***' : 'missing'
+  });
 
   // Base configuration with Railway-specific optimizations
   const baseConfig = {
@@ -124,17 +136,31 @@ function createTransporter(recipientDomain?: string): nodemailer.Transporter {
  */
 export async function sendEmail(emailData: EmailData): Promise<{ success: boolean; messageId?: string; error?: string; code?: string | number }> {
   try {
+    console.log(`Attempting to send email to: ${emailData.to}, subject: ${emailData.subject}`);
+    
     // Check if SMTP credentials are set
     if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
-      // Email service not properly configured: Missing SMTP credentials
+      console.error('Email service not properly configured: Missing SMTP credentials');
+      console.error('Required: SMTP_USER, SMTP_PASS');
+      console.error('Current environment:', process.env.NODE_ENV);
+      
       // In development, pretend the email was sent successfully
       if (process.env.NODE_ENV === 'development') {
+        console.log('Development mode: Pretending email was sent successfully');
         return { success: true, messageId: 'dev-mode-no-email-sent' };
       }
+      
+      // In production, return error
+      return { 
+        success: false, 
+        error: 'Email service not configured. Please contact administrator.',
+        code: 'SMTP_NOT_CONFIGURED'
+      };
     }
 
     // Extract domain from recipient email for domain-specific optimizations
     const recipientDomain = emailData.to.split('@')[1]?.toLowerCase();
+    console.log(`Recipient domain: ${recipientDomain}`);
 
     // Create a transporter with domain-specific optimizations
     const transporter = createTransporter(recipientDomain);
@@ -153,6 +179,8 @@ export async function sendEmail(emailData: EmailData): Promise<{ success: boolea
 
     while (retries < maxRetries) {
       try {
+        console.log(`Email attempt ${retries + 1}/${maxRetries}`);
+        
         // Create mail options with default values where needed
         const mailOptions = {
           from: emailData.from || `"Rainbow Paws" <${process.env.SMTP_USER}>`,
@@ -166,8 +194,12 @@ export async function sendEmail(emailData: EmailData): Promise<{ success: boolea
           headers
         };
 
+        console.log('Mail options prepared, attempting to send...');
+        
         // Send the email
         const info = await transporter.sendMail(mailOptions);
+
+        console.log(`Email sent successfully! Message ID: ${info.messageId}`);
 
         // Check for rejected recipients
         if (info.rejected && info.rejected.length > 0) {
@@ -177,40 +209,63 @@ export async function sendEmail(emailData: EmailData): Promise<{ success: boolea
         // Record the successful email in the database
         try {
           await recordEmailSent(emailData.to, emailData.subject, info.messageId);
-        } catch {
+          console.log('Email recorded in database successfully');
+        } catch (recordError) {
+          console.warn('Failed to record email in database:', recordError);
           // Continue even if recording fails
         }
 
         return { success: true, messageId: info.messageId };
       } catch (err) {
         retries++;
+        console.error(`Email attempt ${retries} failed:`, err);
 
         if (retries >= maxRetries) {
+          console.error('All email retries failed, attempting to queue email...');
+          
           // If all retries failed, try to queue the email before giving up
           try {
             const queueResult = await queueEmail(emailData);
             if (queueResult.success) {
+              console.log(`Email queued successfully with ID: ${queueResult.queueId}`);
               return { success: true, messageId: `queued-${queueResult.queueId}` };
             }
-          } catch {
+          } catch (queueError) {
+            console.error('Failed to queue email:', queueError);
             // If queueing fails, continue with the original error
           }
+
+          // Log final failure details
+          console.error('Final email failure details:', {
+            recipient: emailData.to,
+            subject: emailData.subject,
+            error: err instanceof Error ? err.message : 'Unknown error',
+            code: (err as any).code || 'UNKNOWN',
+            attempts: retries
+          });
 
           throw err;
         }
 
         // Wait before retrying (exponential backoff)
-        await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, retries)));
+        const delay = 1000 * Math.pow(2, retries);
+        console.log(`Waiting ${delay}ms before retry...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
       }
     }
 
     // This should never be reached due to the throw in the loop
-    return { success: false, error: 'Failed to send email after retries' };
+    throw new Error('Unexpected end of email sending loop');
   } catch (error) {
+    console.error('Critical error in sendEmail function:', error);
+    
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    const errorCode = (error as any).code || 'UNKNOWN_ERROR';
+    
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
-      code: error instanceof Error && 'code' in error ? (error as any).code : undefined
+      error: errorMessage,
+      code: errorCode
     };
   }
 }

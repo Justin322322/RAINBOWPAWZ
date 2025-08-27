@@ -89,10 +89,10 @@ function tryCreatePoolFromDatabaseUrl(): mysql.Pool | null {
 
 // Database connection configuration
 const dbConfig = {
-  host: process.env.DB_HOST || "localhost", // Use localhost for XAMPP
-  user: process.env.DB_USER || "root",
-  password: process.env.DB_PASSWORD || "",
-  database: process.env.DB_NAME || "rainbow_paws",
+  host: process.env.DB_HOST || (process.env.NODE_ENV === 'production' ? undefined : 'localhost'), // Don't use localhost in production
+  user: process.env.DB_USER || (process.env.NODE_ENV === 'production' ? undefined : 'root'),
+  password: process.env.DB_PASSWORD || (process.env.NODE_ENV === 'production' ? undefined : ''),
+  database: process.env.DB_NAME || (process.env.NODE_ENV === 'production' ? undefined : 'rainbow_paws'),
   port: MYSQL_PORT,
   waitForConnections: true,
   connectionLimit: process.env.NODE_ENV === "production" ? 20 : 10, // Increased pool size

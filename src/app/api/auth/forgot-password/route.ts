@@ -36,6 +36,7 @@ export async function POST(request: Request) {
       }
 
       const userId = userResult[0].user_id;
+      console.log(`Processing password reset for user ID: ${userId}, email: ${email}`);
 
       // Generate a secure random token
       const resetToken = crypto.randomBytes(32).toString('hex');
@@ -53,6 +54,7 @@ export async function POST(request: Request) {
         ) as any[];
 
         if (tableExists[0].count === 0) {
+          console.log('Creating password_reset_tokens table...');
           // Create the table if it doesn't exist
           await query(`
             CREATE TABLE IF NOT EXISTS password_reset_tokens (
@@ -70,8 +72,12 @@ export async function POST(request: Request) {
               FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
           `);
+          console.log('password_reset_tokens table created successfully');
+        } else {
+          console.log('password_reset_tokens table already exists');
         }
-      } catch {
+      } catch (tableError) {
+        console.error('Error ensuring password reset table exists:', tableError);
         throw new Error('Failed to ensure password reset table exists');
       }
 
@@ -81,7 +87,9 @@ export async function POST(request: Request) {
           'UPDATE password_reset_tokens SET is_used = 1 WHERE user_id = ?',
           [userId]
         );
-      } catch {
+        console.log(`Marked existing tokens as used for user ID: ${userId}`);
+      } catch (updateError) {
+        console.warn('Failed to mark existing tokens as used:', updateError);
         // Continue even if this fails
       }
 
@@ -91,35 +99,43 @@ export async function POST(request: Request) {
           'INSERT INTO password_reset_tokens (user_id, token, expires_at, is_used) VALUES (?, ?, ?, 0)',
           [userId, resetToken, expiresAt]
         );
-      } catch {
+        console.log(`Stored new reset token for user ID: ${userId}`);
+      } catch (insertError) {
+        console.error('Failed to store reset token:', insertError);
         throw new Error('Failed to store reset token');
       }
 
       // Send the password reset email using the simple email service
       try {
+        console.log(`Attempting to send password reset email to: ${email}`);
         // Send email using simple email service
         const emailResult = await sendPasswordResetEmail(email, resetToken);
 
         if (!emailResult.success) {
+          console.error('Email service returned error:', emailResult.error);
           throw new Error(emailResult.error || 'Failed to send email');
         }
 
+        console.log(`Password reset email sent successfully to: ${email}`);
         return NextResponse.json({
           success: true,
           message: 'Password reset instructions have been sent to your email.'
         });
-      } catch {
+      } catch (emailError) {
+        console.error('Failed to send password reset email:', emailError);
         // For production, be honest about the error
         return NextResponse.json({
           error: 'Failed to send password reset email. Please try again later.'
         }, { status: 500 });
       }
-    } catch {
+    } catch (dbError) {
+      console.error('Database error in forgot password:', dbError);
       return NextResponse.json({
         error: 'Database error occurred while processing your request. Please try again later.'
       }, { status: 500 });
     }
   } catch (error) {
+    console.error('General error in forgot password:', error);
     return NextResponse.json({
       error: 'Failed to process password reset request',
       message: error instanceof Error ? error.message : 'Unknown error'

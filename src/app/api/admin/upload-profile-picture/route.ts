@@ -53,28 +53,30 @@ export async function POST(request: NextRequest) {
       }, { status: 403 });
     }
 
-    // Get the profile picture file
-    const profilePicture = formData.get('profilePicture') as File | null;
-    if (!profilePicture || !(profilePicture instanceof File) || profilePicture.size === 0) {
+    // Get the profile picture file - handle both File and Blob types
+    const profilePicture = formData.get('profilePicture');
+    if (!profilePicture || !(profilePicture instanceof Blob) || profilePicture.size === 0) {
       console.log('Invalid profile picture file:', { 
         hasFile: !!profilePicture, 
-        isFile: profilePicture instanceof File, 
-        size: profilePicture?.size 
+        isBlob: profilePicture instanceof Blob, 
+        size: profilePicture instanceof Blob ? profilePicture.size : 'N/A'
       });
       return NextResponse.json({
         error: 'No profile picture file provided'
       }, { status: 400 });
     }
+    
+    // Now TypeScript knows profilePicture is a Blob
+    const profilePictureBlob = profilePicture as Blob;
     console.log('Profile picture file received:', { 
-      name: profilePicture.name, 
-      type: profilePicture.type, 
-      size: profilePicture.size 
+      type: profilePictureBlob.type, 
+      size: profilePictureBlob.size 
     });
 
     // Validate file type
     const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-    if (!validTypes.includes(profilePicture.type)) {
-      console.log('Invalid file type:', profilePicture.type);
+    if (!validTypes.includes(profilePictureBlob.type)) {
+      console.log('Invalid file type:', profilePictureBlob.type);
       return NextResponse.json({
         error: 'Invalid file type. Only JPEG, PNG, GIF, and WebP images are allowed.'
       }, { status: 400 });
@@ -82,8 +84,8 @@ export async function POST(request: NextRequest) {
 
     // Validate file size (max 5MB)
     const maxSize = 5 * 1024 * 1024;
-    if (profilePicture.size > maxSize) {
-      console.log('File too large:', profilePicture.size);
+    if (profilePictureBlob.size > maxSize) {
+      console.log('File too large:', profilePictureBlob.size);
       return NextResponse.json({
         error: 'File too large. Maximum size is 5MB.'
       }, { status: 400 });
@@ -91,9 +93,8 @@ export async function POST(request: NextRequest) {
 
     // Save the profile picture to file system (similar to package uploads)
     const timestamp = Date.now();
-    const originalName = profilePicture.name.replace(/\s+/g, '_').toLowerCase();
-    const extension = originalName.split('.').pop() || 'jpg';
-    const filename = `admin_profile_picture_${timestamp}.${extension}`;
+    const fileExtension = profilePictureBlob.type.split('/')[1] || 'jpg';
+    const filename = `admin_profile_picture_${timestamp}.${fileExtension}`;
     console.log('Generated filename:', filename);
 
     // Create the directory path
@@ -123,7 +124,7 @@ export async function POST(request: NextRequest) {
 
     // Convert file to buffer and save
     try {
-      const bytes = await profilePicture.arrayBuffer();
+      const bytes = await profilePictureBlob.arrayBuffer();
       const buffer = Buffer.from(bytes);
       console.log('File converted to buffer, size:', buffer.length);
       
