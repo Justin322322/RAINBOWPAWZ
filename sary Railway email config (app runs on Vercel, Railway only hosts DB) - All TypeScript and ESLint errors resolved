@@ -1,0 +1,131 @@
+[1mdiff --git a/src/app/api/test-forgot/route.ts b/src/app/api/test-forgot/route.ts[m
+[1mnew file mode 100644[m
+[1mindex 0000000..55b30ca[m
+[1m--- /dev/null[m
+[1m+++ b/src/app/api/test-forgot/route.ts[m
+[36m@@ -0,0 +1,9 @@[m
+[32m+[m[32mimport { NextResponse } from 'next/server';[m
+[32m+[m
+[32m+[m[32mexport async function GET() {[m
+[32m+[m[32m  return NextResponse.json({ message: 'Test route working' });[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mexport async function POST() {[m
+[32m+[m[32m  return NextResponse.json({ message: 'Test POST route working' });[m
+[32m+[m[32m}[m
+[1mdiff --git a/src/context/NotificationContext.tsx b/src/context/NotificationContext.tsx[m
+[1mindex bfdcd0b..a5e441d 100644[m
+[1m--- a/src/context/NotificationContext.tsx[m
+[1m+++ b/src/context/NotificationContext.tsx[m
+[36m@@ -166,7 +166,7 @@[m [mexport function NotificationProvider({ children }: NotificationProviderProps) {[m
+ [m
+       console.log('Fetched notifications:', notifications);[m
+       console.log('Unread count from API:', unreadCount);[m
+[31m-      console.log('Calculated unread count:', notifications.filter(n => n.is_read === 0).length);[m
+[32m+[m[32m      console.log('Calculated unread count:', notifications.filter((n: Notification) => n.is_read === 0).length);[m
+ [m
+       setNotifications(notifications);[m
+       setUnreadCount(unreadCount);[m
+[1mdiff --git a/src/lib/db/health.ts b/src/lib/db/health.ts[m
+[1mindex 138bd5c..df0c9cf 100644[m
+[1m--- a/src/lib/db/health.ts[m
+[1m+++ b/src/lib/db/health.ts[m
+[36m@@ -53,7 +53,7 @@[m [mexport async function testConnection() {[m
+     await query("SELECT 1 as test");[m
+     console.log("✅ Primary database connection successful");[m
+     return true;[m
+[31m-  } catch (_error) {[m
+[32m+[m[32m  } catch {[m
+     console.log("❌ Primary connection failed, trying fallback...");[m
+     [m
+     // Always try local database as fallback[m
+[1mdiff --git a/src/lib/db/pool.ts b/src/lib/db/pool.ts[m
+[1mindex 12c1ea0..ca0a98e 100644[m
+[1m--- a/src/lib/db/pool.ts[m
+[1m+++ b/src/lib/db/pool.ts[m
+[36m@@ -144,7 +144,7 @@[m [mfunction initPool(): mysql.Pool {[m
+         console.log("✅ Created cloud database pool, will test on first use");[m
+         return cloudPool;[m
+       }[m
+[31m-    } catch (_error) {[m
+[32m+[m[32m    } catch {[m
+       console.log("❌ Failed to create cloud pool, falling back to local database");[m
+     }[m
+   } else {[m
+[1mdiff --git a/src/lib/railwayEmailConfig.ts b/src/lib/railwayEmailConfig.ts[m
+[1mdeleted file mode 100644[m
+[1mindex 548710f..0000000[m
+[1m--- a/src/lib/railwayEmailConfig.ts[m
+[1m+++ /dev/null[m
+[36m@@ -1,70 +0,0 @@[m
+[31m-// Alternative SMTP configuration specifically for Railway deployment[m
+[31m-import nodemailer from 'nodemailer';[m
+[31m-[m
+[31m-export function createRailwayTransporter() {[m
+[31m-  // Railway-optimized Gmail SMTP configuration[m
+[31m-  const config = {[m
+[31m-    service: 'gmail', // Use Gmail service directly[m
+[31m-    host: 'smtp.gmail.com',[m
+[31m-    port: 587,[m
+[31m-    secure: false, // Use STARTTLS[m
+[31m-    auth: {[m
+[31m-      user: process.env.SMTP_USER,[m
+[31m-      pass: process.env.SMTP_PASS,[m
+[31m-    },[m
+[31m-    tls: {[m
+[31m-      rejectUnauthorized: false,[m
+[31m-      minVersion: 'TLSv1.2'[m
+[31m-    },[m
+[31m-    // Railway-specific settings[m
+[31m-    connectionTimeout: 60000,[m
+[31m-    greetingTimeout: 30000,[m
+[31m-    socketTimeout: 60000,[m
+[31m-    logger: true, // Enable logging for debugging[m
+[31m-    debug: process.env.NODE_ENV === 'development'[m
+[31m-  };[m
+[31m-[m
+[31m-  console.log('Creating Railway SMTP transporter with config:', {[m
+[31m-    service: config.service,[m
+[31m-    host: config.host,[m
+[31m-    port: config.port,[m
+[31m-    secure: config.secure,[m
+[31m-    user: config.auth.user ? 'Set' : 'Not set',[m
+[31m-    pass: config.auth.pass ? 'Set' : 'Not set'[m
+[31m-  });[m
+[31m-[m
+[31m-  return nodemailer.createTransport(config);[m
+[31m-}[m
+[31m-[m
+[31m-// Alternative SSL configuration (Port 465)[m
+[31m-export function createRailwaySSLTransporter() {[m
+[31m-  const config = {[m
+[31m-    service: 'gmail',[m
+[31m-    host: 'smtp.gmail.com',[m
+[31m-    port: 465,[m
+[31m-    secure: true, // Use SSL[m
+[31m-    auth: {[m
+[31m-      user: process.env.SMTP_USER,[m
+[31m-      pass: process.env.SMTP_PASS,[m
+[31m-    },[m
+[31m-    tls: {[m
+[31m-      rejectUnauthorized: false[m
+[31m-    },[m
+[31m-    connectionTimeout: 60000,[m
+[31m-    greetingTimeout: 30000,[m
+[31m-    socketTimeout: 60000,[m
+[31m-    logger: true,[m
+[31m-    debug: process.env.NODE_ENV === 'development'[m
+[31m-  };[m
+[31m-[m
+[31m-  console.log('Creating Railway SSL SMTP transporter with config:', {[m
+[31m-    service: config.service,[m
+[31m-    host: config.host,[m
+[31m-    port: config.port,[m
+[31m-    secure: config.secure,[m
+[31m-    user: config.auth.user ? 'Set' : 'Not set',[m
+[31m-    pass: config.auth.pass ? 'Set' : 'Not set'[m
+[31m-  });[m
+[31m-[m
+[31m-  return nodemailer.createTransport(config);[m
+[31m-}[m
+\ No newline at end of file[m

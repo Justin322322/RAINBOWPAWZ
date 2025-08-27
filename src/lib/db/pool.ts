@@ -144,7 +144,7 @@ function initPool(): mysql.Pool {
         console.log("✅ Created cloud database pool, will test on first use");
         return cloudPool;
       }
-    } catch (_error) {
+    } catch {
       console.log("❌ Failed to create cloud pool, falling back to local database");
     }
   } else {

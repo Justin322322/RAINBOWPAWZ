@@ -53,7 +53,7 @@ export async function testConnection() {
     await query("SELECT 1 as test");
     console.log("✅ Primary database connection successful");
     return true;
-  } catch (_error) {
+  } catch {
     console.log("❌ Primary connection failed, trying fallback...");
     
     // Always try local database as fallback

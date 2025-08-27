@@ -166,7 +166,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
 
       console.log('Fetched notifications:', notifications);
       console.log('Unread count from API:', unreadCount);
-      console.log('Calculated unread count:', notifications.filter(n => n.is_read === 0).length);
+      console.log('Calculated unread count:', notifications.filter((n: Notification) => n.is_read === 0).length);
 
       setNotifications(notifications);
       setUnreadCount(unreadCount);
