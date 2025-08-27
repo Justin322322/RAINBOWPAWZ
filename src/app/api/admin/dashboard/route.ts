@@ -39,38 +39,18 @@ export async function GET(request: NextRequest) {
       userDistribution: {}
     };
 
-    // Test database connection first
-    try {
-      const pingResult = await query('SELECT 1 as connected');
-      if (!pingResult || !pingResult[0] || pingResult[0].connected !== 1) {
-        throw new Error('Database connection failed');
-      }
-    } catch (error) {
-      console.error('Database connection error:', error);
-      return NextResponse.json({
-        error: 'Database connection error',
-        details: error instanceof Error ? error.message : 'Unknown database error',
-        success: false
-      }, { status: 500 });
-    }
-
-    // Get total users count
-    const usersCount = await safeQuery(`
-      SELECT COUNT(*) as count FROM users
-    `);
-
-    // Get service providers count
-    const serviceProvidersCount = await safeQuery(`
-      SELECT COUNT(*) as count FROM service_providers
-    `);
-
-    // Get active services count
-    const activeServicesCount = await safeQuery(`
-      SELECT COUNT(*) as count FROM service_packages WHERE is_active = 1
-    `);
-
-    // Calculate revenue using standardized calculation
-    const revenueData = await calculateRevenue();
+    // Run core metrics in parallel to avoid request waterfall
+    const [
+      usersCount,
+      serviceProvidersCount,
+      activeServicesCount,
+      revenueData
+    ] = await Promise.all([
+      safeQuery(`SELECT COUNT(*) as count FROM users`),
+      safeQuery(`SELECT COUNT(*) as count FROM service_providers`),
+      safeQuery(`SELECT COUNT(*) as count FROM service_packages WHERE is_active = 1`),
+      calculateRevenue()
+    ]);
     const actualMonthlyRevenue = revenueData.monthlyRevenue || 0; // Ensure it's never null
     const actualTotalRevenue = revenueData.totalRevenue || 0; // Ensure it's never null
 
@@ -146,10 +126,16 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Get fur parents count (users with role 'fur_parent')
-    const furParentsResult = await safeQuery(`
-      SELECT COUNT(*) as count FROM users WHERE role = 'fur_parent' OR role = 'user'
-    `);
+    // Get fur parents count and restricted users in parallel
+    const [furParentsResult, restrictedUsersResult] = await Promise.all([
+      safeQuery(`SELECT COUNT(*) as count FROM users WHERE role = 'fur_parent' OR role = 'user'`),
+      safeQuery(`
+        SELECT role, COUNT(*) as count
+        FROM users
+        WHERE status = 'restricted'
+        GROUP BY role
+      `)
+    ]);
 
     // Get pets count
     let _totalPetsCount = 0;
@@ -171,23 +157,14 @@ export async function GET(request: NextRequest) {
       _totalPetsCount = 0;
     }
 
-    // Get completed bookings count
+    // Get completed bookings count (best-effort)
     let _completedBookingsCount = 0;
     try {
-      // Check if service_bookings table exists
-      const bookingsTableExists = await safeQuery(`
-        SELECT COUNT(*) as count FROM information_schema.tables 
-        WHERE table_schema = DATABASE() AND table_name = 'service_bookings'
+      const bookingsResult = await safeQuery(`
+        SELECT COUNT(*) as count FROM service_bookings WHERE status = 'completed'
       `);
-      
-      if (bookingsTableExists[0]?.count > 0) {
-        const bookingsResult = await safeQuery(`
-          SELECT COUNT(*) as count FROM service_bookings WHERE status = 'completed'
-        `);
-        _completedBookingsCount = bookingsResult[0]?.count || 0;
-      }
-    } catch (error) {
-      console.error('Failed to fetch completed bookings count:', error);
+      _completedBookingsCount = bookingsResult[0]?.count || 0;
+    } catch {
       _completedBookingsCount = 0;
     }
 
@@ -224,13 +201,7 @@ export async function GET(request: NextRequest) {
       pendingApplicationsLastMonth = 0;
     }
 
-    // Get restricted users count from users table
-    const restrictedUsersResult = await safeQuery(`
-      SELECT role, COUNT(*) as count
-      FROM users
-      WHERE status = 'restricted'
-      GROUP BY role
-    `);
+    // restrictedUsersResult is already fetched in parallel above
 
     // Get restricted cremation centers count from service_providers table
     let restrictedCremationCenters = 0;
