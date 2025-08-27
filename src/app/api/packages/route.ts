@@ -254,18 +254,28 @@ export async function POST(request: NextRequest) {
     });
 
     // Handle images after transaction commits successfully to maintain atomicity
-    // File operations cannot be rolled back, so we do them after DB operations succeed
     if (images.length > 0) {
       try {
-        const movedImagePaths = await moveImagesToPackageFolder(images, result.packageId);
-        
         // Insert image records using a separate transaction
         await withTransaction(async (transaction) => {
-          for (let i = 0; i < movedImagePaths.length; i++) {
-            await transaction.query(
-              'INSERT INTO package_images (package_id, image_path, display_order) VALUES (?, ?, ?)',
-              [result.packageId, movedImagePaths[i], i]
-            );
+          for (let i = 0; i < images.length; i++) {
+            const imagePath = images[i];
+            
+            // Check if this is a base64 data URL (from upload API)
+            if (imagePath.startsWith('data:image/')) {
+              // Store base64 data directly in database
+              await transaction.query(
+                'INSERT INTO package_images (package_id, image_path, display_order, image_data) VALUES (?, ?, ?, ?)',
+                [result.packageId, `package_${result.packageId}_${Date.now()}_${i}.jpg`, i, imagePath]
+              );
+            } else {
+              // Handle file-based images (legacy approach)
+              const movedImagePath = await moveImageToPackageFolder(imagePath, result.packageId);
+              await transaction.query(
+                'INSERT INTO package_images (package_id, image_path, display_order) VALUES (?, ?, ?)',
+                [result.packageId, movedImagePath, i]
+              );
+            }
           }
         });
       } catch (imageError) {
@@ -501,22 +511,40 @@ async function enhancePackagesWithDetails(pkgs: any[]) {
   });
 }
 
+async function moveImageToPackageFolder(imagePath: string, packageId: number): Promise<string> {
+  // If already in the correct package folder, return as-is
+  if (imagePath.includes(`/uploads/packages/${packageId}/`)) {
+    return imagePath;
+  }
+
+  const base = join(process.cwd(), 'public', 'uploads', 'packages', String(packageId));
+  if (!fs.existsSync(base)) {
+    fs.mkdirSync(base, { recursive: true });
+  }
+
+  const filename = imagePath.split('/').pop()!;
+  const src = join(process.cwd(), 'public', imagePath);
+  const destRel = `/uploads/packages/${packageId}/${filename}`;
+  const dest = join(process.cwd(), 'public', destRel);
+  
+  if (!fs.existsSync(src)) {
+    return imagePath; // Return original if source doesn't exist
+  }
+  
+  fs.copyFileSync(src, dest);
+  try { 
+    fs.unlinkSync(src); 
+  } catch (error) {
+    console.warn('Failed to delete source file:', src, error);
+  }
+  
+  return destRel;
+}
+
 async function moveImagesToPackageFolder(paths: string[], packageId: number) {
   if (!paths.length) return [];
-  const base = join(process.cwd(), 'public', 'uploads', 'packages', String(packageId));
-  if (!fs.existsSync(base)) fs.mkdirSync(base, { recursive: true });
-
+  
   return Promise.all(
-    paths.map((rel: string) => {
-      if (rel.includes(`/uploads/packages/${packageId}/`)) return rel;
-      const filename = rel.split('/').pop()!;
-      const src = join(process.cwd(), 'public', rel);
-      const destRel = `/uploads/packages/${packageId}/${filename}`;
-      const dest = join(process.cwd(), 'public', destRel);
-      if (!fs.existsSync(src)) return rel;
-      fs.copyFileSync(src, dest);
-      try { fs.unlinkSync(src); } catch {}
-      return destRel;
-    })
+    paths.map((imagePath: string) => moveImageToPackageFolder(imagePath, packageId))
   );
 }

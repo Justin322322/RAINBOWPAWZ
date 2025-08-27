@@ -328,10 +328,20 @@ export async function PATCH(
               const imagePath = imagesToAdd[i];
               const displayOrder = maxDisplayOrder + i + 1;
               
-              await transaction.query(
-                'INSERT INTO package_images (package_id, image_path, display_order) VALUES (?, ?, ?)',
-                [packageId, imagePath, displayOrder]
-              );
+              // Check if this is a base64 data URL (from upload API)
+              if (imagePath.startsWith('data:image/')) {
+                // Store base64 data directly in database
+                await transaction.query(
+                  'INSERT INTO package_images (package_id, image_path, display_order, image_data) VALUES (?, ?, ?, ?)',
+                  [packageId, `package_${packageId}_${Date.now()}_${i}.jpg`, displayOrder, imagePath]
+                );
+              } else {
+                // Handle file-based images (legacy approach)
+                await transaction.query(
+                  'INSERT INTO package_images (package_id, image_path, display_order) VALUES (?, ?, ?)',
+                  [packageId, imagePath, displayOrder]
+                );
+              }
             }
           }
         }
