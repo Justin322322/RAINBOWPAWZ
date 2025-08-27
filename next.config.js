@@ -9,13 +9,19 @@ const port = process.env.PORT || '3000';
 const isProd = process.env.NODE_ENV === 'production';
 const rawHosts = process.env.ALLOWED_IMAGE_HOSTS
   ? process.env.ALLOWED_IMAGE_HOSTS
-  : 'assets.example.com';        // sensible default or fallback
+  : 'assets.example.com,ugow1ux24zbuawll.public.blob.vercel-storage.com';        // sensible default or fallback
 const allowedImageHosts = rawHosts
   .split(',')
   .map((s) => s.trim())
   .filter(Boolean)
   // Normalize to bare hostnames even if URLs are provided
   .map((entry) => entry.replace(/^https?:\/\//i, '').replace(/\/.*$/, ''));
+
+// Add Vercel Blob domains to allowed hosts
+const vercelBlobDomains = [
+  'ugow1ux24zbuawll.public.blob.vercel-storage.com',
+  '*.public.blob.vercel-storage.com'
+];
 
 const nextConfig = {
   // Pass only safe environment variables to the client
@@ -28,12 +34,28 @@ const nextConfig = {
   // Configure image handling
   images: {
     remotePatterns: isProd
-      ? allowedImageHosts.map((hostname) => ({
-          protocol: 'https',
-          hostname,
-          port: '',
-          pathname: '/**',
-        }))
+      ? [
+          // Production patterns - include Vercel Blob domains
+          ...allowedImageHosts.map((hostname) => ({
+            protocol: 'https',
+            hostname,
+            port: '',
+            pathname: '/**',
+          })),
+          // Add Vercel Blob domains explicitly
+          {
+            protocol: 'https',
+            hostname: 'ugow1ux24zbuawll.public.blob.vercel-storage.com',
+            port: '',
+            pathname: '/**',
+          },
+          {
+            protocol: 'https',
+            hostname: '*.public.blob.vercel-storage.com',
+            port: '',
+            pathname: '/**',
+          }
+        ]
       : [
           // Development patterns - only include if explicitly set
           ...(process.env.NEXT_PUBLIC_APP_URL ? [{
