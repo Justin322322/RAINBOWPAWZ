@@ -97,7 +97,15 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
             // Validate that packages still exist
             const validItems = await validateCartItems(parsedCart);
             if (validItems.length !== parsedCart.length) {
-              console.log(`Removed ${parsedCart.length - validItems.length} invalid items from cart`);
+              // Remove invalid items from cart
+              const filteredItems = parsedCart.filter(item => 
+                item.id && item.name && item.price && item.quantity && item.quantity > 0
+              );
+              
+              if (filteredItems.length !== parsedCart.length) {
+                // Update localStorage with filtered items
+                localStorage.setItem('cart', JSON.stringify(filteredItems));
+              }
             }
             setItems(validItems);
           }

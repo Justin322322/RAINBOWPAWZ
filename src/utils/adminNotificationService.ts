@@ -25,11 +25,8 @@ export async function createAdminNotification({
   emailSubject
 }: AdminNotificationParams): Promise<{ success: boolean; notificationId?: number; error?: string }> {
   try {
-    console.log('Creating admin notification:', { type, title, message, entityType, entityId });
-
     // Ensure the admin_notifications table exists
     await ensureAdminNotificationsTable();
-    console.log('Admin notifications table ensured');
 
     // Determine link based on notification type
     let link = null;
@@ -68,17 +65,14 @@ export async function createAdminNotification({
     }
 
     // Insert the notification
-    console.log('Inserting admin notification with data:', { type, title, message, entityType, entityId, link });
     const result = await query(
       `INSERT INTO admin_notifications (type, title, message, entity_type, entity_id, link)
        VALUES (?, ?, ?, ?, ?, ?)`,
       [type, title, message, entityType, entityId, link]
     ) as any;
-    console.log('Admin notification inserted with ID:', result.insertId);
 
     // Send email notifications to all admins if requested
     if (shouldSendEmail) {
-      console.log('Sending admin email notifications...');
       await sendAdminEmailNotifications(title, message, type, link, emailSubject);
     }
 
@@ -285,7 +279,6 @@ This is an automated admin notification. Please do not reply to this email.
  */
 async function ensureAdminNotificationsTable(): Promise<boolean> {
   try {
-    console.log('Checking if admin_notifications table exists...');
     // Check if the table exists
     const tableExists = await query(`
       SELECT COUNT(*) as count
@@ -294,10 +287,7 @@ async function ensureAdminNotificationsTable(): Promise<boolean> {
       AND table_name = 'admin_notifications'
     `) as any[];
 
-    console.log('Table exists check result:', tableExists);
-
     if (tableExists[0].count === 0) {
-      console.log('Creating admin_notifications table...');
       // Create the table if it doesn't exist
       await query(`
         CREATE TABLE IF NOT EXISTS admin_notifications (
@@ -312,9 +302,6 @@ async function ensureAdminNotificationsTable(): Promise<boolean> {
           created_at TIMESTAMP NOT NULL DEFAULT current_timestamp()
         )
       `);
-      console.log('Admin_notifications table created successfully');
-    } else {
-      console.log('Admin_notifications table already exists');
     }
 
     return true;

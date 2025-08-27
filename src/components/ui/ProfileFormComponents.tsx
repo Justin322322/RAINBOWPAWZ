@@ -57,8 +57,8 @@ interface ProfileAlertProps {
   className?: string;
 }
 
-// Profile Input Component
-export const ProfileInput: React.FC<ProfileInputProps> = ({
+// Profile Input Component - Memoized for performance
+export const ProfileInput: React.FC<ProfileInputProps> = React.memo(({
   label,
   type = 'text',
   value,
@@ -70,6 +70,11 @@ export const ProfileInput: React.FC<ProfileInputProps> = ({
   icon,
   className = ''
 }) => {
+  // Memoized onChange handler to prevent unnecessary re-renders
+  const handleChange = React.useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    onChange(e.target.value);
+  }, [onChange]);
+
   return (
     <div className={`space-y-2 ${className}`}>
       <label className="block text-sm font-medium text-gray-700">
@@ -85,7 +90,7 @@ export const ProfileInput: React.FC<ProfileInputProps> = ({
         <input
           type={type}
           value={value}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={handleChange}
           placeholder={placeholder}
           required={required}
           disabled={disabled}
@@ -95,6 +100,7 @@ export const ProfileInput: React.FC<ProfileInputProps> = ({
             disabled:bg-gray-50 disabled:text-gray-500
             ${icon ? 'pl-10' : 'pl-3'} pr-3 py-2.5
             ${error ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : 'border-gray-300'}
+            border-gray-300
             transition-colors duration-200 text-gray-900
           `}
         />
@@ -107,10 +113,12 @@ export const ProfileInput: React.FC<ProfileInputProps> = ({
       )}
     </div>
   );
-};
+});
 
-// Profile Textarea Component
-export const ProfileTextArea: React.FC<ProfileTextareaProps> = ({
+ProfileInput.displayName = 'ProfileInput';
+
+// Profile Textarea Component - Memoized for performance
+export const ProfileTextArea: React.FC<ProfileTextareaProps> = React.memo(({
   label,
   value,
   onChange,
@@ -121,6 +129,11 @@ export const ProfileTextArea: React.FC<ProfileTextareaProps> = ({
   rows = 3,
   className = ''
 }) => {
+  // Memoized onChange handler to prevent unnecessary re-renders
+  const handleChange = React.useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    onChange(e.target.value);
+  }, [onChange]);
+
   return (
     <div className={`space-y-2 ${className}`}>
       <label className="block text-sm font-medium text-gray-700">
@@ -129,7 +142,7 @@ export const ProfileTextArea: React.FC<ProfileTextareaProps> = ({
       </label>
       <textarea
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={handleChange}
         placeholder={placeholder}
         required={required}
         disabled={disabled}
@@ -151,7 +164,9 @@ export const ProfileTextArea: React.FC<ProfileTextareaProps> = ({
       )}
     </div>
   );
-};
+});
+
+ProfileTextArea.displayName = 'ProfileTextArea';
 
 // ProfileSelect component removed - not used
 

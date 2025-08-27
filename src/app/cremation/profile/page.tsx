@@ -269,22 +269,30 @@ function CremationProfilePage({ userData }: { userData: any }) {
       return;
     }
 
-    // Replace this with your actual API call
     try {
-      // Simulate API call
-      await new Promise((resolve, reject) => setTimeout(() => {
-        if (currentPassword !== "password123") { // Demo check
-          reject(new Error('Current password is incorrect'));
-        } else {
-          resolve(true);
-        }
-      }, 800));
-      
-      setPasswordSuccess('Password changed successfully');
-      setCurrentPassword('');
-      setNewPassword('');
-      setConfirmPassword('');
-      setTimeout(() => setPasswordSuccess(''), 3000);
+      const response = await fetch('/api/cremation/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          password: {
+            currentPassword,
+            newPassword
+          }
+        }),
+        credentials: 'include'
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setPasswordSuccess('Password changed successfully');
+        setCurrentPassword('');
+        setNewPassword('');
+        setConfirmPassword('');
+        setTimeout(() => setPasswordSuccess(''), 3000);
+      } else {
+        setPasswordError(data.error || 'Failed to update password');
+      }
     } catch (error) {
       setPasswordError(error instanceof Error ? error.message : 'Failed to update password');
     }

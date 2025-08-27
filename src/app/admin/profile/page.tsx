@@ -147,6 +147,18 @@ function AdminProfilePage({ adminData }: AdminProfileProps) {
     }
   };
 
+  // Memoized onChange handlers to prevent unnecessary re-renders
+  const handleFirstNameChange = useCallback((value: string) => {
+    setContactInfo(prev => ({ ...prev, first_name: value }));
+  }, []);
+
+  const handleLastNameChange = useCallback((value: string) => {
+    setContactInfo(prev => ({ ...prev, last_name: value }));
+  }, []);
+
+  const handleEmailChange = useCallback((value: string) => {
+    setContactInfo(prev => ({ ...prev, email: value }));
+  }, []);
 
 
   const userName = profileData ? `${profileData.first_name} ${profileData.last_name}` : 'Admin';
@@ -317,13 +329,13 @@ function AdminProfilePage({ adminData }: AdminProfileProps) {
                     <ProfileInput
                       label="First Name"
                       value={contactInfo.first_name}
-                      onChange={(value) => setContactInfo({...contactInfo, first_name: value})}
+                      onChange={handleFirstNameChange}
                       icon={<UserIcon className="h-5 w-5" />}
                     />
                     <ProfileInput
                       label="Last Name"
                       value={contactInfo.last_name}
-                      onChange={(value) => setContactInfo({...contactInfo, last_name: value})}
+                      onChange={handleLastNameChange}
                       icon={<UserIcon className="h-5 w-5" />}
                     />
                   </ProfileGrid>
@@ -332,7 +344,7 @@ function AdminProfilePage({ adminData }: AdminProfileProps) {
                     label="Email Address"
                     type="email"
                     value={contactInfo.email}
-                    onChange={(value) => setContactInfo({...contactInfo, email: value})}
+                    onChange={handleEmailChange}
                     icon={<EnvelopeIcon className="h-5 w-5" />}
                   />
                 </ProfileFormGroup>

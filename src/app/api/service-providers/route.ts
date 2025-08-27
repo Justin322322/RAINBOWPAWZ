@@ -69,7 +69,6 @@ export async function GET(request: Request) {
     if (!isNaN(lat) && !isNaN(lng)) {
       userCoordinates = { lat, lng };
     } else {
-      console.warn('⚠️ [API] Invalid coordinates provided, falling back to geocoding');
       // Only fallback to geocoding if we have a valid location string
       if (userLocation && userLocation.trim() !== '') {
         userCoordinates = getBataanCoordinates(userLocation);
@@ -208,7 +207,6 @@ export async function GET(request: Request) {
 
           // Check if providerCoordinates is null and skip distance calculation
           if (!providerCoordinates) {
-            console.warn('📍 [Distance] Provider coordinates are null, skipping distance calculation for provider:', provider.id);
             provider.distance = 'Location not available';
             provider.distanceValue = 0;
             return;
@@ -224,7 +222,6 @@ export async function GET(request: Request) {
             // Use cached data for immediate response
             provider.distance = cachedRoute.distance;
             provider.distanceValue = cachedRoute.distanceValue;
-            console.log(`📍 [Server Cache Hit] Provider ${provider.id}: ${cachedRoute.distance} (${cachedRoute.provider})`);
             return;
           }
 
@@ -264,10 +261,7 @@ export async function GET(request: Request) {
               }
             );
 
-            console.log(`📍 [Routing] Provider ${provider.id}: ${routeResult.distance} (${routeResult.provider})`);
           } catch (routingError) {
-            console.warn(`📍 [Routing] Failed for provider ${provider.id}, falling back to straight-line distance:`, routingError);
-
             // Fallback to simple distance calculation
             const distance = calculateDistance(userCoords, providerCoordinates);
             provider.distance = `${distance.toFixed(1)} km`;
@@ -312,7 +306,6 @@ export async function GET(request: Request) {
             await calculateProviderDistance(provider, userCoordinates);
 
           } catch (error) {
-            console.error('📍 [Provider Processing] Failed to process provider:', provider.id, error);
             // Final fallback
             const providerCoordinates = getBataanCoordinates(provider.address || 'Bataan');
             if (providerCoordinates) {
@@ -339,7 +332,6 @@ export async function GET(request: Request) {
             if (result.status === 'fulfilled') {
               return result.value;
             } else {
-              console.error(`📍 [Provider Processing] Failed to process provider ${providersResult[index]?.id}:`, result.reason);
               // Return the original provider with fallback values
               const provider = providersResult[index];
               provider.packages = 0;
@@ -356,11 +348,9 @@ export async function GET(request: Request) {
       // If no providers found, return empty array
       return NextResponse.json({ providers: [] });
     } catch (dbError) {
-      console.error('Database error in service-providers:', dbError);
       return NextResponse.json({ providers: [], error: 'Database error' });
     }
   } catch (error) {
-    console.error('General error in service-providers:', error);
     return NextResponse.json(
       { error: 'Failed to fetch service providers' },
       { status: 500 }

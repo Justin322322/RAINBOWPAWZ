@@ -80,14 +80,6 @@ function createTransporter(recipientDomain?: string): nodemailer.Transporter {
   }
 
   // Log SMTP configuration for debugging
-  console.log('Creating email transporter with configuration:', {
-    host: process.env.SMTP_HOST || 'smtp.gmail.com',
-    port: process.env.SMTP_PORT || '587',
-    secure: process.env.SMTP_SECURE === 'true',
-    user: process.env.SMTP_USER ? '***configured***' : 'missing',
-    pass: process.env.SMTP_PASS ? '***configured***' : 'missing'
-  });
-
   // Base configuration with Railway-specific optimizations
   const baseConfig = {
     host: process.env.SMTP_HOST || 'smtp.gmail.com',

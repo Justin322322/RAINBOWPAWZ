@@ -11,23 +11,18 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('Business document upload started');
-    
     // Require secure authentication for all uploads; ignore any client-supplied userId
     const contentType = request.headers.get('content-type') || '';
     const user = await verifySecureAuth(request);
     if (!user) {
-      console.log('Authentication failed - no valid user');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     
-    console.log('User authenticated via session:', { userId: user.userId, accountType: user.accountType });
     const userId: string = user.userId;
     const accountType: string = user.accountType;
 
     // Only business accounts can upload documents
     if (accountType !== 'business') {
-      console.log('Non-business access attempt:', accountType);
       return NextResponse.json({
         error: 'Only business accounts can upload documents'
       }, { status: 403 });
@@ -58,11 +53,8 @@ export async function POST(request: NextRequest) {
     const governmentId: File | null = mode === 'form' ? (formData!.get('governmentId') as File | null) : null;
     const providedUrls = mode === 'json' ? (jsonBody?.filePaths || {}) : {};
     
-    console.log('Parsed upload request:', { mode, hasBusinessPermit: !!businessPermit, hasBirCertificate: !!birCertificate, hasGovernmentId: !!governmentId, providedUrlsKeys: Object.keys(providedUrls) });
-
     // Check if at least one file is provided
     if (mode === 'form' && !businessPermit && !birCertificate && !governmentId && Object.keys(providedUrls).length === 0) {
-      console.log('No files uploaded');
       return NextResponse.json({ error: 'At least one document must be uploaded' }, { status: 400 });
     }
 
@@ -85,7 +77,6 @@ export async function POST(request: NextRequest) {
 
     if (mode === 'form') {
       for (const { file, type } of filesToProcess) {
-        console.log(`File validation for ${type}:`, { size: file.size, type: file.type, maxSize: MAX_FILE_SIZE });
         if (file.size > MAX_FILE_SIZE) {
           return NextResponse.json({ error: `File size exceeds the limit (10MB) for ${type}` }, { status: 413 });
         }
@@ -109,13 +100,11 @@ export async function POST(request: NextRequest) {
           const blob = await import('@vercel/blob');
           putFn = (blob as any)?.put;
           if (!putFn) {
-            console.warn('Vercel Blob module loaded but put() is unavailable; falling back to base64');
+            // Silently fallback to base64
           }
         } catch (e) {
-          console.warn('Failed to load @vercel/blob; falling back to base64:', e);
+          // Silently fallback to base64
         }
-      } else {
-        console.warn('BLOB_READ_WRITE_TOKEN not set; using base64 storage for documents');
       }
 
       if (mode === 'json' && providedUrls && Object.keys(providedUrls).length > 0) {
@@ -126,7 +115,6 @@ export async function POST(request: NextRequest) {
       }
 
       for (const { file, type } of mode === 'form' ? filesToProcess : []) {
-        console.log(`Processing ${type} file...`);
         const arrayBuffer = await file.arrayBuffer();
         const mime = file.type || 'application/octet-stream';
         const ext = mime.split('/')[1] || 'bin';
@@ -154,16 +142,13 @@ export async function POST(request: NextRequest) {
       }
 
       // Try to associate to a provider if present; if not, still return success with file paths
-      console.log('Looking up service provider for user to save paths:', userId);
       const providerResult = await query(
         'SELECT provider_id FROM service_providers WHERE user_id = ?',
         [userId]
       ) as any[];
-      console.log('Provider lookup result:', providerResult);
 
       if (providerResult && providerResult.length > 0) {
         const providerId = providerResult[0].provider_id;
-        console.log('Provider ID found, saving document paths:', providerId);
         try {
           const updateFields: string[] = [];
           const updateValues: any[] = [];
@@ -187,14 +172,11 @@ export async function POST(request: NextRequest) {
             );
           }
         } catch (persistErr) {
-          console.error('Failed to update service_providers with document data:', persistErr);
+          // Silently continue if database update fails
         }
-      } else {
-        console.log('No provider found yet; returning file paths for client-side association later');
       }
 
       // Return success response regardless, with filePaths for client to use if needed
-      console.log('Upload successful, returning file paths:', filePaths);
       return NextResponse.json({
         success: true,
         filePaths,
@@ -202,34 +184,12 @@ export async function POST(request: NextRequest) {
       });
 
     } catch (error) {
-      console.error('Error in file processing:', error);
-      
-      // Log additional details for debugging
-      if (error instanceof Error) {
-        console.error('Error details:', {
-          name: error.name,
-          message: error.message,
-          stack: error.stack
-        });
-      }
-      
       return NextResponse.json({
         error: 'Failed to process documents',
         details: error instanceof Error ? error.message : 'Unknown error'
       }, { status: 500 });
     }
   } catch (error) {
-    console.error('Error in business document upload:', error);
-    
-    // Log additional details for debugging
-    if (error instanceof Error) {
-      console.error('Error details:', {
-        name: error.name,
-        message: error.message,
-        stack: error.stack
-      });
-    }
-    
     return NextResponse.json({
       error: 'Failed to process file upload',
       details: error instanceof Error ? error.message : 'Unknown error'

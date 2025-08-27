@@ -69,19 +69,16 @@ export function getAppBaseUrl(): string {
 export function getServerAppUrl(): string {
   // Check for Railway-specific environment variable first
   if (process.env.RAILWAY_STATIC_URL) {
-    console.log('Using RAILWAY_STATIC_URL:', process.env.RAILWAY_STATIC_URL);
     return process.env.RAILWAY_STATIC_URL;
   }
 
   // Check for custom app URL environment variable
   if (process.env.NEXT_PUBLIC_APP_URL) {
-    console.log('Using NEXT_PUBLIC_APP_URL:', process.env.NEXT_PUBLIC_APP_URL);
     return process.env.NEXT_PUBLIC_APP_URL;
   }
 
   // Check for Railway deployment URL pattern
   if (process.env.RAILWAY_DEPLOYMENT_URL) {
-    console.log('Using RAILWAY_DEPLOYMENT_URL:', process.env.RAILWAY_DEPLOYMENT_URL);
     return process.env.RAILWAY_DEPLOYMENT_URL;
   }
 
@@ -89,19 +86,16 @@ export function getServerAppUrl(): string {
   if (process.env.VERCEL_URL) {
     const protocol = process.env.VERCEL_URL.includes('localhost') ? 'http' : 'https';
     const url = `${protocol}://${process.env.VERCEL_URL}`;
-    console.log('Using VERCEL_URL:', url);
     return url;
   }
 
   // Fallback to dynamic port detection (avoid hardcoded localhost in production)
   const port = process.env.PORT || '3000';
   if (process.env.NODE_ENV === 'production') {
-    console.warn('No production URL configured, using fallback');
     return `http://localhost:${port}`;
   }
   
   const fallbackUrl = `http://localhost:${port}`;
-  console.log('Using fallback URL:', fallbackUrl);
   return fallbackUrl;
 }
 
