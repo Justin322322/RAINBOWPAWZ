@@ -56,6 +56,42 @@ export async function GET(request: NextRequest) {
 
     const row = rows[0];
 
+    // If document paths are placeholders or missing, try to load actual data from business_documents table
+    let businessPermitPath = row.business_permit_path || null as string | null;
+    let birCertificatePath = row.bir_certificate_path || null as string | null;
+    let governmentIdPath = row.government_id_path || null as string | null;
+
+    // Heuristic: if values are 'stored' or empty while provider exists, hydrate from business_documents
+    const needsHydration = row.provider_id && (
+      !businessPermitPath || businessPermitPath === 'stored' ||
+      !birCertificatePath || birCertificatePath === 'stored' ||
+      !governmentIdPath || governmentIdPath === 'stored'
+    );
+
+    if (needsHydration) {
+      try {
+        const docRows = await query(
+          'SELECT business_permit_data, bir_certificate_data, government_id_data FROM business_documents WHERE provider_id = ? LIMIT 1',
+          [row.provider_id]
+        ) as any[];
+        if (docRows && docRows.length > 0) {
+          const doc = docRows[0];
+          if (!businessPermitPath || businessPermitPath === 'stored') {
+            businessPermitPath = doc.business_permit_data || businessPermitPath;
+          }
+          if (!birCertificatePath || birCertificatePath === 'stored') {
+            birCertificatePath = doc.bir_certificate_data || birCertificatePath;
+          }
+          if (!governmentIdPath || governmentIdPath === 'stored') {
+            governmentIdPath = doc.government_id_data || governmentIdPath;
+          }
+        }
+      } catch (docErr) {
+        // Non-fatal: continue without hydration
+        console.error('Failed to hydrate business documents:', docErr);
+      }
+    }
+
     // Combine data in the same shape used by the frontend
     const profileData = {
       user_id: row.user_id,
@@ -76,9 +112,9 @@ export async function GET(request: NextRequest) {
       application_status: row.application_status || null,
       verification_date: row.verification_date || null,
       documents: {
-        businessPermitPath: row.business_permit_path || null,
-        birCertificatePath: row.bir_certificate_path || null,
-        governmentIdPath: row.government_id_path || null
+        businessPermitPath,
+        birCertificatePath,
+        governmentIdPath
       }
     };
 
