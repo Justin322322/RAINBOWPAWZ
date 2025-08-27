@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Blob storage not configured' }, { status: 503 });
     }
 
-    // Use Vercel Blob REST API so no SDK install is required
+    // Call Vercel Blob REST API
     const resp = await fetch('https://api.vercel.com/v2/blob/generate-upload-url', {
       method: 'POST',
       headers: {

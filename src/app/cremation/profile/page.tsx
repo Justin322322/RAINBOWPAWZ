@@ -438,7 +438,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
             }
             const { uploadUrl } = await signRes.json();
             const putRes = await fetch(uploadUrl, {
-                method: 'POST',
+                method: 'PUT',
                 headers: { 'Content-Type': contentType },
                 body: file,
             });
