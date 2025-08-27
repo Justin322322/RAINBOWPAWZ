@@ -31,9 +31,10 @@ export async function POST(request: NextRequest) {
     // Get form data
     console.log('Parsing form data...');
     const formData = await request.formData();
-    const file = formData.get('file') as File | null;
+    const file = (formData.get('image') || formData.get('file')) as File | null; // Check both field names
     const petId = formData.get('petId') as string | null;
-    console.log('Form data parsed:', { hasFile: !!file, petId });
+    const formUserId = formData.get('userId') as string | null;
+    console.log('Form data parsed:', { hasFile: !!file, petId, formUserId });
 
     if (!file) {
       console.log('No file uploaded');
@@ -106,6 +107,8 @@ export async function POST(request: NextRequest) {
           return NextResponse.json({
             success: true,
             filePath: `pet_${petIdInt}_${Date.now()}.${fileType.split('/')[1]}`,
+            imageData: dataUrl,
+            imagePath: dataUrl, // Include the actual image data for immediate use
             message: 'Pet image uploaded and stored in database'
           });
         } else {
@@ -118,8 +121,9 @@ export async function POST(request: NextRequest) {
         console.log('No valid pet ID provided, returning base64 data');
         return NextResponse.json({
           success: true,
-          filePath: `temp_pet_${userId}_${Date.now()}.${fileType.split('/')[1]}`,
+          filePath: `temp_pet_${formUserId || userId}_${Date.now()}.${fileType.split('/')[1]}`,
           imageData: dataUrl,
+          imagePath: dataUrl, // Also include imagePath for compatibility
           message: 'Pet image converted to base64 (temporary storage)'
         });
       }

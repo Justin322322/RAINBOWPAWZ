@@ -32,7 +32,11 @@ export function getImagePath(path: string, addCacheBust: boolean = false): strin
   if (!path) return DEFAULT_FALLBACK_IMAGE;
 
   const convertedPath = convertToApiPath(path);
-  return addCacheBust ? addCacheBuster(convertedPath) : convertedPath;
+  const finalPath = addCacheBust ? addCacheBuster(convertedPath) : convertedPath;
+  
+  console.log('getImagePath:', { original: path, converted: convertedPath, final: finalPath });
+  
+  return finalPath;
 }
 
 /**
@@ -45,7 +49,7 @@ function convertToApiPath(path: string): string {
   }
 
   // Handle uploads paths
-  if (path.startsWith(UPLOADS_PREFIX)) {
+  if (path.startsWith(UPLOADS_PREFIX) || path.startsWith('uploads/')) {
     return convertUploadsPath(path);
   }
 
@@ -57,6 +61,18 @@ function convertToApiPath(path: string): string {
   // Handle pet images
   if (path.includes('pets/') && !path.startsWith(API_IMAGE_PREFIX)) {
     return convertPetPath(path);
+  }
+
+  // Handle profile pictures that may be stored without the uploads prefix
+  if ((path.includes('profile-pictures/') || path.includes('admin-profile-pictures/')) && !path.startsWith(API_IMAGE_PREFIX)) {
+    const parts = path.split(/profile-pictures\//);
+    if (parts.length > 1) {
+      return `${API_IMAGE_PREFIX}profile-pictures/${parts[1]}`;
+    }
+    const adminParts = path.split(/admin-profile-pictures\//);
+    if (adminParts.length > 1) {
+      return `${API_IMAGE_PREFIX}admin-profile-pictures/${adminParts[1]}`;
+    }
   }
 
   // Handle document paths for business applications
@@ -121,7 +137,21 @@ function isDocumentPath(path: string): boolean {
  * Convert document path to API path
  */
 function convertDocumentPath(path: string): string {
-  const parts = path.split('/');
+  // Remove the /uploads/ prefix if it exists
+  let cleanPath = path;
+  if (path.startsWith('/uploads/')) {
+    cleanPath = path.substring(8); // Remove '/uploads/'
+  } else if (path.startsWith('uploads/')) {
+    cleanPath = path.substring(8); // Remove 'uploads/'
+  }
+
+  // If the path contains documents/, business/, or businesses/, use it as is
+  if (cleanPath.includes('documents/') || cleanPath.includes('business/') || cleanPath.includes('businesses/')) {
+    return `${API_IMAGE_PREFIX}${cleanPath}`;
+  }
+
+  // For backward compatibility, try to extract the relevant part
+  const parts = cleanPath.split('/');
   const relevantIndex = parts.findIndex(part =>
     part === 'documents' || part === 'business' || part === 'businesses'
   );

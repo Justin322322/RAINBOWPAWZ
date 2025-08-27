@@ -73,3 +73,82 @@ export function getProfileImageSrc(result: ProfileImageResult, fallback: string 
 
   return fallback;
 }
+
+/**
+ * Utility functions for handling profile picture operations
+ */
+
+/**
+ * Safely store profile picture data in sessionStorage without causing quota exceeded errors
+ * @param profilePicturePath The profile picture path or data
+ * @param userType The type of user (user, admin, business)
+ * @param userId The user ID for creating a unique key
+ */
+export function safelyStoreProfilePicture(
+  profilePicturePath: string, 
+  userType: string, 
+  userId: string
+): void {
+  try {
+    // Create a unique key for this user's profile picture
+    const profilePictureKey = `${userType}_profile_picture_${userId}`;
+    
+    // Store the profile picture data in a separate key to avoid quota issues
+    sessionStorage.setItem(profilePictureKey, profilePicturePath);
+    
+    // Also update the user data cache, but only if it's not too large
+    try {
+      const userDataCache = sessionStorage.getItem('user_data');
+      if (userDataCache) {
+        const user = JSON.parse(userDataCache);
+        // Only store a reference to the profile picture, not the full data
+        user.profile_picture_key = profilePictureKey;
+        user.profile_picture_timestamp = Date.now();
+        sessionStorage.setItem('user_data', JSON.stringify(user));
+      }
+    } catch (error) {
+      console.error('Error updating user data cache:', error);
+      // If we get a quota error, clear the user_data to make room
+      if (error instanceof Error && error.name === 'QuotaExceededError') {
+        try {
+          sessionStorage.removeItem('user_data');
+          console.log('Cleared user_data due to quota exceeded');
+        } catch (clearError) {
+          console.error('Failed to clear storage:', clearError);
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error storing profile picture:', error);
+  }
+}
+
+/**
+ * Retrieve profile picture data from sessionStorage
+ * @param userType The type of user (user, admin, business)
+ * @param userId The user ID
+ * @returns The profile picture data or null if not found
+ */
+export function getStoredProfilePicture(userType: string, userId: string): string | null {
+  try {
+    const profilePictureKey = `${userType}_profile_picture_${userId}`;
+    return sessionStorage.getItem(profilePictureKey);
+  } catch (error) {
+    console.error('Error retrieving profile picture:', error);
+    return null;
+  }
+}
+
+/**
+ * Clear profile picture data from sessionStorage
+ * @param userType The type of user (user, admin, business)
+ * @param userId The user ID
+ */
+export function clearStoredProfilePicture(userType: string, userId: string): void {
+  try {
+    const profilePictureKey = `${userType}_profile_picture_${userId}`;
+    sessionStorage.removeItem(profilePictureKey);
+  } catch (error) {
+    console.error('Error clearing profile picture:', error);
+  }
+}

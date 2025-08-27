@@ -22,6 +22,8 @@ const StepImage = ({ src, alt }: { src: string; alt: string }) => {
       <Image
         src={src}
         alt={alt}
+        width={1200}
+        height={675}
         className="rounded-lg shadow-md mx-auto w-full h-auto"
         onError={() => setHasError(true)}
         sizes="(max-width: 768px) 100vw, (max-width: 1200px) 80vw, 800px"

@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
 import { CameraIcon, CheckCircleIcon, XCircleIcon, UserIcon } from '@heroicons/react/24/outline';
-import { uploadProfilePictureAjax, getImagePath, addCacheBuster } from '@/utils/imageUtils';
+import { uploadProfilePictureAjax, getImagePath, handleImageError } from '@/utils/imageUtils';
 import { useToast } from '@/context/ToastContext';
 import { clearProfileImageCache } from '@/utils/profileImageUtils';
 
@@ -56,8 +56,66 @@ export default function ProfilePictureUpload({
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [imageTimestamp, setImageTimestamp] = useState(Date.now());
+  const [resolvedImageSrc, setResolvedImageSrc] = useState<string | null>(null);
+  const [hadImageError, setHadImageError] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { showToast } = useToast();
+
+  // Debug logging for prop changes
+  useEffect(() => {
+    console.log('ProfilePictureUpload: currentImagePath prop changed to:', currentImagePath);
+    console.log('ProfilePictureUpload: currentImagePath type:', typeof currentImagePath);
+    if (currentImagePath) {
+      console.log('ProfilePictureUpload: currentImagePath starts with data:', currentImagePath.startsWith('data:'));
+      console.log('ProfilePictureUpload: currentImagePath length:', currentImagePath.length);
+    }
+  }, [currentImagePath]);
+
+  // Helper function to get the correct image source
+  const getImageSource = (imagePath: string | null | undefined): string => {
+    if (!imagePath) return '';
+    
+    // If it's a base64 data URL, return as is
+    if (imagePath.startsWith('data:')) {
+      return imagePath;
+    }
+    
+    // If it's a file path, convert to API path
+    return getImagePath(imagePath, false);
+  };
+
+  // Resolve DB-backed API endpoint to actual image data (data URL or path)
+  useEffect(() => {
+    let isCancelled = false;
+    async function resolveImage() {
+      try {
+        // Reset when path changes
+        setResolvedImageSrc(null);
+        setHadImageError(false);
+        if (!currentImagePath) return;
+        // If path is already a data URL or a normal file path, no async work needed
+        if (currentImagePath.startsWith('data:')) return;
+        if (!currentImagePath.startsWith('/api/image/profile/')) return;
+
+        const res = await fetch(currentImagePath, { cache: 'no-store' });
+        if (!res.ok) return;
+        const json = await res.json();
+        // Prefer direct imageData (base64 data URL). Fallback to imagePath normalized.
+        const src = json.imageData
+          ? json.imageData as string
+          : (json.imagePath ? getImagePath(json.imagePath as string, false) : '');
+        if (!isCancelled) {
+          setResolvedImageSrc(src || null);
+        }
+      } catch {
+        // Swallow; component will fall back to placeholder UI
+      }
+    }
+    resolveImage();
+    return () => {
+      isCancelled = true;
+    };
+  }, [currentImagePath]);
 
   // Handle file selection
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -109,6 +167,13 @@ export default function ProfilePictureUpload({
         // Update timestamp to force image refresh
         setImageTimestamp(Date.now());
         
+        // Persist to lightweight dedicated key so other views can immediately reflect it
+        try {
+          if (userType === 'business') {
+            sessionStorage.setItem('business_profile_picture', result.profilePicturePath);
+          }
+        } catch {}
+
         // Clear selection
         setSelectedFile(null);
         setPreviewUrl(null);
@@ -163,30 +228,33 @@ export default function ProfilePictureUpload({
         <div className="flex flex-col items-center space-y-6">
           <div className="relative group">
             <div className={`${sizeClasses[size]} rounded-full overflow-hidden bg-white border-4 border-green-100 shadow-xl group-hover:shadow-2xl transition-shadow duration-300`}>
-              {previewUrl ? (
+              {(() => {
+                const isProfileApi = (currentImagePath || '').startsWith('/api/image/profile/');
+                const readySrc = previewUrl || resolvedImageSrc || (!isProfileApi ? getImageSource(currentImagePath) : '');
+                if (!readySrc || hadImageError) {
+                  return (
+                    <div className="w-full h-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center">
+                      <UserIcon className={`${iconSizes[size]} text-white`} />
+                    </div>
+                  );
+                }
+                return (
                 <Image
-                  src={previewUrl}
-                  alt="Profile Preview"
-                  width={parseInt(sizeClasses[size].split(' ')[0].replace('w-', '')) * 4}
-                  height={parseInt(sizeClasses[size].split(' ')[1].replace('h-', '')) * 4}
-                  className="w-full h-full object-cover"
-                  unoptimized={previewUrl.startsWith('data:')}
-                />
-              ) : currentImagePath ? (
-                <Image
-                  src={currentImagePath.startsWith('data:') ? currentImagePath : addCacheBuster(getImagePath(currentImagePath))}
+                  src={readySrc}
                   alt="Profile"
                   width={parseInt(sizeClasses[size].split(' ')[0].replace('w-', '')) * 4}
                   height={parseInt(sizeClasses[size].split(' ')[1].replace('h-', '')) * 4}
                   className="w-full h-full object-cover"
                   key={imageTimestamp}
-                  unoptimized={currentImagePath.startsWith('data:')}
+                  unoptimized={(readySrc || '').toString().startsWith('data:')}
+                  onError={(e) => {
+                    console.error('Profile picture load error:', e);
+                    setHadImageError(true);
+                    handleImageError(e as unknown as React.SyntheticEvent<HTMLImageElement>);
+                  }}
                 />
-              ) : (
-                <div className="w-full h-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center">
-                  <UserIcon className={`${iconSizes[size]} text-white`} />
-                </div>
-              )}
+                );
+              })()}
             </div>
 
             {/* Camera Button with Enhanced Design */}

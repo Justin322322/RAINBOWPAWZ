@@ -229,7 +229,7 @@ export async function GET(request: NextRequest) {
       ) as any[];
 
       const images = await query(
-        `SELECT image_path
+        `SELECT image_path, image_data
          FROM package_images
          WHERE package_id = ?
          ORDER BY display_order ASC`,
@@ -243,8 +243,13 @@ export async function GET(request: NextRequest) {
 
       if (images.length > 0) {
         pkg.images = images.map((img: any) => {
+          // If we have base64 image data, use it directly
+          if (img.image_data && img.image_data.startsWith('data:image/')) {
+            return img.image_data;
+          }
+          
+          // Fallback to file path processing for backward compatibility
           const imagePath = img.image_path;
-
           if (!imagePath || imagePath.startsWith('blob:')) {
             return null;
           }

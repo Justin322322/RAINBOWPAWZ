@@ -3,10 +3,10 @@ import { query } from '@/lib/db';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { userId: string } }
+  context: { params: Promise<{ userId: string }> | { userId: string } }
 ) {
   try {
-    const { userId } = params;
+    const { userId } = await (context.params as Promise<{ userId: string }>);
 
     if (!userId) {
       return NextResponse.json({ error: 'User ID is required' }, { status: 400 });

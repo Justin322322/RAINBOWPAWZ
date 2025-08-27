@@ -4,6 +4,9 @@ import { verifySecureAuth } from '@/lib/secureAuth';
 import { testPhoneNumberFormatting } from '@/lib/smsService';
 import bcrypt from 'bcryptjs';
 
+// Ensure this route is always dynamic and not statically cached
+export const dynamic = 'force-dynamic';
+
 // GET - Retrieve cremation provider profile
 export async function GET(request: NextRequest) {
   try {
@@ -17,54 +20,80 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized - Business access required' }, { status: 403 });
     }
 
-    // Get user details
-    const userResult = await query(
-      'SELECT user_id, email, first_name, last_name, phone, address, profile_picture, created_at FROM users WHERE user_id = ? AND role = ?',
+    // Mirror admin-style fetch: LEFT JOIN service_providers to ensure document paths are returned consistently
+    const rows = await query(
+      `SELECT 
+         u.user_id,
+         u.email,
+         u.first_name,
+         u.last_name,
+         u.phone,
+         u.address,
+         u.profile_picture,
+         u.created_at,
+         sp.provider_id,
+         sp.name AS business_name,
+         sp.provider_type,
+         sp.phone AS business_phone,
+         sp.address AS business_address,
+         sp.description,
+         sp.hours,
+         sp.application_status,
+         sp.verification_date,
+         sp.business_permit_path,
+         sp.bir_certificate_path,
+         sp.government_id_path
+       FROM users u
+       LEFT JOIN service_providers sp ON sp.user_id = u.user_id
+       WHERE u.user_id = ? AND u.role = ?
+       LIMIT 1`,
       [user.userId, 'business']
-    );
+    ) as any[];
 
-    if (!userResult || userResult.length === 0) {
+    if (!rows || rows.length === 0) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    const userData = userResult[0];
+    const row = rows[0];
 
-    // Get service provider details including document paths
-    const providerResult = await query(
-      'SELECT * FROM service_providers WHERE user_id = ?',
-      [user.userId]
-    );
-
-    let providerData = null;
-    if (providerResult && providerResult.length > 0) {
-      providerData = providerResult[0];
-    }
-
-    // Combine user and provider data
+    // Combine data in the same shape used by the frontend
     const profileData = {
-      ...userData,
-      business_name: providerData?.name || null,
-      business_type: providerData?.provider_type || null,
-      business_phone: providerData?.phone || userData.phone,
-      business_address: providerData?.address || userData.address,
-      description: providerData?.description || null,
-      hours: providerData?.hours || null,
-      application_status: providerData?.application_status || null,
-      verification_date: providerData?.verification_date || null,
-      created_at: userData.created_at,
-      provider_id: providerData?.provider_id || null,
-      // Include document paths for UI display
+      user_id: row.user_id,
+      email: row.email,
+      first_name: row.first_name,
+      last_name: row.last_name,
+      phone: row.phone,
+      address: row.address,
+      profile_picture: row.profile_picture,
+      created_at: row.created_at,
+      provider_id: row.provider_id || null,
+      business_name: row.business_name || null,
+      business_type: row.provider_type || null,
+      business_phone: row.business_phone || row.phone,
+      business_address: row.business_address || row.address,
+      description: row.description || null,
+      hours: row.hours || null,
+      application_status: row.application_status || null,
+      verification_date: row.verification_date || null,
       documents: {
-        businessPermitPath: providerData?.business_permit_path || null,
-        birCertificatePath: providerData?.bir_certificate_path || null,
-        governmentIdPath: providerData?.government_id_path || null
+        businessPermitPath: row.business_permit_path || null,
+        birCertificatePath: row.bir_certificate_path || null,
+        governmentIdPath: row.government_id_path || null
       }
     };
 
-    return NextResponse.json({
-      success: true,
-      profile: profileData
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        profile: profileData
+      },
+      {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate',
+          'Pragma': 'no-cache'
+        }
+      }
+    );
 
   } catch (error) {
     console.error('Error fetching cremation provider profile:', error);

@@ -71,9 +71,10 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
   }
 
   // For base64 or blob URLs, use regular img tag
-  // eslint-disable-next-line @next/next/no-img-element
   return (
-    <img
+    <>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
       src={imgSrc}
       alt={alt}
       width={width}
@@ -82,6 +83,7 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
       onError={handleError}
       loading={priority ? 'eager' : 'lazy'}
     />
+    </>
   );
 };
 

@@ -124,6 +124,9 @@ const productionConfig = {
 
 export const finalConfig = process.env.NODE_ENV === "production" ? productionConfig : dbConfig;
 
+type GlobalWithMysql = typeof globalThis & { __rainbowMysqlPool?: mysql.Pool };
+const globalForMysql = globalThis as unknown as GlobalWithMysql;
+
 let _pool: mysql.Pool;
 
 function initPool(): mysql.Pool {
@@ -174,8 +177,12 @@ function initPool(): mysql.Pool {
   }
 }
 
-// Initialize pool once
-_pool = initPool();
+// Initialize pool once, with dev/serverless global cache to avoid hot-reload churn
+const cachedPool = process.env.NODE_ENV !== "production" ? globalForMysql.__rainbowMysqlPool : undefined;
+_pool = cachedPool ?? initPool();
+if (process.env.NODE_ENV !== "production") {
+  globalForMysql.__rainbowMysqlPool = _pool;
+}
 
 export function getPool(): mysql.Pool {
   return _pool;
@@ -183,7 +190,11 @@ export function getPool(): mysql.Pool {
 
 export async function recreatePool(): Promise<void> {
   try {
-    _pool = initPool();
+    const newPool = initPool();
+    _pool = newPool;
+    if (process.env.NODE_ENV !== "production") {
+      globalForMysql.__rainbowMysqlPool = newPool;
+    }
   } catch (reconnectError) {
     // Keep old pool if recreation fails
     // eslint-disable-next-line no-console

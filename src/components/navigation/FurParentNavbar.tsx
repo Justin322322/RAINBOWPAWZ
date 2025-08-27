@@ -207,8 +207,24 @@ export default function FurParentNavbar({ activePage: propActivePage, userName =
 
   // Listen for profile picture updates and user data updates from other components
   useEffect(() => {
-    const handleProfilePictureUpdate = () => {
-      updateProfilePictureFromStorage();
+    const handleProfilePictureUpdate = (event: Event) => {
+      const ce = event as CustomEvent<{ profilePicturePath?: string; userType?: string }>;
+      const detail = ce.detail || {};
+      if (detail.profilePicturePath && (detail.userType === 'user' || !detail.userType)) {
+        const newPic = detail.profilePicturePath;
+        setProfilePicture(newPic);
+        try {
+          const userData = sessionStorage.getItem('user_data');
+          const user = userData ? JSON.parse(userData) : {};
+          user.profile_picture = newPic;
+          sessionStorage.setItem('user_data', JSON.stringify(user));
+          localStorage.setItem('furparent_profile_picture', newPic);
+          globalProfilePictureState.profilePicture = newPic;
+          globalProfilePictureState.initialized = true;
+        } catch {}
+      } else {
+        updateProfilePictureFromStorage();
+      }
     };
 
     const handleUserDataUpdate = (event: CustomEvent) => {
@@ -226,11 +242,11 @@ export default function FurParentNavbar({ activePage: propActivePage, userName =
     };
 
     // Listen for custom events
-    window.addEventListener('profilePictureUpdated', handleProfilePictureUpdate);
+    window.addEventListener('profilePictureUpdated', handleProfilePictureUpdate as EventListener);
     window.addEventListener('userDataUpdated', handleUserDataUpdate as EventListener);
 
     return () => {
-      window.removeEventListener('profilePictureUpdated', handleProfilePictureUpdate);
+      window.removeEventListener('profilePictureUpdated', handleProfilePictureUpdate as EventListener);
       window.removeEventListener('userDataUpdated', handleUserDataUpdate as EventListener);
     };
   }, [updateProfilePictureFromStorage]);

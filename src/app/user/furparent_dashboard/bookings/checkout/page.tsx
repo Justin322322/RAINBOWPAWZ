@@ -708,9 +708,11 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
             }
 
             if (uploadResponse.ok) {
-              // The API returns imagePath, not imageUrl
-              petImageUrl = uploadData.imagePath;
+              // The API returns different fields - check for imageData or filePath
+              petImageUrl = uploadData.imageData || uploadData.filePath || uploadData.imagePath;
+              console.log('Pet image uploaded successfully:', petImageUrl);
             } else {
+              console.error('Pet image upload failed:', uploadData);
             }
           } catch {
             // Continue with booking even if image upload fails

@@ -28,24 +28,13 @@ export async function query(sql: string, params: any[] = []): Promise<QueryResul
   let lastError: any;
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    let connection: any;
-
     try {
       const pool = getPool();
-      connection = await Promise.race([
-        pool.getConnection(),
-        new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Connection timeout")), 10000)),
+      const [results] = await Promise.race([
+        pool.execute(sql, params),
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Query execution timeout")), 15000)),
       ]);
-
-      try {
-        const [results] = await Promise.race([
-          connection.query(sql, params),
-          new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Query execution timeout")), 15000)),
-        ]);
-        return results as QueryResult;
-      } finally {
-        connection.release();
-      }
+      return results as QueryResult;
     } catch (error) {
       const err = error as any;
       lastError = err;
@@ -62,6 +51,8 @@ export async function query(sql: string, params: any[] = []): Promise<QueryResul
         err.code === "ER_LOCK_WAIT_TIMEOUT" ||
         err.code === "ER_LOCK_DEADLOCK" ||
         err.code === "ECONNRESET" ||
+        err.code === "PROTOCOL_CONNECTION_LOST" ||
+        err.code === "ETIMEDOUT" ||
         err.message?.includes("timeout");
 
       if (isRetryableError && attempt < maxRetries) {
