@@ -7,11 +7,16 @@ import { verifySecureAuth } from '@/lib/secureAuth';
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('Cremation profile picture upload started');
+    
     // Use secure authentication
     const user = await verifySecureAuth(request);
     if (!user) {
+      console.log('Authentication failed - no valid user');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    
+    console.log('User authenticated:', { userId: user.userId, accountType: user.accountType });
 
     // Only allow business accounts to use this endpoint
     if (user.accountType !== 'business') {
@@ -38,7 +43,15 @@ export async function POST(request: NextRequest) {
 
     // Get the profile picture file - handle both File and Blob types
     const profilePicture = formData.get('profilePicture');
+    console.log('Profile picture file received:', { 
+      hasFile: !!profilePicture, 
+      isBlob: profilePicture instanceof Blob, 
+      size: profilePicture instanceof Blob ? profilePicture.size : 'N/A',
+      type: profilePicture instanceof Blob ? profilePicture.type : 'N/A'
+    });
+    
     if (!profilePicture || !(profilePicture instanceof Blob) || profilePicture.size === 0) {
+      console.log('Invalid profile picture file');
       return NextResponse.json({
         error: 'No profile picture file provided'
       }, { status: 400 });
@@ -67,37 +80,80 @@ export async function POST(request: NextRequest) {
     const timestamp = Date.now();
     const fileExtension = profilePictureBlob.type.split('/')[1] || 'jpg';
     const filename = `profile_picture_${timestamp}.${fileExtension}`;
+    console.log('Generated filename:', filename);
 
     // Create the directory path
     const uploadsDir = join(process.cwd(), 'public', 'uploads', 'profile-pictures', userId.toString());
+    console.log('Uploads directory:', uploadsDir);
 
     // Ensure directory exists
     if (!existsSync(uploadsDir)) {
+      console.log('Creating directory:', uploadsDir);
       await mkdir(uploadsDir, { recursive: true });
     }
 
     // Create file path
     const filePath = join(uploadsDir, filename);
+    console.log('File path:', filePath);
 
     // Convert file to buffer and save
+    console.log('Converting file to buffer...');
     const bytes = await profilePictureBlob.arrayBuffer();
     const buffer = Buffer.from(bytes);
+    console.log('Buffer created, size:', buffer.length);
+    
+    console.log('Writing file to disk...');
     await writeFile(filePath, buffer);
+    console.log('File written successfully');
 
     // Return the relative path
     const profilePicturePath = `/uploads/profile-pictures/${userId}/${filename}`;
 
     // Update the database with the new profile picture path
     try {
-      await query(
+      console.log('Checking database schema...');
+      // First, check if the profile_picture column exists and add it if it doesn't
+      const columnCheck = await query(`
+        SELECT COLUMN_NAME
+        FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'users'
+        AND COLUMN_NAME = 'profile_picture'
+      `) as any[];
+
+      if (columnCheck.length === 0) {
+        console.log('Adding profile_picture column to users table...');
+        await query(`ALTER TABLE users ADD COLUMN profile_picture VARCHAR(255) NULL AFTER gender`);
+        console.log('Column added successfully');
+      } else {
+        console.log('profile_picture column already exists');
+      }
+
+      // Update the user's profile picture in the database
+      console.log('Updating profile picture in database for user:', userId);
+      const updateResult = await query(
         'UPDATE users SET profile_picture = ? WHERE user_id = ?',
         [profilePicturePath, userId]
-      );
+      ) as any;
+      console.log('Database update result:', updateResult);
+
+      if (updateResult.affectedRows === 0) {
+        console.log('No rows affected - user not found');
+        return NextResponse.json({
+          error: 'User not found or no changes made'
+        }, { status: 404 });
+      }
+      
+      console.log('Profile picture updated successfully in database');
     } catch (dbError) {
       console.error('Failed to update profile picture in database:', dbError);
-      throw new Error('Failed to save profile picture to database');
+      return NextResponse.json({
+        error: 'Failed to update profile picture in database',
+        details: dbError instanceof Error ? dbError.message : 'Unknown database error'
+      }, { status: 500 });
     }
 
+    console.log('Profile picture upload completed successfully');
     return NextResponse.json({
       success: true,
       message: 'Profile picture uploaded successfully',
@@ -106,6 +162,16 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('Error uploading profile picture:', error);
+    
+    // Log additional details for debugging
+    if (error instanceof Error) {
+      console.error('Error details:', {
+        name: error.name,
+        message: error.message,
+        stack: error.stack
+      });
+    }
+    
     return NextResponse.json({
       error: 'Failed to upload profile picture',
       details: error instanceof Error ? error.message : 'Unknown error'

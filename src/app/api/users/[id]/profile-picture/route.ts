@@ -3,7 +3,7 @@ import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
 import { existsSync } from 'fs';
 import { query } from '@/lib/db';
-import { getAuthTokenFromRequest, parseAuthToken } from '@/utils/auth';
+import { verifySecureAuth } from '@/lib/secureAuth';
 import { cleanupOldFiles } from '@/utils/fileSystemUtils';
 
 // Function to save profile picture to disk
@@ -44,6 +44,8 @@ async function saveProfilePicture(file: File, userId: string): Promise<string> {
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('User profile picture upload started');
+    
     // Extract user ID from URL
     const url = new URL(request.url);
     const pathParts = url.pathname.split('/');
@@ -56,22 +58,18 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Get auth token to verify the user
-    const authToken = getAuthTokenFromRequest(request);
-    if (!authToken) {
+    // Use secure authentication
+    const user = await verifySecureAuth(request);
+    if (!user) {
+      console.log('Authentication failed - no valid user');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-
-    // Use parseAuthToken to handle both JWT and legacy token formats
-    const tokenData = await parseAuthToken(authToken);
-    if (!tokenData) {
-      return NextResponse.json({ error: 'Invalid authentication token' }, { status: 401 });
-    }
-
-    const { userId: tokenUserId, accountType } = tokenData;
+    
+    console.log('User authenticated:', { userId: user.userId, accountType: user.accountType });
 
     // Only allow users to update their own profile picture (or admins)
-    if (tokenUserId !== userId.toString() && accountType !== 'admin') {
+    if (user.userId !== userId.toString() && user.accountType !== 'admin') {
+      console.log('Authorization failed:', { tokenUserId: user.userId, requestedUserId: userId, accountType: user.accountType });
       return NextResponse.json({ 
         error: 'You are not authorized to update this profile picture' 
       }, { status: 403 });
@@ -82,7 +80,15 @@ export async function POST(request: NextRequest) {
 
     // Get the profile picture file
     const profilePicture = formData.get('profilePicture') as File | null;
+    console.log('Profile picture file received:', { 
+      hasFile: !!profilePicture, 
+      isFile: profilePicture instanceof File, 
+      size: profilePicture instanceof File ? profilePicture.size : 'N/A',
+      type: profilePicture instanceof File ? profilePicture.type : 'N/A'
+    });
+    
     if (!profilePicture || !(profilePicture instanceof File) || profilePicture.size === 0) {
+      console.log('Invalid profile picture file');
       return NextResponse.json({
         error: 'No profile picture file provided'
       }, { status: 400 });
@@ -118,6 +124,7 @@ export async function POST(request: NextRequest) {
 
     // Update the database with the new profile picture path
     try {
+      console.log('Checking database schema...');
       // First, check if the profile_picture column exists and add it if it doesn't
       const columnCheck = await query(`
         SELECT COLUMN_NAME
@@ -128,22 +135,32 @@ export async function POST(request: NextRequest) {
       `) as any[];
 
       if (columnCheck.length === 0) {
+        console.log('Adding profile_picture column to users table...');
         await query(`ALTER TABLE users ADD COLUMN profile_picture VARCHAR(255) NULL AFTER gender`);
+        console.log('Column added successfully');
+      } else {
+        console.log('profile_picture column already exists');
       }
 
       // Update the user's profile picture in the database
+      console.log('Updating profile picture in database for user:', userId);
       const updateResult = await query(
         `UPDATE users SET profile_picture = ?, updated_at = NOW() WHERE user_id = ?`,
         [profilePicturePath, userId]
       ) as any;
+      console.log('Database update result:', updateResult);
 
       if (updateResult.affectedRows === 0) {
+        console.log('No rows affected - user not found or no changes made');
         return NextResponse.json({
           error: 'User not found or no changes made'
         }, { status: 404 });
       }
+      
+      console.log('Profile picture updated successfully in database');
 
 
+      console.log('Profile picture upload completed successfully');
       return NextResponse.json({
         success: true,
         message: 'Profile picture uploaded successfully',
@@ -160,6 +177,16 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('Error in profile picture upload:', error);
+    
+    // Log additional details for debugging
+    if (error instanceof Error) {
+      console.error('Error details:', {
+        name: error.name,
+        message: error.message,
+        stack: error.stack
+      });
+    }
+    
     return NextResponse.json({
       error: 'Internal server error',
       details: error instanceof Error ? error.message : 'Unknown error'

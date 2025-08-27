@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
-import { getAuthTokenFromRequest, parseAuthToken } from '@/utils/auth';
+import { verifySecureAuth } from '@/lib/secureAuth';
 import { writeFile } from 'fs/promises';
 import { join } from 'path';
 import * as fs from 'fs';
@@ -9,25 +9,18 @@ export async function POST(request: NextRequest) {
   try {
     console.log('Admin profile picture upload started');
     
-    // Get auth token to verify the admin
-    const authToken = getAuthTokenFromRequest(request);
-    if (!authToken) {
-      console.log('No auth token provided');
+    // Use secure authentication
+    const user = await verifySecureAuth(request);
+    if (!user) {
+      console.log('Authentication failed - no valid user');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-
-    // Use parseAuthToken to handle both JWT and legacy token formats
-    const tokenData = await parseAuthToken(authToken);
-    if (!tokenData) {
-      console.log('Invalid auth token');
-      return NextResponse.json({ error: 'Invalid authentication token' }, { status: 401 });
-    }
-
-    const { userId: tokenUserId, accountType } = tokenData;
-    console.log('Token data:', { tokenUserId, accountType });
     
-    if (accountType !== 'admin') {
-      console.log('Non-admin access attempt:', accountType);
+    console.log('User authenticated:', { userId: user.userId, accountType: user.accountType });
+    
+    // Only allow admin accounts to use this endpoint
+    if (user.accountType !== 'admin') {
+      console.log('Non-admin access attempt:', user.accountType);
       return NextResponse.json({ error: 'Unauthorized - Admin access required' }, { status: 403 });
     }
 
@@ -46,8 +39,8 @@ export async function POST(request: NextRequest) {
     console.log('UserId from form:', userId);
 
     // Only allow admins to update their own profile picture
-    if (tokenUserId !== userId.toString()) {
-      console.log('UserId mismatch:', { tokenUserId, formUserId: userId });
+    if (user.userId !== userId.toString()) {
+      console.log('UserId mismatch:', { tokenUserId: user.userId, formUserId: userId });
       return NextResponse.json({ 
         error: 'You are not authorized to update this profile picture' 
       }, { status: 403 });
@@ -144,6 +137,24 @@ export async function POST(request: NextRequest) {
 
     // Update the database with the new profile picture path
     try {
+      console.log('Checking database schema...');
+      // First, check if the profile_picture column exists and add it if it doesn't
+      const columnCheck = await query(`
+        SELECT COLUMN_NAME
+        FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'users'
+        AND COLUMN_NAME = 'profile_picture'
+      `) as any[];
+
+      if (columnCheck.length === 0) {
+        console.log('Adding profile_picture column to users table...');
+        await query(`ALTER TABLE users ADD COLUMN profile_picture VARCHAR(255) NULL AFTER gender`);
+        console.log('Column added successfully');
+      } else {
+        console.log('profile_picture column already exists');
+      }
+
       console.log('Checking if admin exists in database...');
       // Check if admin exists
       const adminCheck = await query('SELECT 1 FROM users WHERE user_id = ? AND role = "admin"', [userId]);
@@ -159,8 +170,17 @@ export async function POST(request: NextRequest) {
       const updateResult = await query(
         'UPDATE users SET profile_picture = ? WHERE user_id = ?',
         [profilePicturePath, userId]
-      );
+      ) as any;
       console.log('Database update result:', updateResult);
+
+      if (updateResult.affectedRows === 0) {
+        console.log('No rows affected - user not found or no changes made');
+        return NextResponse.json({
+          error: 'User not found or no changes made'
+        }, { status: 404 });
+      }
+      
+      console.log('Profile picture updated successfully in database');
 
       return NextResponse.json({
         success: true,
