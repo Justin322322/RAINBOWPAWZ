@@ -27,6 +27,7 @@ export async function query(sql: string, params: any[] = []): Promise<QueryResul
   const maxRetries = 3;
   let lastError: any;
 
+  const startedAt = Date.now();
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       const pool = getPool();
@@ -34,6 +35,11 @@ export async function query(sql: string, params: any[] = []): Promise<QueryResul
         pool.execute(sql, params),
         new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Query execution timeout")), 15000)),
       ]);
+      const durationMs = Date.now() - startedAt;
+      if (durationMs > 200) {
+        // eslint-disable-next-line no-console
+        console.warn(`[DB SLOW ${durationMs}ms]`, sql.substring(0, 120));
+      }
       return results as QueryResult;
     } catch (error) {
       const err = error as any;

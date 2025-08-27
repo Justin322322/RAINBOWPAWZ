@@ -4,6 +4,10 @@ import { getAuthTokenFromRequest } from '@/utils/auth';
 import bcrypt from 'bcryptjs';
 import { ensureAdminProfilesTableExists } from './ensure-table';
 
+export const runtime = 'nodejs';
+export const preferredRegion = ['sin1'];
+export const revalidate = 30;
+
 // GET - Retrieve admin profile data
 export async function GET(request: NextRequest) {
   try {

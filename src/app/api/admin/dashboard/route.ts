@@ -1,3 +1,6 @@
+export const runtime = 'nodejs';
+export const preferredRegion = ['sin1'];
+export const revalidate = 30;
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { verifySecureAuth } from '@/lib/secureAuth';
