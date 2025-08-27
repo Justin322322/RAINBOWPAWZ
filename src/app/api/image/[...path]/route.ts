@@ -1,210 +1,72 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { join } from 'path';
-import fs from 'fs';
+import { createReadStream, existsSync, statSync } from 'fs';
+import { join, normalize } from 'path';
 
-/**
- * API route to serve images directly from the server
- * This bypasses Next.js static file handling which can be problematic in production
- * Enhanced with better error handling and logging
- */
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
+const ALLOWED_ROOTS = new Set([
+  'profile-pictures',
+  'admin-profile-pictures',
+  'packages',
+  'pets',
+  'documents',
+  'businesses'
+]);
+
+function getContentType(filePath: string): string {
+  const lower = filePath.toLowerCase();
+  if (lower.endsWith('.png')) return 'image/png';
+  if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) return 'image/jpeg';
+  if (lower.endsWith('.gif')) return 'image/gif';
+  if (lower.endsWith('.webp')) return 'image/webp';
+  if (lower.endsWith('.svg')) return 'image/svg+xml';
+  if (lower.endsWith('.pdf')) return 'application/pdf';
+  return 'application/octet-stream';
+}
+
 export async function GET(
-  request: NextRequest,
-  { params }: { params: { path: string[] } }
+  _request: NextRequest,
+  { params }: { params: Promise<{ path: string[] }> }
 ) {
+  const { path } = await params;
+  if (!path || path.length === 0) {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  }
+
+  const [root, ...rest] = path;
+  if (!ALLOWED_ROOTS.has(root)) {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  }
+
+  // Construct safe path under public/uploads
+  const safeRelative = normalize([root, ...rest].join('/'));
+  // Prevent path traversal
+  if (safeRelative.startsWith('..')) {
+    return NextResponse.json({ error: 'Invalid path' }, { status: 400 });
+  }
+
+  const fullPath = join(process.cwd(), 'public', 'uploads', safeRelative);
+
+  if (!existsSync(fullPath)) {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  }
+
   try {
-    // Get the path from the URL - ensure params is awaited
-    const pathParams = await Promise.resolve(params);
-    const imagePath = pathParams.path.join('/');
+    const stat = statSync(fullPath);
+    const stream = createReadStream(fullPath);
+    const contentType = getContentType(fullPath);
 
-
-    // Construct the full path to the image
-    const fullPath = join(process.cwd(), 'public', 'uploads', imagePath);
-
-    // Additional paths to try in production environments
-    const possiblePaths = [
-      fullPath,
-      // Try without 'public' in the path (for standalone mode)
-      join(process.cwd(), 'uploads', imagePath),
-      // Try in the .next/server directory
-      join(process.cwd(), '.next', 'server', 'public', 'uploads', imagePath),
-      // Try in the .next/standalone directory
-      join(process.cwd(), '.next', 'standalone', 'public', 'uploads', imagePath),
-      // Try in the root directory
-      join('/', 'uploads', imagePath),
-
-      // Additional paths for documents - handle full document paths
-      join(process.cwd(), 'public', 'uploads', imagePath),
-      join(process.cwd(), 'uploads', imagePath),
-      join(process.cwd(), '.next', 'server', 'public', 'uploads', imagePath),
-      join(process.cwd(), '.next', 'standalone', 'public', 'uploads', imagePath),
-
-      // Try document paths with just filename
-      join(process.cwd(), 'public', 'documents', imagePath.split('/').pop() || ''),
-      join(process.cwd(), 'documents', imagePath.split('/').pop() || ''),
-      join(process.cwd(), '.next', 'server', 'public', 'documents', imagePath.split('/').pop() || ''),
-      join(process.cwd(), '.next', 'standalone', 'public', 'documents', imagePath.split('/').pop() || ''),
-      join('/', 'documents', imagePath.split('/').pop() || ''),
-
-      // Try business document paths
-      join(process.cwd(), 'public', 'uploads', 'business', imagePath.split('/').pop() || ''),
-      join(process.cwd(), 'uploads', 'business', imagePath.split('/').pop() || ''),
-      join(process.cwd(), 'public', 'uploads', 'businesses', imagePath.split('/').pop() || ''),
-      join(process.cwd(), 'uploads', 'businesses', imagePath.split('/').pop() || ''),
-
-      // Try pet image paths
-      join(process.cwd(), 'public', 'uploads', 'pets', imagePath.split('/').pop() || ''),
-      join(process.cwd(), 'uploads', 'pets', imagePath.split('/').pop() || ''),
-      join(process.cwd(), '.next', 'server', 'public', 'uploads', 'pets', imagePath.split('/').pop() || ''),
-      join(process.cwd(), '.next', 'standalone', 'public', 'uploads', 'pets', imagePath.split('/').pop() || ''),
-      join('/', 'uploads', 'pets', imagePath.split('/').pop() || ''),
-
-      // Try profile picture paths
-      join(process.cwd(), 'public', 'uploads', 'profile-pictures', imagePath.split('/').pop() || ''),
-      join(process.cwd(), 'uploads', 'profile-pictures', imagePath.split('/').pop() || ''),
-      join(process.cwd(), '.next', 'server', 'public', 'uploads', 'profile-pictures', imagePath.split('/').pop() || ''),
-      join(process.cwd(), '.next', 'standalone', 'public', 'uploads', 'profile-pictures', imagePath.split('/').pop() || ''),
-      join('/', 'uploads', 'profile-pictures', imagePath.split('/').pop() || ''),
-    ];
-
-    // Check all possible paths
-    let foundPath = '';
-    for (const path of possiblePaths) {
-      if (fs.existsSync(path)) {
-        foundPath = path;
-        break;
+    return new NextResponse(stream as unknown as ReadableStream, {
+      status: 200,
+      headers: {
+        'Content-Type': contentType,
+        'Content-Length': String(stat.size),
+        'Cache-Control': 'public, max-age=86400'
       }
-    }
-
-    if (foundPath) {
-      // Read the file from the found path
-      const image = fs.readFileSync(foundPath);
-
-      // Determine the content type
-      const extension = foundPath.split('.').pop()?.toLowerCase() || '';
-      let contentType = getContentType(extension);
-
-      // Determine cache control based on image type
-      // Package images should have shorter cache to allow for updates
-      const isPackageImage = imagePath.includes('packages/');
-      const cacheControl = isPackageImage
-        ? 'public, max-age=10, s-maxage=10' // Short cache for package images
-        : 'public, max-age=60, s-maxage=60'; // Normal cache for other images
-
-      // Return the image with appropriate headers
-      return new NextResponse(image, {
-        headers: {
-          'Content-Type': contentType,
-          'Cache-Control': cacheControl,
-        },
-      });
-    }
-
-    // If still not found, return a fallback image
-    const fallbackPath = join(process.cwd(), 'public', 'bg_4.png');
-    if (fs.existsSync(fallbackPath)) {
-      const fallbackImage = fs.readFileSync(fallbackPath);
-      const isPackageImage = imagePath.includes('packages/');
-      const cacheControl = isPackageImage
-        ? 'public, max-age=10, s-maxage=10'
-        : 'public, max-age=60, s-maxage=60';
-      return new NextResponse(fallbackImage, {
-        headers: {
-          'Content-Type': 'image/png',
-          'Cache-Control': cacheControl,
-        },
-      });
-    }
-
-    // If fallback doesn't exist, return a default image
-    const defaultImagePath = join(process.cwd(), 'public', 'bg_4.png');
-    if (fs.existsSync(defaultImagePath)) {
-      const defaultImage = fs.readFileSync(defaultImagePath);
-      return new NextResponse(defaultImage, {
-        headers: {
-          'Content-Type': 'image/png',
-          'Cache-Control': 'public, max-age=3600',
-        },
-      });
-    }
-
-    // Final fallback - return 404
-    return new NextResponse('Image not found', { status: 404 });
-
-    // This code should never be reached since we check all paths above
-    // But keeping it for backward compatibility
-    if (fs.existsSync(fullPath)) {
-      // Read the file
-      const image = fs.readFileSync(fullPath);
-
-      // Determine the content type based on file extension
-      const extension = fullPath.split('.').pop()?.toLowerCase() || '';
-      let contentType = getContentType(extension);
-
-
-      // Determine cache control based on image type
-      const isPackageImage = imagePath.includes('packages/');
-      const cacheControl = isPackageImage
-        ? 'public, max-age=10, s-maxage=10'
-        : 'public, max-age=60, s-maxage=60';
-
-      // Return the image with appropriate headers
-      return new NextResponse(image, {
-        headers: {
-          'Content-Type': contentType,
-          'Cache-Control': cacheControl,
-        },
-      });
-    }
-
-    // If we get here, return a 404
-    return new NextResponse('Image not found', { status: 404 });
-  } catch (error) {
-    console.error('Error serving image:', error);
-
-    // Try to return a fallback image even on error
-    try {
-      const fallbackPath = join(process.cwd(), 'public', 'bg_4.png');
-      if (fs.existsSync(fallbackPath)) {
-        const fallbackImage = fs.readFileSync(fallbackPath);
-        // Reconstruct imagePath from params for cache control logic
-        const pathParams = await Promise.resolve(params);
-        const imagePath = pathParams.path.join('/');
-        const isPackageImage = imagePath.includes('packages/');
-        const cacheControl = isPackageImage
-          ? 'public, max-age=10, s-maxage=10'
-          : 'public, max-age=60, s-maxage=60';
-        return new NextResponse(fallbackImage, {
-          headers: {
-            'Content-Type': 'image/png',
-            'Cache-Control': cacheControl,
-          },
-        });
-      }
-    } catch (fallbackError) {
-      console.error('Error serving fallback image:', fallbackError);
-    }
-
-    return new NextResponse('Error serving image', { status: 500 });
+    });
+  } catch {
+    return NextResponse.json({ error: 'Failed to read file' }, { status: 500 });
   }
 }
 
-/**
- * Helper function to determine content type from file extension
- */
-function getContentType(extension: string): string {
-  switch (extension) {
-    case 'png':
-      return 'image/png';
-    case 'gif':
-      return 'image/gif';
-    case 'svg':
-      return 'image/svg+xml';
-    case 'webp':
-      return 'image/webp';
-    case 'jpg':
-    case 'jpeg':
-      return 'image/jpeg';
-    default:
-      return 'image/jpeg'; // Default
-  }
-}

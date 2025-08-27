@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo, useTransition } from 'react';
 import Image from 'next/image';
 import CremationDashboardLayout from '@/components/navigation/CremationDashboardLayout';
 import withBusinessVerification from '@/components/withBusinessVerification';
@@ -55,6 +55,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
     phone: '',
     address: ''
   });
+  const [, startContactTransition] = useTransition();
   const [contactSuccess, setContactSuccess] = useState('');
   const [isGettingLocation, setIsGettingLocation] = useState(false);
 
@@ -64,6 +65,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
     description: '',
     hours: ''
   });
+  const [, startBusinessTransition] = useTransition();
   const [businessSuccess, setBusinessSuccess] = useState('');
 
   // Profile data state
@@ -440,8 +442,21 @@ function CremationProfilePage({ userData }: { userData: any }) {
                 credentials: 'include',
             });
             if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || 'Failed to upload documents');
+                // Gracefully handle non-JSON responses like 413 (Request Entity Too Large)
+                let message = 'Failed to upload documents';
+                try {
+                    const text = await response.text();
+                    // Try parse JSON if possible
+                    try {
+                        const json = JSON.parse(text);
+                        message = json.error || message;
+                    } catch {
+                        message = text || message;
+                    }
+                } catch {
+                    // ignore
+                }
+                throw new Error(message);
             }
             showToast('Documents uploaded successfully!', 'success');
             await fetchProfileData(false);
@@ -588,9 +603,9 @@ function CremationProfilePage({ userData }: { userData: any }) {
                                 <form onSubmit={handleBusinessUpdate} className="space-y-6">
                                     {businessSuccess && <ProfileAlert type="success" message={businessSuccess} onClose={() => setBusinessSuccess('')} />}
                                     <ProfileFormGroup title="Basic Information" subtitle="Essential business details">
-                                        <ProfileInput label="Business Name" value={businessInfo.businessName} onChange={(value) => setBusinessInfo({ ...businessInfo, businessName: value })} placeholder="Enter your business name" required icon={<BuildingStorefrontIcon className="h-5 w-5" />} />
-                                        <ProfileTextArea label="Business Description" value={businessInfo.description} onChange={(value) => setBusinessInfo({ ...businessInfo, description: value })} placeholder="Describe your cremation services..." rows={4} />
-                                        <ProfileInput label="Business Hours" value={businessInfo.hours} onChange={(value) => setBusinessInfo({ ...businessInfo, hours: value })} placeholder="e.g., Monday-Friday: 9AM-6PM" />
+                                        <ProfileInput label="Business Name" value={businessInfo.businessName} onChange={(value) => startBusinessTransition(() => setBusinessInfo(prev => ({ ...prev, businessName: value })))} placeholder="Enter your business name" required icon={<BuildingStorefrontIcon className="h-5 w-5" />} />
+                                        <ProfileTextArea label="Business Description" value={businessInfo.description} onChange={(value) => startBusinessTransition(() => setBusinessInfo(prev => ({ ...prev, description: value })))} placeholder="Describe your cremation services..." rows={4} />
+                                        <ProfileInput label="Business Hours" value={businessInfo.hours} onChange={(value) => startBusinessTransition(() => setBusinessInfo(prev => ({ ...prev, hours: value })))} placeholder="e.g., Monday-Friday: 9AM-6PM" />
                                     </ProfileFormGroup>
                                     <div className="flex justify-end pt-4 border-t border-gray-100">
                                         <ProfileButton type="submit" variant="primary" icon={<CheckCircleIcon className="h-5 w-5" />}>
@@ -612,16 +627,16 @@ function CremationProfilePage({ userData }: { userData: any }) {
                                     {contactSuccess && <ProfileAlert type="success" message={contactSuccess} onClose={() => setContactSuccess('')} />}
                                     <ProfileFormGroup title="Personal & Location Details" subtitle="Your name and primary business address">
                                         <ProfileGrid cols={2}>
-                                            <ProfileInput label="First Name" value={contactInfo.firstName} onChange={(value) => setContactInfo({ ...contactInfo, firstName: value })} required icon={<UserIcon className="h-5 w-5" />} />
-                                            <ProfileInput label="Last Name" value={contactInfo.lastName} onChange={(value) => setContactInfo({ ...contactInfo, lastName: value })} required icon={<UserIcon className="h-5 w-5" />} />
+                                            <ProfileInput label="First Name" value={contactInfo.firstName} onChange={(value) => startContactTransition(() => setContactInfo(prev => ({ ...prev, firstName: value })))} required icon={<UserIcon className="h-5 w-5" />} />
+                                            <ProfileInput label="Last Name" value={contactInfo.lastName} onChange={(value) => startContactTransition(() => setContactInfo(prev => ({ ...prev, lastName: value })))} required icon={<UserIcon className="h-5 w-5" />} />
                                         </ProfileGrid>
-                                        <ProfileInput label="Email Address" type="email" value={contactInfo.email} onChange={(value) => setContactInfo({ ...contactInfo, email: value })} required icon={<EnvelopeIcon className="h-5 w-5" />} />
-                                        <PhilippinePhoneInput id="phone" name="phone" label="Phone Number" value={contactInfo.phone} onChange={(value) => setContactInfo({ ...contactInfo, phone: value })} />
+                                        <ProfileInput label="Email Address" type="email" value={contactInfo.email} onChange={(value) => startContactTransition(() => setContactInfo(prev => ({ ...prev, email: value })))} required icon={<EnvelopeIcon className="h-5 w-5" />} />
+                                        <PhilippinePhoneInput id="phone" name="phone" label="Phone Number" value={contactInfo.phone} onChange={(value) => startContactTransition(() => setContactInfo(prev => ({ ...prev, phone: value })))} />
                                         <div className="space-y-2">
                                             <label className="block text-sm font-medium text-gray-700">Address</label>
                                             <div className="relative">
                                                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><MapPinIcon className="h-5 w-5 text-gray-400" /></div>
-                                                <input type="text" value={contactInfo.address} onChange={(e) => setContactInfo(prev => ({ ...prev, address: e.target.value }))} placeholder="Enter your complete address" className="block w-full rounded-lg border border-gray-300 shadow-sm bg-white focus:border-[var(--primary-green)] focus:ring-[var(--primary-green)] focus:ring-1 pl-10 pr-32 py-2.5" />
+                                                <input type="text" value={contactInfo.address} onChange={(e) => startContactTransition(() => setContactInfo(prev => ({ ...prev, address: e.target.value })))} placeholder="Enter your complete address" className="block w-full rounded-lg border border-gray-300 shadow-sm bg-white focus:border-[var(--primary-green)] focus:ring-[var(--primary-green)] focus:ring-1 pl-10 pr-32 py-2.5" />
                                                 <button type="button" onClick={handleGetLocation} disabled={isGettingLocation} className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm text-[var(--primary-green)] hover:text-green-700 disabled:text-gray-400">
                                                     {isGettingLocation ? 'Detecting...' : 'Use My Location'}
                                                 </button>

@@ -80,12 +80,60 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // For now, return basic package data without complex enrichment
+    // Collect package ids for enrichment
+    const packageIds = rows.map((p: any) => p.id);
+
+    // Fetch images for all packages in one query
+    let imagesByPackage: Record<number, string[]> = {};
+    if (packageIds.length > 0) {
+      const placeholders = packageIds.map(() => '?').join(',');
+      const imagesRows = (await query(
+        `SELECT package_id as packageId, image_path, image_data
+         FROM package_images
+         WHERE package_id IN (${placeholders})
+         ORDER BY display_order`,
+        packageIds
+      )) as any[];
+
+      imagesByPackage = imagesRows.reduce((acc: Record<number, string[]>, row: any) => {
+        const id = Number(row.packageId);
+        const rawPath: string | null = row.image_path || null;
+        const dataUrl: string | null = row.image_data || null;
+        let resolved: string | null = null;
+
+        if (dataUrl && typeof dataUrl === 'string' && dataUrl.startsWith('data:image/')) {
+          resolved = dataUrl; // use base64 directly
+        } else if (rawPath && typeof rawPath === 'string') {
+          // Normalize to API route
+          let path = rawPath;
+          if (path.startsWith('/api/image/')) {
+            resolved = path;
+          } else if (path.startsWith('/uploads/')) {
+            resolved = `/api/image/${path.substring('/uploads/'.length)}`;
+          } else if (path.startsWith('uploads/')) {
+            resolved = `/api/image/${path.substring('uploads/'.length)}`;
+          } else if (path.includes('packages/')) {
+            const parts = path.split('packages/');
+            resolved = parts.length > 1 ? `/api/image/packages/${parts[1]}` : path;
+          } else {
+            resolved = path;
+          }
+        }
+
+        if (resolved) {
+          if (!acc[id]) acc[id] = [];
+          acc[id].push(resolved);
+        }
+        return acc;
+      }, {});
+    }
+
+    // Return packages with enriched images (leave inclusions/addOns empty for list performance)
     const packages = rows.map((p: any) => ({
       ...p,
       inclusions: [],
       addOns: [],
-      images: [],
+      images: imagesByPackage[p.id] || [],
       pricePerKg: Number(p.price_per_kg || 0),
       supportedPetTypes: []
     }));
