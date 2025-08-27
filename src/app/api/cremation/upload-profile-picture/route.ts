@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
     // Get form data
     console.log('Parsing form data...');
     const formData = await request.formData();
-    const file = formData.get('file') as File | null;
+    const file = formData.get('profilePicture') as File | null;
     console.log('Form data parsed:', { hasFile: !!file });
 
     if (!file) {
@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
       // Return success response
       return NextResponse.json({
         success: true,
-        filePath: `profile_${userId}_${Date.now()}.${fileType.split('/')[1]}`,
+        profilePicturePath: dataUrl,
         message: 'Profile picture uploaded and stored in database'
       });
 

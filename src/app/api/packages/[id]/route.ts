@@ -49,7 +49,7 @@ export async function GET(
     )) as any[];
 
     const images = (await query(
-      `SELECT image_path FROM package_images WHERE package_id = ? ORDER BY display_order`,
+      `SELECT image_path, image_data FROM package_images WHERE package_id = ? ORDER BY display_order`,
       [packageId]
     )) as any[];
 
@@ -85,28 +85,37 @@ export async function GET(
         inclusions: inclusions.map((i) => i.description),
         addOns: addOns.map((a) => ({ id: a.id, name: a.description, price: Number(a.price) })),
         images: images
-          .map((i) => i.image_path)
-          .filter(path => path && !path.startsWith('blob:'))
-          .map((p) => {
+          .map((i) => {
+            // If we have base64 image data, use it directly
+            if (i.image_data && i.image_data.startsWith('data:image/')) {
+              return i.image_data;
+            }
+            
+            // Fallback to file path processing for backward compatibility
+            const path = i.image_path;
+            if (!path || path.startsWith('blob:')) return null;
+            if (path.startsWith('http')) return path;
+            
             // Ensure all package images use the API route
-            if (p.startsWith('/api/image/')) {
-              return p; // Already correct
+            if (path.startsWith('/api/image/')) {
+              return path; // Already correct
             }
-            if (p.startsWith('/uploads/packages/')) {
-              return `/api/image/packages/${p.substring('/uploads/packages/'.length)}`;
+            if (path.startsWith('/uploads/packages/')) {
+              return `/api/image/packages/${path.substring('/uploads/packages/'.length)}`;
             }
-            if (p.startsWith('uploads/packages/')) {
-              return `/api/image/packages/${p.substring('uploads/packages/'.length)}`;
+            if (path.startsWith('uploads/packages/')) {
+              return `/api/image/packages/${path.substring('uploads/packages/'.length)}`;
             }
-            if (p.includes('packages/')) {
-              const parts = p.split('packages/');
+            if (path.includes('packages/')) {
+              const parts = path.split('packages/');
               if (parts.length > 1) {
                 return `/api/image/packages/${parts[1]}`;
               }
             }
             // For other paths, use the standard function
-            return getImagePath(p);
-          }),
+            return getImagePath(path);
+          })
+          .filter(Boolean),
         // New enhanced features
         hasSizePricing: Boolean(pkg.has_size_pricing),
         sizePricing: sizePricing.map((sp) => ({

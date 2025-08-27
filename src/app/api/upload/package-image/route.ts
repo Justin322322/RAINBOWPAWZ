@@ -133,7 +133,7 @@ export async function POST(request: NextRequest) {
 
           return NextResponse.json({
             success: true,
-            filePath: `package_${packageIdInt}_${Date.now()}.${fileType.split('/')[1]}`,
+            filePath: dataUrl, // Return base64 data URL for frontend compatibility
             message: 'Image uploaded and stored in database'
           });
         } else {
@@ -146,8 +146,7 @@ export async function POST(request: NextRequest) {
         console.log('No valid package ID provided, returning base64 data');
         return NextResponse.json({
           success: true,
-          filePath: `temp_package_${providerId}_${Date.now()}.${fileType.split('/')[1]}`,
-          imageData: dataUrl,
+          filePath: dataUrl, // Return base64 data URL as filePath for frontend compatibility
           message: 'Image converted to base64 (temporary storage)'
         });
       }

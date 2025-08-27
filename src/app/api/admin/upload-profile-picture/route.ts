@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
     // Get form data
     console.log('Parsing form data...');
     const formData = await request.formData();
-    const file = formData.get('file') as File | null;
+    const file = formData.get('profilePicture') as File | null;
     console.log('Form data parsed:', { hasFile: !!file });
 
     if (!file) {
@@ -66,18 +66,18 @@ export async function POST(request: NextRequest) {
       
       console.log('File converted to base64, size:', base64Data.length);
 
-      // Update admin profile picture in database
+      // Update admin profile picture in database (admins are stored in users table)
       console.log('Updating admin profile picture in database...');
       const updateResult = await query(
-        'UPDATE admins SET profile_picture = ? WHERE admin_id = ?',
-        [dataUrl, userId]
+        'UPDATE users SET profile_picture = ?, updated_at = NOW() WHERE user_id = ? AND role = ?',
+        [dataUrl, userId, 'admin']
       );
       console.log('Admin profile picture updated in database:', updateResult);
 
       // Return success response
       return NextResponse.json({
         success: true,
-        filePath: `admin_profile_${userId}_${Date.now()}.${fileType.split('/')[1]}`,
+        profilePicturePath: dataUrl,
         message: 'Admin profile picture uploaded and stored in database'
       });
 
