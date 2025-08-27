@@ -426,10 +426,24 @@ async function enhancePackagesWithDetails(pkgs: any[]): Promise<any[]> {
   const providerIds = [...new Set(pkgs.map((p) => p.providerId))];
 
   // Optimized parallel queries with proper indexing
+  // Some production databases may not yet have the image_data column; detect it first
+  const imageDataColumnCheck = await query(
+    `SELECT COUNT(*) AS count
+     FROM INFORMATION_SCHEMA.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE()
+       AND TABLE_NAME = 'package_images'
+       AND COLUMN_NAME = 'image_data'`
+  ) as any[];
+  const hasImageDataColumn = (imageDataColumnCheck?.[0]?.count || 0) > 0;
+
+  const imagesSelect = hasImageDataColumn
+    ? `SELECT package_id, image_path, display_order, image_data FROM package_images WHERE package_id IN (?) ORDER BY package_id, display_order`
+    : `SELECT package_id, image_path, display_order FROM package_images WHERE package_id IN (?) ORDER BY package_id, display_order`;
+
   const [incs, adds, imgs, sizePricing, petTypes] = await Promise.all([
     query(`SELECT package_id, description FROM package_inclusions WHERE package_id IN (?) ORDER BY package_id`, [ids]),
     query(`SELECT package_id, addon_id as id, description, price FROM package_addons WHERE package_id IN (?) ORDER BY package_id`, [ids]),
-    query(`SELECT package_id, image_path, display_order, image_data FROM package_images WHERE package_id IN (?) ORDER BY package_id, display_order`, [ids]),
+    query(imagesSelect, [ids]),
     query(`SELECT package_id, size_category, weight_range_min, weight_range_max, price FROM package_size_pricing WHERE package_id IN (?) ORDER BY package_id`, [ids]),
     query(`SELECT provider_id, pet_type FROM business_pet_types WHERE provider_id IN (?) AND is_active = 1 ORDER BY provider_id`, [providerIds]),
   ]) as any[][];
