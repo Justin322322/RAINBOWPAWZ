@@ -88,15 +88,15 @@ function AdminProfilePage({ adminData }: AdminProfileProps) {
     loadProfileData();
   }, []);
 
-  // Skeleton loading control with minimum delay
+  // Skeleton loading control with reduced delay for better UX
   useEffect(() => {
     let skeletonTimer: NodeJS.Timeout | null = null;
 
     if (!isLoading && showSkeleton) {
-      // Add minimum 700ms delay for proper skeleton visibility
+      // Reduced delay from 700ms to 300ms for faster perceived performance
       skeletonTimer = setTimeout(() => {
         setShowSkeleton(false);
-      }, 700);
+      }, 300);
     }
 
     return () => {

@@ -5,6 +5,15 @@ import { verifySecureAuth } from '@/lib/secureAuth';
 
 export async function GET(request: NextRequest) {
   try {
+    // Verify admin authentication
+    const user = await verifySecureAuth(request);
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    if (user.accountType !== 'admin') {
+      return NextResponse.json({ error: 'Forbidden - Admin access required' }, { status: 403 });
+    }
+
     // Ensure the admin_logs table exists
     await ensureAdminLogsTable();
     
@@ -81,9 +90,8 @@ export async function GET(request: NextRequest) {
       params.push(dateTo);
     }
     
-    // Add order by and limit
-    sql += ' ORDER BY al.created_at DESC LIMIT ? OFFSET ?';
-    params.push(limit, offset);
+    // Add order by and limit - FIX: Inline numeric values to avoid prepared statement issues
+    sql += ` ORDER BY al.created_at DESC LIMIT ${Number(limit)} OFFSET ${Number(offset)}`;
     
     // Execute the query
     const logs = await query(sql, params) as any[];

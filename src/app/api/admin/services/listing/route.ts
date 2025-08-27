@@ -123,9 +123,9 @@ export async function GET(request: NextRequest) {
           'Cremation Center' AS providerName,
           0 AS providerId
         FROM service_packages
-        LIMIT ? OFFSET ?
+        LIMIT ${Number(limit)} OFFSET ${Number(offset)}
       `;
-      const fallbackResult = await query(fallbackQuery, [limit, offset]);
+      const fallbackResult = await query(fallbackQuery, []);
       rows = Array.isArray(fallbackResult) ? fallbackResult as RawServiceRow[] : [];
     } catch (fallbackError: any) {
       console.error('Fallback query also failed:', fallbackError);

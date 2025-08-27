@@ -317,8 +317,8 @@ export async function processEmailQueue(limit: number = 10): Promise<{ processed
       `SELECT * FROM email_queue
        WHERE status = 'pending' AND attempts < 3
        ORDER BY created_at ASC
-       LIMIT ?`,
-      [limit]
+       LIMIT ${Number(limit)}`,
+      []
     ) as EmailQueueEntry[];
 
     let success = 0;

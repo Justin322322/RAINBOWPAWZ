@@ -46,6 +46,35 @@ export async function POST(request: NextRequest) {
     const providerId = providerResult[0].provider_id;
     console.log('Provider ID found:', providerId);
 
+    // Check if package_images table exists
+    try {
+      const tableExists = await query(
+        "SELECT COUNT(*) as count FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'package_images'"
+      ) as any[];
+      
+      if (!tableExists || tableExists[0].count === 0) {
+        console.log('package_images table does not exist, creating it...');
+        await query(`
+          CREATE TABLE IF NOT EXISTS package_images (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            package_id INT NOT NULL,
+            image_path VARCHAR(500) NOT NULL,
+            display_order INT DEFAULT 1,
+            image_data LONGTEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_package_id (package_id),
+            INDEX idx_display_order (display_order)
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        `);
+        console.log('package_images table created successfully');
+      }
+    } catch (tableError) {
+      console.error('Error checking/creating package_images table:', tableError);
+      return NextResponse.json({
+        error: 'Database configuration issue - unable to create required table'
+      }, { status: 500 });
+    }
+
     // Get form data
     console.log('Parsing form data...');
     const formData = await request.formData();

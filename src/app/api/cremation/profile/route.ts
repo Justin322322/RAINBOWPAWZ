@@ -89,7 +89,7 @@ export async function GET(request: NextRequest) {
       },
       {
         headers: {
-          'Cache-Control': 'no-store, no-cache, must-revalidate',
+          'Cache-Control': 'private, max-age=60', // 1 minute cache for business profile data
           'Pragma': 'no-cache'
         }
       }

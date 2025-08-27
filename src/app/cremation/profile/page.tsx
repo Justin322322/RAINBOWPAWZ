@@ -115,10 +115,10 @@ function CremationProfilePage({ userData }: { userData: any }) {
       }
       abortControllerRef.current = new AbortController();
 
-      const response = await fetch(`/api/cremation/profile?t=${Date.now()}`, {
+      const response = await fetch(`/api/cremation/profile`, {
         method: 'GET',
         headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Cache-Control': 'max-age=60', // Allow 1 minute caching
           'Pragma': 'no-cache'
         },
         credentials: 'include',

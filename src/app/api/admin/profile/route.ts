@@ -1,47 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query, withTransaction } from '@/lib/db';
-import { getAuthTokenFromRequest } from '@/utils/auth';
+import { verifySecureAuth } from '@/lib/secureAuth';
 import bcrypt from 'bcryptjs';
 import { ensureAdminProfilesTableExists } from './ensure-table';
-
-
 
 // GET - Retrieve admin profile data
 export async function GET(request: NextRequest) {
   try {
-    // Verify admin authentication
-    const authToken = getAuthTokenFromRequest(request);
-    if (!authToken) {
+    // Use modern secure authentication
+    const user = await verifySecureAuth(request);
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    let userId: string | null = null;
-    let accountType: string | null = null;
-
-    // Check if it's a JWT token or old format
-    if (authToken.includes('.')) {
-      // JWT token format
-      const { verifyToken } = await import('@/lib/jwt');
-      const payload = verifyToken(authToken);
-      userId = payload?.sub || null; // Use 'sub' instead of deprecated 'userId'
-      accountType = payload?.accountType || null;
-    } else {
-      // Old format fallback
-      const parts = authToken.split('_');
-      if (parts.length === 2) {
-        userId = parts[0];
-        accountType = parts[1];
-      }
-    }
-
-    if (accountType !== 'admin') {
+    if (user.accountType !== 'admin') {
       return NextResponse.json({ error: 'Unauthorized - Admin access required' }, { status: 403 });
     }
 
     // Ensure admin_profiles table exists
     await ensureAdminProfilesTableExists();
 
-    // Get admin profile data
+    // Get admin profile data with optimized single query
     const adminResult = await query(`
       SELECT
         u.user_id as id,
@@ -51,13 +30,14 @@ export async function GET(request: NextRequest) {
         u.profile_picture,
         u.created_at,
         u.updated_at,
-        ap.username,
-        ap.full_name,
-        ap.admin_role
+        COALESCE(ap.username, LOWER(u.first_name)) as username,
+        COALESCE(ap.full_name, CONCAT(u.first_name, ' ', u.last_name)) as full_name,
+        COALESCE(ap.admin_role, 'admin') as admin_role
       FROM users u
       LEFT JOIN admin_profiles ap ON u.user_id = ap.user_id
       WHERE u.user_id = ? AND u.role = 'admin'
-    `, [userId]) as any[];
+      LIMIT 1
+    `, [user.userId]) as any[];
 
     if (!adminResult || adminResult.length === 0) {
       return NextResponse.json({ error: 'Admin profile not found' }, { status: 404 });
@@ -73,12 +53,17 @@ export async function GET(request: NextRequest) {
         email: admin.email,
         first_name: admin.first_name,
         last_name: admin.last_name,
-        username: admin.username || admin.first_name.toLowerCase(),
-        full_name: admin.full_name || `${admin.first_name} ${admin.last_name}`,
-        admin_role: admin.admin_role || 'admin',
+        username: admin.username,
+        full_name: admin.full_name,
+        admin_role: admin.admin_role,
         profile_picture: admin.profile_picture,
         created_at: admin.created_at,
         updated_at: admin.updated_at
+      }
+    }, {
+      headers: {
+        'Cache-Control': 'private, max-age=30', // 30 second cache for profile data
+        'Pragma': 'no-cache'
       }
     });
 
@@ -94,32 +79,13 @@ export async function GET(request: NextRequest) {
 // PUT - Update admin profile data
 export async function PUT(request: NextRequest) {
   try {
-    // Verify admin authentication
-    const authToken = getAuthTokenFromRequest(request);
-    if (!authToken) {
+    // Use modern secure authentication
+    const user = await verifySecureAuth(request);
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    let userId: string | null = null;
-    let accountType: string | null = null;
-
-    // Check if it's a JWT token or old format
-    if (authToken.includes('.')) {
-      // JWT token format
-      const { verifyToken } = await import('@/lib/jwt');
-      const payload = verifyToken(authToken);
-      userId = payload?.sub || null; // Use 'sub' instead of deprecated 'userId'
-      accountType = payload?.accountType || null;
-    } else {
-      // Old format fallback
-      const parts = authToken.split('_');
-      if (parts.length === 2) {
-        userId = parts[0];
-        accountType = parts[1];
-      }
-    }
-
-    if (accountType !== 'admin') {
+    if (user.accountType !== 'admin') {
       return NextResponse.json({ error: 'Unauthorized - Admin access required' }, { status: 403 });
     }
 
@@ -151,7 +117,7 @@ export async function PUT(request: NextRequest) {
       // Get current password hash
       const passwordResult = await query(
         'SELECT password FROM users WHERE user_id = ?',
-        [userId]
+        [user.userId]
       ) as any[];
 
       if (!passwordResult || passwordResult.length === 0) {
@@ -183,7 +149,7 @@ export async function PUT(request: NextRequest) {
           `UPDATE users
            SET first_name = ?, last_name = ?, email = ?, password = ?, updated_at = NOW()
            WHERE user_id = ?`,
-          [first_name, last_name, email, hashedNewPassword, userId]
+          [first_name, last_name, email, hashedNewPassword, user.userId]
         );
       } else {
         // Update user without password change
@@ -191,7 +157,7 @@ export async function PUT(request: NextRequest) {
           `UPDATE users
            SET first_name = ?, last_name = ?, email = ?, updated_at = NOW()
            WHERE user_id = ?`,
-          [first_name, last_name, email, userId]
+          [first_name, last_name, email, user.userId]
         );
       }
 
@@ -202,7 +168,7 @@ export async function PUT(request: NextRequest) {
       // Check if admin profile exists
       const existingProfileResult = await transaction.query(
         'SELECT id FROM admin_profiles WHERE user_id = ?',
-        [userId]
+        [user.userId]
       ) as any[];
 
       if (existingProfileResult && existingProfileResult.length > 0) {
@@ -211,14 +177,14 @@ export async function PUT(request: NextRequest) {
           `UPDATE admin_profiles
            SET username = ?, full_name = ?, updated_at = NOW()
            WHERE user_id = ?`,
-          [username, full_name, userId]
+          [username, full_name, user.userId]
         );
       } else {
         // Create new admin profile
         await transaction.query(
           `INSERT INTO admin_profiles (user_id, username, full_name, admin_role, created_at, updated_at)
            VALUES (?, ?, ?, 'admin', NOW(), NOW())`,
-          [userId, username, full_name]
+          [user.userId, username, full_name]
         );
       }
 
@@ -235,13 +201,14 @@ export async function PUT(request: NextRequest) {
         u.profile_picture,
         u.created_at,
         u.updated_at,
-        ap.username,
-        ap.full_name,
-        ap.admin_role
+        COALESCE(ap.username, LOWER(u.first_name)) as username,
+        COALESCE(ap.full_name, CONCAT(u.first_name, ' ', u.last_name)) as full_name,
+        COALESCE(ap.admin_role, 'admin') as admin_role
       FROM users u
       LEFT JOIN admin_profiles ap ON u.user_id = ap.user_id
       WHERE u.user_id = ? AND u.role = 'admin'
-    `, [userId]) as any[];
+      LIMIT 1
+    `, [user.userId]) as any[];
 
     if (!updatedAdminResult || updatedAdminResult.length === 0) {
       return NextResponse.json({ error: 'Failed to retrieve updated profile' }, { status: 500 });
@@ -257,9 +224,9 @@ export async function PUT(request: NextRequest) {
         email: admin.email,
         first_name: admin.first_name,
         last_name: admin.last_name,
-        username: admin.username || admin.first_name.toLowerCase(),
-        full_name: admin.full_name || `${admin.first_name} ${admin.last_name}`,
-        admin_role: admin.admin_role || 'admin',
+        username: admin.username,
+        full_name: admin.full_name,
+        admin_role: admin.admin_role,
         profile_picture: admin.profile_picture,
         created_at: admin.created_at,
         updated_at: admin.updated_at
