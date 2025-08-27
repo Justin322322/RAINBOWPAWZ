@@ -123,12 +123,14 @@ export default function MapComponent({
       return;
     }
 
+    console.log(`🗺️ [MapComponent] Starting geocoding for ${type}: ${address}`);
     setIsGeocoding(true);
     setGeocodeError(null);
     setGeocodeAccuracy(null);
 
     try {
       const result = await geocodingService.geocodeAddress(address);
+      console.log(`🗺️ [MapComponent] Geocoding successful for ${type}:`, result);
 
       // Update accuracy indicator
       setGeocodeAccuracy(result.accuracy);

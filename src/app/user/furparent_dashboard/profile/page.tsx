@@ -441,12 +441,13 @@ function ProfilePage({ userData: initialUserData }: ProfilePageProps) {
     const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
 
     try {
+      // Use our API endpoint instead of direct Nominatim calls
       const response = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&countrycodes=ph&addressdetails=1`,
+        `/api/geocoding?lat=${latitude}&lon=${longitude}&type=reverse`,
         {
+          method: 'GET',
           headers: {
-            'User-Agent': 'RainbowPaws/1.0 (contact@rainbowpaws.com)',
-            'Referer': window.location.origin
+            'Content-Type': 'application/json'
           },
           signal: controller.signal
         }

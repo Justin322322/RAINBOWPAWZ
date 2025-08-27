@@ -175,56 +175,70 @@ class GeocodingService {
   }
 
   /**
-   * Geocode using Nominatim (OpenStreetMap)
+   * Geocode using Nominatim (OpenStreetMap) via our API proxy
    */
   private async geocodeWithNominatim(address: string): Promise<GeocodingResult> {
     const cleanAddress = this.cleanAddress(address);
-    // Enhanced bounds for better coverage of Bataan and surrounding areas
-    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(cleanAddress)}&countrycodes=ph&viewbox=119.8,14.0,121.5,15.5&bounded=1&limit=3&addressdetails=1&dedupe=1`;
-
-    const response = await fetch(url, {
-      headers: {
-        'User-Agent': 'RainbowPaws/1.0 (contact@rainbowpaws.com)'
-      }
-    });
-
-    if (!response.ok) {
-      if (response.status === 429) {
-        throw this.createError('Rate limited', 'RATE_LIMITED', true);
-      }
-      throw this.createError(`HTTP ${response.status}`, 'API_ERROR', true);
-    }
-
-    const data = await response.json();
-
-    if (!data || data.length === 0) {
-      // Try simplified address
-      return this.trySimplifiedNominatim(address);
-    }
-
-    // Pick the best result based on confidence and relevance
-    let bestResult = data[0];
-    let bestConfidence = this.calculateNominatimConfidence(bestResult);
-
-    for (let i = 1; i < data.length; i++) {
-      const confidence = this.calculateNominatimConfidence(data[i]);
-      if (confidence > bestConfidence) {
-        bestResult = data[i];
-        bestConfidence = confidence;
-      }
-    }
     
-    return {
-      coordinates: [parseFloat(bestResult.lat), parseFloat(bestResult.lon)],
-      formattedAddress: bestResult.display_name,
-      confidence: bestConfidence,
-      provider: 'nominatim',
-      accuracy: this.getAccuracyFromConfidence(bestConfidence)
-    };
+    // Use our API endpoint instead of direct Nominatim calls
+    const url = `/api/geocoding?address=${encodeURIComponent(cleanAddress)}`;
+
+    try {
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        if (response.status === 429) {
+          throw this.createError('Rate limited', 'RATE_LIMITED', true);
+        }
+        throw this.createError(`HTTP ${response.status}`, 'API_ERROR', true);
+      }
+
+      const data = await response.json();
+
+      if (!data || data.length === 0) {
+        // Try simplified address
+        return this.trySimplifiedNominatim(address);
+      }
+
+      // Pick the best result based on confidence and relevance
+      let bestResult = data[0];
+      let bestConfidence = this.calculateNominatimConfidence(bestResult);
+
+      for (let i = 1; i < data.length; i++) {
+        const confidence = this.calculateNominatimConfidence(data[i]);
+        if (confidence > bestConfidence) {
+          bestResult = data[i];
+          bestConfidence = confidence;
+        }
+      }
+      
+      return {
+        coordinates: [parseFloat(bestResult.lat), parseFloat(bestResult.lon)],
+        formattedAddress: bestResult.display_name,
+        confidence: bestConfidence,
+        provider: 'nominatim',
+        accuracy: this.getAccuracyFromConfidence(bestConfidence)
+      };
+    } catch (error) {
+      console.error('🗺️ [GeocodingService] Nominatim geocoding failed:', error);
+      
+      // If our API endpoint fails, try simplified address as fallback
+      try {
+        return await this.trySimplifiedNominatim(address);
+      } catch (fallbackError) {
+        console.error('🗺️ [GeocodingService] Fallback geocoding also failed:', fallbackError);
+        throw error; // Re-throw the original error
+      }
+    }
   }
 
   /**
-   * Try geocoding with simplified address for Nominatim
+   * Try geocoding with simplified address for Nominatim via our API proxy
    */
   private async trySimplifiedNominatim(address: string): Promise<GeocodingResult> {
     const parts = address.split(',');
@@ -233,11 +247,12 @@ class GeocodingService {
     }
 
     const simplifiedAddress = parts.slice(-2).join(',').trim();
-    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(simplifiedAddress)}&countrycodes=ph&limit=1`;
+    const url = `/api/geocoding?address=${encodeURIComponent(simplifiedAddress)}`;
 
     const response = await fetch(url, {
+      method: 'GET',
       headers: {
-        'User-Agent': 'RainbowPaws/1.0 (contact@rainbowpaws.com)'
+        'Content-Type': 'application/json'
       }
     });
 
