@@ -15,8 +15,10 @@ export default function NotificationBell() {
   const buttonRef = useRef<HTMLButtonElement>(null);
   const { notifications, unreadCount, loading, markAsRead, markAllAsRead, removeNotification, fetchNotifications } = useNotifications();
 
-  // Debug logging
-  console.log('NotificationBell render - unreadCount:', unreadCount, 'notifications:', notifications);
+  // Debug logging (only in development)
+  if (process.env.NODE_ENV === 'development') {
+    console.log('NotificationBell render - unreadCount:', unreadCount, 'notifications:', notifications);
+  }
 
   // Calculate dropdown position to prevent overflow
   const calculateDropdownPosition = () => {
@@ -63,7 +65,9 @@ export default function NotificationBell() {
   // Handle notification click
   const handleNotificationClick = async (notification: Notification) => {
     try {
-      console.log('Notification clicked:', notification.id, 'is_read:', notification.is_read);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Notification clicked:', notification.id, 'is_read:', notification.is_read);
+      }
 
       // Prevent multiple rapid clicks on the same notification
       if (clickingNotificationId === notification.id) {
@@ -73,7 +77,9 @@ export default function NotificationBell() {
 
       // Mark as read if unread
       if (notification.is_read === 0) {
-        console.log('Marking notification as read:', notification.id);
+        if (process.env.NODE_ENV === 'development') {
+          console.log('Marking notification as read:', notification.id);
+        }
         setClickingNotificationId(notification.id);
 
         try {
@@ -243,8 +249,8 @@ export default function NotificationBell() {
           <BellIcon className="h-6 w-6" />
         )}
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center shadow-md">
-            {unreadCount > 9 ? '9+' : unreadCount}
+          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center shadow-md z-10 min-w-[20px]">
+            {unreadCount > 99 ? '99+' : unreadCount}
           </span>
         )}
       </button>

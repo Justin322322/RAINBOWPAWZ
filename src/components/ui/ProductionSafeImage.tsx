@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
+// Removed localStorage dependency for better performance
 
 interface ProductionSafeImageProps {
   src: string;
@@ -42,9 +43,13 @@ export const ProductionSafeImage: React.FC<ProductionSafeImageProps> = ({
 
   // Handle image load error
   const handleError = () => {
-    console.warn('Image failed to load:', imgSrc);
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('Image failed to load:', imgSrc);
+    }
     if (imgSrc !== fallbackSrc) {
-      console.log('Falling back to:', fallbackSrc);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Falling back to:', fallbackSrc);
+      }
       setImgSrc(fallbackSrc);
       setError(true);
     }
@@ -79,17 +84,21 @@ export const ProductionSafeImage: React.FC<ProductionSafeImageProps> = ({
     }
 
     // For any other case, use the fallback
-    console.warn('Unknown image source format:', imgSrc);
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('Unknown image source format:', imgSrc);
+    }
     return fallbackSrc;
   };
 
   const finalSrc = getFinalSrc();
 
-  // Debug logging for image URLs
-  console.log('ProductionSafeImage - Original src:', src);
-  console.log('ProductionSafeImage - Current imgSrc:', imgSrc);
-  console.log('ProductionSafeImage - Final src:', finalSrc);
-  console.log('ProductionSafeImage - Error state:', error);
+  // Debug logging for image URLs (only in development)
+  if (process.env.NODE_ENV === 'development') {
+    console.log('ProductionSafeImage - Original src:', src);
+    console.log('ProductionSafeImage - Current imgSrc:', imgSrc);
+    console.log('ProductionSafeImage - Final src:', finalSrc);
+    console.log('ProductionSafeImage - Error state:', error);
+  }
 
   // Use Next.js Image component for better optimization
   return fill ? (

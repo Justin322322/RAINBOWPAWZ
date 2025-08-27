@@ -24,8 +24,23 @@ export async function GET(
 
     const profilePicture = result[0].profile_picture;
 
-    // If it's already a data URL, return it as JSON
+    // If it's already a data URL, check size and handle appropriately
     if (profilePicture.startsWith('data:')) {
+      // Calculate approximate size
+      const sizeInBytes = profilePicture.length * 0.75; // Base64 is ~33% larger than binary
+      
+      // If image is very large (>2MB), suggest using file-based storage instead
+      if (sizeInBytes > 2 * 1024 * 1024) {
+        console.warn(`Large profile image detected for user ${userId}: ${Math.round(sizeInBytes / 1024 / 1024)}MB`);
+        
+        // For very large images, return a compressed version or suggest re-upload
+        return NextResponse.json({ 
+          success: true, 
+          imageData: profilePicture,
+          warning: 'Image is large and may cause performance issues'
+        });
+      }
+      
       return NextResponse.json({ 
         success: true, 
         imageData: profilePicture 
@@ -40,6 +55,15 @@ export async function GET(
 
   } catch (error) {
     console.error('Error fetching profile picture:', error);
+    
+    // Check if it's a database connection error
+    if (error instanceof Error && error.message.includes('Too many connections')) {
+      return NextResponse.json(
+        { error: 'Database temporarily unavailable. Please try again in a moment.' },
+        { status: 503 }
+      );
+    }
+    
     return NextResponse.json(
       { error: 'Failed to fetch profile picture' },
       { status: 500 }

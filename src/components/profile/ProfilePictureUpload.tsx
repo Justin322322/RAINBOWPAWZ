@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { CameraIcon, CheckCircleIcon, XCircleIcon, UserIcon } from '@heroicons/react/24/outline';
 import { uploadProfilePictureAjax, getImagePath, addCacheBuster } from '@/utils/imageUtils';
 import { useToast } from '@/context/ToastContext';
+import { clearProfileImageCache } from '@/utils/profileImageUtils';
 
 interface ProfilePictureUploadProps {
   currentImagePath?: string;
@@ -100,6 +101,11 @@ export default function ProfilePictureUpload({
       );
 
       if (result.success && result.profilePicturePath) {
+        // Clear profile image cache to force refresh
+        if (additionalData?.userId) {
+          clearProfileImageCache(additionalData.userId);
+        }
+        
         // Update timestamp to force image refresh
         setImageTimestamp(Date.now());
         

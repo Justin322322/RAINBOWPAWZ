@@ -164,15 +164,21 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       const notifications = data.notifications || [];
       const unreadCount = data.unread_count || 0;
 
-      console.log('Fetched notifications:', notifications);
-      console.log('Unread count from API:', unreadCount);
-      console.log('Calculated unread count:', notifications.filter((n: Notification) => n.is_read === 0).length);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Fetched notifications:', notifications);
+        console.log('Unread count from API:', unreadCount);
+        console.log('Calculated unread count:', notifications.filter((n: Notification) => n.is_read === 0).length);
+      }
+
+      // Ensure unread count is consistent with actual notifications
+      const calculatedUnreadCount = notifications.filter((n: Notification) => n.is_read === 0).length;
+      const finalUnreadCount = Math.max(unreadCount, calculatedUnreadCount);
 
       setNotifications(notifications);
-      setUnreadCount(unreadCount);
+      setUnreadCount(finalUnreadCount);
       setError(null);
 
-      return { notifications, unreadCount };
+      return { notifications, unreadCount: finalUnreadCount };
     } catch (error) {
       console.error('Error fetching notifications:', error);
       setError('Failed to fetch notifications');
@@ -191,7 +197,9 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       return;
     }
 
-    console.log('Marking notification as read:', notificationId);
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Marking notification as read:', notificationId);
+    }
 
     try {
       // Determine the correct endpoint based on user type using async function
@@ -227,7 +235,9 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
 
         // Recalculate unread count from the updated notifications
         const newUnreadCount = updated.filter(n => n.is_read === 0).length;
-        console.log('Updated unread count:', newUnreadCount, 'for notification:', notificationId);
+        if (process.env.NODE_ENV === 'development') {
+          console.log('Updated unread count:', newUnreadCount, 'for notification:', notificationId);
+        }
         setUnreadCount(newUnreadCount);
 
         return updated;

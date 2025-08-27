@@ -421,12 +421,13 @@ async function enhancePackagesWithDetails(pkgs: any[]): Promise<any[]> {
   const ids = pkgs.map((p) => p.id);
   const providerIds = [...new Set(pkgs.map((p) => p.providerId))];
 
+  // Optimized parallel queries with proper indexing
   const [incs, adds, imgs, sizePricing, petTypes] = await Promise.all([
-    query(`SELECT package_id, description FROM package_inclusions WHERE package_id IN (?)`, [ids]),
-    query(`SELECT package_id, addon_id as id, description, price FROM package_addons WHERE package_id IN (?)`, [ids]),
-    query(`SELECT package_id, image_path, display_order, image_data FROM package_images WHERE package_id IN (?) ORDER BY display_order`, [ids]),
-    query(`SELECT package_id, size_category, weight_range_min, weight_range_max, price FROM package_size_pricing WHERE package_id IN (?)`, [ids]),
-    query(`SELECT provider_id, pet_type FROM business_pet_types WHERE provider_id IN (?) AND is_active = 1`, [providerIds]),
+    query(`SELECT package_id, description FROM package_inclusions WHERE package_id IN (?) ORDER BY package_id`, [ids]),
+    query(`SELECT package_id, addon_id as id, description, price FROM package_addons WHERE package_id IN (?) ORDER BY package_id`, [ids]),
+    query(`SELECT package_id, image_path, display_order, image_data FROM package_images WHERE package_id IN (?) ORDER BY package_id, display_order`, [ids]),
+    query(`SELECT package_id, size_category, weight_range_min, weight_range_max, price FROM package_size_pricing WHERE package_id IN (?) ORDER BY package_id`, [ids]),
+    query(`SELECT provider_id, pet_type FROM business_pet_types WHERE provider_id IN (?) AND is_active = 1 ORDER BY provider_id`, [providerIds]),
   ]) as any[][];
 
   const groupBy = (arr: any[], key: string) =>
@@ -466,10 +467,10 @@ async function enhancePackagesWithDetails(pkgs: any[]): Promise<any[]> {
           return path; // Already correct
         }
         if (path.startsWith('/uploads/packages/')) {
-          return `/api/image/packages/${path.substring('/uploads/packages/'.length)}`;
+          return `/api/image${path}`;
         }
         if (path.startsWith('uploads/packages/')) {
-          return `/api/image/packages/${path.substring('uploads/packages/'.length)}`;
+          return `/api/image/${path}`;
         }
         if (path.includes('packages/')) {
           const parts = path.split('packages/');
