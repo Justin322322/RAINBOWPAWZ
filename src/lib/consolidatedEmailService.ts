@@ -76,18 +76,29 @@ function createTransporter(recipientDomain?: string): nodemailer.Transporter {
     });
   }
 
-  // Base configuration
+  // Base configuration with Railway-specific optimizations
   const baseConfig = {
     host: process.env.SMTP_HOST || 'smtp.gmail.com',
     port: parseInt(process.env.SMTP_PORT || '587'),
     secure: process.env.SMTP_SECURE === 'true', // true for 465, false for other ports
+    requireTLS: true, // Force TLS for Gmail
     auth: {
       user: process.env.SMTP_USER,
       pass: process.env.SMTP_PASS,
     },
     tls: {
-      rejectUnauthorized: false // Accept self-signed certificates
-    }
+      rejectUnauthorized: false, // Accept self-signed certificates
+      ciphers: 'SSLv3' // Compatibility with older SSL versions
+    },
+    // Railway-specific timeout settings
+    connectionTimeout: 60000, // 60 seconds
+    greetingTimeout: 30000, // 30 seconds
+    socketTimeout: 60000, // 60 seconds
+    // Additional Gmail-specific settings
+    pool: true,
+    maxConnections: 5,
+    maxMessages: 100,
+    rateLimit: 14 // messages per second
   };
 
   // Domain-specific optimizations

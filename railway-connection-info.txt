@@ -1,0 +1,22 @@
+Railway MySQL Database Connection Information
+=====================================================
+
+Host: gondola.proxy.rlwy.net
+Port: 31323
+Username: root
+Password: ieGxToeQbsLLVrrkwaYfpOjSAZEvBGaQ
+Database: railway
+
+Connection URL: mysql://root:ieGxToeQbsLLVrrkwaYfpOjSAZEvBGaQ@gondola.proxy.rlwy.net:31323/railway
+
+To import your SQL dump manually:
+1. Install MySQL client if not already installed
+2. Run: mysql -h gondola.proxy.rlwy.net -P 31323 -u root -p railway < rainbow_paws.sql
+3. Enter password when prompted: ieGxToeQbsLLVrrkwaYfpOjSAZEvBGaQ
+
+Alternative methods:
+- Use phpMyAdmin or MySQL Workbench with the above connection details
+- Use the Railway web interface database tab to import the SQL file
+- Use any MySQL client tool with the connection information above
+
+Your Railway project URL: https://railway.com/project/a9236b27-591e-4486-bead-e80eca90e264

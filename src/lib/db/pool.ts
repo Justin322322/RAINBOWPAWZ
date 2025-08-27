@@ -5,8 +5,17 @@ export const MYSQL_PORT = 3306;
 
 // Helper function to get SSL config
 export const getSSLConfig = () => {
-  // Only use SSL in production and when explicitly configured
+  // Use SSL for cloud databases in production
   if (process.env.NODE_ENV === "production" && process.env.DATABASE_URL) {
+    // Railway MySQL requires SSL
+    if (isRailwayMySQL()) {
+      return { rejectUnauthorized: false }; // Railway uses self-signed certificates
+    }
+    // PlanetScale requires strict SSL
+    if (isPlanetScale()) {
+      return { rejectUnauthorized: true };
+    }
+    // Default SSL for other cloud providers
     return { rejectUnauthorized: true };
   }
   return undefined; // No SSL for local development
@@ -31,7 +40,25 @@ export function isPlanetScale(): boolean {
   );
 }
 
-// Prefer DATABASE_URL if provided (e.g., PlanetScale)
+// Detect Railway MySQL environment
+export function isRailwayMySQL(): boolean {
+  const url = process.env.DATABASE_URL || process.env.MYSQL_URL || "";
+  const host = (() => {
+    try {
+      const u = new URL(url);
+      return u.hostname || "";
+    } catch {
+      return "";
+    }
+  })();
+  return (
+    /railway/i.test(url) ||
+    /rlwy\.net/i.test(host) ||
+    process.env.RAILWAY === "true"
+  );
+}
+
+// Prefer DATABASE_URL if provided (e.g., Railway, PlanetScale)
 function tryCreatePoolFromDatabaseUrl(): mysql.Pool | null {
   if (process.env.USE_DATABASE_URL === 'false') {
     return null;
@@ -51,6 +78,9 @@ function tryCreatePoolFromDatabaseUrl(): mysql.Pool | null {
       queueLimit: 0,
       multipleStatements: false,
       ssl: getSSLConfig(),
+      acquireTimeout: 60000,
+      timeout: 60000,
+      reconnect: true,
     });
     return pool;
   } catch {
@@ -101,14 +131,14 @@ let _pool: mysql.Pool;
 function initPool(): mysql.Pool {
   let pool: mysql.Pool;
   
-  // Strategy 1: Try cloud database only if we have a valid real PlanetScale URL
+  // Strategy 1: Try cloud database if DATABASE_URL is provided
   const databaseUrl = process.env.DATABASE_URL || process.env.MYSQL_URL;
   
-  // Only use cloud if we have a real PlanetScale URL (not placeholder)
+  // Use cloud database if we have a valid DATABASE_URL (not placeholder)
   if (databaseUrl && 
-      databaseUrl.includes('psdb.cloud') && 
       !databaseUrl.includes('your-planetscale-host') &&
-      !databaseUrl.includes('your-planetscale-username')) {
+      !databaseUrl.includes('your-planetscale-username') &&
+      !databaseUrl.includes('localhost')) {
     console.log("🔄 Attempting to connect to cloud database...");
     try {
       const cloudPool = tryCreatePoolFromDatabaseUrl();

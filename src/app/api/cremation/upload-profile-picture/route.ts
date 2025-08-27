@@ -3,44 +3,7 @@ import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
 import { existsSync } from 'fs';
 import { query } from '@/lib/db';
-import { cleanupOldFiles } from '@/utils/fileSystemUtils';
 import { verifySecureAuth } from '@/lib/secureAuth';
-
-// Function to save profile picture to disk
-async function saveProfilePicture(file: File, userId: string): Promise<string> {
-  try {
-
-    // Create a unique filename with timestamp
-    const timestamp = Date.now();
-    const originalName = file.name.replace(/\s+/g, '_').toLowerCase();
-    const extension = originalName.split('.').pop() || 'jpg';
-    const filename = `profile_picture_${timestamp}.${extension}`;
-
-    // Create the directory path
-    const uploadsDir = join(process.cwd(), 'public', 'uploads', 'profile-pictures', userId);
-
-    // Ensure directory exists
-    if (!existsSync(uploadsDir)) {
-      await mkdir(uploadsDir, { recursive: true });
-    }
-
-    // Create file path
-    const filePath = join(uploadsDir, filename);
-
-    // Convert file to buffer and save
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-    await writeFile(filePath, buffer);
-
-    // Return the relative path
-    const relativePath = `/uploads/profile-pictures/${userId}/${filename}`;
-
-    return relativePath;
-  } catch (error) {
-    console.error(`Failed to save profile picture:`, error);
-    throw new Error(`Failed to save profile picture: ${error instanceof Error ? error.message : 'Unknown error'}`);
-  }
-}
 
 export async function POST(request: NextRequest) {
   try {
@@ -97,17 +60,30 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Save the profile picture
-    const profilePicturePath = await saveProfilePicture(profilePicture, userId.toString());
+    // Save the profile picture to file system (similar to package uploads)
+    const timestamp = Date.now();
+    const originalName = profilePicture.name.replace(/\s+/g, '_').toLowerCase();
+    const extension = originalName.split('.').pop() || 'jpg';
+    const filename = `profile_picture_${timestamp}.${extension}`;
 
-    // Clean up old profile pictures in the directory (keep the new one)
-    try {
-      // First save, then clean up to ensure we always have at least one picture
-      await cleanupOldFiles(userId.toString(), 'profile-pictures', true);
-    } catch (cleanupError) {
-      console.error('Error cleaning up old profile pictures:', cleanupError);
-      // Continue with the process even if cleanup fails
+    // Create the directory path
+    const uploadsDir = join(process.cwd(), 'public', 'uploads', 'profile-pictures', userId.toString());
+
+    // Ensure directory exists
+    if (!existsSync(uploadsDir)) {
+      await mkdir(uploadsDir, { recursive: true });
     }
+
+    // Create file path
+    const filePath = join(uploadsDir, filename);
+
+    // Convert file to buffer and save
+    const bytes = await profilePicture.arrayBuffer();
+    const buffer = Buffer.from(bytes);
+    await writeFile(filePath, buffer);
+
+    // Return the relative path
+    const profilePicturePath = `/uploads/profile-pictures/${userId}/${filename}`;
 
     // Update the database with the new profile picture path
     try {
