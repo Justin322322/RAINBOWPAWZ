@@ -5,6 +5,10 @@ import * as fs from 'fs';
 import { join } from 'path';
 import { getImagePath } from '@/utils/imagePathUtils';
 
+export const runtime = 'nodejs';
+export const preferredRegion = ['sin1'];
+export const revalidate = 60;
+
 export async function GET(request: NextRequest) {
   try {
     const url = new URL(request.url);

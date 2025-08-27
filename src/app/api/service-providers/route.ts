@@ -4,6 +4,45 @@ import { calculateDistance, getBataanCoordinates } from '@/utils/distance';
 import { routingService } from '@/utils/routing';
 import { serverCache } from '@/utils/server-cache';
 
+export const runtime = 'nodejs';
+export const preferredRegion = ['sin1'];
+
+// Cache for table/column existence to avoid repeated information_schema hits
+let __spSchemaCache: { checkedAt: number; hasTable: boolean; columns: Set<string> } | null = null;
+const SCHEMA_TTL_MS = 10 * 60 * 1000; // 10 minutes
+
+function getCachedSchema() {
+  if (!__spSchemaCache) return null;
+  if (Date.now() - __spSchemaCache.checkedAt > SCHEMA_TTL_MS) return null;
+  return __spSchemaCache;
+}
+
+async function ensureServiceProvidersSchema() {
+  const cached = getCachedSchema();
+  if (cached) return cached;
+
+  const tableCheckResult = await query(`
+        SELECT table_name
+        FROM information_schema.tables
+        WHERE table_schema = DATABASE()
+        AND table_name = 'service_providers'
+      `) as any[];
+  const hasTable = tableCheckResult.length > 0;
+
+  const columnsResult = hasTable
+    ? await query(`
+        SELECT COLUMN_NAME
+        FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'service_providers'
+      `) as any[]
+    : [];
+
+  const columns = new Set<string>(columnsResult.map((c: any) => c.COLUMN_NAME));
+  __spSchemaCache = { checkedAt: Date.now(), hasTable, columns };
+  return __spSchemaCache;
+}
+
 export async function GET(request: Request) {
   // Extract user location from query parameters
   const { searchParams } = new URL(request.url);
@@ -73,15 +112,8 @@ export async function GET(request: Request) {
   }
   try {
     try {
-      // Check if service_providers table exists
-      const tableCheckResult = await query(`
-        SELECT table_name
-        FROM information_schema.tables
-        WHERE table_schema = DATABASE()
-        AND table_name = 'service_providers'
-      `) as any[];
-
-      if (tableCheckResult.length === 0) {
+      const schema = await ensureServiceProvidersSchema();
+      if (!schema.hasTable) {
         throw new Error('Database schema error: service_providers table does not exist');
       }
 
@@ -91,20 +123,11 @@ export async function GET(request: Request) {
       const _totalProvidersCount = await query(`
         SELECT COUNT(*) as count FROM service_providers WHERE provider_type = 'cremation'
       `) as any[];
-      
-      
-      // First check which status columns exist in the service_providers table
-      const columnsResult = await query(`
-        SELECT COLUMN_NAME
-        FROM INFORMATION_SCHEMA.COLUMNS
-        WHERE TABLE_SCHEMA = DATABASE()
-        AND TABLE_NAME = 'service_providers'
-      `) as any[];
 
-      const columnNames = columnsResult.map(col => col.COLUMN_NAME);
-      const hasApplicationStatus = columnNames.includes('application_status');
-      const hasVerificationStatus = columnNames.includes('verification_status');
-      const hasStatus = columnNames.includes('status');
+      const columnNames = schema.columns;
+      const hasApplicationStatus = columnNames.has('application_status');
+      const hasVerificationStatus = columnNames.has('verification_status');
+      const hasStatus = columnNames.has('status');
 
       // Build a WHERE clause based on available columns
       let whereClause = '';

@@ -78,7 +78,7 @@ function tryCreatePoolFromDatabaseUrl(): mysql.Pool | null {
       queueLimit: 0,
       multipleStatements: false,
       ssl: getSSLConfig(),
-      connectTimeout: 60000,
+      connectTimeout: 10000,
       idleTimeout: 60000,
     });
     return pool;
@@ -130,51 +130,41 @@ const globalForMysql = globalThis as unknown as GlobalWithMysql;
 let _pool: mysql.Pool;
 
 function initPool(): mysql.Pool {
-  let pool: mysql.Pool;
-  
-  // Strategy 1: Try cloud database if DATABASE_URL is provided
+  // Production: require a valid DATABASE_URL and never fall back to localhost
+  if (process.env.NODE_ENV === "production") {
+    const cloudPool = tryCreatePoolFromDatabaseUrl();
+    if (!cloudPool) {
+      throw new Error("DATABASE_URL is required in production and must be valid");
+    }
+    return cloudPool;
+  }
+
+  // Development: prefer DATABASE_URL if present, otherwise use local
   const databaseUrl = process.env.DATABASE_URL || process.env.MYSQL_URL;
-  
-  // Use cloud database if we have a valid DATABASE_URL (not placeholder)
-  if (databaseUrl && 
+  if (databaseUrl &&
       !databaseUrl.includes('your-planetscale-host') &&
       !databaseUrl.includes('your-planetscale-username') &&
       !databaseUrl.includes('localhost')) {
-    console.log("🔄 Attempting to connect to cloud database...");
-    try {
-      const cloudPool = tryCreatePoolFromDatabaseUrl();
-      if (cloudPool) {
-        console.log("✅ Created cloud database pool, will test on first use");
-        return cloudPool;
-      }
-    } catch {
-      console.log("❌ Failed to create cloud pool, falling back to local database");
+    const cloudPool = tryCreatePoolFromDatabaseUrl();
+    if (cloudPool) {
+      return cloudPool;
     }
-  } else {
-    console.log("🔄 No valid cloud database URL found, using local database");
   }
 
-  // Strategy 2: Use local database (always fallback)
-  try {
-    const localConfig = {
-      host: "localhost",
-      user: "root",
-      password: "",
-      database: "rainbow_paws",
-      port: MYSQL_PORT,
-      waitForConnections: true,
-      connectionLimit: 10,
-      queueLimit: 0,
-      connectTimeout: 10000,
-      ssl: undefined, // Explicitly disable SSL for local
-    };
-    pool = mysql.createPool(localConfig);
-    console.log("✅ Created local database pool");
-    return pool;
-  } catch (error) {
-    console.error("❌ Local database connection failed:", error);
-    throw new Error("Failed to connect to local database");
-  }
+  // Local development pool
+  const localConfig = {
+    host: "localhost",
+    user: "root",
+    password: "",
+    database: "rainbow_paws",
+    port: MYSQL_PORT,
+    waitForConnections: true,
+    connectionLimit: 10,
+    queueLimit: 0,
+    connectTimeout: 10000,
+    ssl: undefined,
+  } as const;
+  return mysql.createPool(localConfig);
 }
 
 // Initialize pool once, with dev/serverless global cache to avoid hot-reload churn
