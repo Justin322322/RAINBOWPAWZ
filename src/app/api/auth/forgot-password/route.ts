@@ -6,7 +6,7 @@ import crypto from 'crypto';
 import { sendPasswordResetEmail } from '@/lib/consolidatedEmailService';
 
 // Specify that this route should use the Node.js runtime, not the Edge runtime
-export const runtime = 'nodejs';
+
 
 export async function POST(request: Request) {
   try {

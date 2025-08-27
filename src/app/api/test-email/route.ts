@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { sendPasswordResetEmail } from '@/lib/consolidatedEmailService';
 
-export const runtime = 'nodejs';
+
 
 export async function POST(request: Request) {
   try {

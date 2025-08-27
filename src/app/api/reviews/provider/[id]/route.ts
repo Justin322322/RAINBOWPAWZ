@@ -149,9 +149,10 @@ export async function GET(
           if (bookingIds.length > 0) {
             try {
               // Try to get booking dates from service_bookings
+              const placeholders = bookingIds.map(() => '?').join(',');
               const bookingsData = await query(
-                `SELECT id, booking_date FROM service_bookings WHERE id IN (?)`,
-                [bookingIds]
+                `SELECT id, booking_date FROM service_bookings WHERE id IN (${placeholders})`,
+                bookingIds
               ) as any[];
 
               // Create a map of booking ID to booking date
@@ -193,10 +194,11 @@ export async function GET(
               const userIds = [...new Set(reviews.map(r => r.user_id))];
 
               if (userIds.length > 0) {
+                const userPlaceholders = userIds.map(() => '?').join(',');
                 const usersData = await query(
                   `SELECT user_id, CONCAT(first_name, ' ', last_name) as user_name, email
-                   FROM users WHERE user_id IN (?)`,
-                  [userIds]
+                   FROM users WHERE user_id IN (${userPlaceholders})`,
+                  userIds
                 ) as any[];
 
                 // Create a map of user ID to user data

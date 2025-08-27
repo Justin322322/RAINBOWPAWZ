@@ -4,9 +4,7 @@ import { getAuthTokenFromRequest } from '@/utils/auth';
 import bcrypt from 'bcryptjs';
 import { ensureAdminProfilesTableExists } from './ensure-table';
 
-export const runtime = 'nodejs';
-export const preferredRegion = ['sin1'];
-export const revalidate = 30;
+
 
 // GET - Retrieve admin profile data
 export async function GET(request: NextRequest) {
@@ -23,9 +21,9 @@ export async function GET(request: NextRequest) {
     // Check if it's a JWT token or old format
     if (authToken.includes('.')) {
       // JWT token format
-      const { decodeTokenUnsafe } = await import('@/lib/jwt');
-      const payload = decodeTokenUnsafe(authToken);
-      userId = payload?.userId || null;
+      const { verifyToken } = await import('@/lib/jwt');
+      const payload = verifyToken(authToken);
+      userId = payload?.sub || null; // Use 'sub' instead of deprecated 'userId'
       accountType = payload?.accountType || null;
     } else {
       // Old format fallback
@@ -108,9 +106,9 @@ export async function PUT(request: NextRequest) {
     // Check if it's a JWT token or old format
     if (authToken.includes('.')) {
       // JWT token format
-      const { decodeTokenUnsafe } = await import('@/lib/jwt');
-      const payload = decodeTokenUnsafe(authToken);
-      userId = payload?.userId || null;
+      const { verifyToken } = await import('@/lib/jwt');
+      const payload = verifyToken(authToken);
+      userId = payload?.sub || null; // Use 'sub' instead of deprecated 'userId'
       accountType = payload?.accountType || null;
     } else {
       // Old format fallback

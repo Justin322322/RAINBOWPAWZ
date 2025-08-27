@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs';
 import { validatePasswordStrength } from '@/utils/passwordValidation';
 
 // Specify that this route should use the Node.js runtime, not the Edge runtime
-export const runtime = 'nodejs';
+
 
 export async function POST(request: Request) {
   try {

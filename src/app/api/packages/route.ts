@@ -5,9 +5,7 @@ import * as fs from 'fs';
 import { join } from 'path';
 import { getImagePath } from '@/utils/imagePathUtils';
 
-export const runtime = 'nodejs';
-export const preferredRegion = ['sin1'];
-export const revalidate = 60;
+
 
 export async function GET(request: NextRequest) {
   try {
@@ -69,6 +67,14 @@ export async function GET(request: NextRequest) {
     `;
     const countRows = (await query(countQuery, queryParams)) as any[];
     const total = +(countRows[0]?.total || 0);
+
+    // If no packages, return early to avoid unnecessary enrichment queries
+    if (!rows || rows.length === 0) {
+      return NextResponse.json({
+        packages: [],
+        pagination: { page, limit, total: 0, totalPages: 0 },
+      });
+    }
 
     const packages = await enhancePackagesWithDetails(rows);
 
@@ -425,6 +431,13 @@ async function enhancePackagesWithDetails(pkgs: any[]): Promise<any[]> {
   const ids = pkgs.map((p) => p.id);
   const providerIds = [...new Set(pkgs.map((p) => p.providerId))];
 
+  // Helper to safely create placeholders for IN (...) with prepared statements
+  const makeInClause = (items: any[]) => {
+    const safe = Array.isArray(items) && items.length > 0 ? items : [-1];
+    const placeholders = safe.map(() => '?').join(',');
+    return { inSql: `(${placeholders})`, values: safe };
+  };
+
   // Optimized parallel queries with proper indexing
   // Some production databases may not yet have the image_data column; detect it first
   const imageDataColumnCheck = await query(
@@ -440,12 +453,30 @@ async function enhancePackagesWithDetails(pkgs: any[]): Promise<any[]> {
     ? `SELECT package_id, image_path, display_order, image_data FROM package_images WHERE package_id IN (?) ORDER BY package_id, display_order`
     : `SELECT package_id, image_path, display_order FROM package_images WHERE package_id IN (?) ORDER BY package_id, display_order`;
 
+  // Build IN clauses with explicit placeholders to avoid array-binding issues
+  const pkgIn = makeInClause(ids);
+  const provIn = makeInClause(providerIds);
+
+  const imagesSelectFixed = imagesSelect.replace('IN (?)', `IN ${pkgIn.inSql}`);
+
   const [incs, adds, imgs, sizePricing, petTypes] = await Promise.all([
-    query(`SELECT package_id, description FROM package_inclusions WHERE package_id IN (?) ORDER BY package_id`, [ids]),
-    query(`SELECT package_id, addon_id as id, description, price FROM package_addons WHERE package_id IN (?) ORDER BY package_id`, [ids]),
-    query(imagesSelect, [ids]),
-    query(`SELECT package_id, size_category, weight_range_min, weight_range_max, price FROM package_size_pricing WHERE package_id IN (?) ORDER BY package_id`, [ids]),
-    query(`SELECT provider_id, pet_type FROM business_pet_types WHERE provider_id IN (?) AND is_active = 1 ORDER BY provider_id`, [providerIds]),
+    query(
+      `SELECT package_id, description FROM package_inclusions WHERE package_id IN ${pkgIn.inSql} ORDER BY package_id`,
+      pkgIn.values
+    ),
+    query(
+      `SELECT package_id, addon_id as id, description, price FROM package_addons WHERE package_id IN ${pkgIn.inSql} ORDER BY package_id`,
+      pkgIn.values
+    ),
+    query(imagesSelectFixed, pkgIn.values),
+    query(
+      `SELECT package_id, size_category, weight_range_min, weight_range_max, price FROM package_size_pricing WHERE package_id IN ${pkgIn.inSql} ORDER BY package_id`,
+      pkgIn.values
+    ),
+    query(
+      `SELECT provider_id, pet_type FROM business_pet_types WHERE provider_id IN ${provIn.inSql} AND is_active = 1 ORDER BY provider_id`,
+      provIn.values
+    ),
   ]) as any[][];
 
   const groupBy = (arr: any[], key: string) =>

@@ -4,8 +4,7 @@ import { calculateDistance, getBataanCoordinates } from '@/utils/distance';
 import { routingService } from '@/utils/routing';
 import { serverCache } from '@/utils/server-cache';
 
-export const runtime = 'nodejs';
-export const preferredRegion = ['sin1'];
+
 
 // Cache for table/column existence to avoid repeated information_schema hits
 let __spSchemaCache: { checkedAt: number; hasTable: boolean; columns: Set<string> } | null = null;
