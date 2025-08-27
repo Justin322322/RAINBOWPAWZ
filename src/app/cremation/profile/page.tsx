@@ -429,57 +429,73 @@ function CremationProfilePage({ userData }: { userData: any }) {
         setUploading(true);
         setUploadError('');
 
+        const uploadSingle = async (file: File, type: 'businessPermit' | 'birCertificate' | 'governmentId') => {
+            const contentType = file.type || 'application/octet-stream';
+            const filename = file.name || `${type}_${Date.now()}`;
+            const signRes = await fetch(`/api/blob/upload-url?contentType=${encodeURIComponent(contentType)}&filename=${encodeURIComponent(filename)}`, { credentials: 'include' });
+            if (!signRes.ok) {
+                throw new Error('Failed to prepare upload');
+            }
+            const { uploadUrl } = await signRes.json();
+            const putRes = await fetch(uploadUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': contentType },
+                body: file,
+            });
+            if (!putRes.ok) {
+                const txt = await putRes.text().catch(() => '');
+                throw new Error(txt || 'Failed to upload file');
+            }
+            const putData = await putRes.json();
+            return putData.url as string;
+        };
+
         try {
-            const formData = new FormData();
-            formData.append('userId', userData.user_id.toString());
-            if (documents.businessPermit.file) formData.append('businessPermit', documents.businessPermit.file);
-            if (documents.birCertificate.file) formData.append('birCertificate', documents.birCertificate.file);
-            if (documents.governmentId.file) formData.append('governmentId', documents.governmentId.file);
+            const filePaths: Record<string, string> = {};
+            if (documents.businessPermit.file) {
+                filePaths.business_permit_path = await uploadSingle(documents.businessPermit.file, 'businessPermit');
+            }
+            if (documents.birCertificate.file) {
+                filePaths.bir_certificate_path = await uploadSingle(documents.birCertificate.file, 'birCertificate');
+            }
+            if (documents.governmentId.file) {
+                filePaths.government_id_path = await uploadSingle(documents.governmentId.file, 'governmentId');
+            }
 
             const response = await fetch('/api/businesses/upload-documents', {
                 method: 'POST',
-                body: formData,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ filePaths }),
                 credentials: 'include',
             });
             if (!response.ok) {
-                // Gracefully handle non-JSON responses like 413 (Request Entity Too Large)
-                let message = 'Failed to upload documents';
+                let message = 'Failed to save document URLs';
                 try {
-                    const text = await response.text();
-                    // Try parse JSON if possible
+                    const txt = await response.text();
                     try {
-                        const json = JSON.parse(text);
-                        message = json.error || message;
+                        const j = JSON.parse(txt);
+                        message = j.error || message;
                     } catch {
-                        message = text || message;
+                        message = txt || message;
                     }
-                } catch {
-                    // ignore
-                }
+                } catch {}
                 throw new Error(message);
             }
-            let data: any = null;
-            try {
-                data = await response.json();
-            } catch {}
+            const data = await response.json().catch(() => ({}));
             showToast('Documents uploaded successfully!', 'success');
 
-            // Immediately reflect uploaded docs in UI using returned filePaths (works even if DB write is blocked)
-            if (data && data.filePaths) {
-                const newDocs = {
-                    businessPermitPath: data.filePaths.business_permit_path || null,
-                    birCertificatePath: data.filePaths.bir_certificate_path || null,
-                    governmentIdPath: data.filePaths.government_id_path || null,
-                };
-                setProfileData((prev: any) => ({
-                    ...(prev || {}),
-                    documents: {
-                        ...(prev?.documents || {}),
-                        ...newDocs,
-                    },
-                }));
-                // Avoid storing large base64 blobs in sessionStorage to prevent quota errors
-            }
+            const newDocs = {
+                businessPermitPath: (data?.filePaths?.business_permit_path as string) || filePaths.business_permit_path || null,
+                birCertificatePath: (data?.filePaths?.bir_certificate_path as string) || filePaths.bir_certificate_path || null,
+                governmentIdPath: (data?.filePaths?.government_id_path as string) || filePaths.government_id_path || null,
+            };
+            setProfileData((prev: any) => ({
+                ...(prev || {}),
+                documents: {
+                    ...(prev?.documents || {}),
+                    ...newDocs,
+                },
+            }));
 
             await fetchProfileData(false);
             setDocuments({

@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
     console.log('Business document upload started');
     
     // Require secure authentication for all uploads; ignore any client-supplied userId
-    const formData = await request.formData();
+    const contentType = request.headers.get('content-type') || '';
     const user = await verifySecureAuth(request);
     if (!user) {
       console.log('Authentication failed - no valid user');
@@ -33,19 +33,35 @@ export async function POST(request: NextRequest) {
       }, { status: 403 });
     }
     
-    // Handle multiple document types
-    const businessPermit = formData.get('businessPermit') as File | null;
-    const birCertificate = formData.get('birCertificate') as File | null;
-    const governmentId = formData.get('governmentId') as File | null;
+    // Support two modes:
+    // 1) JSON body: client already uploaded to Blob, we just persist URLs
+    // 2) multipart/form-data: files are posted here (smaller files only)
+
+    let mode: 'json' | 'form' = contentType.includes('application/json') ? 'json' : 'form';
+    let formData: FormData | null = null;
+    let jsonBody: any = null;
+    if (mode === 'form') {
+      formData = await request.formData();
+    } else {
+      try {
+        jsonBody = await request.json();
+      } catch {
+        // If parsing fails, fallback to form
+        mode = 'form';
+        formData = await request.formData();
+      }
+    }
+
+    // Extract inputs depending on mode
+    const businessPermit: File | null = mode === 'form' ? (formData!.get('businessPermit') as File | null) : null;
+    const birCertificate: File | null = mode === 'form' ? (formData!.get('birCertificate') as File | null) : null;
+    const governmentId: File | null = mode === 'form' ? (formData!.get('governmentId') as File | null) : null;
+    const providedUrls = mode === 'json' ? (jsonBody?.filePaths || {}) : {};
     
-    console.log('Form data parsed:', { 
-      hasBusinessPermit: !!businessPermit, 
-      hasBirCertificate: !!birCertificate, 
-      hasGovernmentId: !!governmentId 
-    });
+    console.log('Parsed upload request:', { mode, hasBusinessPermit: !!businessPermit, hasBirCertificate: !!birCertificate, hasGovernmentId: !!governmentId, providedUrlsKeys: Object.keys(providedUrls) });
 
     // Check if at least one file is provided
-    if (!businessPermit && !birCertificate && !governmentId) {
+    if (mode === 'form' && !businessPermit && !birCertificate && !governmentId && Object.keys(providedUrls).length === 0) {
       console.log('No files uploaded');
       return NextResponse.json({ error: 'At least one document must be uploaded' }, { status: 400 });
     }
@@ -67,21 +83,15 @@ export async function POST(request: NextRequest) {
       'image/webp'
     ];
 
-    for (const { file, type } of filesToProcess) {
-      console.log(`File validation for ${type}:`, { size: file.size, type: file.type, maxSize: MAX_FILE_SIZE });
-      
-      if (file.size > MAX_FILE_SIZE) {
-        console.log(`File size exceeds limit for ${type}:`, file.size);
-        return NextResponse.json({
-          error: `File size exceeds the limit (10MB) for ${type}`
-        }, { status: 400 });
-      }
-
-      if (!allowedTypes.includes(file.type)) {
-        console.log(`Invalid file type for ${type}:`, file.type);
-        return NextResponse.json({
-          error: `Invalid file type for ${type}. Only PDF, Word documents, and images are allowed.`
-        }, { status: 400 });
+    if (mode === 'form') {
+      for (const { file, type } of filesToProcess) {
+        console.log(`File validation for ${type}:`, { size: file.size, type: file.type, maxSize: MAX_FILE_SIZE });
+        if (file.size > MAX_FILE_SIZE) {
+          return NextResponse.json({ error: `File size exceeds the limit (10MB) for ${type}` }, { status: 413 });
+        }
+        if (!allowedTypes.includes(file.type)) {
+          return NextResponse.json({ error: `Invalid file type for ${type}. Only PDF, Word documents, and images are allowed.` }, { status: 400 });
+        }
       }
     }
 
@@ -95,15 +105,23 @@ export async function POST(request: NextRequest) {
       let putFn: any = null;
       if (useBlob) {
         try {
-          // eslint-disable-next-line @typescript-eslint/no-var-requires
-          const blob = require('@vercel/blob');
-          putFn = blob.put;
+          // eslint-disable-next-line @typescript-eslint/no-implied-eval
+          const reqFn: any = (eval('require') as any);
+          const blob = reqFn ? reqFn('@vercel/blob') : null;
+          putFn = blob?.put;
         } catch (e) {
           console.warn('Vercel Blob not available, falling back to base64:', e);
         }
       }
 
-      for (const { file, type } of filesToProcess) {
+      if (mode === 'json' && providedUrls && Object.keys(providedUrls).length > 0) {
+        // Directly use provided URLs
+        if (providedUrls.business_permit_path) filePaths.business_permit_path = providedUrls.business_permit_path;
+        if (providedUrls.bir_certificate_path) filePaths.bir_certificate_path = providedUrls.bir_certificate_path;
+        if (providedUrls.government_id_path) filePaths.government_id_path = providedUrls.government_id_path;
+      }
+
+      for (const { file, type } of mode === 'form' ? filesToProcess : []) {
         console.log(`Processing ${type} file...`);
         const arrayBuffer = await file.arrayBuffer();
         const mime = file.type || 'application/octet-stream';
