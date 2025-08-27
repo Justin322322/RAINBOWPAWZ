@@ -429,43 +429,20 @@ function CremationProfilePage({ userData }: { userData: any }) {
         setUploading(true);
         setUploadError('');
 
-        const uploadSingle = async (file: File, type: 'businessPermit' | 'birCertificate' | 'governmentId') => {
-            const contentType = file.type || 'application/octet-stream';
-            const filename = file.name || `${type}_${Date.now()}`;
-            const signRes = await fetch(`/api/blob/upload-url?filename=${encodeURIComponent(filename)}`, { credentials: 'include' });
-            if (!signRes.ok) {
-                throw new Error('Failed to prepare upload');
-            }
-            const { uploadUrl } = await signRes.json();
-            const putRes = await fetch(uploadUrl, {
-                method: 'PUT',
-                headers: { 'Content-Type': contentType },
-                body: file,
-            });
-            if (!putRes.ok) {
-                const txt = await putRes.text().catch(() => '');
-                throw new Error(txt || 'Failed to upload file');
-            }
-            const putData = await putRes.json();
-            return putData.url as string;
+        // Upload via server: send files as multipart/form-data to our API.
+        const appendIfPresent = (fd: FormData, key: string, value: File | null) => {
+            if (value) fd.append(key, value);
         };
 
         try {
-            const filePaths: Record<string, string> = {};
-            if (documents.businessPermit.file) {
-                filePaths.business_permit_path = await uploadSingle(documents.businessPermit.file, 'businessPermit');
-            }
-            if (documents.birCertificate.file) {
-                filePaths.bir_certificate_path = await uploadSingle(documents.birCertificate.file, 'birCertificate');
-            }
-            if (documents.governmentId.file) {
-                filePaths.government_id_path = await uploadSingle(documents.governmentId.file, 'governmentId');
-            }
+            const form = new FormData();
+            appendIfPresent(form, 'businessPermit', documents.businessPermit.file);
+            appendIfPresent(form, 'birCertificate', documents.birCertificate.file);
+            appendIfPresent(form, 'governmentId', documents.governmentId.file);
 
             const response = await fetch('/api/businesses/upload-documents', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ filePaths }),
+                body: form,
                 credentials: 'include',
             });
             if (!response.ok) {
@@ -485,9 +462,9 @@ function CremationProfilePage({ userData }: { userData: any }) {
             showToast('Documents uploaded successfully!', 'success');
 
             const newDocs = {
-                businessPermitPath: (data?.filePaths?.business_permit_path as string) || filePaths.business_permit_path || null,
-                birCertificatePath: (data?.filePaths?.bir_certificate_path as string) || filePaths.bir_certificate_path || null,
-                governmentIdPath: (data?.filePaths?.government_id_path as string) || filePaths.government_id_path || null,
+                businessPermitPath: (data?.filePaths?.business_permit_path as string) || null,
+                birCertificatePath: (data?.filePaths?.bir_certificate_path as string) || null,
+                governmentIdPath: (data?.filePaths?.government_id_path as string) || null,
             };
             setProfileData((prev: any) => ({
                 ...(prev || {}),
