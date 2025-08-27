@@ -1,40 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { writeFile, mkdir } from 'fs/promises';
-import { join } from 'path';
 import { verifySecureAuth } from '@/lib/secureAuth';
 import { query } from '@/lib/db';
-import * as fs from 'fs';
 
 // Maximum file size (5MB)
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
-
-// Helper function to ensure directory exists with proper error handling
-async function ensureDirectoryExists(dirPath: string): Promise<void> {
-  try {
-    // Check if directory exists
-    if (!fs.existsSync(dirPath)) {
-      console.log('Creating directory:', dirPath);
-      await mkdir(dirPath, { recursive: true });
-      console.log('Directory created successfully');
-    } else {
-      console.log('Directory already exists:', dirPath);
-    }
-    
-    // Test write permissions
-    const testFile = join(dirPath, '.write-test');
-    try {
-      await writeFile(testFile, 'test');
-      await fs.promises.unlink(testFile);
-      console.log('Directory is writable:', dirPath);
-    } catch (permError) {
-      console.error('Directory write permission test failed:', permError);
-      throw new Error(`Directory ${dirPath} is not writable: ${permError instanceof Error ? permError.message : 'Permission denied'}`);
-    }
-  } catch (error) {
-    console.error('Error ensuring directory exists:', dirPath, error);
-    throw new Error(`Failed to create/verify directory ${dirPath}: ${error instanceof Error ? error.message : 'Unknown error'}`);
-  }
-}
 
 export async function POST(request: NextRequest) {
   try {
@@ -107,11 +76,6 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Generate unique filename
-    const timestamp = Date.now();
-    const fileExtension = fileType.split('/')[1];
-    console.log('File processing:', { timestamp, fileExtension });
-
     try {
       // Check if packageId is provided and is valid
       let packageIdInt = 0;
@@ -127,97 +91,67 @@ export async function POST(request: NextRequest) {
         console.log('No package ID provided, using temporary storage');
       }
 
-      // Define paths based on package ID
-      const baseDir = join(process.cwd(), 'public', 'uploads', 'packages');
-      let packageDir = baseDir;
-      let filename = '';
-      let relativePath = '';
-
-      // If we have a valid package ID, create a package-specific directory
-      if (packageIdInt > 0) {
-        packageDir = join(baseDir, packageIdInt.toString());
-        filename = `${providerId}_${timestamp}.${fileExtension}`;
-        relativePath = `/uploads/packages/${packageIdInt}/${filename}`;
-      } else {
-        // No package ID yet, store in temporary location
-        filename = `package_${providerId}_${timestamp}.${fileExtension}`;
-        relativePath = `/uploads/packages/${filename}`;
-      }
-
-      // Ensure directories exist with proper error handling
-      console.log('Ensuring base directory exists:', baseDir);
-      await ensureDirectoryExists(baseDir);
-
-      // Create package-specific directory if needed
-      if (packageIdInt > 0) {
-        console.log('Ensuring package directory exists:', packageDir);
-        await ensureDirectoryExists(packageDir);
-      }
-
-      // Write file to directory
-      const filePath = join(packageIdInt > 0 ? packageDir : baseDir, filename);
-      console.log('File path:', filePath);
+      // Convert file to base64 for database storage
+      console.log('Converting file to base64...');
+      const arrayBuffer = await file.arrayBuffer();
+      const base64Data = Buffer.from(arrayBuffer).toString('base64');
+      const dataUrl = `data:${fileType};base64,${base64Data}`;
       
-      console.log('Converting file to buffer...');
-      const buffer = Buffer.from(await file.arrayBuffer());
-      console.log('Buffer created, size:', buffer.length);
-      
-      console.log('Writing file to disk...');
-      await writeFile(filePath, buffer);
-      console.log('File written successfully');
-
-      // Verify file was written successfully
-      if (!fs.existsSync(filePath)) {
-        throw new Error('File was not saved successfully after write operation');
-      }
+      console.log('File converted to base64, size:', base64Data.length);
 
       // If packageId is provided, save in database
-      if (packageId) {
+      if (packageId && !isNaN(packageIdInt)) {
         console.log('Saving image to database for package:', packageId);
-        if (!isNaN(packageIdInt)) {
-          // Check if package belongs to this provider
-          console.log('Checking package ownership...');
-          const packageResult = await query(
-            'SELECT provider_id FROM service_packages WHERE package_id = ?',
+        
+        // Check if package belongs to this provider
+        console.log('Checking package ownership...');
+        const packageResult = await query(
+          'SELECT provider_id FROM service_packages WHERE package_id = ?',
+          [packageIdInt]
+        ) as any[];
+        console.log('Package lookup result:', packageResult);
+
+        if (packageResult && packageResult.length > 0 && packageResult[0].provider_id === providerId) {
+          console.log('Package ownership verified, saving image...');
+
+          // Get the current max display order
+          const orderResult = await query(
+            'SELECT MAX(display_order) as max_order FROM package_images WHERE package_id = ?',
             [packageIdInt]
           ) as any[];
-          console.log('Package lookup result:', packageResult);
+          console.log('Display order result:', orderResult);
 
-          if (packageResult && packageResult.length > 0 && packageResult[0].provider_id === providerId) {
-            console.log('Package ownership verified, saving image...');
+          const displayOrder = orderResult[0].max_order ? orderResult[0].max_order + 1 : 1;
+          console.log('Calculated display order:', displayOrder);
 
-            // Get the current max display order
-            const orderResult = await query(
-              'SELECT MAX(display_order) as max_order FROM package_images WHERE package_id = ?',
-              [packageIdInt]
-            ) as any[];
-            console.log('Display order result:', orderResult);
+          // Save image data in database
+          const insertResult = await query(
+            'INSERT INTO package_images (package_id, image_path, display_order, image_data) VALUES (?, ?, ?, ?)',
+            [packageIdInt, `package_${packageIdInt}_${Date.now()}.${fileType.split('/')[1]}`, displayOrder, dataUrl]
+          );
+          console.log('Image saved to database:', insertResult);
 
-            const displayOrder = orderResult[0].max_order ? orderResult[0].max_order + 1 : 1;
-            console.log('Calculated display order:', displayOrder);
-
-            // Save image path in database
-            const insertResult = await query(
-              'INSERT INTO package_images (package_id, image_path, display_order) VALUES (?, ?, ?)',
-              [packageIdInt, relativePath, displayOrder]
-            );
-            console.log('Image saved to database:', insertResult);
-
-          } else {
-            console.log('Package ownership verification failed or package not found');
-          }
+          return NextResponse.json({
+            success: true,
+            filePath: `package_${packageIdInt}_${Date.now()}.${fileType.split('/')[1]}`,
+            message: 'Image uploaded and stored in database'
+          });
         } else {
-          console.log('Invalid package ID for database save');
+          console.log('Package ownership verification failed or package not found');
+          return NextResponse.json({
+            error: 'Package not found or access denied'
+          }, { status: 403 });
         }
       } else {
-        console.log('No package ID provided, skipping database save');
+        console.log('No valid package ID provided, returning base64 data');
+        return NextResponse.json({
+          success: true,
+          filePath: `temp_package_${providerId}_${Date.now()}.${fileType.split('/')[1]}`,
+          imageData: dataUrl,
+          message: 'Image converted to base64 (temporary storage)'
+        });
       }
 
-      console.log('Package image upload completed successfully');
-      return NextResponse.json({
-        success: true,
-        filePath: relativePath
-      });
     } catch (error) {
       console.error('Error in file processing:', error);
       
@@ -231,7 +165,7 @@ export async function POST(request: NextRequest) {
       }
       
       return NextResponse.json({
-        error: 'Failed to save file',
+        error: 'Failed to process image',
         details: error instanceof Error ? error.message : 'Unknown error'
       }, { status: 500 });
     }

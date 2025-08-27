@@ -1,37 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { writeFile, mkdir } from 'fs/promises';
-import { join } from 'path';
 import { verifySecureAuth } from '@/lib/secureAuth';
 import { query } from '@/lib/db';
-import * as fs from 'fs';
 
-// Helper function to ensure directory exists with proper error handling
-async function ensureDirectoryExists(dirPath: string): Promise<void> {
-  try {
-    // Check if directory exists
-    if (!fs.existsSync(dirPath)) {
-      console.log('Creating directory:', dirPath);
-      await mkdir(dirPath, { recursive: true });
-      console.log('Directory created successfully');
-    } else {
-      console.log('Directory already exists:', dirPath);
-    }
-    
-    // Test write permissions
-    const testFile = join(dirPath, '.write-test');
-    try {
-      await writeFile(testFile, 'test');
-      await fs.promises.unlink(testFile);
-      console.log('Directory is writable:', dirPath);
-    } catch (permError) {
-      console.error('Directory write permission test failed:', permError);
-      throw new Error(`Directory ${dirPath} is not writable: ${permError instanceof Error ? permError.message : 'Permission denied'}`);
-    }
-  } catch (error) {
-    console.error('Error ensuring directory exists:', dirPath, error);
-    throw new Error(`Failed to create/verify directory ${dirPath}: ${error instanceof Error ? error.message : 'Unknown error'}`);
-  }
-}
+// Maximum file size (5MB)
+const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
 export async function POST(request: NextRequest) {
   try {
@@ -46,12 +18,12 @@ export async function POST(request: NextRequest) {
     
     console.log('User authenticated:', { userId: user.userId, accountType: user.accountType });
     
-    const { userId, accountType } = user;
+    const { userId } = user;
 
-    // Parse the form data
+    // Get form data
     console.log('Parsing form data...');
     const formData = await request.formData();
-    const file = formData.get('file') as File || formData.get('image') as File;
+    const file = formData.get('file') as File | null;
     console.log('Form data parsed:', { hasFile: !!file });
 
     if (!file) {
@@ -59,108 +31,67 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
     }
 
-    // Validate file type
-    console.log('File validation:', { type: file.type, size: file.size });
-    const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-    if (!validTypes.includes(file.type)) {
-      console.log('Invalid file type:', file.type);
+    // Check file size
+    console.log('File validation:', { size: file.size, type: file.type, maxSize: MAX_FILE_SIZE });
+    if (file.size > MAX_FILE_SIZE) {
+      console.log('File size exceeds limit:', file.size);
       return NextResponse.json({
-        error: 'Invalid file type. Only JPEG, PNG, GIF, and WebP images are allowed.'
+        error: 'File size exceeds the limit (5MB)'
       }, { status: 400 });
     }
 
-    // Validate file size (max 5MB)
-    const maxSize = 5 * 1024 * 1024; // 5MB
-    if (file.size > maxSize) {
-      console.log('File too large:', file.size);
+    // Check file type
+    const fileType = file.type;
+    if (!fileType.startsWith('image/')) {
+      console.log('Invalid file type:', fileType);
       return NextResponse.json({
-        error: 'File too large. Maximum size is 5MB.'
+        error: 'Only image files are allowed'
       }, { status: 400 });
     }
 
-    // Create a unique filename
-    const timestamp = Date.now();
-    const originalName = file.name.replace(/\s+/g, '_').toLowerCase();
-    const extension = originalName.split('.').pop();
-    console.log('File processing:', { timestamp, originalName, extension });
-
-    const filename = `profile_${userId}_${timestamp}.${extension}`;
-    console.log('Generated filename:', filename);
-
-    // Determine the appropriate upload directory based on account type
-    let uploadsDir: string;
-    let relativePath: string;
-    
-    if (accountType === 'admin') {
-      uploadsDir = join(process.cwd(), 'public', 'uploads', 'admin-profile-pictures', userId);
-      relativePath = `/uploads/admin-profile-pictures/${userId}/${filename}`;
-    } else {
-      uploadsDir = join(process.cwd(), 'public', 'uploads', 'profile-pictures', userId);
-      relativePath = `/uploads/profile-pictures/${userId}/${filename}`;
-    }
-    
-    console.log('Uploads directory:', uploadsDir);
-    await ensureDirectoryExists(uploadsDir);
-    console.log('Directory ensured');
-
-    // Create file path
-    const filePath = join(uploadsDir, filename);
-    console.log('File path:', filePath);
-
-    // Convert file to buffer and save
-    console.log('Converting file to buffer...');
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-    console.log('Buffer created, size:', buffer.length);
-
-    console.log('Writing file to disk...');
-    await writeFile(filePath, buffer);
-    console.log('File written successfully');
-
-    // Verify file was written successfully
-    if (!fs.existsSync(filePath)) {
-      throw new Error('File was not saved successfully after write operation');
-    }
-
-    // Save the profile picture path to the database
     try {
-      console.log('Updating profile picture in database...');
+      // Convert file to base64 for database storage
+      console.log('Converting file to base64...');
+      const arrayBuffer = await file.arrayBuffer();
+      const base64Data = Buffer.from(arrayBuffer).toString('base64');
+      const dataUrl = `data:${fileType};base64,${base64Data}`;
       
-      if (accountType === 'admin') {
-        // Update admin profile picture
-        const adminResult = await query(
-          'UPDATE admins SET profile_picture = ? WHERE admin_id = ?',
-          [relativePath, userId]
-        );
-        console.log('Admin profile picture updated:', adminResult);
-      } else {
-        // Update user profile picture
-        const userResult = await query(
-          'UPDATE users SET profile_picture = ? WHERE user_id = ?',
-          [relativePath, userId]
-        );
-        console.log('User profile picture updated:', userResult);
-      }
-      
-      console.log('Profile picture updated successfully in database');
+      console.log('File converted to base64, size:', base64Data.length);
 
-      console.log('Profile picture upload completed successfully');
+      // Update user profile picture in database
+      console.log('Updating profile picture in database...');
+      const updateResult = await query(
+        'UPDATE users SET profile_picture = ? WHERE user_id = ?',
+        [dataUrl, userId]
+      );
+      console.log('Profile picture updated in database:', updateResult);
+
+      // Return success response
       return NextResponse.json({
         success: true,
-        message: 'Profile picture uploaded successfully',
-        profilePicturePath: relativePath
-      }, { status: 200 });
+        filePath: `profile_${userId}_${Date.now()}.${fileType.split('/')[1]}`,
+        message: 'Profile picture uploaded and stored in database'
+      });
 
-    } catch (dbError) {
-      console.error('Database error while updating profile picture:', dbError);
+    } catch (error) {
+      console.error('Error in file processing:', error);
+      
+      // Log additional details for debugging
+      if (error instanceof Error) {
+        console.error('Error details:', {
+          name: error.name,
+          message: error.message,
+          stack: error.stack
+        });
+      }
+      
       return NextResponse.json({
-        error: 'Failed to update profile picture in database',
-        details: dbError instanceof Error ? dbError.message : 'Unknown database error'
+        error: 'Failed to process image',
+        details: error instanceof Error ? error.message : 'Unknown error'
       }, { status: 500 });
     }
-
   } catch (error) {
-    console.error('Profile picture upload error:', error);
+    console.error('Error in profile picture upload:', error);
     
     // Log additional details for debugging
     if (error instanceof Error) {
@@ -172,7 +103,7 @@ export async function POST(request: NextRequest) {
     }
     
     return NextResponse.json({
-      error: 'Failed to upload profile picture',
+      error: 'Failed to process file upload',
       details: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 });
   }

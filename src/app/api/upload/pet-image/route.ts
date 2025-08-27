@@ -1,36 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { writeFile, mkdir } from 'fs/promises';
-import { join } from 'path';
 import { verifySecureAuth } from '@/lib/secureAuth';
-import * as fs from 'fs';
+import { query } from '@/lib/db';
 
-// Helper function to ensure directory exists with proper error handling
-async function ensureDirectoryExists(dirPath: string): Promise<void> {
-  try {
-    // Check if directory exists
-    if (!fs.existsSync(dirPath)) {
-      console.log('Creating directory:', dirPath);
-      await mkdir(dirPath, { recursive: true });
-      console.log('Directory created successfully');
-    } else {
-      console.log('Directory already exists:', dirPath);
-    }
-    
-    // Test write permissions
-    const testFile = join(dirPath, '.write-test');
-    try {
-      await writeFile(testFile, 'test');
-      await fs.promises.unlink(testFile);
-      console.log('Directory is writable:', dirPath);
-    } catch (permError) {
-      console.error('Directory write permission test failed:', permError);
-      throw new Error(`Directory ${dirPath} is not writable: ${permError instanceof Error ? permError.message : 'Permission denied'}`);
-    }
-  } catch (error) {
-    console.error('Error ensuring directory exists:', dirPath, error);
-    throw new Error(`Failed to create/verify directory ${dirPath}: ${error instanceof Error ? error.message : 'Unknown error'}`);
-  }
-}
+// Maximum file size (5MB)
+const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
 export async function POST(request: NextRequest) {
   try {
@@ -45,85 +18,129 @@ export async function POST(request: NextRequest) {
     
     console.log('User authenticated:', { userId: user.userId, accountType: user.accountType });
     
-    const userId = user.userId;
+    const { userId, accountType } = user;
 
-    // Parse the form data
+    // Only fur parent accounts can upload pet images
+    if (accountType !== 'user') {
+      console.log('Non-user access attempt:', accountType);
+      return NextResponse.json({
+        error: 'Only fur parent accounts can upload pet images'
+      }, { status: 403 });
+    }
+
+    // Get form data
     console.log('Parsing form data...');
     const formData = await request.formData();
-    const file = formData.get('file') as File || formData.get('image') as File;
-    const petName = formData.get('petName') as string || '';
-    console.log('Form data parsed:', { hasFile: !!file, petName });
+    const file = formData.get('file') as File | null;
+    const petId = formData.get('petId') as string | null;
+    console.log('Form data parsed:', { hasFile: !!file, petId });
 
     if (!file) {
       console.log('No file uploaded');
       return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
     }
 
-    // Validate file type
-    console.log('File validation:', { type: file.type, size: file.size, maxSize: 5 * 1024 * 1024 });
-    const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-    if (!validTypes.includes(file.type)) {
-      console.log('Invalid file type:', file.type);
+    // Check file size
+    console.log('File validation:', { size: file.size, type: file.type, maxSize: MAX_FILE_SIZE });
+    if (file.size > MAX_FILE_SIZE) {
+      console.log('File size exceeds limit:', file.size);
       return NextResponse.json({
-        error: 'Invalid file type. Only JPEG, PNG, GIF, and WebP images are allowed.'
+        error: 'File size exceeds the limit (5MB)'
       }, { status: 400 });
     }
 
-    // Validate file size (max 5MB)
-    const maxSize = 5 * 1024 * 1024; // 5MB
-    if (file.size > maxSize) {
-      console.log('File too large:', file.size);
+    // Check file type
+    const fileType = file.type;
+    if (!fileType.startsWith('image/')) {
+      console.log('Invalid file type:', fileType);
       return NextResponse.json({
-        error: 'File too large. Maximum size is 5MB.'
+        error: 'Only image files are allowed'
       }, { status: 400 });
     }
 
-    // Create a unique filename
-    const timestamp = Date.now();
-    const originalName = file.name.replace(/\s+/g, '_').toLowerCase();
-    const extension = originalName.split('.').pop();
-    console.log('File processing:', { timestamp, originalName, extension });
+    try {
+      // Check if petId is provided and is valid
+      let petIdInt = 0;
+      if (petId) {
+        petIdInt = parseInt(petId);
+        if (isNaN(petIdInt)) {
+          console.log('Invalid pet ID, defaulting to 0:', petId);
+          petIdInt = 0;
+        } else {
+          console.log('Valid pet ID:', petIdInt);
+        }
+      } else {
+        console.log('No pet ID provided, using temporary storage');
+      }
 
-    // Use pet name in filename if available
-    const sanitizedPetName = petName ? petName.replace(/[^a-z0-9]/gi, '_').toLowerCase() + '_' : '';
-    const filename = `pet_${sanitizedPetName}${userId}_${timestamp}.${extension}`;
-    console.log('Generated filename:', filename);
+      // Convert file to base64 for database storage
+      console.log('Converting file to base64...');
+      const arrayBuffer = await file.arrayBuffer();
+      const base64Data = Buffer.from(arrayBuffer).toString('base64');
+      const dataUrl = `data:${fileType};base64,${base64Data}`;
+      
+      console.log('File converted to base64, size:', base64Data.length);
 
-    // Create the uploads directory if it doesn't exist
-    const uploadsDir = join(process.cwd(), 'public', 'uploads', 'pets');
-    console.log('Uploads directory:', uploadsDir);
-    await ensureDirectoryExists(uploadsDir);
-    console.log('Directory ensured');
+      // If petId is provided, save in database
+      if (petId && !isNaN(petIdInt)) {
+        console.log('Saving image to database for pet:', petId);
+        
+        // Check if pet belongs to this user
+        console.log('Checking pet ownership...');
+        const petResult = await query(
+          'SELECT user_id FROM pets WHERE pet_id = ?',
+          [petIdInt]
+        ) as any[];
+        console.log('Pet lookup result:', petResult);
 
-    // Create file path
-    const filePath = join(uploadsDir, filename);
-    console.log('File path:', filePath);
+        if (petResult && petResult.length > 0 && petResult[0].user_id === userId) {
+          console.log('Pet ownership verified, saving image...');
 
-    // Convert file to buffer and save
-    console.log('Converting file to buffer...');
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-    console.log('Buffer created, size:', buffer.length);
+          // Update pet with image data
+          const updateResult = await query(
+            'UPDATE pets SET profile_picture = ? WHERE pet_id = ?',
+            [dataUrl, petIdInt]
+          );
+          console.log('Pet image updated in database:', updateResult);
 
-    console.log('Writing file to disk...');
-    await writeFile(filePath, buffer);
-    console.log('File written successfully');
+          return NextResponse.json({
+            success: true,
+            filePath: `pet_${petIdInt}_${Date.now()}.${fileType.split('/')[1]}`,
+            message: 'Pet image uploaded and stored in database'
+          });
+        } else {
+          console.log('Pet ownership verification failed or pet not found');
+          return NextResponse.json({
+            error: 'Pet not found or access denied'
+          }, { status: 403 });
+        }
+      } else {
+        console.log('No valid pet ID provided, returning base64 data');
+        return NextResponse.json({
+          success: true,
+          filePath: `temp_pet_${userId}_${Date.now()}.${fileType.split('/')[1]}`,
+          imageData: dataUrl,
+          message: 'Pet image converted to base64 (temporary storage)'
+        });
+      }
 
-    // Verify file was written successfully
-    if (!fs.existsSync(filePath)) {
-      throw new Error('File was not saved successfully after write operation');
+    } catch (error) {
+      console.error('Error in file processing:', error);
+      
+      // Log additional details for debugging
+      if (error instanceof Error) {
+        console.error('Error details:', {
+          name: error.name,
+          message: error.message,
+          stack: error.stack
+        });
+      }
+      
+      return NextResponse.json({
+        error: 'Failed to process image',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      }, { status: 500 });
     }
-
-    // Return the relative path to the image
-    const relativePath = `/uploads/pets/${filename}`;
-    console.log('Pet image upload completed successfully');
-
-    return NextResponse.json({
-      success: true,
-      message: 'File uploaded successfully',
-      imagePath: relativePath,
-      imageUrl: relativePath // Add imageUrl for backward compatibility
-    });
   } catch (error) {
     console.error('Error in pet image upload:', error);
     
@@ -137,7 +154,7 @@ export async function POST(request: NextRequest) {
     }
     
     return NextResponse.json({
-      error: 'Failed to upload file',
+      error: 'Failed to process file upload',
       details: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 });
   }

@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { writeFile, mkdir } from 'fs/promises';
-import { join } from 'path';
-import { existsSync } from 'fs';
-import { query } from '@/lib/db';
 import { verifySecureAuth } from '@/lib/secureAuth';
+import { query } from '@/lib/db';
+
+// Maximum file size (5MB)
+const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,151 +17,89 @@ export async function POST(request: NextRequest) {
     }
     
     console.log('User authenticated:', { userId: user.userId, accountType: user.accountType });
+    
+    const { userId, accountType } = user;
 
-    // Only allow business accounts to use this endpoint
-    if (user.accountType !== 'business') {
-      return NextResponse.json({ error: 'Unauthorized - Business access required' }, { status: 403 });
-    }
-
-    // Parse the multipart form data
-    const formData = await request.formData();
-
-    // Get user ID from form data
-    const userId = formData.get('userId');
-    if (!userId) {
+    // Only business accounts can upload profile pictures
+    if (accountType !== 'business') {
+      console.log('Non-business access attempt:', accountType);
       return NextResponse.json({
-        error: 'No user ID provided'
-      }, { status: 400 });
-    }
-
-    // Only allow users to update their own profile picture
-    if (user.userId !== userId.toString()) {
-      return NextResponse.json({ 
-        error: 'You are not authorized to update this profile picture' 
+        error: 'Only business accounts can upload profile pictures'
       }, { status: 403 });
     }
 
-    // Get the profile picture file - handle both File and Blob types
-    const profilePicture = formData.get('profilePicture');
-    console.log('Profile picture file received:', { 
-      hasFile: !!profilePicture, 
-      isBlob: profilePicture instanceof Blob, 
-      size: profilePicture instanceof Blob ? profilePicture.size : 'N/A',
-      type: profilePicture instanceof Blob ? profilePicture.type : 'N/A'
-    });
-    
-    if (!profilePicture || !(profilePicture instanceof Blob) || profilePicture.size === 0) {
-      console.log('Invalid profile picture file');
+    // Get form data
+    console.log('Parsing form data...');
+    const formData = await request.formData();
+    const file = formData.get('file') as File | null;
+    console.log('Form data parsed:', { hasFile: !!file });
+
+    if (!file) {
+      console.log('No file uploaded');
+      return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
+    }
+
+    // Check file size
+    console.log('File validation:', { size: file.size, type: file.type, maxSize: MAX_FILE_SIZE });
+    if (file.size > MAX_FILE_SIZE) {
+      console.log('File size exceeds limit:', file.size);
       return NextResponse.json({
-        error: 'No profile picture file provided'
+        error: 'File size exceeds the limit (5MB)'
       }, { status: 400 });
     }
 
-    // Now TypeScript knows profilePicture is a Blob
-    const profilePictureBlob = profilePicture as Blob;
-
-    // Validate file type
-    const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-    if (!validTypes.includes(profilePictureBlob.type)) {
+    // Check file type
+    const fileType = file.type;
+    if (!fileType.startsWith('image/')) {
+      console.log('Invalid file type:', fileType);
       return NextResponse.json({
-        error: 'Invalid file type. Only JPEG, PNG, GIF, and WebP images are allowed.'
+        error: 'Only image files are allowed'
       }, { status: 400 });
     }
 
-    // Validate file size (max 5MB)
-    const maxSize = 5 * 1024 * 1024;
-    if (profilePictureBlob.size > maxSize) {
-      return NextResponse.json({
-        error: 'File too large. Maximum size is 5MB.'
-      }, { status: 400 });
-    }
-
-    // Save the profile picture to file system (similar to package uploads)
-    const timestamp = Date.now();
-    const fileExtension = profilePictureBlob.type.split('/')[1] || 'jpg';
-    const filename = `profile_picture_${timestamp}.${fileExtension}`;
-    console.log('Generated filename:', filename);
-
-    // Create the directory path
-    const uploadsDir = join(process.cwd(), 'public', 'uploads', 'profile-pictures', userId.toString());
-    console.log('Uploads directory:', uploadsDir);
-
-    // Ensure directory exists
-    if (!existsSync(uploadsDir)) {
-      console.log('Creating directory:', uploadsDir);
-      await mkdir(uploadsDir, { recursive: true });
-    }
-
-    // Create file path
-    const filePath = join(uploadsDir, filename);
-    console.log('File path:', filePath);
-
-    // Convert file to buffer and save
-    console.log('Converting file to buffer...');
-    const bytes = await profilePictureBlob.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-    console.log('Buffer created, size:', buffer.length);
-    
-    console.log('Writing file to disk...');
-    await writeFile(filePath, buffer);
-    console.log('File written successfully');
-
-    // Return the relative path
-    const profilePicturePath = `/uploads/profile-pictures/${userId}/${filename}`;
-
-    // Update the database with the new profile picture path
     try {
-      console.log('Checking database schema...');
-      // First, check if the profile_picture column exists and add it if it doesn't
-      const columnCheck = await query(`
-        SELECT COLUMN_NAME
-        FROM INFORMATION_SCHEMA.COLUMNS
-        WHERE TABLE_SCHEMA = DATABASE()
-        AND TABLE_NAME = 'users'
-        AND COLUMN_NAME = 'profile_picture'
-      `) as any[];
+      // Convert file to base64 for database storage
+      console.log('Converting file to base64...');
+      const arrayBuffer = await file.arrayBuffer();
+      const base64Data = Buffer.from(arrayBuffer).toString('base64');
+      const dataUrl = `data:${fileType};base64,${base64Data}`;
+      
+      console.log('File converted to base64, size:', base64Data.length);
 
-      if (columnCheck.length === 0) {
-        console.log('Adding profile_picture column to users table...');
-        await query(`ALTER TABLE users ADD COLUMN profile_picture VARCHAR(255) NULL AFTER gender`);
-        console.log('Column added successfully');
-      } else {
-        console.log('profile_picture column already exists');
-      }
-
-      // Update the user's profile picture in the database
-      console.log('Updating profile picture in database for user:', userId);
+      // Update user profile picture in database
+      console.log('Updating profile picture in database...');
       const updateResult = await query(
         'UPDATE users SET profile_picture = ? WHERE user_id = ?',
-        [profilePicturePath, userId]
-      ) as any;
-      console.log('Database update result:', updateResult);
+        [dataUrl, userId]
+      );
+      console.log('Profile picture updated in database:', updateResult);
 
-      if (updateResult.affectedRows === 0) {
-        console.log('No rows affected - user not found');
-        return NextResponse.json({
-          error: 'User not found or no changes made'
-        }, { status: 404 });
+      // Return success response
+      return NextResponse.json({
+        success: true,
+        filePath: `profile_${userId}_${Date.now()}.${fileType.split('/')[1]}`,
+        message: 'Profile picture uploaded and stored in database'
+      });
+
+    } catch (error) {
+      console.error('Error in file processing:', error);
+      
+      // Log additional details for debugging
+      if (error instanceof Error) {
+        console.error('Error details:', {
+          name: error.name,
+          message: error.message,
+          stack: error.stack
+        });
       }
       
-      console.log('Profile picture updated successfully in database');
-    } catch (dbError) {
-      console.error('Failed to update profile picture in database:', dbError);
       return NextResponse.json({
-        error: 'Failed to update profile picture in database',
-        details: dbError instanceof Error ? dbError.message : 'Unknown database error'
+        error: 'Failed to process image',
+        details: error instanceof Error ? error.message : 'Unknown error'
       }, { status: 500 });
     }
-
-    console.log('Profile picture upload completed successfully');
-    return NextResponse.json({
-      success: true,
-      message: 'Profile picture uploaded successfully',
-      profilePicturePath
-    }, { status: 200 });
-
   } catch (error) {
-    console.error('Error uploading profile picture:', error);
+    console.error('Error in cremation profile picture upload:', error);
     
     // Log additional details for debugging
     if (error instanceof Error) {
@@ -173,7 +111,7 @@ export async function POST(request: NextRequest) {
     }
     
     return NextResponse.json({
-      error: 'Failed to upload profile picture',
+      error: 'Failed to process file upload',
       details: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 });
   }
