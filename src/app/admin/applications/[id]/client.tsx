@@ -257,33 +257,34 @@ function ApplicationDetailContent({ id }: ApplicationDetailContentProps) {
     // Process the URL to ensure it works in production
     let processedUrl = url;
 
-    // If it's a document path, ensure it uses the API route
     if (url && typeof url === 'string') {
+      // If it's a base64 data URL, use as-is
+      if (url.startsWith('data:')) {
+        processedUrl = url;
+      }
       // If it's already an API path, use it as is
-      if (!url.startsWith('/api/')) {
-        // For document paths, use the API route
-        if (url.includes('/documents/') || url.includes('/business/') || url.includes('/businesses/')) {
-          // Try to extract the relevant path
-          const parts = url.split('/');
-          const relevantIndex = parts.findIndex(part =>
-            part === 'documents' || part === 'business' || part === 'businesses'
-          );
-
-          if (relevantIndex >= 0) {
-            const relevantPath = parts.slice(relevantIndex).join('/');
-            processedUrl = `/api/image/${relevantPath}`;
-          }
+      else if (url.startsWith('/api/')) {
+        processedUrl = url;
+      }
+      // For document paths, use the API route
+      else if (url.includes('/documents/') || url.includes('/business/') || url.includes('/businesses/')) {
+        const parts = url.split('/');
+        const relevantIndex = parts.findIndex(part =>
+          part === 'documents' || part === 'business' || part === 'businesses'
+        );
+        if (relevantIndex >= 0) {
+          const relevantPath = parts.slice(relevantIndex).join('/');
+          processedUrl = `/api/image/${relevantPath}`;
         }
-        // For uploads paths, use the API route
-        else if (url.includes('/uploads/')) {
-          // Extract the path after /uploads/
-          const uploadPath = url.substring(url.indexOf('/uploads/') + '/uploads/'.length);
-          processedUrl = `/api/image/${uploadPath}`;
-        }
-        // For other paths, use the production image path utility
-        else {
-          processedUrl = getProductionImagePath(url);
-        }
+      }
+      // For uploads paths, use the API route
+      else if (url.includes('/uploads/')) {
+        const uploadPath = url.substring(url.indexOf('/uploads/') + '/uploads/'.length);
+        processedUrl = `/api/image/${uploadPath}`;
+      }
+      // For other paths, use the production image path utility
+      else {
+        processedUrl = getProductionImagePath(url);
       }
     }
 

@@ -86,26 +86,48 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-      // Process each file and store as base64 data URL (Vercel FS is read-only)
+      // Prefer URL storage via Vercel Blob when available; fallback to base64 otherwise
       const filePaths: any = {};
+
+      // Lazy import to avoid bundling when not configured
+      const blobToken = process.env.BLOB_READ_WRITE_TOKEN;
+      const useBlob = typeof blobToken === 'string' && blobToken.length > 0;
+      let putFn: any = null;
+      if (useBlob) {
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-var-requires
+          const blob = require('@vercel/blob');
+          putFn = blob.put;
+        } catch (e) {
+          console.warn('Vercel Blob not available, falling back to base64:', e);
+        }
+      }
 
       for (const { file, type } of filesToProcess) {
         console.log(`Processing ${type} file...`);
-        
-        // Convert to base64 data URL for storage
         const arrayBuffer = await file.arrayBuffer();
-        const base64Data = Buffer.from(arrayBuffer).toString('base64');
-        const fileExtension = file.type || `application/octet-stream`;
-        const dataUrl = `data:${fileExtension};base64,${base64Data}`;
-        console.log(`File converted to base64 for ${type}, size:`, base64Data.length);
-        
-        // Map to database column names
-        if (type === 'businessPermit') {
-          filePaths.business_permit_path = dataUrl;
-        } else if (type === 'birCertificate') {
-          filePaths.bir_certificate_path = dataUrl;
-        } else if (type === 'governmentId') {
-          filePaths.government_id_path = dataUrl;
+        const mime = file.type || 'application/octet-stream';
+        const ext = mime.split('/')[1] || 'bin';
+
+        if (putFn && useBlob) {
+          // Upload to Vercel Blob and store public URL
+          const key = `uploads/businesses/${userId}/${type}_${Date.now()}.${ext}`;
+          const result = await putFn(key, Buffer.from(arrayBuffer), {
+            access: 'public',
+            contentType: mime,
+            token: blobToken,
+          });
+          const url = result?.url || '';
+          if (type === 'businessPermit') filePaths.business_permit_path = url;
+          if (type === 'birCertificate') filePaths.bir_certificate_path = url;
+          if (type === 'governmentId') filePaths.government_id_path = url;
+        } else {
+          // Fallback: base64 data URL
+          const base64Data = Buffer.from(arrayBuffer).toString('base64');
+          const dataUrl = `data:${mime};base64,${base64Data}`;
+          if (type === 'businessPermit') filePaths.business_permit_path = dataUrl;
+          if (type === 'birCertificate') filePaths.bir_certificate_path = dataUrl;
+          if (type === 'governmentId') filePaths.government_id_path = dataUrl;
         }
       }
 

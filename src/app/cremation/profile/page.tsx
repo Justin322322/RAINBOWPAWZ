@@ -478,12 +478,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
                         ...newDocs,
                     },
                 }));
-                try {
-                    sessionStorage.setItem('business_documents_cache', JSON.stringify({
-                        ...(profileData?.documents || {}),
-                        ...newDocs,
-                    }));
-                } catch {}
+                // Avoid storing large base64 blobs in sessionStorage to prevent quota errors
             }
 
             await fetchProfileData(false);
