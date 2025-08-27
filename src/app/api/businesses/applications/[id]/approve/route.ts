@@ -36,7 +36,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     `) as any[];
 
     // Determine which table to use
-    const tableNames = tableCheckResult.map(row => row.table_name);
+    const tableNames = tableCheckResult.map(row => row.TABLE_NAME || row.table_name);
 
     const useServiceProvidersTable = tableNames.includes('service_providers');
     const useBusinessProfilesTable = tableNames.includes('business_profiles');
