@@ -275,36 +275,6 @@ function createBusinessEmailContent(
 }
 
 /**
- * Create email text for business notifications (fallback)
- */
-function createBusinessEmailText(
-  firstName: string,
-  businessName: string,
-  title: string,
-  message: string,
-  link: string | null
-): string {
-  const appUrl = getServerAppUrl();
-  const fullLink = link ? `${appUrl}${link}` : null;
-
-  return `
-Hello ${firstName}${businessName ? ` from ${businessName}` : ''}!
-
-${title}
-
-${message}
-
-${fullLink ? `View details: ${fullLink}` : ''}
-
----
-This is an automated notification from your RainbowPaws business dashboard.
-You can manage your notification preferences in your account settings.
-
-${appUrl}
-  `.trim();
-}
-
-/**
  * Ensure the notifications table exists
  */
 async function ensureNotificationsTable(): Promise<void> {
