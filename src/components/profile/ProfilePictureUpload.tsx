@@ -164,15 +164,17 @@ export default function ProfilePictureUpload({
                   width={parseInt(sizeClasses[size].split(' ')[0].replace('w-', '')) * 4}
                   height={parseInt(sizeClasses[size].split(' ')[1].replace('h-', '')) * 4}
                   className="w-full h-full object-cover"
+                  unoptimized={previewUrl.startsWith('data:')}
                 />
               ) : currentImagePath ? (
                 <Image
-                  src={addCacheBuster(getImagePath(currentImagePath))}
+                  src={currentImagePath.startsWith('data:') ? currentImagePath : addCacheBuster(getImagePath(currentImagePath))}
                   alt="Profile"
                   width={parseInt(sizeClasses[size].split(' ')[0].replace('w-', '')) * 4}
                   height={parseInt(sizeClasses[size].split(' ')[1].replace('h-', '')) * 4}
                   className="w-full h-full object-cover"
                   key={imageTimestamp}
+                  unoptimized={currentImagePath.startsWith('data:')}
                 />
               ) : (
                 <div className="w-full h-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center">

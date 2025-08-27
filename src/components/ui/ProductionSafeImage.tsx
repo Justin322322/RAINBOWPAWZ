@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { getProductionImagePath, getImagePath } from '@/utils/imageUtils';
 
 interface ProductionSafeImageProps {
   src: string;
@@ -18,6 +17,7 @@ interface ProductionSafeImageProps {
 /**
  * A component that handles image loading safely in both development and production
  * It provides consistent fallback behavior and error handling
+ * Now supports base64 data URLs from database storage
  */
 export const ProductionSafeImage: React.FC<ProductionSafeImageProps> = ({
   src,
@@ -50,17 +50,40 @@ export const ProductionSafeImage: React.FC<ProductionSafeImageProps> = ({
     }
   };
 
-  // Use our utility function to get a production-ready image path
-  // Always use the API route in production for better reliability
-  // But avoid double-processing if the image is already an API path
-  // Disable cache busting for package images to prevent flickering
-  const finalSrc = error ? fallbackSrc : (
-    imgSrc.startsWith('/api/image/')
-      ? imgSrc // Already processed, just use as-is to avoid double-processing
-      : (imgSrc.includes('packages/') 
-          ? getImagePath(imgSrc, false) // Disable cache busting for package images
-          : getProductionImagePath(imgSrc))
-  );
+  // Determine the final source URL
+  // Handle base64 data URLs, API routes, and file paths
+  const getFinalSrc = () => {
+    // If there's an error, use fallback
+    if (error) {
+      return fallbackSrc;
+    }
+
+    // If it's already a base64 data URL, use it directly
+    if (imgSrc.startsWith('data:image/')) {
+      return imgSrc;
+    }
+
+    // If it's already an API route, use it directly
+    if (imgSrc.startsWith('/api/image/')) {
+      return imgSrc;
+    }
+
+    // If it's a file path that starts with /uploads/, convert to API route
+    if (imgSrc.startsWith('/uploads/')) {
+      return `/api/image${imgSrc}`;
+    }
+
+    // If it's a relative path without /uploads/, assume it's a public asset
+    if (imgSrc.startsWith('/') && !imgSrc.startsWith('/api/')) {
+      return imgSrc;
+    }
+
+    // For any other case, use the fallback
+    console.warn('Unknown image source format:', imgSrc);
+    return fallbackSrc;
+  };
+
+  const finalSrc = getFinalSrc();
 
   // Debug logging for image URLs
   console.log('ProductionSafeImage - Original src:', src);
@@ -78,6 +101,7 @@ export const ProductionSafeImage: React.FC<ProductionSafeImageProps> = ({
       onError={handleError}
       onLoad={() => setLoaded(true)}
       priority={priority}
+      unoptimized={finalSrc.startsWith('data:')} // Disable optimization for base64 data URLs
     />
   ) : (
     <Image
@@ -89,6 +113,7 @@ export const ProductionSafeImage: React.FC<ProductionSafeImageProps> = ({
       onError={handleError}
       onLoad={() => setLoaded(true)}
       priority={priority}
+      unoptimized={finalSrc.startsWith('data:')} // Disable optimization for base64 data URLs
     />
   );
 };

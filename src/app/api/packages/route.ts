@@ -422,7 +422,7 @@ async function enhancePackagesWithDetails(pkgs: any[]) {
   const [incs, adds, imgs, sizePricing, petTypes] = await Promise.all([
     query(`SELECT package_id, description FROM package_inclusions WHERE package_id IN (?)`, [ids]),
     query(`SELECT package_id, addon_id as id, description, price FROM package_addons WHERE package_id IN (?)`, [ids]),
-    query(`SELECT package_id, image_path, display_order FROM package_images WHERE package_id IN (?) ORDER BY display_order`, [ids]),
+    query(`SELECT package_id, image_path, display_order, image_data FROM package_images WHERE package_id IN (?) ORDER BY display_order`, [ids]),
     query(`SELECT package_id, size_category, weight_range_min, weight_range_max, price FROM package_size_pricing WHERE package_id IN (?)`, [ids]),
     query(`SELECT provider_id, pet_type FROM business_pet_types WHERE provider_id IN (?) AND is_active = 1`, [providerIds]),
   ]) as any[][];
@@ -449,6 +449,12 @@ async function enhancePackagesWithDetails(pkgs: any[]) {
     }));
     const images = (imgMap[p.id] || [])
       .map((i: any) => {
+        // If we have base64 image data, use it directly
+        if (i.image_data && i.image_data.startsWith('data:image/')) {
+          return i.image_data;
+        }
+        
+        // Fallback to file path processing for backward compatibility
         const path = i.image_path;
         if (!path || path.startsWith('blob:')) return null;
         if (path.startsWith('http')) return path;
