@@ -105,13 +105,17 @@ export async function POST(request: NextRequest) {
       let putFn: any = null;
       if (useBlob) {
         try {
-          // eslint-disable-next-line @typescript-eslint/no-implied-eval
-          const reqFn: any = (eval('require') as any);
-          const blob = reqFn ? reqFn('@vercel/blob') : null;
-          putFn = blob?.put;
+          // Prefer dynamic import to avoid eval/require issues in ESM
+          const blob = await import('@vercel/blob');
+          putFn = (blob as any)?.put;
+          if (!putFn) {
+            console.warn('Vercel Blob module loaded but put() is unavailable; falling back to base64');
+          }
         } catch (e) {
-          console.warn('Vercel Blob not available, falling back to base64:', e);
+          console.warn('Failed to load @vercel/blob; falling back to base64:', e);
         }
+      } else {
+        console.warn('BLOB_READ_WRITE_TOKEN not set; using base64 storage for documents');
       }
 
       if (mode === 'json' && providedUrls && Object.keys(providedUrls).length > 0) {
