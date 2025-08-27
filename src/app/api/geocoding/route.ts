@@ -67,7 +67,7 @@ export async function GET(request: NextRequest) {
       try {
         const errorData = await response.text();
         errorDetails = errorData ? ` - ${errorData}` : '';
-      } catch (e) {
+      } catch {
         // Ignore error reading response body
       }
       
