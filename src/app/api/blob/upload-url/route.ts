@@ -16,39 +16,31 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // ✅ Correct Vercel Blob API endpoint
-    const resp = await fetch("https://api.vercel.com/v2/blobs/upload-url", {
+    // Call Vercel Blob REST API with minimal required body
+    const resp = await fetch("https://api.vercel.com/v2/blob/generate-upload-url", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        access: "public", // or "private"
-        metadata: { filename }, // optional, just to track
-      }),
+      body: JSON.stringify({ access: "public" }),
     });
 
     if (!resp.ok) {
-      const text = await resp.text();
-      console.error("[blob/upload-url] Vercel Blob API error:", {
+      const text = await resp.text().catch(() => "");
+      console.error("[blob/upload-url] Vercel Blob API error", {
         status: resp.status,
         statusText: resp.statusText,
-        body: text,
+        body: text?.slice(0, 500),
       });
       return NextResponse.json(
-        { error: "Failed to generate upload URL", details: text },
+        { error: "Failed to generate upload URL", details: text || undefined, status: resp.status },
         { status: 502 }
       );
     }
 
     const data = await resp.json();
-
-    return NextResponse.json({
-      uploadUrl: data.url, // presigned URL
-      id: data.id,         // blob id
-      filename,
-    });
+    return NextResponse.json({ uploadUrl: data.url, id: data.id, filename });
   } catch (err) {
     console.error("[blob/upload-url] Unexpected error:", err);
     return NextResponse.json(
