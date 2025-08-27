@@ -114,15 +114,33 @@ export async function createBusinessNotification({
   emailSubject
 }: BusinessNotificationParams): Promise<{ success: boolean; notificationId?: number; error?: string }> {
   try {
+    console.log('Creating business notification:', { userId, title, type, link });
+    
     // Ensure the notifications table exists
     await ensureNotificationsTable();
 
+    // Check if notification already exists to prevent duplicates
+    const existingNotification = await query(`
+      SELECT id FROM notifications 
+      WHERE user_id = ? AND title = ? AND message = ? AND created_at > DATE_SUB(NOW(), INTERVAL 1 HOUR)
+    `, [userId, title, message]) as any[];
+
+    if (existingNotification && existingNotification.length > 0) {
+      console.log('Notification already exists, skipping duplicate:', existingNotification[0].id);
+      return {
+        success: true,
+        notificationId: existingNotification[0].id
+      };
+    }
+
     // Insert the notification
     const result = await query(
-      `INSERT INTO notifications (user_id, title, message, type, link)
-       VALUES (?, ?, ?, ?, ?)`,
+      `INSERT INTO notifications (user_id, title, message, type, link, is_read, created_at)
+       VALUES (?, ?, ?, ?, ?, 0, NOW())`,
       [userId, title, message, type, link]
     ) as any;
+
+    console.log('Business notification created successfully:', result.insertId);
 
     // Send email notification if requested and user has email notifications enabled
     if (shouldSendEmail) {
@@ -134,6 +152,7 @@ export async function createBusinessNotification({
       notificationId: result.insertId
     };
   } catch (error) {
+    console.error('Error creating business notification:', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error'
@@ -193,6 +212,7 @@ async function sendBusinessEmailNotification(
     const emailNotificationsEnabled = user.email_notifications !== null ? Boolean(user.email_notifications) : true;
 
     if (!emailNotificationsEnabled) {
+      console.log('Email notifications disabled for user:', userId);
       return;
     }
 
@@ -201,58 +221,61 @@ async function sendBusinessEmailNotification(
       return;
     }
 
-    // Send the email notification
+    // Create email content
+    const emailContent = createBusinessEmailContent(user.first_name, user.business_name, title, message, link);
+    const subject = emailSubject || `RainbowPaws Notification: ${title}`;
+
+    // Send email
     await sendEmail({
       to: user.email,
-      subject: emailSubject || `[Rainbow Paws] ${title}`,
-      html: createBusinessEmailHtml(user.first_name, user.business_name, title, message, type, link),
-      text: createBusinessEmailText(user.first_name, user.business_name, title, message, link)
+      subject,
+      html: emailContent
     });
 
+    console.log('Business email notification sent successfully to:', user.email);
   } catch (error) {
     console.error('Error sending business email notification:', error);
+    // Don't throw error as this is not critical for the main notification flow
   }
 }
 
 /**
- * Create HTML email content for business notification using the Rainbow Paws base template
+ * Create email content for business notifications
  */
-function createBusinessEmailHtml(
+function createBusinessEmailContent(
   firstName: string,
   businessName: string,
   title: string,
   message: string,
-  type: string,
   link: string | null
 ): string {
-  // Button text based on notification type
-  const getButtonText = () => {
-    if (title.includes('Booking')) return 'View Booking';
-    if (title.includes('Application')) return 'View Application';
-    if (title.includes('Document')) return 'View Documents';
-    if (title.includes('Review')) return 'View Reviews';
-    return 'View Details';
-  };
-
   const appUrl = getServerAppUrl();
+  const fullLink = link ? `${appUrl}${link}` : null;
 
-  const content = `
-    <h2>Business Notification</h2>
-    <p>Hello ${firstName},</p>
-    ${businessName ? `<span class="business-badge">${businessName}</span>` : '<span class="business-badge">Business Alert</span>'}
-    <h3>${title}</h3>
-    <p>${message}</p>
-    ${link ? `<div style="text-align: center;"><a href="${appUrl}${link}" class="button">${getButtonText()}</a></div>` : ''}
+  return baseEmailTemplate(`
+    <div class="business-badge">Business Notification</div>
+    <h2>Hello ${firstName}${businessName ? ` from ${businessName}` : ''}!</h2>
+    
     <div class="info-box">
-      <p><strong>Note:</strong> This notification is related to your business activities on Rainbow Paws.</p>
+      <h3>${title}</h3>
+      <p>${message}</p>
     </div>
-  `;
-
-  return baseEmailTemplate(content);
+    
+    ${fullLink ? `
+      <div style="text-align: center;">
+        <a href="${fullLink}" class="button">View Details</a>
+      </div>
+    ` : ''}
+    
+    <p style="margin-top: 20px; color: #666; font-size: 14px;">
+      This is an automated notification from your RainbowPaws business dashboard. 
+      You can manage your notification preferences in your account settings.
+    </p>
+  `);
 }
 
 /**
- * Create plain text email content for business notification
+ * Create email text for business notifications (fallback)
  */
 function createBusinessEmailText(
   firstName: string,
@@ -262,24 +285,22 @@ function createBusinessEmailText(
   link: string | null
 ): string {
   const appUrl = getServerAppUrl();
+  const fullLink = link ? `${appUrl}${link}` : null;
 
   return `
-Rainbow Paws Business Notification
-${businessName ? `Business: ${businessName}` : ''}
-
-Hello ${firstName},
+Hello ${firstName}${businessName ? ` from ${businessName}` : ''}!
 
 ${title}
 
 ${message}
 
-${link ? `Business Portal Link: ${appUrl}${link}` : ''}
-
-This notification is related to your business activities on Rainbow Paws.
+${fullLink ? `View details: ${fullLink}` : ''}
 
 ---
-Rainbow Paws Business Portal
-This is an automated business notification. Please do not reply to this email.
+This is an automated notification from your RainbowPaws business dashboard.
+You can manage your notification preferences in your account settings.
+
+${appUrl}
   `.trim();
 }
 
@@ -288,21 +309,39 @@ This is an automated business notification. Please do not reply to this email.
  */
 async function ensureNotificationsTable(): Promise<void> {
   try {
-    await query(`
-      CREATE TABLE IF NOT EXISTS notifications (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        user_id INT NOT NULL,
-        title VARCHAR(255) NOT NULL,
-        message TEXT NOT NULL,
-        type ENUM('info', 'success', 'warning', 'error') NOT NULL DEFAULT 'info',
-        link VARCHAR(255) DEFAULT NULL,
-        is_read TINYINT(1) DEFAULT 0,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
-        INDEX (user_id, created_at),
-        INDEX (is_read)
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-    `);
+    // Check if table exists
+    const tableExists = await query(`
+      SELECT COUNT(*) as count 
+      FROM information_schema.tables 
+      WHERE table_schema = DATABASE() AND table_name = 'notifications'
+    `) as any[];
+
+    if (tableExists[0].count === 0) {
+      console.log('Creating notifications table...');
+      
+      // Create the table if it doesn't exist
+      await query(`
+        CREATE TABLE IF NOT EXISTS notifications (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          user_id INT NOT NULL,
+          title VARCHAR(255) NOT NULL,
+          message TEXT NOT NULL,
+          type ENUM('info', 'success', 'warning', 'error') NOT NULL DEFAULT 'info',
+          link VARCHAR(255) DEFAULT NULL,
+          is_read TINYINT(1) DEFAULT 0,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+          INDEX idx_user_id (user_id),
+          INDEX idx_is_read (is_read),
+          INDEX idx_created_at (created_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+      `);
+      
+      console.log('Notifications table created successfully');
+    } else {
+      console.log('Notifications table already exists');
+    }
   } catch (error) {
     console.error('Error ensuring notifications table exists:', error);
     throw error;

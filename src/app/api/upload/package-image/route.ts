@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { writeFile, mkdir } from 'fs/promises';
+import { writeFile, mkdir, access } from 'fs/promises';
 import { join } from 'path';
 import { verifySecureAuth } from '@/lib/secureAuth';
 import { query } from '@/lib/db';
@@ -7,6 +7,34 @@ import * as fs from 'fs';
 
 // Maximum file size (5MB)
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
+
+// Helper function to ensure directory exists with proper error handling
+async function ensureDirectoryExists(dirPath: string): Promise<void> {
+  try {
+    // Check if directory exists
+    if (!fs.existsSync(dirPath)) {
+      console.log('Creating directory:', dirPath);
+      await mkdir(dirPath, { recursive: true });
+      console.log('Directory created successfully');
+    } else {
+      console.log('Directory already exists:', dirPath);
+    }
+    
+    // Test write permissions
+    const testFile = join(dirPath, '.write-test');
+    try {
+      await writeFile(testFile, 'test');
+      await fs.promises.unlink(testFile);
+      console.log('Directory is writable:', dirPath);
+    } catch (permError) {
+      console.error('Directory write permission test failed:', permError);
+      throw new Error(`Directory ${dirPath} is not writable: ${permError instanceof Error ? permError.message : 'Permission denied'}`);
+    }
+  } catch (error) {
+    console.error('Error ensuring directory exists:', dirPath, error);
+    throw new Error(`Failed to create/verify directory ${dirPath}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -116,23 +144,14 @@ export async function POST(request: NextRequest) {
         relativePath = `/uploads/packages/${filename}`;
       }
 
-      // Create base directory if it doesn't exist
-      console.log('Checking base directory:', baseDir);
-      if (!fs.existsSync(baseDir)) {
-        console.log('Creating base directory:', baseDir);
-        await mkdir(baseDir, { recursive: true });
-        console.log('Base directory created successfully');
-      } else {
-        console.log('Base directory already exists');
-      }
+      // Ensure directories exist with proper error handling
+      console.log('Ensuring base directory exists:', baseDir);
+      await ensureDirectoryExists(baseDir);
 
       // Create package-specific directory if needed
-      if (packageIdInt > 0 && !fs.existsSync(packageDir)) {
-        console.log('Creating package directory:', packageDir);
-        await mkdir(packageDir, { recursive: true });
-        console.log('Package directory created successfully');
-      } else if (packageIdInt > 0) {
-        console.log('Package directory already exists');
+      if (packageIdInt > 0) {
+        console.log('Ensuring package directory exists:', packageDir);
+        await ensureDirectoryExists(packageDir);
       }
 
       // Write file to directory
@@ -147,8 +166,10 @@ export async function POST(request: NextRequest) {
       await writeFile(filePath, buffer);
       console.log('File written successfully');
 
-      // Log successful file write for debugging
-
+      // Verify file was written successfully
+      if (!fs.existsSync(filePath)) {
+        throw new Error('File was not saved successfully after write operation');
+      }
 
       // If packageId is provided, save in database
       if (packageId) {

@@ -1,13 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
-import { existsSync } from 'fs';
 import { verifySecureAuth } from '@/lib/secureAuth';
+import * as fs from 'fs';
 
-// Function to ensure directory exists
-async function ensureDirectoryExists(dirPath: string) {
-  if (!existsSync(dirPath)) {
-    await mkdir(dirPath, { recursive: true });
+// Helper function to ensure directory exists with proper error handling
+async function ensureDirectoryExists(dirPath: string): Promise<void> {
+  try {
+    // Check if directory exists
+    if (!fs.existsSync(dirPath)) {
+      console.log('Creating directory:', dirPath);
+      await mkdir(dirPath, { recursive: true });
+      console.log('Directory created successfully');
+    } else {
+      console.log('Directory already exists:', dirPath);
+    }
+    
+    // Test write permissions
+    const testFile = join(dirPath, '.write-test');
+    try {
+      await writeFile(testFile, 'test');
+      await fs.promises.unlink(testFile);
+      console.log('Directory is writable:', dirPath);
+    } catch (permError) {
+      console.error('Directory write permission test failed:', permError);
+      throw new Error(`Directory ${dirPath} is not writable: ${permError instanceof Error ? permError.message : 'Permission denied'}`);
+    }
+  } catch (error) {
+    console.error('Error ensuring directory exists:', dirPath, error);
+    throw new Error(`Failed to create/verify directory ${dirPath}: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
 
@@ -87,6 +108,11 @@ export async function POST(request: NextRequest) {
     console.log('Writing file to disk...');
     await writeFile(filePath, buffer);
     console.log('File written successfully');
+
+    // Verify file was written successfully
+    if (!fs.existsSync(filePath)) {
+      throw new Error('File was not saved successfully after write operation');
+    }
 
     // Return the relative path to the image
     const relativePath = `/uploads/pets/${filename}`;

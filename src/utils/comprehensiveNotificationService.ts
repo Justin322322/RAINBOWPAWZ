@@ -65,6 +65,7 @@ export async function createBookingNotification(
 
     const { user_id, provider_id, pet_name, service_name, provider_name, booking_date, booking_time } = bookingDetails;
 
+    // Determine notification content based on type
     let title: string;
     let message: string;
     let type: 'info' | 'success' | 'warning' | 'error' = 'info';
@@ -113,41 +114,10 @@ export async function createBookingNotification(
 
       case 'booking_cancelled':
         title = 'Booking Cancelled';
-        
-        // Determine if cancellation was initiated by provider or user
-        const cancelledByProvider = additionalData?.cancelledBy === 'provider' || additionalData?.source === 'provider';
-        
-        if (cancelledByProvider) {
-          message = `Your booking for ${pet_name}'s ${service_name} has been cancelled by the service provider. ${additionalData?.reason ? `Reason: ${additionalData.reason}` : 'Please contact them for more details.'}`;
-        } else {
-          message = `Your booking for ${pet_name}'s ${service_name} has been cancelled. ${additionalData?.reason ? `Reason: ${additionalData.reason}` : ''}`;
-        }
-        
+        message = `Your booking for ${pet_name}'s ${service_name} has been cancelled.`;
         type = 'warning';
         link = `/user/furparent_dashboard/bookings?bookingId=${bookingId}`;
         sendEmailNotification = true;
-        break;
-
-      case 'review_request':
-        title = 'Please Review Your Experience';
-        message = `How was your experience with ${provider_name}? Your feedback helps us improve our services.`;
-        type = 'info';
-        link = `/user/furparent_dashboard/bookings?bookingId=${bookingId}&showReview=true`;
-        break;
-
-      case 'reminder_24h':
-        title = 'Booking Reminder - 24 Hours';
-        message = `Reminder: Your appointment for ${pet_name}'s ${service_name} is scheduled for tomorrow at ${booking_time}.`;
-        type = 'info';
-        link = `/user/furparent_dashboard/bookings?bookingId=${bookingId}`;
-        sendEmailNotification = true;
-        break;
-
-      case 'reminder_1h':
-        title = 'Booking Reminder - 1 Hour';
-        message = `Reminder: Your appointment for ${pet_name}'s ${service_name} is in 1 hour. Please prepare for the service.`;
-        type = 'warning';
-        link = `/user/furparent_dashboard/bookings?bookingId=${bookingId}`;
         break;
 
       default:

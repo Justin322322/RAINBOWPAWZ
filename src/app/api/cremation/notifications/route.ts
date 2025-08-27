@@ -63,14 +63,50 @@ export async function GET(request: NextRequest) {
 
     const total = countResult[0]?.total || 0;
 
-    // Get unread count
+    // Get unread count - ensure proper boolean handling
     const unreadResult = await query(`
       SELECT COUNT(*) as unread 
       FROM notifications 
-      WHERE user_id = ? AND is_read = 0
+      WHERE user_id = ? AND (is_read = 0 OR is_read = false OR is_read IS NULL)
     `, [parseInt(user.userId)]) as any[];
 
     const unreadCount = unreadResult[0]?.unread || 0;
+
+    // Also check for pending bookings that should create notifications
+    let pendingBookingsCount = 0;
+    try {
+      // Get provider ID for this business user
+      const providerResult = await query(
+        'SELECT provider_id FROM service_providers WHERE user_id = ?',
+        [user.userId]
+      ) as any[];
+
+      if (providerResult && providerResult.length > 0) {
+        const providerId = providerResult[0].provider_id;
+        
+        // Check for pending bookings
+        const pendingBookings = await query(`
+          SELECT COUNT(*) as count
+          FROM service_bookings
+          WHERE provider_id = ? AND status = 'pending'
+        `, [providerId]) as any[];
+
+        pendingBookingsCount = pendingBookings[0]?.count || 0;
+      }
+    } catch (error) {
+      console.warn('Error checking pending bookings for notification count:', error);
+    }
+
+    // Calculate total unread count including pending bookings
+    const totalUnreadCount = unreadCount + pendingBookingsCount;
+
+    console.log('Notification counts:', {
+      notifications: notifications.length,
+      total,
+      unread: unreadCount,
+      pendingBookings: pendingBookingsCount,
+      totalUnread: totalUnreadCount
+    });
 
     return NextResponse.json({
       success: true,
@@ -81,7 +117,11 @@ export async function GET(request: NextRequest) {
         offset,
         hasMore: offset + limit < total
       },
-      unreadCount
+      unreadCount: totalUnreadCount,
+      breakdown: {
+        notifications: unreadCount,
+        pendingBookings: pendingBookingsCount
+      }
     });
 
   } catch (error) {
@@ -111,57 +151,48 @@ export async function PATCH(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { notificationIds, markAll = false } = body;
-
-    // Check which column name to use (id or notification_id)
-    let idColumn = 'id';
-    try {
-      const tableInfo = await query(`DESCRIBE notifications`) as any[];
-      const hasNotificationId = tableInfo.some((col: any) => col.Field === 'notification_id');
-      const hasId = tableInfo.some((col: any) => col.Field === 'id');
-      
-      if (hasNotificationId && !hasId) {
-        idColumn = 'notification_id';
-      }
-    } catch (describeError) {
-      console.warn('Could not describe notifications table:', describeError);
-    }
-
-    let updateQuery;
-    let queryParams;
+    const { notificationId, markAll } = body;
 
     if (markAll) {
-      // Mark all notifications as read for this cremation provider
-      updateQuery = 'UPDATE notifications SET is_read = 1 WHERE user_id = ? AND is_read = 0';
-      queryParams = [parseInt(user.userId)];
-    } else if (notificationIds && Array.isArray(notificationIds) && notificationIds.length > 0) {
-      // Mark specific notifications as read
-      // SECURITY FIX: Build safe parameterized query without template literals
-      const placeholders = notificationIds.map(() => '?').join(',');
-      if (idColumn === 'notification_id') {
-        updateQuery = `UPDATE notifications SET is_read = 1 WHERE notification_id IN (${placeholders}) AND user_id = ?`;
-      } else {
-        updateQuery = `UPDATE notifications SET is_read = 1 WHERE id IN (${placeholders}) AND user_id = ?`;
-      }
-      queryParams = [...notificationIds, parseInt(user.userId)];
-    } else {
+      // Mark all notifications as read
+      await query(`
+        UPDATE notifications 
+        SET is_read = 1 
+        WHERE user_id = ?
+      `, [parseInt(user.userId)]);
+
       return NextResponse.json({
-        error: 'Either provide notification IDs or set markAll to true'
+        success: true,
+        message: 'All notifications marked as read'
+      });
+    }
+
+    if (!notificationId) {
+      return NextResponse.json({
+        error: 'Notification ID is required'
       }, { status: 400 });
     }
 
-    const result = await query(updateQuery, queryParams) as any;
+    // Mark specific notification as read
+    const result = await query(`
+      UPDATE notifications 
+      SET is_read = 1 
+      WHERE id = ? AND user_id = ?
+    `, [notificationId, parseInt(user.userId)]) as any;
+
+    if (result.affectedRows === 0) {
+      return NextResponse.json({
+        error: 'Notification not found or already marked as read'
+      }, { status: 404 });
+    }
 
     return NextResponse.json({
       success: true,
-      message: markAll 
-        ? 'All notifications marked as read' 
-        : `${result.affectedRows} notification(s) marked as read`,
-      affectedRows: result.affectedRows
+      message: 'Notification marked as read'
     });
 
   } catch (error) {
-    console.error('Mark cremation provider notifications as read error:', error);
+    console.error('Mark notification as read error:', error);
     return NextResponse.json({
       error: 'Internal server error',
       details: error instanceof Error ? error.message : 'Unknown error'

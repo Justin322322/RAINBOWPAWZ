@@ -5,6 +5,34 @@ import { join } from 'path';
 import { existsSync } from 'fs';
 import { verifySecureAuth } from '@/lib/secureAuth';
 
+// Helper function to ensure directory exists with proper error handling
+async function ensureDirectoryExists(dirPath: string): Promise<void> {
+  try {
+    // Check if directory exists
+    if (!existsSync(dirPath)) {
+      console.log('Creating directory:', dirPath);
+      await mkdir(dirPath, { recursive: true });
+      console.log('Directory created successfully');
+    } else {
+      console.log('Directory already exists:', dirPath);
+    }
+    
+    // Test write permissions
+    const testFile = join(dirPath, '.write-test');
+    try {
+      await writeFile(testFile, 'test');
+      await require('fs').promises.unlink(testFile);
+      console.log('Directory is writable:', dirPath);
+    } catch (permError) {
+      console.error('Directory write permission test failed:', permError);
+      throw new Error(`Directory ${dirPath} is not writable: ${permError instanceof Error ? permError.message : 'Permission denied'}`);
+    }
+  } catch (error) {
+    console.error('Error ensuring directory exists:', dirPath, error);
+    throw new Error(`Failed to create/verify directory ${dirPath}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+}
+
 // Function to save file to disk
 async function saveFile(file: File, userId: string, documentType: string): Promise<string> {
   try {
@@ -37,29 +65,8 @@ async function saveFile(file: File, userId: string, documentType: string): Promi
     // Create the directory path
     const uploadsDir = join(process.cwd(), 'public', 'uploads', 'documents', userId);
 
-    // Ensure directory exists
-    if (!existsSync(uploadsDir)) {
-      try {
-        await mkdir(uploadsDir, { recursive: true });
-      } catch (dirError) {
-        throw new Error(`Failed to create upload directory: ${dirError instanceof Error ? dirError.message : 'Unknown error'}`);
-      }
-    }
-
-    // Test directory write permissions
-    try {
-      const testFile = join(uploadsDir, '.write-test');
-      await writeFile(testFile, 'test');
-      // Clean up test file
-      try {
-        const { unlink } = await import('fs/promises');
-        await unlink(testFile);
-      } catch {
-        // Ignore cleanup errors
-      }
-    } catch (permError) {
-      throw new Error(`Upload directory is not writable: ${permError instanceof Error ? permError.message : 'Permission denied'}`);
-    }
+    // Ensure directory exists with proper error handling
+    await ensureDirectoryExists(uploadsDir);
 
     // Create file path
     const filePath = join(uploadsDir, filename);
@@ -71,7 +78,7 @@ async function saveFile(file: File, userId: string, documentType: string): Promi
 
     // Verify file was written successfully
     if (!existsSync(filePath)) {
-      throw new Error('File was not saved successfully');
+      throw new Error('File was not saved successfully after write operation');
     }
 
     // Return the relative path
@@ -86,296 +93,210 @@ async function saveFile(file: File, userId: string, documentType: string): Promi
 
 export async function POST(request: NextRequest) {
   try {
-    // Parse the multipart form data first
-    const formData = await request.formData();
+    console.log('Business document upload started');
     
-    // Get user ID from form data
-    const formUserId = formData.get('userId');
+    // Use secure authentication
+    const user = await verifySecureAuth(request);
+    if (!user) {
+      console.log('Authentication failed - no valid user');
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     
-    if (!formUserId) {
+    console.log('User authenticated:', { userId: user.userId, accountType: user.accountType });
+    
+    const { userId, accountType } = user;
+
+    // Only business accounts can upload documents
+    if (accountType !== 'business') {
+      console.log('Non-business access attempt:', accountType);
       return NextResponse.json({
-        error: 'User ID is required'
+        error: 'Only business accounts can upload documents'
+      }, { status: 403 });
+    }
+
+    // Parse the form data
+    console.log('Parsing form data...');
+    const formData = await request.formData();
+    const businessPermit = formData.get('businessPermit') as File | null;
+    const businessRegistration = formData.get('businessRegistration') as File | null;
+    const taxCertificate = formData.get('taxCertificate') as File | null;
+    const dtiCertificate = formData.get('dtiCertificate') as File | null;
+    const mayorPermit = formData.get('mayorPermit') as File | null;
+    const barangayClearance = formData.get('barangayClearance') as File | null;
+    
+    console.log('Form data parsed:', { 
+      hasBusinessPermit: !!businessPermit,
+      hasBusinessRegistration: !!businessRegistration,
+      hasTaxCertificate: !!taxCertificate,
+      hasDtiCertificate: !!dtiCertificate,
+      hasMayorPermit: !!mayorPermit,
+      hasBarangayClearance: !!barangayClearance
+    });
+
+    // Check if at least one document is provided
+    if (!businessPermit && !businessRegistration && !taxCertificate && !dtiCertificate && !mayorPermit && !barangayClearance) {
+      console.log('No documents provided');
+      return NextResponse.json({
+        error: 'At least one document must be provided'
       }, { status: 400 });
     }
 
-    // Try to verify authentication using secure JWT
-    const authResult = await verifySecureAuth(request);
-    
-    let userIdStr: string;
-    
-    if (authResult) {
-      // Use the authenticated user ID from JWT token
-      const authenticatedUserId = authResult.userId;
-      
-      // Security check: ensure the form user ID matches the authenticated user ID
-      if (formUserId.toString() !== authenticatedUserId.toString()) {
-        return NextResponse.json({
-          error: 'User ID mismatch. Please try logging in again.'
-        }, { status: 403 });
-      }
-      
-      userIdStr = authenticatedUserId.toString();
-    } else {
-      // For new registrations, allow upload with form user ID but add extra validation
-      userIdStr = formUserId.toString();
-      
-      // Validate that the user exists and was recently created (within last 5 minutes)
-      const userExists = await query(
-        'SELECT user_id, created_at FROM users WHERE user_id = ? AND created_at > DATE_SUB(NOW(), INTERVAL 5 MINUTE)',
-        [userIdStr]
-      ) as any[];
-      
-      if (!userExists || userExists.length === 0) {
-        return NextResponse.json({
-          error: 'Invalid user ID or session expired. Please try logging in.'
-        }, { status: 401 });
-      }
-    }
-
-    // Verify user exists
-    const userCheck = await query(
-      `SELECT user_id, first_name, last_name, email, role FROM users WHERE user_id = ?`,
-      [userIdStr]
+    // Get provider ID
+    console.log('Looking up service provider for user:', userId);
+    const providerResult = await query(
+      'SELECT provider_id FROM service_providers WHERE user_id = ?',
+      [userId]
     ) as any[];
+    console.log('Provider lookup result:', providerResult);
 
-    if (!userCheck || userCheck.length === 0) {
+    if (!providerResult || providerResult.length === 0) {
+      console.log('Service provider not found for user:', userId);
       return NextResponse.json({
-        error: 'User not found'
+        error: 'Service provider not found'
       }, { status: 404 });
     }
 
-    const user = userCheck[0];
+    const providerId = providerResult[0].provider_id;
+    console.log('Provider ID found:', providerId);
 
-    // SECURITY FIX: Use hardcoded table name instead of dynamic template
-    // Check if a business profile exists for this user in service_providers table
-    let businessCheck = await query(
-      'SELECT provider_id, name, application_status FROM service_providers WHERE user_id = ?',
-      [userIdStr]
-    ) as any[];
+    // Save documents and collect paths
+    const documentPaths: { [key: string]: string } = {};
+    const errors: string[] = [];
 
-    let businessProfileId: number;
-
-    // If no business found, create one
-    if (!businessCheck || businessCheck.length === 0) {
-      // Wait a bit to allow registration transaction to complete
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Try to find the service provider record again
-      businessCheck = await query(
-        'SELECT provider_id, name, application_status FROM service_providers WHERE user_id = ?',
-        [userIdStr]
-      ) as any[];
-      
-      // If still not found, create a new one
-      if (!businessCheck || businessCheck.length === 0) {
-        try {
-          // Create service provider name from user's name or default
-          const providerName = user.first_name
-            ? `${user.first_name} ${user.last_name || ''}`.trim()
-            : 'New Cremation Service';
-
-          // Insert a new service provider record
-          const insertResult = await query(
-            'INSERT INTO service_providers (user_id, name, provider_type, application_status) VALUES (?, ?, ?, ?)',
-            [userIdStr, providerName, 'cremation', 'pending']
-          ) as any;
-
-          if (insertResult && insertResult.insertId) {
-            businessProfileId = insertResult.insertId;
-          } else {
-            // Fetch the newly created record if insertId not available
-            const newBusinessCheck = await query(
-              'SELECT provider_id FROM service_providers WHERE user_id = ?',
-              [userIdStr]
-            ) as any[];
-
-            if (!newBusinessCheck || newBusinessCheck.length === 0) {
-              return NextResponse.json({
-                error: 'Failed to create service provider record'
-              }, { status: 500 });
-            }
-
-            businessProfileId = newBusinessCheck[0].provider_id;
-          }
-        } catch {
-          return NextResponse.json({
-            error: 'Failed to create service provider record'
-          }, { status: 500 });
-        }
-      } else {
-        // Found it on retry, use existing record
-        businessProfileId = businessCheck[0].provider_id;
-      }
-    } else {
-      // Use existing business profile
-      businessProfileId = businessCheck[0].provider_id;
-    }
-
-    // Process and save uploaded files
-    const filePaths: Record<string, string> = {};
-    let documentsUploaded = false;
-    const uploadErrors: string[] = [];
-
-    // Process Business Permit
-    const businessPermit = formData.get('businessPermit') as File | null;
-    if (businessPermit && businessPermit instanceof File && businessPermit.size > 0) {
+    // Save business permit if provided
+    if (businessPermit) {
       try {
-        // Validate file size (10MB limit)
-        if (businessPermit.size > 10 * 1024 * 1024) {
-          uploadErrors.push('Business permit file is too large (max 10MB)');
-        } else {
-          filePaths.business_permit_path = await saveFile(businessPermit, userIdStr, 'business_permit');
-          documentsUploaded = true;
-        }
+        console.log('Saving business permit...');
+        const path = await saveFile(businessPermit, userId, 'business_permit');
+        documentPaths.business_permit = path;
+        console.log('Business permit saved successfully');
       } catch (error) {
-        uploadErrors.push(`Failed to upload business permit: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        console.error('Error saving business permit:', error);
+        errors.push(`Business permit: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
     }
 
-    // Process BIR Certificate
-    const birCertificate = formData.get('birCertificate') as File | null;
-    if (birCertificate && birCertificate instanceof File && birCertificate.size > 0) {
+    // Save business registration if provided
+    if (businessRegistration) {
       try {
-        // Validate file size (10MB limit)
-        if (birCertificate.size > 10 * 1024 * 1024) {
-          uploadErrors.push('BIR certificate file is too large (max 10MB)');
-        } else {
-          filePaths.bir_certificate_path = await saveFile(birCertificate, userIdStr, 'bir_certificate');
-          documentsUploaded = true;
-        }
+        console.log('Saving business registration...');
+        const path = await saveFile(businessRegistration, userId, 'business_registration');
+        documentPaths.business_registration = path;
+        console.log('Business registration saved successfully');
       } catch (error) {
-        uploadErrors.push(`Failed to upload BIR certificate: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        console.error('Error saving business registration:', error);
+        errors.push(`Business registration: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
     }
 
-    // Process Government ID
-    const governmentId = formData.get('governmentId') as File | null;
-    if (governmentId && governmentId instanceof File && governmentId.size > 0) {
+    // Save tax certificate if provided
+    if (taxCertificate) {
       try {
-        // Validate file size (10MB limit)
-        if (governmentId.size > 10 * 1024 * 1024) {
-          uploadErrors.push('Government ID file is too large (max 10MB)');
-        } else {
-          filePaths.government_id_path = await saveFile(governmentId, userIdStr, 'government_id');
-          documentsUploaded = true;
-        }
+        console.log('Saving tax certificate...');
+        const path = await saveFile(taxCertificate, userId, 'tax_certificate');
+        documentPaths.tax_certificate = path;
+        console.log('Tax certificate saved successfully');
       } catch (error) {
-        uploadErrors.push(`Failed to upload government ID: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        console.error('Error saving tax certificate:', error);
+        errors.push(`Tax certificate: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
     }
 
-    if (!documentsUploaded && uploadErrors.length === 0) {
+    // Save DTI certificate if provided
+    if (dtiCertificate) {
+      try {
+        console.log('Saving DTI certificate...');
+        const path = await saveFile(dtiCertificate, userId, 'dti_certificate');
+        documentPaths.dti_certificate = path;
+        console.log('DTI certificate saved successfully');
+      } catch (error) {
+        console.error('Error saving DTI certificate:', error);
+        errors.push(`DTI certificate: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+    }
+
+    // Save mayor permit if provided
+    if (mayorPermit) {
+      try {
+        console.log('Saving mayor permit...');
+        const path = await saveFile(mayorPermit, userId, 'mayor_permit');
+        documentPaths.mayor_permit = path;
+        console.log('Mayor permit saved successfully');
+      } catch (error) {
+        console.error('Error saving mayor permit:', error);
+        errors.push(`Mayor permit: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+    }
+
+    // Save barangay clearance if provided
+    if (barangayClearance) {
+      try {
+        console.log('Saving barangay clearance...');
+        const path = await saveFile(barangayClearance, userId, 'barangay_clearance');
+        documentPaths.barangay_clearance = path;
+        console.log('Barangay clearance saved successfully');
+      } catch (error) {
+        console.error('Error saving barangay clearance:', error);
+        errors.push(`Barangay clearance: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+    }
+
+    // Check if any documents were saved successfully
+    if (Object.keys(documentPaths).length === 0) {
+      console.log('No documents were saved successfully');
       return NextResponse.json({
-        error: 'No valid documents were uploaded'
-      }, { status: 400 });
+        error: 'Failed to save any documents',
+        details: errors
+      }, { status: 500 });
     }
 
-    if (uploadErrors.length > 0 && !documentsUploaded) {
+    // Update the database with the document paths
+    try {
+      console.log('Updating database with document paths...');
+      
+      // Update each document path in the database
+      for (const [documentType, path] of Object.entries(documentPaths)) {
+        const columnName = documentType.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
+        console.log(`Updating ${columnName} column with path:`, path);
+        
+        const updateResult = await query(
+          `UPDATE service_providers SET ${columnName} = ? WHERE provider_id = ?`,
+          [path, providerId]
+        );
+        console.log(`${columnName} updated successfully:`, updateResult);
+      }
+      
+      console.log('All document paths updated in database successfully');
+      
+    } catch (dbError) {
+      console.error('Database error while updating document paths:', dbError);
       return NextResponse.json({
-        error: 'All document uploads failed',
-        details: uploadErrors
-      }, { status: 400 });
+        error: 'Failed to update document paths in database',
+        details: dbError instanceof Error ? dbError.message : 'Unknown database error'
+      }, { status: 500 });
     }
 
-    // Check columns in the service_providers table
-    const columnsResult = await query('SHOW COLUMNS FROM service_providers') as any[];
-    const columns = columnsResult.map((col: any) => col.Field);
-
-    // Update business record with document paths
-    const updateFields = [];
-    const updateValues = [];
-
-    // Only update fields that exist in the table and have files
-    if (filePaths.business_permit_path && columns.includes('business_permit_path')) {
-      updateFields.push('business_permit_path = ?');
-      updateValues.push(filePaths.business_permit_path);
-    } else if (filePaths.business_permit_path) {
-    }
-
-    if (filePaths.bir_certificate_path && columns.includes('bir_certificate_path')) {
-      updateFields.push('bir_certificate_path = ?');
-      updateValues.push(filePaths.bir_certificate_path);
-    } else if (filePaths.bir_certificate_path) {
-    }
-
-    if (filePaths.government_id_path && columns.includes('government_id_path')) {
-      updateFields.push('government_id_path = ?');
-      updateValues.push(filePaths.government_id_path);
-    } else if (filePaths.government_id_path) {
-    }
-
-    // Add status update if the column exists
-    if (columns.includes('application_status')) {
-      updateFields.push('application_status = ?');
-      updateValues.push('pending');
-    } else if (columns.includes('verification_status')) {
-      updateFields.push('verification_status = ?');
-      updateValues.push('pending');
-    } else if (columns.includes('status')) {
-      updateFields.push('status = ?');
-      updateValues.push('pending');
-    }
-
-    // Also update updated_at timestamp if it exists
-    if (columns.includes('updated_at')) {
-      updateFields.push('updated_at = NOW()');
-    }
-
-    if (updateFields.length > 0) {
-      // Log the update query for debugging
-
-      const updateQuery = `UPDATE service_providers SET ${updateFields.join(', ')} WHERE provider_id = ?`;
-
-      try {
-        const _updateResult = await query(
-          updateQuery,
-          [...updateValues, businessProfileId]
-        );
-
-
-        // Verify if the update was successful
-        const verifyResult = await query(
-          'SELECT provider_id, business_permit_path, bir_certificate_path, government_id_path FROM service_providers WHERE provider_id = ?',
-          [businessProfileId]
-        ) as any[];
-
-        if (verifyResult && verifyResult.length > 0) {
-        } else {
-        }
-
-      } catch (updateError) {
-        return NextResponse.json({
-          error: 'Failed to update service provider record',
-          details: updateError instanceof Error ? updateError.message : 'Unknown error'
-        }, { status: 500 });
-      }
-
-    } else {
-    }
-
-    // Update user role to 'business' if not already set
-    if (user.role !== 'business' && user.role !== 'admin') {
-      try {
-        await query(
-          `UPDATE users SET role = 'business' WHERE user_id = ?`,
-          [userIdStr]
-        );
-      } catch {
-      }
-    }
-
-    const successMessage = uploadErrors.length > 0 
-      ? `Some documents uploaded successfully. Issues: ${uploadErrors.join(', ')}`
-      : 'Documents uploaded successfully';
-
+    // Return success response
+    console.log('Business document upload completed successfully');
     return NextResponse.json({
       success: true,
-      message: successMessage,
-      filePaths,
-      warnings: uploadErrors.length > 0 ? uploadErrors : undefined
-    }, { status: 200 });
+      message: 'Documents uploaded successfully',
+      documentPaths,
+      errors: errors.length > 0 ? errors : undefined
+    });
+
   } catch (error) {
-    console.error('Document upload error:', error);
+    console.error('Error in business document upload:', error);
+    
+    // Log additional details for debugging
+    if (error instanceof Error) {
+      console.error('Error details:', {
+        name: error.name,
+        message: error.message,
+        stack: error.stack
+      });
+    }
+    
     return NextResponse.json({
       error: 'Failed to process document upload',
       details: error instanceof Error ? error.message : 'Unknown error'

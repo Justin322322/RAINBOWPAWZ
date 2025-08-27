@@ -682,6 +682,34 @@ export async function POST(request: NextRequest) {
       console.error('Error creating booking notifications:', notificationError);
     }
 
+    // Create notification for the business user about the new pending booking
+    try {
+      // Get the provider user ID from the service_providers table
+      const providerUserResult = await query(
+        'SELECT user_id FROM service_providers WHERE provider_id = ?',
+        [providerId]
+      ) as any[];
+
+      if (providerUserResult && providerUserResult.length > 0) {
+        const providerUserId = providerUserResult[0].user_id;
+        
+        // Create notification for the business user
+        const { createBusinessNotification } = await import('@/utils/businessNotificationService');
+        await createBusinessNotification({
+          userId: providerUserId,
+          title: 'New Pending Booking',
+          message: `You have received a new booking for ${petName}'s cremation service. Please review and confirm.`,
+          type: 'info',
+          link: `/cremation/bookings/${bookingId}`,
+          shouldSendEmail: true,
+          emailSubject: 'New Pending Booking - Action Required'
+        });
+      }
+    } catch (notificationError) {
+      console.error('Error creating pending booking notification:', notificationError);
+      // Continue with booking creation even if notification fails
+    }
+
     // Return created booking data
     return NextResponse.json({
       success: true,
