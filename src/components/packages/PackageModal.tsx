@@ -2,7 +2,7 @@
 
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import useDebounce from '@/hooks/useDebounce';
-import { CheckIcon, PlusIcon, PencilIcon, DocumentIcon } from '@heroicons/react/24/outline';
+import { DocumentIcon } from '@heroicons/react/24/outline';
 import { ImageUploader } from '@/components/packages/ImageUploader';
 import { useToast } from '@/context/ToastContext';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -871,22 +871,27 @@ const PackageModal: React.FC<PackageModalProps> = ({
       <div className="fixed inset-0 bg-black bg-opacity-50" onClick={onClose}></div>
       <div className="relative bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
         {/* Header section */}
-        <div className="bg-[var(--primary-green)] text-white px-6 sm:px-8 py-4 sm:py-5 flex justify-between items-center rounded-t-lg">
+        <div className="bg-gradient-to-r from-[var(--primary-green)] to-emerald-600 text-white px-6 sm:px-8 py-5 sm:py-6 flex justify-between items-center rounded-t-lg shadow-lg">
           <div className="flex items-center min-w-0 flex-1">
-            <div className="flex items-center gap-3">
-              {mode === 'create' ? (
-                <PlusIcon className="w-6 h-6 text-white" />
-              ) : (
-                <PencilIcon className="w-6 h-6 text-white" />
-              )}
-              <h1 className="text-lg sm:text-xl font-medium text-white">
-                {mode === 'create' ? 'Create New Package' : 'Edit Package'}
-              </h1>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center justify-center w-10 h-10 bg-white/20 rounded-xl backdrop-blur-sm">
+                <span className="text-lg font-bold">
+                  {mode === 'create' ? '✨' : '✏️'}
+                </span>
+              </div>
+              <div>
+                <h1 className="text-xl sm:text-2xl font-bold text-white">
+                  {mode === 'create' ? 'Create New Package' : 'Edit Package'}
+                </h1>
+                <p className="text-sm text-white/80 mt-1">
+                  {mode === 'create' ? 'Add a new service package to your offerings' : 'Update your existing package details'}
+                </p>
+              </div>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="text-white hover:text-white/80 transition-colors duration-200 flex-shrink-0 ml-2 w-8 h-8 rounded-lg hover:bg-white/10 flex items-center justify-center"
+            className="text-white hover:text-white/90 transition-all duration-200 flex-shrink-0 ml-2 w-10 h-10 rounded-xl hover:bg-white/20 flex items-center justify-center backdrop-blur-sm"
             aria-label="Close modal"
           >
             <span className="text-xl font-light">×</span>
@@ -914,7 +919,11 @@ const PackageModal: React.FC<PackageModalProps> = ({
                   animate={{ scale: [0.8, 1.2, 1] }}
                   transition={{ duration: 0.6 }}
                 >
-                  <CheckIcon className="h-10 w-10 text-green-500" />
+                  <div className="w-12 h-12 rounded-full bg-green-500 flex items-center justify-center">
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
                 </motion.div>
                 <h3 className="text-xl font-semibold text-gray-900 mb-2">
                   {mode === 'create' ? 'Package Created Successfully!' : 'Package Updated Successfully!'}
@@ -1052,4 +1061,3 @@ const PackageModal: React.FC<PackageModalProps> = ({
 };
 
 export default PackageModal;
-
