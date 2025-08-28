@@ -32,13 +32,11 @@ export const ProductionSafeImage: React.FC<ProductionSafeImageProps> = ({
 }) => {
   const [imgSrc, setImgSrc] = useState<string>(src);
   const [error, setError] = useState<boolean>(false);
-  const [loaded, setLoaded] = useState<boolean>(false);
 
   // Reset state when src changes
   useEffect(() => {
     setImgSrc(src);
     setError(false);
-    setLoaded(false);
   }, [src]);
 
   // Handle image load error
@@ -118,9 +116,8 @@ export const ProductionSafeImage: React.FC<ProductionSafeImageProps> = ({
       src={finalSrc}
       alt={alt}
       fill
-      className={`${className} ${loaded ? 'opacity-100' : 'opacity-70'} transition-opacity duration-300`}
+      className={`${className} transition-opacity duration-300`}
       onError={handleError}
-      onLoad={() => setLoaded(true)}
       priority={priority}
       unoptimized={shouldUnoptimize} // Disable optimization for data URLs and absolute remotes
     />
@@ -130,9 +127,8 @@ export const ProductionSafeImage: React.FC<ProductionSafeImageProps> = ({
       alt={alt}
       width={width || 400}
       height={height || 300}
-      className={`${className} ${loaded ? 'opacity-100' : 'opacity-70'} transition-opacity duration-300`}
+      className={`${className} transition-opacity duration-300`}
       onError={handleError}
-      onLoad={() => setLoaded(true)}
       priority={priority}
       unoptimized={shouldUnoptimize} // Disable optimization for data URLs and absolute remotes
     />

@@ -4,7 +4,7 @@ import React, { useRef, useState } from 'react';
 import NextImage from 'next/image';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
-import { PlusIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, PhotoIcon } from '@heroicons/react/24/outline';
 
 interface AddOn {
   name: string;
@@ -224,7 +224,10 @@ export const AddOnManager: React.FC<AddOnManagerProps> = ({
           {addOns.length === 0 ? (
             <div className="text-center py-8">
               <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center mx-auto mb-4">
-                <PlusIcon className="w-8 h-8 text-amber-500" />
+                <div className="flex items-center gap-2">
+                  <PlusIcon className="w-6 h-6 text-amber-500" />
+                  <PhotoIcon className="w-6 h-6 text-gray-400" />
+                </div>
               </div>
               <p className="text-sm text-gray-500">No add-ons added yet</p>
               <p className="text-xs text-gray-400 mt-1">Add your first add-on above</p>
