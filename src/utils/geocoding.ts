@@ -1,5 +1,5 @@
 /**
- * Enhanced geocoding service with multiple providers and fallbacks
+ * Enhanced geocoding service with multiple open-source providers and fallbacks
  */
 
 import { cacheManager } from '@/utils/cache';
@@ -20,7 +20,6 @@ interface GeocodingError {
 
 class GeocodingService {
   private static instance: GeocodingService;
-  private readonly GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
   private readonly DEFAULT_COORDINATES: [number, number] = [14.6742, 120.5434]; // Balanga City
   private readonly RETRY_DELAYS = [1000, 2000, 4000]; // Exponential backoff
 
@@ -53,134 +52,36 @@ class GeocodingService {
       };
     }
 
-    // Try geocoding with multiple providers
-    const providers = this.getGeocodingProviders();
-    let lastError: GeocodingError | null = null;
+    // Try geocoding with our improved API
+    try {
+      const result = await this.geocodeWithImprovedAPI(address);
 
-    for (const provider of providers) {
-      try {
-        const result = await this.geocodeWithRetry(address, provider);
-
-        // Cache successful result
-        cacheManager.setGeocodingCache(address, {
-          coordinates: result.coordinates,
-          formattedAddress: result.formattedAddress,
-          confidence: result.confidence,
-          provider: result.provider
-        });
-
-        return result;
-      } catch (error) {
-        lastError = error as GeocodingError;
-
-
-        // If rate limited, try next provider immediately
-        if (lastError.code === 'RATE_LIMITED') {
-          continue;
-        }
-      }
-    }
-
-    // All providers failed, throw error instead of returning default location
-    throw lastError || this.createError('All geocoding providers failed', 'NO_RESULTS', false);
-  }
-
-  /**
-   * Get available geocoding providers in order of preference
-   */
-  private getGeocodingProviders() {
-    const providers = [];
-
-    // Google Maps Geocoding (if API key available)
-    if (this.GOOGLE_MAPS_API_KEY) {
-      providers.push({
-        name: 'google',
-        geocode: this.geocodeWithGoogle.bind(this)
+      // Cache successful result
+      cacheManager.setGeocodingCache(address, {
+        coordinates: result.coordinates,
+        formattedAddress: result.formattedAddress,
+        confidence: result.confidence,
+        provider: result.provider
       });
+
+      return result;
+    } catch (error) {
+      console.error('🗺️ [GeocodingService] Geocoding failed:', error);
+      throw this.createError(
+        error instanceof Error ? error.message : 'Geocoding failed',
+        'API_ERROR',
+        true
+      );
     }
-
-    // Nominatim (OpenStreetMap)
-    providers.push({
-      name: 'nominatim',
-      geocode: this.geocodeWithNominatim.bind(this)
-    });
-
-    return providers;
   }
 
   /**
-   * Geocode with retry logic
+   * Geocode using our improved API with multiple open-source providers
    */
-  private async geocodeWithRetry(address: string, provider: any): Promise<GeocodingResult> {
-    let lastError: Error | null = null;
-
-    for (let attempt = 0; attempt < this.RETRY_DELAYS.length; attempt++) {
-      try {
-        return await provider.geocode(address);
-      } catch (error) {
-        lastError = error as Error;
-        
-        // Don't retry for non-retryable errors
-        if (error instanceof Error && 'retryable' in error && !error.retryable) {
-          throw error;
-        }
-
-        // Wait before retry
-        if (attempt < this.RETRY_DELAYS.length - 1) {
-          await this.delay(this.RETRY_DELAYS[attempt]);
-        }
-      }
-    }
-
-    throw lastError;
-  }
-
-  /**
-   * Geocode using Google Maps API
-   */
-  private async geocodeWithGoogle(address: string): Promise<GeocodingResult> {
-    const cleanAddress = this.cleanAddress(address);
-    // Enhanced parameters for better accuracy in Philippines
-    const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(cleanAddress)}&region=ph&bounds=14.0,120.0|15.0,121.0&language=en&key=${this.GOOGLE_MAPS_API_KEY}`;
-
-    const response = await fetch(url);
-    
-    if (!response.ok) {
-      if (response.status === 429) {
-        throw this.createError('Rate limited', 'RATE_LIMITED', true);
-      }
-      throw this.createError(`HTTP ${response.status}`, 'API_ERROR', true);
-    }
-
-    const data = await response.json();
-
-    if (data.status === 'ZERO_RESULTS') {
-      throw this.createError('No results found', 'NO_RESULTS', false);
-    }
-
-    if (data.status !== 'OK') {
-      throw this.createError(`API error: ${data.status}`, 'API_ERROR', true);
-    }
-
-    const result = data.results[0];
-    const location = result.geometry.location;
-    
-    return {
-      coordinates: [location.lat, location.lng],
-      formattedAddress: result.formatted_address,
-      confidence: this.calculateGoogleConfidence(result),
-      provider: 'google',
-      accuracy: this.getAccuracyFromConfidence(this.calculateGoogleConfidence(result))
-    };
-  }
-
-  /**
-   * Geocode using Nominatim (OpenStreetMap) via our API proxy
-   */
-  private async geocodeWithNominatim(address: string): Promise<GeocodingResult> {
+  private async geocodeWithImprovedAPI(address: string): Promise<GeocodingResult> {
     const cleanAddress = this.cleanAddress(address);
     
-    // Use our API endpoint instead of direct Nominatim calls
+    // Use our improved geocoding API endpoint
     const url = `/api/geocoding?address=${encodeURIComponent(cleanAddress)}`;
 
     try {
@@ -195,22 +96,24 @@ class GeocodingService {
         if (response.status === 429) {
           throw this.createError('Rate limited', 'RATE_LIMITED', true);
         }
+        if (response.status === 404) {
+          throw this.createError('No results found', 'NO_RESULTS', false);
+        }
         throw this.createError(`HTTP ${response.status}`, 'API_ERROR', true);
       }
 
       const data = await response.json();
 
       if (!data || data.length === 0) {
-        // Try simplified address
-        return this.trySimplifiedNominatim(address);
+        throw this.createError('No results found', 'NO_RESULTS', false);
       }
 
-      // Pick the best result based on confidence and relevance
+      // Pick the best result based on confidence
       let bestResult = data[0];
-      let bestConfidence = this.calculateNominatimConfidence(bestResult);
+      let bestConfidence = bestResult.confidence || 0.5;
 
       for (let i = 1; i < data.length; i++) {
-        const confidence = this.calculateNominatimConfidence(data[i]);
+        const confidence = data[i].confidence || 0.5;
         if (confidence > bestConfidence) {
           bestResult = data[i];
           bestConfidence = confidence;
@@ -221,15 +124,15 @@ class GeocodingService {
         coordinates: [parseFloat(bestResult.lat), parseFloat(bestResult.lon)],
         formattedAddress: bestResult.display_name,
         confidence: bestConfidence,
-        provider: 'nominatim',
+        provider: bestResult.provider || 'unknown',
         accuracy: this.getAccuracyFromConfidence(bestConfidence)
       };
     } catch (error) {
-      console.error('🗺️ [GeocodingService] Nominatim geocoding failed:', error);
+      console.error('🗺️ [GeocodingService] Improved API geocoding failed:', error);
       
-      // If our API endpoint fails, try simplified address as fallback
+      // If our improved API fails, try simplified address as fallback
       try {
-        return await this.trySimplifiedNominatim(address);
+        return await this.trySimplifiedGeocoding(address);
       } catch (fallbackError) {
         console.error('🗺️ [GeocodingService] Fallback geocoding also failed:', fallbackError);
         throw error; // Re-throw the original error
@@ -238,14 +141,15 @@ class GeocodingService {
   }
 
   /**
-   * Try geocoding with simplified address for Nominatim via our API proxy
+   * Try geocoding with simplified address as fallback
    */
-  private async trySimplifiedNominatim(address: string): Promise<GeocodingResult> {
+  private async trySimplifiedGeocoding(address: string): Promise<GeocodingResult> {
     const parts = address.split(',');
     if (parts.length <= 1) {
       throw this.createError('No results found', 'NO_RESULTS', false);
     }
 
+    // Try with just the last two parts (usually city and country)
     const simplifiedAddress = parts.slice(-2).join(',').trim();
     const url = `/api/geocoding?address=${encodeURIComponent(simplifiedAddress)}`;
 
@@ -271,8 +175,8 @@ class GeocodingService {
     return {
       coordinates: [parseFloat(result.lat), parseFloat(result.lon)],
       formattedAddress: result.display_name,
-      confidence: Math.max(0.3, this.calculateNominatimConfidence(result) - 0.2), // Lower confidence for simplified
-      provider: 'nominatim',
+      confidence: Math.max(0.3, (result.confidence || 0.5) - 0.2), // Lower confidence for simplified
+      provider: result.provider || 'unknown',
       accuracy: 'medium'
     };
   }
@@ -293,7 +197,9 @@ class GeocodingService {
       .replace(/\bRd\.\s/gi, 'Road ')
       .replace(/\bBlvd\.\s/gi, 'Boulevard ')
       .replace(/\bBrgy\.\s/gi, 'Barangay ')
-      .replace(/\bSubd\.\s/gi, 'Subdivision ');
+      .replace(/\bSubd\.\s/gi, 'Subdivision ')
+      .replace(/\bPurok\s/gi, 'Purok ')
+      .replace(/\bSitio\s/gi, 'Sitio ');
 
     // Add Philippines if not present
     if (!cleaned.toLowerCase().includes('philippines')) {
@@ -324,48 +230,6 @@ class GeocodingService {
       .replace(/\bHermosa,?\s*Bataan\b/gi, 'Hermosa, Bataan, Central Luzon');
 
     return cleaned;
-  }
-
-  /**
-   * Calculate confidence score for Google results
-   */
-  private calculateGoogleConfidence(result: any): number {
-    const locationType = result.geometry.location_type;
-    switch (locationType) {
-      case 'ROOFTOP': return 0.95;
-      case 'RANGE_INTERPOLATED': return 0.85;
-      case 'GEOMETRIC_CENTER': return 0.75;
-      case 'APPROXIMATE': return 0.65;
-      default: return 0.5;
-    }
-  }
-
-  /**
-   * Calculate confidence score for Nominatim results
-   */
-  private calculateNominatimConfidence(result: any): number {
-    const importance = parseFloat(result.importance) || 0;
-    const type = result.type || '';
-    const addressType = result.addresstype || '';
-    
-    let confidence = Math.min(0.9, importance * 2);
-    
-    // Adjust based on place type for better accuracy
-    if (type === 'house' || type === 'building' || addressType === 'house') confidence += 0.15;
-    else if (type === 'amenity' || type === 'shop' || type === 'office') confidence += 0.1;
-    else if (type === 'road' || type === 'street' || addressType === 'road') confidence += 0.05;
-    else if (type === 'suburb' || type === 'neighbourhood') confidence += 0.02;
-    else if (type === 'city' || type === 'town' || type === 'municipality') confidence -= 0.05;
-    else if (type === 'state' || type === 'region') confidence -= 0.2;
-    
-    // Boost confidence for Philippine locations with detailed address components
-    if (result.address && result.address.country_code === 'ph') {
-      if (result.address.house_number) confidence += 0.1;
-      if (result.address.road) confidence += 0.05;
-      if (result.address.suburb || result.address.village) confidence += 0.03;
-    }
-    
-    return Math.max(0.1, Math.min(0.95, confidence));
   }
 
   /**
