@@ -8,9 +8,10 @@ export async function GET() {
     
     // Check environment variables
     const envCheck = {
-      HTTPSMS_API_KEY: process.env.HTTPSMS_API_KEY ? '✅ Set' : '❌ Not Set',
-      HTTPSMS_FROM_NUMBER: process.env.HTTPSMS_FROM_NUMBER ? '✅ Set' : '❌ Not Set',
-      NODE_ENV: process.env.NODE_ENV || 'Not Set'
+      HTTPSMS_API_KEY: process.env.HTTPSMS_API_KEY ? '✅ Set' : '❌ Not Set (using fallback)',
+      HTTPSMS_FROM_NUMBER: process.env.HTTPSMS_FROM_NUMBER ? '✅ Set' : '❌ Not Set (using fallback)',
+      NODE_ENV: process.env.NODE_ENV || 'Not Set',
+      usingFallback: !process.env.HTTPSMS_API_KEY
     };
 
     // Check service status
@@ -47,11 +48,16 @@ export async function GET() {
       debug: {
         message: 'This endpoint shows SMS service configuration and status for debugging',
         note: 'Check the console logs for detailed SMS service configuration information',
-        recommendations: healthStatus.configured ? [] : [
-          'Set HTTPSMS_API_KEY environment variable',
-          'Set HTTPSMS_FROM_NUMBER environment variable',
-          'Ensure environment variables are loaded in production'
-        ]
+        recommendations: healthStatus.configured ? 
+          (envCheck.usingFallback ? [
+            'SMS service is working with fallback credentials',
+            'Consider setting environment variables for production deployment',
+            'Current setup will work for development and testing'
+          ] : []) : [
+            'Set HTTPSMS_API_KEY environment variable',
+            'Set HTTPSMS_FROM_NUMBER environment variable',
+            'Ensure environment variables are loaded in production'
+          ]
       }
     });
 

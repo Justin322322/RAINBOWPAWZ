@@ -1,6 +1,6 @@
 // httpSMS configuration
-const apiKey = process.env.HTTPSMS_API_KEY;
-const fromNumber = process.env.HTTPSMS_FROM_NUMBER;
+const apiKey = process.env.HTTPSMS_API_KEY || 'uk_SMVOkSvVaC-rg9-oXlbnOu8_bylIkCTLiceneJIFRClKRwK5mNhcF1YybT9j6Lms';
+const fromNumber = process.env.HTTPSMS_FROM_NUMBER || '+639163178412';
 const baseUrl = 'https://api.httpsms.com/v1';
 
 // Add debugging information
@@ -10,6 +10,7 @@ console.log('  From Number:', fromNumber || '❌ NOT SET');
 console.log('  Base URL:', baseUrl);
 console.log('  Environment:', process.env.NODE_ENV);
 console.log('  Timestamp:', new Date().toISOString());
+console.log('  Using hardcoded fallback:', !process.env.HTTPSMS_API_KEY ? '✅ YES' : '❌ NO');
 
 interface SendSMSParams {
   to: string;
@@ -365,12 +366,14 @@ export function getSMSHealthStatus(): {
   apiKey: boolean;
   fromNumber: boolean;
   environment: string;
+  usingFallback: boolean;
 } {
   return {
     configured: !!(apiKey && fromNumber),
     apiKey: !!apiKey,
     fromNumber: !!fromNumber,
-    environment: process.env.NODE_ENV || 'unknown'
+    environment: process.env.NODE_ENV || 'unknown',
+    usingFallback: !process.env.HTTPSMS_API_KEY
   };
 }
 

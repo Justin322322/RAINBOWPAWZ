@@ -6,7 +6,14 @@ export async function GET() {
     console.log('🔍 Starting comprehensive SMS diagnostic...');
     
     // 1. Environment Variables Check
-    const envCheck = {
+    const envCheck: {
+      HTTPSMS_API_KEY: { set: boolean; value: string; length: number };
+      HTTPSMS_FROM_NUMBER: { set: boolean; value: string };
+      NODE_ENV: string;
+      RAILWAY_ENVIRONMENT: string;
+      VERCEL_ENV: string;
+      usingFallback: boolean;
+    } = {
       HTTPSMS_API_KEY: {
         set: !!process.env.HTTPSMS_API_KEY,
         value: process.env.HTTPSMS_API_KEY ? `${process.env.HTTPSMS_API_KEY.substring(0, 8)}...` : 'NOT SET',
@@ -18,7 +25,8 @@ export async function GET() {
       },
       NODE_ENV: process.env.NODE_ENV || 'NOT SET',
       RAILWAY_ENVIRONMENT: process.env.RAILWAY_ENVIRONMENT || 'NOT SET',
-      VERCEL_ENV: process.env.VERCEL_ENV || 'NOT SET'
+      VERCEL_ENV: process.env.VERCEL_ENV || 'NOT SET',
+      usingFallback: !process.env.HTTPSMS_API_KEY
     };
 
     // 2. Health Status Check
@@ -103,12 +111,20 @@ export async function GET() {
 
     if (!envCheck.HTTPSMS_API_KEY.set) {
       analysis.issues.push('HTTPSMS_API_KEY environment variable is not set');
-      analysis.recommendations.push('Set HTTPSMS_API_KEY in your production environment variables');
+      if (envCheck.usingFallback) {
+        analysis.recommendations.push('Using hardcoded fallback API key - SMS service will work but consider setting environment variables for production');
+      } else {
+        analysis.recommendations.push('Set HTTPSMS_API_KEY in your production environment variables');
+      }
     }
 
     if (!envCheck.HTTPSMS_FROM_NUMBER.set) {
       analysis.issues.push('HTTPSMS_FROM_NUMBER environment variable is not set');
-      analysis.recommendations.push('Set HTTPSMS_FROM_NUMBER in your production environment variables');
+      if (envCheck.usingFallback) {
+        analysis.recommendations.push('Using hardcoded fallback phone number - SMS service will work but consider setting environment variables for production');
+      } else {
+        analysis.recommendations.push('Set HTTPSMS_FROM_NUMBER in your production environment variables');
+      }
     }
 
     if (envCheck.HTTPSMS_API_KEY.set && envCheck.HTTPSMS_API_KEY.length < 10) {
