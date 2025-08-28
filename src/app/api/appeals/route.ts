@@ -5,6 +5,40 @@ import { createNotificationFast } from '@/utils/notificationService';
 import { sendEmail } from '@/lib/consolidatedEmailService';
 import { sendSMS } from '@/lib/smsService';
 
+// Common error handler
+function handleError(error: any, operation: string) {
+  console.error(`Error ${operation}:`, error);
+  
+  let errorMessage = `Failed to ${operation}`;
+  let statusCode = 500;
+  
+  if (error instanceof Error) {
+    if (error.message.includes('ER_NO_SUCH_TABLE')) {
+      errorMessage = 'Appeals system is not properly configured. Please contact support.';
+      statusCode = 503;
+    } else if (error.message.includes('ER_ACCESS_DENIED')) {
+      errorMessage = 'Database access denied. Please contact support.';
+      statusCode = 503;
+    } else if (error.message.includes('ECONNREFUSED') || error.message.includes('ETIMEDOUT')) {
+      errorMessage = 'Database connection failed. Please try again later.';
+      statusCode = 503;
+    } else {
+      errorMessage = error.message;
+    }
+  }
+  
+  return NextResponse.json({
+    error: errorMessage,
+    details: error instanceof Error ? error.message : 'Unknown error'
+  }, { status: statusCode });
+}
+
+// Check if appeals table exists
+async function checkTableExists() {
+  const tableExists = await query("SHOW TABLES LIKE 'user_appeals'");
+  return (tableExists as any[]).length > 0;
+}
+
 // Create appeals table if it doesn't exist
 async function ensureAppealsTable() {
   try {
@@ -26,15 +60,12 @@ async function ensureAppealsTable() {
         resolved_at TIMESTAMP NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
-        FOREIGN KEY (admin_id) REFERENCES users(user_id) ON DELETE SET NULL,
         INDEX idx_user_appeals (user_id),
         INDEX idx_status (status),
         INDEX idx_submitted_at (submitted_at)
       )
     `);
 
-    // Create appeal history table for tracking status changes
     await query(`
       CREATE TABLE IF NOT EXISTS appeal_history (
         history_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -45,8 +76,6 @@ async function ensureAppealsTable() {
         admin_response TEXT NULL,
         changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         notes TEXT NULL,
-        FOREIGN KEY (appeal_id) REFERENCES user_appeals(appeal_id) ON DELETE CASCADE,
-        FOREIGN KEY (admin_id) REFERENCES users(user_id) ON DELETE SET NULL,
         INDEX idx_appeal_history (appeal_id),
         INDEX idx_changed_at (changed_at)
       )
@@ -62,53 +91,40 @@ async function ensureAppealsTable() {
  */
 export async function POST(request: NextRequest) {
   try {
-    // Verify authentication
     const user = await verifySecureAuth(request);
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    // Parse request body
-    const body = await request.json();
-    const { 
-      subject, 
-      message, 
-      appeal_type = 'restriction',
-      evidence_files = [],
-      business_id = null 
-    } = body;
+    const { subject, message, appeal_type = 'restriction', evidence_files = [], business_id = null } = await request.json();
 
-    // Validate required fields
     if (!subject || !message) {
-      return NextResponse.json({
-        error: 'Subject and message are required'
-      }, { status: 400 });
+      return NextResponse.json({ error: 'Subject and message are required' }, { status: 400 });
     }
 
-    if (subject.length > 255) {
-      return NextResponse.json({
-        error: 'Subject must be 255 characters or less'
-      }, { status: 400 });
+    if (subject.length > 255 || message.length > 5000) {
+      return NextResponse.json({ error: 'Subject must be ≤255 chars, message must be ≤5000 chars' }, { status: 400 });
     }
 
-    if (message.length > 5000) {
-      return NextResponse.json({
-        error: 'Message must be 5000 characters or less'
-      }, { status: 400 });
+    try {
+      await ensureAppealsTable();
+    } catch (error) {
+      console.error('Failed to ensure appeals table exists:', error);
     }
 
-    // Ensure appeals table exists
-    await ensureAppealsTable();
+    if (!(await checkTableExists())) {
+      return NextResponse.json({
+        error: 'Appeals system is not properly configured. Please contact support.',
+        details: 'Appeals table does not exist'
+      }, { status: 503 });
+    }
 
-    // Check if user already has a pending appeal
+    // Check for existing pending appeal
     const existingAppeal = await query(`
       SELECT appeal_id FROM user_appeals
       WHERE user_id = ? AND status IN ('pending', 'under_review')
-      ORDER BY submitted_at DESC
-      LIMIT 1
+      ORDER BY submitted_at DESC LIMIT 1
     `, [parseInt(user.userId)]) as any[];
 
-    if (existingAppeal && existingAppeal.length > 0) {
+    if (existingAppeal?.length > 0) {
       return NextResponse.json({
         error: 'You already have a pending appeal. Please wait for it to be reviewed.'
       }, { status: 400 });
@@ -118,67 +134,24 @@ export async function POST(request: NextRequest) {
     const user_type = user.accountType === 'business' ? 'business' : 'personal';
     let actual_business_id = business_id;
 
-    // For business users, get their business ID if not provided
     if (user_type === 'business' && !actual_business_id) {
       const businessResult = await query(`
         SELECT provider_id FROM service_providers WHERE user_id = ?
       `, [parseInt(user.userId)]) as any[];
-
-      if (businessResult && businessResult.length > 0) {
-        actual_business_id = businessResult[0].provider_id;
-      }
+      actual_business_id = businessResult?.[0]?.provider_id;
     }
 
-    // Create the appeal
+    // Create appeal
     const result = await withTransaction(async (transaction) => {
       const insertResult = await transaction.query(`
-        INSERT INTO user_appeals (
-          user_id, user_type, business_id, appeal_type, subject, message, evidence_files
-        ) VALUES (?, ?, ?, ?, ?, ?, ?)
-      `, [
-        parseInt(user.userId),
-        user_type,
-        actual_business_id,
-        appeal_type,
-        subject,
-        message,
-        JSON.stringify(evidence_files)
-      ]) as any;
-
+        INSERT INTO user_appeals (user_id, user_type, business_id, appeal_type, subject, message, evidence_files)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `, [parseInt(user.userId), user_type, actual_business_id, appeal_type, subject, message, JSON.stringify(evidence_files)]) as any;
       return insertResult.insertId;
     });
 
-    // Notify all admins about the new appeal (non-blocking)
-    notifyAdminsOfNewAppeal(result, user, subject).catch(error => {
-      console.error('Failed to notify admins of new appeal:', error);
-    });
-
-    // Also create admin panel notification
-    try {
-      console.log('Creating admin panel notification for appeal:', result);
-
-      // Fetch user's full details from database to get name
-      const userDetails = await query(
-        'SELECT first_name, last_name FROM users WHERE user_id = ? LIMIT 1',
-        [parseInt(user.userId)]
-      ) as any[];
-
-      const firstName = userDetails?.[0]?.first_name || 'User';
-      const lastName = userDetails?.[0]?.last_name || user.userId;
-
-      const { createAdminNotification } = await import('@/utils/adminNotificationService');
-      const notificationResult = await createAdminNotification({
-        type: 'new_appeal',
-        title: 'New Appeal Submitted',
-        message: `${firstName} ${lastName} has submitted an appeal: "${subject}"`,
-        entityType: user_type === 'business' ? 'business' : 'user', // This determines which admin page to link to
-        entityId: result,
-        shouldSendEmail: false // Already sending emails above
-      });
-      console.log('Admin panel notification result:', notificationResult);
-    } catch (adminNotificationError) {
-      console.error('Failed to create admin panel notification:', adminNotificationError);
-    }
+    // Notify admins (non-blocking)
+    notifyAdminsOfNewAppeal(result, user, subject).catch(console.error);
 
     return NextResponse.json({
       success: true,
@@ -187,11 +160,7 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Error submitting appeal:', error);
-    return NextResponse.json({
-      error: 'Failed to submit appeal',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 });
+    return handleError(error, 'submitting appeal');
   }
 }
 
@@ -200,11 +169,8 @@ export async function POST(request: NextRequest) {
  */
 export async function GET(request: NextRequest) {
   try {
-    // Verify authentication
     const user = await verifySecureAuth(request);
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
@@ -212,14 +178,25 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '50');
     const offset = parseInt(searchParams.get('offset') || '0');
 
-    // Ensure appeals table exists
-    await ensureAppealsTable();
+    try {
+      await ensureAppealsTable();
+    } catch (error) {
+      console.error('Failed to ensure appeals table exists:', error);
+    }
 
+    if (!(await checkTableExists())) {
+      return NextResponse.json({
+        success: true,
+        appeals: [],
+        pagination: { total: 0, limit, offset, hasMore: false }
+      });
+    }
+
+    // Build query
     let whereClause = '';
     let queryParams: any[] = [];
 
     if (user.accountType === 'admin') {
-      // Admins can see all appeals
       if (status) {
         whereClause = 'WHERE a.status = ?';
         queryParams.push(status);
@@ -229,41 +206,29 @@ export async function GET(request: NextRequest) {
         queryParams.push(user_id);
       }
     } else {
-      // Regular users can only see their own appeals
       whereClause = 'WHERE a.user_id = ?';
       queryParams.push(parseInt(user.userId));
-
       if (status) {
         whereClause += ' AND a.status = ?';
         queryParams.push(status);
       }
     }
 
-    // Add pagination
-    // Note: LIMIT/OFFSET cannot be parameterized on some MySQL servers
-    const listParams = [...queryParams];
-
+    // Fetch appeals
     const appeals = await query(`
-      SELECT 
-        a.*,
-        u.first_name,
-        u.last_name,
-        u.email,
-        admin.first_name as admin_first_name,
-        admin.last_name as admin_last_name
+      SELECT a.*, u.first_name, u.last_name, u.email,
+             admin.first_name as admin_first_name, admin.last_name as admin_last_name
       FROM user_appeals a
       LEFT JOIN users u ON a.user_id = u.user_id
       LEFT JOIN users admin ON a.admin_id = admin.user_id
       ${whereClause}
       ORDER BY a.submitted_at DESC
       LIMIT ${Number(limit)} OFFSET ${Number(offset)}
-    `, listParams) as any[];
+    `, queryParams) as any[];
 
-    // Get total count for pagination
+    // Get total count
     const countResult = await query(`
-      SELECT COUNT(*) as total
-      FROM user_appeals a
-      ${whereClause.replace(/LIMIT.*/, '')}
+      SELECT COUNT(*) as total FROM user_appeals a ${whereClause}
     `, queryParams) as any[];
 
     const total = countResult[0]?.total || 0;
@@ -283,32 +248,19 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Error fetching appeals:', error);
-    return NextResponse.json({
-      error: 'Failed to fetch appeals',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 });
+    return handleError(error, 'fetching appeals');
   }
 }
 
-// Helper function to notify admins of new appeals
+// Notify admins of new appeal
 async function notifyAdminsOfNewAppeal(appealId: number, user: any, subject: string) {
   try {
-    console.log(`Starting admin notification process for appeal ${appealId}`);
-
-    // Get all admin users
     const admins = await query(`
       SELECT user_id, email, first_name, last_name, phone
-      FROM users
-      WHERE role = 'admin'
+      FROM users WHERE role = 'admin'
     `) as any[];
 
-    console.log(`Found ${admins.length} admin users to notify`);
-
-    if (admins.length === 0) {
-      console.warn('No admin users found to notify about new appeal');
-      return;
-    }
+    if (admins.length === 0) return;
 
     const emailTemplate = createAppealNotificationEmail({
       adminName: 'Admin',
@@ -319,73 +271,57 @@ async function notifyAdminsOfNewAppeal(appealId: number, user: any, subject: str
       userType: user.accountType === 'business' ? 'Business' : 'Personal'
     });
 
-    // Process notifications for each admin individually to prevent one failure from affecting others
-    const notificationResults = await Promise.allSettled(
-      admins.map(async (admin) => {
-        try {
-          console.log(`Notifying admin ${admin.user_id} (${admin.email}) about appeal ${appealId}`);
+    await Promise.allSettled(admins.map(async (admin) => {
+      try {
+        // In-app notification
+        await createNotificationFast({
+          userId: admin.user_id,
+          title: 'New Appeal Submitted',
+          message: `${user.first_name} ${user.last_name} has submitted an appeal: "${subject}"`,
+          type: 'warning',
+          link: `/admin/users/${user.accountType === 'business' ? 'cremation' : 'furparents'}?appealId=${appealId}&userId=${user.userId}`
+        });
 
-          // Create in-app notification (using fast method)
-          const notificationResult = await createNotificationFast({
-            userId: admin.user_id,
-            title: 'New Appeal Submitted',
-            message: `${user.first_name} ${user.last_name} has submitted an appeal: "${subject}"`,
-            type: 'warning',
-            link: `/admin/users/${user.accountType === 'business' ? 'cremation' : 'furparents'}?appealId=${appealId}&userId=${user.userId}`
+        // Email notification
+        await sendEmail({
+          to: admin.email,
+          subject: emailTemplate.subject,
+          html: emailTemplate.html
+        });
+
+        // SMS notification
+        if (admin.phone) {
+          await sendSMS({
+            to: admin.phone,
+            message: `🚨 New appeal from ${user.first_name} ${user.last_name}. Subject: "${subject.substring(0, 50)}${subject.length > 50 ? '...' : ''}". Review in admin panel.`
           });
-
-          if (!notificationResult.success) {
-            console.error(`Failed to create in-app notification for admin ${admin.user_id}:`, notificationResult.error);
-          }
-
-          // Send custom email notification
-          try {
-            await sendEmail({
-              to: admin.email,
-              subject: emailTemplate.subject,
-              html: emailTemplate.html
-            });
-            console.log(`Email sent successfully to admin ${admin.email}`);
-          } catch (emailError) {
-            console.error(`Failed to send email to admin ${admin.email}:`, emailError);
-          }
-
-          // Send SMS notification
-          if (admin.phone) {
-            try {
-              await sendSMS({
-                to: admin.phone,
-                message: `🚨 New appeal from ${user.first_name} ${user.last_name}. Subject: "${subject.substring(0, 50)}${subject.length > 50 ? '...' : ''}". Review in admin panel.`
-              });
-              console.log(`SMS sent successfully to admin ${admin.phone}`);
-            } catch (smsError) {
-              console.error(`Failed to send SMS to admin ${admin.phone}:`, smsError);
-            }
-          }
-
-          return { success: true, adminId: admin.user_id };
-        } catch (adminError) {
-          console.error(`Failed to notify admin ${admin.user_id}:`, adminError);
-          return { success: false, adminId: admin.user_id, error: adminError };
         }
-      })
-    );
+      } catch (error) {
+        console.error(`Failed to notify admin ${admin.user_id}:`, error);
+      }
+    }));
 
-    // Log results
-    const successful = notificationResults.filter(result => result.status === 'fulfilled' && result.value.success).length;
-    const failed = notificationResults.length - successful;
+    // Create admin panel notification
+    try {
+      const userDetails = await query(
+        'SELECT first_name, last_name FROM users WHERE user_id = ? LIMIT 1',
+        [parseInt(user.userId)]
+      ) as any[];
 
-    console.log(`Admin notification results for appeal ${appealId}: ${successful} successful, ${failed} failed`);
-
-    if (failed > 0) {
-      console.warn(`Some admin notifications failed for appeal ${appealId}`,
-        notificationResults.filter(result => result.status === 'rejected' || !result.value.success)
-      );
+      const { createAdminNotification } = await import('@/utils/adminNotificationService');
+      await createAdminNotification({
+        type: 'new_appeal',
+        title: 'New Appeal Submitted',
+        message: `${userDetails?.[0]?.first_name || 'User'} ${userDetails?.[0]?.last_name || user.userId} has submitted an appeal: "${subject}"`,
+        entityType: user.accountType === 'business' ? 'business' : 'user',
+        entityId: appealId,
+        shouldSendEmail: false
+      });
+    } catch (error) {
+      console.error('Failed to create admin panel notification:', error);
     }
-
   } catch (error) {
-    console.error('Error in notifyAdminsOfNewAppeal function:', error);
-    // Don't throw error as this is not critical for appeal submission
+    console.error('Error in notifyAdminsOfNewAppeal:', error);
   }
 }
 
