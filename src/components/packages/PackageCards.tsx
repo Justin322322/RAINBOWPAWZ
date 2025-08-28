@@ -95,20 +95,29 @@ const PackageCard = React.memo<{
         {/* Inclusions */}
         {pkg.inclusions && pkg.inclusions.length > 0 && (
           <div className="mb-3">
-            <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Inclusions</h4>
-            <ul className="text-xs text-gray-600 line-clamp-2 space-y-1">
+            <h4 className="text-xs font-semibold text-gray-700 tracking-wide mb-2">Inclusions</h4>
+            <ul className="text-sm text-gray-700 space-y-1.5">
               {pkg.inclusions.slice(0, 2).map((inclusion: any, idx) => {
                 const desc = typeof inclusion === 'string' ? inclusion : inclusion.description;
                 const image = typeof inclusion === 'string' ? undefined : inclusion.image;
                 return (
-                  <li key={idx} className="flex items-center gap-2">
-                    {image && <Image src={image} alt="inc" width={16} height={16} className="h-4 w-4 rounded object-cover border" unoptimized />}
+                  <li key={idx} className="flex items-center gap-3">
+                    {image && (
+                      <Image
+                        src={image}
+                        alt="inc"
+                        width={24}
+                        height={24}
+                        className="h-6 w-6 rounded object-cover border"
+                        unoptimized
+                      />
+                    )}
                     <span className="truncate">{desc}</span>
                   </li>
                 );
               })}
               {pkg.inclusions.length > 2 && (
-                <li className="text-gray-500">+{pkg.inclusions.length - 2} more</li>
+                <li className="text-gray-500 text-xs">+{pkg.inclusions.length - 2} more</li>
               )}
             </ul>
           </div>
@@ -117,15 +126,24 @@ const PackageCard = React.memo<{
         {/* Add-ons */}
         {pkg.addOns && pkg.addOns.length > 0 && (
           <div className="mb-3">
-            <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Add-ons</h4>
-            <ul className="text-xs text-gray-600 line-clamp-2 space-y-1">
+            <h4 className="text-xs font-semibold text-gray-700 tracking-wide mb-2">Add-ons</h4>
+            <ul className="text-sm text-gray-700 space-y-1.5">
               {pkg.addOns.slice(0, 2).map((addon: any, idx) => {
                 const name = typeof addon === 'string' ? addon : addon.name;
                 const price = typeof addon === 'string' ? undefined : addon.price;
                 const image = typeof addon === 'string' ? undefined : addon.image;
                 return (
-                  <li key={idx} className="flex items-center gap-2">
-                    {image && <Image src={image} alt="addon" width={16} height={16} className="h-4 w-4 rounded object-cover border" unoptimized />}
+                  <li key={idx} className="flex items-center gap-3">
+                    {image && (
+                      <Image
+                        src={image}
+                        alt="addon"
+                        width={24}
+                        height={24}
+                        className="h-6 w-6 rounded object-cover border"
+                        unoptimized
+                      />
+                    )}
                     <span className="truncate">
                       {name}{price ? ` (+₱${formatPrice(price)})` : ''}
                     </span>
@@ -133,7 +151,7 @@ const PackageCard = React.memo<{
                 );
               })}
               {pkg.addOns.length > 2 && (
-                <li className="text-gray-500">+{pkg.addOns.length - 2} more</li>
+                <li className="text-gray-500 text-xs">+{pkg.addOns.length - 2} more</li>
               )}
             </ul>
           </div>
