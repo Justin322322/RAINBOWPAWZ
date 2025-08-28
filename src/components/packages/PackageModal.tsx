@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useCallback, useRef, useEffect } from 'react';
+import useDebounce from '@/hooks/useDebounce';
 import { XMarkIcon, ExclamationTriangleIcon, PlusIcon, CheckIcon } from '@heroicons/react/24/outline';
 import { ImageUploader } from '@/components/packages/ImageUploader';
 import { useToast } from '@/context/ToastContext';
@@ -101,6 +102,10 @@ const PackageModal: React.FC<PackageModalProps> = ({
   const [newInclusion, setNewInclusion] = useState('');
   const [newAddOn, setNewAddOn] = useState('');
   const [newAddOnPrice, setNewAddOnPrice] = useState<string>('');
+  // Add-on suggestions
+  const [addOnSuggestions, setAddOnSuggestions] = useState<Array<{ name: string; price: number }>>([]);
+  const [isLoadingAddOnSuggestions, setIsLoadingAddOnSuggestions] = useState(false);
+  const [isAddOnInputFocused, setIsAddOnInputFocused] = useState(false);
   const [uploadingImages, setUploadingImages] = useState<Set<string>>(new Set());
   
   // Animation states for smooth removal (simplified for now)
@@ -397,6 +402,32 @@ const PackageModal: React.FC<PackageModalProps> = ({
         : value
     }));
   }, [errors]);
+
+  // Fetch add-on suggestions (debounced)
+  const debouncedAddOnQuery = useDebounce(newAddOn, 250);
+  useEffect(() => {
+    let cancelled = false;
+    const fetchSuggestions = async () => {
+      if (!debouncedAddOnQuery || debouncedAddOnQuery.trim().length === 0) {
+        if (!cancelled) setAddOnSuggestions([]);
+        return;
+      }
+      try {
+        setIsLoadingAddOnSuggestions(true);
+        const params = new URLSearchParams({ q: debouncedAddOnQuery.trim(), limit: '8' });
+        const res = await fetch(`/api/packages/suggestions?${params.toString()}`);
+        if (!res.ok) throw new Error('Failed to load suggestions');
+        const data = await res.json();
+        if (!cancelled) setAddOnSuggestions(Array.isArray(data.addOns) ? data.addOns : []);
+      } catch {
+        if (!cancelled) setAddOnSuggestions([]);
+      } finally {
+        if (!cancelled) setIsLoadingAddOnSuggestions(false);
+      }
+    };
+    fetchSuggestions();
+    return () => { cancelled = true; };
+  }, [debouncedAddOnQuery]);
 
   // Handler functions
   const handleAddInclusion = useCallback(() => {
@@ -817,10 +848,10 @@ const PackageModal: React.FC<PackageModalProps> = ({
                     </div>
 
                     {/* Pricing Options */}
-                    <div className="mt-4 border rounded-md p-4">
-                      <h3 className="text-sm font-medium text-gray-800 mb-3">Pricing Options</h3>
-                      <div className="flex flex-col gap-2 mb-4">
-                        <label className="inline-flex items-center gap-2">
+                    <div className="mt-6 border rounded-lg p-5">
+                      <h3 className="text-base font-semibold text-gray-900 mb-4">Pricing Options</h3>
+                      <div className="flex flex-col gap-3 mb-5">
+                        <label className="inline-flex items-start gap-2">
                           <input
                             type="radio"
                             name="pricingMode"
@@ -829,9 +860,9 @@ const PackageModal: React.FC<PackageModalProps> = ({
                             onChange={() => setFormData((prev) => ({ ...prev, pricingMode: 'fixed' }))}
                             className="text-[var(--primary-green)] focus:ring-[var(--primary-green)]"
                           />
-                          <span className="text-sm">Fixed Price – One price for all pets regardless of size.</span>
+                          <span className="text-[15px] leading-6 text-gray-800">Fixed Price – <span className="font-medium">One price for all pets</span> regardless of size.</span>
                         </label>
-                        <label className="inline-flex items-center gap-2">
+                        <label className="inline-flex items-start gap-2">
                           <input
                             type="radio"
                             name="pricingMode"
@@ -840,21 +871,22 @@ const PackageModal: React.FC<PackageModalProps> = ({
                             onChange={() => setFormData((prev) => ({ ...prev, pricingMode: 'by_size' }))}
                             className="text-[var(--primary-green)] focus:ring-[var(--primary-green)]"
                           />
-                          <span className="text-sm">Pricing by Pet Size – Customizable by weight category and price.</span>
+                          <span className="text-[15px] leading-6 text-gray-800">Pricing by Pet Size – <span className="font-medium">customize by weight category and price</span>.</span>
                         </label>
                       </div>
 
                       {formData.pricingMode === 'by_size' && (
-                        <div className="space-y-3">
-                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                        <div className="space-y-4">
+                          <h4 className="text-sm font-medium text-gray-700">Size Tier Prices</h4>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                             {formData.sizePricing.map((sp, idx) => (
-                              <div key={idx} className="border rounded-md p-3">
-                                <div className="text-xs text-gray-600 mb-1">{sp.sizeCategory}</div>
+                              <div key={idx} className="border rounded-md p-4">
+                                <div className="text-sm font-medium text-gray-800 mb-2">{sp.sizeCategory}</div>
                                 <input
                                   type="number"
                                   min="0"
                                   step="any"
-                                  value={sp.price || 0}
+                                  value={sp.price === 0 ? '' : sp.price}
                                   onChange={(e) => {
                                     const val = parseFloat(e.target.value) || 0;
                                     setFormData((prev) => {
@@ -863,14 +895,17 @@ const PackageModal: React.FC<PackageModalProps> = ({
                                       return { ...prev, sizePricing: next };
                                     });
                                   }}
-                                  className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)] sm:text-sm"
-                                  placeholder="₱ Price"
+                                  className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)] text-sm"
+                                  placeholder="₱ Price (per tier)"
                                 />
                               </div>
                             ))}
                           </div>
 
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div className="pt-2">
+                            <h4 className="text-sm font-medium text-gray-700 mb-2">Overage Fee</h4>
+                            <p className="text-xs text-gray-500 mb-2">Applied per kg if a pet exceeds the selected weight category.</p>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
                               <label htmlFor="overageFeePerKg" className="block text-sm font-medium text-gray-700 mb-1">Additional fee if pet exceeds selected weight category (per kg)</label>
                               <input
@@ -884,6 +919,7 @@ const PackageModal: React.FC<PackageModalProps> = ({
                                 className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)] sm:text-sm"
                                 placeholder="e.g., 50"
                               />
+                            </div>
                             </div>
                           </div>
                         </div>
@@ -1060,19 +1096,48 @@ const PackageModal: React.FC<PackageModalProps> = ({
                   <h2 className="text-lg font-medium text-gray-800 mb-4">Add-ons (Optional)</h2>
                   <div className="flex mb-2 gap-2">
                     <div className="flex-grow">
-                      <input
-                        type="text"
-                        value={newAddOn}
-                        onChange={(e) => setNewAddOn(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)] sm:text-sm"
-                        placeholder="e.g., Personalized nameplate"
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault();
-                            handleAddAddOn();
-                          }
-                        }}
-                      />
+                      <div className="relative">
+                        <input
+                          type="text"
+                          value={newAddOn}
+                          onChange={(e) => setNewAddOn(e.target.value)}
+                          onFocus={() => setIsAddOnInputFocused(true)}
+                          onBlur={() => setTimeout(() => setIsAddOnInputFocused(false), 150)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)] sm:text-sm"
+                          placeholder="e.g., Personalized nameplate"
+                          autoComplete="off"
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              handleAddAddOn();
+                            }
+                          }}
+                        />
+                        {isAddOnInputFocused && (addOnSuggestions.length > 0 || isLoadingAddOnSuggestions) && (
+                          <div className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto">
+                            {isLoadingAddOnSuggestions ? (
+                              <div className="px-3 py-2 text-sm text-gray-500">Searching…</div>
+                            ) : (
+                              addOnSuggestions.map((s, i) => (
+                                <button
+                                  type="button"
+                                  key={`${s.name}-${i}`}
+                                  className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex justify-between"
+                                  onMouseDown={(e) => {
+                                    e.preventDefault();
+                                    setNewAddOn(s.name);
+                                    setNewAddOnPrice(s.price ? String(s.price) : '');
+                                    setAddOnSuggestions([]);
+                                  }}
+                                >
+                                  <span className="truncate pr-2">{s.name}</span>
+                                  <span className="text-gray-500">₱{Number(s.price || 0).toLocaleString()}</span>
+                                </button>
+                              ))
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </div>
                     <div className="w-32">
                       <div className="flex items-center border border-gray-300 rounded-md shadow-sm px-3 py-2 focus-within:ring-1 focus-within:ring-[var(--primary-green)] focus-within:border-[var(--primary-green)]">
