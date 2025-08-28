@@ -130,75 +130,93 @@ export async function GET(request: NextRequest) {
       }, {});
 
       // Fetch inclusions for list view (we'll cap to first 2 per package in memory)
-      const incRows = (await query(
-        `SELECT package_id as packageId, description, image_path, image_data
-         FROM package_inclusions
-         WHERE package_id IN (${placeholders})`,
-        packageIds
-      )) as any[];
-      inclusionsByPackage = incRows.reduce((acc: Record<number, Array<{ description: string; image?: string }>>, row: any) => {
-        const id = Number(row.packageId);
-        const desc: string | null = row.description || null;
-        const rawPath: string | null = row.image_path || null;
-        const dataUrl: string | null = row.image_data || null;
-        let resolved: string | undefined;
-        if (dataUrl && typeof dataUrl === 'string' && dataUrl.startsWith('data:image/')) {
-          resolved = dataUrl;
-        } else if (rawPath && typeof rawPath === 'string') {
-          let path = rawPath;
-          if (path.startsWith('/api/image/')) {
-            resolved = path;
-          } else if (path.startsWith('/uploads/')) {
-            resolved = `/api/image/${path.substring('/uploads/'.length)}`;
-          } else if (path.startsWith('uploads/')) {
-            resolved = `/api/image/${path.substring('uploads/'.length)}`;
-          } else if (path.includes('inc_') || path.includes('inclusions')) {
-            const parts = path.split('uploads/');
-            resolved = parts.length > 1 ? `/api/image/${parts[1]}` : path;
+      try {
+        const incRows = (await query(
+          `SELECT package_id as packageId, description, image_path, image_data
+           FROM package_inclusions
+           WHERE package_id IN (${placeholders})`,
+          packageIds
+        )) as any[];
+        inclusionsByPackage = incRows.reduce((acc: Record<number, Array<{ description: string; image?: string }>>, row: any) => {
+          const id = Number(row.packageId);
+          const desc: string | null = row.description || null;
+          const rawPath: string | null = row.image_path || null;
+          const dataUrl: string | null = row.image_data || null;
+          let resolved: string | undefined;
+          if (dataUrl && typeof dataUrl === 'string' && dataUrl.startsWith('data:image/')) {
+            resolved = dataUrl;
+          } else if (rawPath && typeof rawPath === 'string') {
+            let path = rawPath;
+            if (path.startsWith('/api/image/')) {
+              resolved = path;
+            } else if (path.startsWith('/uploads/')) {
+              resolved = `/api/image/${path.substring('/uploads/'.length)}`;
+            } else if (path.startsWith('uploads/')) {
+              resolved = `/api/image/${path.substring('uploads/'.length)}`;
+            } else if (path.includes('inc_') || path.includes('inclusions')) {
+              const parts = path.split('uploads/');
+              resolved = parts.length > 1 ? `/api/image/${parts[1]}` : path;
+            }
           }
+          if (typeof desc === 'string' && desc.trim()) {
+            if (!acc[id]) acc[id] = [];
+            if (acc[id].length < 2) acc[id].push({ description: desc.trim(), image: resolved });
+          }
+          return acc;
+        }, {});
+      } catch (err: any) {
+        const msg = err?.message || '';
+        if (msg.includes('ER_NO_SUCH_TABLE') || msg.includes('ER_BAD_FIELD_ERROR')) {
+          inclusionsByPackage = {};
+        } else {
+          throw err;
         }
-        if (typeof desc === 'string' && desc.trim()) {
-          if (!acc[id]) acc[id] = [];
-          if (acc[id].length < 2) acc[id].push({ description: desc.trim(), image: resolved });
-        }
-        return acc;
-      }, {});
+      }
 
       // Fetch add-ons for list view (cap to first 2 per package)
-      const addOnRows = (await query(
-        `SELECT package_id as packageId, description, price, image_path, image_data
-         FROM package_addons
-         WHERE package_id IN (${placeholders})`,
-        packageIds
-      )) as any[];
-      addOnsByPackage = addOnRows.reduce((acc: Record<number, Array<{ name: string; price?: number; image?: string }>>, row: any) => {
-        const id = Number(row.packageId);
-        const name: string | null = row.description || null;
-        const price: number | null = row.price == null ? null : Number(row.price);
-        const rawPath: string | null = row.image_path || null;
-        const dataUrl: string | null = row.image_data || null;
-        let resolved: string | undefined;
-        if (dataUrl && typeof dataUrl === 'string' && dataUrl.startsWith('data:image/')) {
-          resolved = dataUrl;
-        } else if (rawPath && typeof rawPath === 'string') {
-          let path = rawPath;
-          if (path.startsWith('/api/image/')) {
-            resolved = path;
-          } else if (path.startsWith('/uploads/')) {
-            resolved = `/api/image/${path.substring('/uploads/'.length)}`;
-          } else if (path.startsWith('uploads/')) {
-            resolved = `/api/image/${path.substring('uploads/'.length)}`;
-          } else if (path.includes('addon_') || path.includes('addons')) {
-            const parts = path.split('uploads/');
-            resolved = parts.length > 1 ? `/api/image/${parts[1]}` : path;
+      try {
+        const addOnRows = (await query(
+          `SELECT package_id as packageId, description, price, image_path, image_data
+           FROM package_addons
+           WHERE package_id IN (${placeholders})`,
+          packageIds
+        )) as any[];
+        addOnsByPackage = addOnRows.reduce((acc: Record<number, Array<{ name: string; price?: number; image?: string }>>, row: any) => {
+          const id = Number(row.packageId);
+          const name: string | null = row.description || null;
+          const price: number | null = row.price == null ? null : Number(row.price);
+          const rawPath: string | null = row.image_path || null;
+          const dataUrl: string | null = row.image_data || null;
+          let resolved: string | undefined;
+          if (dataUrl && typeof dataUrl === 'string' && dataUrl.startsWith('data:image/')) {
+            resolved = dataUrl;
+          } else if (rawPath && typeof rawPath === 'string') {
+            let path = rawPath;
+            if (path.startsWith('/api/image/')) {
+              resolved = path;
+            } else if (path.startsWith('/uploads/')) {
+              resolved = `/api/image/${path.substring('/uploads/'.length)}`;
+            } else if (path.startsWith('uploads/')) {
+              resolved = `/api/image/${path.substring('uploads/'.length)}`;
+            } else if (path.includes('addon_') || path.includes('addons')) {
+              const parts = path.split('uploads/');
+              resolved = parts.length > 1 ? `/api/image/${parts[1]}` : path;
+            }
           }
+          if (typeof name === 'string' && name.trim()) {
+            if (!acc[id]) acc[id] = [];
+            if (acc[id].length < 2) acc[id].push({ name: name.trim(), price: price == null ? undefined : price, image: resolved });
+          }
+          return acc;
+        }, {});
+      } catch (err: any) {
+        const msg = err?.message || '';
+        if (msg.includes('ER_NO_SUCH_TABLE') || msg.includes('ER_BAD_FIELD_ERROR')) {
+          addOnsByPackage = {};
+        } else {
+          throw err;
         }
-        if (typeof name === 'string' && name.trim()) {
-          if (!acc[id]) acc[id] = [];
-          if (acc[id].length < 2) acc[id].push({ name: name.trim(), price: price == null ? undefined : price, image: resolved });
-        }
-        return acc;
-      }, {});
+      }
     }
 
     // Return packages with enriched images and a small preview of inclusions/addOns for list performance
@@ -589,10 +607,18 @@ async function getPackageById(packageId: number, providerId?: string): Promise<N
     
     const pkg = rows[0];
     // Enrich with images, inclusions and add-ons
-    const imagesRows = (await query(
+    let imagesRows: any[] = [];
+    try {
+      imagesRows = (await query(
       `SELECT image_path, image_data FROM package_images WHERE package_id = ? ORDER BY display_order`,
       [packageId]
     )) as any[];
+    } catch (err: any) {
+      const msg = err?.message || '';
+      if (!(msg.includes('ER_NO_SUCH_TABLE') || msg.includes('ER_BAD_FIELD_ERROR'))) {
+        throw err;
+      }
+    }
     const images: string[] = imagesRows.map((row: any) => {
       const rawPath: string | null = row.image_path || null;
       const dataUrl: string | null = row.image_data || null;
@@ -611,10 +637,18 @@ async function getPackageById(packageId: number, providerId?: string): Promise<N
       return '';
     }).filter(Boolean);
 
-    const inclusionRows = (await query(
+    let inclusionRows: any[] = [];
+    try {
+      inclusionRows = (await query(
       `SELECT description, image_path, image_data FROM package_inclusions WHERE package_id = ?`,
       [packageId]
     )) as any[];
+    } catch (err: any) {
+      const msg = err?.message || '';
+      if (!(msg.includes('ER_NO_SUCH_TABLE') || msg.includes('ER_BAD_FIELD_ERROR'))) {
+        throw err;
+      }
+    }
     const inclusions = inclusionRows
       .filter((r: any) => typeof r.description === 'string' && r.description.trim())
       .map((r: any) => {
@@ -631,10 +665,18 @@ async function getPackageById(packageId: number, providerId?: string): Promise<N
         return { description: String(r.description), image };
       });
 
-    const addOnRows = (await query(
+    let addOnRows: any[] = [];
+    try {
+      addOnRows = (await query(
       `SELECT description, price, image_path, image_data FROM package_addons WHERE package_id = ?`,
       [packageId]
     )) as any[];
+    } catch (err: any) {
+      const msg = err?.message || '';
+      if (!(msg.includes('ER_NO_SUCH_TABLE') || msg.includes('ER_BAD_FIELD_ERROR'))) {
+        throw err;
+      }
+    }
     const addOns = addOnRows
       .filter((r: any) => typeof r.description === 'string' && r.description.trim())
       .map((r: any) => {
