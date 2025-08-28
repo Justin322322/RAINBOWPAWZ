@@ -408,14 +408,22 @@ const PackageModal: React.FC<PackageModalProps> = ({
   useEffect(() => {
     let cancelled = false;
     const fetchSuggestions = async () => {
-      if (!debouncedAddOnQuery || debouncedAddOnQuery.trim().length === 0) {
+      const queryText = debouncedAddOnQuery?.trim() || '';
+      if (!isAddOnInputFocused && queryText.length === 0) {
         if (!cancelled) setAddOnSuggestions([]);
         return;
       }
       try {
         setIsLoadingAddOnSuggestions(true);
-        const params = new URLSearchParams({ q: debouncedAddOnQuery.trim(), limit: '8' });
-        const res = await fetch(`/api/packages/suggestions?${params.toString()}`);
+        let url = '/api/packages/suggestions';
+        if (queryText.length > 0) {
+          const params = new URLSearchParams({ q: queryText, limit: '8' });
+          url += `?${params.toString()}`;
+        } else {
+          const params = new URLSearchParams({ limit: '8' });
+          url += `?${params.toString()}`;
+        }
+        const res = await fetch(url);
         if (!res.ok) throw new Error('Failed to load suggestions');
         const data = await res.json();
         if (!cancelled) setAddOnSuggestions(Array.isArray(data.addOns) ? data.addOns : []);
@@ -427,7 +435,7 @@ const PackageModal: React.FC<PackageModalProps> = ({
     };
     fetchSuggestions();
     return () => { cancelled = true; };
-  }, [debouncedAddOnQuery]);
+  }, [debouncedAddOnQuery, isAddOnInputFocused]);
 
   // Handler functions
   const handleAddInclusion = useCallback(() => {
@@ -906,20 +914,24 @@ const PackageModal: React.FC<PackageModalProps> = ({
                             <h4 className="text-sm font-medium text-gray-700 mb-2">Overage Fee</h4>
                             <p className="text-xs text-gray-500 mb-2">Applied per kg if a pet exceeds the selected weight category.</p>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div>
-                              <label htmlFor="overageFeePerKg" className="block text-sm font-medium text-gray-700 mb-1">Additional fee if pet exceeds selected weight category (per kg)</label>
-                              <input
-                                id="overageFeePerKg"
-                                name="overageFeePerKg"
-                                type="number"
-                                value={formData.overageFeePerKg || 0}
-                                onChange={handleInputChange}
-                                min="0"
-                                step="any"
-                                className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)] sm:text-sm"
-                                placeholder="e.g., 50"
-                              />
-                            </div>
+                              <div>
+                                <label htmlFor="overageFeePerKg" className="block text-sm font-medium text-gray-700 mb-1">Additional fee if pet exceeds selected weight category (per kg)</label>
+                                <div className="flex items-center border border-gray-300 rounded-md shadow-sm px-3 py-2 focus-within:ring-1 focus-within:ring-[var(--primary-green)] focus-within:border-[var(--primary-green)]">
+                                  <span className="text-gray-500 mr-1">₱</span>
+                                  <input
+                                    id="overageFeePerKg"
+                                    name="overageFeePerKg"
+                                    type="number"
+                                    inputMode="decimal"
+                                    min="0"
+                                    step="0.01"
+                                    value={formData.overageFeePerKg === 0 ? '' : formData.overageFeePerKg}
+                                    onChange={handleInputChange}
+                                    placeholder="e.g., 50"
+                                    className="w-full focus:outline-none sm:text-sm"
+                                  />
+                                </div>
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -1103,9 +1115,6 @@ const PackageModal: React.FC<PackageModalProps> = ({
                           onChange={(e) => setNewAddOn(e.target.value)}
                           onFocus={() => {
                             setIsAddOnInputFocused(true);
-                            if (!newAddOn || newAddOn.trim().length === 0) {
-                              setAddOnSuggestions([]);
-                            }
                           }}
                           onBlur={() => setTimeout(() => setIsAddOnInputFocused(false), 150)}
                           className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)] sm:text-sm"
@@ -1118,7 +1127,7 @@ const PackageModal: React.FC<PackageModalProps> = ({
                             }
                           }}
                         />
-                        {isAddOnInputFocused && newAddOn.trim().length > 0 && (addOnSuggestions.length > 0 || isLoadingAddOnSuggestions) && (
+                        {isAddOnInputFocused && (addOnSuggestions.length > 0 || isLoadingAddOnSuggestions) && (
                           <div className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto">
                             {isLoadingAddOnSuggestions ? (
                               <div className="px-3 py-2 text-sm text-gray-500">Searching…</div>

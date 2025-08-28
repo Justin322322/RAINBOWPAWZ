@@ -208,28 +208,56 @@ export async function POST(request: NextRequest) {
 
     const result = await withTransaction(async (transaction) => {
       // Insert the core package record including optional fields supported by schema
-      const pkgRes = (await transaction.query(
-        `
-        INSERT INTO service_packages
-          (provider_id, name, description, category, cremation_type,
-           processing_time, price, delivery_fee_per_km, conditions, is_active,
-           pricing_mode, overage_fee_per_kg)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE, ?, ?)
-        `,
-        [
-          providerId,
-          name,
-          description,
-          category,
-          cremationType,
-          processingTime,
-          Number(price),
-          Number(deliveryFeePerKm) || 0,
-          conditions,
-          pricingMode === 'by_size' ? 'by_size' : 'fixed',
-          Number(overageFeePerKg) || 0
-        ]
-      )) as any;
+      let pkgRes: any;
+      try {
+        pkgRes = (await transaction.query(
+          `
+          INSERT INTO service_packages
+            (provider_id, name, description, category, cremation_type,
+             processing_time, price, delivery_fee_per_km, conditions, is_active,
+             pricing_mode, overage_fee_per_kg)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE, ?, ?)
+          `,
+          [
+            providerId,
+            name,
+            description,
+            category,
+            cremationType,
+            processingTime,
+            Number(price),
+            Number(deliveryFeePerKm) || 0,
+            conditions,
+            pricingMode === 'by_size' ? 'by_size' : 'fixed',
+            Number(overageFeePerKg) || 0
+          ]
+        )) as any;
+      } catch (e: any) {
+        // Fallback for older schemas without new columns
+        const msg = e?.message || '';
+        if (msg.includes('ER_BAD_FIELD_ERROR')) {
+          pkgRes = (await transaction.query(
+            `
+            INSERT INTO service_packages
+              (provider_id, name, description, category, cremation_type,
+               processing_time, price, conditions, is_active)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, TRUE)
+            `,
+            [
+              providerId,
+              name,
+              description,
+              category,
+              cremationType,
+              processingTime,
+              Number(price),
+              conditions
+            ]
+          )) as any;
+        } else {
+          throw e;
+        }
+      }
       const packageId = pkgRes.insertId as number;
 
       // Insert size-based pricing if provided
@@ -241,12 +269,20 @@ export async function POST(request: NextRequest) {
           const max = sp.weightRangeMax == null ? null : Number(sp.weightRangeMax);
           const p = Number(sp.price);
           if (!sizeCategory || isNaN(min) || isNaN(p)) continue;
-          await transaction.query(
-            `INSERT INTO package_size_pricing
-              (package_id, size_category, weight_range_min, weight_range_max, price)
-             VALUES (?, ?, ?, ?, ?)`,
-            [packageId, sizeCategory, min, max, p]
-          );
+          try {
+            await transaction.query(
+              `INSERT INTO package_size_pricing
+                (package_id, size_category, weight_range_min, weight_range_max, price)
+               VALUES (?, ?, ?, ?, ?)`,
+              [packageId, sizeCategory, min, max, p]
+            );
+          } catch (e: any) {
+            if (e?.message?.includes('ER_NO_SUCH_TABLE') || e?.message?.includes('ER_BAD_FIELD_ERROR')) {
+              // Silently skip if table/columns not present
+            } else {
+              throw e;
+            }
+          }
         }
       }
 
@@ -266,10 +302,21 @@ export async function POST(request: NextRequest) {
       if (Array.isArray(addOns) && addOns.length > 0) {
         for (const addon of addOns) {
           if (addon && addon.name && addon.name.trim()) {
-            await transaction.query(
-              'INSERT INTO package_addons (package_id, description, price) VALUES (?, ?, ?)',
-              [packageId, addon.name.trim(), Number(addon.price) || 0]
-            );
+            try {
+              await transaction.query(
+                'INSERT INTO package_addons (package_id, description, price) VALUES (?, ?, ?)',
+                [packageId, addon.name.trim(), Number(addon.price) || 0]
+              );
+            } catch (e: any) {
+              if (e?.message?.includes('ER_BAD_FIELD_ERROR')) {
+                await transaction.query(
+                  'INSERT INTO package_addons (package_id, description) VALUES (?, ?)',
+                  [packageId, addon.name.trim()]
+                );
+              } else {
+                throw e;
+              }
+            }
           }
         }
       }
