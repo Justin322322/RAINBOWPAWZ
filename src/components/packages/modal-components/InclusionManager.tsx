@@ -4,6 +4,7 @@ import React, { useRef, useState } from 'react';
 import NextImage from 'next/image';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
+import { CheckCircleIcon } from '@heroicons/react/24/outline';
 
 interface InclusionItem {
   description: string;
@@ -151,7 +152,7 @@ export const InclusionManager: React.FC<InclusionManagerProps> = ({
           {inclusions.length === 0 ? (
             <div className="text-center py-8">
               <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center mx-auto mb-4">
-                <div className="w-6 h-6 bg-gray-300 rounded-lg"></div>
+                <CheckCircleIcon className="w-8 h-8 text-green-500" />
               </div>
               <p className="text-sm text-gray-500">No inclusions added yet</p>
               <p className="text-xs text-gray-400 mt-1">Add your first inclusion above</p>

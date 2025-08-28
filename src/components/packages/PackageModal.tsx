@@ -871,7 +871,7 @@ const PackageModal: React.FC<PackageModalProps> = ({
       <div className="fixed inset-0 bg-black bg-opacity-50" onClick={onClose}></div>
       <div className="relative bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
         {/* Header section */}
-        <div className="bg-slate-600 text-white px-6 sm:px-8 py-4 sm:py-5 flex justify-between items-center rounded-t-lg">
+        <div className="bg-[var(--primary-green)] text-white px-6 sm:px-8 py-4 sm:py-5 flex justify-between items-center rounded-t-lg">
           <div className="flex items-center min-w-0 flex-1">
             <div className="flex items-center gap-3">
               {mode === 'create' ? (
@@ -1036,7 +1036,7 @@ const PackageModal: React.FC<PackageModalProps> = ({
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="px-6 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-slate-600 hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
+                    className="px-6 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-[var(--primary-green)] hover:bg-[var(--primary-green-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--primary-green)] disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
                   >
                     <DocumentIcon className="w-4 h-4" />
                     {isSubmitting ? 'Saving...' : (mode === 'create' ? 'Create Package' : 'Save Changes')}
