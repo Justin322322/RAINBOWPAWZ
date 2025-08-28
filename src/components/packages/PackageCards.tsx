@@ -61,9 +61,8 @@ const PackageCard = React.memo<{
   const addOns = Array.isArray(pkg.addOns) ? pkg.addOns : [];
 
   // Component for inclusion item with image
-  const InclusionItem = ({ inclusion, idx }: { inclusion: any, idx: number }) => {
+  const InclusionItem = ({ inclusion }: { inclusion: any }) => {
     const desc = typeof inclusion === 'string' ? inclusion : inclusion.description;
-    const image = typeof inclusion === 'object' && inclusion.image;
 
     return (
       <div className="flex items-center text-sm text-gray-600">
@@ -74,18 +73,18 @@ const PackageCard = React.memo<{
   };
 
   // Component for add-on item with image
-  const AddOnItem = ({ addon, idx }: { addon: any, idx: number }) => {
+  const AddOnItem = ({ addon }: { addon: any }) => {
     const name = typeof addon === 'string' ? addon : addon.name;
     const price = typeof addon === 'string' ? 0 : addon.price;
     return (
-      <div key={idx} className="flex items-center justify-between text-sm">
+      <div className="flex items-center justify-between text-sm">
         <span className="text-gray-600 line-clamp-1">{name}</span>
         <span className="text-gray-900 font-medium ml-2">+₱{price.toLocaleString()}</span>
       </div>
     );
   };
 
-    return (
+  return (
     <div className="bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-lg transition-all duration-200">
       {/* Header with image and status */}
       <div className="relative">
@@ -131,7 +130,7 @@ const PackageCard = React.memo<{
             <h4 className="text-sm font-medium text-gray-900 mb-2">What&apos;s included</h4>
             <div className="space-y-1">
               {inclusions.slice(0, 3).map((inclusion, idx) => (
-                <InclusionItem key={idx} inclusion={inclusion} idx={idx} />
+                <InclusionItem key={idx} inclusion={inclusion} />
               ))}
               {inclusions.length > 3 && (
                 <div className="text-xs text-gray-500 pl-6">
@@ -148,7 +147,7 @@ const PackageCard = React.memo<{
             <h4 className="text-sm font-medium text-gray-900 mb-2">Available add-ons</h4>
             <div className="space-y-1">
               {addOns.slice(0, 2).map((addon, idx) => (
-                <AddOnItem key={idx} addon={addon} idx={idx} />
+                <AddOnItem key={idx} addon={addon} />
               ))}
               {addOns.length > 2 && (
                 <div className="text-xs text-gray-500">
