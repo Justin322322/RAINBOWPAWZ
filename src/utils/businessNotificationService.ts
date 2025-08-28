@@ -1,4 +1,5 @@
 import { query } from '@/lib/db';
+import { broadcastToUser } from '@/app/api/notifications/sse/route';
 import { sendEmail } from '@/lib/consolidatedEmailService';
 import { getServerAppUrl } from '@/utils/appUrl';
 
@@ -141,6 +142,19 @@ export async function createBusinessNotification({
     ) as any;
 
     console.log('Business notification created successfully:', result.insertId);
+
+    // Broadcast instant notification to business user via SSE
+    try {
+      broadcastToUser(String(userId), 'business', {
+        id: result.insertId || Date.now(),
+        title,
+        message,
+        type,
+        is_read: 0,
+        link,
+        created_at: new Date().toISOString()
+      });
+    } catch {}
 
     // Send email notification if requested and user has email notifications enabled
     if (shouldSendEmail) {

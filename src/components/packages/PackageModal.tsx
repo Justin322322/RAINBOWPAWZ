@@ -1101,7 +1101,12 @@ const PackageModal: React.FC<PackageModalProps> = ({
                           type="text"
                           value={newAddOn}
                           onChange={(e) => setNewAddOn(e.target.value)}
-                          onFocus={() => setIsAddOnInputFocused(true)}
+                          onFocus={() => {
+                            setIsAddOnInputFocused(true);
+                            if (!newAddOn || newAddOn.trim().length === 0) {
+                              setAddOnSuggestions([]);
+                            }
+                          }}
                           onBlur={() => setTimeout(() => setIsAddOnInputFocused(false), 150)}
                           className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)] sm:text-sm"
                           placeholder="e.g., Personalized nameplate"
@@ -1113,7 +1118,7 @@ const PackageModal: React.FC<PackageModalProps> = ({
                             }
                           }}
                         />
-                        {isAddOnInputFocused && (addOnSuggestions.length > 0 || isLoadingAddOnSuggestions) && (
+                        {isAddOnInputFocused && newAddOn.trim().length > 0 && (addOnSuggestions.length > 0 || isLoadingAddOnSuggestions) && (
                           <div className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto">
                             {isLoadingAddOnSuggestions ? (
                               <div className="px-3 py-2 text-sm text-gray-500">Searching…</div>

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { broadcastToUser } from '@/app/api/notifications/sse/route';
 import { query } from '@/lib/db';
 import { verifySecureAuth } from '@/lib/secureAuth';
 import { createNotification } from '@/utils/notificationService';
@@ -395,6 +396,22 @@ async function notifyUserOfRestriction(user: any, reason: string, duration?: str
       link: '/appeals',
       shouldSendEmail: false // We'll send custom email below
     });
+
+    // Broadcast via SSE for instant delivery
+    try {
+      const targetUserId = (user.user_id || user.id)?.toString();
+      if (targetUserId) {
+        broadcastToUser(targetUserId, 'user', {
+          id: Date.now(),
+          title,
+          message,
+          type: 'error',
+          is_read: 0,
+          link: '/appeals',
+          created_at: new Date().toISOString()
+        });
+      }
+    } catch {}
 
     // Send custom email notification
     const emailTemplate = createRestrictionNotificationEmail({

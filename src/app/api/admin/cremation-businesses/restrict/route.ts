@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { broadcastToUser } from '@/app/api/notifications/sse/route';
 import { query } from '@/lib/db';
 import { verifySecureAuth } from '@/lib/secureAuth';
 import { getServerAppUrl } from '@/utils/appUrl';
@@ -341,6 +342,18 @@ async function notifyUserOfRestriction(userId: number, reason: string, duration?
           setTimeout(() => reject(new Error('Notification creation timeout')), 10000)
         )
       ]);
+      // SSE broadcast
+      try {
+        broadcastToUser(user.user_id.toString(), 'business', {
+          id: Date.now(),
+          title,
+          message,
+          type: 'error',
+          is_read: 0,
+          link: '/appeals',
+          created_at: new Date().toISOString()
+        });
+      } catch {}
     } catch (notificationError) {
       console.error('Failed to create in-app notification:', notificationError);
       // Continue with other notifications even if this fails
@@ -439,6 +452,19 @@ async function notifyUserOfRestoration(userId: number, businessId: number) {
           setTimeout(() => reject(new Error('Notification creation timeout')), 10000)
         )
       ]);
+
+      // SSE broadcast for instant delivery
+      try {
+        broadcastToUser(user.user_id.toString(), 'business', {
+          id: Date.now(),
+          title,
+          message,
+          type: 'success',
+          is_read: 0,
+          link: '/dashboard',
+          created_at: new Date().toISOString()
+        });
+      } catch {}
     } catch (notificationError) {
       console.error('Failed to create in-app notification for restoration:', notificationError);
       // Continue with other notifications even if this fails

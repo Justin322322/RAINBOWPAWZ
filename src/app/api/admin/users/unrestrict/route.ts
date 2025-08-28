@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { broadcastToUser } from '@/app/api/notifications/sse/route';
 import { query } from '@/lib/db';
 import { verifySecureAuth } from '@/lib/secureAuth';
 import { createNotification } from '@/utils/notificationService';
@@ -334,6 +335,22 @@ async function notifyUserOfRestoration(user: any, userType: string) {
       link: userType === 'cremation_center' ? '/cremation/dashboard' : '/user/furparent_dashboard',
       shouldSendEmail: false // We'll send custom email below
     });
+
+    // Broadcast via SSE for instant delivery
+    try {
+      const targetUserId = user.user_id?.toString();
+      if (targetUserId) {
+        broadcastToUser(targetUserId, userType === 'cremation_center' ? 'business' : 'user', {
+          id: Date.now(),
+          title,
+          message,
+          type: 'success',
+          is_read: 0,
+          link: userType === 'cremation_center' ? '/cremation/dashboard' : '/user/furparent_dashboard',
+          created_at: new Date().toISOString()
+        });
+      }
+    } catch {}
 
     // Send custom email notification
     const emailTemplate = createRestorationNotificationEmail({

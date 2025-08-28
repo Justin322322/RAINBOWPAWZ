@@ -1,4 +1,5 @@
 import { query } from '@/lib/db';
+import { broadcastToUser } from '@/app/api/notifications/sse/route';
 import { sendEmail } from '@/lib/consolidatedEmailService';
 import { getServerAppUrl } from '@/utils/appUrl';
 
@@ -75,6 +76,23 @@ export async function createAdminNotification({
     if (shouldSendEmail) {
       await sendAdminEmailNotifications(title, message, type, link, emailSubject);
     }
+
+    // Broadcast to all connected admin sessions via SSE
+    try {
+      // Fetch admin IDs to target specific users
+      const admins = await query(`SELECT user_id FROM users WHERE role = 'admin'`) as any[];
+      for (const admin of admins) {
+        broadcastToUser(String(admin.user_id), 'admin', {
+          id: result.insertId || Date.now(),
+          title,
+          message,
+          type,
+          is_read: 0,
+          link,
+          created_at: new Date().toISOString()
+        });
+      }
+    } catch {}
 
     return {
       success: true,
