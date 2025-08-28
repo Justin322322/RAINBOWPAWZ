@@ -69,6 +69,14 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
   // Get user location from profile with coordinates support
   // Remove hardcoded default address
   const [userLocation, setUserLocation] = useState<LocationData | null>(null);
+
+  // Smooth horizontal scroll helper for carousels
+  const scrollRow = (rowId: string, direction: 1 | -1) => {
+    const el = typeof window !== 'undefined' ? document.getElementById(rowId) : null;
+    if (!el) return;
+    const amount = Math.max(240, Math.round(el.clientWidth * 0.8));
+    el.scrollBy({ left: direction * amount, behavior: 'smooth' });
+  };
   const [isLoadingLocation, setIsLoadingLocation] = useState(true);
 
   useEffect(() => {
@@ -594,51 +602,76 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
                                 </p>
                               )}
 
-                              {/* Key Inclusions */}
+                              {/* Key Inclusions - with carousel preview */}
                               {pkg.inclusions && pkg.inclusions.length > 0 && (
                                 <div className="mb-4">
-                                  <h4 className="text-sm font-semibold text-gray-700 mb-2">Includes:</h4>
-                                  <ul className="text-sm text-gray-700 space-y-2">
-                                    {pkg.inclusions.slice(0, 3).map((inclusion: any, index: number) => {
-                                      const desc = typeof inclusion === 'string' ? inclusion : inclusion.description;
-                                      const image = typeof inclusion === 'string' ? undefined : inclusion.image;
-                                      return (
-                                        <li key={index} className="flex items-center gap-3">
-                                          <CheckCircleIcon className="w-4 h-4 text-green-500 flex-shrink-0" />
-                                          {image && <Image src={image} alt="inc" width={64} height={64} className="h-16 w-16 rounded object-cover border" unoptimized />}
-                                          <span className="line-clamp-1">{desc}</span>
-                                        </li>
-                                      );
-                                    })}
+                                  <div className="flex items-center justify-between mb-2">
+                                    <h4 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                                      <CheckCircleIcon className="w-4 h-4 text-green-500" />
+                                      Includes
+                                    </h4>
                                     {pkg.inclusions.length > 3 && (
-                                      <li className="text-[var(--primary-green)] font-medium">
-                                        +{pkg.inclusions.length - 3} more inclusions
-                                      </li>
+                                      <span className="text-xs text-gray-500">+{pkg.inclusions.length - 3} more</span>
                                     )}
-                                  </ul>
+                                  </div>
+                                  <div className="relative">
+                                    <button type="button" aria-label="Scroll inclusions left" onClick={() => scrollRow(`inc-row-${pkg.id}`, -1)} className="hidden md:flex absolute -left-2 top-1/2 -translate-y-1/2 h-8 w-8 items-center justify-center rounded-full bg-white border shadow hover:bg-gray-50">
+                                      <ChevronLeftIcon className="h-4 w-4 text-gray-700" />
+                                    </button>
+                                    <div id={`inc-row-${pkg.id}`} className="flex gap-3 overflow-x-auto no-scrollbar py-1 scroll-smooth snap-x snap-mandatory">
+                                      {pkg.inclusions.slice(0, 8).map((inclusion: any, index: number) => {
+                                        const desc = typeof inclusion === 'string' ? inclusion : inclusion.description;
+                                        const image = typeof inclusion === 'string' ? undefined : inclusion.image;
+                                        return (
+                                          <div key={index} className="flex-shrink-0 w-44 flex items-center gap-3 bg-white rounded-md border p-2 snap-start">
+                                            {image && <Image src={image} alt="inc" width={56} height={56} className="h-14 w-14 rounded object-cover border" unoptimized />}
+                                            <span className="text-sm text-gray-700 line-clamp-2">{desc}</span>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                    <button type="button" aria-label="Scroll inclusions right" onClick={() => scrollRow(`inc-row-${pkg.id}`, 1)} className="hidden md:flex absolute -right-2 top-1/2 -translate-y-1/2 h-8 w-8 items-center justify-center rounded-full bg-white border shadow hover:bg-gray-50">
+                                      <ChevronRightIcon className="h-4 w-4 text-gray-700" />
+                                    </button>
+                                  </div>
                                 </div>
                               )}
 
-                              {/* Add-ons Preview */}
+                              {/* Add-ons Preview - with carousel */}
                               {pkg.addOns && pkg.addOns.length > 0 && (
                                 <div className="mb-4">
-                                  <h4 className="text-sm font-semibold text-gray-700 mb-2">Add-ons:</h4>
-                                  <ul className="text-sm text-gray-700 space-y-2">
-                                    {pkg.addOns.slice(0, 2).map((addon: any, index: number) => {
-                                      const name = typeof addon === 'string' ? addon : addon.name;
-                                      const price = typeof addon === 'string' ? undefined : addon.price;
-                                      const image = typeof addon === 'string' ? undefined : addon.image;
-                                      return (
-                                        <li key={index} className="flex items-center gap-3">
-                                          {image && <Image src={image} alt="addon" width={64} height={64} className="h-16 w-16 rounded object-cover border" unoptimized />}
-                                          <span className="line-clamp-1">{name}{price ? ` (+₱${price.toLocaleString()})` : ''}</span>
-                                        </li>
-                                      );
-                                    })}
+                                  <div className="flex items-center justify-between mb-2">
+                                    <h4 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                                      <CheckCircleIcon className="w-4 h-4 text-amber-600" />
+                                      Add-ons (Optional)
+                                    </h4>
                                     {pkg.addOns.length > 2 && (
-                                      <li className="text-gray-500">+{pkg.addOns.length - 2} more add-ons</li>
+                                      <span className="text-xs text-gray-500">+{pkg.addOns.length - 2} more</span>
                                     )}
-                                  </ul>
+                                  </div>
+                                  <div className="relative">
+                                    <button type="button" aria-label="Scroll add-ons left" onClick={() => scrollRow(`addon-row-${pkg.id}`, -1)} className="hidden md:flex absolute -left-2 top-1/2 -translate-y-1/2 h-8 w-8 items-center justify-center rounded-full bg-white border shadow hover:bg-gray-50">
+                                      <ChevronLeftIcon className="h-4 w-4 text-gray-700" />
+                                    </button>
+                                    <div id={`addon-row-${pkg.id}`} className="flex gap-3 overflow-x-auto no-scrollbar py-1 scroll-smooth snap-x snap-mandatory">
+                                      {pkg.addOns.slice(0, 8).map((addon: any, index: number) => {
+                                        const name = typeof addon === 'string' ? addon : addon.name;
+                                        const price = typeof addon === 'string' ? undefined : addon.price;
+                                        const image = typeof addon === 'string' ? undefined : addon.image;
+                                        return (
+                                          <div key={index} className="flex-shrink-0 w-48 flex items-center gap-3 bg-white rounded-md border p-2 snap-start">
+                                            {image && <Image src={image} alt="addon" width={56} height={56} className="h-14 w-14 rounded object-cover border" unoptimized />}
+                                            <span className="text-sm text-gray-700 line-clamp-2">
+                                              {name}{price ? ` (+₱${price.toLocaleString()})` : ''}
+                                            </span>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                    <button type="button" aria-label="Scroll add-ons right" onClick={() => scrollRow(`addon-row-${pkg.id}`, 1)} className="hidden md:flex absolute -right-2 top-1/2 -translate-y-1/2 h-8 w-8 items-center justify-center rounded-full bg-white border shadow hover:bg-gray-50">
+                                      <ChevronRightIcon className="h-4 w-4 text-gray-700" />
+                                    </button>
+                                  </div>
                                 </div>
                               )}
 

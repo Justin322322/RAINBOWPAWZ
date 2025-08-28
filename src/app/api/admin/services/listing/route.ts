@@ -86,7 +86,8 @@ export async function GET(request: NextRequest) {
     params.push(`%${s}%`, `%${s}%`);
   }
   if (statusF !== 'all') {
-    sql += ' AND p.is_active = ?';
+    // Treat NULL is_active as active by default
+    sql += ' AND COALESCE(p.is_active, 1) = ?';
     params.push(statusF === 'active' ? 1 : 0);
   }
   if (catF !== 'all') {
