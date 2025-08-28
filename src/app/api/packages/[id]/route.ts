@@ -76,7 +76,8 @@ export async function GET(
         cremationType: pkg.cremation_type,
         processingTime: pkg.processing_time,
         price: Number(pkg.price),
-        pricePerKg: Number(pkg.price_per_kg || 0),
+        pricingMode: pkg.pricing_mode === 'by_size' ? 'by_size' : 'fixed',
+        overageFeePerKg: Number(pkg.overage_fee_per_kg || 0),
         deliveryFeePerKm: Number(pkg.delivery_fee_per_km),
         conditions: pkg.conditions,
         isActive: Boolean(pkg.is_active),
@@ -117,7 +118,6 @@ export async function GET(
           })
           .filter(Boolean),
         // New enhanced features
-        hasSizePricing: Boolean(pkg.has_size_pricing),
         sizePricing: sizePricing.map((sp) => ({
           sizeCategory: sp.size_category,
           weightRangeMin: Number(sp.weight_range_min),
@@ -231,7 +231,8 @@ export async function PATCH(
         const updateResult = await transaction.query(
           `UPDATE service_packages
            SET name=?, description=?, category=?, cremation_type=?, processing_time=?,
-               price=?, delivery_fee_per_km=?, conditions=?, price_per_kg=?
+               price=?, delivery_fee_per_km=?, conditions=?,
+               pricing_mode=?, overage_fee_per_kg=?
            WHERE package_id=?`,
           [
             body.name,
@@ -242,10 +243,33 @@ export async function PATCH(
             Number(body.price),
             Number(body.deliveryFeePerKm) || 0,
             body.conditions,
-            Number(body.pricePerKg) || 0,
+            body.pricingMode === 'by_size' ? 'by_size' : 'fixed',
+            Number(body.overageFeePerKg) || 0,
             packageId
           ]
         ) as any;
+        // Replace size pricing
+        await transaction.query(
+          'DELETE FROM package_size_pricing WHERE package_id = ?',
+          [packageId]
+        );
+
+        if (Array.isArray(body.sizePricing) && body.sizePricing.length > 0) {
+          for (const sp of body.sizePricing) {
+            if (!sp) continue;
+            const sizeCategory = String(sp.sizeCategory || '').trim();
+            const min = Number(sp.weightRangeMin);
+            const max = sp.weightRangeMax == null ? null : Number(sp.weightRangeMax);
+            const p = Number(sp.price);
+            if (!sizeCategory || isNaN(min) || isNaN(p)) continue;
+            await transaction.query(
+              `INSERT INTO package_size_pricing
+                 (package_id, size_category, weight_range_min, weight_range_max, price)
+               VALUES (?, ?, ?, ?, ?)`,
+              [packageId, sizeCategory, min, max, p]
+            );
+          }
+        }
 
         if (updateResult.affectedRows === 0) {
           throw new Error('Package not found or no changes made');

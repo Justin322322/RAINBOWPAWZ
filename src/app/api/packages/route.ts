@@ -134,7 +134,6 @@ export async function GET(request: NextRequest) {
       inclusions: [],
       addOns: [],
       images: imagesByPackage[p.id] || [],
-      pricePerKg: Number(p.price_per_kg || 0),
       supportedPetTypes: []
     }));
 
@@ -194,7 +193,9 @@ export async function POST(request: NextRequest) {
       processingTime,
       price,
       deliveryFeePerKm = 0,
-      pricePerKg = 0,
+      pricingMode = 'fixed',
+      overageFeePerKg = 0,
+      sizePricing = [],
       conditions = '',
       inclusions = [],
       addOns = [],
@@ -211,8 +212,9 @@ export async function POST(request: NextRequest) {
         `
         INSERT INTO service_packages
           (provider_id, name, description, category, cremation_type,
-           processing_time, price, delivery_fee_per_km, price_per_kg, conditions, is_active)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE)
+           processing_time, price, delivery_fee_per_km, conditions, is_active,
+           pricing_mode, overage_fee_per_kg)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE, ?, ?)
         `,
         [
           providerId,
@@ -223,11 +225,30 @@ export async function POST(request: NextRequest) {
           processingTime,
           Number(price),
           Number(deliveryFeePerKm) || 0,
-          Number(pricePerKg) || 0,
-          conditions
+          conditions,
+          pricingMode === 'by_size' ? 'by_size' : 'fixed',
+          Number(overageFeePerKg) || 0
         ]
       )) as any;
       const packageId = pkgRes.insertId as number;
+
+      // Insert size-based pricing if provided
+      if (Array.isArray(sizePricing) && sizePricing.length > 0) {
+        for (const sp of sizePricing) {
+          if (!sp) continue;
+          const sizeCategory = String(sp.sizeCategory || '').trim();
+          const min = Number(sp.weightRangeMin);
+          const max = sp.weightRangeMax == null ? null : Number(sp.weightRangeMax);
+          const p = Number(sp.price);
+          if (!sizeCategory || isNaN(min) || isNaN(p)) continue;
+          await transaction.query(
+            `INSERT INTO package_size_pricing
+              (package_id, size_category, weight_range_min, weight_range_max, price)
+             VALUES (?, ?, ?, ?, ?)`,
+            [packageId, sizeCategory, min, max, p]
+          );
+        }
+      }
 
       // Insert inclusions
       if (Array.isArray(inclusions) && inclusions.length > 0) {
@@ -359,7 +380,6 @@ async function getPackageById(packageId: number, providerId?: string): Promise<N
       inclusions: [],
       addOns: [],
       images: [],
-      pricePerKg: Number(pkg.price_per_kg || 0),
       supportedPetTypes: []
     };
     

@@ -19,6 +19,8 @@ interface PackageFormData {
   cremationType: string;
   processingTime: string;
   price: number;
+  pricingMode: 'fixed' | 'by_size';
+  overageFeePerKg: number;
   deliveryFeePerKm: number;
   inclusions: string[];
   addOns: AddOn[];
@@ -32,6 +34,7 @@ interface PackageFormData {
   customCremationTypes: string[];
   customProcessingTimes: string[];
   supportedPetTypes: string[];
+  sizePricing: Array<{ sizeCategory: string; weightRangeMin: number; weightRangeMax: number | null; price: number }>;
 }
 
 interface PackageModalProps {
@@ -62,6 +65,8 @@ const PackageModal: React.FC<PackageModalProps> = ({
     cremationType: 'Standard',
     processingTime: '1-2 days',
     price: 0,
+    pricingMode: 'fixed',
+    overageFeePerKg: 0,
     deliveryFeePerKm: 0,
     inclusions: [],
     addOns: [],
@@ -75,6 +80,13 @@ const PackageModal: React.FC<PackageModalProps> = ({
     customCremationTypes: [],
     customProcessingTimes: [],
     supportedPetTypes: ['Dogs', 'Cats', 'Birds', 'Rabbits']
+    ,
+    sizePricing: [
+      { sizeCategory: 'Small (0–10 kg)', weightRangeMin: 0, weightRangeMax: 10, price: 0 },
+      { sizeCategory: 'Medium (11–25 kg)', weightRangeMin: 11, weightRangeMax: 25, price: 0 },
+      { sizeCategory: 'Large (26–40 kg)', weightRangeMin: 26, weightRangeMax: 40, price: 0 },
+      { sizeCategory: 'Extra Large (41+ kg)', weightRangeMin: 41, weightRangeMax: null, price: 0 }
+    ]
   });
 
   // UI state
@@ -207,6 +219,8 @@ const PackageModal: React.FC<PackageModalProps> = ({
       cremationType: 'Standard',
       processingTime: '1-2 days',
       price: 0,
+      pricingMode: 'fixed',
+      overageFeePerKg: 0,
       deliveryFeePerKm: 0,
       inclusions: [],
       addOns: [],
@@ -218,7 +232,13 @@ const PackageModal: React.FC<PackageModalProps> = ({
       customCategories: [],
       customCremationTypes: [],
       customProcessingTimes: [],
-      supportedPetTypes: ['Dogs', 'Cats', 'Birds', 'Rabbits']
+      supportedPetTypes: ['Dogs', 'Cats', 'Birds', 'Rabbits'],
+      sizePricing: [
+        { sizeCategory: 'Small (0–10 kg)', weightRangeMin: 0, weightRangeMax: 10, price: 0 },
+        { sizeCategory: 'Medium (11–25 kg)', weightRangeMin: 11, weightRangeMax: 25, price: 0 },
+        { sizeCategory: 'Large (26–40 kg)', weightRangeMin: 26, weightRangeMax: 40, price: 0 },
+        { sizeCategory: 'Extra Large (41+ kg)', weightRangeMin: 41, weightRangeMax: null, price: 0 }
+      ]
     });
     setErrors({});
     setNewInclusion('');
@@ -286,6 +306,8 @@ const PackageModal: React.FC<PackageModalProps> = ({
         cremationType: pkg.cremationType || 'Standard',
         processingTime: pkg.processingTime || '1-2 days',
         price: pkg.price || 0,
+        pricingMode: pkg.pricingMode || (pkg.hasSizePricing ? 'by_size' : 'fixed'),
+        overageFeePerKg: pkg.overageFeePerKg || 0,
         deliveryFeePerKm: pkg.deliveryFeePerKm || 0,
         inclusions: pkg.inclusions || [],
         addOns: pkg.addOns || [],
@@ -297,7 +319,15 @@ const PackageModal: React.FC<PackageModalProps> = ({
         customCategories: pkg.customCategories || [],
         customCremationTypes: pkg.customCremationTypes || [],
         customProcessingTimes: pkg.customProcessingTimes || [],
-        supportedPetTypes: pkg.supportedPetTypes || ['Dogs', 'Cats', 'Birds', 'Rabbits']
+        supportedPetTypes: pkg.supportedPetTypes || ['Dogs', 'Cats', 'Birds', 'Rabbits'],
+        sizePricing: (pkg.sizePricing && pkg.sizePricing.length > 0)
+          ? pkg.sizePricing
+          : [
+              { sizeCategory: 'Small (0–10 kg)', weightRangeMin: 0, weightRangeMax: 10, price: 0 },
+              { sizeCategory: 'Medium (11–25 kg)', weightRangeMin: 11, weightRangeMax: 25, price: 0 },
+              { sizeCategory: 'Large (26–40 kg)', weightRangeMin: 26, weightRangeMax: 40, price: 0 },
+              { sizeCategory: 'Extra Large (41+ kg)', weightRangeMin: 41, weightRangeMax: null, price: 0 }
+            ]
       });
       
       // Reset animation states when loading edit data
@@ -362,7 +392,7 @@ const PackageModal: React.FC<PackageModalProps> = ({
     if (errors[name]) setErrors(prev => { const err = { ...prev }; delete err[name]; return err; });
     setFormData(prev => ({
       ...prev,
-      [name]: name === 'price' || name === 'deliveryFeePerKm' || name === 'pricePerKg' 
+      [name]: name === 'price' || name === 'deliveryFeePerKm' || name === 'pricePerKg' || name === 'overageFeePerKg'
         ? parseFloat(value) || 0 
         : value
     }));
@@ -576,7 +606,12 @@ const PackageModal: React.FC<PackageModalProps> = ({
     // Core validation rules (same for both create and edit modes)
     if (!formData.name.trim()) newErrors.name = 'Package name is required';
     if (!formData.description.trim()) newErrors.description = 'Description is required';
-    if (formData.price <= 0) newErrors.price = 'Price must be greater than zero';
+    if (formData.pricingMode === 'fixed') {
+      if (formData.price <= 0) newErrors.price = 'Price must be greater than zero';
+    } else {
+      const anyValid = formData.sizePricing.some((sp) => sp.price > 0);
+      if (!anyValid) newErrors.price = 'Provide at least one size price';
+    }
     if (formData.inclusions.length === 0) newErrors.inclusions = 'At least one inclusion is required';
     if (!formData.conditions.trim()) newErrors.conditions = 'Conditions are required';
     if (formData.supportedPetTypes.length === 0) newErrors.supportedPetTypes = 'Please select at least one pet type';
@@ -778,21 +813,81 @@ const PackageModal: React.FC<PackageModalProps> = ({
                         />
                         {errors.price && <p className="mt-1 text-sm text-red-600">{errors.price}</p>}
                       </div>
-                      <div>
-                        <label htmlFor="pricePerKg" className="block text-sm font-medium text-gray-700 mb-1">Price Per Kg (₱) <span className="text-gray-500 text-xs">(optional)</span></label>
-                        <input
-                          id="pricePerKg"
-                          name="pricePerKg"
-                          type="number"
-                          value={formData.pricePerKg || ''}
-                          onChange={handleInputChange}
-                          min="0"
-                          step="any"
-                          className={`block w-full px-3 py-2 border ${errors.pricePerKg ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)] sm:text-sm`}
-                          placeholder="e.g., 100"
-                        />
-                        {errors.pricePerKg && <p className="mt-1 text-sm text-red-600">{errors.pricePerKg}</p>}
+                      {/* Removed Price Per Kg input as pricing is now tier-based with overage fee */}
+                    </div>
+
+                    {/* Pricing Options */}
+                    <div className="mt-4 border rounded-md p-4">
+                      <h3 className="text-sm font-medium text-gray-800 mb-3">Pricing Options</h3>
+                      <div className="flex flex-col gap-2 mb-4">
+                        <label className="inline-flex items-center gap-2">
+                          <input
+                            type="radio"
+                            name="pricingMode"
+                            value="fixed"
+                            checked={formData.pricingMode === 'fixed'}
+                            onChange={() => setFormData((prev) => ({ ...prev, pricingMode: 'fixed' }))}
+                            className="text-[var(--primary-green)] focus:ring-[var(--primary-green)]"
+                          />
+                          <span className="text-sm">Fixed Price – One price for all pets regardless of size.</span>
+                        </label>
+                        <label className="inline-flex items-center gap-2">
+                          <input
+                            type="radio"
+                            name="pricingMode"
+                            value="by_size"
+                            checked={formData.pricingMode === 'by_size'}
+                            onChange={() => setFormData((prev) => ({ ...prev, pricingMode: 'by_size' }))}
+                            className="text-[var(--primary-green)] focus:ring-[var(--primary-green)]"
+                          />
+                          <span className="text-sm">Pricing by Pet Size – Customizable by weight category and price.</span>
+                        </label>
                       </div>
+
+                      {formData.pricingMode === 'by_size' && (
+                        <div className="space-y-3">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                            {formData.sizePricing.map((sp, idx) => (
+                              <div key={idx} className="border rounded-md p-3">
+                                <div className="text-xs text-gray-600 mb-1">{sp.sizeCategory}</div>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  step="any"
+                                  value={sp.price || 0}
+                                  onChange={(e) => {
+                                    const val = parseFloat(e.target.value) || 0;
+                                    setFormData((prev) => {
+                                      const next = [...prev.sizePricing];
+                                      next[idx] = { ...next[idx], price: val };
+                                      return { ...prev, sizePricing: next };
+                                    });
+                                  }}
+                                  className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)] sm:text-sm"
+                                  placeholder="₱ Price"
+                                />
+                              </div>
+                            ))}
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                              <label htmlFor="overageFeePerKg" className="block text-sm font-medium text-gray-700 mb-1">Additional fee if pet exceeds selected weight category (per kg)</label>
+                              <input
+                                id="overageFeePerKg"
+                                name="overageFeePerKg"
+                                type="number"
+                                value={formData.overageFeePerKg || 0}
+                                onChange={handleInputChange}
+                                min="0"
+                                step="any"
+                                className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)] sm:text-sm"
+                                placeholder="e.g., 50"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     <div>

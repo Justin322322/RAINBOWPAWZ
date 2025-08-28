@@ -314,30 +314,16 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
 
   // Validate pet weight when package has per kg pricing
   const validatePetWeight = () => {
-    // Check if the package has per kg pricing
-    if (bookingData?.package?.pricePerKg && bookingData.package.pricePerKg > 0) {
+    // Require weight when pricing is by size
+    if (bookingData?.package?.pricingMode === 'by_size') {
       if (!petWeight || petWeight.trim() === '') {
         setValidationErrors(prev => ({
           ...prev,
-          petWeight: "Pet weight is required for this package as it uses per kg pricing",
-          formSubmitted: true
-        }));
-        return false;
-      }
-      
-      const weight = parseFloat(petWeight);
-      if (isNaN(weight) || weight <= 0) {
-        setValidationErrors(prev => ({
-          ...prev,
-          petWeight: "Please enter a valid pet weight greater than 0",
-          formSubmitted: true
+          petWeight: 'Pet weight is required for size-based pricing'
         }));
         return false;
       }
     }
-    
-    // Clear validation error if weight is valid or not required
-    clearValidationError('petWeight');
     return true;
   };
 
@@ -943,20 +929,50 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
     }
   };
 
+  // Compute total considering pricing mode and tiers
   const calculateTotalPrice = () => {
-    if (!bookingData?.package?.price) return 0;
+    if (!bookingData || !bookingData.package) return 0;
 
-    // Calculate price based on base price + (weight * price per kg)
-    const basePrice = Number(bookingData.package.price);
-    const weightPrice = petWeight && bookingData.package.pricePerKg
-      ? parseFloat(petWeight) * Number(bookingData.package.pricePerKg)
-      : 0;
-    const totalBasePrice = basePrice + weightPrice;
+    const delivery = Number(deliveryFee) || 0;
+    const addOnsTotal = Number(addOnsTotalPrice) || 0;
 
-    const delivery = deliveryOption === 'delivery' ? Number(deliveryFee) : 0;
-    const addOns = addOnsTotalPrice || 0;
+    // Fixed pricing
+    if (bookingData.package.pricingMode !== 'by_size') {
+      const basePrice = Number(bookingData.package.price) || 0;
+      return basePrice + delivery + addOnsTotal;
+    }
 
-    return totalBasePrice + delivery + addOns;
+    // Size-based pricing
+    const tiers = Array.isArray(bookingData.package.sizePricing) ? bookingData.package.sizePricing : [];
+    const overage = Number(bookingData.package.overageFeePerKg || 0);
+    const weight = petWeight ? parseFloat(petWeight) : NaN;
+
+    if (!tiers.length || isNaN(weight)) {
+      return delivery + addOnsTotal;
+    }
+
+    const tier = tiers.find((t: any) => {
+      const min = Number(t.weightRangeMin);
+      const max = t.weightRangeMax == null ? Infinity : Number(t.weightRangeMax);
+      return weight >= min && weight <= max;
+    });
+
+    let base = 0;
+    if (tier) {
+      base = Number(tier.price) || 0;
+    } else {
+      const sorted = [...tiers].sort((a: any, b: any) => Number(a.weightRangeMin) - Number(b.weightRangeMin));
+      const last = sorted[sorted.length - 1];
+      if (last) {
+        base = Number(last.price) || 0;
+        const lastMax = last.weightRangeMax == null ? Infinity : Number(last.weightRangeMax);
+        if (weight > lastMax && isFinite(lastMax) && overage > 0) {
+          base += (weight - lastMax) * overage;
+        }
+      }
+    }
+
+    return base + delivery + addOnsTotal;
   };
 
   return (
@@ -1171,24 +1187,17 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                             type="number"
                             value={petWeight}
                             onChange={(e) => {
-                              const weight = parseFloat(e.target.value);
                               setPetWeight(e.target.value);
+                              const weight = parseFloat(e.target.value);
 
-                              // Clear validation error when user starts typing
-                              if (e.target.value.trim()) {
-                                clearValidationError('petWeight');
-                              }
-
-                              // Calculate price based on weight and price per kg
-                              if (!isNaN(weight) && bookingData?.package?.pricePerKg) {
-                                const basePrice = Number(bookingData.package.price);
-                                const weightPrice = weight * Number(bookingData.package.pricePerKg);
-                                setCalculatedPrice(basePrice + weightPrice);
+                              // Live price feedback for size-based pricing
+                              if (!isNaN(weight) && bookingData?.package?.pricingMode === 'by_size') {
+                                setCalculatedPrice(calculateTotalPrice());
                               }
                             }}
                             onBlur={() => {
-                              // Validate on blur if per kg pricing is enabled
-                              if (bookingData?.package?.pricePerKg > 0) {
+                              // Validate on blur if size-based pricing is enabled
+                              if (bookingData?.package?.pricingMode === 'by_size') {
                                 validatePetWeight();
                               }
                             }}
@@ -1202,26 +1211,16 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                           {validationErrors.petWeight && (
                             <p className="mt-1 text-sm text-red-600">{validationErrors.petWeight}</p>
                           )}
-                          {bookingData?.package?.pricePerKg > 0 && (
+                          {bookingData?.package?.pricingMode === 'by_size' && (
                             <div className="mt-2 text-sm">
                               {!petWeight || isNaN(parseFloat(petWeight)) ? (
                                 <p className="text-blue-600 bg-blue-50 p-2 rounded">
-                                  <strong>Note:</strong> This package uses per kg pricing (₱{Number(bookingData.package.pricePerKg).toLocaleString()}/kg). 
-                                  Pet weight is required to calculate the final price.
+                                  <strong>Note:</strong> This package uses pricing by pet size. Pet weight is required to determine the tier and any overage.
                                 </p>
                               ) : (
-                                <>
-                                  <p className="text-gray-600">
-                                    Base price: ₱{Number(bookingData.package.price).toLocaleString()}
-                                  </p>
-                                  <p className="text-gray-600">
-                                    Weight price: {parseFloat(petWeight).toFixed(1)}kg × ₱{Number(bookingData.package.pricePerKg).toLocaleString()}/kg =
-                                    ₱{(parseFloat(petWeight) * Number(bookingData.package.pricePerKg)).toLocaleString()}
-                                  </p>
-                                  <p className="font-medium text-[var(--primary-green)]">
-                                    Total base price: ₱{calculatedPrice.toLocaleString()}
-                                  </p>
-                                </>
+                                <p className="text-gray-600">
+                                  The final price will be based on the size tier and any per-kg overage beyond the selected tier.
+                                </p>
                               )}
                             </div>
                           )}
@@ -1599,12 +1598,12 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                       <span className="font-medium">₱{bookingData.package.price.toLocaleString()}</span>
                     </div>
 
-                    {bookingData?.package?.pricePerKg > 0 && petWeight && !isNaN(parseFloat(petWeight)) && (
+                    {bookingData?.package?.pricingMode === 'by_size' && petWeight && !isNaN(parseFloat(petWeight)) && (
                       <div className="flex justify-between">
                         <span className="text-gray-600">
-                          Weight Price ({parseFloat(petWeight).toFixed(1)}kg × ₱{Number(bookingData.package.pricePerKg).toLocaleString()}/kg)
+                          Weight Price ({parseFloat(petWeight).toFixed(1)}kg × ₱{Number(bookingData.package.overageFeePerKg || 0).toLocaleString()}/kg)
                         </span>
-                        <span className="font-medium">₱{(parseFloat(petWeight) * Number(bookingData.package.pricePerKg)).toLocaleString()}</span>
+                        <span className="font-medium">₱{(parseFloat(petWeight) * Number(bookingData.package.overageFeePerKg || 0)).toLocaleString()}</span>
                       </div>
                     )}
 

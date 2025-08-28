@@ -11,6 +11,15 @@ export interface PackageData {
   cremationType: string;
   processingTime: string;
   price: number;
+  pricingMode?: 'fixed' | 'by_size';
+  overageFeePerKg?: number;
+  // hasSizePricing is redundant; derive from pricingMode or sizePricing
+  sizePricing?: Array<{
+    sizeCategory: string;
+    weightRangeMin: number;
+    weightRangeMax: number;
+    price: number;
+  }>;
   inclusions: string[];
   addOns: (string | AddOn)[];
   conditions: string;
@@ -26,6 +35,15 @@ interface _PackageFormData {
   cremationType: string;
   processingTime: string;
   price: number;
+  pricingMode?: 'fixed' | 'by_size';
+  overageFeePerKg?: number;
+  // hasSizePricing is redundant; derive from pricingMode or sizePricing
+  sizePricing?: Array<{
+    sizeCategory: string;
+    weightRangeMin: number;
+    weightRangeMax: number;
+    price: number;
+  }>;
   inclusions: string[];
   addOns: (string | AddOn)[];
   conditions: string;
