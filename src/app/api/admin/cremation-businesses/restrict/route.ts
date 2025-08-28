@@ -273,9 +273,16 @@ export async function POST(request: NextRequest) {
     // Send notifications asynchronously after successful database operations
     if (action === 'restrict' && businessUserId) {
       // Don't await this to prevent blocking the response
-      notifyUserOfRestriction(businessUserId, body.reason || 'Restricted by admin', body.duration)
+      notifyUserOfRestriction(businessUserId, body.reason || 'Restricted by admin', body.duration, businessId)
         .catch(error => {
           console.error('Failed to send restriction notification:', error);
+          // Don't throw error as this is not critical for the main operation
+        });
+    } else if (action === 'restore' && businessUserId) {
+      // Send restoration notifications
+      notifyUserOfRestoration(businessUserId, businessId)
+        .catch(error => {
+          console.error('Failed to send restoration notification:', error);
           // Don't throw error as this is not critical for the main operation
         });
     }
@@ -296,7 +303,7 @@ export async function POST(request: NextRequest) {
 }
 
 // Helper function to notify user of restriction
-async function notifyUserOfRestriction(userId: number, reason: string, duration?: string) {
+async function notifyUserOfRestriction(userId: number, reason: string, duration?: string, businessId?: number) {
   try {
     // Get user details for notifications with timeout
     const userResult = await Promise.race([
@@ -393,6 +400,102 @@ async function notifyUserOfRestriction(userId: number, reason: string, duration?
   }
 }
 
+// Helper function to notify user of restoration
+async function notifyUserOfRestoration(userId: number, businessId: number) {
+  try {
+    // Get user details for notifications with timeout
+    const userResult = await Promise.race([
+      query(
+        `SELECT user_id, first_name, last_name, email, phone, sms_notifications
+         FROM users WHERE user_id = ? LIMIT 1`,
+        [userId]
+      ),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('User query timeout')), 5000)
+      )
+    ]) as any[];
+
+    if (!userResult || userResult.length === 0) {
+      console.warn(`User not found for restoration notification: ${userId}`);
+      return;
+    }
+
+    const user = userResult[0];
+    const title = 'Account Restored';
+    const message = `Your cremation center account has been restored. You can now access all features of your account.`;
+
+    // Create in-app notification with timeout and error handling
+    try {
+      await Promise.race([
+        createNotification({
+          userId: user.user_id,
+          title,
+          message,
+          type: 'success',
+          link: '/dashboard', // Or a specific dashboard link
+          shouldSendEmail: false // We'll send custom email below
+        }),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Notification creation timeout')), 10000)
+        )
+      ]);
+    } catch (notificationError) {
+      console.error('Failed to create in-app notification for restoration:', notificationError);
+      // Continue with other notifications even if this fails
+    }
+
+    // Send custom email notification (independent of in-app notification)
+    try {
+      const emailTemplate = createRestorationNotificationEmail({
+        userName: `${user.first_name} ${user.last_name}`,
+        userType: 'cremation center'
+      });
+
+      const emailOptIn = user.email_notifications !== null && user.email_notifications !== undefined
+        ? Boolean(user.email_notifications)
+        : true;
+
+      if (emailOptIn) {
+        await Promise.race([
+          sendEmail({
+            to: user.email,
+            subject: emailTemplate.subject,
+            html: emailTemplate.html
+          }),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Email sending timeout')), 15000)
+          )
+        ]);
+      }
+    } catch (emailError) {
+      console.error('Failed to send email notification for restoration:', emailError);
+      // Continue with SMS even if email fails
+    }
+
+    // Send SMS notification (independent of other notifications)
+    if (user.phone && (user.sms_notifications === 1 || user.sms_notifications === true)) {
+      try {
+        const smsResult = await sendSMS({
+          to: user.phone,
+          message: `✅ Your RainbowPaws cremation center account has been restored. You can now access all features of your account.`
+        });
+        
+        if (smsResult.success) {
+          console.log(`✅ Restoration SMS sent successfully to ${user.phone} for cremation business #${businessId}`);
+        } else {
+          console.error(`❌ Restoration SMS failed for cremation business #${businessId}:`, smsResult.error);
+        }
+      } catch (smsError) {
+        console.error('Failed to send SMS notification for restoration:', smsError);
+      }
+    }
+
+  } catch (error) {
+    console.error('Error notifying user of restoration:', error);
+    // Don't throw error as this is not critical for the main operation
+  }
+}
+
 // Email template for restriction notifications
 function createRestrictionNotificationEmail({
   userName,
@@ -405,7 +508,7 @@ function createRestrictionNotificationEmail({
   duration?: string;
   userType?: string;
 }) {
-  const subject = '🚨 Account Restricted - Action Required';
+  const subject = '�� Account Restricted - Action Required';
   const appUrl = getServerAppUrl();
 
   const html = `
@@ -447,6 +550,66 @@ function createRestrictionNotificationEmail({
           </div>
 
           <p>If you have any questions, please contact our support team.</p>
+
+          <p>Thank you,<br>The RainbowPaws Team</p>
+        </div>
+        <div class="footer">
+          <p>&copy; ${new Date().getFullYear()} RainbowPaws - Pet Memorial Services</p>
+          <p>This is an automated message, please do not reply to this email.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  return { subject, html };
+}
+
+// Email template for restoration notifications
+function createRestorationNotificationEmail({
+  userName,
+  userType = 'user'
+}: {
+  userName: string;
+  userType?: string;
+}) {
+  const subject = '✅ Account Restored - Access Granted';
+  const appUrl = getServerAppUrl();
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Account Restored</title>
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #22c55e; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+        .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px; }
+        .button { display: inline-block; background: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 20px 0; }
+        .success { background: #ecfdf5; border: 1px solid #d1fae5; padding: 15px; border-radius: 6px; margin: 20px 0; }
+        .footer { text-align: center; margin-top: 30px; color: #666; font-size: 14px; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>✅ Account Restored</h1>
+        </div>
+        <div class="content">
+          <p>Hello ${userName},</p>
+
+          <div class="success">
+            <strong>Your ${userType} account has been restored.</strong>
+          </div>
+
+          <p>You can now access all features of your account. If you have any questions, please contact our support team.</p>
+
+          <div style="text-align: center;">
+            <a href="${appUrl}/dashboard" class="button">Go to Dashboard</a>
+          </div>
 
           <p>Thank you,<br>The RainbowPaws Team</p>
         </div>
