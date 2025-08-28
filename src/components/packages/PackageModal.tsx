@@ -2,7 +2,7 @@
 
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import useDebounce from '@/hooks/useDebounce';
-import { CheckIcon } from '@heroicons/react/24/outline';
+import { CheckIcon, PlusIcon, PencilIcon, DocumentIcon } from '@heroicons/react/24/outline';
 import { ImageUploader } from '@/components/packages/ImageUploader';
 import { useToast } from '@/context/ToastContext';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -869,17 +869,24 @@ const PackageModal: React.FC<PackageModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="fixed inset-0 bg-black bg-opacity-50" onClick={onClose}></div>
-      <div className="relative bg-white rounded-2xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+      <div className="relative bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
         {/* Header section */}
-        <div className="bg-[var(--primary-green)] text-white px-6 sm:px-8 py-4 sm:py-5 flex justify-between items-center rounded-t-2xl">
+        <div className="bg-slate-600 text-white px-6 sm:px-8 py-4 sm:py-5 flex justify-between items-center rounded-t-lg">
           <div className="flex items-center min-w-0 flex-1">
-            <h1 className="text-lg sm:text-xl font-medium text-white">
-              {mode === 'create' ? 'Create New Package' : 'Edit Package'}
-            </h1>
+            <div className="flex items-center gap-3">
+              {mode === 'create' ? (
+                <PlusIcon className="w-6 h-6 text-white" />
+              ) : (
+                <PencilIcon className="w-6 h-6 text-white" />
+              )}
+              <h1 className="text-lg sm:text-xl font-medium text-white">
+                {mode === 'create' ? 'Create New Package' : 'Edit Package'}
+              </h1>
+            </div>
           </div>
           <button
             onClick={onClose}
-            className="text-white hover:text-white/80 transition-colors duration-200 flex-shrink-0 ml-2 w-8 h-8 rounded-2xl hover:bg-white/10 flex items-center justify-center"
+            className="text-white hover:text-white/80 transition-colors duration-200 flex-shrink-0 ml-2 w-8 h-8 rounded-lg hover:bg-white/10 flex items-center justify-center"
             aria-label="Close modal"
           >
             <span className="text-xl font-light">×</span>
@@ -887,7 +894,7 @@ const PackageModal: React.FC<PackageModalProps> = ({
         </div>
 
         {/* Form */}
-        <div className="bg-white rounded-b-2xl shadow-sm overflow-hidden max-h-[calc(90vh-120px)] overflow-y-auto">
+        <div className="bg-white rounded-b-lg shadow-sm overflow-hidden max-h-[calc(90vh-120px)] overflow-y-auto">
           <AnimatePresence mode="wait">
             {isLoading ? (
               <div className="flex items-center justify-center h-64">
@@ -932,7 +939,7 @@ const PackageModal: React.FC<PackageModalProps> = ({
                     onSuccess();
                     setIsSuccess(false);
                   }}
-                  className="px-6 py-2 bg-[var(--primary-green)] text-white rounded-2xl hover:bg-[var(--primary-green-hover)] transition-colors duration-200 font-medium"
+                  className="px-6 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition-colors duration-200 font-medium"
                 >
                   Continue
                 </button>
@@ -1019,7 +1026,7 @@ const PackageModal: React.FC<PackageModalProps> = ({
 
                 {/* Error message */}
                 {errors.submit && (
-                  <div className="mb-6 p-4 bg-red-50 rounded-2xl">
+                  <div className="mb-6 p-4 bg-red-50 rounded-lg">
                     <p className="text-sm text-red-600">{errors.submit}</p>
                   </div>
                 )}
@@ -1029,8 +1036,9 @@ const PackageModal: React.FC<PackageModalProps> = ({
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="px-6 py-2 border border-transparent rounded-2xl shadow-sm text-sm font-medium text-white bg-[var(--primary-green)] hover:bg-[var(--primary-green-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--primary-green)] disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-6 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-slate-600 hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
                   >
+                    <DocumentIcon className="w-4 h-4" />
                     {isSubmitting ? 'Saving...' : (mode === 'create' ? 'Create Package' : 'Save Changes')}
                   </button>
                 </div>

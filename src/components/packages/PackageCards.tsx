@@ -102,6 +102,57 @@ const PackageCard = React.memo<{
             {pkg.isActive ? 'Active' : 'Inactive'}
           </div>
         </div>
+
+        {/* Inclusions and Add-ons badges overlay */}
+        <div className="absolute bottom-3 left-3 flex flex-col gap-2">
+          {/* Inclusions badges */}
+          {inclusions.slice(0, 2).map((inclusion, idx) => {
+            const desc = typeof inclusion === 'string' ? inclusion : inclusion.description;
+            return (
+              <div
+                key={`inclusion-${idx}`}
+                className="bg-green-500/90 backdrop-blur-sm text-white text-xs px-2 py-1 rounded-md shadow-sm border border-green-400/50"
+              >
+                <div className="flex items-center gap-1">
+                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                  <span className="font-medium truncate max-w-20">{desc}</span>
+                </div>
+              </div>
+            );
+          })}
+
+          {/* Add-ons badges */}
+          {addOns.slice(0, 1).map((addon, idx) => {
+            const name = typeof addon === 'string' ? addon : addon.name;
+            return (
+              <div
+                key={`addon-${idx}`}
+                className="bg-amber-500/90 backdrop-blur-sm text-white text-xs px-2 py-1 rounded-md shadow-sm border border-amber-400/50"
+              >
+                <div className="flex items-center gap-1">
+                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+                  </svg>
+                  <span className="font-medium truncate max-w-20">{name}</span>
+                </div>
+              </div>
+            );
+          })}
+
+          {/* Show count if more items exist */}
+          {inclusions.length > 2 && (
+            <div className="bg-green-600/90 backdrop-blur-sm text-white text-xs px-2 py-1 rounded-md shadow-sm border border-green-400/50">
+              <span className="font-medium">+{inclusions.length - 2} more</span>
+            </div>
+          )}
+          {addOns.length > 1 && inclusions.length <= 2 && (
+            <div className="bg-amber-600/90 backdrop-blur-sm text-white text-xs px-2 py-1 rounded-md shadow-sm border border-amber-400/50">
+              <span className="font-medium">+{addOns.length - 1} more</span>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Content */}

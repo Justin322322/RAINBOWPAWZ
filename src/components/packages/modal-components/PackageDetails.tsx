@@ -30,7 +30,7 @@ export const PackageDetails: React.FC<PackageDetailsProps> = ({
       </div>
 
       {/* Service Classification */}
-      <div className="bg-gray-50 rounded-2xl p-6 border border-gray-200">
+      <div className="bg-gray-50 rounded-lg p-6 border border-gray-200">
         <div className="mb-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-2">Service Classification</h3>
           <p className="text-gray-600">Define your package category and service type</p>
@@ -47,7 +47,7 @@ export const PackageDetails: React.FC<PackageDetailsProps> = ({
               name="category"
               value={formData.category}
               onChange={onInputChange}
-              className="block w-full px-4 py-3 border border-gray-300 rounded-2xl shadow-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 sm:text-sm bg-white"
+              className="block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 sm:text-sm bg-white"
             >
               <option value="Private">Private</option>
               <option value="Communal">Communal</option>
@@ -64,7 +64,7 @@ export const PackageDetails: React.FC<PackageDetailsProps> = ({
               name="cremationType"
               value={formData.cremationType}
               onChange={onInputChange}
-              className="block w-full px-4 py-3 border border-gray-300 rounded-2xl shadow-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 sm:text-sm bg-white"
+              className="block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 sm:text-sm bg-white"
             >
               <option value="Standard">Standard</option>
               <option value="Premium">Premium</option>
@@ -82,7 +82,7 @@ export const PackageDetails: React.FC<PackageDetailsProps> = ({
               name="processingTime"
               value={formData.processingTime}
               onChange={onInputChange}
-              className="block w-full px-4 py-3 border border-gray-300 rounded-2xl shadow-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 sm:text-sm bg-white"
+              className="block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 sm:text-sm bg-white"
             >
               <option value="Same day">Same day</option>
               <option value="1-2 days">1-2 days</option>
@@ -94,7 +94,7 @@ export const PackageDetails: React.FC<PackageDetailsProps> = ({
       </div>
 
       {/* Delivery Configuration */}
-      <div className="bg-gray-50 rounded-2xl p-6 border border-gray-200">
+      <div className="bg-gray-50 rounded-lg p-6 border border-gray-200">
         <div className="mb-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-2">Delivery Configuration</h3>
           <p className="text-gray-600">Set delivery fees for your service area</p>
@@ -116,7 +116,7 @@ export const PackageDetails: React.FC<PackageDetailsProps> = ({
               onChange={onInputChange}
               min="0"
               step="0.01"
-              className="block w-full pl-8 pr-4 py-3 border border-gray-300 rounded-2xl shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+              className="block w-full pl-8 pr-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
               placeholder="0.00"
             />
           </div>
@@ -127,14 +127,14 @@ export const PackageDetails: React.FC<PackageDetailsProps> = ({
       </div>
 
       {/* Pet Type Support */}
-      <div className="bg-gray-50 rounded-2xl p-6 border border-gray-200">
+      <div className="bg-gray-50 rounded-lg p-6 border border-gray-200">
         <div className="mb-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-2">Pet Type Support</h3>
           <p className="text-gray-600">Select which pet types this package supports</p>
         </div>
 
         {errors.supportedPetTypes && (
-          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-2xl">
+          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
             <p className="text-sm text-red-600">
               {errors.supportedPetTypes}
             </p>
@@ -147,7 +147,7 @@ export const PackageDetails: React.FC<PackageDetailsProps> = ({
               key={petType}
               type="button"
               onClick={() => onPetTypeToggle(petType)}
-              className={`p-3 text-sm font-medium rounded-2xl border transition-all ${
+              className={`p-3 text-sm font-medium rounded-lg border transition-all ${
                 formData.supportedPetTypes.includes(petType)
                   ? 'bg-emerald-500 text-white border-emerald-500 shadow-md'
                   : 'bg-white text-gray-700 border-gray-300 hover:border-gray-400 hover:shadow-sm'
@@ -158,9 +158,9 @@ export const PackageDetails: React.FC<PackageDetailsProps> = ({
           ))}
         </div>
 
-        <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-2xl">
+        <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
           <div className="flex items-center gap-2 mb-2">
-            <div className="w-6 h-6 bg-blue-100 rounded-2xl flex items-center justify-center">
+            <div className="w-6 h-6 bg-blue-100 rounded-lg flex items-center justify-center">
               <span className="text-blue-600 text-xs font-bold">i</span>
             </div>
             <span className="text-sm font-medium text-blue-900">Selection Required</span>

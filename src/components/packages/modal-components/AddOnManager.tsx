@@ -119,7 +119,7 @@ export const AddOnManager: React.FC<AddOnManagerProps> = ({
       </div>
 
       {/* Add New Add-on */}
-      <div className="bg-gray-50 rounded-2xl p-6 border border-gray-200">
+      <div className="bg-gray-50 rounded-lg p-6 border border-gray-200">
         <div className="mb-4">
           <h3 className="text-lg font-semibold text-gray-900">Add New Add-on</h3>
         </div>
@@ -133,7 +133,7 @@ export const AddOnManager: React.FC<AddOnManagerProps> = ({
               onChange={(e) => onNewAddOnChange(e.target.value)}
               onFocus={onAddOnInputFocus}
               onBlur={onAddOnInputBlur}
-              className="block w-full px-4 py-3 border border-gray-300 rounded-2xl shadow-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500 sm:text-sm"
+              className="block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500 sm:text-sm"
               placeholder="e.g., Personalized engraved nameplate"
               autoComplete="off"
               onKeyDown={(e) => handleKeyDown(e)}
@@ -141,7 +141,7 @@ export const AddOnManager: React.FC<AddOnManagerProps> = ({
 
             {/* Suggestions Dropdown */}
             {(isAddOnInputFocused && (addOnSuggestions.length > 0 || isLoadingSuggestions)) && (
-              <div className="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-2xl shadow-lg max-h-60 overflow-auto">
+              <div className="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-auto">
                 {isLoadingSuggestions ? (
                   <div className="px-4 py-3 text-sm text-gray-500 flex items-center gap-2">
                     <div className="animate-spin h-4 w-4 border-2 border-amber-500 border-t-transparent rounded-full"></div>
@@ -152,14 +152,14 @@ export const AddOnManager: React.FC<AddOnManagerProps> = ({
                     <button
                       type="button"
                       key={`${s.name}-${i}`}
-                      className="w-full text-left px-4 py-3 text-sm hover:bg-gray-50 flex justify-between items-center border-b border-gray-100 last:border-b-0 rounded-2xl"
+                      className="w-full text-left px-4 py-3 text-sm hover:bg-gray-50 flex justify-between items-center border-b border-gray-100 last:border-b-0 rounded-lg"
                       onMouseDown={(e) => {
                         e.preventDefault();
                         onSuggestionSelect(s);
                       }}
                     >
                       <span className="truncate pr-2">{s.name}</span>
-                      <Badge variant="outline" size="sm" className="text-emerald-600 rounded-2xl">
+                      <Badge variant="outline" size="sm" className="text-emerald-600 rounded-lg">
                         ₱{Number(s.price || 0).toLocaleString()}
                       </Badge>
                     </button>
@@ -183,7 +183,7 @@ export const AddOnManager: React.FC<AddOnManagerProps> = ({
                   value={newAddOnPrice}
                   onChange={(e) => onNewAddOnPriceChange(e.target.value)}
                   placeholder="0.00"
-                  className="block w-full pl-8 pr-4 py-3 border border-gray-300 rounded-2xl shadow-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500 sm:text-sm"
+                  className="block w-full pl-8 pr-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500 sm:text-sm"
                   onKeyDown={(e) => handleKeyDown(e, true)}
                 />
               </div>
@@ -193,7 +193,7 @@ export const AddOnManager: React.FC<AddOnManagerProps> = ({
               onClick={onAddAddOn}
               disabled={!newAddOn.trim() || !newAddOnPrice.trim()}
               variant="primary"
-              className="px-6 rounded-2xl"
+              className="px-6 rounded-lg"
             >
               Add Add-on
             </Button>
@@ -206,14 +206,14 @@ export const AddOnManager: React.FC<AddOnManagerProps> = ({
       </div>
 
       {/* Add-ons List */}
-      <div className="bg-white rounded-2xl border border-gray-200">
+      <div className="bg-white rounded-lg border border-gray-200">
         <div className="p-6 border-b border-gray-200">
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-lg font-semibold text-gray-900">Current Add-ons</h3>
               <p className="text-sm text-gray-600">Manage your package add-ons</p>
             </div>
-            <Badge variant="outline" size="sm" className="rounded-2xl">
+            <Badge variant="outline" size="sm" className="rounded-lg">
               {addOns.length} add-on{addOns.length !== 1 ? 's' : ''}
             </Badge>
           </div>
@@ -222,7 +222,7 @@ export const AddOnManager: React.FC<AddOnManagerProps> = ({
         <div className="p-6">
           {addOns.length === 0 ? (
             <div className="text-center py-8">
-              <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center mx-auto mb-4">
                 <div className="w-6 h-6 bg-amber-300 rounded-lg"></div>
               </div>
               <p className="text-sm text-gray-500">No add-ons added yet</p>
@@ -233,7 +233,7 @@ export const AddOnManager: React.FC<AddOnManagerProps> = ({
               {addOns.map((addOn, index) => (
                 <div
                   key={`addon-${addOn.name.replace(/\s+/g, '-').toLowerCase()}-${addOn.price}-${index}`}
-                  className="flex items-center bg-gray-50 p-5 rounded-2xl border border-gray-200 gap-4 hover:shadow-md transition-shadow"
+                  className="flex items-center bg-gray-50 p-5 rounded-lg border border-gray-200 gap-4 hover:shadow-md transition-shadow"
                   draggable
                   onDragStart={() => handleDragStart(index)}
                   onDragOver={handleDragOver}
@@ -250,16 +250,16 @@ export const AddOnManager: React.FC<AddOnManagerProps> = ({
                           alt={addOn.name}
                           width={64}
                           height={64}
-                          className="h-16 w-16 rounded-2xl object-cover border-2 border-gray-200 group-hover:border-amber-300 transition-colors"
+                          className="h-16 w-16 rounded-lg object-cover border-2 border-gray-200 group-hover:border-amber-300 transition-colors"
                           unoptimized
                         />
-                        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 rounded-2xl transition-all"></div>
+                        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 rounded-lg transition-all"></div>
                       </div>
                     ) : (
                       <button
                         type="button"
                         onClick={() => handleUploadClick(index)}
-                        className="h-16 w-16 border-2 border-dashed border-gray-300 hover:border-amber-400 hover:bg-amber-50 rounded-2xl flex items-center justify-center transition-colors"
+                        className="h-16 w-16 border-2 border-dashed border-gray-300 hover:border-amber-400 hover:bg-amber-50 rounded-lg flex items-center justify-center transition-colors"
                       >
                         <div className="w-4 h-4 bg-gray-300 rounded-lg"></div>
                       </button>
@@ -273,14 +273,14 @@ export const AddOnManager: React.FC<AddOnManagerProps> = ({
 
                   {/* Price and Remove Button */}
                   <div className="flex items-center gap-3">
-                    <Badge variant="outline" size="sm" className="text-emerald-600 bg-emerald-50 border-emerald-200 rounded-2xl">
+                    <Badge variant="outline" size="sm" className="text-emerald-600 bg-emerald-50 border-emerald-200 rounded-lg">
                       +₱{addOn.price.toLocaleString()}
                     </Badge>
 
                     <button
                       type="button"
                       onClick={() => onRemoveAddOn(index)}
-                      className="px-4 py-2 text-red-600 hover:bg-red-50 rounded-2xl border border-red-300 hover:border-red-400 transition-colors text-sm font-medium"
+                      className="px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg border border-red-300 hover:border-red-400 transition-colors text-sm font-medium"
                     >
                       Remove
                     </button>
