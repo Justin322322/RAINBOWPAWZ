@@ -92,8 +92,8 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
   const [selectedDate, setSelectedDate] = useState<string | undefined>(undefined);
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<any | null>(null);
 
-  // Price calculation state
-  const [calculatedPrice, setCalculatedPrice] = useState<number>(0);
+  // Price calculation state (value not directly used; setter triggers live feedback)
+  const [, setCalculatedPrice] = useState<number>(0);
 
   // Field validation state
   const [validationErrors, setValidationErrors] = useState<{
