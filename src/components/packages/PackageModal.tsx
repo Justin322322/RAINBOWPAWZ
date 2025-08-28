@@ -1375,54 +1375,7 @@ const PackageModal: React.FC<PackageModalProps> = ({
                   <input ref={addonFileInputRef} type="file" accept="image/*" className="hidden" onChange={handleUploadAddonImage} />
                 </div>
 
-                {/* Live Preview */}
-                <div className="mb-8">
-                  <h2 className="text-lg font-medium text-gray-800 mb-4">Live Preview</h2>
-                  <div className="border rounded-xl overflow-hidden shadow bg-white">
-                    <div className="h-80 md:h-96 w-full relative bg-gray-100 overflow-hidden">
-                      <PackageImage images={formData.images} alt={formData.name || 'Package'} size="large" className="w-full h-full object-cover" />
-                    </div>
-                    <div className="p-4">
-                      <div className="flex justify-between mb-3">
-                        <h3 className="text-2xl md:text-3xl font-semibold text-gray-900 truncate max-w-[70%]">{formData.name || 'Package name'}</h3>
-                        <span className="text-2xl md:text-3xl font-extrabold text-gray-900">{formData.price ? `₱${formData.price.toLocaleString()}` : '₱0'}</span>
-                      </div>
-                      <p className="text-base md:text-lg text-gray-700 mb-4 line-clamp-4">{formData.description || 'Description'}</p>
-                      {formData.inclusions.length > 0 && (
-                        <div className="mb-3">
-                          <h4 className="text-sm font-semibold text-gray-700 tracking-wide mb-2">Inclusions</h4>
-                          <ul className="text-sm text-gray-700 space-y-2">
-                            {formData.inclusions.slice(0, 2).map((inc, idx) => (
-                              <li key={idx} className="flex items-center gap-4">
-                                {inc.image && <NextImage src={inc.image} alt="inc" width={64} height={64} className="h-16 w-16 rounded object-cover border" unoptimized />}
-                                <span className="truncate">{inc.description}</span>
-                              </li>
-                            ))}
-                            {formData.inclusions.length > 2 && (
-                              <li className="text-gray-500 text-xs">+{formData.inclusions.length - 2} more</li>
-                            )}
-                          </ul>
-                        </div>
-                      )}
-                      {formData.addOns.length > 0 && (
-                        <div className="mb-1">
-                          <h4 className="text-sm font-semibold text-gray-700 tracking-wide mb-2">Add-ons</h4>
-                          <ul className="text-sm text-gray-700 space-y-2">
-                            {formData.addOns.slice(0, 2).map((ad, idx) => (
-                              <li key={idx} className="flex items-center gap-4">
-                                {ad.image && <NextImage src={ad.image} alt="addon" width={64} height={64} className="h-16 w-16 rounded object-cover border" unoptimized />}
-                                <span className="truncate">{ad.name}{ad.price ? ` (+₱${ad.price.toLocaleString()})` : ''}</span>
-                              </li>
-                            ))}
-                            {formData.addOns.length > 2 && (
-                              <li className="text-gray-500 text-xs">+{formData.addOns.length - 2} more</li>
-                            )}
-                          </ul>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
+                {/* Live Preview removed per request */}
 
                 {/* Conditions */}
                 <div className="mb-8">

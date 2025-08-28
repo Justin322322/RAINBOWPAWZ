@@ -55,6 +55,57 @@ const PackageCard = React.memo<{
     );
   };
 
+  // Lightweight coverflow-style carousel for 2+ items
+  const CoverCarousel: React.FC<{
+    id: string;
+    items: Array<{ image?: string; title: string; subtitle?: string }>;
+  }> = ({ id, items }) => {
+    const [index, setIndex] = React.useState(0);
+    const total = items.length;
+    if (total <= 1) {
+      const it = items[0];
+      return (
+        <div className="flex justify-center">
+          <div className="w-56 flex items-center gap-3 bg-white rounded-md border p-3">
+            {it.image && <Image src={it.image} alt="item" width={56} height={56} className="h-14 w-14 rounded object-cover border" unoptimized />}
+            <span className="text-sm text-gray-700 line-clamp-2 leading-5">{it.title}</span>
+          </div>
+        </div>
+      );
+    }
+
+    const prev = (index - 1 + total) % total;
+    const next = (index + 1) % total;
+    const renderCard = (it: { image?: string; title: string }, variant: 'left'|'center'|'right') => {
+      const base = 'absolute top-1/2 -translate-y-1/2 rounded-md border bg-white shadow-sm transition-all duration-300';
+      const dims = variant === 'center' ? 'w-64 z-20 scale-100' : 'w-56 z-10 scale-[0.95] opacity-95';
+      const pos = variant === 'left' ? '-left-6 -translate-x-full' : variant === 'right' ? '-right-6 translate-x-full' : 'left-1/2 -translate-x-1/2';
+      return (
+        <div className={`${base} ${dims} ${pos} p-3 flex items-center gap-3`}>
+          {it.image && <Image src={it.image} alt="item" width={56} height={56} className="h-14 w-14 rounded object-cover border" unoptimized />}
+          <span className="text-sm text-gray-700 line-clamp-2 leading-5">{it.title}</span>
+        </div>
+      );
+    };
+
+    return (
+      <div className="relative h-28 overflow-visible" id={id} role="region" aria-roledescription="carousel">
+        {/* Cards */}
+        {renderCard(items[prev], 'left')}
+        {renderCard(items[index], 'center')}
+        {renderCard(items[next], 'right')}
+
+        {/* Controls */}
+        <button type="button" aria-label="Previous" onClick={() => setIndex(prev)} className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 h-7 w-7 items-center justify-center rounded-full bg-white border shadow hover:bg-gray-50">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4 text-gray-700"><path fill-rule="evenodd" d="M12.78 4.22a.75.75 0 010 1.06L8.56 9.5l4.22 4.22a.75.75 0 11-1.06 1.06l-4.75-4.75a.75.75 0 010-1.06l4.75-4.75a.75.75 0 011.06 0z" clip-rule="evenodd"/></svg>
+        </button>
+        <button type="button" aria-label="Next" onClick={() => setIndex(next)} className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 h-7 w-7 items-center justify-center rounded-full bg-white border shadow hover:bg-gray-50">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4 text-gray-700 rotate-180"><path fill-rule="evenodd" d="M12.78 4.22a.75.75 0 010 1.06L8.56 9.5l4.22 4.22a.75.75 0 11-1.06 1.06l-4.75-4.75a.75.75 0 010-1.06l4.75-4.75a.75.75 0 011.06 0z" clip-rule="evenodd"/></svg>
+        </button>
+      </div>
+    );
+  };
+
   return (
     <div
       className={`border rounded-xl overflow-hidden shadow-md hover:shadow-lg transition-shadow ${
@@ -123,20 +174,20 @@ const PackageCard = React.memo<{
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4 text-gray-700"><path fillRule="evenodd" d="M12.78 4.22a.75.75 0 010 1.06L8.56 9.5l4.22 4.22a.75.75 0 11-1.06 1.06l-4.75-4.75a.75.75 0 010-1.06l4.75-4.75a.75.75 0 011.06 0z" clipRule="evenodd" /></svg>
               </button>
               )}
-              <div id={`card-inc-${pkg.id}`} className={`flex items-stretch gap-2 py-1 ${inclusionCount > 1 ? 'overflow-x-auto no-scrollbar snap-x snap-mandatory' : 'justify-center'}`} role="region" aria-roledescription="carousel">
-                {pkg.inclusions.slice(0, 8).map((inclusion: any, idx) => {
-                  const desc = typeof inclusion === 'string' ? inclusion : inclusion.description;
-                  const image = typeof inclusion === 'string' ? undefined : inclusion.image;
-                  return (
-                    <div key={idx} className="flex-shrink-0 snap-start w-48 flex items-center gap-3 bg-white rounded-md border p-2">
-                      {image && (
-                        <Image src={image} alt="inc" width={48} height={48} className="h-12 w-12 rounded object-cover border" unoptimized />
-                      )}
-                      <span className="text-xs text-gray-700 line-clamp-2 leading-5">{desc}</span>
-                    </div>
-                  );
-                })}
-              </div>
+              {inclusionCount > 1 ? (
+                <CoverCarousel
+                  id={`card-inc-${pkg.id}`}
+                  items={pkg.inclusions.slice(0, 8).map((inc: any) => ({
+                    image: typeof inc === 'string' ? undefined : inc.image,
+                    title: typeof inc === 'string' ? inc : inc.description,
+                  }))}
+                />
+              ) : (
+                <CoverCarousel id={`card-inc-${pkg.id}`} items={pkg.inclusions.slice(0, 1).map((inc: any) => ({
+                  image: typeof inc === 'string' ? undefined : inc.image,
+                  title: typeof inc === 'string' ? inc : inc.description,
+                }))} />
+              )}
               {inclusionCount > 1 && (
               <button type="button" aria-label="Scroll inclusions right" onClick={() => scrollRow(`card-inc-${pkg.id}`, 1)} className="hidden md:flex absolute -right-2 top-1/2 -translate-y-1/2 h-7 w-7 items-center justify-center rounded-full bg-white border shadow hover:bg-gray-50">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4 text-gray-700 transform rotate-180"><path fillRule="evenodd" d="M12.78 4.22a.75.75 0 010 1.06L8.56 9.5l4.22 4.22a.75.75 0 11-1.06 1.06l-4.75-4.75a.75.75 0 010-1.06l4.75-4.75a.75.75 0 011.06 0z" clipRule="evenodd" /></svg>
@@ -157,23 +208,20 @@ const PackageCard = React.memo<{
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4 text-gray-700"><path fillRule="evenodd" d="M12.78 4.22a.75.75 0 010 1.06L8.56 9.5l4.22 4.22a.75.75 0 11-1.06 1.06l-4.75-4.75a.75.75 0 010-1.06l4.75-4.75a.75.75 0 011.06 0z" clipRule="evenodd" /></svg>
               </button>
               )}
-              <div id={`card-addon-${pkg.id}`} className={`flex items-stretch gap-2 py-1 ${addOnCount > 1 ? 'overflow-x-auto no-scrollbar snap-x snap-mandatory' : 'justify-center'}`} role="region" aria-roledescription="carousel">
-                {pkg.addOns.slice(0, 8).map((addon: any, idx) => {
-                  const name = typeof addon === 'string' ? addon : addon.name;
-                  const price = typeof addon === 'string' ? undefined : addon.price;
-                  const image = typeof addon === 'string' ? undefined : addon.image;
-                  return (
-                    <div key={idx} className="flex-shrink-0 snap-start w-52 flex items-center gap-3 bg-white rounded-md border p-2">
-                      {image && (
-                        <Image src={image} alt="addon" width={48} height={48} className="h-12 w-12 rounded object-cover border" unoptimized />
-                      )}
-                      <span className="text-xs text-gray-700 line-clamp-2 leading-5">
-                        {name}{price ? ` (+₱${formatPrice(price)})` : ''}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
+              {addOnCount > 1 ? (
+                <CoverCarousel
+                  id={`card-addon-${pkg.id}`}
+                  items={pkg.addOns.slice(0, 8).map((ad: any) => ({
+                    image: typeof ad === 'string' ? undefined : ad.image,
+                    title: `${typeof ad === 'string' ? ad : ad.name}${(typeof ad !== 'string' && ad.price) ? ` (+₱${formatPrice(ad.price)})` : ''}`,
+                  }))}
+                />
+              ) : (
+                <CoverCarousel id={`card-addon-${pkg.id}`} items={pkg.addOns.slice(0, 1).map((ad: any) => ({
+                  image: typeof ad === 'string' ? undefined : ad.image,
+                  title: `${typeof ad === 'string' ? ad : ad.name}${(typeof ad !== 'string' && ad.price) ? ` (+₱${formatPrice(ad.price)})` : ''}`,
+                }))} />
+              )}
               {addOnCount > 1 && (
               <button type="button" aria-label="Scroll add-ons right" onClick={() => scrollRow(`card-addon-${pkg.id}`, 1)} className="hidden md:flex absolute -right-2 top-1/2 -translate-y-1/2 h-7 w-7 items-center justify-center rounded-full bg-white border shadow hover:bg-gray-50">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4 text-gray-700 transform rotate-180"><path fillRule="evenodd" d="M12.78 4.22a.75.75 0 010 1.06L8.56 9.5l4.22 4.22a.75.75 0 11-1.06 1.06l-4.75-4.75a.75.75 0 010-1.06l4.75-4.75a.75.75 0 011.06 0z" clipRule="evenodd" /></svg>
