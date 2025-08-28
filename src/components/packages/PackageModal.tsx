@@ -1,12 +1,17 @@
 'use client';
 
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import NextImage from 'next/image';
 import useDebounce from '@/hooks/useDebounce';
-import { XMarkIcon, ExclamationTriangleIcon, PlusIcon, CheckIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon, CheckIcon } from '@heroicons/react/24/outline';
 import { ImageUploader } from '@/components/packages/ImageUploader';
 import { useToast } from '@/context/ToastContext';
 import { motion, AnimatePresence } from 'framer-motion';
+
+// Extracted Components
+import { BasicInformation } from './modal-components/BasicInformation';
+import { PackageDetails } from './modal-components/PackageDetails';
+import { InclusionManager } from './modal-components/InclusionManager';
+import { AddOnManager } from './modal-components/AddOnManager';
 
 // Types
 interface InclusionItem {
@@ -64,7 +69,7 @@ const PackageModal: React.FC<PackageModalProps> = ({
 }) => {
   const { showToast } = useToast();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  
+
   // Form state
   const [formData, setFormData] = useState<PackageFormData>({
     name: '',
@@ -105,30 +110,16 @@ const PackageModal: React.FC<PackageModalProps> = ({
   const [_formProgress, setFormProgress] = useState(0);
   const [_forceRender, setForceRender] = useState(0);
 
-  // Form field states
+  // Form field states (moved to component state)
   const [newInclusion, setNewInclusion] = useState('');
   const [newAddOn, setNewAddOn] = useState('');
   const [newAddOnPrice, setNewAddOnPrice] = useState<string>('');
-  const [inclusionUploadIndex, setInclusionUploadIndex] = useState<number | null>(null);
-  const [addonUploadIndex, setAddonUploadIndex] = useState<number | null>(null);
-  const inclusionFileInputRef = useRef<HTMLInputElement | null>(null);
-  const addonFileInputRef = useRef<HTMLInputElement | null>(null);
-  const [dragInclusionIndex, setDragInclusionIndex] = useState<number | null>(null);
-  const [dragAddonIndex, setDragAddonIndex] = useState<number | null>(null);
+
   // Add-on suggestions
   const [addOnSuggestions, setAddOnSuggestions] = useState<Array<{ name: string; price: number }>>([]);
   const [isLoadingAddOnSuggestions, setIsLoadingAddOnSuggestions] = useState(false);
   const [isAddOnInputFocused, setIsAddOnInputFocused] = useState(false);
   const [uploadingImages, setUploadingImages] = useState<Set<string>>(new Set());
-  
-  // Animation states for smooth removal (simplified for now)
-  // const [removingInclusions, setRemovingInclusions] = useState<Set<number>>(new Set());
-  // const [removingAddOns, setRemovingAddOns] = useState<Set<number>>(new Set());
-
-  // Enhanced features states
-  const [_newCustomCategory, setNewCustomCategory] = useState('');
-  const [_newCustomCremationType, setNewCustomCremationType] = useState('');
-  const [_newCustomProcessingTime, setNewCustomProcessingTime] = useState('');
 
   // Load package data for edit mode
   // This useEffect will be moved after loadPackageData is defined
@@ -262,11 +253,6 @@ const PackageModal: React.FC<PackageModalProps> = ({
     setNewInclusion('');
     setNewAddOn('');
     setNewAddOnPrice('');
-    setNewCustomCategory('');
-    setNewCustomCremationType('');
-    setNewCustomProcessingTime('');
-    // setRemovingInclusions(new Set());
-    // setRemovingAddOns(new Set());
   };
 
   const loadPackageData = useCallback(async () => {
@@ -389,21 +375,19 @@ const PackageModal: React.FC<PackageModalProps> = ({
   // Reset form when modal closes (for next time it opens)
   useEffect(() => {
     if (!isOpen) {
-      // Add a small delay to ensure smooth closing animation
-      const timeoutId = setTimeout(() => {
-        if (mode === 'create') {
-          resetForm();
-        }
-        formInitialized.current = false; // Reset initialization flag for both modes
-        dataLoaded.current = null; // Reset data loaded flag
-        // Clear any temporary states
-        setNewInclusion('');
-        setNewAddOn('');
-        setNewAddOnPrice('');
-        setErrors({});
-        // setRemovingInclusions(new Set());
-        // setRemovingAddOns(new Set());
-      }, 300);
+              // Add a small delay to ensure smooth closing animation
+        const timeoutId = setTimeout(() => {
+          if (mode === 'create') {
+            resetForm();
+          }
+          formInitialized.current = false; // Reset initialization flag for both modes
+          dataLoaded.current = null; // Reset data loaded flag
+          // Clear any temporary states
+          setNewInclusion('');
+          setNewAddOn('');
+          setNewAddOnPrice('');
+          setErrors({});
+        }, 300);
       return () => clearTimeout(timeoutId);
     }
     return undefined; // Ensure all code paths return a value
@@ -460,13 +444,13 @@ const PackageModal: React.FC<PackageModalProps> = ({
       showToast('Please enter an inclusion before adding', 'error');
       return;
     }
-    
+
     // Check for duplicate inclusions
     if (formData.inclusions.some(inclusion => inclusion.description.toLowerCase() === newInclusion.trim().toLowerCase())) {
       showToast('This inclusion already exists', 'error');
       return;
     }
-    
+
     setFormData(prev => ({
       ...prev,
       inclusions: [...prev.inclusions, { description: newInclusion.trim() }]
@@ -496,6 +480,58 @@ const PackageModal: React.FC<PackageModalProps> = ({
     setForceRender(prev => prev + 1); // Force re-render
     showToast('Inclusion removed', 'success');
   }, [showToast]);
+
+  const handleReorderInclusions = useCallback((fromIndex: number, toIndex: number) => {
+    setFormData(prev => {
+      const next = [...prev.inclusions];
+      const [moved] = next.splice(fromIndex, 1);
+      next.splice(toIndex, 0, moved);
+      return { ...prev, inclusions: next };
+    });
+  }, []);
+
+  const handlePricingModeChange = useCallback((mode: 'fixed' | 'by_size') => {
+    setFormData((prev) => ({ ...prev, pricingMode: mode }));
+  }, []);
+
+  const handleSizePricingChange = useCallback((index: number, field: 'price', value: number) => {
+    setFormData((prev) => {
+      const next = [...prev.sizePricing];
+      next[index] = { ...next[index], [field]: value };
+      return { ...prev, sizePricing: next };
+    });
+  }, []);
+
+  const handlePetTypeToggle = useCallback((petType: string) => {
+    setFormData(prev => {
+      if (prev.supportedPetTypes.includes(petType)) {
+        return {
+          ...prev,
+          supportedPetTypes: prev.supportedPetTypes.filter(type => type !== petType)
+        };
+      } else {
+        return {
+          ...prev,
+          supportedPetTypes: [...prev.supportedPetTypes, petType]
+        };
+      }
+    });
+  }, []);
+
+  const handleReorderAddOns = useCallback((fromIndex: number, toIndex: number) => {
+    setFormData(prev => {
+      const next = [...prev.addOns];
+      const [moved] = next.splice(fromIndex, 1);
+      next.splice(toIndex, 0, moved);
+      return { ...prev, addOns: next };
+    });
+  }, []);
+
+  const handleSuggestionSelect = useCallback((suggestion: { name: string; price: number }) => {
+    setNewAddOn(suggestion.name);
+    setNewAddOnPrice(suggestion.price ? String(suggestion.price) : '');
+    setAddOnSuggestions([]);
+  }, []);
 
   // Helpers to convert file to base64
   const readFileToDataUrl = (file: File): Promise<string> => {
@@ -527,10 +563,7 @@ const PackageModal: React.FC<PackageModalProps> = ({
     });
   };
 
-  const handleUploadInclusionImage = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0 || inclusionUploadIndex == null) return;
-    const file = files[0];
+  const handleUploadInclusionImage = useCallback(async (index: number, file: File) => {
     if (!file.type.startsWith('image/')) {
       showToast('Please select a valid image', 'error');
       return;
@@ -544,16 +577,15 @@ const PackageModal: React.FC<PackageModalProps> = ({
       const dataUrl = await cropToSquareDataUrl(rawDataUrl, 256);
       setFormData(prev => {
         const next = [...prev.inclusions];
-        const cur = next[inclusionUploadIndex];
-        next[inclusionUploadIndex] = { ...cur, image: dataUrl };
+        const cur = next[index];
+        next[index] = { ...cur, image: dataUrl };
         return { ...prev, inclusions: next };
       });
       showToast('Inclusion image added', 'success');
-    } finally {
-      if (inclusionFileInputRef.current) inclusionFileInputRef.current.value = '';
-      setInclusionUploadIndex(null);
+    } catch {
+      showToast('Failed to process image', 'error');
     }
-  }, [inclusionUploadIndex, showToast]);
+  }, [showToast]);
 
   const handleAddAddOn = useCallback(() => {
     if (!newAddOn.trim()) {
@@ -600,10 +632,7 @@ const PackageModal: React.FC<PackageModalProps> = ({
     showToast('Add-on removed', 'success');
   }, [showToast]);
 
-  const handleUploadAddonImage = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0 || addonUploadIndex == null) return;
-    const file = files[0];
+  const handleUploadAddonImage = useCallback(async (index: number, file: File) => {
     if (!file.type.startsWith('image/')) {
       showToast('Please select a valid image', 'error');
       return;
@@ -617,16 +646,15 @@ const PackageModal: React.FC<PackageModalProps> = ({
       const dataUrl = await cropToSquareDataUrl(rawDataUrl, 256);
       setFormData(prev => {
         const next = [...prev.addOns];
-        const cur = next[addonUploadIndex];
-        next[addonUploadIndex] = { ...cur, image: dataUrl };
+        const cur = next[index];
+        next[index] = { ...cur, image: dataUrl };
         return { ...prev, addOns: next };
       });
       showToast('Add-on image added', 'success');
-    } finally {
-      if (addonFileInputRef.current) addonFileInputRef.current.value = '';
-      setAddonUploadIndex(null);
+    } catch {
+      showToast('Failed to process image', 'error');
     }
-  }, [addonUploadIndex, showToast]);
+  }, [showToast]);
 
   const _handleTogglePetType = useCallback((petType: string) => {
     setFormData(prev => {
@@ -922,457 +950,51 @@ const PackageModal: React.FC<PackageModalProps> = ({
                 />
 
                 {/* Basic Information */}
-                <div className="mb-8">
-                  <h2 className="text-lg font-medium text-gray-800 mb-4">Basic Information</h2>
-                  <div className="space-y-4">
-                    <div>
-                      <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">Package Name</label>
-                      <input
-                        id="name"
-                        name="name"
-                        type="text"
-                        value={formData.name}
-                        onChange={handleInputChange}
-                        className={`block w-full px-3 py-2 border ${errors.name ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)] sm:text-sm`}
-                        placeholder="e.g., Basic Cremation"
-                      />
-                      {errors.name && <p className="mt-1 text-sm text-red-600">{errors.name}</p>}
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <label htmlFor="price" className="block text-sm font-medium text-gray-700 mb-1">Price (₱)</label>
-                        <input
-                          id="price"
-                          name="price"
-                          type="number"
-                          value={formData.price || ''}
-                          onChange={handleInputChange}
-                          min="0"
-                          step="any"
-                          className={`block w-full px-3 py-2 border ${errors.price ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)] sm:text-sm`}
-                          placeholder="e.g., 3500"
-                        />
-                        {errors.price && <p className="mt-1 text-sm text-red-600">{errors.price}</p>}
-                      </div>
-                      {/* Removed Price Per Kg input as pricing is now tier-based with overage fee */}
-                    </div>
-
-                    {/* Pricing Options */}
-                    <div className="mt-6 border rounded-lg p-5">
-                      <h3 className="text-base font-semibold text-gray-900 mb-4">Pricing Options</h3>
-                      <div className="flex flex-col gap-3 mb-5">
-                        <label className="inline-flex items-start gap-2">
-                          <input
-                            type="radio"
-                            name="pricingMode"
-                            value="fixed"
-                            checked={formData.pricingMode === 'fixed'}
-                            onChange={() => setFormData((prev) => ({ ...prev, pricingMode: 'fixed' }))}
-                            className="text-[var(--primary-green)] focus:ring-[var(--primary-green)]"
-                          />
-                          <span className="text-[15px] leading-6 text-gray-800">Fixed Price – <span className="font-medium">One price for all pets</span> regardless of size.</span>
-                        </label>
-                        <label className="inline-flex items-start gap-2">
-                          <input
-                            type="radio"
-                            name="pricingMode"
-                            value="by_size"
-                            checked={formData.pricingMode === 'by_size'}
-                            onChange={() => setFormData((prev) => ({ ...prev, pricingMode: 'by_size' }))}
-                            className="text-[var(--primary-green)] focus:ring-[var(--primary-green)]"
-                          />
-                          <span className="text-[15px] leading-6 text-gray-800">Pricing by Pet Size – <span className="font-medium">customize by weight category and price</span>.</span>
-                        </label>
-                      </div>
-
-                      {formData.pricingMode === 'by_size' && (
-                        <div className="space-y-4">
-                          <h4 className="text-sm font-medium text-gray-700">Size Tier Prices</h4>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                            {formData.sizePricing.map((sp, idx) => (
-                              <div key={idx} className="border rounded-md p-4">
-                                <div className="text-sm font-medium text-gray-800 mb-2">{sp.sizeCategory}</div>
-                                <input
-                                  type="number"
-                                  min="0"
-                                  step="any"
-                                  value={sp.price === 0 ? '' : sp.price}
-                                  onChange={(e) => {
-                                    const val = parseFloat(e.target.value) || 0;
-                                    setFormData((prev) => {
-                                      const next = [...prev.sizePricing];
-                                      next[idx] = { ...next[idx], price: val };
-                                      return { ...prev, sizePricing: next };
-                                    });
-                                  }}
-                                  className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)] text-sm"
-                                  placeholder="₱ Price (per tier)"
-                                />
-                              </div>
-                            ))}
-                          </div>
-
-                          <div className="pt-2">
-                            <h4 className="text-sm font-medium text-gray-700 mb-2">Overage Fee</h4>
-                            <p className="text-xs text-gray-500 mb-2">Applied per kg if a pet exceeds the selected weight category.</p>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                              <div>
-                                <label htmlFor="overageFeePerKg" className="block text-sm font-medium text-gray-700 mb-1">Additional fee if pet exceeds selected weight category (per kg)</label>
-                                <div className="flex items-center border border-gray-300 rounded-md shadow-sm px-3 py-2 focus-within:ring-1 focus-within:ring-[var(--primary-green)] focus-within:border-[var(--primary-green)]">
-                                  <span className="text-gray-500 mr-1">₱</span>
-                                  <input
-                                    id="overageFeePerKg"
-                                    name="overageFeePerKg"
-                                    type="number"
-                                    inputMode="decimal"
-                                    min="0"
-                                    step="0.01"
-                                    value={formData.overageFeePerKg === 0 ? '' : formData.overageFeePerKg}
-                                    onChange={handleInputChange}
-                                    placeholder="e.g., 50"
-                                    className="w-full focus:outline-none sm:text-sm"
-                                  />
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    <div>
-                      <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                      <textarea
-                        id="description"
-                        name="description"
-                        rows={3}
-                        value={formData.description}
-                        onChange={handleInputChange}
-                        className={`block w-full px-3 py-2 border ${errors.description ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)] sm:text-sm`}
-                        placeholder="Describe your package in detail"
-                      />
-                      {errors.description && <p className="mt-1 text-sm text-red-600">{errors.description}</p>}
-                    </div>
-                  </div>
-                </div>
+                <BasicInformation
+                  formData={formData}
+                  errors={errors}
+                  onInputChange={handleInputChange}
+                  onPricingModeChange={handlePricingModeChange}
+                  onSizePricingChange={handleSizePricingChange}
+                />
 
                 {/* Package Details */}
-                <div className="mb-8">
-                  <h2 className="text-lg font-medium text-gray-800 mb-4">Package Details</h2>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <div>
-                      <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-                      <select
-                        id="category"
-                        name="category"
-                        value={formData.category}
-                        onChange={handleInputChange}
-                        className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)] sm:text-sm"
-                      >
-                        <option value="Private">Private</option>
-                        <option value="Communal">Communal</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label htmlFor="cremationType" className="block text-sm font-medium text-gray-700 mb-1">Cremation Type</label>
-                      <select
-                        id="cremationType"
-                        name="cremationType"
-                        value={formData.cremationType}
-                        onChange={handleInputChange}
-                        className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)] sm:text-sm"
-                      >
-                        <option value="Standard">Standard</option>
-                        <option value="Premium">Premium</option>
-                        <option value="Deluxe">Deluxe</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label htmlFor="processingTime" className="block text-sm font-medium text-gray-700 mb-1">Processing Time</label>
-                      <select
-                        id="processingTime"
-                        name="processingTime"
-                        value={formData.processingTime}
-                        onChange={handleInputChange}
-                        className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)] sm:text-sm"
-                      >
-                        <option value="Same day">Same day</option>
-                        <option value="1-2 days">1-2 days</option>
-                        <option value="2-3 days">2-3 days</option>
-                        <option value="3-5 days">3-5 days</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
-                    <div>
-                      <label htmlFor="deliveryFeePerKm" className="block text-sm font-medium text-gray-700 mb-1">Delivery Fee per km (₱)</label>
-                      <input
-                        id="deliveryFeePerKm"
-                        name="deliveryFeePerKm"
-                        type="number"
-                        value={formData.deliveryFeePerKm || ''}
-                        onChange={handleInputChange}
-                        min="0"
-                        step="any"
-                        className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)] sm:text-sm"
-                        placeholder="e.g., 15"
-                      />
-                    </div>
-                  </div>
-                  <div className="mt-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Supported Pet Types</label>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                      {['Dogs', 'Cats', 'Birds', 'Rabbits', 'Hamsters', 'Other'].map((petType) => (
-                        <label key={petType} className="flex items-center">
-                          <input
-                            type="checkbox"
-                            checked={formData.supportedPetTypes.includes(petType)}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setFormData(prev => ({
-                                  ...prev,
-                                  supportedPetTypes: [...prev.supportedPetTypes, petType]
-                                }));
-                              } else {
-                                setFormData(prev => ({
-                                  ...prev,
-                                  supportedPetTypes: prev.supportedPetTypes.filter(type => type !== petType)
-                                }));
-                              }
-                            }}
-                            className="rounded border-gray-300 text-[var(--primary-green)] focus:ring-[var(--primary-green)] h-4 w-4"
-                          />
-                          <span className="ml-2 text-sm text-gray-700">{petType}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                </div>
+                <PackageDetails
+                  formData={formData}
+                  errors={errors}
+                  onInputChange={handleInputChange}
+                  onPetTypeToggle={handlePetTypeToggle}
+                />
                 {/* Inclusions */}
-                <div className="mb-8">
-                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4">
-                    <h2 className="text-lg font-medium text-gray-800">Inclusions</h2>
-                    {errors.inclusions && (
-                      <p className="text-sm text-red-600 flex items-center mt-1 sm:mt-0">
-                        <ExclamationTriangleIcon className="h-4 w-4 mr-1" />
-                        {errors.inclusions}
-                      </p>
-                    )}
-                  </div>
-                  <div className="flex mb-2">
-                    <input
-                      type="text"
-                      value={newInclusion}
-                      onChange={(e) => setNewInclusion(e.target.value)}
-                      className="flex-grow px-3 py-2 border border-gray-300 rounded-l-md shadow-sm focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)] sm:text-sm"
-                      placeholder="e.g., Standard clay urn"
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          handleAddInclusion();
-                        }
-                      }}
-                    />
-                    <button
-                      type="button"
-                      onClick={handleAddInclusion}
-                      disabled={!newInclusion.trim()}
-                      className="px-4 py-2 border border-transparent rounded-r-md shadow-sm text-sm font-medium text-white bg-[var(--primary-green)] hover:bg-[var(--primary-green-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--primary-green)] disabled:opacity-50 disabled:cursor-not-allowed"
-                      title="Add inclusion"
-                    >
-                      <PlusIcon className="h-5 w-5" />
-                    </button>
-                  </div>
-                  <div className="space-y-2 mt-3">
-                    {formData.inclusions.map((inclusion, index) => (
-                      <div
-                        key={`inclusion-${inclusion.description.replace(/\s+/g, '-').toLowerCase()}-${index}`}
-                        className="flex items-center bg-gray-50 px-3 py-2 rounded-md gap-3"
-                        draggable
-                        onDragStart={() => setDragInclusionIndex(index)}
-                        onDragOver={(e) => { e.preventDefault(); }}
-                        onDrop={() => {
-                          if (dragInclusionIndex == null || dragInclusionIndex === index) return;
-                          setFormData(prev => {
-                            const next = [...prev.inclusions];
-                            const [moved] = next.splice(dragInclusionIndex, 1);
-                            next.splice(index, 0, moved);
-                            return { ...prev, inclusions: next };
-                          });
-                          setDragInclusionIndex(null);
-                        }}
-                        title="Drag to reorder"
-                      >
-                        <CheckIcon className="h-5 w-5 text-green-500 flex-shrink-0" />
-                        {inclusion.image ? (
-                          <NextImage src={inclusion.image} alt="inclusion" width={48} height={48} className="h-12 w-12 rounded object-cover border" unoptimized />
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => { setInclusionUploadIndex(index); inclusionFileInputRef.current?.click(); }}
-                            className="text-xs px-2 py-1 border rounded text-gray-600 hover:bg-gray-100"
-                          >
-                            Add image
-                          </button>
-                        )}
-                        <span className="flex-grow text-sm break-words">{inclusion.description}</span>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveInclusion(index)}
-                          className="text-gray-400 hover:text-red-500 flex-shrink-0 ml-2 p-1 rounded transition-colors hover:bg-red-50"
-                          title="Remove inclusion"
-                          aria-label={`Remove inclusion: ${inclusion.description}`}
-                        >
-                          <XMarkIcon className="h-4 w-4" />
-                        </button>
-                      </div>
-                    ))}
-                    {formData.inclusions.length === 0 && (
-                      <p className="text-sm text-gray-500 italic">No inclusions added yet</p>
-                    )}
-                  </div>
-                  <input ref={inclusionFileInputRef} type="file" accept="image/*" className="hidden" onChange={handleUploadInclusionImage} />
-                </div>
+                <InclusionManager
+                  inclusions={formData.inclusions}
+                  newInclusion={newInclusion}
+                  errors={errors}
+                  onNewInclusionChange={setNewInclusion}
+                  onAddInclusion={handleAddInclusion}
+                  onRemoveInclusion={handleRemoveInclusion}
+                  onUploadInclusionImage={handleUploadInclusionImage}
+                  onReorderInclusions={handleReorderInclusions}
+                />
 
                 {/* Add-ons */}
-                <div className="mb-8">
-                  <h2 className="text-lg font-medium text-gray-800 mb-4">Add-ons (Optional)</h2>
-                  <div className="flex mb-2 gap-2">
-                    <div className="flex-grow">
-                      <div className="relative">
-                        <input
-                          type="text"
-                          value={newAddOn}
-                          onChange={(e) => setNewAddOn(e.target.value)}
-                          onFocus={() => {
-                            setIsAddOnInputFocused(true);
-                          }}
-                          onBlur={() => setTimeout(() => setIsAddOnInputFocused(false), 150)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)] sm:text-sm"
-                          placeholder="e.g., Personalized nameplate"
-                          autoComplete="off"
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                              e.preventDefault();
-                              handleAddAddOn();
-                            }
-                          }}
-                        />
-                        {isAddOnInputFocused && (addOnSuggestions.length > 0 || isLoadingAddOnSuggestions) && (
-                          <div className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto">
-                            {isLoadingAddOnSuggestions ? (
-                              <div className="px-3 py-2 text-sm text-gray-500">Searching…</div>
-                            ) : (
-                              addOnSuggestions.map((s, i) => (
-                                <button
-                                  type="button"
-                                  key={`${s.name}-${i}`}
-                                  className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex justify-between"
-                                  onMouseDown={(e) => {
-                                    e.preventDefault();
-                                    setNewAddOn(s.name);
-                                    setNewAddOnPrice(s.price ? String(s.price) : '');
-                                    setAddOnSuggestions([]);
-                                  }}
-                                >
-                                  <span className="truncate pr-2">{s.name}</span>
-                                  <span className="text-gray-500">₱{Number(s.price || 0).toLocaleString()}</span>
-                                </button>
-                              ))
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    <div className="w-32">
-                      <div className="flex items-center border border-gray-300 rounded-md shadow-sm px-3 py-2 focus-within:ring-1 focus-within:ring-[var(--primary-green)] focus-within:border-[var(--primary-green)]">
-                        <span className="text-gray-500 mr-1">₱</span>
-                        <input
-                          type="number"
-                          min="0.01"
-                          step="0.01"
-                          value={newAddOnPrice}
-                          onChange={(e) => setNewAddOnPrice(e.target.value)}
-                          placeholder="Price*"
-                          className="w-full focus:outline-none sm:text-sm"
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                              e.preventDefault();
-                              handleAddAddOn();
-                            }
-                          }}
-                        />
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={handleAddAddOn}
-                      disabled={!newAddOn.trim() || !newAddOnPrice.trim()}
-                      className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[var(--primary-green)] hover:bg-[var(--primary-green-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--primary-green)] disabled:opacity-50 disabled:cursor-not-allowed"
-                      title="Add add-on"
-                    >
-                      <PlusIcon className="h-5 w-5" />
-                    </button>
-                  </div>
-                  <p className="text-xs text-gray-500 mt-1">* Price is required for all add-ons</p>
-                  <div className="space-y-2 mt-3">
-                    {formData.addOns.map((addOn, index) => (
-                      <div
-                        key={`addon-${addOn.name.replace(/\s+/g, '-').toLowerCase()}-${addOn.price}-${index}`}
-                        className="flex items-center justify-between bg-gray-50 px-3 py-2 rounded-md gap-3"
-                        draggable
-                        onDragStart={() => setDragAddonIndex(index)}
-                        onDragOver={(e) => { e.preventDefault(); }}
-                        onDrop={() => {
-                          if (dragAddonIndex == null || dragAddonIndex === index) return;
-                          setFormData(prev => {
-                            const next = [...prev.addOns];
-                            const [moved] = next.splice(dragAddonIndex, 1);
-                            next.splice(index, 0, moved);
-                            return { ...prev, addOns: next };
-                          });
-                          setDragAddonIndex(null);
-                        }}
-                        title="Drag to reorder"
-                      >
-                        <div className="flex items-center gap-3">
-                          <CheckIcon className="h-5 w-5 text-amber-600 flex-shrink-0" />
-                          {addOn.image ? (
-                            <NextImage src={addOn.image} alt="addon" width={48} height={48} className="h-12 w-12 rounded object-cover border" unoptimized />
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => { setAddonUploadIndex(index); addonFileInputRef.current?.click(); }}
-                              className="text-xs px-2 py-1 border rounded text-gray-600 hover:bg-gray-100"
-                            >
-                              Add image
-                            </button>
-                          )}
-                          <span className="text-sm break-words">{addOn.name}</span>
-                        </div>
-                        <div className="flex items-center">
-                          <span className="text-[var(--primary-green)] font-medium mr-3">
-                            +₱{addOn.price.toLocaleString()}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveAddOn(index)}
-                            className="text-gray-400 hover:text-red-500 flex-shrink-0 p-1 rounded transition-colors hover:bg-red-50"
-                            title="Remove add-on"
-                            aria-label={`Remove add-on: ${addOn.name}`}
-                          >
-                            <XMarkIcon className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                    {formData.addOns.length === 0 && (
-                      <p className="text-sm text-gray-500 italic">No add-ons added yet</p>
-                    )}
-                  </div>
-                  <input ref={addonFileInputRef} type="file" accept="image/*" className="hidden" onChange={handleUploadAddonImage} />
-                </div>
+                <AddOnManager
+                  addOns={formData.addOns}
+                  newAddOn={newAddOn}
+                  newAddOnPrice={newAddOnPrice}
+                  addOnSuggestions={addOnSuggestions}
+                  isLoadingSuggestions={isLoadingAddOnSuggestions}
+                  isAddOnInputFocused={isAddOnInputFocused}
+                  onNewAddOnChange={setNewAddOn}
+                  onNewAddOnPriceChange={setNewAddOnPrice}
+                  onAddAddOn={handleAddAddOn}
+                  onRemoveAddOn={handleRemoveAddOn}
+                  onUploadAddonImage={handleUploadAddonImage}
+                  onReorderAddOns={handleReorderAddOns}
+                  onAddOnInputFocus={() => setIsAddOnInputFocused(true)}
+                  onAddOnInputBlur={() => setTimeout(() => setIsAddOnInputFocused(false), 150)}
+                  onSuggestionSelect={handleSuggestionSelect}
+                />
 
                 {/* Live Preview removed per request */}
 
