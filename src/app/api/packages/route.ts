@@ -11,6 +11,7 @@ export async function GET(request: NextRequest) {
     const limit = +url.searchParams.get('limit')! || 10;
     const offset = (page - 1) * limit;
     const includeInactive = url.searchParams.get('includeInactive') === 'true';
+    const debug = url.searchParams.get('debug') === 'true';
     const bareParam = url.searchParams.get('bare') === 'true';
     const disableEnrichment = (process.env.DISABLE_PACKAGE_ENRICHMENT === 'true') || bareParam;
 
@@ -247,7 +248,14 @@ export async function GET(request: NextRequest) {
   } catch (err) {
     console.error('Error in packages GET endpoint:', err);
     console.error('Error stack:', (err as Error).stack);
-    const expose = process.env.STAGING_VERBOSE_ERRORS === 'true' || process.env.VERCEL_ENV === 'preview';
+    const debugFlag = (() => {
+      try {
+        return (new URL(request.url)).searchParams.get('debug') === 'true';
+      } catch {
+        return false;
+      }
+    })();
+    const expose = debugFlag || process.env.STAGING_VERBOSE_ERRORS === 'true' || process.env.VERCEL_ENV === 'preview';
     return NextResponse.json(
       expose
         ? { error: 'Failed to fetch packages', details: (err as Error).message, stack: (err as Error).stack }

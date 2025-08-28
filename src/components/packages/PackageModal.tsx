@@ -1378,7 +1378,7 @@ const PackageModal: React.FC<PackageModalProps> = ({
                 <div className="mb-8">
                   <h2 className="text-lg font-medium text-gray-800 mb-4">Live Preview</h2>
                   <div className="border rounded-xl overflow-hidden shadow bg-white">
-                    <div className="h-64 md:h-80 w-full relative bg-gray-100 overflow-hidden">
+                    <div className="h-80 md:h-96 w-full relative bg-gray-100 overflow-hidden">
                       <PackageImage images={formData.images} alt={formData.name || 'Package'} size="large" className="w-full h-full object-cover" />
                     </div>
                     <div className="p-4">
