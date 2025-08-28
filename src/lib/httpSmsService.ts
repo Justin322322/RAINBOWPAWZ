@@ -9,6 +9,7 @@ console.log('  API Key:', apiKey ? `${apiKey.substring(0, 8)}...` : '❌ NOT SET
 console.log('  From Number:', fromNumber || '❌ NOT SET');
 console.log('  Base URL:', baseUrl);
 console.log('  Environment:', process.env.NODE_ENV);
+console.log('  Timestamp:', new Date().toISOString());
 
 interface SendSMSParams {
   to: string;
@@ -43,59 +44,92 @@ export async function sendSMS({ to, message }: SendSMSParams): Promise<SendSMSRe
   try {
     console.log(`📱 Attempting to send SMS to: ${to}`);
     console.log(`   Message: ${message.substring(0, 50)}${message.length > 50 ? '...' : ''}`);
+    console.log(`   Timestamp: ${new Date().toISOString()}`);
     
+    // Enhanced configuration validation
     if (!apiKey) {
-      console.error('❌ SMS failed: httpSMS API key not configured');
+      const error = 'httpSMS API key not configured';
+      console.error(`❌ SMS failed: ${error}`);
+      console.error(`   Environment check: NODE_ENV=${process.env.NODE_ENV}`);
+      console.error(`   Available env vars:`, Object.keys(process.env).filter(key => key.includes('SMS') || key.includes('HTTPSMS')));
       return {
         success: false,
-        error: 'httpSMS API key not configured'
+        error,
+        code: 500
       };
     }
 
     if (!fromNumber) {
-      console.error('❌ SMS failed: httpSMS from number not configured');
+      const error = 'httpSMS from number not configured';
+      console.error(`❌ SMS failed: ${error}`);
+      console.error(`   Environment check: NODE_ENV=${process.env.NODE_ENV}`);
+      console.error(`   Available env vars:`, Object.keys(process.env).filter(key => key.includes('SMS') || key.includes('HTTPSMS')));
       return {
         success: false,
-        error: 'httpSMS from number not configured'
+        error,
+        code: 500
       };
     }
 
-    // Validate phone number format (basic validation)
-    if (!to || !to.match(/^\+?[\d\s\-\(\)]+$/)) {
-      console.error(`❌ SMS failed: Invalid phone number format: ${to}`);
+    // Enhanced phone number validation
+    if (!to || typeof to !== 'string') {
+      const error = 'Invalid phone number: must be a non-empty string';
+      console.error(`❌ SMS failed: ${error}`);
+      console.error(`   Received: ${typeof to} = ${JSON.stringify(to)}`);
       return {
         success: false,
-        error: 'Invalid phone number format'
+        error,
+        code: 400
       };
     }
 
-    // Format destination phone number
+    if (!to.match(/^\+?[\d\s\-\(\)]+$/)) {
+      const error = `Invalid phone number format: ${to}`;
+      console.error(`❌ SMS failed: ${error}`);
+      console.error(`   Phone number validation failed for: ${to}`);
+      return {
+        success: false,
+        error,
+        code: 400
+      };
+    }
+
+    // Enhanced phone number formatting
     let formattedPhone: string;
     try {
       const trimmed = to.trim();
+      console.log(`   Original phone: "${trimmed}"`);
+      
       if (/^\+\d{7,15}$/.test(trimmed)) {
-        // Already E.164
+        // Already E.164 format
         formattedPhone = trimmed;
+        console.log(`   Phone already in E.164 format: ${formattedPhone}`);
       } else {
-        // Assume Philippine local formats if not E.164
+        // Format Philippine local numbers
         formattedPhone = formatPhilippinePhoneNumber(trimmed);
+        console.log(`   Formatted Philippine phone: ${formattedPhone}`);
       }
-      console.log(`   Formatted phone: ${formattedPhone}`);
+      
+      console.log(`   Final formatted phone: ${formattedPhone}`);
     } catch (formatError) {
       console.error(`❌ SMS failed: Phone number formatting error:`, formatError);
+      console.error(`   Original number: ${to}`);
+      console.error(`   Format error details:`, formatError);
       return {
         success: false,
-        error: formatError instanceof Error ? formatError.message : 'Invalid phone number format'
+        error: formatError instanceof Error ? formatError.message : 'Invalid phone number format',
+        code: 400
       };
     }
 
-    // Send SMS with limited retries for transient errors
-    const maxRetries = 2;
+    // Enhanced SMS sending with better retry logic
+    const maxRetries = 3; // Increased from 2
     let lastError: any;
     
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
-        console.log(`   Attempt ${attempt + 1}/${maxRetries + 1}`);
+        console.log(`   📤 Attempt ${attempt + 1}/${maxRetries + 1}`);
+        console.log(`   Request URL: ${baseUrl}/messages/send`);
         
         const requestBody = {
           content: message,
@@ -105,7 +139,13 @@ export async function sendSMS({ to, message }: SendSMSParams): Promise<SendSMSRe
         };
         
         console.log(`   Request body:`, JSON.stringify(requestBody, null, 2));
+        console.log(`   Request headers:`, {
+          'x-api-key': `${apiKey.substring(0, 8)}...`,
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        });
         
+        const startTime = Date.now();
         const response = await fetch(`${baseUrl}/messages/send`, {
           method: 'POST',
           headers: {
@@ -115,45 +155,71 @@ export async function sendSMS({ to, message }: SendSMSParams): Promise<SendSMSRe
           },
           body: JSON.stringify(requestBody)
         });
+        const endTime = Date.now();
 
+        console.log(`   Response time: ${endTime - startTime}ms`);
         console.log(`   Response status: ${response.status} ${response.statusText}`);
+        console.log(`   Response headers:`, Object.fromEntries(response.headers.entries()));
 
         if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          console.error(`   Error response:`, errorData);
+          let errorData;
+          try {
+            errorData = await response.json();
+          } catch {
+            errorData = { message: response.statusText };
+          }
+          
+          console.error(`   ❌ HTTP Error Response:`, errorData);
+          console.error(`   Status: ${response.status}`);
+          console.error(`   Status Text: ${response.statusText}`);
+          
           throw new Error(`HTTP ${response.status}: ${errorData.message || response.statusText}`);
         }
 
         const data: HttpSMSResponse = await response.json();
-        console.log(`   Success response:`, JSON.stringify(data, null, 2));
+        console.log(`   ✅ Success response:`, JSON.stringify(data, null, 2));
 
         if (data.status === 'success') {
           console.log(`✅ SMS sent successfully! Message ID: ${data.data.id}`);
+          console.log(`   To: ${formattedPhone}`);
+          console.log(`   From: ${fromNumber}`);
+          console.log(`   Message length: ${message.length} characters`);
+          console.log(`   Timestamp: ${new Date().toISOString()}`);
+          
           return {
             success: true,
             messageId: data.data.id
           };
         } else {
-          throw new Error(data.message || 'Failed to send SMS');
+          throw new Error(data.message || 'Failed to send SMS - unknown error');
         }
 
       } catch (err: any) {
         lastError = err;
-        console.error(`   Attempt ${attempt + 1} failed:`, err.message);
+        console.error(`   ❌ Attempt ${attempt + 1} failed:`, err.message);
+        console.error(`   Error type:`, err.constructor.name);
+        console.error(`   Error stack:`, err.stack);
         
-        const transient = err?.message?.includes('429') || 
-                         err?.message?.includes('500') || 
-                         err?.message?.includes('502') || 
-                         err?.message?.includes('503') || 
-                         err?.message?.includes('504');
+        // Enhanced retry logic
+        const isTransient = err?.message?.includes('429') || 
+                           err?.message?.includes('500') || 
+                           err?.message?.includes('502') || 
+                           err?.message?.includes('503') || 
+                           err?.message?.includes('504') ||
+                           err?.message?.includes('timeout') ||
+                           err?.message?.includes('network') ||
+                           err?.message?.includes('fetch');
         
-        if (transient && attempt < maxRetries) {
-          const backoff = 500 * (attempt + 1);
-          console.log(`   Retrying in ${backoff}ms...`);
+        if (isTransient && attempt < maxRetries) {
+          const backoff = Math.min(1000 * Math.pow(2, attempt), 5000); // Exponential backoff with max 5s
+          console.log(`   ⏳ Retrying in ${backoff}ms... (transient error)`);
           await new Promise((r) => setTimeout(r, backoff));
           continue;
         }
-        throw err;
+        
+        // Don't retry on non-transient errors
+        console.error(`   🚫 Not retrying - non-transient error`);
+        break;
       }
     }
     
@@ -162,28 +228,49 @@ export async function sendSMS({ to, message }: SendSMSParams): Promise<SendSMSRe
 
   } catch (error: any) {
     console.error('❌ Error sending SMS via httpSMS:', error);
+    console.error('   Error details:', {
+      message: error.message,
+      name: error.name,
+      stack: error.stack,
+      code: error.code,
+      status: error.status
+    });
 
-    // Handle specific httpSMS errors
+    // Enhanced error handling with specific messages
     let errorMessage = 'Unknown error occurred';
+    let errorCode = 500;
 
     if (error.message?.includes('401')) {
       errorMessage = 'httpSMS authentication failed. Please check your API key.';
+      errorCode = 401;
     } else if (error.message?.includes('400')) {
       errorMessage = 'Invalid request parameters. Please check phone numbers and message content.';
+      errorCode = 400;
     } else if (error.message?.includes('422')) {
       errorMessage = 'Invalid phone number format or message content.';
+      errorCode = 422;
     } else if (error.message?.includes('500')) {
       errorMessage = 'httpSMS service temporarily unavailable. Please try again later.';
+      errorCode = 500;
     } else if (error.message?.includes('429')) {
       errorMessage = 'Rate limit exceeded. Please wait before sending more messages.';
+      errorCode = 429;
+    } else if (error.message?.includes('timeout')) {
+      errorMessage = 'Request timeout. httpSMS service may be slow or unavailable.';
+      errorCode = 408;
+    } else if (error.message?.includes('network') || error.message?.includes('fetch')) {
+      errorMessage = 'Network error. Please check your internet connection and firewall settings.';
+      errorCode = 503;
     } else if (error instanceof Error) {
       errorMessage = error.message;
     }
 
+    console.error(`   Final error: ${errorMessage} (Code: ${errorCode})`);
+
     return {
       success: false,
       error: errorMessage,
-      code: error.status || 500
+      code: errorCode
     };
   }
 }
