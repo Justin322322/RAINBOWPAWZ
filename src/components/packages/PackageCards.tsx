@@ -3,10 +3,7 @@
 import React, { useCallback } from 'react';
 import { PackageData } from '@/types/packages';
 import { PackageImage } from './PackageImage';
-import { Badge } from '@/components/ui/Badge';
-import { Button } from '@/components/ui/Button';
-import { PencilIcon, TrashIcon, EyeSlashIcon, EyeIcon } from '@heroicons/react/24/outline';
-
+import { PencilIcon, TrashIcon, EyeSlashIcon, CheckCircleIcon, InformationCircleIcon } from '@heroicons/react/24/outline';
 import { formatPrice } from '@/utils/numberUtils';
 
 interface PackageCardsProps {
@@ -22,17 +19,15 @@ interface PackageCardsProps {
 const PackageImageDisplay = React.memo<{ images: string[]; alt: string }>(({ images, alt }) => {
   if (images.length === 0) {
     return (
-      <div className="w-full h-full bg-gray-50 flex flex-col items-center justify-center text-gray-400">
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-        </svg>
+      <div className="w-full h-full bg-gray-100 flex flex-col items-center justify-center text-gray-400">
+        <div className="w-12 h-12 bg-gray-200 rounded-lg mb-2"></div>
         <span className="text-xs text-gray-500">No image</span>
       </div>
     );
   }
 
   return (
-    <div className="w-full h-full bg-gray-50 overflow-hidden">
+    <div className="w-full h-full bg-gray-100 overflow-hidden">
       <PackageImage
         images={images}
         alt={alt}
@@ -49,7 +44,7 @@ PackageImageDisplay.displayName = 'PackageImageDisplay';
 
 
 
-// Clean and simple package card component
+// Vercel-inspired package card component
 const PackageCard = React.memo<{
   pkg: PackageData;
   onEdit: (id: number) => void;
@@ -64,106 +59,143 @@ const PackageCard = React.memo<{
   const handleToggleActive = useCallback(() => onToggleActive(pkg.id, pkg.isActive), [onToggleActive, pkg.id, pkg.isActive]);
   const handleDetails = useCallback(() => onDetails?.(pkg.id), [onDetails, pkg.id]);
 
-
+  // Get inclusions and add-ons for display
+  const inclusions = Array.isArray(pkg.inclusions) ? pkg.inclusions : [];
+  const addOns = Array.isArray(pkg.addOns) ? pkg.addOns : [];
 
   return (
-    <div className="bg-white border border-gray-200 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
-      {/* Image */}
-      <div className="aspect-video rounded-t-2xl overflow-hidden">
-        <PackageImageDisplay images={pkg.images || []} alt={pkg.name} />
+    <div className="bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-lg transition-all duration-200">
+      {/* Header with image and status */}
+      <div className="relative">
+        <div className="aspect-video overflow-hidden rounded-t-lg">
+          <PackageImageDisplay images={pkg.images || []} alt={pkg.name} />
+        </div>
+        {/* Status badge overlay */}
+        <div className="absolute top-3 right-3">
+          <div className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded-md ${
+            pkg.isActive
+              ? 'bg-green-100 text-green-800'
+              : 'bg-gray-100 text-gray-800'
+          }`}>
+            <CheckCircleIcon className="h-3 w-3 mr-1" />
+            {pkg.isActive ? 'Active' : 'Inactive'}
+          </div>
+        </div>
       </div>
 
       {/* Content */}
       <div className="p-6">
-        {/* Header */}
-        <div className="flex items-start justify-between mb-4">
-          <div className="flex-1">
-            <h3 className="text-lg font-semibold text-gray-900 mb-1">{pkg.name}</h3>
-            <p className="text-2xl font-bold text-emerald-600">₱{formatPrice(pkg.price)}</p>
+        {/* Title and Price */}
+        <div className="mb-4">
+          <h3 className="text-xl font-semibold text-gray-900 mb-2">{pkg.name}</h3>
+          <p className="text-3xl font-bold text-gray-900">₱{formatPrice(pkg.price)}</p>
+        </div>
+
+        {/* Package details */}
+        <div className="mb-4">
+          <div className="flex items-center text-sm text-gray-600 mb-2">
+            <span className="font-medium">{pkg.category}</span>
+            <span className="mx-2 text-gray-300">•</span>
+            <span>{pkg.cremationType}</span>
+            <span className="mx-2 text-gray-300">•</span>
+            <span>{pkg.processingTime}</span>
           </div>
-          <Badge
-            variant={pkg.isActive ? 'success' : 'danger'}
-            size="sm"
-            className="rounded-2xl"
-          >
-            {pkg.isActive ? 'Active' : 'Inactive'}
-          </Badge>
+          <p className="text-sm text-gray-600 line-clamp-2">{pkg.description}</p>
         </div>
 
-        {/* Description */}
-        <p className="text-sm text-gray-600 mb-4 line-clamp-2">{pkg.description}</p>
-
-        {/* Package Info */}
-        <div className="flex items-center gap-4 mb-6 text-xs text-gray-500">
-          <span>{pkg.category}</span>
-          <span>•</span>
-          <span>{pkg.cremationType}</span>
-          <span>•</span>
-          <span>{pkg.processingTime}</span>
-        </div>
-
-        {/* Quick Stats */}
-        <div className="grid grid-cols-2 gap-4 mb-6">
-          <div className="text-center p-3 bg-gray-50 rounded-2xl">
-            <div className="text-lg font-semibold text-gray-900">
-              {Array.isArray(pkg.inclusions) ? pkg.inclusions.length : 0}
+        {/* Inclusions Preview */}
+        {inclusions.length > 0 && (
+          <div className="mb-4">
+            <h4 className="text-sm font-medium text-gray-900 mb-2">What&apos;s included</h4>
+            <div className="space-y-1">
+              {inclusions.slice(0, 3).map((inclusion, idx) => {
+                const desc = typeof inclusion === 'string' ? inclusion : inclusion.description;
+                return (
+                  <div key={idx} className="flex items-center text-sm text-gray-600">
+                    <CheckCircleIcon className="h-4 w-4 text-green-500 mr-2 flex-shrink-0" />
+                    <span className="line-clamp-1">{desc}</span>
+                  </div>
+                );
+              })}
+              {inclusions.length > 3 && (
+                <div className="text-xs text-gray-500 pl-6">
+                  +{inclusions.length - 3} more items
+                </div>
+              )}
             </div>
-            <div className="text-xs text-gray-500 uppercase tracking-wide">Included</div>
           </div>
-          <div className="text-center p-3 bg-gray-50 rounded-2xl">
-            <div className="text-lg font-semibold text-gray-900">
-              {Array.isArray(pkg.addOns) ? pkg.addOns.length : 0}
-            </div>
-            <div className="text-xs text-gray-500 uppercase tracking-wide">Add-ons</div>
-          </div>
-        </div>
+        )}
 
-        {/* Actions */}
+        {/* Add-ons Preview */}
+        {addOns.length > 0 && (
+          <div className="mb-6">
+            <h4 className="text-sm font-medium text-gray-900 mb-2">Available add-ons</h4>
+            <div className="space-y-1">
+              {addOns.slice(0, 2).map((addon, idx) => {
+                const name = typeof addon === 'string' ? addon : addon.name;
+                const price = typeof addon === 'string' ? 0 : addon.price;
+                return (
+                  <div key={idx} className="flex items-center justify-between text-sm">
+                    <span className="text-gray-600 line-clamp-1">{name}</span>
+                    <span className="text-gray-900 font-medium ml-2">+₱{price.toLocaleString()}</span>
+                  </div>
+                );
+              })}
+              {addOns.length > 2 && (
+                <div className="text-xs text-gray-500">
+                  +{addOns.length - 2} more add-ons
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Action buttons */}
         <div className="space-y-3">
           {onDetails && (
-            <Button
-              variant="outline"
-              size="sm"
-              fullWidth
+            <button
               onClick={handleDetails}
-              className="rounded-2xl"
+              className="w-full inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 transition-colors"
             >
+              <InformationCircleIcon className="h-4 w-4 mr-2" />
               View Details
-            </Button>
+            </button>
           )}
 
           <div className="grid grid-cols-2 gap-3">
-            <Button
-              variant="outline"
-              size="sm"
+            <button
               onClick={handleEdit}
-              leftIcon={<PencilIcon className="h-4 w-4" />}
-              className="rounded-2xl"
+              className="inline-flex items-center justify-center px-3 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 transition-colors"
             >
+              <PencilIcon className="h-4 w-4 mr-2" />
               Edit
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
+            </button>
+            <button
               onClick={handleDelete}
-              leftIcon={<TrashIcon className="h-4 w-4" />}
-              className="border-red-300 text-red-700 hover:bg-red-50 hover:border-red-400 rounded-2xl"
+              className="inline-flex items-center justify-center px-3 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 transition-colors"
             >
+              <TrashIcon className="h-4 w-4 mr-2" />
               Delete
-            </Button>
+            </button>
           </div>
 
-          <Button
-            variant={pkg.isActive ? 'secondary' : 'primary'}
-            size="sm"
-            fullWidth
+          <button
             onClick={handleToggleActive}
-            leftIcon={pkg.isActive ? <EyeSlashIcon className="h-4 w-4" /> : <EyeIcon className="h-4 w-4" />}
-            isLoading={toggleLoading === pkg.id}
-            className="rounded-2xl"
-          >
+            disabled={toggleLoading === pkg.id}
+            className={`w-full inline-flex items-center justify-center px-4 py-2 text-sm font-medium border border-transparent rounded-md transition-colors ${
+              pkg.isActive
+                ? 'text-orange-700 bg-orange-100 hover:bg-orange-200'
+                : 'text-white bg-green-600 hover:bg-green-700'
+            }`}>
+            {toggleLoading === pkg.id ? (
+              <div className="animate-spin h-4 w-4 mr-2 border-2 border-current border-t-transparent rounded-full"></div>
+            ) : pkg.isActive ? (
+              <EyeSlashIcon className="h-4 w-4 mr-2" />
+            ) : (
+              <CheckCircleIcon className="h-4 w-4 mr-2" />
+            )}
             {pkg.isActive ? 'Deactivate' : 'Activate'}
-          </Button>
+          </button>
         </div>
       </div>
     </div>
@@ -182,7 +214,7 @@ export const PackageCards: React.FC<PackageCardsProps> = ({
   toggleLoading
 }) => {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
       {packages.map((pkg) => (
         <PackageCard
           key={pkg.id}

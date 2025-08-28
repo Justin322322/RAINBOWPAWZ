@@ -42,127 +42,144 @@ export const PackageList: React.FC<PackageListProps> = ({
   };
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+    <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-200">
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50 rounded-t-2xl">
+          <thead className="bg-gray-50">
             <tr>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th scope="col" className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Package
               </th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Category
+              <th scope="col" className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Details
               </th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Processing Time
-              </th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th scope="col" className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Price
               </th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th scope="col" className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Status
               </th>
-              <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th scope="col" className="px-6 py-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Actions
               </th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {packages.map((pkg) => (
-              <tr key={pkg.id} className={`hover:bg-gray-50 ${!pkg.isActive ? 'bg-gray-50' : ''}`}>
-                <td className="px-6 py-4">
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0 h-12 w-12 relative rounded-md overflow-hidden">
-                      <PackageImage
-                        images={pkg.images}
-                        alt={pkg.name}
-                        size="small"
-                        className="h-12 w-12 object-cover"
-                      />
-                    </div>
-                    <div className="ml-4">
-                      <div className="text-sm font-medium text-gray-900">{pkg.name}</div>
-                      <div className="text-sm text-gray-500 truncate max-w-xs">{pkg.description}</div>
-                    </div>
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-2xl ${
-                    getCategoryBadge(pkg.category)
-                  }`}>
-                    {pkg.category}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {pkg.processingTime}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                  ₱{pkg.price.toLocaleString()}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  {pkg.isActive ? (
-                    <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-2xl bg-green-100 text-green-800">
-                      <CheckCircleIcon className="h-4 w-4 mr-1" />
-                      Active
-                    </span>
-                  ) : (
-                    <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-2xl bg-gray-100 text-gray-800">
-                      <EyeSlashIcon className="h-4 w-4 mr-1" />
-                      Inactive
-                    </span>
-                  )}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  <div className="flex justify-end items-center space-x-2">
-                    {onDetails && (
-                      <button
-                        onClick={() => onDetails(pkg.id)}
-                        className="inline-flex items-center px-3 py-1 text-xs text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-2xl transition-colors"
-                      >
-                        Details
-                      </button>
-                    )}
+            {packages.map((pkg) => {
+              const inclusions = Array.isArray(pkg.inclusions) ? pkg.inclusions : [];
+              const addOns = Array.isArray(pkg.addOns) ? pkg.addOns : [];
 
-                    <button
-                      onClick={() => onEdit(pkg.id)}
-                      className="inline-flex items-center px-3 py-1 text-xs text-blue-600 hover:text-blue-900 hover:bg-blue-50 rounded-2xl transition-colors"
-                    >
-                      <PencilIcon className="h-4 w-4 mr-1" />
-                      Edit
-                    </button>
-
-                    <button
-                      onClick={() => onDelete(pkg.id)}
-                      className="inline-flex items-center px-3 py-1 text-xs text-red-600 hover:text-red-900 hover:bg-red-50 rounded-2xl transition-colors"
-                    >
-                      <TrashIcon className="h-4 w-4 mr-1" />
-                      Delete
-                    </button>
-
-                    {onToggleActive && (
-                      <button
-                        onClick={() => onToggleActive(pkg.id, pkg.isActive)}
-                        disabled={toggleLoading === pkg.id}
-                        className={`inline-flex items-center px-3 py-1 text-xs rounded-2xl transition-colors ${
-                          pkg.isActive
-                            ? 'text-amber-600 hover:text-amber-900 hover:bg-amber-50'
-                            : 'text-green-600 hover:text-green-900 hover:bg-green-50'
-                        }`}
-                      >
-                        {toggleLoading === pkg.id ? (
-                          <div className="animate-spin h-4 w-4 mr-1 border-2 border-current border-t-transparent rounded-full"></div>
-                        ) : pkg.isActive ? (
-                          <EyeSlashIcon className="h-4 w-4 mr-1" />
-                        ) : (
-                          <CheckCircleIcon className="h-4 w-4 mr-1" />
+              return (
+                <tr key={pkg.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4">
+                    <div className="flex items-center">
+                      <div className="flex-shrink-0 h-16 w-16 relative rounded-lg overflow-hidden">
+                        <PackageImage
+                          images={pkg.images}
+                          alt={pkg.name}
+                          size="small"
+                          className="h-16 w-16 object-cover"
+                        />
+                      </div>
+                      <div className="ml-4">
+                        <div className="text-sm font-semibold text-gray-900">{pkg.name}</div>
+                        <div className="text-sm text-gray-600 mt-1">{pkg.description}</div>
+                        {inclusions.length > 0 && (
+                          <div className="flex items-center mt-2 text-xs text-gray-500">
+                            <CheckCircleIcon className="h-3 w-3 text-green-500 mr-1" />
+                            {inclusions.length} inclusions
+                          </div>
                         )}
-                        {pkg.isActive ? 'Deactivate' : 'Activate'}
-                      </button>
+                        {addOns.length > 0 && (
+                          <div className="flex items-center mt-1 text-xs text-gray-500">
+                            <span className="w-2 h-2 bg-amber-400 rounded-full mr-2"></span>
+                            {addOns.length} add-ons
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="text-sm text-gray-900">
+                      <div className="flex items-center mb-1">
+                        <span className={`px-2 py-1 text-xs font-medium rounded-md ${
+                          getCategoryBadge(pkg.category)
+                        }`}>
+                          {pkg.category}
+                        </span>
+                      </div>
+                      <div className="text-gray-600">{pkg.cremationType}</div>
+                      <div className="text-gray-600">{pkg.processingTime}</div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-lg font-bold text-gray-900">₱{pkg.price.toLocaleString()}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {pkg.isActive ? (
+                      <span className="inline-flex items-center px-3 py-1 text-xs font-medium rounded-md bg-green-100 text-green-800">
+                        <CheckCircleIcon className="h-3 w-3 mr-1" />
+                        Active
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center px-3 py-1 text-xs font-medium rounded-md bg-gray-100 text-gray-800">
+                        <EyeSlashIcon className="h-3 w-3 mr-1" />
+                        Inactive
+                      </span>
                     )}
-                  </div>
-                </td>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <div className="flex justify-end items-center space-x-3">
+                      {onDetails && (
+                        <button
+                          onClick={() => onDetails(pkg.id)}
+                          className="inline-flex items-center px-3 py-2 text-xs font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 transition-colors"
+                        >
+                          Details
+                        </button>
+                      )}
+
+                      <button
+                        onClick={() => onEdit(pkg.id)}
+                        className="inline-flex items-center px-3 py-2 text-xs font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 transition-colors"
+                      >
+                        <PencilIcon className="h-3 w-3 mr-1" />
+                        Edit
+                      </button>
+
+                      <button
+                        onClick={() => onDelete(pkg.id)}
+                        className="inline-flex items-center px-3 py-2 text-xs font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 transition-colors"
+                      >
+                        <TrashIcon className="h-3 w-3 mr-1" />
+                        Delete
+                      </button>
+
+                      {onToggleActive && (
+                        <button
+                          onClick={() => onToggleActive(pkg.id, pkg.isActive)}
+                          disabled={toggleLoading === pkg.id}
+                          className={`inline-flex items-center px-3 py-2 text-xs font-medium border border-transparent rounded-md transition-colors ${
+                            pkg.isActive
+                              ? 'text-orange-700 bg-orange-100 hover:bg-orange-200'
+                              : 'text-white bg-green-600 hover:bg-green-700'
+                          }`}
+                        >
+                          {toggleLoading === pkg.id ? (
+                            <div className="animate-spin h-3 w-3 mr-1 border-2 border-current border-t-transparent rounded-full"></div>
+                          ) : pkg.isActive ? (
+                            <EyeSlashIcon className="h-3 w-3 mr-1" />
+                          ) : (
+                            <CheckCircleIcon className="h-3 w-3 mr-1" />
+                          )}
+                          {pkg.isActive ? 'Deactivate' : 'Activate'}
+                        </button>
+                      )}
+                    </div>
+                  </td>
               </tr>
-            ))}
+            );
+            })}
           </tbody>
         </table>
       </div>
