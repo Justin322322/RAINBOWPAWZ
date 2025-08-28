@@ -3,7 +3,6 @@
 import React from 'react';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
-import { CurrencyDollarIcon, TagIcon } from '@heroicons/react/24/outline';
 
 interface BasicInformationProps {
   formData: {
@@ -30,14 +29,9 @@ export const BasicInformation: React.FC<BasicInformationProps> = ({
   return (
     <div className="space-y-6">
       {/* Section Header */}
-      <div className="flex items-center gap-3 pb-2 border-b border-gray-200">
-        <div className="flex items-center justify-center w-8 h-8 bg-emerald-100 rounded-lg">
-          <TagIcon className="h-4 w-4 text-emerald-600" />
-        </div>
-        <div>
-          <h2 className="text-lg font-semibold text-gray-900">Package Information</h2>
-          <p className="text-sm text-gray-500">Basic details and pricing configuration</p>
-        </div>
+      <div className="mb-6">
+        <h2 className="text-xl font-semibold text-gray-900 mb-2">Package Information</h2>
+        <p className="text-gray-600">Basic details and pricing configuration</p>
       </div>
 
       {/* Package Name */}
@@ -90,14 +84,9 @@ export const BasicInformation: React.FC<BasicInformationProps> = ({
 
       {/* Pricing Section */}
       <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="flex items-center justify-center w-8 h-8 bg-emerald-100 rounded-lg">
-            <CurrencyDollarIcon className="h-4 w-4 text-emerald-600" />
-          </div>
-          <div>
-            <h3 className="text-base font-semibold text-gray-900">Pricing Configuration</h3>
-            <p className="text-sm text-gray-600">Choose how you want to price your package</p>
-          </div>
+        <div className="mb-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Pricing Configuration</h3>
+          <p className="text-gray-600">Choose how you want to price your package</p>
         </div>
 
         {/* Pricing Mode Selection */}

@@ -5,7 +5,7 @@ import { PackageData } from '@/types/packages';
 import { PackageImage } from './PackageImage';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
-import { EyeSlashIcon, CheckCircleIcon, PencilIcon, TrashIcon, EyeIcon, SparklesIcon } from '@heroicons/react/24/outline';
+import { EyeSlashIcon, PencilIcon, TrashIcon, EyeIcon } from '@heroicons/react/24/outline';
 import { formatPrice } from '@/utils/numberUtils';
 
 interface PackageCardsProps {
@@ -44,47 +44,7 @@ const PackageImageDisplay = React.memo<{ images: string[]; alt: string }>(({ ima
 
 PackageImageDisplay.displayName = 'PackageImageDisplay';
 
-// Inclusion/Add-on Preview Component
-const ItemPreview = React.memo<{
-  items: any[];
-  type: 'inclusion' | 'addon';
-  maxItems?: number;
-}>(({ items, type, maxItems = 3 }) => {
-  const displayItems = items.slice(0, maxItems);
-  const remainingCount = items.length - maxItems;
 
-  if (items.length === 0) return null;
-
-  return (
-    <div className="space-y-2">
-      {displayItems.map((item: any, index) => {
-        const name = typeof item === 'string' ? item : (type === 'inclusion' ? item.description : item.name);
-        const image = typeof item === 'string' ? undefined : item.image;
-
-        return (
-          <div key={index} className="flex items-center gap-2 text-xs text-gray-600">
-            {image && (
-              <PackageImage
-                images={[image]}
-                alt={name}
-                size="small"
-                className="w-6 h-6 rounded object-cover border border-gray-200 flex-shrink-0"
-              />
-            )}
-            <span className="truncate">{name}</span>
-          </div>
-        );
-      })}
-      {remainingCount > 0 && (
-        <div className="text-xs text-gray-500 font-medium">
-          +{remainingCount} more {type}{remainingCount !== 1 ? 's' : ''}
-        </div>
-      )}
-    </div>
-  );
-});
-
-ItemPreview.displayName = 'ItemPreview';
 
 
 
@@ -123,7 +83,6 @@ const PackageCard = React.memo<{
           <Badge
             variant={pkg.isActive ? 'success' : 'danger'}
             size="sm"
-            icon={pkg.isActive ? <CheckCircleIcon className="h-4 w-4" /> : <EyeSlashIcon className="h-4 w-4" />}
           >
             {pkg.isActive ? 'Active' : 'Inactive'}
           </Badge>
@@ -132,38 +91,30 @@ const PackageCard = React.memo<{
         {/* Description */}
         <p className="text-sm text-gray-600 mb-4 line-clamp-2">{pkg.description}</p>
 
-        {/* Tags */}
-        <div className="flex flex-wrap gap-2 mb-4">
-          <Badge variant="outline" size="sm">{pkg.category}</Badge>
-          <Badge variant="outline" size="sm">{pkg.cremationType}</Badge>
-          <Badge variant="outline" size="sm">{pkg.processingTime}</Badge>
+        {/* Package Info */}
+        <div className="flex items-center gap-4 mb-6 text-xs text-gray-500">
+          <span>{pkg.category}</span>
+          <span>•</span>
+          <span>{pkg.cremationType}</span>
+          <span>•</span>
+          <span>{pkg.processingTime}</span>
         </div>
 
-        {/* Inclusions Preview */}
-        {pkg.inclusions && pkg.inclusions.length > 0 && (
-          <div className="mb-4">
-            <div className="flex items-center gap-2 mb-2">
-              <CheckCircleIcon className="h-4 w-4 text-green-600" />
-              <span className="text-sm font-medium text-gray-900">What&apos;s Included</span>
+        {/* Quick Stats */}
+        <div className="grid grid-cols-2 gap-4 mb-6">
+          <div className="text-center p-3 bg-gray-50 rounded-lg">
+            <div className="text-lg font-semibold text-gray-900">
+              {Array.isArray(pkg.inclusions) ? pkg.inclusions.length : 0}
             </div>
-            <div className="bg-green-50 rounded-lg p-3 border border-green-100">
-              <ItemPreview items={pkg.inclusions} type="inclusion" maxItems={2} />
-            </div>
+            <div className="text-xs text-gray-500 uppercase tracking-wide">Included</div>
           </div>
-        )}
-
-        {/* Add-ons Preview */}
-        {pkg.addOns && pkg.addOns.length > 0 && (
-          <div className="mb-6">
-            <div className="flex items-center gap-2 mb-2">
-              <SparklesIcon className="h-4 w-4 text-amber-600" />
-              <span className="text-sm font-medium text-gray-900">Available Add-ons</span>
+          <div className="text-center p-3 bg-gray-50 rounded-lg">
+            <div className="text-lg font-semibold text-gray-900">
+              {Array.isArray(pkg.addOns) ? pkg.addOns.length : 0}
             </div>
-            <div className="bg-amber-50 rounded-lg p-3 border border-amber-100">
-              <ItemPreview items={pkg.addOns} type="addon" maxItems={2} />
-            </div>
+            <div className="text-xs text-gray-500 uppercase tracking-wide">Add-ons</div>
           </div>
-        )}
+        </div>
 
         {/* Actions */}
         <div className="space-y-3">
@@ -173,20 +124,17 @@ const PackageCard = React.memo<{
               size="sm"
               fullWidth
               onClick={handleDetails}
-              className="border-gray-300 hover:border-gray-400"
             >
-              View Full Details
+              View Details
             </Button>
           )}
 
-          {/* Primary Actions */}
           <div className="grid grid-cols-2 gap-3">
             <Button
               variant="outline"
               size="sm"
               onClick={handleEdit}
               leftIcon={<PencilIcon className="h-4 w-4" />}
-              className="border-blue-300 text-blue-700 hover:bg-blue-50 hover:border-blue-400"
             >
               Edit
             </Button>
@@ -201,7 +149,6 @@ const PackageCard = React.memo<{
             </Button>
           </div>
 
-          {/* Status Action */}
           <Button
             variant={pkg.isActive ? 'secondary' : 'primary'}
             size="sm"
@@ -209,9 +156,8 @@ const PackageCard = React.memo<{
             onClick={handleToggleActive}
             leftIcon={pkg.isActive ? <EyeSlashIcon className="h-4 w-4" /> : <EyeIcon className="h-4 w-4" />}
             isLoading={toggleLoading === pkg.id}
-            className={pkg.isActive ? 'border-gray-300' : ''}
           >
-            {pkg.isActive ? 'Deactivate Package' : 'Activate Package'}
+            {pkg.isActive ? 'Deactivate' : 'Activate'}
           </Button>
         </div>
       </div>

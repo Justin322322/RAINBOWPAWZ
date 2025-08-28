@@ -4,7 +4,7 @@ import React, { useRef, useState } from 'react';
 import NextImage from 'next/image';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
-import { XMarkIcon, PlusIcon, SparklesIcon, CurrencyDollarIcon, PhotoIcon, Bars3Icon } from '@heroicons/react/24/outline';
+import { XMarkIcon, PlusIcon, SparklesIcon, CurrencyDollarIcon, PhotoIcon } from '@heroicons/react/24/outline';
 
 interface AddOn {
   name: string;
@@ -114,23 +114,15 @@ export const AddOnManager: React.FC<AddOnManagerProps> = ({
   return (
     <div className="space-y-6">
       {/* Section Header */}
-      <div className="flex items-center gap-3 pb-2 border-b border-gray-200">
-        <div className="flex items-center justify-center w-8 h-8 bg-amber-100 rounded-lg">
-          <SparklesIcon className="h-4 w-4 text-amber-600" />
-        </div>
-        <div>
-          <h2 className="text-lg font-semibold text-gray-900">Optional Add-ons</h2>
-          <p className="text-sm text-gray-500">Additional services customers can purchase</p>
-        </div>
+      <div className="mb-6">
+        <h2 className="text-xl font-semibold text-gray-900 mb-2">Optional Add-ons</h2>
+        <p className="text-gray-600">Additional services customers can purchase</p>
       </div>
 
       {/* Add New Add-on */}
       <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="flex items-center justify-center w-6 h-6 bg-amber-100 rounded">
-            <PlusIcon className="h-3 w-3 text-amber-600" />
-          </div>
-          <h3 className="text-sm font-semibold text-gray-900">Add New Add-on</h3>
+        <div className="mb-4">
+          <h3 className="text-lg font-semibold text-gray-900">Add New Add-on</h3>
         </div>
 
         <div className="space-y-4">
@@ -220,14 +212,9 @@ export const AddOnManager: React.FC<AddOnManagerProps> = ({
       <div className="bg-white rounded-xl border border-gray-200">
         <div className="p-6 border-b border-gray-200">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="flex items-center justify-center w-6 h-6 bg-gray-100 rounded">
-                <Bars3Icon className="h-3 w-3 text-gray-600" />
-              </div>
-              <div>
-                <h3 className="text-sm font-semibold text-gray-900">Current Add-ons</h3>
-                <p className="text-xs text-gray-500">Drag items to reorder • Click images to update</p>
-              </div>
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900">Current Add-ons</h3>
+              <p className="text-sm text-gray-600">Manage your package add-ons</p>
             </div>
             <Badge variant="outline" size="sm">
               {addOns.length} add-on{addOns.length !== 1 ? 's' : ''}
@@ -256,10 +243,6 @@ export const AddOnManager: React.FC<AddOnManagerProps> = ({
                   onDrop={() => handleDrop(index)}
                   title="Drag to reorder"
                 >
-                  {/* Drag Handle */}
-                  <div className="flex items-center justify-center w-8 h-8 bg-gray-200 rounded cursor-move hover:bg-gray-300 transition-colors">
-                    <Bars3Icon className="h-4 w-4 text-gray-600" />
-                  </div>
 
                   {/* Check Icon */}
                   <div className="flex items-center justify-center w-8 h-8 bg-amber-100 rounded-full">

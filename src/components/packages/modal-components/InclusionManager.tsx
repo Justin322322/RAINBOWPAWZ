@@ -4,7 +4,7 @@ import React, { useRef, useState } from 'react';
 import NextImage from 'next/image';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
-import { XMarkIcon, PlusIcon, CheckIcon, PhotoIcon, Bars3Icon } from '@heroicons/react/24/outline';
+import { XMarkIcon, PlusIcon, CheckIcon, PhotoIcon } from '@heroicons/react/24/outline';
 
 interface InclusionItem {
   description: string;
@@ -92,23 +92,15 @@ export const InclusionManager: React.FC<InclusionManagerProps> = ({
   return (
     <div className="space-y-6">
       {/* Section Header */}
-      <div className="flex items-center gap-3 pb-2 border-b border-gray-200">
-        <div className="flex items-center justify-center w-8 h-8 bg-green-100 rounded-lg">
-          <CheckIcon className="h-4 w-4 text-green-600" />
-        </div>
-        <div>
-          <h2 className="text-lg font-semibold text-gray-900">Package Inclusions</h2>
-          <p className="text-sm text-gray-500">What&apos;s included in your package</p>
-        </div>
+      <div className="mb-6">
+        <h2 className="text-xl font-semibold text-gray-900 mb-2">Package Inclusions</h2>
+        <p className="text-gray-600">What&apos;s included in your package</p>
       </div>
 
       {/* Add New Inclusion */}
       <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="flex items-center justify-center w-6 h-6 bg-green-100 rounded">
-            <PlusIcon className="h-3 w-3 text-green-600" />
-          </div>
-          <h3 className="text-sm font-semibold text-gray-900">Add New Inclusion</h3>
+        <div className="mb-4">
+          <h3 className="text-lg font-semibold text-gray-900">Add New Inclusion</h3>
         </div>
 
         {errors.inclusions && (
@@ -148,14 +140,9 @@ export const InclusionManager: React.FC<InclusionManagerProps> = ({
       <div className="bg-white rounded-xl border border-gray-200">
         <div className="p-6 border-b border-gray-200">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="flex items-center justify-center w-6 h-6 bg-gray-100 rounded">
-                <Bars3Icon className="h-3 w-3 text-gray-600" />
-              </div>
-              <div>
-                <h3 className="text-sm font-semibold text-gray-900">Current Inclusions</h3>
-                <p className="text-xs text-gray-500">Drag items to reorder • Click images to update</p>
-              </div>
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900">Current Inclusions</h3>
+              <p className="text-sm text-gray-600">Manage your package inclusions</p>
             </div>
             <Badge variant="outline" size="sm">
               {inclusions.length} item{inclusions.length !== 1 ? 's' : ''}
@@ -184,10 +171,6 @@ export const InclusionManager: React.FC<InclusionManagerProps> = ({
                   onDrop={() => handleDrop(index)}
                   title="Drag to reorder"
                 >
-                  {/* Drag Handle */}
-                  <div className="flex items-center justify-center w-8 h-8 bg-gray-200 rounded cursor-move hover:bg-gray-300 transition-colors">
-                    <Bars3Icon className="h-4 w-4 text-gray-600" />
-                  </div>
 
                   {/* Check Icon */}
                   <div className="flex items-center justify-center w-8 h-8 bg-green-100 rounded-full">
