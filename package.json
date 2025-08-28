@@ -15,7 +15,9 @@
     "clean": "rimraf .next tsconfig.tsbuildinfo",
     "clean:all": "rimraf .next tsconfig.tsbuildinfo node_modules package-lock.json && npm install",
     "spring-clean": "npm run clean && npm run type-check",
-    "knip": "knip"
+    "knip": "knip",
+    "db:migrate:media": "node scripts/migrate-package-media.js",
+    "db:check:media": "node scripts/check-package-media.js"
   },
   "dependencies": {
     "@headlessui/react": "^2.2.2",

@@ -177,7 +177,8 @@ export async function GET(request: NextRequest) {
         }, {});
       } catch (err: any) {
         const msg = err?.message || '';
-        if (msg.includes('ER_NO_SUCH_TABLE') || msg.includes('ER_BAD_FIELD_ERROR')) {
+        const code = err?.code || '';
+        if (code === 'ER_NO_SUCH_TABLE' || code === 'ER_BAD_FIELD_ERROR' || msg.includes('ER_NO_SUCH_TABLE') || msg.includes('ER_BAD_FIELD_ERROR')) {
           inclusionsByPackage = {};
         } else {
           throw err;
@@ -222,7 +223,8 @@ export async function GET(request: NextRequest) {
         }, {});
       } catch (err: any) {
         const msg = err?.message || '';
-        if (msg.includes('ER_NO_SUCH_TABLE') || msg.includes('ER_BAD_FIELD_ERROR')) {
+        const code = err?.code || '';
+        if (code === 'ER_NO_SUCH_TABLE' || code === 'ER_BAD_FIELD_ERROR' || msg.includes('ER_NO_SUCH_TABLE') || msg.includes('ER_BAD_FIELD_ERROR')) {
           addOnsByPackage = {};
         } else {
           throw err;
