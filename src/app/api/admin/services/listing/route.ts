@@ -369,6 +369,16 @@ export async function GET(request: NextRequest) {
   // --- Build response ---
   const totalPages = Math.ceil(total / limit) || 1;
 
+  // Compute global active services count (not limited to current page)
+  let activeServicesTotal = 0;
+  try {
+    const activeRows = await query('SELECT COUNT(*) AS cnt FROM service_packages WHERE COALESCE(is_active,1) = 1') as any[];
+    activeServicesTotal = activeRows[0]?.cnt ? Number(activeRows[0].cnt) : 0;
+  } catch {
+    // Fallback to count from this page if query fails
+    activeServicesTotal = services.filter(s => s.status === 'active').length;
+  }
+
   // Get total bookings count across all service packages
   let totalBookings = 0;
   try {
@@ -430,9 +440,9 @@ export async function GET(request: NextRequest) {
     formattedTotalRevenue: formattedTotalRev,
     monthlyRevenue: monthlyRev,
     serviceProvidersCount: verifiedCenters,
-    activeServicesCount: services.filter(s => s.status === 'active').length,
+    activeServicesCount: activeServicesTotal,
     stats: {
-      activeServices: services.filter(s => s.status === 'active').length,
+      activeServices: activeServicesTotal,
       totalBookings: totalBookings,
       verifiedCenters: verifiedCenters,
       monthlyRevenue: monthlyRev,

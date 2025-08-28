@@ -1338,6 +1338,7 @@ const PackageModal: React.FC<PackageModalProps> = ({
                         title="Drag to reorder"
                       >
                         <div className="flex items-center gap-3">
+                          <CheckIcon className="h-5 w-5 text-amber-600 flex-shrink-0" />
                           {addOn.image ? (
                             <NextImage src={addOn.image} alt="addon" width={48} height={48} className="h-12 w-12 rounded object-cover border" unoptimized />
                           ) : (

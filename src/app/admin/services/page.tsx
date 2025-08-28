@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import AdminDashboardLayout from '@/components/navigation/AdminDashboardLayout';
+import Image from 'next/image';
 import {
   MagnifyingGlassIcon,
   XMarkIcon,
@@ -853,7 +854,7 @@ function ServiceDetailsModal({
                         const image = typeof item === 'string' ? undefined : item.image;
                         return (
                           <li key={idx} className="flex items-center gap-3 text-sm text-gray-700">
-                            {image && <img src={image} alt="inc" className="h-12 w-12 rounded object-cover border" />}
+                            {image && <Image src={image} alt="inc" width={48} height={48} className="h-12 w-12 rounded object-cover border" unoptimized />}
                             <span>{desc}</span>
                           </li>
                         );
@@ -877,7 +878,7 @@ function ServiceDetailsModal({
                         const image = typeof item === 'string' ? undefined : item.image;
                         return (
                           <li key={idx} className="flex items-center gap-3 text-sm text-gray-700">
-                            {image && <img src={image} alt="addon" className="h-12 w-12 rounded object-cover border" />}
+                            {image && <Image src={image} alt="addon" width={48} height={48} className="h-12 w-12 rounded object-cover border" unoptimized />}
                             <span>{name}{price ? ` (+₱${Number(price).toLocaleString()})` : ''}</span>
                           </li>
                         );
