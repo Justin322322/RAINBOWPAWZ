@@ -307,7 +307,7 @@ async function notifyUserOfAppealUpdate(
         break;
       case 'rejected':
         title = 'Appeal Rejected';
-        message = 'Unfortunately, your appeal has been rejected. ' + (adminResponse || 'Please contact support for more information.');
+        message = 'Unfortunately, your appeal has been rejected. ' + (adminResponse || 'Please review the response and consider submitting a new appeal.');
         emailTemplate = createAppealStatusEmail({
           userName: `${appeal.first_name} ${appeal.last_name}`,
           status: 'rejected',
@@ -346,7 +346,7 @@ async function notifyUserOfAppealUpdate(
     if ((newStatus === 'approved' || newStatus === 'rejected') && appeal.phone && (appeal.sms_notifications === 1 || appeal.sms_notifications === true)) {
       const smsMessage = newStatus === 'approved'
         ? `🎉 Great news! Your appeal has been approved and your account access has been restored. You can now log in to RainbowPaws.`
-        : `❌ Your appeal has been reviewed and unfortunately was not approved. ${adminResponse ? 'Reason: ' + adminResponse.substring(0, 80) + '...' : 'Please contact support for more information.'}`;
+        : `❌ Your appeal has been reviewed and unfortunately was not approved. ${adminResponse ? 'Reason: ' + adminResponse.substring(0, 80) + '...' : 'Please review the response and consider submitting a new appeal.'}`;
 
       await sendSMS({
         to: appeal.phone,
@@ -455,21 +455,15 @@ function createAppealStatusEmail({
           ` : status === 'rejected' ? `
           <p><strong>What can you do?</strong></p>
           <ul>
-            <li>Contact our support team for clarification</li>
             <li>Review our terms of service and community guidelines</li>
             <li>You may submit a new appeal after addressing the concerns</li>
           </ul>
-
-          <a href="mailto:support@rainbowpaws.com" class="button">
-            Contact Support
-          </a>
           ` : `
           <p>We appreciate your patience while we review your appeal. You will receive another notification once a decision has been made.</p>
           `}
         </div>
         <div class="footer">
           <p>This is an automated notification from RainbowPaws</p>
-          <p>If you have questions, please contact our support team</p>
         </div>
       </div>
     </body>

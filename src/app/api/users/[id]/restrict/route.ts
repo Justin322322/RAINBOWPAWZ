@@ -301,13 +301,12 @@ function createRestrictionNotificationEmail({
 
         <a href="${process.env.NEXT_PUBLIC_BASE_URL}/appeals" class="button">Submit Appeal</a>
 
-        <p><strong>Important:</strong> While your account is restricted, you will not be able to access most features of RainbowPaws. However, you can still submit appeals and contact our support team.</p>
+                 <p><strong>Important:</strong> While your account is restricted, you will not be able to access most features of RainbowPaws. However, you can still submit appeals to request a review.</p>
 
         <p>We take these matters seriously and appreciate your understanding as we work to maintain a safe and respectful community for all users.</p>
       </div>
       <div class="footer">
         <p>This is an automated notification from RainbowPaws</p>
-        <p>If you have questions, please contact our support team at support@rainbowpaws.com</p>
       </div>
     </body>
     </html>
