@@ -871,27 +871,17 @@ const PackageModal: React.FC<PackageModalProps> = ({
       <div className="fixed inset-0 bg-black bg-opacity-50" onClick={onClose}></div>
       <div className="relative bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
         {/* Header section */}
-        <div className="bg-gradient-to-r from-[var(--primary-green)] to-emerald-600 text-white px-6 sm:px-8 py-5 sm:py-6 flex justify-between items-center rounded-t-lg shadow-lg">
+        <div className="bg-[var(--primary-green)] text-white px-6 sm:px-8 py-4 sm:py-5 flex justify-between items-center rounded-t-lg">
           <div className="flex items-center min-w-0 flex-1">
-            <div className="flex items-center gap-4">
-              <div className="flex items-center justify-center w-10 h-10 bg-white/20 rounded-xl backdrop-blur-sm">
-                <span className="text-lg font-bold">
-                  {mode === 'create' ? '✨' : '✏️'}
-                </span>
-              </div>
-              <div>
-                <h1 className="text-xl sm:text-2xl font-bold text-white">
-                  {mode === 'create' ? 'Create New Package' : 'Edit Package'}
-                </h1>
-                <p className="text-sm text-white/80 mt-1">
-                  {mode === 'create' ? 'Add a new service package to your offerings' : 'Update your existing package details'}
-                </p>
-              </div>
+            <div className="flex items-center gap-3">
+              <h1 className="text-lg sm:text-xl font-medium text-white">
+                {mode === 'create' ? 'Create New Package' : 'Edit Package'}
+              </h1>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="text-white hover:text-white/90 transition-all duration-200 flex-shrink-0 ml-2 w-10 h-10 rounded-xl hover:bg-white/20 flex items-center justify-center backdrop-blur-sm"
+            className="text-white hover:text-white/80 transition-colors duration-200 flex-shrink-0 ml-2 w-8 h-8 rounded-lg hover:bg-white/10 flex items-center justify-center"
             aria-label="Close modal"
           >
             <span className="text-xl font-light">×</span>
