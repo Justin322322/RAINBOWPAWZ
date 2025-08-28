@@ -67,15 +67,15 @@ const PackageCard = React.memo<{
     const image = typeof inclusion === 'object' && inclusion.image;
 
     return (
-      <div className="flex items-center gap-3 p-3 bg-green-50 rounded-lg hover:bg-green-100 transition-colors">
+      <div className="flex items-start gap-4 p-4 bg-slate-50 rounded-xl hover:bg-slate-100 transition-all duration-200 border border-slate-200/50">
         {image ? (
           <div className="flex-shrink-0">
-            <div className="w-12 h-12 rounded-lg overflow-hidden bg-white border border-green-200 shadow-sm">
+            <div className="w-14 h-14 rounded-xl overflow-hidden bg-white border-2 border-slate-200 shadow-sm">
               <Image
                 src={image}
                 alt={desc}
-                width={48}
-                height={48}
+                width={56}
+                height={56}
                 className="w-full h-full object-cover"
                 onError={() => {
                   // Error handling will be done by Next.js Image component
@@ -85,13 +85,16 @@ const PackageCard = React.memo<{
           </div>
         ) : (
           <div className="flex-shrink-0">
-            <div className="w-12 h-12 rounded-lg bg-green-100 flex items-center justify-center">
-              <CheckCircleIcon className="h-6 w-6 text-green-600" />
+            <div className="w-14 h-14 rounded-xl bg-slate-100 flex items-center justify-center border-2 border-slate-200">
+              <svg className="w-7 h-7 text-slate-600" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              </svg>
             </div>
           </div>
         )}
         <div className="flex-1 min-w-0">
-          <p className="text-sm text-gray-900 font-medium line-clamp-2">{desc}</p>
+          <p className="text-sm text-slate-800 font-medium leading-relaxed">{desc}</p>
+          <div className="mt-1 w-8 h-0.5 bg-slate-300 rounded-full"></div>
         </div>
       </div>
     );
@@ -104,15 +107,15 @@ const PackageCard = React.memo<{
     const image = typeof addon === 'object' && addon.image;
 
     return (
-      <div className="flex items-center gap-3 p-3 bg-amber-50 rounded-lg hover:bg-amber-100 transition-colors">
+      <div className="flex items-start gap-4 p-4 bg-stone-50 rounded-xl hover:bg-stone-100 transition-all duration-200 border border-stone-200/50">
         {image ? (
           <div className="flex-shrink-0">
-            <div className="w-12 h-12 rounded-lg overflow-hidden bg-white border border-amber-200 shadow-sm">
+            <div className="w-14 h-14 rounded-xl overflow-hidden bg-white border-2 border-stone-200 shadow-sm">
               <Image
                 src={image}
                 alt={name}
-                width={48}
-                height={48}
+                width={56}
+                height={56}
                 className="w-full h-full object-cover"
                 onError={() => {
                   // Error handling will be done by Next.js Image component
@@ -122,45 +125,50 @@ const PackageCard = React.memo<{
           </div>
         ) : (
           <div className="flex-shrink-0">
-            <div className="w-12 h-12 rounded-lg bg-amber-100 flex items-center justify-center">
-              <div className="w-6 h-6 bg-amber-400 rounded"></div>
+            <div className="w-14 h-14 rounded-xl bg-stone-100 flex items-center justify-center border-2 border-stone-200">
+              <svg className="w-7 h-7 text-stone-600" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M3 3a1 1 0 000 2v8a2 2 0 002 2h2.586l-1.293 1.293a1 1 0 101.414 1.414L10 15.414l2.293 2.293a1 1 0 001.414-1.414L12.414 15H15a2 2 0 002-2V5a1 1 0 100-2H3zm11.707 4.707a1 1 0 00-1.414-1.414L10 9.586 8.707 8.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              </svg>
             </div>
           </div>
         )}
         <div className="flex-1 min-w-0">
-          <p className="text-sm text-gray-900 font-medium line-clamp-1">{name}</p>
+          <p className="text-sm text-stone-800 font-medium leading-relaxed">{name}</p>
+          <div className="mt-1 w-8 h-0.5 bg-stone-300 rounded-full"></div>
         </div>
         <div className="flex-shrink-0">
-          <span className="text-lg font-bold text-amber-700">+₱{price.toLocaleString()}</span>
+          <div className="bg-stone-100 px-3 py-1.5 rounded-lg border border-stone-200">
+            <span className="text-sm font-semibold text-stone-700">+₱{price.toLocaleString()}</span>
+          </div>
         </div>
       </div>
     );
   };
 
   return (
-    <div className="bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-xl transition-all duration-300 group">
+    <div className="bg-white border border-slate-200 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 group">
       {/* Header with image and status */}
       <div className="relative">
         <div className="aspect-[4/3] overflow-hidden rounded-t-xl">
-          <PackageImageDisplay images={pkg.images || []} alt={pkg.name} />
+        <PackageImageDisplay images={pkg.images || []} alt={pkg.name} />
         </div>
         {/* Status badge overlay */}
         <div className="absolute top-4 right-4">
-          <div className={`inline-flex items-center px-3 py-1.5 text-xs font-semibold rounded-full shadow-sm ${
+          <div className={`inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-full shadow-sm border ${
             pkg.isActive
-              ? 'bg-green-500 text-white'
-              : 'bg-gray-500 text-white'
+              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+              : 'bg-slate-100 text-slate-600 border-slate-200'
           }`}>
             <div className={`w-2 h-2 rounded-full mr-2 ${
-              pkg.isActive ? 'bg-green-200' : 'bg-gray-200'
+              pkg.isActive ? 'bg-emerald-500' : 'bg-slate-400'
             }`}></div>
-            {pkg.isActive ? 'Active' : 'Inactive'}
+            {pkg.isActive ? 'Available' : 'Unavailable'}
           </div>
         </div>
         {/* Price overlay */}
         <div className="absolute bottom-4 left-4">
-          <div className="bg-white/95 backdrop-blur-sm px-4 py-2 rounded-lg shadow-sm">
-            <p className="text-2xl font-bold text-gray-900">₱{formatPrice(pkg.price)}</p>
+          <div className="bg-white/95 backdrop-blur-sm px-4 py-2 rounded-lg shadow-sm border border-slate-200">
+            <p className="text-xl font-serif font-semibold text-slate-800">₱{formatPrice(pkg.price)}</p>
           </div>
         </div>
       </div>
@@ -168,81 +176,87 @@ const PackageCard = React.memo<{
       {/* Content */}
       <div className="p-6">
         {/* Title and Meta */}
-        <div className="mb-4">
-          <h3 className="text-xl font-bold text-gray-900 mb-3 leading-tight">{pkg.name}</h3>
-          <div className="flex flex-wrap items-center gap-2 text-sm text-gray-600">
-            <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full font-medium">{pkg.category}</span>
-            <span className="text-gray-400">•</span>
+        <div className="mb-5">
+          <h3 className="text-xl font-serif font-bold text-slate-900 mb-3 leading-tight">{pkg.name}</h3>
+          <div className="flex flex-wrap items-center gap-2 text-sm text-slate-600">
+            <span className="px-3 py-1 bg-slate-100 text-slate-700 rounded-full font-medium border border-slate-200">{pkg.category}</span>
+            <span className="text-slate-400">•</span>
             <span>{pkg.cremationType}</span>
-            <span className="text-gray-400">•</span>
+            <span className="text-slate-400">•</span>
             <span>{pkg.processingTime}</span>
           </div>
         </div>
 
         {/* Description */}
-        <p className="text-sm text-gray-700 mb-6 leading-relaxed line-clamp-3">{pkg.description}</p>
+        <p className="text-sm text-slate-700 mb-8 leading-relaxed line-clamp-3 font-medium">{pkg.description}</p>
 
         {/* Inclusions */}
         {inclusions.length > 0 && (
-          <div className="mb-6">
-            <div className="flex items-center justify-between mb-4">
-              <h4 className="text-base font-semibold text-gray-900">What&apos;s included</h4>
-              <span className="text-xs text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
-                {inclusions.length} item{inclusions.length !== 1 ? 's' : ''}
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-5">
+              <div className="flex items-center gap-3">
+                <div className="w-1 h-6 bg-slate-400 rounded-full"></div>
+                <h4 className="text-base font-serif font-semibold text-slate-800">Memorial Services Included</h4>
+              </div>
+              <span className="text-xs text-slate-600 bg-slate-100 px-3 py-1.5 rounded-full border border-slate-200">
+                {inclusions.length} service{inclusions.length !== 1 ? 's' : ''}
               </span>
             </div>
-            <div className="space-y-3">
+            <div className="space-y-4">
               {inclusions.slice(0, 3).map((inclusion, idx) => (
                 <InclusionItem key={idx} inclusion={inclusion} />
               ))}
             </div>
             {inclusions.length > 3 && (
-              <div className="mt-4 text-center">
-                <span className="text-xs text-gray-500 bg-gray-100 px-4 py-2 rounded-full">
-                  +{inclusions.length - 3} more items
+              <div className="mt-5 text-center">
+                <span className="text-xs text-slate-600 bg-slate-100 px-4 py-2 rounded-full border border-slate-200 hover:bg-slate-200 transition-colors cursor-pointer">
+                  +{inclusions.length - 3} additional services
                 </span>
               </div>
             )}
-          </div>
+        </div>
         )}
 
         {/* Add-ons */}
         {addOns.length > 0 && (
-          <div className="mb-6">
-            <div className="flex items-center justify-between mb-4">
-              <h4 className="text-base font-semibold text-gray-900">Available add-ons</h4>
-              <span className="text-xs text-gray-500 bg-amber-100 px-3 py-1 rounded-full">
-                {addOns.length} add-on{addOns.length !== 1 ? 's' : ''}
-              </span>
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-5">
+              <div className="flex items-center gap-3">
+                <div className="w-1 h-6 bg-stone-400 rounded-full"></div>
+                <h4 className="text-base font-serif font-semibold text-stone-800">Personalized Memorial Options</h4>
             </div>
-            <div className="space-y-3">
+              <span className="text-xs text-stone-600 bg-stone-100 px-3 py-1.5 rounded-full border border-stone-200">
+                {addOns.length} option{addOns.length !== 1 ? 's' : ''}
+              </span>
+          </div>
+            <div className="space-y-4">
               {addOns.slice(0, 2).map((addon, idx) => (
                 <AddOnItem key={idx} addon={addon} />
               ))}
             </div>
             {addOns.length > 2 && (
-              <div className="mt-4 text-center">
-                <span className="text-xs text-gray-500 bg-amber-100 px-4 py-2 rounded-full">
-                  +{addOns.length - 2} more add-ons
+              <div className="mt-5 text-center">
+                <span className="text-xs text-stone-600 bg-stone-100 px-4 py-2 rounded-full border border-stone-200 hover:bg-stone-200 transition-colors cursor-pointer">
+                  +{addOns.length - 2} additional options
                 </span>
-              </div>
-            )}
           </div>
+            )}
+        </div>
         )}
 
         {/* Action buttons */}
-        <div className="space-y-3">
+        <div className="space-y-4 pt-2 border-t border-slate-100">
           <div className="grid grid-cols-2 gap-3">
             <button
               onClick={handleEdit}
-              className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 shadow-sm"
+              className="inline-flex items-center justify-center px-4 py-2.5 text-sm font-medium text-slate-700 bg-slate-50 border border-slate-200 rounded-lg hover:bg-slate-100 hover:border-slate-300 focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 transition-all duration-200"
             >
               <PencilIcon className="h-4 w-4 mr-1" />
               Edit
             </button>
             <button
               onClick={handleDelete}
-              className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-lg hover:bg-red-700 focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-all duration-200 shadow-sm"
+              className="inline-flex items-center justify-center px-4 py-2.5 text-sm font-medium text-slate-700 bg-slate-50 border border-slate-200 rounded-lg hover:bg-red-50 hover:border-red-300 hover:text-red-700 focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-all duration-200"
             >
               <TrashIcon className="h-4 w-4 mr-1" />
               Delete
@@ -252,10 +266,10 @@ const PackageCard = React.memo<{
           <button
             onClick={handleToggleActive}
             disabled={toggleLoading === pkg.id}
-            className={`w-full inline-flex items-center justify-center px-4 py-3 text-sm font-medium border border-transparent rounded-lg focus:ring-2 focus:ring-offset-2 transition-all duration-200 shadow-sm ${
+            className={`w-full inline-flex items-center justify-center px-4 py-3 text-sm font-medium border rounded-lg focus:ring-2 focus:ring-offset-2 transition-all duration-200 ${
               pkg.isActive
-                ? 'text-orange-700 bg-orange-100 hover:bg-orange-200 focus:ring-orange-500'
-                : 'text-white bg-green-600 hover:bg-green-700 focus:ring-green-500'
+                ? 'text-slate-700 bg-slate-50 border-slate-200 hover:bg-slate-100 hover:border-slate-300 focus:ring-slate-500'
+                : 'text-white bg-slate-600 border-slate-600 hover:bg-slate-700 focus:ring-slate-500'
             }`}
           >
             {toggleLoading === pkg.id ? (
@@ -265,7 +279,7 @@ const PackageCard = React.memo<{
             ) : (
               <CheckCircleIcon className="h-4 w-4 mr-2" />
             )}
-            {pkg.isActive ? 'Deactivate' : 'Activate'}
+            {pkg.isActive ? 'Make Unavailable' : 'Make Available'}
           </button>
         </div>
       </div>
