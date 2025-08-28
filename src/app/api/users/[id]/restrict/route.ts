@@ -230,7 +230,7 @@ async function notifyUserOfRestriction(user: any, reason: string, duration?: str
           message,
           type: 'error',
           is_read: 0,
-          link: '/appeals',
+          link: null,
           created_at: new Date().toISOString()
         });
       }

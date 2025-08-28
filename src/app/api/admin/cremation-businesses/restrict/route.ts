@@ -461,7 +461,7 @@ async function notifyUserOfRestoration(userId: number, businessId: number) {
           message,
           type: 'success',
           is_read: 0,
-          link: '/dashboard',
+          link: null,
           created_at: new Date().toISOString()
         });
       } catch {}
