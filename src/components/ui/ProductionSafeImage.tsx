@@ -118,7 +118,7 @@ export const ProductionSafeImage: React.FC<ProductionSafeImageProps> = ({
       src={finalSrc}
       alt={alt}
       fill
-      className={`${className} ${loaded ? 'opacity-100' : 'opacity-0'} transition-opacity duration-300`}
+      className={`${className} ${loaded ? 'opacity-100' : 'opacity-70'} transition-opacity duration-300`}
       onError={handleError}
       onLoad={() => setLoaded(true)}
       priority={priority}
@@ -130,7 +130,7 @@ export const ProductionSafeImage: React.FC<ProductionSafeImageProps> = ({
       alt={alt}
       width={width || 400}
       height={height || 300}
-      className={`${className} ${loaded ? 'opacity-100' : 'opacity-0'} transition-opacity duration-300`}
+      className={`${className} ${loaded ? 'opacity-100' : 'opacity-70'} transition-opacity duration-300`}
       onError={handleError}
       onLoad={() => setLoaded(true)}
       priority={priority}

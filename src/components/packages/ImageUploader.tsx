@@ -44,7 +44,7 @@ const ImageUploaderComponent: React.FC<ImageUploaderProps> = ({
                   console.log(`Removing image at index ${i}:`, img);
                   onRemove(i);
                 }}
-                className="absolute top-2 right-2 bg-white p-2 rounded-2xl shadow-md hover:bg-red-50 transition-colors"
+                className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm p-2 rounded-lg shadow-md hover:bg-gray-100 transition-all duration-200 border border-white/20"
                 title="Remove image"
               >
                 <span className="text-red-500 font-bold text-sm">×</span>
