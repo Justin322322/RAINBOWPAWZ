@@ -294,32 +294,118 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      // Insert inclusions
+      // Insert inclusions (support optional images)
       if (Array.isArray(inclusions) && inclusions.length > 0) {
         for (const inc of inclusions) {
-          if (inc && typeof inc === 'string' && inc.trim()) {
+          if (!inc) continue;
+          if (typeof inc === 'string' && inc.trim()) {
             await transaction.query(
               'INSERT INTO package_inclusions (package_id, description) VALUES (?, ?)',
               [packageId, inc.trim()]
             );
+          } else if (typeof inc === 'object' && typeof inc.description === 'string' && inc.description.trim()) {
+            const desc = inc.description.trim();
+            const img: string | undefined = inc.image;
+            if (img && img.startsWith('data:image/')) {
+              try {
+                await transaction.query(
+                  'INSERT INTO package_inclusions (package_id, description, image_path, image_data) VALUES (?, ?, ?, ?)',
+                  [packageId, desc, `inc_${packageId}_${Date.now()}.jpg`, img]
+                );
+              } catch {
+                // Fallback for schemas without image columns
+                await transaction.query(
+                  'INSERT INTO package_inclusions (package_id, description) VALUES (?, ?)',
+                  [packageId, desc]
+                );
+              }
+            } else if (img && typeof img === 'string') {
+              try {
+                await transaction.query(
+                  'INSERT INTO package_inclusions (package_id, description, image_path) VALUES (?, ?, ?)',
+                  [packageId, desc, img]
+                );
+              } catch {
+                await transaction.query(
+                  'INSERT INTO package_inclusions (package_id, description) VALUES (?, ?)',
+                  [packageId, desc]
+                );
+              }
+            } else {
+              await transaction.query(
+                'INSERT INTO package_inclusions (package_id, description) VALUES (?, ?)',
+                [packageId, desc]
+              );
+            }
           }
         }
       }
 
-      // Insert add-ons
+      // Insert add-ons (support optional images)
       if (Array.isArray(addOns) && addOns.length > 0) {
         for (const addon of addOns) {
-          if (addon && addon.name && addon.name.trim()) {
+          if (!addon || !addon.name || !addon.name.trim()) continue;
+          const name = addon.name.trim();
+          const priceVal = Number(addon.price) || 0;
+          const img: string | undefined = (addon as any).image;
+          if (img && img.startsWith('data:image/')) {
+            try {
+              await transaction.query(
+                'INSERT INTO package_addons (package_id, description, price, image_path, image_data) VALUES (?, ?, ?, ?, ?)',
+                [packageId, name, priceVal, `addon_${packageId}_${Date.now()}.jpg`, img]
+              );
+            } catch {
+              // Fallback for schemas without image columns
+              try {
+                await transaction.query(
+                  'INSERT INTO package_addons (package_id, description, price) VALUES (?, ?, ?)',
+                  [packageId, name, priceVal]
+                );
+              } catch (e2: any) {
+                if (e2?.message?.includes('ER_BAD_FIELD_ERROR')) {
+                  await transaction.query(
+                    'INSERT INTO package_addons (package_id, description) VALUES (?, ?)',
+                    [packageId, name]
+                  );
+                } else {
+                  throw e2;
+                }
+              }
+            }
+          } else if (img && typeof img === 'string') {
+            try {
+              await transaction.query(
+                'INSERT INTO package_addons (package_id, description, price, image_path) VALUES (?, ?, ?, ?)',
+                [packageId, name, priceVal, img]
+              );
+            } catch {
+              try {
+                await transaction.query(
+                  'INSERT INTO package_addons (package_id, description, price) VALUES (?, ?, ?)',
+                  [packageId, name, priceVal]
+                );
+              } catch (e2: any) {
+                if (e2?.message?.includes('ER_BAD_FIELD_ERROR')) {
+                  await transaction.query(
+                    'INSERT INTO package_addons (package_id, description) VALUES (?, ?)',
+                    [packageId, name]
+                  );
+                } else {
+                  throw e2;
+                }
+              }
+            }
+          } else {
             try {
               await transaction.query(
                 'INSERT INTO package_addons (package_id, description, price) VALUES (?, ?, ?)',
-                [packageId, addon.name.trim(), Number(addon.price) || 0]
+                [packageId, name, priceVal]
               );
             } catch (e: any) {
               if (e?.message?.includes('ER_BAD_FIELD_ERROR')) {
                 await transaction.query(
                   'INSERT INTO package_addons (package_id, description) VALUES (?, ?)',
-                  [packageId, addon.name.trim()]
+                  [packageId, name]
                 );
               } else {
                 throw e;

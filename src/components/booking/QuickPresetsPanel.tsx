@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Image from 'next/image';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { ExclamationCircleIcon, ClockIcon, CalendarIcon, TrashIcon } from '@heroicons/react/24/outline';
 
@@ -9,6 +10,7 @@ interface QuickSetupPackage {
   id: number;
   name: string;
   price?: number;
+  images?: string[];
 }
 
 interface QuickPresetsPanelProps {
@@ -111,7 +113,7 @@ export default function QuickPresetsPanel(props: QuickPresetsPanelProps) {
         ) : availablePackages.length > 0 ? (
           <div className="max-h-32 overflow-y-auto border border-blue-200 rounded-md p-2 bg-white">
             {availablePackages.map((pkg: QuickSetupPackage) => (
-              <div key={pkg.id} className="flex items-center py-1">
+              <div key={pkg.id} className="flex items-center py-1 gap-2">
                 <input
                   type="checkbox"
                   id={`quick-setup-package-${pkg.id}`}
@@ -125,8 +127,11 @@ export default function QuickPresetsPanel(props: QuickPresetsPanelProps) {
                   }}
                   className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                 />
-                <label htmlFor={`quick-setup-package-${pkg.id}`} className="ml-2 text-sm text-gray-700">
-                  {pkg.name} (₱{pkg.price?.toLocaleString()})
+                {pkg.images && pkg.images.length > 0 && (
+                  <Image src={pkg.images[0]} alt="pkg" width={20} height={20} className="h-5 w-5 rounded object-cover border" unoptimized />
+                )}
+                <label htmlFor={`quick-setup-package-${pkg.id}`} className="text-sm text-gray-700 truncate">
+                  {pkg.name} {typeof pkg.price === 'number' ? `(₱${pkg.price.toLocaleString()})` : ''}
                 </label>
               </div>
             ))}

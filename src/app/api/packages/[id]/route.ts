@@ -38,15 +38,33 @@ export async function GET(
     }
 
     const pkg = rows[0];
-    const inclusions = (await query(
-      `SELECT description FROM package_inclusions WHERE package_id = ?`,
-      [packageId]
-    )) as any[];
+    // Inclusions with optional image columns (graceful if columns missing)
+    let inclusions: any[] = [];
+    try {
+      inclusions = (await query(
+        `SELECT description, image_path, image_data FROM package_inclusions WHERE package_id = ?`,
+        [packageId]
+      )) as any[];
+    } catch {
+      inclusions = (await query(
+        `SELECT description FROM package_inclusions WHERE package_id = ?`,
+        [packageId]
+      )) as any[];
+    }
 
-    const addOns = (await query(
-      `SELECT addon_id as id, description, price FROM package_addons WHERE package_id = ?`,
-      [packageId]
-    )) as any[];
+    // Add-ons with optional image columns (graceful if columns missing)
+    let addOns: any[] = [];
+    try {
+      addOns = (await query(
+        `SELECT addon_id as id, description, price, image_path, image_data FROM package_addons WHERE package_id = ?`,
+        [packageId]
+      )) as any[];
+    } catch {
+      addOns = (await query(
+        `SELECT addon_id as id, description, price FROM package_addons WHERE package_id = ?`,
+        [packageId]
+      )) as any[];
+    }
 
     const images = (await query(
       `SELECT image_path, image_data FROM package_images WHERE package_id = ? ORDER BY display_order`,
@@ -83,8 +101,32 @@ export async function GET(
         isActive: Boolean(pkg.is_active),
         providerId: Number(pkg.provider_id),
         providerName: pkg.providerName,
-        inclusions: inclusions.map((i) => i.description),
-        addOns: addOns.map((a) => ({ id: a.id, name: a.description, price: Number(a.price) })),
+        inclusions: inclusions.map((i) => {
+          if (i.image_data && typeof i.image_data === 'string' && i.image_data.startsWith('data:image/')) {
+            return { description: i.description, image: i.image_data };
+          }
+          if (i.image_path && typeof i.image_path === 'string') {
+            const path = i.image_path as string;
+            if (path.startsWith('/api/image/')) return { description: i.description, image: path };
+            if (path.startsWith('/uploads/')) return { description: i.description, image: `/api/image/${path.substring('/uploads/'.length)}` };
+            if (path.startsWith('uploads/')) return { description: i.description, image: `/api/image/${path.substring('uploads/'.length)}` };
+            return { description: i.description, image: path };
+          }
+          return i.description;
+        }),
+        addOns: addOns.map((a) => {
+          let image: string | undefined;
+          const path = a.image_path as string | undefined;
+          const data = a.image_data as string | undefined;
+          if (data && data.startsWith('data:image/')) image = data;
+          else if (path) {
+            if (path.startsWith('/api/image/')) image = path;
+            else if (path.startsWith('/uploads/')) image = `/api/image/${path.substring('/uploads/'.length)}`;
+            else if (path.startsWith('uploads/')) image = `/api/image/${path.substring('uploads/'.length)}`;
+            else image = path;
+          }
+          return { id: a.id, name: a.description, price: Number(a.price), ...(image ? { image } : {}) };
+        }),
         images: images
           .map((i) => {
             // If we have base64 image data, use it directly
@@ -313,14 +355,48 @@ export async function PATCH(
           [packageId]
         );
 
-        // insert new inclusions
+        // insert new inclusions (support optional images)
         if (body.inclusions && Array.isArray(body.inclusions)) {
           for (const inc of body.inclusions) {
-            if (inc && inc.trim()) {
+            if (!inc) continue;
+            if (typeof inc === 'string' && inc.trim()) {
               await transaction.query(
                 'INSERT INTO package_inclusions (package_id, description) VALUES (?, ?)',
                 [packageId, inc.trim()]
               );
+            } else if (typeof inc === 'object' && typeof inc.description === 'string' && inc.description.trim()) {
+              const desc = inc.description.trim();
+              const img: string | undefined = inc.image;
+              if (img && img.startsWith('data:image/')) {
+                try {
+                  await transaction.query(
+                    'INSERT INTO package_inclusions (package_id, description, image_path, image_data) VALUES (?, ?, ?, ?)',
+                    [packageId, desc, `inc_${packageId}_${Date.now()}.jpg`, img]
+                  );
+                } catch {
+                  await transaction.query(
+                    'INSERT INTO package_inclusions (package_id, description) VALUES (?, ?)',
+                    [packageId, desc]
+                  );
+                }
+              } else if (img && typeof img === 'string') {
+                try {
+                  await transaction.query(
+                    'INSERT INTO package_inclusions (package_id, description, image_path) VALUES (?, ?, ?)',
+                    [packageId, desc, img]
+                  );
+                } catch {
+                  await transaction.query(
+                    'INSERT INTO package_inclusions (package_id, description) VALUES (?, ?)',
+                    [packageId, desc]
+                  );
+                }
+              } else {
+                await transaction.query(
+                  'INSERT INTO package_inclusions (package_id, description) VALUES (?, ?)',
+                  [packageId, desc]
+                );
+              }
             }
           }
         }
@@ -331,13 +407,41 @@ export async function PATCH(
           [packageId]
         );
 
-        // insert new add-ons
+        // insert new add-ons (support optional images)
         if (body.addOns && Array.isArray(body.addOns)) {
           for (const addon of body.addOns) {
-            if (addon && addon.name && addon.name.trim()) {
+            if (!addon || !addon.name || !addon.name.trim()) continue;
+            const name = addon.name.trim();
+            const priceVal = Number(addon.price) || 0;
+            const img: string | undefined = (addon as any).image;
+            if (img && img.startsWith('data:image/')) {
+              try {
+                await transaction.query(
+                  'INSERT INTO package_addons (package_id, description, price, image_path, image_data) VALUES (?, ?, ?, ?, ?)',
+                  [packageId, name, priceVal, `addon_${packageId}_${Date.now()}.jpg`, img]
+                );
+              } catch {
+                await transaction.query(
+                  'INSERT INTO package_addons (package_id, description, price) VALUES (?, ?, ?)',
+                  [packageId, name, priceVal]
+                );
+              }
+            } else if (img && typeof img === 'string') {
+              try {
+                await transaction.query(
+                  'INSERT INTO package_addons (package_id, description, price, image_path) VALUES (?, ?, ?, ?)',
+                  [packageId, name, priceVal, img]
+                );
+              } catch {
+                await transaction.query(
+                  'INSERT INTO package_addons (package_id, description, price) VALUES (?, ?, ?)',
+                  [packageId, name, priceVal]
+                );
+              }
+            } else {
               await transaction.query(
                 'INSERT INTO package_addons (package_id, description, price) VALUES (?, ?, ?)',
-                [packageId, addon.name.trim(), Number(addon.price) || 0]
+                [packageId, name, priceVal]
               );
             }
           }

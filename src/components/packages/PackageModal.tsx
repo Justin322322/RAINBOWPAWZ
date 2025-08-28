@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useState, useCallback, useRef, useEffect } from 'react';
+import NextImage from 'next/image';
+import { PackageImage } from './PackageImage';
 import useDebounce from '@/hooks/useDebounce';
 import { XMarkIcon, ExclamationTriangleIcon, PlusIcon, CheckIcon } from '@heroicons/react/24/outline';
 import { ImageUploader } from '@/components/packages/ImageUploader';
@@ -8,9 +10,15 @@ import { useToast } from '@/context/ToastContext';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // Types
+interface InclusionItem {
+  description: string;
+  image?: string;
+}
+
 interface AddOn {
   name: string;
   price: number;
+  image?: string;
 }
 
 interface PackageFormData {
@@ -23,7 +31,7 @@ interface PackageFormData {
   pricingMode: 'fixed' | 'by_size';
   overageFeePerKg: number;
   deliveryFeePerKm: number;
-  inclusions: string[];
+  inclusions: InclusionItem[];
   addOns: AddOn[];
   conditions: string;
   images: string[];
@@ -102,6 +110,12 @@ const PackageModal: React.FC<PackageModalProps> = ({
   const [newInclusion, setNewInclusion] = useState('');
   const [newAddOn, setNewAddOn] = useState('');
   const [newAddOnPrice, setNewAddOnPrice] = useState<string>('');
+  const [inclusionUploadIndex, setInclusionUploadIndex] = useState<number | null>(null);
+  const [addonUploadIndex, setAddonUploadIndex] = useState<number | null>(null);
+  const inclusionFileInputRef = useRef<HTMLInputElement | null>(null);
+  const addonFileInputRef = useRef<HTMLInputElement | null>(null);
+  const [dragInclusionIndex, setDragInclusionIndex] = useState<number | null>(null);
+  const [dragAddonIndex, setDragAddonIndex] = useState<number | null>(null);
   // Add-on suggestions
   const [addOnSuggestions, setAddOnSuggestions] = useState<Array<{ name: string; price: number }>>([]);
   const [isLoadingAddOnSuggestions, setIsLoadingAddOnSuggestions] = useState(false);
@@ -314,8 +328,12 @@ const PackageModal: React.FC<PackageModalProps> = ({
         pricingMode: pkg.pricingMode || (pkg.hasSizePricing ? 'by_size' : 'fixed'),
         overageFeePerKg: pkg.overageFeePerKg || 0,
         deliveryFeePerKm: pkg.deliveryFeePerKm || 0,
-        inclusions: pkg.inclusions || [],
-        addOns: pkg.addOns || [],
+        inclusions: Array.isArray(pkg.inclusions)
+          ? pkg.inclusions.map((inc: any) => typeof inc === 'string' ? ({ description: inc }) : ({ description: inc.description, image: inc.image }))
+          : [],
+        addOns: Array.isArray(pkg.addOns)
+          ? pkg.addOns.map((a: any) => ({ name: typeof a === 'string' ? a : a.name, price: typeof a === 'string' ? 0 : Number(a.price) || 0, image: typeof a === 'string' ? undefined : a.image }))
+          : [],
         conditions: pkg.conditions || '',
         images: processedImages,
         packageId: pkg.id,
@@ -445,14 +463,14 @@ const PackageModal: React.FC<PackageModalProps> = ({
     }
     
     // Check for duplicate inclusions
-    if (formData.inclusions.some(inclusion => inclusion.toLowerCase() === newInclusion.trim().toLowerCase())) {
+    if (formData.inclusions.some(inclusion => inclusion.description.toLowerCase() === newInclusion.trim().toLowerCase())) {
       showToast('This inclusion already exists', 'error');
       return;
     }
     
     setFormData(prev => ({
       ...prev,
-      inclusions: [...prev.inclusions, newInclusion.trim()]
+      inclusions: [...prev.inclusions, { description: newInclusion.trim() }]
     }));
     setNewInclusion('');
     // Clear inclusion validation error if it exists
@@ -479,6 +497,64 @@ const PackageModal: React.FC<PackageModalProps> = ({
     setForceRender(prev => prev + 1); // Force re-render
     showToast('Inclusion removed', 'success');
   }, [showToast]);
+
+  // Helpers to convert file to base64
+  const readFileToDataUrl = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const cropToSquareDataUrl = async (dataUrl: string, size = 256): Promise<string> => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const minSide = Math.min(img.width, img.height);
+        const sx = (img.width - minSide) / 2;
+        const sy = (img.height - minSide) / 2;
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return resolve(dataUrl);
+        ctx.drawImage(img, sx, sy, minSide, minSide, 0, 0, size, size);
+        resolve(canvas.toDataURL('image/jpeg', 0.9));
+      };
+      img.onerror = () => resolve(dataUrl);
+      img.src = dataUrl;
+    });
+  };
+
+  const handleUploadInclusionImage = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0 || inclusionUploadIndex == null) return;
+    const file = files[0];
+    if (!file.type.startsWith('image/')) {
+      showToast('Please select a valid image', 'error');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      showToast('Image size must be less than 5MB', 'error');
+      return;
+    }
+    try {
+      const rawDataUrl = await readFileToDataUrl(file);
+      const dataUrl = await cropToSquareDataUrl(rawDataUrl, 256);
+      setFormData(prev => {
+        const next = [...prev.inclusions];
+        const cur = next[inclusionUploadIndex];
+        next[inclusionUploadIndex] = { ...cur, image: dataUrl };
+        return { ...prev, inclusions: next };
+      });
+      showToast('Inclusion image added', 'success');
+    } finally {
+      if (inclusionFileInputRef.current) inclusionFileInputRef.current.value = '';
+      setInclusionUploadIndex(null);
+    }
+  }, [inclusionUploadIndex, showToast]);
 
   const handleAddAddOn = useCallback(() => {
     if (!newAddOn.trim()) {
@@ -524,6 +600,34 @@ const PackageModal: React.FC<PackageModalProps> = ({
     setForceRender(prev => prev + 1); // Force re-render
     showToast('Add-on removed', 'success');
   }, [showToast]);
+
+  const handleUploadAddonImage = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0 || addonUploadIndex == null) return;
+    const file = files[0];
+    if (!file.type.startsWith('image/')) {
+      showToast('Please select a valid image', 'error');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      showToast('Image size must be less than 5MB', 'error');
+      return;
+    }
+    try {
+      const rawDataUrl = await readFileToDataUrl(file);
+      const dataUrl = await cropToSquareDataUrl(rawDataUrl, 256);
+      setFormData(prev => {
+        const next = [...prev.addOns];
+        const cur = next[addonUploadIndex];
+        next[addonUploadIndex] = { ...cur, image: dataUrl };
+        return { ...prev, addOns: next };
+      });
+      showToast('Add-on image added', 'success');
+    } finally {
+      if (addonFileInputRef.current) addonFileInputRef.current.value = '';
+      setAddonUploadIndex(null);
+    }
+  }, [addonUploadIndex, showToast]);
 
   const _handleTogglePetType = useCallback((petType: string) => {
     setFormData(prev => {
@@ -1083,15 +1187,43 @@ const PackageModal: React.FC<PackageModalProps> = ({
                   </div>
                   <div className="space-y-2 mt-3">
                     {formData.inclusions.map((inclusion, index) => (
-                      <div key={`inclusion-${inclusion.replace(/\s+/g, '-').toLowerCase()}-${index}`} className="flex items-center bg-gray-50 px-3 py-2 rounded-md">
-                        <CheckIcon className="h-5 w-5 text-green-500 mr-2 flex-shrink-0" />
-                        <span className="flex-grow text-sm break-words">{inclusion}</span>
+                      <div
+                        key={`inclusion-${inclusion.description.replace(/\s+/g, '-').toLowerCase()}-${index}`}
+                        className="flex items-center bg-gray-50 px-3 py-2 rounded-md gap-3"
+                        draggable
+                        onDragStart={() => setDragInclusionIndex(index)}
+                        onDragOver={(e) => { e.preventDefault(); }}
+                        onDrop={() => {
+                          if (dragInclusionIndex == null || dragInclusionIndex === index) return;
+                          setFormData(prev => {
+                            const next = [...prev.inclusions];
+                            const [moved] = next.splice(dragInclusionIndex, 1);
+                            next.splice(index, 0, moved);
+                            return { ...prev, inclusions: next };
+                          });
+                          setDragInclusionIndex(null);
+                        }}
+                        title="Drag to reorder"
+                      >
+                        <CheckIcon className="h-5 w-5 text-green-500 flex-shrink-0" />
+                        {inclusion.image ? (
+                          <NextImage src={inclusion.image} alt="inclusion" width={32} height={32} className="h-8 w-8 rounded object-cover border" unoptimized />
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => { setInclusionUploadIndex(index); inclusionFileInputRef.current?.click(); }}
+                            className="text-xs px-2 py-1 border rounded text-gray-600 hover:bg-gray-100"
+                          >
+                            Add image
+                          </button>
+                        )}
+                        <span className="flex-grow text-sm break-words">{inclusion.description}</span>
                         <button
                           type="button"
                           onClick={() => handleRemoveInclusion(index)}
                           className="text-gray-400 hover:text-red-500 flex-shrink-0 ml-2 p-1 rounded transition-colors hover:bg-red-50"
                           title="Remove inclusion"
-                          aria-label={`Remove inclusion: ${inclusion}`}
+                          aria-label={`Remove inclusion: ${inclusion.description}`}
                         >
                           <XMarkIcon className="h-4 w-4" />
                         </button>
@@ -1101,6 +1233,7 @@ const PackageModal: React.FC<PackageModalProps> = ({
                       <p className="text-sm text-gray-500 italic">No inclusions added yet</p>
                     )}
                   </div>
+                  <input ref={inclusionFileInputRef} type="file" accept="image/*" className="hidden" onChange={handleUploadInclusionImage} />
                 </div>
 
                 {/* Add-ons */}
@@ -1186,8 +1319,38 @@ const PackageModal: React.FC<PackageModalProps> = ({
                   <p className="text-xs text-gray-500 mt-1">* Price is required for all add-ons</p>
                   <div className="space-y-2 mt-3">
                     {formData.addOns.map((addOn, index) => (
-                      <div key={`addon-${addOn.name.replace(/\s+/g, '-').toLowerCase()}-${addOn.price}-${index}`} className="flex items-center justify-between bg-gray-50 px-3 py-2 rounded-md">
-                        <span className="text-sm break-words">{addOn.name}</span>
+                      <div
+                        key={`addon-${addOn.name.replace(/\s+/g, '-').toLowerCase()}-${addOn.price}-${index}`}
+                        className="flex items-center justify-between bg-gray-50 px-3 py-2 rounded-md gap-3"
+                        draggable
+                        onDragStart={() => setDragAddonIndex(index)}
+                        onDragOver={(e) => { e.preventDefault(); }}
+                        onDrop={() => {
+                          if (dragAddonIndex == null || dragAddonIndex === index) return;
+                          setFormData(prev => {
+                            const next = [...prev.addOns];
+                            const [moved] = next.splice(dragAddonIndex, 1);
+                            next.splice(index, 0, moved);
+                            return { ...prev, addOns: next };
+                          });
+                          setDragAddonIndex(null);
+                        }}
+                        title="Drag to reorder"
+                      >
+                        <div className="flex items-center gap-3">
+                          {addOn.image ? (
+                            <NextImage src={addOn.image} alt="addon" width={32} height={32} className="h-8 w-8 rounded object-cover border" unoptimized />
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => { setAddonUploadIndex(index); addonFileInputRef.current?.click(); }}
+                              className="text-xs px-2 py-1 border rounded text-gray-600 hover:bg-gray-100"
+                            >
+                              Add image
+                            </button>
+                          )}
+                          <span className="text-sm break-words">{addOn.name}</span>
+                        </div>
                         <div className="flex items-center">
                           <span className="text-[var(--primary-green)] font-medium mr-3">
                             +₱{addOn.price.toLocaleString()}
@@ -1207,6 +1370,56 @@ const PackageModal: React.FC<PackageModalProps> = ({
                     {formData.addOns.length === 0 && (
                       <p className="text-sm text-gray-500 italic">No add-ons added yet</p>
                     )}
+                  </div>
+                  <input ref={addonFileInputRef} type="file" accept="image/*" className="hidden" onChange={handleUploadAddonImage} />
+                </div>
+
+                {/* Live Preview */}
+                <div className="mb-8">
+                  <h2 className="text-lg font-medium text-gray-800 mb-4">Live Preview</h2>
+                  <div className="border rounded-xl overflow-hidden shadow bg-white">
+                    <div className="h-40 w-full relative bg-gray-100 overflow-hidden">
+                      <PackageImage images={formData.images} alt={formData.name || 'Package'} size="large" className="w-full h-full object-cover" />
+                    </div>
+                    <div className="p-4">
+                      <div className="flex justify-between mb-2">
+                        <h3 className="text-lg font-medium text-gray-800 truncate max-w-[70%]">{formData.name || 'Package name'}</h3>
+                        <span className="text-lg font-semibold text-gray-800">{formData.price ? `₱${formData.price.toLocaleString()}` : '₱0'}</span>
+                      </div>
+                      <p className="text-sm text-gray-600 mb-3 line-clamp-2">{formData.description || 'Description'}</p>
+                      {formData.inclusions.length > 0 && (
+                        <div className="mb-3">
+                          <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Inclusions</h4>
+                          <ul className="text-xs text-gray-600 space-y-1">
+                            {formData.inclusions.slice(0, 2).map((inc, idx) => (
+                              <li key={idx} className="flex items-center gap-2">
+                                {inc.image && <NextImage src={inc.image} alt="inc" width={16} height={16} className="h-4 w-4 rounded object-cover border" unoptimized />}
+                                <span className="truncate">{inc.description}</span>
+                              </li>
+                            ))}
+                            {formData.inclusions.length > 2 && (
+                              <li className="text-gray-500">+{formData.inclusions.length - 2} more</li>
+                            )}
+                          </ul>
+                        </div>
+                      )}
+                      {formData.addOns.length > 0 && (
+                        <div className="mb-1">
+                          <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Add-ons</h4>
+                          <ul className="text-xs text-gray-600 space-y-1">
+                            {formData.addOns.slice(0, 2).map((ad, idx) => (
+                              <li key={idx} className="flex items-center gap-2">
+                                {ad.image && <NextImage src={ad.image} alt="addon" width={16} height={16} className="h-4 w-4 rounded object-cover border" unoptimized />}
+                                <span className="truncate">{ad.name}{ad.price ? ` (+₱${ad.price.toLocaleString()})` : ''}</span>
+                              </li>
+                            ))}
+                            {formData.addOns.length > 2 && (
+                              <li className="text-gray-500">+{formData.addOns.length - 2} more</li>
+                            )}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
 

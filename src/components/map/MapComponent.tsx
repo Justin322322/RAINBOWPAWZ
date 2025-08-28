@@ -60,6 +60,7 @@ export default function MapComponent({
   const [providerCoordinates, setProviderCoordinates] = useState<Map<number, [number, number]>>(new Map());
   const [isGeocoding, setIsGeocoding] = useState(false);
   const [geocodeError, setGeocodeError] = useState<string | null>(null);
+  const [_geocodeAccuracy, setGeocodeAccuracy] = useState<number | null>(null);
 
   const [routeInstructions, setRouteInstructions] = useState<RouteInstructions | null>(null);
   const [selectedProviderName, setSelectedProviderName] = useState<string | null>(null);
@@ -324,11 +325,17 @@ export default function MapComponent({
         icon: customIcon
       }).addTo(mapRef.current!);
 
-      // Add popup with provider info and get directions functionality
+      // Add popup with provider info, and tease: next time slots and packages
       marker.bindPopup(`
-        <div style="text-align: center; padding: 8px;">
-          <h3 style="color: #2F7B5F; font-size: 14px; font-weight: 600; margin: 0 0 8px 0;">${provider.name}</h3>
-          <p style="color: #6b7280; font-size: 12px; margin: 0 0 12px 0;">${provider.address}</p>
+        <div style="text-align: left; padding: 8px; min-width: 240px;">
+          <h3 style="color: #2F7B5F; font-size: 14px; font-weight: 600; margin: 0 0 6px 0;">${provider.name}</h3>
+          <p style="color: #6b7280; font-size: 12px; margin: 0 8px 8px 0;">${provider.address}</p>
+          <div id="bubble-extra-${provider.id}" style="margin-bottom:8px;">
+            <div style="font-size:11px;color:#374151;margin-bottom:4px;">Next available slots:</div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;" data-rp="slots-row"></div>
+            <div style="font-size:11px;color:#374151;margin:6px 0 4px;">Popular packages:</div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;" data-rp="packages-row"></div>
+          </div>
           <div style="display: flex; gap: 6px; justify-content: center;">
             <button id="directions-btn-${provider.id}" style="
               background: #2F7B5F;
@@ -353,7 +360,7 @@ export default function MapComponent({
       `);
 
       // Add click handler for directions button
-      marker.on('popupopen', () => {
+      marker.on('popupopen', async () => {
         const directionsBtn = document.getElementById(`directions-btn-${provider.id}`);
         if (directionsBtn) {
           directionsBtn.onclick = () => {
@@ -361,6 +368,33 @@ export default function MapComponent({
             displayRouteToProviderEnhanced(coordinates, provider.name);
             marker.closePopup();
           };
+        }
+
+        // Hydrate next time slots and sample packages
+        try {
+          const bubble = document.getElementById(`bubble-extra-${provider.id}`);
+          if (!bubble) return;
+          const slotsRow = bubble.querySelector('[data-rp="slots-row"]') as HTMLElement | null;
+          const packagesRow = bubble.querySelector('[data-rp="packages-row"]') as HTMLElement | null;
+          // Fetch light data
+          const slotsRes = await fetch(`/api/cremation/dashboard?providerId=${provider.id}`);
+          if (slotsRes.ok) {
+            const data = await slotsRes.json();
+            const nextSlots: string[] = (data?.availableTimeSlots || []).slice(0, 3);
+            if (slotsRow && nextSlots.length > 0) {
+              slotsRow.innerHTML = nextSlots.map(s => `<span style="font-size:11px;background:#ecfdf5;color:#065f46;border:1px solid #bbf7d0;padding:2px 6px;border-radius:9999px;">${s}</span>`).join('');
+            }
+            const pkgs: any[] = (data?.servicePackages || []).slice(0, 3);
+            if (packagesRow && pkgs.length > 0) {
+              packagesRow.innerHTML = pkgs.map(p => {
+                const img = (p.images && p.images.length > 0) ? `<img src="${p.images[0]}" alt="pkg" style="height:16px;width:16px;border-radius:4px;object-fit:cover;border:1px solid #e5e7eb;"/>` : '';
+                const name = String(p.name || '').substring(0, 18);
+                return `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;background:#f3f4f6;color:#374151;border:1px solid #e5e7eb;padding:2px 6px;border-radius:6px;">${img}${name}</span>`;
+              }).join('');
+            }
+          }
+        } catch {
+          // ignore
         }
       });
 

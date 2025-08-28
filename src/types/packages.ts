@@ -1,6 +1,13 @@
 interface AddOn {
   name: string;
   price: number;
+  id?: number;
+  image?: string; // optional image (data URL or API path)
+}
+
+export interface InclusionItem {
+  description: string;
+  image?: string; // optional image (data URL or API path)
 }
 
 export interface PackageData {
@@ -20,7 +27,7 @@ export interface PackageData {
     weightRangeMax: number;
     price: number;
   }>;
-  inclusions: string[];
+  inclusions: (string | InclusionItem)[];
   addOns: (string | AddOn)[];
   conditions: string;
   images: string[];
@@ -44,7 +51,7 @@ interface _PackageFormData {
     weightRangeMax: number;
     price: number;
   }>;
-  inclusions: string[];
+  inclusions: (string | InclusionItem)[];
   addOns: (string | AddOn)[];
   conditions: string;
   images: string[];

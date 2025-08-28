@@ -1,15 +1,12 @@
 'use client';
 
 import React, { useEffect } from 'react';
+import Image from 'next/image';
 import { XMarkIcon, ExclamationCircleIcon } from '@heroicons/react/24/outline';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { PackageData } from '@/types/packages';
 
-interface ServicePackage {
-  id: number;
-  name: string;
-  price?: number;
-}
+// Removed unused local interface in favor of PackageData
 
 interface TimeSlotModalProps {
   open: boolean;
@@ -135,8 +132,8 @@ export default function TimeSlotModal({ open, onClose, start, setStart, end, set
                 </div>
               ) : availablePackages.length > 0 ? (
                 <div className="max-h-32 sm:max-h-40 overflow-y-auto border border-gray-200 rounded-md p-2">
-                  {availablePackages.map((pkg: ServicePackage) => (
-                    <div key={pkg.id} className="flex items-center py-1">
+                  {availablePackages.map((pkg: PackageData) => (
+                    <div key={pkg.id} className="flex items-center py-1 gap-2">
                       <input
                         type="checkbox"
                         id={`package-${pkg.id}`}
@@ -144,8 +141,11 @@ export default function TimeSlotModal({ open, onClose, start, setStart, end, set
                         onChange={() => togglePackage(pkg.id)}
                         className="h-4 w-4 text-[var(--primary-green)] border-gray-300 rounded focus:ring-[var(--primary-green)]"
                       />
-                      <label htmlFor={`package-${pkg.id}`} className="ml-2 text-sm text-gray-700">
-                        {pkg.name} (₱{pkg.price?.toLocaleString()})
+                      {pkg.images && pkg.images.length > 0 && (
+                        <Image src={pkg.images[0]} alt="pkg" width={24} height={24} className="h-6 w-6 rounded object-cover border" unoptimized />
+                      )}
+                      <label htmlFor={`package-${pkg.id}`} className="text-sm text-gray-700 truncate">
+                        {pkg.name} {typeof pkg.price === 'number' ? `(₱${pkg.price.toLocaleString()})` : ''}
                       </label>
                     </div>
                   ))}

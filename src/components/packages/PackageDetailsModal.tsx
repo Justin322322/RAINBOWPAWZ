@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
+import Image from 'next/image';
 import { PackageData } from '@/types/packages';
 import { Modal } from '@/components/ui';
 import { PackageImage } from './PackageImage';
@@ -33,7 +34,7 @@ export const PackageDetailsModal: React.FC<PackageDetailsModalProps> = ({
   const [showConditions, setShowConditions] = useState(false);
 
   const displayedInclusions = useMemo(() => {
-    if (!pkg?.inclusions) return [] as string[];
+    if (!pkg?.inclusions) return [] as any[];
     return showAllInclusions ? pkg.inclusions : pkg.inclusions.slice(0, 4);
   }, [pkg?.inclusions, showAllInclusions]);
 
@@ -148,12 +149,17 @@ export const PackageDetailsModal: React.FC<PackageDetailsModalProps> = ({
             <div className="rounded-lg border border-green-200 bg-green-50 p-4">
               <SectionHeader icon={<CheckCircleIcon className="h-5 w-5 text-green-600" />} title="What's Included" />
               <ul className="space-y-2">
-                {displayedInclusions.map((inclusion, idx) => (
-                  <li key={idx} className="flex items-start">
-                    <CheckCircleIcon className="h-4 w-4 text-green-600 mr-2 mt-0.5 flex-shrink-0" />
-                    <span className="text-gray-700">{inclusion}</span>
-                  </li>
-                ))}
+                {displayedInclusions.map((inclusion: any, idx) => {
+                  const desc = typeof inclusion === 'string' ? inclusion : inclusion.description;
+                  const image = typeof inclusion === 'string' ? undefined : inclusion.image;
+                  return (
+                    <li key={idx} className="flex items-start gap-2">
+                      <CheckCircleIcon className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
+                      {image && <Image src={image} alt="inc" width={24} height={24} className="h-6 w-6 rounded object-cover border" unoptimized />}
+                      <span className="text-gray-700">{desc}</span>
+                    </li>
+                  );
+                })}
               </ul>
               {remainingInclusions > 0 && (
                 <button
@@ -171,21 +177,25 @@ export const PackageDetailsModal: React.FC<PackageDetailsModalProps> = ({
             <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
               <SectionHeader icon={<SparklesIcon className="h-5 w-5 text-amber-600" />} title="Available Add-ons" />
               <div className="space-y-2">
-                {pkg.addOns.map((addon, idx) => (
-                  <div key={idx} className="flex items-center justify-between p-3 bg-white rounded-lg border border-amber-200">
-                    <div className="flex items-center">
-                      <span className="text-amber-600 text-sm mr-2">+</span>
-                      <span className="text-gray-700">
-                        {typeof addon === 'string' ? addon : addon.name}
-                      </span>
+                {pkg.addOns.map((addon: any, idx) => {
+                  const name = typeof addon === 'string' ? addon : addon.name;
+                  const price = typeof addon === 'string' ? undefined : addon.price;
+                  const image = typeof addon === 'string' ? undefined : addon.image;
+                  return (
+                    <div key={idx} className="flex items-center justify-between p-3 bg-white rounded-lg border border-amber-200">
+                      <div className="flex items-center gap-2">
+                        <span className="text-amber-600 text-sm">+</span>
+                        {image && <Image src={image} alt="addon" width={24} height={24} className="h-6 w-6 rounded object-cover border" unoptimized />}
+                        <span className="text-gray-700">{name}</span>
+                      </div>
+                      {price && (
+                        <span className="text-sm font-medium text-amber-700 bg-amber-100 px-2 py-1 rounded">
+                          +₱{formatPrice(price)}
+                        </span>
+                      )}
                     </div>
-                    {typeof addon !== 'string' && addon.price && (
-                      <span className="text-sm font-medium text-amber-700 bg-amber-100 px-2 py-1 rounded">
-                        +₱{formatPrice(addon.price)}
-                      </span>
-                    )}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
