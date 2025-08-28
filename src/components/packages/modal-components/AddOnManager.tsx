@@ -4,7 +4,6 @@ import React, { useRef, useState } from 'react';
 import NextImage from 'next/image';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
-import { XMarkIcon, PlusIcon, SparklesIcon, CurrencyDollarIcon, PhotoIcon } from '@heroicons/react/24/outline';
 
 interface AddOn {
   name: string;
@@ -120,7 +119,7 @@ export const AddOnManager: React.FC<AddOnManagerProps> = ({
       </div>
 
       {/* Add New Add-on */}
-      <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
+      <div className="bg-gray-50 rounded-2xl p-6 border border-gray-200">
         <div className="mb-4">
           <h3 className="text-lg font-semibold text-gray-900">Add New Add-on</h3>
         </div>
@@ -134,7 +133,7 @@ export const AddOnManager: React.FC<AddOnManagerProps> = ({
               onChange={(e) => onNewAddOnChange(e.target.value)}
               onFocus={onAddOnInputFocus}
               onBlur={onAddOnInputBlur}
-              className="block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500 sm:text-sm"
+              className="block w-full px-4 py-3 border border-gray-300 rounded-2xl shadow-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500 sm:text-sm"
               placeholder="e.g., Personalized engraved nameplate"
               autoComplete="off"
               onKeyDown={(e) => handleKeyDown(e)}
@@ -142,7 +141,7 @@ export const AddOnManager: React.FC<AddOnManagerProps> = ({
 
             {/* Suggestions Dropdown */}
             {(isAddOnInputFocused && (addOnSuggestions.length > 0 || isLoadingSuggestions)) && (
-              <div className="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-auto">
+              <div className="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-2xl shadow-lg max-h-60 overflow-auto">
                 {isLoadingSuggestions ? (
                   <div className="px-4 py-3 text-sm text-gray-500 flex items-center gap-2">
                     <div className="animate-spin h-4 w-4 border-2 border-amber-500 border-t-transparent rounded-full"></div>
@@ -153,14 +152,14 @@ export const AddOnManager: React.FC<AddOnManagerProps> = ({
                     <button
                       type="button"
                       key={`${s.name}-${i}`}
-                      className="w-full text-left px-4 py-3 text-sm hover:bg-gray-50 flex justify-between items-center border-b border-gray-100 last:border-b-0"
+                      className="w-full text-left px-4 py-3 text-sm hover:bg-gray-50 flex justify-between items-center border-b border-gray-100 last:border-b-0 rounded-2xl"
                       onMouseDown={(e) => {
                         e.preventDefault();
                         onSuggestionSelect(s);
                       }}
                     >
                       <span className="truncate pr-2">{s.name}</span>
-                      <Badge variant="outline" size="sm" className="text-emerald-600">
+                      <Badge variant="outline" size="sm" className="text-emerald-600 rounded-2xl">
                         ₱{Number(s.price || 0).toLocaleString()}
                       </Badge>
                     </button>
@@ -184,7 +183,7 @@ export const AddOnManager: React.FC<AddOnManagerProps> = ({
                   value={newAddOnPrice}
                   onChange={(e) => onNewAddOnPriceChange(e.target.value)}
                   placeholder="0.00"
-                  className="block w-full pl-8 pr-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500 sm:text-sm"
+                  className="block w-full pl-8 pr-4 py-3 border border-gray-300 rounded-2xl shadow-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500 sm:text-sm"
                   onKeyDown={(e) => handleKeyDown(e, true)}
                 />
               </div>
@@ -194,29 +193,27 @@ export const AddOnManager: React.FC<AddOnManagerProps> = ({
               onClick={onAddAddOn}
               disabled={!newAddOn.trim() || !newAddOnPrice.trim()}
               variant="primary"
-              leftIcon={<PlusIcon className="h-4 w-4" />}
-              className="px-6"
+              className="px-6 rounded-2xl"
             >
               Add Add-on
             </Button>
           </div>
 
-          <p className="text-xs text-gray-500 flex items-center gap-1">
-            <span className="text-amber-500">ℹ</span>
+          <p className="text-xs text-gray-500">
             Price is required for all add-ons and will be added to the base package price
           </p>
         </div>
       </div>
 
       {/* Add-ons List */}
-      <div className="bg-white rounded-xl border border-gray-200">
+      <div className="bg-white rounded-2xl border border-gray-200">
         <div className="p-6 border-b border-gray-200">
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-lg font-semibold text-gray-900">Current Add-ons</h3>
               <p className="text-sm text-gray-600">Manage your package add-ons</p>
             </div>
-            <Badge variant="outline" size="sm">
+            <Badge variant="outline" size="sm" className="rounded-2xl">
               {addOns.length} add-on{addOns.length !== 1 ? 's' : ''}
             </Badge>
           </div>
@@ -225,18 +222,18 @@ export const AddOnManager: React.FC<AddOnManagerProps> = ({
         <div className="p-6">
           {addOns.length === 0 ? (
             <div className="text-center py-8">
-              <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                <SparklesIcon className="h-6 w-6 text-gray-400" />
+              <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <div className="w-6 h-6 bg-amber-300 rounded-lg"></div>
               </div>
               <p className="text-sm text-gray-500">No add-ons added yet</p>
               <p className="text-xs text-gray-400 mt-1">Add your first add-on above</p>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-4">
               {addOns.map((addOn, index) => (
                 <div
                   key={`addon-${addOn.name.replace(/\s+/g, '-').toLowerCase()}-${addOn.price}-${index}`}
-                  className="flex items-center bg-gray-50 p-4 rounded-lg border border-gray-200 gap-4 hover:shadow-sm transition-shadow"
+                  className="flex items-center bg-gray-50 p-5 rounded-2xl border border-gray-200 gap-4 hover:shadow-md transition-shadow"
                   draggable
                   onDragStart={() => handleDragStart(index)}
                   onDragOver={handleDragOver}
@@ -244,63 +241,49 @@ export const AddOnManager: React.FC<AddOnManagerProps> = ({
                   title="Drag to reorder"
                 >
 
-                  {/* Check Icon */}
-                  <div className="flex items-center justify-center w-8 h-8 bg-amber-100 rounded-full">
-                    <SparklesIcon className="h-4 w-4 text-amber-600" />
-                  </div>
-
-                  {/* Image */}
+                  {/* Image - Made more prominent */}
                   <div className="flex-shrink-0">
                     {addOn.image ? (
-                      <div className="relative group">
+                      <div className="relative group cursor-pointer" onClick={() => handleUploadClick(index)}>
                         <NextImage
                           src={addOn.image}
                           alt={addOn.name}
-                          width={56}
-                          height={56}
-                          className="h-14 w-14 rounded-lg object-cover border-2 border-gray-200 group-hover:border-amber-300 transition-colors cursor-pointer"
+                          width={64}
+                          height={64}
+                          className="h-16 w-16 rounded-2xl object-cover border-2 border-gray-200 group-hover:border-amber-300 transition-colors"
                           unoptimized
-                          onClick={() => handleUploadClick(index)}
                         />
-                        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 rounded-lg transition-all flex items-center justify-center">
-                          <PhotoIcon className="h-5 w-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
-                        </div>
+                        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 rounded-2xl transition-all"></div>
                       </div>
                     ) : (
-                      <Button
+                      <button
                         type="button"
                         onClick={() => handleUploadClick(index)}
-                        variant="outline"
-                        size="sm"
-                        className="h-14 w-14 p-0 border-2 border-dashed border-gray-300 hover:border-amber-400 hover:bg-amber-50"
+                        className="h-16 w-16 border-2 border-dashed border-gray-300 hover:border-amber-400 hover:bg-amber-50 rounded-2xl flex items-center justify-center transition-colors"
                       >
-                        <PhotoIcon className="h-6 w-6 text-gray-400" />
-                      </Button>
+                        <div className="w-4 h-4 bg-gray-300 rounded-lg"></div>
+                      </button>
                     )}
                   </div>
 
                   {/* Content */}
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm text-gray-900 break-words">{addOn.name}</p>
+                    <p className="text-sm text-gray-900 break-words leading-relaxed">{addOn.name}</p>
                   </div>
 
-                  {/* Price and Actions */}
+                  {/* Price and Remove Button */}
                   <div className="flex items-center gap-3">
-                    <Badge variant="outline" size="sm" className="text-emerald-600 bg-emerald-50 border-emerald-200">
-                      <CurrencyDollarIcon className="h-3 w-3 mr-1" />
+                    <Badge variant="outline" size="sm" className="text-emerald-600 bg-emerald-50 border-emerald-200 rounded-2xl">
                       +₱{addOn.price.toLocaleString()}
                     </Badge>
 
-                    <Button
+                    <button
                       type="button"
                       onClick={() => onRemoveAddOn(index)}
-                      variant="outline"
-                      size="sm"
-                      className="text-red-600 border-red-300 hover:bg-red-50 hover:border-red-400"
-                      leftIcon={<XMarkIcon className="h-4 w-4" />}
+                      className="px-4 py-2 text-red-600 hover:bg-red-50 rounded-2xl border border-red-300 hover:border-red-400 transition-colors text-sm font-medium"
                     >
                       Remove
-                    </Button>
+                    </button>
                   </div>
                 </div>
               ))}

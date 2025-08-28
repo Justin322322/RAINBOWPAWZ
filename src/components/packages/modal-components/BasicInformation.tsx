@@ -45,14 +45,13 @@ export const BasicInformation: React.FC<BasicInformationProps> = ({
           type="text"
           value={formData.name}
           onChange={onInputChange}
-          className={`block w-full px-4 py-3 border rounded-lg shadow-sm transition-colors focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm ${
+          className={`block w-full px-4 py-3 border rounded-2xl shadow-sm transition-colors focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm ${
             errors.name ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : 'border-gray-300'
           }`}
           placeholder="e.g., Premium Pet Cremation Service"
         />
         {errors.name && (
-          <p className="text-sm text-red-600 flex items-center gap-1">
-            <span className="text-red-500">⚠</span>
+          <p className="text-sm text-red-600">
             {errors.name}
           </p>
         )}
@@ -69,21 +68,20 @@ export const BasicInformation: React.FC<BasicInformationProps> = ({
           rows={4}
           value={formData.description}
           onChange={onInputChange}
-          className={`block w-full px-4 py-3 border rounded-lg shadow-sm transition-colors focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm ${
+          className={`block w-full px-4 py-3 border rounded-2xl shadow-sm transition-colors focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm ${
             errors.description ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : 'border-gray-300'
           }`}
           placeholder="Provide a detailed description of your cremation package, including what makes it special..."
         />
         {errors.description && (
-          <p className="text-sm text-red-600 flex items-center gap-1">
-            <span className="text-red-500">⚠</span>
+          <p className="text-sm text-red-600">
             {errors.description}
           </p>
         )}
       </div>
 
       {/* Pricing Section */}
-      <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
+      <div className="bg-gray-50 rounded-2xl p-6 border border-gray-200">
         <div className="mb-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-2">Pricing Configuration</h3>
           <p className="text-gray-600">Choose how you want to price your package</p>
@@ -96,7 +94,7 @@ export const BasicInformation: React.FC<BasicInformationProps> = ({
             size="md"
             fullWidth
             onClick={() => onPricingModeChange('fixed')}
-            className={`justify-start h-auto p-4 ${
+            className={`justify-start h-auto p-4 rounded-2xl ${
               formData.pricingMode === 'fixed'
                 ? 'ring-2 ring-emerald-500 ring-offset-2'
                 : 'hover:ring-1 hover:ring-gray-300'
@@ -113,7 +111,7 @@ export const BasicInformation: React.FC<BasicInformationProps> = ({
             size="md"
             fullWidth
             onClick={() => onPricingModeChange('by_size')}
-            className={`justify-start h-auto p-4 ${
+            className={`justify-start h-auto p-4 rounded-2xl ${
               formData.pricingMode === 'by_size'
                 ? 'ring-2 ring-emerald-500 ring-offset-2'
                 : 'hover:ring-1 hover:ring-gray-300'
@@ -144,15 +142,14 @@ export const BasicInformation: React.FC<BasicInformationProps> = ({
                 onChange={onInputChange}
                 min="0"
                 step="0.01"
-                className={`block w-full pl-8 pr-4 py-3 border rounded-lg shadow-sm transition-colors focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm ${
+                className={`block w-full pl-8 pr-4 py-3 border rounded-2xl shadow-sm transition-colors focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm ${
                   errors.price ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : 'border-gray-300'
                 }`}
                 placeholder="0.00"
               />
             </div>
             {errors.price && (
-              <p className="text-sm text-red-600 flex items-center gap-1">
-                <span className="text-red-500">⚠</span>
+              <p className="text-sm text-red-600">
                 {errors.price}
               </p>
             )}
@@ -196,9 +193,9 @@ export const BasicInformation: React.FC<BasicInformationProps> = ({
             </div>
 
             {/* Overage Fee */}
-            <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+            <div className="bg-blue-50 rounded-2xl p-4 border border-blue-200">
               <div className="flex items-center gap-2 mb-2">
-                <div className="w-5 h-5 bg-blue-100 rounded-full flex items-center justify-center">
+                <div className="w-6 h-6 bg-blue-100 rounded-2xl flex items-center justify-center">
                   <span className="text-blue-600 text-xs font-bold">i</span>
                 </div>
                 <h5 className="text-sm font-medium text-blue-900">Overage Fee</h5>
@@ -220,7 +217,7 @@ export const BasicInformation: React.FC<BasicInformationProps> = ({
                   value={formData.overageFeePerKg === 0 ? '' : formData.overageFeePerKg}
                   onChange={onInputChange}
                   placeholder="50.00"
-                  className="block w-full pl-7 pr-3 py-2 border border-blue-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                  className="block w-full pl-7 pr-3 py-2 border border-blue-300 rounded-2xl shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                 />
               </div>
             </div>

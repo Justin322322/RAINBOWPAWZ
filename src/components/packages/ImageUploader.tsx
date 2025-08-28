@@ -1,5 +1,4 @@
 import React, { ChangeEvent, memo } from 'react';
-import { PhotoIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { ProductionSafeImage } from '@/components/ui/ProductionSafeImage';
 
 interface ImageUploaderProps {
@@ -29,7 +28,7 @@ const ImageUploaderComponent: React.FC<ImageUploaderProps> = ({
           // Create a stable key using the image URL and index
           const imageKey = `${img}-${i}`;
           return (
-            <div key={imageKey} className="aspect-square bg-gray-100 rounded-md relative overflow-hidden">
+            <div key={imageKey} className="aspect-square bg-gray-100 rounded-2xl relative overflow-hidden">
               <ProductionSafeImage
                 src={img}
                 alt={`Package image ${i + 1}`}
@@ -44,10 +43,10 @@ const ImageUploaderComponent: React.FC<ImageUploaderProps> = ({
                   console.log(`Removing image at index ${i}:`, img);
                   onRemove(i);
                 }}
-                className="absolute top-2 right-2 bg-white p-1 rounded-full shadow-md hover:bg-red-50 transition-colors"
+                className="absolute top-2 right-2 bg-white p-2 rounded-2xl shadow-md hover:bg-red-50 transition-colors"
                 title="Remove image"
               >
-                <XMarkIcon className="h-5 w-5 text-red-500" />
+                <span className="text-red-500 font-bold text-sm">×</span>
               </button>
             </div>
           );
@@ -57,9 +56,9 @@ const ImageUploaderComponent: React.FC<ImageUploaderProps> = ({
       {Array.from(uploadingImages).map((uploadId) => (
         <div
           key={uploadId}
-          className="aspect-square bg-gradient-to-br from-green-50 to-green-100 rounded-md flex flex-col items-center justify-center border-2 border-dashed border-green-300 animate-pulse"
+          className="aspect-square bg-gradient-to-br from-green-50 to-green-100 rounded-2xl flex flex-col items-center justify-center border-2 border-dashed border-green-300 animate-pulse"
         >
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-2 border-green-500 border-t-transparent"></div>
           <span className="text-xs text-green-600 mt-2 font-medium">Uploading...</span>
         </div>
       ))}
@@ -67,9 +66,9 @@ const ImageUploaderComponent: React.FC<ImageUploaderProps> = ({
       <button
         type="button"
         onClick={() => fileInputRef.current?.click()}
-        className="aspect-square border-2 border-dashed border-gray-300 rounded-md flex flex-col items-center justify-center hover:border-[var(--primary-green)] hover:bg-gray-50 transition-colors"
+        className="aspect-square border-2 border-dashed border-gray-300 rounded-2xl flex flex-col items-center justify-center hover:border-[var(--primary-green)] hover:bg-gray-50 transition-colors"
       >
-        <PhotoIcon className="h-8 w-8 text-gray-400" />
+        <div className="w-8 h-8 bg-gray-300 rounded-lg"></div>
         <span className="mt-2 text-sm text-gray-500">Add Image</span>
       </button>
       <input

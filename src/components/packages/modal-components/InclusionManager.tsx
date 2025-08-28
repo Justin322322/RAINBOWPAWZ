@@ -4,7 +4,6 @@ import React, { useRef, useState } from 'react';
 import NextImage from 'next/image';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
-import { XMarkIcon, PlusIcon, CheckIcon, PhotoIcon } from '@heroicons/react/24/outline';
 
 interface InclusionItem {
   description: string;
@@ -98,15 +97,14 @@ export const InclusionManager: React.FC<InclusionManagerProps> = ({
       </div>
 
       {/* Add New Inclusion */}
-      <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
+      <div className="bg-gray-50 rounded-2xl p-6 border border-gray-200">
         <div className="mb-4">
           <h3 className="text-lg font-semibold text-gray-900">Add New Inclusion</h3>
         </div>
 
         {errors.inclusions && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-            <p className="text-sm text-red-600 flex items-center gap-1">
-              <span className="text-red-500">⚠</span>
+          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-2xl">
+            <p className="text-sm text-red-600">
               {errors.inclusions}
             </p>
           </div>
@@ -118,7 +116,7 @@ export const InclusionManager: React.FC<InclusionManagerProps> = ({
               type="text"
               value={newInclusion}
               onChange={(e) => onNewInclusionChange(e.target.value)}
-              className="block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm"
+              className="block w-full px-4 py-3 border border-gray-300 rounded-2xl shadow-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 sm:text-sm"
               placeholder="e.g., Premium ceramic urn with engraved nameplate"
               onKeyDown={handleKeyDown}
             />
@@ -128,8 +126,7 @@ export const InclusionManager: React.FC<InclusionManagerProps> = ({
             onClick={onAddInclusion}
             disabled={!newInclusion.trim()}
             variant="primary"
-            leftIcon={<PlusIcon className="h-4 w-4" />}
-            className="px-6"
+            className="px-6 rounded-2xl"
           >
             Add
           </Button>
@@ -137,14 +134,14 @@ export const InclusionManager: React.FC<InclusionManagerProps> = ({
       </div>
 
       {/* Inclusions List */}
-      <div className="bg-white rounded-xl border border-gray-200">
+      <div className="bg-white rounded-2xl border border-gray-200">
         <div className="p-6 border-b border-gray-200">
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-lg font-semibold text-gray-900">Current Inclusions</h3>
               <p className="text-sm text-gray-600">Manage your package inclusions</p>
             </div>
-            <Badge variant="outline" size="sm">
+            <Badge variant="outline" size="sm" className="rounded-2xl">
               {inclusions.length} item{inclusions.length !== 1 ? 's' : ''}
             </Badge>
           </div>
@@ -153,18 +150,18 @@ export const InclusionManager: React.FC<InclusionManagerProps> = ({
         <div className="p-6">
           {inclusions.length === 0 ? (
             <div className="text-center py-8">
-              <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                <CheckIcon className="h-6 w-6 text-gray-400" />
+              <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <div className="w-6 h-6 bg-gray-300 rounded-lg"></div>
               </div>
               <p className="text-sm text-gray-500">No inclusions added yet</p>
               <p className="text-xs text-gray-400 mt-1">Add your first inclusion above</p>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-4">
               {inclusions.map((inclusion, index) => (
                 <div
                   key={`inclusion-${inclusion.description.replace(/\s+/g, '-').toLowerCase()}-${index}`}
-                  className="flex items-center bg-gray-50 p-4 rounded-lg border border-gray-200 gap-4 hover:shadow-sm transition-shadow"
+                  className="flex items-center bg-gray-50 p-5 rounded-2xl border border-gray-200 gap-4 hover:shadow-md transition-shadow"
                   draggable
                   onDragStart={() => handleDragStart(index)}
                   onDragOver={handleDragOver}
@@ -172,57 +169,44 @@ export const InclusionManager: React.FC<InclusionManagerProps> = ({
                   title="Drag to reorder"
                 >
 
-                  {/* Check Icon */}
-                  <div className="flex items-center justify-center w-8 h-8 bg-green-100 rounded-full">
-                    <CheckIcon className="h-4 w-4 text-green-600" />
-                  </div>
-
-                  {/* Image */}
+                  {/* Image - Made more prominent */}
                   <div className="flex-shrink-0">
                     {inclusion.image ? (
-                      <div className="relative group">
+                      <div className="relative group cursor-pointer" onClick={() => handleUploadClick(index)}>
                         <NextImage
                           src={inclusion.image}
                           alt={inclusion.description}
-                          width={56}
-                          height={56}
-                          className="h-14 w-14 rounded-lg object-cover border-2 border-gray-200 group-hover:border-green-300 transition-colors cursor-pointer"
+                          width={64}
+                          height={64}
+                          className="h-16 w-16 rounded-2xl object-cover border-2 border-gray-200 group-hover:border-green-300 transition-colors"
                           unoptimized
-                          onClick={() => handleUploadClick(index)}
                         />
-                        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 rounded-lg transition-all flex items-center justify-center">
-                          <PhotoIcon className="h-5 w-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
-                        </div>
+                        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 rounded-2xl transition-all"></div>
                       </div>
                     ) : (
-                      <Button
+                      <button
                         type="button"
                         onClick={() => handleUploadClick(index)}
-                        variant="outline"
-                        size="sm"
-                        className="h-14 w-14 p-0 border-2 border-dashed border-gray-300 hover:border-green-400 hover:bg-green-50"
+                        className="h-16 w-16 border-2 border-dashed border-gray-300 hover:border-green-400 hover:bg-green-50 rounded-2xl flex items-center justify-center transition-colors"
                       >
-                        <PhotoIcon className="h-6 w-6 text-gray-400" />
-                      </Button>
+                        <div className="w-4 h-4 bg-gray-300 rounded-lg"></div>
+                      </button>
                     )}
                   </div>
 
                   {/* Content */}
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm text-gray-900 break-words">{inclusion.description}</p>
+                    <p className="text-sm text-gray-900 break-words leading-relaxed">{inclusion.description}</p>
                   </div>
 
-                  {/* Actions */}
-                  <Button
+                  {/* Remove Button */}
+                  <button
                     type="button"
                     onClick={() => onRemoveInclusion(index)}
-                    variant="outline"
-                    size="sm"
-                    className="text-red-600 border-red-300 hover:bg-red-50 hover:border-red-400"
-                    leftIcon={<XMarkIcon className="h-4 w-4" />}
+                    className="px-4 py-2 text-red-600 hover:bg-red-50 rounded-2xl border border-red-300 hover:border-red-400 transition-colors text-sm font-medium"
                   >
                     Remove
-                  </Button>
+                  </button>
                 </div>
               ))}
             </div>

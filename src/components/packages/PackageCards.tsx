@@ -5,7 +5,8 @@ import { PackageData } from '@/types/packages';
 import { PackageImage } from './PackageImage';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
-import { EyeSlashIcon, PencilIcon, TrashIcon, EyeIcon } from '@heroicons/react/24/outline';
+import { PencilIcon, TrashIcon, EyeSlashIcon, EyeIcon } from '@heroicons/react/24/outline';
+
 import { formatPrice } from '@/utils/numberUtils';
 
 interface PackageCardsProps {
@@ -66,9 +67,9 @@ const PackageCard = React.memo<{
 
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow">
+    <div className="bg-white border border-gray-200 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
       {/* Image */}
-      <div className="aspect-video">
+      <div className="aspect-video rounded-t-2xl overflow-hidden">
         <PackageImageDisplay images={pkg.images || []} alt={pkg.name} />
       </div>
 
@@ -83,6 +84,7 @@ const PackageCard = React.memo<{
           <Badge
             variant={pkg.isActive ? 'success' : 'danger'}
             size="sm"
+            className="rounded-2xl"
           >
             {pkg.isActive ? 'Active' : 'Inactive'}
           </Badge>
@@ -102,13 +104,13 @@ const PackageCard = React.memo<{
 
         {/* Quick Stats */}
         <div className="grid grid-cols-2 gap-4 mb-6">
-          <div className="text-center p-3 bg-gray-50 rounded-lg">
+          <div className="text-center p-3 bg-gray-50 rounded-2xl">
             <div className="text-lg font-semibold text-gray-900">
               {Array.isArray(pkg.inclusions) ? pkg.inclusions.length : 0}
             </div>
             <div className="text-xs text-gray-500 uppercase tracking-wide">Included</div>
           </div>
-          <div className="text-center p-3 bg-gray-50 rounded-lg">
+          <div className="text-center p-3 bg-gray-50 rounded-2xl">
             <div className="text-lg font-semibold text-gray-900">
               {Array.isArray(pkg.addOns) ? pkg.addOns.length : 0}
             </div>
@@ -124,6 +126,7 @@ const PackageCard = React.memo<{
               size="sm"
               fullWidth
               onClick={handleDetails}
+              className="rounded-2xl"
             >
               View Details
             </Button>
@@ -135,6 +138,7 @@ const PackageCard = React.memo<{
               size="sm"
               onClick={handleEdit}
               leftIcon={<PencilIcon className="h-4 w-4" />}
+              className="rounded-2xl"
             >
               Edit
             </Button>
@@ -143,7 +147,7 @@ const PackageCard = React.memo<{
               size="sm"
               onClick={handleDelete}
               leftIcon={<TrashIcon className="h-4 w-4" />}
-              className="border-red-300 text-red-700 hover:bg-red-50 hover:border-red-400"
+              className="border-red-300 text-red-700 hover:bg-red-50 hover:border-red-400 rounded-2xl"
             >
               Delete
             </Button>
@@ -156,6 +160,7 @@ const PackageCard = React.memo<{
             onClick={handleToggleActive}
             leftIcon={pkg.isActive ? <EyeSlashIcon className="h-4 w-4" /> : <EyeIcon className="h-4 w-4" />}
             isLoading={toggleLoading === pkg.id}
+            className="rounded-2xl"
           >
             {pkg.isActive ? 'Deactivate' : 'Activate'}
           </Button>

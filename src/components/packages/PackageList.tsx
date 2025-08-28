@@ -3,13 +3,8 @@
 import React from 'react';
 import { PackageData } from '@/types/packages';
 import { PackageImage } from './PackageImage';
-import {
-  PencilIcon,
-  TrashIcon,
-  CheckCircleIcon,
-  XCircleIcon,
-  InformationCircleIcon
-} from '@heroicons/react/24/outline';
+import { PencilIcon, TrashIcon, EyeSlashIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
+
 
 interface PackageListProps {
   packages: PackageData[];
@@ -47,10 +42,10 @@ export const PackageList: React.FC<PackageListProps> = ({
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+    <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
+          <thead className="bg-gray-50 rounded-t-2xl">
             <tr>
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Package
@@ -92,7 +87,7 @@ export const PackageList: React.FC<PackageListProps> = ({
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                  <span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-2xl ${
                     getCategoryBadge(pkg.category)
                   }`}>
                     {pkg.category}
@@ -106,13 +101,13 @@ export const PackageList: React.FC<PackageListProps> = ({
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   {pkg.isActive ? (
-                    <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                    <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-2xl bg-green-100 text-green-800">
                       <CheckCircleIcon className="h-4 w-4 mr-1" />
                       Active
                     </span>
                   ) : (
-                    <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
-                      <XCircleIcon className="h-4 w-4 mr-1" />
+                    <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-2xl bg-gray-100 text-gray-800">
+                      <EyeSlashIcon className="h-4 w-4 mr-1" />
                       Inactive
                     </span>
                   )}
@@ -122,16 +117,15 @@ export const PackageList: React.FC<PackageListProps> = ({
                     {onDetails && (
                       <button
                         onClick={() => onDetails(pkg.id)}
-                        className="inline-flex items-center px-2 py-1 text-xs text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded transition-colors"
+                        className="inline-flex items-center px-3 py-1 text-xs text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-2xl transition-colors"
                       >
-                        <InformationCircleIcon className="h-4 w-4 mr-1" />
                         Details
                       </button>
                     )}
 
                     <button
                       onClick={() => onEdit(pkg.id)}
-                      className="inline-flex items-center px-2 py-1 text-xs text-blue-600 hover:text-blue-900 hover:bg-blue-50 rounded transition-colors"
+                      className="inline-flex items-center px-3 py-1 text-xs text-blue-600 hover:text-blue-900 hover:bg-blue-50 rounded-2xl transition-colors"
                     >
                       <PencilIcon className="h-4 w-4 mr-1" />
                       Edit
@@ -139,7 +133,7 @@ export const PackageList: React.FC<PackageListProps> = ({
 
                     <button
                       onClick={() => onDelete(pkg.id)}
-                      className="inline-flex items-center px-2 py-1 text-xs text-red-600 hover:text-red-900 hover:bg-red-50 rounded transition-colors"
+                      className="inline-flex items-center px-3 py-1 text-xs text-red-600 hover:text-red-900 hover:bg-red-50 rounded-2xl transition-colors"
                     >
                       <TrashIcon className="h-4 w-4 mr-1" />
                       Delete
@@ -149,19 +143,16 @@ export const PackageList: React.FC<PackageListProps> = ({
                       <button
                         onClick={() => onToggleActive(pkg.id, pkg.isActive)}
                         disabled={toggleLoading === pkg.id}
-                        className={`inline-flex items-center px-2 py-1 text-xs rounded transition-colors ${
+                        className={`inline-flex items-center px-3 py-1 text-xs rounded-2xl transition-colors ${
                           pkg.isActive
                             ? 'text-amber-600 hover:text-amber-900 hover:bg-amber-50'
                             : 'text-green-600 hover:text-green-900 hover:bg-green-50'
                         }`}
                       >
                         {toggleLoading === pkg.id ? (
-                          <svg className="animate-spin h-4 w-4 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                          </svg>
+                          <div className="animate-spin h-4 w-4 mr-1 border-2 border-current border-t-transparent rounded-full"></div>
                         ) : pkg.isActive ? (
-                          <XCircleIcon className="h-4 w-4 mr-1" />
+                          <EyeSlashIcon className="h-4 w-4 mr-1" />
                         ) : (
                           <CheckCircleIcon className="h-4 w-4 mr-1" />
                         )}
