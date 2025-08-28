@@ -3,7 +3,7 @@ import { query } from '@/lib/db';
 import { verifySecureAuth } from '@/lib/secureAuth';
 import { createNotification } from '@/utils/notificationService';
 import { sendEmail } from '@/lib/consolidatedEmailService';
-import { sendSMS } from '@/lib/smsService';
+import { sendSMS } from '@/lib/httpSmsService';
 
 export async function POST(request: NextRequest) {
   try {

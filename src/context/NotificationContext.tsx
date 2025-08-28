@@ -583,7 +583,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       });
       timeoutIds.clear();
     };
-  }, []); // Empty dependency array to run only once on mount
+  }, [fetchNotifications]); // Include fetchNotifications in dependencies
 
   return (
     <NotificationContext.Provider

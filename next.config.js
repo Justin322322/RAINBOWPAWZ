@@ -139,14 +139,13 @@ const nextConfig = {
         child_process: false,
         // Prevent client-side imports of these packages
         nodemailer: false,
-        emailjs: false,
-        twilio: false
+        emailjs: false
       };
     }
     return config;
   },
   // These packages will be bundled properly for server components
-  serverExternalPackages: ['nodemailer', 'emailjs', 'twilio']
+  serverExternalPackages: ['nodemailer', 'emailjs']
 };
 
 module.exports = nextConfig;

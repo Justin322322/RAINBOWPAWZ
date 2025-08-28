@@ -3,7 +3,7 @@ import { verifySecureAuth } from '@/lib/secureAuth';
 import { query, withTransaction } from '@/lib/db';
 import { createNotificationFast } from '@/utils/notificationService';
 import { sendEmail } from '@/lib/consolidatedEmailService';
-import { sendSMS } from '@/lib/smsService';
+import { sendSMS } from '@/lib/httpSmsService';
 
 // Common error handler
 function handleError(error: any, operation: string) {

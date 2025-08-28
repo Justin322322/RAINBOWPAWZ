@@ -9,7 +9,7 @@ import { validatePasswordStrength } from '@/utils/passwordValidation';
 import { sendWelcomeEmail } from '@/lib/consolidatedEmailService';
 
 // Import phone number formatting
-import { testPhoneNumberFormatting } from '@/lib/smsService';
+import { testPhoneNumberFormatting } from '@/lib/httpSmsService';
 
 // Types for our request
 interface PersonalRegistrationData {

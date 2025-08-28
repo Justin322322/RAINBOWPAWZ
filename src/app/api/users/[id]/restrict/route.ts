@@ -3,7 +3,7 @@ import { query, withTransaction } from '@/lib/db';
 import { verifySecureAuth } from '@/lib/secureAuth';
 import { createNotificationFast } from '@/utils/notificationService';
 import { sendEmail } from '@/lib/consolidatedEmailService';
-import { sendSMS } from '@/lib/smsService';
+import { sendSMS } from '@/lib/httpSmsService';
 
 export async function PUT(request: NextRequest) {
   try {

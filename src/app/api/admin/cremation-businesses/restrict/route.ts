@@ -4,7 +4,7 @@ import { verifySecureAuth } from '@/lib/secureAuth';
 import { getServerAppUrl } from '@/utils/appUrl';
 import { createNotification } from '@/utils/notificationService';
 import { sendEmail } from '@/lib/consolidatedEmailService';
-import { sendSMS } from '@/lib/smsService';
+import { sendSMS } from '@/lib/httpSmsService';
 
 // API endpoint to restrict or restore access to a cremation business
 export async function POST(request: NextRequest) {

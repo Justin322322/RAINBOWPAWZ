@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { verifySecureAuth } from '@/lib/secureAuth';
-import { testPhoneNumberFormatting } from '@/lib/smsService';
+import { testPhoneNumberFormatting } from '@/lib/httpSmsService';
 import bcrypt from 'bcryptjs';
 
 // Ensure this route is always dynamic and not statically cached

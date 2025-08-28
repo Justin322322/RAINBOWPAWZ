@@ -3,7 +3,137 @@ import { verifySecureAuth } from '@/lib/secureAuth';
 import { query, withTransaction } from '@/lib/db';
 import { createNotification } from '@/utils/notificationService';
 import { sendEmail } from '@/lib/consolidatedEmailService';
-import { sendSMS } from '@/lib/smsService';
+import { sendSMS } from '@/lib/httpSmsService';
+
+// Common error handler
+function handleError(error: any, operation: string) {
+  console.error(`Error ${operation}:`, error);
+  return NextResponse.json({
+    error: `Failed to ${operation}`,
+    details: error instanceof Error ? error.message : 'Unknown error'
+  }, { status: 500 });
+}
+
+// Common validation
+function validateAppealId(id: string) {
+  const appealId = parseInt(id);
+  if (isNaN(appealId)) {
+    throw new Error('Invalid appeal ID');
+  }
+  return appealId;
+}
+
+// Common authentication check
+async function verifyAuth(request: NextRequest) {
+  const user = await verifySecureAuth(request);
+  if (!user) {
+    throw new Error('Unauthorized');
+  }
+  return user;
+}
+
+// Status configuration
+const STATUS_CONFIG = {
+  under_review: {
+    subject: '👀 Your Appeal is Under Review',
+    color: '#3B82F6',
+    icon: '👀',
+    title: 'Appeal Under Review',
+    message: 'Our team is currently reviewing your appeal. We will notify you once a decision has been made.',
+    bgColor: '#eff6ff'
+  },
+  approved: {
+    subject: '🎉 Appeal Approved - Welcome Back!',
+    color: '#10B981',
+    icon: '🎉',
+    title: 'Appeal Approved',
+    message: 'Great news! Your appeal has been approved and your account restrictions have been lifted. You can now access all features of RainbowPaws.',
+    bgColor: '#ecfdf5'
+  },
+  rejected: {
+    subject: '❌ Appeal Decision - Not Approved',
+    color: '#EF4444',
+    icon: '❌',
+    title: 'Appeal Not Approved',
+    message: 'After careful review, we were unable to approve your appeal at this time.',
+    bgColor: '#fef2f2'
+  }
+};
+
+// Email template generator
+function createStatusEmail(status: string, userName: string, adminResponse?: string) {
+  const config = STATUS_CONFIG[status as keyof typeof STATUS_CONFIG];
+  if (!config) throw new Error('Invalid status');
+
+  const nextSteps = status === 'approved' ? `
+    <p><strong>What's Next?</strong></p>
+    <ul>
+      <li>You can now log in to your RainbowPaws account</li>
+      <li>All features and services are available to you</li>
+      <li>Please review our terms of service to avoid future restrictions</li>
+    </ul>
+    <a href="${process.env.NEXT_PUBLIC_BASE_URL}/login" class="button">
+      Log In to Your Account
+    </a>
+  ` : status === 'rejected' ? `
+    <p><strong>What can you do?</strong></p>
+    <ul>
+      <li>Review our terms of service and community guidelines</li>
+      <li>You may submit a new appeal after addressing the concerns</li>
+    </ul>
+  ` : `
+    <p>We appreciate your patience while we review your appeal. You will receive another notification once a decision has been made.</p>
+  `;
+
+  return {
+    subject: config.subject,
+    html: `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Appeal Status Update</title>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, ${config.color}, ${config.color}dd); padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
+          .header h1 { color: white; margin: 0; font-size: 24px; }
+          .content { padding: 30px; background-color: #fff; border: 1px solid #e5e7eb; }
+          .status-box { background-color: ${config.bgColor}; border-left: 4px solid ${config.color}; padding: 20px; margin: 20px 0; border-radius: 4px; }
+          .response-box { background-color: #f9fafb; padding: 20px; border-radius: 8px; margin: 20px 0; border: 1px solid #e5e7eb; }
+          .button { display: inline-block; background-color: ${config.color}; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; margin: 20px 0; }
+          .footer { background-color: #f5f5f5; padding: 20px; text-align: center; font-size: 12px; color: #666; border-radius: 0 0 8px 8px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>${config.icon} ${config.title}</h1>
+          </div>
+          <div class="content">
+            <p>Dear ${userName},</p>
+            <div class="status-box">
+              <h3 style="margin-top: 0; color: ${config.color};">${config.title}</h3>
+              <p>${config.message}</p>
+            </div>
+            ${adminResponse ? `
+            <div class="response-box">
+              <h4>Admin Response:</h4>
+              <p>${adminResponse}</p>
+            </div>
+            ` : ''}
+            ${nextSteps}
+          </div>
+          <div class="footer">
+            <p>This is an automated notification from RainbowPaws</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `
+  };
+}
 
 /**
  * GET - Fetch a specific appeal
@@ -13,59 +143,38 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    // Verify authentication
-    const user = await verifySecureAuth(request);
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const user = await verifyAuth(request);
+    const appealId = validateAppealId(params.id);
 
-    const appealId = parseInt(params.id);
-    if (isNaN(appealId)) {
-      return NextResponse.json({ error: 'Invalid appeal ID' }, { status: 400 });
-    }
-
-    // Fetch the appeal with user details
     const appeals = await query(`
-      SELECT 
-        a.*,
-        u.first_name,
-        u.last_name,
-        u.email,
-        u.phone,
-        u.sms_notifications,
-        admin.first_name as admin_first_name,
-        admin.last_name as admin_last_name
+      SELECT a.*, u.first_name, u.last_name, u.email, u.phone, u.sms_notifications,
+             admin.first_name as admin_first_name, admin.last_name as admin_last_name
       FROM user_appeals a
       LEFT JOIN users u ON a.user_id = u.user_id
       LEFT JOIN users admin ON a.admin_id = admin.user_id
       WHERE a.appeal_id = ?
     `, [appealId]) as any[];
 
-    if (!appeals || appeals.length === 0) {
+    if (!appeals?.length) {
       return NextResponse.json({ error: 'Appeal not found' }, { status: 404 });
     }
 
     const appeal = appeals[0];
-
-    // Check permissions - users can only see their own appeals, admins can see all
     if (user.accountType !== 'admin' && appeal.user_id !== parseInt(user.userId)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    // Parse evidence files
     appeal.evidence_files = appeal.evidence_files ? JSON.parse(appeal.evidence_files) : [];
-
-    return NextResponse.json({
-      success: true,
-      appeal
-    });
+    return NextResponse.json({ success: true, appeal });
 
   } catch (error) {
-    console.error('Error fetching appeal:', error);
-    return NextResponse.json({
-      error: 'Failed to fetch appeal',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 });
+    if (error instanceof Error && error.message === 'Unauthorized') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    if (error instanceof Error && error.message === 'Invalid appeal ID') {
+      return NextResponse.json({ error: 'Invalid appeal ID' }, { status: 400 });
+    }
+    return handleError(error, 'fetching appeal');
   }
 }
 
@@ -77,148 +186,108 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    // Verify authentication
-    const user = await verifySecureAuth(request);
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    // Only admins can update appeals
+    const user = await verifyAuth(request);
     if (user.accountType !== 'admin') {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
     }
 
-    const appealId = parseInt(params.id);
-    if (isNaN(appealId)) {
-      return NextResponse.json({ error: 'Invalid appeal ID' }, { status: 400 });
-    }
+    const appealId = validateAppealId(params.id);
+    const { status, admin_response } = await request.json();
 
-    const body = await request.json();
-    const { status, admin_response } = body;
-
-    // Validate status
     const validStatuses = ['pending', 'under_review', 'approved', 'rejected'];
     if (!validStatuses.includes(status)) {
-      return NextResponse.json({
-        error: `Invalid status. Must be one of: ${validStatuses.join(', ')}`
-      }, { status: 400 });
+      return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
     }
 
-    // Fetch the current appeal
-    const currentAppeals = await query(`
-      SELECT a.*, u.first_name, u.last_name, u.email, u.phone
+    // Get appeal details
+    const appeals = await query(`
+      SELECT a.*, u.first_name, u.last_name, u.email, u.phone, u.sms_notifications
       FROM user_appeals a
       LEFT JOIN users u ON a.user_id = u.user_id
       WHERE a.appeal_id = ?
     `, [appealId]) as any[];
 
-    if (!currentAppeals || currentAppeals.length === 0) {
+    if (!appeals?.length) {
       return NextResponse.json({ error: 'Appeal not found' }, { status: 404 });
     }
 
-    const currentAppeal = currentAppeals[0];
+    const appeal = appeals[0];
+    const previousStatus = appeal.status;
 
-    // Update the appeal
-    const _result = await withTransaction(async (transaction) => {
-      // Log the status change in appeal history
+    // Update appeal status
+    await withTransaction(async (transaction) => {
       await transaction.query(`
-        INSERT INTO appeal_history (appeal_id, previous_status, new_status, admin_id, admin_response, notes)
-        VALUES (?, ?, ?, ?, ?, ?)
-      `, [
-        appealId,
-        currentAppeal.status,
-        status,
-        parseInt(user.userId),
-        admin_response,
-        `Status changed from ${currentAppeal.status} to ${status} by admin (ID: ${user.userId})`
-      ]);
-
-      const updateFields = ['status = ?', 'admin_id = ?', 'updated_at = NOW()'];
-      const updateValues = [status, parseInt(user.userId)];
-
-      if (admin_response) {
-        updateFields.push('admin_response = ?');
-        updateValues.push(admin_response);
-      }
-
-      if (status === 'under_review') {
-        updateFields.push('reviewed_at = NOW()');
-      } else if (status === 'approved' || status === 'rejected') {
-        updateFields.push('resolved_at = NOW()');
-      }
-
-      updateValues.push(appealId);
-
-      await transaction.query(`
-        UPDATE user_appeals
-        SET ${updateFields.join(', ')}
+        UPDATE user_appeals 
+        SET status = ?, admin_response = ?, admin_id = ?, reviewed_at = NOW(), 
+            resolved_at = CASE WHEN ? IN ('approved', 'rejected') THEN NOW() ELSE NULL END
         WHERE appeal_id = ?
-      `, updateValues);
+      `, [status, admin_response, user.userId, status, appealId]);
 
-      // If appeal is approved, remove user restriction
-      if (status === 'approved') {
-        // First, check if this is a business user by looking for service provider record
-        const serviceProviderCheck = await transaction.query(`
-          SELECT provider_id, application_status
-          FROM service_providers
-          WHERE user_id = ?
-        `, [currentAppeal.user_id]);
-
-        if (serviceProviderCheck && serviceProviderCheck.length > 0) {
-          // This is a business user - update service_providers table
-          const providerId = serviceProviderCheck[0].provider_id;
-
-          await transaction.query(`
-            UPDATE service_providers
-            SET application_status = 'approved', updated_at = NOW()
-            WHERE provider_id = ?
-          `, [providerId]);
-        }
-
-        // Update user status for both personal and business users
-        await transaction.query(`
-          UPDATE users
-          SET status = 'active', updated_at = NOW()
-          WHERE user_id = ?
-        `, [currentAppeal.user_id]);
-
-        // Deactivate user restrictions
-        await transaction.query(`
-          UPDATE user_restrictions
-          SET is_active = 0
-          WHERE user_id = ? AND is_active = 1
-        `, [currentAppeal.user_id]);
-
-        // Log the account restoration
-        await transaction.query(`
-          INSERT INTO appeal_history (appeal_id, previous_status, new_status, admin_id, notes)
-          VALUES (?, ?, ?, ?, ?)
-        `, [
-          appealId,
-          status,
-          status,
-          parseInt(user.userId),
-          `Account restrictions removed and user status restored to active`
-        ]);
-      }
-
-      return true;
+      // Record in appeal history
+      await transaction.query(`
+        INSERT INTO appeal_history (appeal_id, previous_status, new_status, admin_id, admin_response)
+        VALUES (?, ?, ?, ?, ?)
+      `, [appealId, previousStatus, status, user.userId, admin_response]);
     });
 
-    // Notify the user about the appeal status update
-    await notifyUserOfAppealUpdate(currentAppeal, status, admin_response, user);
+    // Send notifications
+    const emailTemplate = createStatusEmail(status, `${appeal.first_name} ${appeal.last_name}`, admin_response);
+    
+    try {
+      await sendEmail({
+        to: appeal.email,
+        subject: emailTemplate.subject,
+        html: emailTemplate.html
+      });
+    } catch (error) {
+      console.error('Failed to send email notification:', error);
+    }
+
+    // Send SMS if enabled
+    if (appeal.sms_notifications && appeal.phone) {
+      try {
+        const smsMessage = status === 'approved' 
+          ? `🎉 Your appeal has been approved! You can now log in to your RainbowPaws account.`
+          : status === 'rejected'
+          ? `❌ Your appeal has been reviewed and unfortunately was not approved. ${admin_response ? 'Reason: ' + admin_response.substring(0, 80) + '...' : 'Please review the response and consider submitting a new appeal.'}`
+          : `👀 Your appeal is now under review. We will notify you once a decision has been made.`;
+
+        await sendSMS({ to: appeal.phone, message: smsMessage });
+      } catch (error) {
+        console.error('Failed to send SMS notification:', error);
+      }
+    }
+
+    // Create in-app notification
+    try {
+      await createNotification({
+        userId: appeal.user_id,
+        title: `Appeal ${status.charAt(0).toUpperCase() + status.slice(1)}`,
+        message: status === 'approved' 
+          ? 'Your appeal has been approved! Welcome back to RainbowPaws.'
+          : status === 'rejected'
+          ? 'Your appeal has been reviewed. Please check your email for details.'
+          : 'Your appeal is now under review. We will notify you of the decision.',
+        type: status === 'approved' ? 'success' : status === 'rejected' ? 'error' : 'info',
+        link: '/appeals'
+      });
+    } catch (error) {
+      console.error('Failed to create in-app notification:', error);
+    }
 
     return NextResponse.json({
       success: true,
-      message: `Appeal ${status} successfully`
+      message: 'Appeal status updated successfully'
     });
 
   } catch (error) {
-    console.error('Error updating appeal:', error);
-    return NextResponse.json({
-      error: 'Failed to update appeal',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 });
+    if (error instanceof Error && error.message === 'Unauthorized') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    if (error instanceof Error && error.message === 'Invalid appeal ID') {
+      return NextResponse.json({ error: 'Invalid appeal ID' }, { status: 400 });
+    }
+    return handleError(error, 'updating appeal');
   }
 }
 
@@ -230,28 +299,19 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    // Verify authentication
-    const user = await verifySecureAuth(request);
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    // Only admins can delete appeals
+    const user = await verifyAuth(request);
     if (user.accountType !== 'admin') {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
     }
 
-    const appealId = parseInt(params.id);
-    if (isNaN(appealId)) {
-      return NextResponse.json({ error: 'Invalid appeal ID' }, { status: 400 });
-    }
+    const appealId = validateAppealId(params.id);
 
     // Check if appeal exists
     const existingAppeals = await query(`
       SELECT appeal_id FROM user_appeals WHERE appeal_id = ?
     `, [appealId]) as any[];
 
-    if (!existingAppeals || existingAppeals.length === 0) {
+    if (!existingAppeals?.length) {
       return NextResponse.json({ error: 'Appeal not found' }, { status: 404 });
     }
 
@@ -264,211 +324,12 @@ export async function DELETE(
     });
 
   } catch (error) {
-    console.error('Error deleting appeal:', error);
-    return NextResponse.json({
-      error: 'Failed to delete appeal',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 });
-  }
-}
-
-// Helper function to notify user of appeal status update
-async function notifyUserOfAppealUpdate(
-  appeal: any,
-  newStatus: string,
-  adminResponse: string | null,
-  _: any
-) {
-  try {
-    let title = '';
-    let message = '';
-    let emailTemplate: { subject: string; html: string };
-
-    switch (newStatus) {
-      case 'under_review':
-        title = 'Appeal Under Review';
-        message = 'Your appeal is now being reviewed by our team. We will update you once a decision is made.';
-        emailTemplate = createAppealStatusEmail({
-          userName: `${appeal.first_name} ${appeal.last_name}`,
-          status: 'under_review',
-          adminResponse: adminResponse || undefined,
-          appealSubject: 'Your account restriction appeal'
-        });
-        break;
-      case 'approved':
-        title = 'Appeal Approved';
-        message = 'Great news! Your appeal has been approved and your account restrictions have been lifted.';
-        emailTemplate = createAppealStatusEmail({
-          userName: `${appeal.first_name} ${appeal.last_name}`,
-          status: 'approved',
-          adminResponse: adminResponse || undefined,
-          appealSubject: 'Your account restriction appeal'
-        });
-        break;
-      case 'rejected':
-        title = 'Appeal Rejected';
-        message = 'Unfortunately, your appeal has been rejected. ' + (adminResponse || 'Please review the response and consider submitting a new appeal.');
-        emailTemplate = createAppealStatusEmail({
-          userName: `${appeal.first_name} ${appeal.last_name}`,
-          status: 'rejected',
-          adminResponse: adminResponse || undefined,
-          appealSubject: 'Your account restriction appeal'
-        });
-        break;
-      default:
-        return;
+    if (error instanceof Error && error.message === 'Unauthorized') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-
-    // Create in-app notification
-    await createNotification({
-      userId: appeal.user_id,
-      title,
-      message,
-      type: 'info',
-      link: '/appeals',
-      shouldSendEmail: false // We'll send custom email below
-    });
-
-    // Send custom email notification
-    // Respect user's email notification preference if available
-    const emailOptIn = appeal.email_notifications !== null && appeal.email_notifications !== undefined
-      ? Boolean(appeal.email_notifications)
-      : true;
-    if (emailOptIn) {
-      await sendEmail({
-        to: appeal.email,
-        subject: emailTemplate.subject,
-        html: emailTemplate.html
-      });
+    if (error instanceof Error && error.message === 'Invalid appeal ID') {
+      return NextResponse.json({ error: 'Invalid appeal ID' }, { status: 400 });
     }
-
-    // Send SMS notification for important status changes
-    if ((newStatus === 'approved' || newStatus === 'rejected') && appeal.phone && (appeal.sms_notifications === 1 || appeal.sms_notifications === true)) {
-      const smsMessage = newStatus === 'approved'
-        ? `🎉 Great news! Your appeal has been approved and your account access has been restored. You can now log in to RainbowPaws.`
-        : `❌ Your appeal has been reviewed and unfortunately was not approved. ${adminResponse ? 'Reason: ' + adminResponse.substring(0, 80) + '...' : 'Please review the response and consider submitting a new appeal.'}`;
-
-      await sendSMS({
-        to: appeal.phone,
-        message: smsMessage
-      });
-    }
-
-  } catch (error) {
-    console.error('Error notifying user of appeal update:', error);
-    // Don't throw error as this is not critical
+    return handleError(error, 'deleting appeal');
   }
-}
-
-// Email template for appeal status updates
-function createAppealStatusEmail({
-  userName,
-  status,
-  adminResponse,
-  appealSubject: _
-}: {
-  userName: string;
-  status: 'under_review' | 'approved' | 'rejected';
-  adminResponse?: string;
-  appealSubject: string;
-}) {
-  let subject = '';
-  let statusColor = '';
-  let statusIcon = '';
-  let statusTitle = '';
-  let statusMessage = '';
-
-  switch (status) {
-    case 'under_review':
-      subject = '👀 Your Appeal is Under Review';
-      statusColor = '#3B82F6';
-      statusIcon = '👀';
-      statusTitle = 'Appeal Under Review';
-      statusMessage = 'Our team is currently reviewing your appeal. We will notify you once a decision has been made.';
-      break;
-    case 'approved':
-      subject = '🎉 Appeal Approved - Welcome Back!';
-      statusColor = '#10B981';
-      statusIcon = '🎉';
-      statusTitle = 'Appeal Approved';
-      statusMessage = 'Great news! Your appeal has been approved and your account restrictions have been lifted. You can now access all features of RainbowPaws.';
-      break;
-    case 'rejected':
-      subject = '❌ Appeal Decision - Not Approved';
-      statusColor = '#EF4444';
-      statusIcon = '❌';
-      statusTitle = 'Appeal Not Approved';
-      statusMessage = 'After careful review, we were unable to approve your appeal at this time.';
-      break;
-  }
-
-  const html = `
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Appeal Status Update</title>
-      <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background: linear-gradient(135deg, ${statusColor}, ${statusColor}dd); padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
-        .header h1 { color: white; margin: 0; font-size: 24px; }
-        .content { padding: 30px; background-color: #fff; border: 1px solid #e5e7eb; }
-        .status-box { background-color: ${status === 'approved' ? '#ecfdf5' : status === 'rejected' ? '#fef2f2' : '#eff6ff'}; border-left: 4px solid ${statusColor}; padding: 20px; margin: 20px 0; border-radius: 4px; }
-        .response-box { background-color: #f9fafb; padding: 20px; border-radius: 8px; margin: 20px 0; border: 1px solid #e5e7eb; }
-        .button { display: inline-block; background-color: ${statusColor}; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; margin: 20px 0; }
-        .footer { background-color: #f5f5f5; padding: 20px; text-align: center; font-size: 12px; color: #666; border-radius: 0 0 8px 8px; }
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <div class="header">
-          <h1>${statusIcon} ${statusTitle}</h1>
-        </div>
-        <div class="content">
-          <p>Dear ${userName},</p>
-
-          <div class="status-box">
-            <h3 style="margin-top: 0; color: ${statusColor};">${statusTitle}</h3>
-            <p>${statusMessage}</p>
-          </div>
-
-          ${adminResponse ? `
-          <div class="response-box">
-            <h4>Admin Response:</h4>
-            <p>${adminResponse}</p>
-          </div>
-          ` : ''}
-
-          ${status === 'approved' ? `
-          <p><strong>What's Next?</strong></p>
-          <ul>
-            <li>You can now log in to your RainbowPaws account</li>
-            <li>All features and services are available to you</li>
-            <li>Please review our terms of service to avoid future restrictions</li>
-          </ul>
-
-          <a href="${process.env.NEXT_PUBLIC_BASE_URL}/login" class="button">
-            Log In to Your Account
-          </a>
-          ` : status === 'rejected' ? `
-          <p><strong>What can you do?</strong></p>
-          <ul>
-            <li>Review our terms of service and community guidelines</li>
-            <li>You may submit a new appeal after addressing the concerns</li>
-          </ul>
-          ` : `
-          <p>We appreciate your patience while we review your appeal. You will receive another notification once a decision has been made.</p>
-          `}
-        </div>
-        <div class="footer">
-          <p>This is an automated notification from RainbowPaws</p>
-        </div>
-      </div>
-    </body>
-    </html>
-  `;
-
-  return { subject, html };
 }

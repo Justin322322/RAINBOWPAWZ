@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { getAuthTokenFromRequest, parseAuthToken } from '@/utils/auth';
-import { testPhoneNumberFormatting } from '@/lib/smsService';
+import { testPhoneNumberFormatting } from '@/lib/httpSmsService';
 
 export async function PUT(request: NextRequest) {
   try {

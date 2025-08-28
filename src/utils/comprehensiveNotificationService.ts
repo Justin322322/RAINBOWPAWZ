@@ -3,7 +3,7 @@ import { createNotification } from '@/utils/notificationService';
 import { createBusinessNotification } from '@/utils/businessNotificationService';
 import { sendEmail } from '@/lib/consolidatedEmailService';
 import { createBookingConfirmationEmail, createBookingStatusUpdateEmail } from '@/lib/emailTemplates';
-import { sendSMS, createBookingSMSMessage } from '@/lib/smsService';
+import { sendSMS, createBookingSMSMessage } from '@/lib/httpSmsService';
 
 /**
  * Comprehensive notification service for all booking lifecycle events

@@ -1,30 +1,7 @@
-import twilio from 'twilio';
-
-// Twilio configuration
-const accountSid = process.env.TWILIO_ACCOUNT_SID;
-const authToken = process.env.TWILIO_AUTH_TOKEN;
-const fromNumber = process.env.TWILIO_PHONE_NUMBER;
-
-// Initialize Twilio client
-let twilioClient: twilio.Twilio | null = null;
-
-function getTwilioClient(): twilio.Twilio | null {
-  if (!accountSid || !authToken) {
-    console.warn('Twilio credentials not configured. SMS notifications will be disabled.');
-    return null;
-  }
-
-  if (!twilioClient) {
-    try {
-      twilioClient = twilio(accountSid, authToken);
-    } catch (error) {
-      console.error('Failed to initialize Twilio client:', error);
-      return null;
-    }
-  }
-
-  return twilioClient;
-}
+// httpSMS configuration
+const apiKey = process.env.HTTPSMS_API_KEY;
+const fromNumber = process.env.HTTPSMS_FROM_NUMBER;
+const baseUrl = 'https://api.httpsms.com/v1';
 
 interface SendSMSParams {
   to: string;
@@ -38,32 +15,36 @@ interface SendSMSResult {
   code?: number;
 }
 
+interface HttpSMSResponse {
+  data: {
+    id: string;
+    status: string;
+    contact: string;
+    content: string;
+    created_at: string;
+    owner: string;
+    type: string;
+  };
+  message: string;
+  status: string;
+}
+
 /**
- * Send SMS notification using Twilio
+ * Send SMS notification using httpSMS
  */
 export async function sendSMS({ to, message }: SendSMSParams): Promise<SendSMSResult> {
   try {
-    const client = getTwilioClient();
-
-    if (!client) {
+    if (!apiKey) {
       return {
         success: false,
-        error: 'Twilio client not available'
+        error: 'httpSMS API key not configured'
       };
     }
 
     if (!fromNumber) {
       return {
         success: false,
-        error: 'Twilio phone number not configured'
-      };
-    }
-
-    // Validate from number is E.164
-    if (!/^\+\d{7,15}$/.test(fromNumber)) {
-      return {
-        success: false,
-        error: 'Invalid TWILIO_PHONE_NUMBER format. Must be E.164 (e.g. +15551234567)'
+        error: 'httpSMS from number not configured'
       };
     }
 
@@ -96,21 +77,48 @@ export async function sendSMS({ to, message }: SendSMSParams): Promise<SendSMSRe
     // Send SMS with limited retries for transient errors
     const maxRetries = 2;
     let lastError: any;
+    
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
-        const messageResponse = await client.messages.create({
-          body: message,
-          from: fromNumber,
-          to: formattedPhone
+        const response = await fetch(`${baseUrl}/messages/send`, {
+          method: 'POST',
+          headers: {
+            'x-api-key': apiKey,
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            content: message,
+            from: fromNumber,
+            to: formattedPhone,
+            encrypted: false
+          })
         });
 
-        return {
-          success: true,
-          messageId: messageResponse.sid
-        };
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(`HTTP ${response.status}: ${errorData.message || response.statusText}`);
+        }
+
+        const data: HttpSMSResponse = await response.json();
+
+        if (data.status === 'success') {
+          return {
+            success: true,
+            messageId: data.data.id
+          };
+        } else {
+          throw new Error(data.message || 'Failed to send SMS');
+        }
+
       } catch (err: any) {
         lastError = err;
-        const transient = err?.status === 429 || err?.code === 'ETIMEDOUT' || err?.code === 'ECONNRESET' || err?.status >= 500;
+        const transient = err?.message?.includes('429') || 
+                         err?.message?.includes('500') || 
+                         err?.message?.includes('502') || 
+                         err?.message?.includes('503') || 
+                         err?.message?.includes('504');
+        
         if (transient && attempt < maxRetries) {
           const backoff = 500 * (attempt + 1);
           await new Promise((r) => setTimeout(r, backoff));
@@ -119,32 +127,26 @@ export async function sendSMS({ to, message }: SendSMSParams): Promise<SendSMSRe
         throw err;
       }
     }
+    
     // Should not reach here
     throw lastError;
 
   } catch (error: any) {
-    console.error('Error sending SMS:', error);
+    console.error('Error sending SMS via httpSMS:', error);
 
-    // Handle specific Twilio errors
+    // Handle specific httpSMS errors
     let errorMessage = 'Unknown error occurred';
 
-    if (error.code === 21608) {
-      // Unverified number on trial account
-      errorMessage = `Trial Account Limitation: The number ${to} is unverified. ` +
-        `Trial accounts can only send SMS to verified numbers. ` +
-        `Please verify this number at twilio.com/console/phone-numbers/verified or upgrade to a paid account.`;
-    } else if (error.code === 21614) {
-      // Invalid phone number
-      errorMessage = `Invalid phone number: ${to}. Please check the number format.`;
-    } else if (error.code === 21211) {
-      // Invalid 'To' phone number
-      errorMessage = `Invalid destination number: ${to}. Please use a valid Philippine mobile number.`;
-    } else if (error.code === 20003) {
-      // Authentication error
-      errorMessage = 'Twilio authentication failed. Please check your Account SID and Auth Token.';
-    } else if (error.code === 20404) {
-      // Invalid from number
-      errorMessage = 'Invalid Twilio phone number. Please check your TWILIO_PHONE_NUMBER configuration.';
+    if (error.message?.includes('401')) {
+      errorMessage = 'httpSMS authentication failed. Please check your API key.';
+    } else if (error.message?.includes('400')) {
+      errorMessage = 'Invalid request parameters. Please check phone numbers and message content.';
+    } else if (error.message?.includes('422')) {
+      errorMessage = 'Invalid phone number format or message content.';
+    } else if (error.message?.includes('500')) {
+      errorMessage = 'httpSMS service temporarily unavailable. Please try again later.';
+    } else if (error.message?.includes('429')) {
+      errorMessage = 'Rate limit exceeded. Please wait before sending more messages.';
     } else if (error instanceof Error) {
       errorMessage = error.message;
     }
@@ -152,7 +154,7 @@ export async function sendSMS({ to, message }: SendSMSParams): Promise<SendSMSRe
     return {
       success: false,
       error: errorMessage,
-      code: error.code
+      code: error.status || 500
     };
   }
 }
@@ -220,8 +222,6 @@ export function createBookingSMSMessage(
   }
 }
 
-
-
 /**
  * Test phone number formatting (for development/testing)
  */
@@ -241,4 +241,45 @@ export function testPhoneNumberFormatting(phoneNumber: string): {
   }
 }
 
+/**
+ * Check httpSMS service status
+ */
+export async function checkHttpSMSStatus(): Promise<{
+  success: boolean;
+  message?: string;
+  error?: string;
+}> {
+  try {
+    if (!apiKey) {
+      return {
+        success: false,
+        error: 'httpSMS API key not configured'
+      };
+    }
 
+    const response = await fetch(`${baseUrl}/messages`, {
+      method: 'GET',
+      headers: {
+        'x-api-key': apiKey,
+        'Accept': 'application/json'
+      }
+    });
+
+    if (response.ok) {
+      return {
+        success: true,
+        message: 'httpSMS service is operational'
+      };
+    } else {
+      return {
+        success: false,
+        error: `Service check failed: ${response.status} ${response.statusText}`
+      };
+    }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Network error'
+    };
+  }
+}
