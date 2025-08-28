@@ -2,7 +2,9 @@
 
 import React, { useRef, useState } from 'react';
 import NextImage from 'next/image';
-import { XMarkIcon, PlusIcon, CheckIcon } from '@heroicons/react/24/outline';
+import { Button } from '@/components/ui/Button';
+import { Badge } from '@/components/ui/Badge';
+import { XMarkIcon, PlusIcon, SparklesIcon, CurrencyDollarIcon, PhotoIcon, Bars3Icon } from '@heroicons/react/24/outline';
 
 interface AddOn {
   name: string;
@@ -110,10 +112,29 @@ export const AddOnManager: React.FC<AddOnManagerProps> = ({
   };
 
   return (
-    <div className="mb-8">
-      <h2 className="text-lg font-medium text-gray-800 mb-4">Add-ons (Optional)</h2>
-      <div className="flex mb-2 gap-2">
-        <div className="flex-grow">
+    <div className="space-y-6">
+      {/* Section Header */}
+      <div className="flex items-center gap-3 pb-2 border-b border-gray-200">
+        <div className="flex items-center justify-center w-8 h-8 bg-amber-100 rounded-lg">
+          <SparklesIcon className="h-4 w-4 text-amber-600" />
+        </div>
+        <div>
+          <h2 className="text-lg font-semibold text-gray-900">Optional Add-ons</h2>
+          <p className="text-sm text-gray-500">Additional services customers can purchase</p>
+        </div>
+      </div>
+
+      {/* Add New Add-on */}
+      <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="flex items-center justify-center w-6 h-6 bg-amber-100 rounded">
+            <PlusIcon className="h-3 w-3 text-amber-600" />
+          </div>
+          <h3 className="text-sm font-semibold text-gray-900">Add New Add-on</h3>
+        </div>
+
+        <div className="space-y-4">
+          {/* Add-on Name with Suggestions */}
           <div className="relative">
             <input
               type="text"
@@ -121,114 +142,188 @@ export const AddOnManager: React.FC<AddOnManagerProps> = ({
               onChange={(e) => onNewAddOnChange(e.target.value)}
               onFocus={onAddOnInputFocus}
               onBlur={onAddOnInputBlur}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)] sm:text-sm"
-              placeholder="e.g., Personalized nameplate"
+              className="block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500 sm:text-sm"
+              placeholder="e.g., Personalized engraved nameplate"
               autoComplete="off"
               onKeyDown={(e) => handleKeyDown(e)}
             />
+
+            {/* Suggestions Dropdown */}
             {(isAddOnInputFocused && (addOnSuggestions.length > 0 || isLoadingSuggestions)) && (
-              <div className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto">
+              <div className="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-auto">
                 {isLoadingSuggestions ? (
-                  <div className="px-3 py-2 text-sm text-gray-500">Searching…</div>
+                  <div className="px-4 py-3 text-sm text-gray-500 flex items-center gap-2">
+                    <div className="animate-spin h-4 w-4 border-2 border-amber-500 border-t-transparent rounded-full"></div>
+                    Searching suggestions...
+                  </div>
                 ) : (
                   addOnSuggestions.map((s, i) => (
                     <button
                       type="button"
                       key={`${s.name}-${i}`}
-                      className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex justify-between"
+                      className="w-full text-left px-4 py-3 text-sm hover:bg-gray-50 flex justify-between items-center border-b border-gray-100 last:border-b-0"
                       onMouseDown={(e) => {
                         e.preventDefault();
                         onSuggestionSelect(s);
                       }}
                     >
                       <span className="truncate pr-2">{s.name}</span>
-                      <span className="text-gray-500">₱{Number(s.price || 0).toLocaleString()}</span>
+                      <Badge variant="outline" size="sm" className="text-emerald-600">
+                        ₱{Number(s.price || 0).toLocaleString()}
+                      </Badge>
                     </button>
                   ))
                 )}
               </div>
             )}
           </div>
-        </div>
-        <div className="w-32">
-          <div className="flex items-center border border-gray-300 rounded-md shadow-sm px-3 py-2 focus-within:ring-1 focus-within:ring-[var(--primary-green)] focus-within:border-[var(--primary-green)]">
-            <span className="text-gray-500 mr-1">₱</span>
-            <input
-              type="number"
-              min="0.01"
-              step="0.01"
-              value={newAddOnPrice}
-              onChange={(e) => onNewAddOnPriceChange(e.target.value)}
-              placeholder="Price*"
-              className="w-full focus:outline-none sm:text-sm"
-              onKeyDown={(e) => handleKeyDown(e, true)}
-            />
-          </div>
-        </div>
-        <button
-          type="button"
-          onClick={onAddAddOn}
-          disabled={!newAddOn.trim() || !newAddOnPrice.trim()}
-          className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[var(--primary-green)] hover:bg-[var(--primary-green-hover)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--primary-green)] disabled:opacity-50 disabled:cursor-not-allowed"
-          title="Add add-on"
-        >
-          <PlusIcon className="h-5 w-5" />
-        </button>
-      </div>
-      <p className="text-xs text-gray-500 mt-1">* Price is required for all add-ons</p>
 
-      <div className="space-y-2 mt-3">
-        {addOns.map((addOn, index) => (
-          <div
-            key={`addon-${addOn.name.replace(/\s+/g, '-').toLowerCase()}-${addOn.price}-${index}`}
-            className="flex items-center justify-between bg-gray-50 px-3 py-2 rounded-md gap-3"
-            draggable
-            onDragStart={() => handleDragStart(index)}
-            onDragOver={handleDragOver}
-            onDrop={() => handleDrop(index)}
-            title="Drag to reorder"
-          >
-            <div className="flex items-center gap-3">
-              <CheckIcon className="h-5 w-5 text-amber-600 flex-shrink-0" />
-              {addOn.image ? (
-                <NextImage
-                  src={addOn.image}
-                  alt="addon"
-                  width={48}
-                  height={48}
-                  className="h-12 w-12 rounded object-cover border"
-                  unoptimized
+          {/* Price Input and Add Button */}
+          <div className="flex gap-3">
+            <div className="flex-1">
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                  <span className="text-gray-500 font-medium">₱</span>
+                </div>
+                <input
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  value={newAddOnPrice}
+                  onChange={(e) => onNewAddOnPriceChange(e.target.value)}
+                  placeholder="0.00"
+                  className="block w-full pl-8 pr-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500 sm:text-sm"
+                  onKeyDown={(e) => handleKeyDown(e, true)}
                 />
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => handleUploadClick(index)}
-                  className="text-xs px-2 py-1 border rounded text-gray-600 hover:bg-gray-100"
-                >
-                  Add image
-                </button>
-              )}
-              <span className="text-sm break-words">{addOn.name}</span>
+              </div>
             </div>
-            <div className="flex items-center">
-              <span className="text-[var(--primary-green)] font-medium mr-3">
-                +₱{addOn.price.toLocaleString()}
-              </span>
-              <button
-                type="button"
-                onClick={() => onRemoveAddOn(index)}
-                className="text-gray-400 hover:text-red-500 flex-shrink-0 p-1 rounded transition-colors hover:bg-red-50"
-                title="Remove add-on"
-                aria-label={`Remove add-on: ${addOn.name}`}
-              >
-                <XMarkIcon className="h-4 w-4" />
-              </button>
-            </div>
+            <Button
+              type="button"
+              onClick={onAddAddOn}
+              disabled={!newAddOn.trim() || !newAddOnPrice.trim()}
+              variant="primary"
+              leftIcon={<PlusIcon className="h-4 w-4" />}
+              className="px-6"
+            >
+              Add Add-on
+            </Button>
           </div>
-        ))}
-        {addOns.length === 0 && (
-          <p className="text-sm text-gray-500 italic">No add-ons added yet</p>
-        )}
+
+          <p className="text-xs text-gray-500 flex items-center gap-1">
+            <span className="text-amber-500">ℹ</span>
+            Price is required for all add-ons and will be added to the base package price
+          </p>
+        </div>
+      </div>
+
+      {/* Add-ons List */}
+      <div className="bg-white rounded-xl border border-gray-200">
+        <div className="p-6 border-b border-gray-200">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center justify-center w-6 h-6 bg-gray-100 rounded">
+                <Bars3Icon className="h-3 w-3 text-gray-600" />
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-gray-900">Current Add-ons</h3>
+                <p className="text-xs text-gray-500">Drag items to reorder • Click images to update</p>
+              </div>
+            </div>
+            <Badge variant="outline" size="sm">
+              {addOns.length} add-on{addOns.length !== 1 ? 's' : ''}
+            </Badge>
+          </div>
+        </div>
+
+        <div className="p-6">
+          {addOns.length === 0 ? (
+            <div className="text-center py-8">
+              <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                <SparklesIcon className="h-6 w-6 text-gray-400" />
+              </div>
+              <p className="text-sm text-gray-500">No add-ons added yet</p>
+              <p className="text-xs text-gray-400 mt-1">Add your first add-on above</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {addOns.map((addOn, index) => (
+                <div
+                  key={`addon-${addOn.name.replace(/\s+/g, '-').toLowerCase()}-${addOn.price}-${index}`}
+                  className="flex items-center bg-gray-50 p-4 rounded-lg border border-gray-200 gap-4 hover:shadow-sm transition-shadow"
+                  draggable
+                  onDragStart={() => handleDragStart(index)}
+                  onDragOver={handleDragOver}
+                  onDrop={() => handleDrop(index)}
+                  title="Drag to reorder"
+                >
+                  {/* Drag Handle */}
+                  <div className="flex items-center justify-center w-8 h-8 bg-gray-200 rounded cursor-move hover:bg-gray-300 transition-colors">
+                    <Bars3Icon className="h-4 w-4 text-gray-600" />
+                  </div>
+
+                  {/* Check Icon */}
+                  <div className="flex items-center justify-center w-8 h-8 bg-amber-100 rounded-full">
+                    <SparklesIcon className="h-4 w-4 text-amber-600" />
+                  </div>
+
+                  {/* Image */}
+                  <div className="flex-shrink-0">
+                    {addOn.image ? (
+                      <div className="relative group">
+                        <NextImage
+                          src={addOn.image}
+                          alt={addOn.name}
+                          width={56}
+                          height={56}
+                          className="h-14 w-14 rounded-lg object-cover border-2 border-gray-200 group-hover:border-amber-300 transition-colors cursor-pointer"
+                          unoptimized
+                          onClick={() => handleUploadClick(index)}
+                        />
+                        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 rounded-lg transition-all flex items-center justify-center">
+                          <PhotoIcon className="h-5 w-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </div>
+                      </div>
+                    ) : (
+                      <Button
+                        type="button"
+                        onClick={() => handleUploadClick(index)}
+                        variant="outline"
+                        size="sm"
+                        className="h-14 w-14 p-0 border-2 border-dashed border-gray-300 hover:border-amber-400 hover:bg-amber-50"
+                      >
+                        <PhotoIcon className="h-6 w-6 text-gray-400" />
+                      </Button>
+                    )}
+                  </div>
+
+                  {/* Content */}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-gray-900 break-words">{addOn.name}</p>
+                  </div>
+
+                  {/* Price and Actions */}
+                  <div className="flex items-center gap-3">
+                    <Badge variant="outline" size="sm" className="text-emerald-600 bg-emerald-50 border-emerald-200">
+                      <CurrencyDollarIcon className="h-3 w-3 mr-1" />
+                      +₱{addOn.price.toLocaleString()}
+                    </Badge>
+
+                    <Button
+                      type="button"
+                      onClick={() => onRemoveAddOn(index)}
+                      variant="outline"
+                      size="sm"
+                      className="text-red-600 border-red-300 hover:bg-red-50 hover:border-red-400"
+                      leftIcon={<XMarkIcon className="h-4 w-4" />}
+                    >
+                      Remove
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       <input
