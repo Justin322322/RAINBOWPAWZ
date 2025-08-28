@@ -78,8 +78,18 @@ export const ProductionSafeImage: React.FC<ProductionSafeImageProps> = ({
       return `/api/image${imgSrc}`;
     }
 
+    // If it's a file path that starts with uploads/ (no leading slash)
+    if (imgSrc.startsWith('uploads/')) {
+      return `/api/image/${imgSrc.substring('uploads/'.length)}`;
+    }
+
     // If it's a relative path without /uploads/, assume it's a public asset
     if (imgSrc.startsWith('/') && !imgSrc.startsWith('/api/')) {
+      return imgSrc;
+    }
+
+    // If it's an absolute URL (http/https), return as-is and rely on unoptimized rendering
+    if (imgSrc.startsWith('http://') || imgSrc.startsWith('https://')) {
       return imgSrc;
     }
 
@@ -101,6 +111,8 @@ export const ProductionSafeImage: React.FC<ProductionSafeImageProps> = ({
   }
 
   // Use Next.js Image component for better optimization
+  const shouldUnoptimize = finalSrc.startsWith('data:') || finalSrc.startsWith('http://') || finalSrc.startsWith('https://');
+
   return fill ? (
     <Image
       src={finalSrc}
@@ -110,7 +122,7 @@ export const ProductionSafeImage: React.FC<ProductionSafeImageProps> = ({
       onError={handleError}
       onLoad={() => setLoaded(true)}
       priority={priority}
-      unoptimized={finalSrc.startsWith('data:')} // Disable optimization for base64 data URLs
+      unoptimized={shouldUnoptimize} // Disable optimization for data URLs and absolute remotes
     />
   ) : (
     <Image
@@ -122,7 +134,7 @@ export const ProductionSafeImage: React.FC<ProductionSafeImageProps> = ({
       onError={handleError}
       onLoad={() => setLoaded(true)}
       priority={priority}
-      unoptimized={finalSrc.startsWith('data:')} // Disable optimization for base64 data URLs
+      unoptimized={shouldUnoptimize} // Disable optimization for data URLs and absolute remotes
     />
   );
 };
