@@ -46,6 +46,34 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
   const [error, setError] = useState<string | null>(null);
   const { showToast } = useToast();
 
+  // Helper function to get auth token asynchronously
+  const getAuthTokenAsync = async (): Promise<string | null> => {
+    if (typeof document === 'undefined') return null;
+    
+    try {
+      // Try to get from cookies first
+      const cookies = document.cookie.split(';');
+      const authCookie = cookies.find(cookie => cookie.trim().startsWith('auth_token='));
+      
+      if (authCookie) {
+        const token = authCookie.split('=')[1];
+        if (token) return decodeURIComponent(token);
+      }
+      
+      // Fallback to localStorage
+      const localStorageToken = localStorage.getItem('auth_token');
+      if (localStorageToken) return localStorageToken;
+      
+      // Fallback to sessionStorage
+      const sessionStorageToken = sessionStorage.getItem('auth_token');
+      if (sessionStorageToken) return sessionStorageToken;
+      
+      return null;
+    } catch {
+      return null;
+    }
+  };
+
   // Track multiple timeouts for proper cleanup - fixes race condition
   const timeoutIdsRef = useRef<Set<NodeJS.Timeout>>(new Set());
 
@@ -116,7 +144,8 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       const response = await fetch(apiUrl, {
         headers: {
           'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache'
+          'Pragma': 'no-cache',
+          'Authorization': `Bearer ${await getAuthTokenAsync()}`,
         },
         credentials: 'include', // Include httpOnly cookies for secure auth
         // signal: controller.signal // This line is removed as per the new fetchNotifications
@@ -212,6 +241,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${await getAuthTokenAsync()}`,
         },
         credentials: 'include', // Include httpOnly cookies for secure auth
         body: JSON.stringify({ notificationId: notificationId }),
@@ -268,6 +298,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${await getAuthTokenAsync()}`,
         },
         credentials: 'include', // Include httpOnly cookies for secure auth
         body: JSON.stringify({ markAll: true }),
@@ -309,6 +340,14 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
     }
 
     try {
+      // Get the auth token
+      const authToken = await getAuthTokenAsync();
+      
+      if (!authToken) {
+        showToast('Authentication required. Please log in again.', 'error');
+        return;
+      }
+
       // Determine the correct endpoint based on user type using async function
       const userAccountType = await getAccountTypeAsync();
       const endpoint = userAccountType === 'admin'
@@ -319,6 +358,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
         },
         credentials: 'include', // Include httpOnly cookies for secure auth
       });

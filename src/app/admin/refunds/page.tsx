@@ -124,20 +124,63 @@ function AdminRefundsPage() {
   const handleApproveRefund = async (refundId: number) => {
     try {
       setProcessingApproval(prev => new Set(prev).add(refundId));
+      
+      // Get the auth token from cookies
+      const getAuthToken = () => {
+        if (typeof document === 'undefined') return null;
+        
+        try {
+          // Try to get from cookies first
+          const cookies = document.cookie.split(';');
+          const authCookie = cookies.find(cookie => cookie.trim().startsWith('auth_token='));
+          
+          if (authCookie) {
+            const token = authCookie.split('=')[1];
+            if (token) return decodeURIComponent(token);
+          }
+          
+          // Fallback to localStorage
+          const localStorageToken = localStorage.getItem('auth_token');
+          if (localStorageToken) return localStorageToken;
+          
+          // Fallback to sessionStorage
+          const sessionStorageToken = sessionStorage.getItem('auth_token');
+          if (sessionStorageToken) return sessionStorageToken;
+          
+          return null;
+        } catch {
+          return null;
+        }
+      };
+      
+      const authToken = getAuthToken();
+      
+      if (!authToken) {
+        showToast('Authentication required. Please log in again.', 'error');
+        return;
+      }
+      
       const response = await fetch(`/api/admin/refunds/${refundId}/approve`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
         },
       });
 
       const data = await response.json();
 
-      if (data.success) {
+      if (response.ok && data.success) {
         showToast('Refund approved and processed successfully', 'success');
         fetchRefunds(); // Refresh the list
       } else {
-        showToast(data.error || 'Failed to approve refund', 'error');
+        if (response.status === 403) {
+          showToast('Access denied. Admin privileges required.', 'error');
+        } else if (response.status === 401) {
+          showToast('Authentication expired. Please log in again.', 'error');
+        } else {
+          showToast(data.error || 'Failed to approve refund', 'error');
+        }
       }
     } catch (error) {
       console.error('Error approving refund:', error);
@@ -154,20 +197,63 @@ function AdminRefundsPage() {
   const handleDenyRefund = async (refundId: number) => {
     try {
       setProcessingDenial(prev => new Set(prev).add(refundId));
+      
+      // Get the auth token from cookies
+      const getAuthToken = () => {
+        if (typeof document === 'undefined') return null;
+        
+        try {
+          // Try to get from cookies first
+          const cookies = document.cookie.split(';');
+          const authCookie = cookies.find(cookie => cookie.trim().startsWith('auth_token='));
+          
+          if (authCookie) {
+            const token = authCookie.split('=')[1];
+            if (token) return decodeURIComponent(token);
+          }
+          
+          // Fallback to localStorage
+          const localStorageToken = localStorage.getItem('auth_token');
+          if (localStorageToken) return localStorageToken;
+          
+          // Fallback to sessionStorage
+          const sessionStorageToken = sessionStorage.getItem('auth_token');
+          if (sessionStorageToken) return sessionStorageToken;
+          
+          return null;
+        } catch {
+          return null;
+        }
+      };
+      
+      const authToken = getAuthToken();
+      
+      if (!authToken) {
+        showToast('Authentication required. Please log in again.', 'error');
+        return;
+      }
+      
       const response = await fetch(`/api/admin/refunds/${refundId}/deny`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
         },
       });
 
       const data = await response.json();
 
-      if (data.success) {
+      if (response.ok && data.success) {
         showToast('Refund request denied', 'success');
         fetchRefunds(); // Refresh the list
       } else {
-        showToast(data.error || 'Failed to deny refund', 'error');
+        if (response.status === 403) {
+          showToast('Access denied. Admin privileges required.', 'error');
+        } else if (response.status === 401) {
+          showToast('Authentication expired. Please log in again.', 'error');
+        } else {
+          showToast(data.error || 'Failed to deny refund', 'error');
+        }
       }
     } catch (error) {
       console.error('Error denying refund:', error);

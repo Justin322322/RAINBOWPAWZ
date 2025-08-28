@@ -60,6 +60,27 @@ export async function POST(
       }, { status: 400 });
     }
 
+    // First, check if the refund exists and get basic info
+    const basicRefundResult = await query(`
+      SELECT id, status, booking_id, amount, reason
+      FROM refunds 
+      WHERE id = ?
+    `, [refundId]) as any[];
+
+    if (!basicRefundResult || basicRefundResult.length === 0) {
+      return NextResponse.json({
+        error: 'Refund not found'
+      }, { status: 404 });
+    }
+
+    const basicRefund = basicRefundResult[0];
+
+    if (basicRefund.status !== 'pending') {
+      return NextResponse.json({
+        error: `Refund is not in pending status. Current status: ${basicRefund.status}`
+      }, { status: 400 });
+    }
+
     // Get refund details with booking and user information
     const refundResult = await query(`
       SELECT
@@ -90,11 +111,21 @@ export async function POST(
     try {
       if (refund.payment_method === 'gcash') {
         // First, try to validate and fix payment data if needed
-        const { validatePaymentDataForRefund } = await import('@/services/refundService');
-        await validatePaymentDataForRefund(refund.booking_id);
+        try {
+          const { validatePaymentDataForRefund } = await import('@/services/refundService');
+          await validatePaymentDataForRefund(refund.booking_id);
+        } catch (validationError) {
+          console.warn('Payment data validation failed, proceeding with manual processing:', validationError);
+        }
 
         // Check if there's a valid PayMongo transaction
-        const hasPayMongoTransaction = await hasValidPayMongoTransaction(refund.booking_id);
+        let hasPayMongoTransaction = false;
+        try {
+          hasPayMongoTransaction = await hasValidPayMongoTransaction(refund.booking_id);
+        } catch (checkError) {
+          console.warn('PayMongo transaction check failed:', checkError);
+          hasPayMongoTransaction = false;
+        }
 
         if (hasPayMongoTransaction) {
           try {
@@ -145,21 +176,25 @@ export async function POST(
               console.error('Failed to create user notification:', notificationError);
             }
 
-                         // Create admin notification for refund processing
-             try {
-               await createAdminNotification({
-                 type: 'refund_processing',
-                 title: 'Refund Processing',
-                 message: `Refund for booking #${refund.booking_id} (${refund.pet_name}) is being processed via PayMongo.`,
-                 entityType: 'refund',
-                 entityId: refundId
-               });
-             } catch (adminNotificationError) {
-               console.error('Failed to create admin notification:', adminNotificationError);
-             }
+            // Create admin notification for refund processing
+            try {
+              await createAdminNotification({
+                type: 'refund_processing',
+                title: 'Refund Processing',
+                message: `Refund for booking #${refund.booking_id} (${refund.pet_name}) is being processed via PayMongo.`,
+                entityType: 'refund',
+                entityId: refundId
+              });
+            } catch (adminNotificationError) {
+              console.error('Failed to create admin notification:', adminNotificationError);
+            }
 
             // Notify service provider about refund
-            await notifyServiceProviderAboutRefund(refund.provider_id, refund.booking_id, refund.pet_name, refund.amount, 'processing');
+            try {
+              await notifyServiceProviderAboutRefund(refund.provider_id, refund.booking_id, refund.pet_name, refund.amount, 'processing');
+            } catch (providerNotificationError) {
+              console.error('Failed to notify service provider:', providerNotificationError);
+            }
 
             return NextResponse.json({
               success: true,
@@ -214,21 +249,25 @@ export async function POST(
               console.error('Failed to create user notification:', notificationError);
             }
 
-                         // Create admin notification for refund completion
-             try {
-               await createAdminNotification({
-                 type: 'refund_processed',
-                 title: 'Refund Processed',
-                 message: `Refund for booking #${refund.booking_id} (${refund.pet_name}) has been processed successfully. Amount: ₱${refund.amount.toFixed(2)}`,
-                 entityType: 'refund',
-                 entityId: refundId
-               });
-             } catch (adminNotificationError) {
-               console.error('Failed to create admin notification:', adminNotificationError);
-             }
+            // Create admin notification for refund completion
+            try {
+              await createAdminNotification({
+                type: 'refund_processed',
+                title: 'Refund Processed',
+                message: `Refund for booking #${refund.booking_id} (${refund.pet_name}) has been processed successfully. Amount: ₱${refund.amount.toFixed(2)}`,
+                entityType: 'refund',
+                entityId: refundId
+              });
+            } catch (adminNotificationError) {
+              console.error('Failed to create admin notification:', adminNotificationError);
+            }
 
             // Notify service provider about refund
-            await notifyServiceProviderAboutRefund(refund.provider_id, refund.booking_id, refund.pet_name, refund.amount, 'processed');
+            try {
+              await notifyServiceProviderAboutRefund(refund.provider_id, refund.booking_id, refund.pet_name, refund.amount, 'processed');
+            } catch (providerNotificationError) {
+              console.error('Failed to notify service provider:', providerNotificationError);
+            }
 
             return NextResponse.json({
               success: true,
@@ -297,7 +336,11 @@ export async function POST(
           }
 
           // Notify service provider about refund
-          await notifyServiceProviderAboutRefund(refund.provider_id, refund.booking_id, refund.pet_name, refund.amount, 'processed');
+          try {
+            await notifyServiceProviderAboutRefund(refund.provider_id, refund.booking_id, refund.pet_name, refund.amount, 'processed');
+          } catch (providerNotificationError) {
+            console.error('Failed to notify service provider:', providerNotificationError);
+          }
 
           return NextResponse.json({
             success: true,
@@ -365,7 +408,11 @@ export async function POST(
         }
 
         // Notify service provider about refund
-        await notifyServiceProviderAboutRefund(refund.provider_id, refund.booking_id, refund.pet_name, refund.amount, 'processed');
+        try {
+          await notifyServiceProviderAboutRefund(refund.provider_id, refund.booking_id, refund.pet_name, refund.amount, 'processed');
+        } catch (providerNotificationError) {
+          console.error('Failed to notify service provider:', providerNotificationError);
+        }
 
         return NextResponse.json({
           success: true,
@@ -427,15 +474,19 @@ async function notifyServiceProviderAboutRefund(
         ? `A refund of ₱${amount.toFixed(2)} is being processed for booking #${bookingId} (${petName}).`
         : `A refund of ₱${amount.toFixed(2)} has been completed for booking #${bookingId} (${petName}).`;
       
-      await createBusinessNotification({
-        userId: providerUserId,
-        title,
-        message,
-        type: 'info',
-        link: `/cremation/bookings/${bookingId}`,
-        shouldSendEmail: true,
-        emailSubject: `Refund ${status === 'processing' ? 'Processing' : 'Completed'} - Rainbow Paws`
-      });
+      try {
+        await createBusinessNotification({
+          userId: providerUserId,
+          title,
+          message,
+          type: 'info',
+          link: `/cremation/bookings/${bookingId}`,
+          shouldSendEmail: true,
+          emailSubject: `Refund ${status === 'processing' ? 'Processing' : 'Completed'} - Rainbow Paws`
+        });
+      } catch (businessNotificationError) {
+        console.error('Failed to create business notification:', businessNotificationError);
+      }
     }
   } catch (error) {
     console.error('Failed to notify service provider about refund:', error);
