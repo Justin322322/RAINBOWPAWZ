@@ -11,6 +11,8 @@ export async function GET(request: NextRequest) {
     const limit = +url.searchParams.get('limit')! || 10;
     const offset = (page - 1) * limit;
     const includeInactive = url.searchParams.get('includeInactive') === 'true';
+    const bareParam = url.searchParams.get('bare') === 'true';
+    const disableEnrichment = (process.env.DISABLE_PACKAGE_ENRICHMENT === 'true') || bareParam;
 
     console.log('Packages API called with:', { packageIdParam, providerId, page, limit, includeInactive });
 
@@ -83,11 +85,11 @@ export async function GET(request: NextRequest) {
     // Collect package ids for enrichment
     const packageIds = rows.map((p: any) => p.id);
 
-    // Fetch images for all packages in one query
+    // Fetch images for all packages in one query (skip if enrichment disabled)
     let imagesByPackage: Record<number, string[]> = {};
     let inclusionsByPackage: Record<number, Array<{ description: string; image?: string }>> = {};
     let addOnsByPackage: Record<number, Array<{ name: string; price?: number; image?: string }>> = {};
-    if (packageIds.length > 0) {
+    if (!disableEnrichment && packageIds.length > 0) {
       const placeholders = packageIds.map(() => '?').join(',');
       const imagesRows = (await query(
         `SELECT package_id as packageId, image_path, image_data
@@ -222,9 +224,9 @@ export async function GET(request: NextRequest) {
     // Return packages with enriched images and a small preview of inclusions/addOns for list performance
     const packages = rows.map((p: any) => ({
       ...p,
-      inclusions: inclusionsByPackage[p.id] || [],
-      addOns: addOnsByPackage[p.id] || [],
-      images: imagesByPackage[p.id] || [],
+      inclusions: disableEnrichment ? [] : (inclusionsByPackage[p.id] || []),
+      addOns: disableEnrichment ? [] : (addOnsByPackage[p.id] || []),
+      images: disableEnrichment ? [] : (imagesByPackage[p.id] || []),
       supportedPetTypes: []
     }));
 
@@ -237,8 +239,11 @@ export async function GET(request: NextRequest) {
   } catch (err) {
     console.error('Error in packages GET endpoint:', err);
     console.error('Error stack:', (err as Error).stack);
+    const expose = process.env.STAGING_VERBOSE_ERRORS === 'true' || process.env.VERCEL_ENV === 'preview';
     return NextResponse.json(
-      { error: 'Failed to fetch packages', details: (err as Error).message },
+      expose
+        ? { error: 'Failed to fetch packages', details: (err as Error).message, stack: (err as Error).stack }
+        : { error: 'Failed to fetch packages' },
       { status: 500 }
     );
   }
