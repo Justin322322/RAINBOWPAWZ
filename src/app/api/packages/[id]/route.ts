@@ -254,10 +254,18 @@ export async function PATCH(
           [packageId]
         );
 
+        const normalizeSizeCategory = (val: string): string => {
+          const v = (val || '').toLowerCase();
+          if (v.includes('extra')) return 'extra_large';
+          if (v.includes('large')) return 'large';
+          if (v.includes('medium')) return 'medium';
+          if (v.includes('small')) return 'small';
+          return v as any;
+        };
         if (Array.isArray(body.sizePricing) && body.sizePricing.length > 0) {
           for (const sp of body.sizePricing) {
             if (!sp) continue;
-            const sizeCategory = String(sp.sizeCategory || '').trim();
+            const sizeCategory = normalizeSizeCategory(String(sp.sizeCategory || '').trim());
             const min = Number(sp.weightRangeMin);
             const max = sp.weightRangeMax == null ? null : Number(sp.weightRangeMax);
             const p = Number(sp.price);
