@@ -40,6 +40,8 @@ const PackageCard = React.memo<{
 
   // Get image array if available
   const hasImages = pkg.images && pkg.images.length > 0;
+  const inclusionCount = Array.isArray(pkg.inclusions) ? pkg.inclusions.length : 0;
+  const addOnCount = Array.isArray(pkg.addOns) ? pkg.addOns.length : 0;
 
   return (
     <div
@@ -104,10 +106,12 @@ const PackageCard = React.memo<{
           <div className="mb-3">
             <h4 className="text-xs font-semibold text-gray-700 tracking-wide mb-2">Inclusions</h4>
             <div className="relative">
+              {inclusionCount > 1 && (
               <button type="button" aria-label="Scroll inclusions left" onClick={() => scrollRow(`card-inc-${pkg.id}`, -1)} className="hidden md:flex absolute -left-2 top-1/2 -translate-y-1/2 h-7 w-7 items-center justify-center rounded-full bg-white border shadow hover:bg-gray-50">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4 text-gray-700"><path fillRule="evenodd" d="M12.78 4.22a.75.75 0 010 1.06L8.56 9.5l4.22 4.22a.75.75 0 11-1.06 1.06l-4.75-4.75a.75.75 0 010-1.06l4.75-4.75a.75.75 0 011.06 0z" clipRule="evenodd" /></svg>
               </button>
-              <div id={`card-inc-${pkg.id}`} className="flex gap-2 overflow-x-auto no-scrollbar snap-x snap-mandatory py-1">
+              )}
+              <div id={`card-inc-${pkg.id}`} className={`flex gap-2 py-1 ${inclusionCount > 1 ? 'overflow-x-auto no-scrollbar snap-x snap-mandatory' : 'justify-center'}`}>
                 {pkg.inclusions.slice(0, 8).map((inclusion: any, idx) => {
                   const desc = typeof inclusion === 'string' ? inclusion : inclusion.description;
                   const image = typeof inclusion === 'string' ? undefined : inclusion.image;
@@ -121,9 +125,11 @@ const PackageCard = React.memo<{
                   );
                 })}
               </div>
+              {inclusionCount > 1 && (
               <button type="button" aria-label="Scroll inclusions right" onClick={() => scrollRow(`card-inc-${pkg.id}`, 1)} className="hidden md:flex absolute -right-2 top-1/2 -translate-y-1/2 h-7 w-7 items-center justify-center rounded-full bg-white border shadow hover:bg-gray-50">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4 text-gray-700 transform rotate-180"><path fillRule="evenodd" d="M12.78 4.22a.75.75 0 010 1.06L8.56 9.5l4.22 4.22a.75.75 0 11-1.06 1.06l-4.75-4.75a.75.75 0 010-1.06l4.75-4.75a.75.75 0 011.06 0z" clipRule="evenodd" /></svg>
               </button>
+              )}
             </div>
           </div>
         )}
@@ -133,10 +139,12 @@ const PackageCard = React.memo<{
           <div className="mb-3">
             <h4 className="text-xs font-semibold text-gray-700 tracking-wide mb-2">Add-ons</h4>
             <div className="relative">
+              {addOnCount > 1 && (
               <button type="button" aria-label="Scroll add-ons left" onClick={() => scrollRow(`card-addon-${pkg.id}`, -1)} className="hidden md:flex absolute -left-2 top-1/2 -translate-y-1/2 h-7 w-7 items-center justify-center rounded-full bg-white border shadow hover:bg-gray-50">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4 text-gray-700"><path fillRule="evenodd" d="M12.78 4.22a.75.75 0 010 1.06L8.56 9.5l4.22 4.22a.75.75 0 11-1.06 1.06l-4.75-4.75a.75.75 0 010-1.06l4.75-4.75a.75.75 0 011.06 0z" clipRule="evenodd" /></svg>
               </button>
-              <div id={`card-addon-${pkg.id}`} className="flex gap-2 overflow-x-auto no-scrollbar snap-x snap-mandatory py-1">
+              )}
+              <div id={`card-addon-${pkg.id}`} className={`flex gap-2 py-1 ${addOnCount > 1 ? 'overflow-x-auto no-scrollbar snap-x snap-mandatory' : 'justify-center'}`}>
                 {pkg.addOns.slice(0, 8).map((addon: any, idx) => {
                   const name = typeof addon === 'string' ? addon : addon.name;
                   const price = typeof addon === 'string' ? undefined : addon.price;
@@ -153,9 +161,11 @@ const PackageCard = React.memo<{
                   );
                 })}
               </div>
+              {addOnCount > 1 && (
               <button type="button" aria-label="Scroll add-ons right" onClick={() => scrollRow(`card-addon-${pkg.id}`, 1)} className="hidden md:flex absolute -right-2 top-1/2 -translate-y-1/2 h-7 w-7 items-center justify-center rounded-full bg-white border shadow hover:bg-gray-50">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4 text-gray-700 transform rotate-180"><path fillRule="evenodd" d="M12.78 4.22a.75.75 0 010 1.06L8.56 9.5l4.22 4.22a.75.75 0 11-1.06 1.06l-4.75-4.75a.75.75 0 010-1.06l4.75-4.75a.75.75 0 011.06 0z" clipRule="evenodd" /></svg>
               </button>
+              )}
             </div>
           </div>
         )}

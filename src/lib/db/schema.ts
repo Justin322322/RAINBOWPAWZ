@@ -70,8 +70,16 @@ export async function ensureAvailabilityTablesExist(): Promise<boolean> {
 
 export async function checkTableExists(tableName: string): Promise<boolean> {
   try {
-    const result = await query("SHOW TABLES LIKE ?", [tableName]);
-    return (result as any[]).length > 0;
+    // Using INFORMATION_SCHEMA works with parameter binding; SHOW TABLES LIKE ? may not
+    const sql = `
+      SELECT 1
+      FROM INFORMATION_SCHEMA.TABLES
+      WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = ?
+      LIMIT 1
+    `;
+    const result = await query(sql, [tableName]);
+    return Array.isArray(result) && (result as any[]).length > 0;
   } catch {
     return false;
   }
