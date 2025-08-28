@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
     const limit = +url.searchParams.get('limit')! || 10;
     const offset = (page - 1) * limit;
     const includeInactive = url.searchParams.get('includeInactive') === 'true';
-    const debug = url.searchParams.get('debug') === 'true';
+    const _debug = url.searchParams.get('debug') === 'true';
     const bareParam = url.searchParams.get('bare') === 'true';
     const disableEnrichment = (process.env.DISABLE_PACKAGE_ENRICHMENT === 'true') || bareParam;
 
