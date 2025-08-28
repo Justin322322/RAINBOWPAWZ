@@ -1378,15 +1378,15 @@ const PackageModal: React.FC<PackageModalProps> = ({
                 <div className="mb-8">
                   <h2 className="text-lg font-medium text-gray-800 mb-4">Live Preview</h2>
                   <div className="border rounded-xl overflow-hidden shadow bg-white">
-                    <div className="h-40 w-full relative bg-gray-100 overflow-hidden">
+                    <div className="h-56 md:h-64 w-full relative bg-gray-100 overflow-hidden">
                       <PackageImage images={formData.images} alt={formData.name || 'Package'} size="large" className="w-full h-full object-cover" />
                     </div>
                     <div className="p-4">
                       <div className="flex justify-between mb-2">
-                        <h3 className="text-lg font-medium text-gray-800 truncate max-w-[70%]">{formData.name || 'Package name'}</h3>
-                        <span className="text-lg font-semibold text-gray-800">{formData.price ? `₱${formData.price.toLocaleString()}` : '₱0'}</span>
+                        <h3 className="text-xl md:text-2xl font-semibold text-gray-800 truncate max-w-[70%]">{formData.name || 'Package name'}</h3>
+                        <span className="text-xl md:text-2xl font-bold text-gray-800">{formData.price ? `₱${formData.price.toLocaleString()}` : '₱0'}</span>
                       </div>
-                      <p className="text-sm text-gray-600 mb-3 line-clamp-2">{formData.description || 'Description'}</p>
+                      <p className="text-base text-gray-700 mb-3 line-clamp-3">{formData.description || 'Description'}</p>
                       {formData.inclusions.length > 0 && (
                         <div className="mb-3">
                           <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Inclusions</h4>

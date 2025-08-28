@@ -85,6 +85,8 @@ export async function GET(request: NextRequest) {
 
     // Fetch images for all packages in one query
     let imagesByPackage: Record<number, string[]> = {};
+    let inclusionsByPackage: Record<number, Array<{ description: string; image?: string }>> = {};
+    let addOnsByPackage: Record<number, Array<{ name: string; price?: number; image?: string }>> = {};
     if (packageIds.length > 0) {
       const placeholders = packageIds.map(() => '?').join(',');
       const imagesRows = (await query(
@@ -126,13 +128,84 @@ export async function GET(request: NextRequest) {
         }
         return acc;
       }, {});
+
+      // Fetch inclusions for list view (we'll cap to first 2 per package in memory)
+      const incRows = (await query(
+        `SELECT package_id as packageId, description, image_path, image_data
+         FROM package_inclusions
+         WHERE package_id IN (${placeholders})`,
+        packageIds
+      )) as any[];
+      inclusionsByPackage = incRows.reduce((acc: Record<number, Array<{ description: string; image?: string }>>, row: any) => {
+        const id = Number(row.packageId);
+        const desc: string | null = row.description || null;
+        const rawPath: string | null = row.image_path || null;
+        const dataUrl: string | null = row.image_data || null;
+        let resolved: string | undefined;
+        if (dataUrl && typeof dataUrl === 'string' && dataUrl.startsWith('data:image/')) {
+          resolved = dataUrl;
+        } else if (rawPath && typeof rawPath === 'string') {
+          let path = rawPath;
+          if (path.startsWith('/api/image/')) {
+            resolved = path;
+          } else if (path.startsWith('/uploads/')) {
+            resolved = `/api/image/${path.substring('/uploads/'.length)}`;
+          } else if (path.startsWith('uploads/')) {
+            resolved = `/api/image/${path.substring('uploads/'.length)}`;
+          } else if (path.includes('inc_') || path.includes('inclusions')) {
+            const parts = path.split('uploads/');
+            resolved = parts.length > 1 ? `/api/image/${parts[1]}` : path;
+          }
+        }
+        if (typeof desc === 'string' && desc.trim()) {
+          if (!acc[id]) acc[id] = [];
+          if (acc[id].length < 2) acc[id].push({ description: desc.trim(), image: resolved });
+        }
+        return acc;
+      }, {});
+
+      // Fetch add-ons for list view (cap to first 2 per package)
+      const addOnRows = (await query(
+        `SELECT package_id as packageId, description, price, image_path, image_data
+         FROM package_addons
+         WHERE package_id IN (${placeholders})`,
+        packageIds
+      )) as any[];
+      addOnsByPackage = addOnRows.reduce((acc: Record<number, Array<{ name: string; price?: number; image?: string }>>, row: any) => {
+        const id = Number(row.packageId);
+        const name: string | null = row.description || null;
+        const price: number | null = row.price == null ? null : Number(row.price);
+        const rawPath: string | null = row.image_path || null;
+        const dataUrl: string | null = row.image_data || null;
+        let resolved: string | undefined;
+        if (dataUrl && typeof dataUrl === 'string' && dataUrl.startsWith('data:image/')) {
+          resolved = dataUrl;
+        } else if (rawPath && typeof rawPath === 'string') {
+          let path = rawPath;
+          if (path.startsWith('/api/image/')) {
+            resolved = path;
+          } else if (path.startsWith('/uploads/')) {
+            resolved = `/api/image/${path.substring('/uploads/'.length)}`;
+          } else if (path.startsWith('uploads/')) {
+            resolved = `/api/image/${path.substring('uploads/'.length)}`;
+          } else if (path.includes('addon_') || path.includes('addons')) {
+            const parts = path.split('uploads/');
+            resolved = parts.length > 1 ? `/api/image/${parts[1]}` : path;
+          }
+        }
+        if (typeof name === 'string' && name.trim()) {
+          if (!acc[id]) acc[id] = [];
+          if (acc[id].length < 2) acc[id].push({ name: name.trim(), price: price == null ? undefined : price, image: resolved });
+        }
+        return acc;
+      }, {});
     }
 
-    // Return packages with enriched images (leave inclusions/addOns empty for list performance)
+    // Return packages with enriched images and a small preview of inclusions/addOns for list performance
     const packages = rows.map((p: any) => ({
       ...p,
-      inclusions: [],
-      addOns: [],
+      inclusions: inclusionsByPackage[p.id] || [],
+      addOns: addOnsByPackage[p.id] || [],
       images: imagesByPackage[p.id] || [],
       supportedPetTypes: []
     }));
@@ -515,12 +588,74 @@ async function getPackageById(packageId: number, providerId?: string): Promise<N
     }
     
     const pkg = rows[0];
-    // Return basic package data without complex enrichment
+    // Enrich with images, inclusions and add-ons
+    const imagesRows = (await query(
+      `SELECT image_path, image_data FROM package_images WHERE package_id = ? ORDER BY display_order`,
+      [packageId]
+    )) as any[];
+    const images: string[] = imagesRows.map((row: any) => {
+      const rawPath: string | null = row.image_path || null;
+      const dataUrl: string | null = row.image_data || null;
+      if (dataUrl && typeof dataUrl === 'string' && dataUrl.startsWith('data:image/')) return dataUrl;
+      if (rawPath && typeof rawPath === 'string') {
+        let path = rawPath;
+        if (path.startsWith('/api/image/')) return path;
+        if (path.startsWith('/uploads/')) return `/api/image/${path.substring('/uploads/'.length)}`;
+        if (path.startsWith('uploads/')) return `/api/image/${path.substring('uploads/'.length)}`;
+        if (path.includes('packages/')) {
+          const parts = path.split('packages/');
+          return parts.length > 1 ? `/api/image/packages/${parts[1]}` : path;
+        }
+        return path;
+      }
+      return '';
+    }).filter(Boolean);
+
+    const inclusionRows = (await query(
+      `SELECT description, image_path, image_data FROM package_inclusions WHERE package_id = ?`,
+      [packageId]
+    )) as any[];
+    const inclusions = inclusionRows
+      .filter((r: any) => typeof r.description === 'string' && r.description.trim())
+      .map((r: any) => {
+        const rawPath: string | null = r.image_path || null;
+        const dataUrl: string | null = r.image_data || null;
+        let image: string | undefined;
+        if (dataUrl && typeof dataUrl === 'string' && dataUrl.startsWith('data:image/')) image = dataUrl;
+        else if (rawPath && typeof rawPath === 'string') {
+          let p = rawPath;
+          if (p.startsWith('/api/image/')) image = p;
+          else if (p.startsWith('/uploads/')) image = `/api/image/${p.substring('/uploads/'.length)}`;
+          else if (p.startsWith('uploads/')) image = `/api/image/${p.substring('uploads/'.length)}`;
+        }
+        return { description: String(r.description), image };
+      });
+
+    const addOnRows = (await query(
+      `SELECT description, price, image_path, image_data FROM package_addons WHERE package_id = ?`,
+      [packageId]
+    )) as any[];
+    const addOns = addOnRows
+      .filter((r: any) => typeof r.description === 'string' && r.description.trim())
+      .map((r: any) => {
+        const rawPath: string | null = r.image_path || null;
+        const dataUrl: string | null = r.image_data || null;
+        let image: string | undefined;
+        if (dataUrl && typeof dataUrl === 'string' && dataUrl.startsWith('data:image/')) image = dataUrl;
+        else if (rawPath && typeof rawPath === 'string') {
+          let p = rawPath;
+          if (p.startsWith('/api/image/')) image = p;
+          else if (p.startsWith('/uploads/')) image = `/api/image/${p.substring('/uploads/'.length)}`;
+          else if (p.startsWith('uploads/')) image = `/api/image/${p.substring('uploads/'.length)}`;
+        }
+        return { name: String(r.description), price: r.price == null ? undefined : Number(r.price), image };
+      });
+
     const packageData = {
       ...pkg,
-      inclusions: [],
-      addOns: [],
-      images: [],
+      inclusions,
+      addOns,
+      images,
       supportedPetTypes: []
     };
     
