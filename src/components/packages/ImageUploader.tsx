@@ -1,6 +1,6 @@
 import React, { ChangeEvent, memo } from 'react';
 import { ProductionSafeImage } from '@/components/ui/ProductionSafeImage';
-
+import { PhotoIcon } from '@heroicons/react/24/outline';
 
 interface ImageUploaderProps {
   images: string[];
@@ -71,6 +71,7 @@ const ImageUploaderComponent: React.FC<ImageUploaderProps> = ({
             onClick={() => fileInputRef.current?.click()}
             className="aspect-square border-2 border-dashed border-gray-300 rounded-2xl flex flex-col items-center justify-center hover:border-[var(--primary-green)] hover:bg-gray-50 transition-colors"
           >
+            <PhotoIcon className="w-8 h-8 text-gray-400 mb-2" />
             <span className="text-sm text-gray-500">Add Image</span>
           </button>
         )}
