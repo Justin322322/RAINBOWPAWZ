@@ -78,12 +78,13 @@ const PackageCard = React.memo<{
     const next = (index + 1) % total;
     const renderCard = (it: { image?: string; title: string }, variant: 'left'|'center'|'right') => {
       const base = 'absolute top-1/2 -translate-y-1/2 rounded-md border bg-white shadow-sm transition-all duration-300';
-      const dims = variant === 'center' ? 'w-64 z-20 scale-100' : 'w-56 z-10 scale-[0.95] opacity-95';
+      const dims = variant === 'center' ? 'w-56 z-20 scale-100' : 'w-48 z-10 scale-[0.95] opacity-95';
       const pos = variant === 'left' ? '-left-6 -translate-x-full' : variant === 'right' ? '-right-6 translate-x-full' : 'left-1/2 -translate-x-1/2';
+      const imgSize = variant === 'center' ? 64 : 48;
       return (
-        <div className={`${base} ${dims} ${pos} p-3 flex items-center gap-3`}>
-          {it.image && <Image src={it.image} alt="item" width={56} height={56} className="h-14 w-14 rounded object-cover border" unoptimized />}
-          <span className="text-sm text-gray-700 line-clamp-2 leading-5">{it.title}</span>
+        <div className={`${base} ${dims} ${pos} px-3 py-2 flex flex-col items-center text-center`}>
+          {it.image && <Image src={it.image} alt="item" width={imgSize} height={imgSize} className={`rounded object-cover border ${variant==='center'?'h-16 w-16':'h-12 w-12'}`} unoptimized />}
+          <span className="mt-2 text-[13px] text-gray-700 line-clamp-2 leading-5">{it.title}</span>
         </div>
       );
     };
@@ -97,10 +98,10 @@ const PackageCard = React.memo<{
 
         {/* Controls */}
         <button type="button" aria-label="Previous" onClick={() => setIndex(prev)} className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 h-7 w-7 items-center justify-center rounded-full bg-white border shadow hover:bg-gray-50">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4 text-gray-700"><path fill-rule="evenodd" d="M12.78 4.22a.75.75 0 010 1.06L8.56 9.5l4.22 4.22a.75.75 0 11-1.06 1.06l-4.75-4.75a.75.75 0 010-1.06l4.75-4.75a.75.75 0 011.06 0z" clip-rule="evenodd"/></svg>
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4 text-gray-700"><path fillRule="evenodd" d="M12.78 4.22a.75.75 0 010 1.06L8.56 9.5l4.22 4.22a.75.75 0 11-1.06 1.06l-4.75-4.75a.75.75 0 010-1.06l4.75-4.75a.75.75 0 011.06 0z" clipRule="evenodd"/></svg>
         </button>
         <button type="button" aria-label="Next" onClick={() => setIndex(next)} className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 h-7 w-7 items-center justify-center rounded-full bg-white border shadow hover:bg-gray-50">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4 text-gray-700 rotate-180"><path fill-rule="evenodd" d="M12.78 4.22a.75.75 0 010 1.06L8.56 9.5l4.22 4.22a.75.75 0 11-1.06 1.06l-4.75-4.75a.75.75 0 010-1.06l4.75-4.75a.75.75 0 011.06 0z" clip-rule="evenodd"/></svg>
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4 text-gray-700 rotate-180"><path fillRule="evenodd" d="M12.78 4.22a.75.75 0 010 1.06L8.56 9.5l4.22 4.22a.75.75 0 11-1.06 1.06l-4.75-4.75a.75.75 0 010-1.06l4.75-4.75a.75.75 0 011.06 0z" clipRule="evenodd"/></svg>
         </button>
       </div>
     );
