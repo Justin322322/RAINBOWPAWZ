@@ -91,13 +91,21 @@ export async function GET(request: NextRequest) {
     let addOnsByPackage: Record<number, Array<{ name: string; price?: number; image?: string }>> = {};
     if (!disableEnrichment && packageIds.length > 0) {
       const placeholders = packageIds.map(() => '?').join(',');
-      const imagesRows = (await query(
-        `SELECT package_id as packageId, image_path, image_data
-         FROM package_images
-         WHERE package_id IN (${placeholders})
-         ORDER BY display_order`,
-        packageIds
-      )) as any[];
+      let imagesRows: any[] = [];
+      try {
+        imagesRows = (await query(
+          `SELECT package_id as packageId, image_path, image_data
+           FROM package_images
+           WHERE package_id IN (${placeholders})
+           ORDER BY display_order`,
+          packageIds
+        )) as any[];
+      } catch (err: any) {
+        const msg = err?.message || '';
+        if (!(msg.includes('ER_NO_SUCH_TABLE') || msg.includes('ER_BAD_FIELD_ERROR'))) {
+          throw err;
+        }
+      }
 
       imagesByPackage = imagesRows.reduce((acc: Record<number, string[]>, row: any) => {
         const id = Number(row.packageId);
