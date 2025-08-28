@@ -847,8 +847,17 @@ function ServiceDetailsModal({
                 <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-3 sm:mb-4">Inclusions</h3>
                 <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 sm:p-4">
                   {inclusions.length > 0 ? (
-                    <ul className="list-disc pl-4 sm:pl-5 space-y-1 text-sm text-gray-700">
-                      {inclusions.map((item, idx) => <li key={idx}>{item}</li>)}
+                    <ul className="space-y-2">
+                      {inclusions.map((item: any, idx: number) => {
+                        const desc = typeof item === 'string' ? item : item.description;
+                        const image = typeof item === 'string' ? undefined : item.image;
+                        return (
+                          <li key={idx} className="flex items-center gap-3 text-sm text-gray-700">
+                            {image && <img src={image} alt="inc" className="h-12 w-12 rounded object-cover border" />}
+                            <span>{desc}</span>
+                          </li>
+                        );
+                      })}
                     </ul>
                   ) : (
                     <p className="text-sm text-gray-500">No inclusions specified</p>
@@ -861,8 +870,18 @@ function ServiceDetailsModal({
                 <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-3 sm:mb-4">Add-ons</h3>
                 <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 sm:p-4">
                   {addOns.length > 0 ? (
-                    <ul className="list-disc pl-4 sm:pl-5 space-y-1 text-sm text-gray-700">
-                      {addOns.map((item, idx) => <li key={idx}>{item}</li>)}
+                    <ul className="space-y-2">
+                      {addOns.map((item: any, idx: number) => {
+                        const name = typeof item === 'string' ? item : item.name;
+                        const price = typeof item === 'string' ? undefined : item.price;
+                        const image = typeof item === 'string' ? undefined : item.image;
+                        return (
+                          <li key={idx} className="flex items-center gap-3 text-sm text-gray-700">
+                            {image && <img src={image} alt="addon" className="h-12 w-12 rounded object-cover border" />}
+                            <span>{name}{price ? ` (+₱${Number(price).toLocaleString()})` : ''}</span>
+                          </li>
+                        );
+                      })}
                     </ul>
                   ) : (
                     <p className="text-sm text-gray-500">No add-ons specified</p>

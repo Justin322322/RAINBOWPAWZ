@@ -69,7 +69,7 @@ export function usePackages({ userData }: UsePackagesProps) {
                 name = addon.replace(/\s*\(\+₱[\d,]+\)/, '').trim();
               }
 
-              return { name, price };
+              return { name, price, image: undefined };
             }
             // If it's already an object
             else if (typeof addon === 'object' && addon !== null) {
@@ -77,11 +77,12 @@ export function usePackages({ userData }: UsePackagesProps) {
                 name: addon.name || '',
                 price: addon.price !== null && addon.price !== undefined ?
                   (typeof addon.price === 'string' ? parseFloat(addon.price) : addon.price) :
-                  0 // Default price for legacy add-ons without price
+                  0, // Default price for legacy add-ons without price
+                image: typeof addon.image === 'string' ? addon.image : undefined
               };
             }
             // Fallback for any other format
-            return { name: String(addon), price: 0 };
+            return { name: String(addon), price: 0, image: undefined };
           });
         }
 

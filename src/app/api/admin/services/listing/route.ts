@@ -25,8 +25,8 @@ type PackageResponse = {
   formattedRevenue: string;
   image: string | null;
   images: string[];
-  inclusions: string[];
-  addOns: string[];
+  inclusions: Array<{ description: string; image?: string }> | string[];
+  addOns: Array<{ name: string; price?: number; image?: string }> | string[];
   reviewsCount: number;
 };
 
@@ -171,8 +171,8 @@ export async function GET(request: NextRequest) {
   const reviewsTableExists = await checkTableExists('reviews');
 
   // Batch fetch inclusions and addons for all packages
-  let allInclusions: Record<number, string[]> = {};
-  let allAddons: Record<number, string[]> = {};
+  let allInclusions: Record<number, Array<{ description: string; image?: string }>> = {};
+  let allAddons: Record<number, Array<{ name: string; price?: number; image?: string }>> = {};
 
   if (inclusionsTableExists) {
     try {
@@ -181,7 +181,7 @@ export async function GET(request: NextRequest) {
         // SECURITY FIX: Create parameterized query for package inclusions
         const placeholders = packageIds.map(() => '?').join(',');
         const inclusionsResult = await query(
-          `SELECT package_id, description FROM package_inclusions WHERE package_id IN (${placeholders})`,
+          `SELECT package_id, description, image_path, image_data FROM package_inclusions WHERE package_id IN (${placeholders})`,
           packageIds
         ) as any[];
 
@@ -190,7 +190,18 @@ export async function GET(request: NextRequest) {
           if (!allInclusions[inc.package_id]) {
             allInclusions[inc.package_id] = [];
           }
-          allInclusions[inc.package_id].push(inc.description);
+          let image: string | undefined;
+          const rawPath: string | null = inc.image_path || null;
+          const dataUrl: string | null = inc.image_data || null;
+          if (dataUrl && typeof dataUrl === 'string' && dataUrl.startsWith('data:image/')) {
+            image = dataUrl;
+          } else if (rawPath && typeof rawPath === 'string') {
+            let path = rawPath;
+            if (path.startsWith('/api/image/')) image = path;
+            else if (path.startsWith('/uploads/')) image = `/api/image/${path.substring('/uploads/'.length)}`;
+            else if (path.startsWith('uploads/')) image = `/api/image/${path.substring('uploads/'.length)}`;
+          }
+          allInclusions[inc.package_id].push({ description: inc.description, image });
         });
       }
     } catch (error) {
@@ -205,7 +216,7 @@ export async function GET(request: NextRequest) {
         // SECURITY FIX: Create parameterized query for package addons
         const placeholders = packageIds.map(() => '?').join(',');
         const addonsResult = await query(
-          `SELECT package_id, description FROM package_addons WHERE package_id IN (${placeholders})`,
+          `SELECT package_id, description, price, image_path, image_data FROM package_addons WHERE package_id IN (${placeholders})`,
           packageIds
         ) as any[];
 
@@ -214,7 +225,19 @@ export async function GET(request: NextRequest) {
           if (!allAddons[addon.package_id]) {
             allAddons[addon.package_id] = [];
           }
-          allAddons[addon.package_id].push(addon.description);
+          let image: string | undefined;
+          const rawPath: string | null = addon.image_path || null;
+          const dataUrl: string | null = addon.image_data || null;
+          if (dataUrl && typeof dataUrl === 'string' && dataUrl.startsWith('data:image/')) {
+            image = dataUrl;
+          } else if (rawPath && typeof rawPath === 'string') {
+            let path = rawPath;
+            if (path.startsWith('/api/image/')) image = path;
+            else if (path.startsWith('/uploads/')) image = `/api/image/${path.substring('/uploads/'.length)}`;
+            else if (path.startsWith('uploads/')) image = `/api/image/${path.substring('uploads/'.length)}`;
+          }
+          const price = addon.price == null ? undefined : Number(addon.price);
+          allAddons[addon.package_id].push({ name: addon.description, price, image });
         });
       }
     } catch (error) {

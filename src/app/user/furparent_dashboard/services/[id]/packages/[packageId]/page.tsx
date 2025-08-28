@@ -272,18 +272,18 @@ function PackageDetailPage({ userData: _userData }: PackageDetailPageProps) {
                     )}
 
                     <div>
-                      <p className="text-sm text-gray-500">Memorial Inclusions</p>
-                      <ul className="mt-1 space-y-1">
+                      <p className="text-sm text-gray-700 font-semibold">Memorial Inclusions</p>
+                      <ul className="mt-2 space-y-2">
                         {packageData.inclusions.map((inclusion: any, index: number) => {
                           const desc = typeof inclusion === 'string' ? inclusion : inclusion.description;
                           const image = typeof inclusion === 'string' ? undefined : inclusion.image;
                           return (
-                            <li key={index} className="flex items-center gap-2">
+                            <li key={index} className="flex items-center gap-3">
                               <span className="text-[var(--primary-green)]">✓</span>
                               {image && (
-                                <Image src={image} alt="inclusion" width={20} height={20} className="h-5 w-5 rounded object-cover border" unoptimized />
+                                <Image src={image} alt="inclusion" width={72} height={72} className="h-18 w-18 rounded object-cover border" unoptimized />
                               )}
-                              <span>{desc}</span>
+                              <span className="text-gray-800">{desc}</span>
                             </li>
                           );
                         })}
@@ -291,19 +291,19 @@ function PackageDetailPage({ userData: _userData }: PackageDetailPageProps) {
                     </div>
 
                     <div>
-                      <p className="text-sm text-gray-500">Add Ons (Optional)</p>
-                      <ul className="mt-1 space-y-1">
+                      <p className="text-sm text-gray-700 font-semibold">Add Ons (Optional)</p>
+                      <ul className="mt-2 space-y-2">
                         {packageData.addOns.map((addon: any, index: number) => {
                           const name = typeof addon === 'string' ? addon : addon.name;
                           const price = typeof addon === 'string' ? undefined : addon.price;
                           const image = typeof addon === 'string' ? undefined : addon.image;
                           return (
-                            <li key={index} className="flex items-center gap-2">
+                            <li key={index} className="flex items-center gap-3">
                               <span className="text-[var(--primary-green)]">✓</span>
                               {image && (
-                                <Image src={image} alt="addon" width={20} height={20} className="h-5 w-5 rounded object-cover border" unoptimized />
+                                <Image src={image} alt="addon" width={72} height={72} className="h-18 w-18 rounded object-cover border" unoptimized />
                               )}
-                              <span>
+                              <span className="text-gray-800">
                                 {name}{price ? ` (+₱${price.toLocaleString()})` : ''}
                               </span>
                             </li>

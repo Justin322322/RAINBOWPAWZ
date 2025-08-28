@@ -1389,32 +1389,32 @@ const PackageModal: React.FC<PackageModalProps> = ({
                       <p className="text-base md:text-lg text-gray-700 mb-4 line-clamp-4">{formData.description || 'Description'}</p>
                       {formData.inclusions.length > 0 && (
                         <div className="mb-3">
-                          <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Inclusions</h4>
-                          <ul className="text-xs text-gray-600 space-y-1">
+                          <h4 className="text-sm font-semibold text-gray-700 tracking-wide mb-2">Inclusions</h4>
+                          <ul className="text-sm text-gray-700 space-y-2">
                             {formData.inclusions.slice(0, 2).map((inc, idx) => (
-                              <li key={idx} className="flex items-center gap-2">
-                                {inc.image && <NextImage src={inc.image} alt="inc" width={16} height={16} className="h-4 w-4 rounded object-cover border" unoptimized />}
+                              <li key={idx} className="flex items-center gap-4">
+                                {inc.image && <NextImage src={inc.image} alt="inc" width={64} height={64} className="h-16 w-16 rounded object-cover border" unoptimized />}
                                 <span className="truncate">{inc.description}</span>
                               </li>
                             ))}
                             {formData.inclusions.length > 2 && (
-                              <li className="text-gray-500">+{formData.inclusions.length - 2} more</li>
+                              <li className="text-gray-500 text-xs">+{formData.inclusions.length - 2} more</li>
                             )}
                           </ul>
                         </div>
                       )}
                       {formData.addOns.length > 0 && (
                         <div className="mb-1">
-                          <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Add-ons</h4>
-                          <ul className="text-xs text-gray-600 space-y-1">
+                          <h4 className="text-sm font-semibold text-gray-700 tracking-wide mb-2">Add-ons</h4>
+                          <ul className="text-sm text-gray-700 space-y-2">
                             {formData.addOns.slice(0, 2).map((ad, idx) => (
-                              <li key={idx} className="flex items-center gap-2">
-                                {ad.image && <NextImage src={ad.image} alt="addon" width={16} height={16} className="h-4 w-4 rounded object-cover border" unoptimized />}
+                              <li key={idx} className="flex items-center gap-4">
+                                {ad.image && <NextImage src={ad.image} alt="addon" width={64} height={64} className="h-16 w-16 rounded object-cover border" unoptimized />}
                                 <span className="truncate">{ad.name}{ad.price ? ` (+₱${ad.price.toLocaleString()})` : ''}</span>
                               </li>
                             ))}
                             {formData.addOns.length > 2 && (
-                              <li className="text-gray-500">+{formData.addOns.length - 2} more</li>
+                              <li className="text-gray-500 text-xs">+{formData.addOns.length - 2} more</li>
                             )}
                           </ul>
                         </div>
