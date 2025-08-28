@@ -49,7 +49,18 @@ export async function GET(
   const fullPath = join(process.cwd(), 'public', 'uploads', safeRelative);
 
   if (!existsSync(fullPath)) {
-    return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    console.warn(`Image not found: ${fullPath}`);
+    // Instead of returning 404, return a default placeholder or transparent pixel
+    return new NextResponse(
+      'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2Y5ZmFmYiIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTIiIGZpbGw9IiM2YjdiODUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5ObyBpbWFnZSBhdmFpbGFibGU8L3RleHQ+PC9zdmc+',
+      {
+        status: 200,
+        headers: {
+          'Content-Type': 'image/svg+xml',
+          'Cache-Control': 'public, max-age=300' // Cache for 5 minutes
+        }
+      }
+    );
   }
 
   try {

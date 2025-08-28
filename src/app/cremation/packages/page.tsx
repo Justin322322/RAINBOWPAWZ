@@ -19,11 +19,11 @@ import { LoadingSpinner } from '@/app/cremation/components/LoadingComponents';
 import { PackageList } from '@/components/packages/PackageList';
 import { PackageCards } from '@/components/packages/PackageCards';
 import { EmptyState } from '@/components/packages/EmptyState';
-import { PackageDetailsModal } from '@/components/packages/PackageDetailsModal';
+
 import PackageModal from '@/components/packages/PackageModal';
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 import { usePackages } from '@/hooks/usePackages';
-import { ViewMode, PackageData } from '@/types/packages';
+import { ViewMode } from '@/types/packages';
 interface PackagesPageProps {
   userData?: any;
 }
@@ -34,9 +34,7 @@ function PackagesPage({ userData }: PackagesPageProps) {
   // Modal states
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [editingPackageId, setEditingPackageId] = useState<number | undefined>();
-  const [selectedPackage, setSelectedPackage] = useState<PackageData | null>(null);
 
   // Toggle confirmation modal states
   const [showToggleModal, setShowToggleModal] = useState(false);
@@ -83,20 +81,12 @@ function PackagesPage({ userData }: PackagesPageProps) {
     fetchPackages();
   }, [fetchPackages]);
 
-  const handleDetailsPackage = useCallback((packageId: number) => {
-    const pkg = packages.find(p => p.id === packageId);
-    if (pkg) {
-      setSelectedPackage(pkg);
-      setShowDetailsModal(true);
-    }
-  }, [packages]);
+
 
   const handleCloseModals = useCallback(() => {
     setShowCreateModal(false);
     setShowEditModal(false);
-    setShowDetailsModal(false);
     setEditingPackageId(undefined);
-    setSelectedPackage(null);
   }, []);
 
   // Handle toggle with confirmation
@@ -240,7 +230,6 @@ function PackagesPage({ userData }: PackagesPageProps) {
           packages={filteredPackages}
           onEdit={handleEditPackage}
           onDelete={handleDeleteClick}
-          onDetails={handleDetailsPackage}
           onToggleActive={handleToggleWithConfirmation}
           toggleLoading={toggleLoading}
         />
@@ -252,7 +241,6 @@ function PackagesPage({ userData }: PackagesPageProps) {
           packages={filteredPackages}
           onEdit={handleEditPackage}
           onDelete={handleDeleteClick}
-          onDetails={handleDetailsPackage}
           onToggleActive={handleToggleWithConfirmation}
           toggleLoading={toggleLoading}
         />
@@ -277,12 +265,7 @@ function PackagesPage({ userData }: PackagesPageProps) {
         packageId={editingPackageId}
       />
 
-      {/* Package Details Modal */}
-      <PackageDetailsModal
-        isOpen={showDetailsModal}
-        onClose={handleCloseModals}
-        package={selectedPackage}
-      />
+
 
       {/* Delete Confirmation Modal */}
       <ConfirmationModal

@@ -133,12 +133,12 @@ export async function GET(
             if (i.image_data && i.image_data.startsWith('data:image/')) {
               return i.image_data;
             }
-            
+
             // Fallback to file path processing for backward compatibility
             const path = i.image_path;
             if (!path || path.startsWith('blob:')) return null;
             if (path.startsWith('http')) return path;
-            
+
             // Ensure all package images use the API route
             if (path.startsWith('/api/image/')) {
               return path; // Already correct
@@ -158,7 +158,7 @@ export async function GET(
             // For other paths, use the standard function
             return getImagePath(path);
           })
-          .filter(Boolean),
+          .filter((img): img is string => Boolean(img)),
         // New enhanced features
         sizePricing: sizePricing.map((sp) => ({
           sizeCategory: sp.size_category,

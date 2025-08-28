@@ -90,6 +90,7 @@ export const BasicInformation: React.FC<BasicInformationProps> = ({
         {/* Pricing Mode Selection */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
           <Button
+            type="button"
             variant={formData.pricingMode === 'fixed' ? 'primary' : 'outline'}
             size="md"
             fullWidth
@@ -107,6 +108,7 @@ export const BasicInformation: React.FC<BasicInformationProps> = ({
           </Button>
 
           <Button
+            type="button"
             variant={formData.pricingMode === 'by_size' ? 'primary' : 'outline'}
             size="md"
             fullWidth

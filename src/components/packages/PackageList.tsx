@@ -11,7 +11,6 @@ interface PackageListProps {
   onEdit: (id: number) => void;
   onDelete: (id: number) => void;
   onToggleActive?: (id: number, isActive: boolean) => void;
-  onDetails?: (id: number) => void;
   toggleLoading?: number | null;
 }
 
@@ -20,7 +19,6 @@ export const PackageList: React.FC<PackageListProps> = ({
   onEdit,
   onDelete,
   onToggleActive,
-  onDetails,
   toggleLoading
 }) => {
   // Helper function to get category badge styling
@@ -130,15 +128,6 @@ export const PackageList: React.FC<PackageListProps> = ({
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <div className="flex justify-end items-center space-x-3">
-                      {onDetails && (
-                        <button
-                          onClick={() => onDetails(pkg.id)}
-                          className="inline-flex items-center px-3 py-2 text-xs font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 transition-colors"
-                        >
-                          Details
-                        </button>
-                      )}
-
                       <button
                         onClick={() => onEdit(pkg.id)}
                         className="inline-flex items-center px-3 py-2 text-xs font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 transition-colors"
