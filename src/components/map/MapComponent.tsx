@@ -60,7 +60,7 @@ export default function MapComponent({
   const [providerCoordinates, setProviderCoordinates] = useState<Map<number, [number, number]>>(new Map());
   const [isGeocoding, setIsGeocoding] = useState(false);
   const [geocodeError, setGeocodeError] = useState<string | null>(null);
-  const [geocodeAccuracy, setGeocodeAccuracy] = useState<'high' | 'medium' | 'low' | null>(null);
+
   const [routeInstructions, setRouteInstructions] = useState<RouteInstructions | null>(null);
   const [selectedProviderName, setSelectedProviderName] = useState<string | null>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
@@ -132,16 +132,10 @@ export default function MapComponent({
       const result = await geocodingService.geocodeAddress(address);
       console.log(`🗺️ [MapComponent] Geocoding successful for ${type}:`, result);
 
-      // Update accuracy indicator
-      setGeocodeAccuracy(result.accuracy);
 
-      // Only show error messages for low accuracy results
-      if (result.accuracy === 'low') {
-        setGeocodeError(`Location found with low accuracy (${result.provider}). The pin may not be exactly precise.`);
-      } else {
-        // Clear any existing error messages for good accuracy
-        setGeocodeError(null);
-      }
+
+      // Clear any existing error messages for all accuracy levels
+      setGeocodeError(null);
 
       if (type === 'user') {
         setUserCoordinates(result.coordinates);
@@ -167,7 +161,7 @@ export default function MapComponent({
 
       if (type === 'user') {
         setGeocodeError("Could not find your location. Please check your address in your profile.");
-        setGeocodeAccuracy('low');
+
         // Don't use default coordinates - let the user know their address couldn't be found
         setUserCoordinates(null);
       }
@@ -701,8 +695,8 @@ export default function MapComponent({
           left: '50%',
           transform: 'translateX(-50%)',
           zIndex: 1000,
-          backgroundColor: geocodeAccuracy === 'low' ? '#f8d7da' : geocodeAccuracy === 'medium' ? '#fff3cd' : '#d1ecf1',
-          color: geocodeAccuracy === 'low' ? '#721c24' : geocodeAccuracy === 'medium' ? '#856404' : '#0c5460',
+          backgroundColor: '#d1ecf1',
+          color: '#0c5460',
           padding: '10px 15px',
           borderRadius: '4px',
           boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
@@ -710,21 +704,6 @@ export default function MapComponent({
           textAlign: 'center'
         }}>
           <div className="flex items-center gap-2">
-            {geocodeAccuracy === 'high' && (
-              <svg className="w-4 h-4 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-              </svg>
-            )}
-            {geocodeAccuracy === 'medium' && (
-              <svg className="w-4 h-4 text-yellow-600" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-              </svg>
-            )}
-            {geocodeAccuracy === 'low' && (
-              <svg className="w-4 h-4 text-red-600" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-              </svg>
-            )}
             <span>{geocodeError}</span>
           </div>
         </div>

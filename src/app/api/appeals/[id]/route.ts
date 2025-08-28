@@ -252,7 +252,13 @@ export async function PUT(
           ? `❌ Your appeal has been reviewed and unfortunately was not approved. ${admin_response ? 'Reason: ' + admin_response.substring(0, 80) + '...' : 'Please review the response and consider submitting a new appeal.'}`
           : `👀 Your appeal is now under review. We will notify you once a decision has been made.`;
 
-        await sendSMS({ to: appeal.phone, message: smsMessage });
+        const smsResult = await sendSMS({ to: appeal.phone, message: smsMessage });
+        
+        if (smsResult.success) {
+          console.log(`✅ Appeal SMS sent successfully to ${appeal.phone} for appeal #${appeal.id}`);
+        } else {
+          console.error(`❌ Appeal SMS failed for appeal #${appeal.id}:`, smsResult.error);
+        }
       } catch (error) {
         console.error('Failed to send SMS notification:', error);
       }

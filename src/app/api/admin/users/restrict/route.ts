@@ -417,10 +417,20 @@ async function notifyUserOfRestriction(user: any, reason: string, duration?: str
 
     // Send SMS notification
     if (user.phone && (user.sms_notifications === 1 || user.sms_notifications === true)) {
-      await sendSMS({
-        to: user.phone,
-        message: `🚨 Your RainbowPaws account has been restricted. Reason: ${reason}. You can submit an appeal at ${process.env.NEXT_PUBLIC_BASE_URL}/appeals`
-      });
+      try {
+        const smsResult = await sendSMS({
+          to: user.phone,
+          message: `🚨 Your RainbowPaws account has been restricted. Reason: ${reason}. You can submit an appeal at ${process.env.NEXT_PUBLIC_BASE_URL}/appeals`
+        });
+        
+        if (smsResult.success) {
+          console.log(`✅ Restriction SMS sent successfully to ${user.phone} for user #${user.user_id}`);
+        } else {
+          console.error(`❌ Restriction SMS failed for user #${user.user_id}:`, smsResult.error);
+        }
+      } catch (smsError) {
+        console.error('Failed to send SMS notification:', smsError);
+      }
     }
 
   } catch (error) {

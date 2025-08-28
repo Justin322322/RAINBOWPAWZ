@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, ReactNode, useCallback } from 'react';
 import { getUserIdAsync, getAccountTypeAsync, hasAuthToken } from '../utils/auth';
 import { useToast } from './ToastContext';
 
@@ -77,7 +77,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
   // Track multiple timeouts for proper cleanup - fixes race condition
   const timeoutIdsRef = useRef<Set<NodeJS.Timeout>>(new Set());
 
-  const fetchNotifications = async (unreadOnly = false) => {
+  const fetchNotifications = useCallback(async (unreadOnly = false) => {
     // Check if user has auth token
     if (typeof window !== 'undefined' && !hasAuthToken()) {
       return { notifications: [], unreadCount: 0 };
@@ -217,10 +217,10 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   // Mark a specific notification as read
-  const markAsRead = async (notificationId: number) => {
+  const markAsRead = useCallback(async (notificationId: number) => {
     // Check if user has auth token
     if (typeof window !== 'undefined' && !hasAuthToken()) {
       return;
@@ -278,10 +278,10 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
       showToast(errorMessage, 'error');
     }
-  };
+  }, [showToast]);
 
   // Mark all notifications as read
-  const markAllAsRead = async () => {
+  const markAllAsRead = useCallback(async () => {
     // Check if user has auth token
     if (typeof window !== 'undefined' && !hasAuthToken()) {
       return;
@@ -324,10 +324,10 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
       showToast(errorMessage, 'error');
     }
-  };
+  }, [showToast]);
 
   // Remove a specific notification
-  const removeNotification = async (notificationId: number) => {
+  const removeNotification = useCallback(async (notificationId: number) => {
     // Check if user has auth token
     if (typeof window !== 'undefined' && !hasAuthToken()) {
       return;
@@ -386,7 +386,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
       showToast(errorMessage, 'error');
     }
-  };
+  }, [showToast, notifications]);
 
   // Initial fetch of notifications and setup SSE for real-time updates
   useEffect(() => {

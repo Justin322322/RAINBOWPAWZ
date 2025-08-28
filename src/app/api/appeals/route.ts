@@ -291,10 +291,20 @@ async function notifyAdminsOfNewAppeal(appealId: number, user: any, subject: str
 
         // SMS notification
         if (admin.phone) {
-          await sendSMS({
-            to: admin.phone,
-            message: `🚨 New appeal from ${user.first_name} ${user.last_name}. Subject: "${subject.substring(0, 50)}${subject.length > 50 ? '...' : ''}". Review in admin panel.`
-          });
+          try {
+            const smsResult = await sendSMS({
+              to: admin.phone,
+              message: `🚨 New appeal from ${user.first_name} ${user.last_name}. Subject: "${subject.substring(0, 50)}${subject.length > 50 ? '...' : ''}". Review in admin panel.`
+            });
+            
+            if (smsResult.success) {
+              console.log(`✅ Appeal notification SMS sent successfully to admin ${admin.user_id}`);
+            } else {
+              console.error(`❌ Appeal notification SMS failed for admin ${admin.user_id}:`, smsResult.error);
+            }
+          } catch (smsError) {
+            console.error('Failed to send SMS notification to admin:', smsError);
+          }
         }
       } catch (error) {
         console.error(`Failed to notify admin ${admin.user_id}:`, error);

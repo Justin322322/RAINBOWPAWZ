@@ -488,12 +488,17 @@ async function sendPaymentSMSNotification(
     }
 
     if (smsMessage) {
-      const _smsResult = await sendSMS({
+      const smsResult = await sendSMS({
         to: phone,
         message: smsMessage
       });
 
-      // SMS result handled silently
+      // Log SMS result for debugging
+      if (smsResult.success) {
+        console.log(`✅ Payment SMS sent successfully to ${phone} for booking #${bookingDetails.id}`);
+      } else {
+        console.error(`❌ Payment SMS failed for booking #${bookingDetails.id}:`, smsResult.error);
+      }
     }
   } catch (error) {
     console.error('Error sending payment SMS notification:', error);
@@ -548,12 +553,17 @@ async function sendBookingSMSNotification(
     );
 
     // Send SMS
-    const _smsResult = await sendSMS({
+    const smsResult = await sendSMS({
       to: phone,
       message: smsMessage
     });
 
-    // SMS result handled silently
+    // Log SMS result for debugging
+    if (smsResult.success) {
+      console.log(`✅ Booking SMS sent successfully to ${phone} for booking #${bookingDetails.id}`);
+    } else {
+      console.error(`❌ Booking SMS failed for booking #${bookingDetails.id}:`, smsResult.error);
+    }
 
   } catch (error) {
     console.error('Error sending booking SMS notification:', error);

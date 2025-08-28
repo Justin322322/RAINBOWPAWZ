@@ -372,15 +372,16 @@ async function notifyUserOfRestriction(userId: number, reason: string, duration?
     // Send SMS notification (independent of other notifications)
     if (user.phone && (user.sms_notifications === 1 || user.sms_notifications === true)) {
       try {
-        await Promise.race([
-          sendSMS({
-            to: user.phone,
-            message: `🚨 Your RainbowPaws cremation center account has been restricted. Reason: ${reason}. You can submit an appeal at ${getServerAppUrl()}/appeals`
-          }),
-          new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('SMS sending timeout')), 10000)
-          )
-        ]);
+        const smsResult = await sendSMS({
+          to: user.phone,
+          message: `🚨 Your RainbowPaws cremation center account has been restricted. Reason: ${reason}. You can submit an appeal at ${getServerAppUrl()}/appeals`
+        });
+        
+        if (smsResult.success) {
+          console.log(`✅ Restriction SMS sent successfully to ${user.phone} for cremation business #${businessId}`);
+        } else {
+          console.error(`❌ Restriction SMS failed for cremation business #${businessId}:`, smsResult.error);
+        }
       } catch (smsError) {
         console.error('Failed to send SMS notification:', smsError);
       }

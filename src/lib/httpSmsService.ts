@@ -3,6 +3,13 @@ const apiKey = process.env.HTTPSMS_API_KEY;
 const fromNumber = process.env.HTTPSMS_FROM_NUMBER;
 const baseUrl = 'https://api.httpsms.com/v1';
 
+// Add debugging information
+console.log('🔍 SMS Service Configuration:');
+console.log('  API Key:', apiKey ? `${apiKey.substring(0, 8)}...` : '❌ NOT SET');
+console.log('  From Number:', fromNumber || '❌ NOT SET');
+console.log('  Base URL:', baseUrl);
+console.log('  Environment:', process.env.NODE_ENV);
+
 interface SendSMSParams {
   to: string;
   message: string;
@@ -34,7 +41,11 @@ interface HttpSMSResponse {
  */
 export async function sendSMS({ to, message }: SendSMSParams): Promise<SendSMSResult> {
   try {
+    console.log(`📱 Attempting to send SMS to: ${to}`);
+    console.log(`   Message: ${message.substring(0, 50)}${message.length > 50 ? '...' : ''}`);
+    
     if (!apiKey) {
+      console.error('❌ SMS failed: httpSMS API key not configured');
       return {
         success: false,
         error: 'httpSMS API key not configured'
@@ -42,6 +53,7 @@ export async function sendSMS({ to, message }: SendSMSParams): Promise<SendSMSRe
     }
 
     if (!fromNumber) {
+      console.error('❌ SMS failed: httpSMS from number not configured');
       return {
         success: false,
         error: 'httpSMS from number not configured'
@@ -50,6 +62,7 @@ export async function sendSMS({ to, message }: SendSMSParams): Promise<SendSMSRe
 
     // Validate phone number format (basic validation)
     if (!to || !to.match(/^\+?[\d\s\-\(\)]+$/)) {
+      console.error(`❌ SMS failed: Invalid phone number format: ${to}`);
       return {
         success: false,
         error: 'Invalid phone number format'
@@ -67,7 +80,9 @@ export async function sendSMS({ to, message }: SendSMSParams): Promise<SendSMSRe
         // Assume Philippine local formats if not E.164
         formattedPhone = formatPhilippinePhoneNumber(trimmed);
       }
+      console.log(`   Formatted phone: ${formattedPhone}`);
     } catch (formatError) {
+      console.error(`❌ SMS failed: Phone number formatting error:`, formatError);
       return {
         success: false,
         error: formatError instanceof Error ? formatError.message : 'Invalid phone number format'
@@ -80,6 +95,17 @@ export async function sendSMS({ to, message }: SendSMSParams): Promise<SendSMSRe
     
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
+        console.log(`   Attempt ${attempt + 1}/${maxRetries + 1}`);
+        
+        const requestBody = {
+          content: message,
+          from: fromNumber,
+          to: formattedPhone,
+          encrypted: false
+        };
+        
+        console.log(`   Request body:`, JSON.stringify(requestBody, null, 2));
+        
         const response = await fetch(`${baseUrl}/messages/send`, {
           method: 'POST',
           headers: {
@@ -87,22 +113,22 @@ export async function sendSMS({ to, message }: SendSMSParams): Promise<SendSMSRe
             'Accept': 'application/json',
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({
-            content: message,
-            from: fromNumber,
-            to: formattedPhone,
-            encrypted: false
-          })
+          body: JSON.stringify(requestBody)
         });
+
+        console.log(`   Response status: ${response.status} ${response.statusText}`);
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
+          console.error(`   Error response:`, errorData);
           throw new Error(`HTTP ${response.status}: ${errorData.message || response.statusText}`);
         }
 
         const data: HttpSMSResponse = await response.json();
+        console.log(`   Success response:`, JSON.stringify(data, null, 2));
 
         if (data.status === 'success') {
+          console.log(`✅ SMS sent successfully! Message ID: ${data.data.id}`);
           return {
             success: true,
             messageId: data.data.id
@@ -113,6 +139,8 @@ export async function sendSMS({ to, message }: SendSMSParams): Promise<SendSMSRe
 
       } catch (err: any) {
         lastError = err;
+        console.error(`   Attempt ${attempt + 1} failed:`, err.message);
+        
         const transient = err?.message?.includes('429') || 
                          err?.message?.includes('500') || 
                          err?.message?.includes('502') || 
@@ -121,6 +149,7 @@ export async function sendSMS({ to, message }: SendSMSParams): Promise<SendSMSRe
         
         if (transient && attempt < maxRetries) {
           const backoff = 500 * (attempt + 1);
+          console.log(`   Retrying in ${backoff}ms...`);
           await new Promise((r) => setTimeout(r, backoff));
           continue;
         }
@@ -132,7 +161,7 @@ export async function sendSMS({ to, message }: SendSMSParams): Promise<SendSMSRe
     throw lastError;
 
   } catch (error: any) {
-    console.error('Error sending SMS via httpSMS:', error);
+    console.error('❌ Error sending SMS via httpSMS:', error);
 
     // Handle specific httpSMS errors
     let errorMessage = 'Unknown error occurred';
@@ -239,6 +268,23 @@ export function testPhoneNumberFormatting(phoneNumber: string): {
       error: error instanceof Error ? error.message : 'Unknown error'
     };
   }
+}
+
+/**
+ * Simple health check for SMS service
+ */
+export function getSMSHealthStatus(): {
+  configured: boolean;
+  apiKey: boolean;
+  fromNumber: boolean;
+  environment: string;
+} {
+  return {
+    configured: !!(apiKey && fromNumber),
+    apiKey: !!apiKey,
+    fromNumber: !!fromNumber,
+    environment: process.env.NODE_ENV || 'unknown'
+  };
 }
 
 /**
