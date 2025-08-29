@@ -162,8 +162,9 @@ export async function POST(request: Request) {
     }
 
     // Check if email already exists in users table (for all account types)
+    // Use LOWER(email) for case-insensitive duplicate check to leverage the new index
     const emailCheckResult = await query(
-      `SELECT user_id FROM users WHERE email = ? LIMIT 1`,
+      `SELECT user_id FROM users WHERE LOWER(email) = LOWER(?) LIMIT 1`,
       [data.email]
     ) as any[];
 

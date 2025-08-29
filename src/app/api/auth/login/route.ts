@@ -3,6 +3,14 @@ import { query } from '@/lib/db';
 import bcrypt from 'bcryptjs';
 import { setSecureAuthCookies } from '@/lib/secureAuth';
 
+// Timeout wrapper for database operations
+async function withTimeout<T>(p: Promise<T>, ms: number, label = 'operation'): Promise<T> {
+  return Promise.race([
+    p,
+    new Promise<T>((_, reject) => setTimeout(() => reject(new Error(`${label} timeout`)), ms))
+  ]) as Promise<T>;
+}
+
 // Types for our response
 interface _LoginResponse {
   success: boolean;
@@ -27,69 +35,87 @@ export async function POST(request: Request) {
     });
   }
 
-  // Set timeout for the entire operation (15 seconds for Vercel serverless)
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 15000);
-
   try {
-    const body = await request.json();
+    // Parse request body with timeout
+    const body = await withTimeout(
+      request.json(),
+      3000,
+      'request parsing'
+    );
     const { email, password } = body;
 
     // Validate required fields
     if (!email || !password) {
       return NextResponse.json({
-        error: 'Email and password are required'
+        error: 'Invalid email or password'
       }, {
         status: 400,
         headers
       });
     }
 
-    // Single database query to get user data
+    // Single database query to get user data with timeout
+    // Use LOWER(email) for case-insensitive lookup to leverage the new index
     let userResult;
     try {
-      userResult = await query(
-        'SELECT user_id, first_name, last_name, email, password, role, is_verified, is_otp_verified, status, profile_picture, phone, address, gender FROM users WHERE email = ? LIMIT 1',
-        [email]
+      userResult = await withTimeout(
+        query(
+          'SELECT user_id, first_name, last_name, email, password, role, is_verified, is_otp_verified, status, profile_picture, phone, address, gender FROM users WHERE LOWER(email) = LOWER(?) LIMIT 1',
+          [email]
+        ),
+        10000,
+        'user lookup'
       ) as any[];
     } catch (queryError) {
       console.error('Error querying user:', queryError);
       throw queryError;
     }
 
+    // Always perform password comparison to prevent timing attacks
+    let passwordMatch = false;
+    let user = null;
+    let isRestricted = false;
+
     if (userResult && userResult.length > 0) {
-      const user = userResult[0];
+      user = userResult[0];
 
       // Add id field for client compatibility
       user.id = user.user_id;
 
       // Allow restricted users to login but they'll be redirected to restricted page
       // This enables them to access the appeal system
-      const isRestricted = user.status === 'restricted';
+      isRestricted = user.status === 'restricted';
 
-      // Check if password hash is valid
-      if (!user.password || user.password.length < 20) {
-        return NextResponse.json({
-          error: 'Authentication error',
-          message: 'Your account has an invalid password format. Please reset your password.'
-        }, {
-          status: 401,
-          headers
-        });
-      }
+      // Use stored password hash or a dummy hash if password is missing/invalid
+      const passwordHash = user.password && user.password.length >= 20
+        ? user.password
+        : '$2a$12$dummyhashtopreventtimingattacks.invalid';
 
-      // Compare password with stored hash
-      const passwordMatch = await bcrypt.compare(password, user.password);
+      // Always perform bcrypt comparison with timeout
+      passwordMatch = await withTimeout(
+        bcrypt.compare(password, passwordHash),
+        5000,
+        'password verification'
+      );
+    } else {
+      // User doesn't exist - perform dummy comparison to maintain timing
+      const dummyHash = '$2a$12$dummyhashtopreventtimingattacks.invalid';
+      await withTimeout(
+        bcrypt.compare(password, dummyHash),
+        5000,
+        'dummy password verification'
+      );
+    }
 
-      if (!passwordMatch) {
-        return NextResponse.json({
-          error: 'Incorrect password',
-          message: 'The password you entered is incorrect. Please try again.'
-        }, {
-          status: 401,
-          headers
-        });
-      }
+    // Check if authentication was successful
+    if (!passwordMatch || !user) {
+      return NextResponse.json({
+        error: 'Invalid email or password'
+      }, {
+        status: 401,
+        headers
+      });
+    }
 
       // Password is correct, proceed with login
       delete user.password;
@@ -97,24 +123,27 @@ export async function POST(request: Request) {
       // Determine account type from role field
       const accountType = user.role === 'fur_parent' ? 'user' : user.role;
 
-      // Update last login timestamp (non-blocking)
-      try {
-        await query(
+      // Update last login timestamp (fire-and-forget, non-blocking)
+      withTimeout(
+        query(
           'UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE user_id = ?',
           [user.user_id]
-        );
-      } catch (updateError) {
+        ),
+        3000,
+        'last login update'
+      ).catch((updateError) => {
         // Log but don't fail the login for this
         console.warn('Failed to update last login timestamp:', updateError);
-      }
+      });
 
           // For admin accounts, fetch additional admin profile details (non-blocking)
           if (user.role === 'admin') {
             try {
-              const adminResult = await Promise.race([
+              const adminResult = await withTimeout(
                 query('SELECT username, full_name, admin_role FROM admin_profiles WHERE user_id = ? LIMIT 1', [user.user_id]),
-                new Promise((_, reject) => setTimeout(() => reject(new Error('Admin profile query timeout')), 2000))
-              ]) as any[];
+                2000,
+                'admin profile fetch'
+              ) as any[];
 
               if (adminResult && adminResult.length > 0) {
                 const adminProfile = adminResult[0];
@@ -131,15 +160,16 @@ export async function POST(request: Request) {
           // For business accounts, fetch additional business profile details (non-blocking)
           if (user.role === 'business') {
             try {
-              const businessResult = await Promise.race([
+              const businessResult = await withTimeout(
                 query(
                   `SELECT provider_id, name as business_name, provider_type as business_type, phone as business_phone,
                    address as business_address, application_status as verification_status
                    FROM service_providers WHERE user_id = ? LIMIT 1`,
                   [user.user_id]
                 ),
-                new Promise((_, reject) => setTimeout(() => reject(new Error('Business profile query timeout')), 2000))
-              ]) as any[];
+                2000,
+                'business profile fetch'
+              ) as any[];
 
               if (businessResult && businessResult.length > 0) {
                 const business = businessResult[0];
@@ -148,7 +178,7 @@ export async function POST(request: Request) {
                 user.business_phone = business.business_phone;
                 user.business_address = business.business_address;
                 user.business_id = business.provider_id;
-                user.verification_status = business.verification_status || 'approved';
+                user.verification_status = business.verification_status ?? 'pending';
               }
             } catch {
               // Continue with basic user data if business details can't be fetched
@@ -183,27 +213,18 @@ export async function POST(request: Request) {
             path: '/'
           });
 
-          // Clear timeout on successful response
-          clearTimeout(timeoutId);
-          return response;
-    }
-
-    // If we get here, no user with this email was found
-    clearTimeout(timeoutId);
-    return NextResponse.json({
-      error: 'User not found',
-      message: 'No account exists with this email address. Please check your email or create a new account.'
-    }, {
-      status: 401,
-      headers
-    });
+      return response;
 
   } catch (error) {
-    // Clear timeout on error
-    clearTimeout(timeoutId);
+    // Log the original error for server-side diagnostics
+    console.error('Login error:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      timestamp: new Date().toISOString()
+    });
 
-    // Check if it's a timeout error
-    if (error instanceof Error && error.name === 'AbortError') {
+    // Check if it's a timeout error (operation-level timeouts via withTimeout function)
+    if (error instanceof Error && error.message.includes('timeout')) {
       return NextResponse.json({
         error: 'Request timeout',
         message: 'Login request timed out. Please try again.'
@@ -213,9 +234,10 @@ export async function POST(request: Request) {
       });
     }
 
+    // Return fixed 500 payload without exposing internal error details
     return NextResponse.json({
       error: 'Login failed',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: 'An unexpected error occurred.'
     }, {
       status: 500,
       headers

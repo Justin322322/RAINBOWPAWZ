@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { broadcastToUser } from '@/app/api/notifications/sse/route';
+import { broadcastToUser, Notification } from '@/app/api/notifications/sse/route';
 import { query } from '@/lib/db';
 import { verifySecureAuth } from '@/lib/secureAuth';
 import { createNotification } from '@/utils/notificationService';
@@ -401,15 +401,16 @@ async function notifyUserOfRestriction(user: any, reason: string, duration?: str
     try {
       const targetUserId = (user.user_id || user.id)?.toString();
       if (targetUserId) {
-        broadcastToUser(targetUserId, 'user', {
-          id: Date.now(),
+        const notification: Notification = {
+          id: Date.now().toString(),
           title,
           message,
           type: 'error',
           is_read: 0,
           link: null,
           created_at: new Date().toISOString()
-        });
+        };
+        broadcastToUser(targetUserId, 'user', notification);
       }
     } catch {}
 

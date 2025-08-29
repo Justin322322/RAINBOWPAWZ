@@ -2,6 +2,7 @@ import { query } from '@/lib/db';
 import { createNotification } from '@/utils/notificationService';
 import { createBusinessNotification } from '@/utils/businessNotificationService';
 import { sendEmail } from '@/lib/consolidatedEmailService';
+import { Notification as SSENotification } from '@/app/api/notifications/sse/route';
 import { createBookingConfirmationEmail, createBookingStatusUpdateEmail } from '@/lib/emailTemplates';
 import { sendSMS, createBookingSMSMessage } from '@/lib/httpSmsService';
 
@@ -37,7 +38,7 @@ type SystemNotificationType =
   | 'policy_update';
 
 // Import SSE broadcasting functions
-let broadcastToUser: ((userId: string, accountType: string, notification: any) => void) | null = null;
+let broadcastToUser: ((userId: string, accountType: string, notification: SSENotification) => void) | null = null;
 
 // Dynamically import SSE functions to avoid SSR issues
 if (typeof window === 'undefined') {
@@ -153,16 +154,14 @@ export async function createBookingNotification(
     if (broadcastToUser && user_id) {
       // Determine user account type (assume 'user' for most bookings, 'business' for providers)
       const accountType = 'user'; // Most booking notifications go to fur parents
-      
-      broadcastToUser(user_id.toString(), accountType, {
-        id: Date.now(), // Temporary ID for instant display
+
+      const sseNotification: SSENotification = {
+        id: Date.now().toString(), // Temporary ID for instant display
         title,
         message,
-        type,
-        is_read: 0,
-        link: null,
-        created_at: new Date().toISOString()
-      });
+        type: type as 'info' | 'warning' | 'error' | 'success' // Ensure type matches SSE interface
+      };
+      broadcastToUser(user_id.toString(), accountType, sseNotification);
     }
 
     return notificationResult;
@@ -241,16 +240,23 @@ export async function createPaymentNotification(
     if (broadcastToUser && user_id) {
       // Determine user account type (assume 'user' for most bookings, 'business' for providers)
       const accountType = 'user'; // Most booking notifications go to fur parents
-      
-      broadcastToUser(user_id.toString(), accountType, {
-        id: Date.now(), // Temporary ID for instant display
+
+      const _notification = {
+        id: Date.now().toString(), // Temporary ID for instant display
         title,
         message,
         type,
         is_read: 0,
         link: null,
         created_at: new Date().toISOString()
-      });
+      };
+      const sseNotification: SSENotification = {
+        id: Date.now().toString(), // Temporary ID for instant display
+        title,
+        message,
+        type: type as 'info' | 'warning' | 'error' | 'success' // Ensure type matches SSE interface
+      };
+      broadcastToUser(user_id.toString(), accountType, sseNotification);
     }
 
     return notificationResult;
@@ -637,15 +643,14 @@ async function createProviderNotification(
 
     // Broadcast instant notification to provider via SSE if available
     if (broadcastToUser) {
-      broadcastToUser(providerUserId.toString(), 'business', {
-        id: Date.now(), // Temporary ID for instant display
+      const sseNotification: SSENotification = {
+        id: Date.now().toString(), // Temporary ID for instant display
         title,
         message,
         type: notificationType === 'booking_cancelled' ? 'warning' : 'info',
-        is_read: 0,
-        link,
-        created_at: new Date().toISOString()
-      });
+        link
+      };
+      broadcastToUser(providerUserId.toString(), 'business', sseNotification);
     }
   } catch (error) {
     console.error('Error creating provider notification:', error);

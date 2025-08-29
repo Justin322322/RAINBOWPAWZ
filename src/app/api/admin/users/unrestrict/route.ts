@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { broadcastToUser } from '@/app/api/notifications/sse/route';
+import { broadcastToUser, Notification } from '@/app/api/notifications/sse/route';
 import { query } from '@/lib/db';
 import { verifySecureAuth } from '@/lib/secureAuth';
 import { createNotification } from '@/utils/notificationService';
@@ -340,15 +340,16 @@ async function notifyUserOfRestoration(user: any, userType: string) {
     try {
       const targetUserId = user.user_id?.toString();
       if (targetUserId) {
-        broadcastToUser(targetUserId, userType === 'cremation_center' ? 'business' : 'user', {
-          id: Date.now(),
+        const notification: Notification = {
+          id: Date.now().toString(),
           title,
           message,
           type: 'success',
           is_read: 0,
           link: userType === 'cremation_center' ? '/cremation/dashboard' : '/user/furparent_dashboard',
           created_at: new Date().toISOString()
-        });
+        };
+        broadcastToUser(targetUserId, userType === 'cremation_center' ? 'business' : 'user', notification);
       }
     } catch {}
 

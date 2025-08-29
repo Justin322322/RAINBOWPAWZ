@@ -1,5 +1,5 @@
 import { query } from '@/lib/db';
-import { broadcastToUser } from '@/app/api/notifications/sse/route';
+import { broadcastToUser, Notification } from '@/app/api/notifications/sse/route';
 import { sendEmail } from '@/lib/consolidatedEmailService';
 import { getServerAppUrl } from '@/utils/appUrl';
 
@@ -82,15 +82,16 @@ export async function createAdminNotification({
       // Fetch admin IDs to target specific users
       const admins = await query(`SELECT user_id FROM users WHERE role = 'admin'`) as any[];
       for (const admin of admins) {
-        broadcastToUser(String(admin.user_id), 'admin', {
-          id: result.insertId || Date.now(),
+        const notification: Notification = {
+          id: (result.insertId || Date.now()).toString(),
           title,
           message,
-          type,
+          type: type as 'info' | 'warning' | 'error' | 'success',
           is_read: 0,
           link,
           created_at: new Date().toISOString()
-        });
+        };
+        broadcastToUser(String(admin.user_id), 'admin', notification);
       }
     } catch {}
 

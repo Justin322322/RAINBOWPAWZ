@@ -1,5 +1,5 @@
 import { query } from '@/lib/db';
-import { broadcastToUser } from '@/app/api/notifications/sse/route';
+import { broadcastToUser, Notification } from '@/app/api/notifications/sse/route';
 import { sendEmail } from '@/lib/consolidatedEmailService';
 import { getServerAppUrl } from '@/utils/appUrl';
 
@@ -145,15 +145,16 @@ export async function createBusinessNotification({
 
     // Broadcast instant notification to business user via SSE
     try {
-      broadcastToUser(String(userId), 'business', {
-        id: result.insertId || Date.now(),
+      const notification: Notification = {
+        id: (result.insertId || Date.now()).toString(),
         title,
         message,
         type,
         is_read: 0,
         link,
         created_at: new Date().toISOString()
-      });
+      };
+      broadcastToUser(String(userId), 'business', notification);
     } catch {}
 
     // Send email notification if requested and user has email notifications enabled

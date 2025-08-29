@@ -21,6 +21,21 @@ export const getSSLConfig = () => {
   return undefined; // No SSL for local development
 };
 
+// Helper function to get configurable connect timeout with fallback to 5000ms
+export const getConnectTimeout = (): number => {
+  const envValue = process.env.DB_CONNECT_TIMEOUT;
+  if (!envValue) {
+    return 5000; // Default fallback: 5000ms
+  }
+
+  const parsed = parseInt(envValue, 10);
+  if (isNaN(parsed) || parsed <= 0) {
+    return 5000; // Default fallback: 5000ms for invalid values
+  }
+
+  return parsed; // Return the parsed positive integer in milliseconds
+};
+
 // Detect PlanetScale/Vitess environment
 export function isPlanetScale(): boolean {
   const url = process.env.DATABASE_URL || process.env.MYSQL_URL || "";
@@ -80,7 +95,7 @@ function tryCreatePoolFromDatabaseUrl(): mysql.Pool | null {
       queueLimit: 0,
       multipleStatements: false,
       ssl: getSSLConfig(),
-      connectTimeout: 5000,
+      connectTimeout: getConnectTimeout(),
       idleTimeout: 60000,
     });
     return pool;
@@ -100,7 +115,7 @@ const dbConfig = {
   connectionLimit: process.env.NODE_ENV === "production" ? 20 : 10, // Increased pool size
   queueLimit: 0,
   socketPath: undefined,
-  connectTimeout: 5000,
+  connectTimeout: getConnectTimeout(),
   debug: process.env.NODE_ENV === "development",
   multipleStatements: false,
   ssl: getSSLConfig(),
@@ -120,7 +135,7 @@ const productionConfig = {
   // Railway/PlanetScale requires SSL in production
   ssl: getSSLConfig(),
   // Database optimizations
-  connectTimeout: 5000,
+  connectTimeout: getConnectTimeout(),
   idleTimeout: 60000,
 };
 
@@ -164,7 +179,7 @@ function initPool(): mysql.Pool {
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0,
-    connectTimeout: 5000,
+    connectTimeout: getConnectTimeout(),
     ssl: undefined,
   } as const;
   console.log('Using local database (fallback)');
