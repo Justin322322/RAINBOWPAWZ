@@ -15,7 +15,6 @@ import {
   CheckCircleIcon,
   XCircleIcon,
   ExclamationTriangleIcon,
-  CalendarIcon,
   HeartIcon,
   ChartBarIcon
 } from '@heroicons/react/24/outline';
