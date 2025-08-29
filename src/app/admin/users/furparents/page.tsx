@@ -1200,85 +1200,83 @@ export default function AdminFurParentsPage() {
       >
         <div className="space-y-6">
           {/* Overview Header */}
-          <ProfileCard>
-            <div className="flex flex-col gap-4">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div className="flex items-center gap-3 sm:gap-4 min-w-0">
-                  <div className="h-14 w-14 rounded-full ring-2 ring-[var(--primary-green)] ring-offset-2 overflow-hidden bg-gray-100 flex-shrink-0">
-                    {selectedUser?.profile_picture && !avatarError ? (
-                      <Image
-                        src={getProfilePictureUrl(selectedUser.profile_picture)}
-                        alt={`${selectedUser?.first_name} ${selectedUser?.last_name}`}
-                        width={56}
-                        height={56}
-                        className="h-full w-full object-cover"
-                        onError={() => setAvatarError(true)}
-                      />
-                    ) : (
-                      <div className="h-full w-full flex items-center justify-center">
-                        {avatarError ? (
-                          <svg className="h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                          </svg>
-                        ) : (
-                          <UserCircleIcon className="h-8 w-8 text-gray-400" />
-                        )}
-                      </div>
-                    )}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h1 className="text-xl sm:text-2xl font-semibold text-gray-900 truncate">
+          <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+            <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
+              <div className="flex items-center gap-4">
+                <div className="h-16 w-16 rounded-full ring-2 ring-[var(--primary-green)] ring-offset-2 overflow-hidden bg-white flex-shrink-0">
+                  {selectedUser?.profile_picture && !avatarError ? (
+                    <Image
+                      src={getProfilePictureUrl(selectedUser.profile_picture)}
+                      alt={`${selectedUser?.first_name} ${selectedUser?.last_name}`}
+                      width={64}
+                      height={64}
+                      className="h-full w-full object-cover"
+                      onError={() => setAvatarError(true)}
+                    />
+                  ) : (
+                    <div className="h-full w-full flex items-center justify-center">
+                      {avatarError ? (
+                        <svg className="h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                      ) : (
+                        <UserCircleIcon className="h-8 w-8 text-gray-400" />
+                      )}
+                    </div>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <h1 className="text-2xl font-bold text-gray-900 truncate">
                         {selectedUser?.first_name} {selectedUser?.last_name}
                       </h1>
                       {selectedUser?.is_verified && (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 text-emerald-700 px-2 py-0.5 text-xs">
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-green-50 text-green-700 px-3 py-1 text-xs font-medium border border-green-200">
                           <CheckCircleIcon className="h-4 w-4" />
                           Verified
                         </span>
                       )}
                       {selectedUser?.status === 'restricted' && (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-purple-50 text-purple-700 px-2 py-0.5 text-xs">
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-red-50 text-red-700 px-3 py-1 text-xs font-medium border border-red-200">
                           <ShieldExclamationIcon className="h-4 w-4" />
                           Restricted
                         </span>
                       )}
                     </div>
-                    <div className="mt-1 flex items-center gap-2 flex-wrap text-sm">
-                      <span className="font-mono bg-gray-50 border border-gray-200 text-gray-700 px-2 py-0.5 rounded">
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <span className="font-mono bg-gray-100 border border-gray-300 text-gray-700 px-3 py-1 rounded-lg text-sm">
                         ID: {selectedUser?.user_id}
                       </span>
-                      {selectedUser && (
-                        <span>
-                          {getStatusBadge(selectedUser.status)}
-                        </span>
-                      )}
+                      {selectedUser && getStatusBadge(selectedUser.status)}
                     </div>
                   </div>
                 </div>
-                <div className="flex flex-wrap gap-2 sm:justify-end">
-                  {selectedUser?.email && (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-gray-50 border border-gray-200 text-gray-700">
-                      <EnvelopeIcon className="h-4 w-4 text-gray-500" />
-                      <span className="truncate max-w-[180px]">{selectedUser.email}</span>
-                    </span>
-                  )}
-                  {selectedUser?.phone_number && (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-gray-50 border border-gray-200 text-gray-700">
-                      <PhoneIcon className="h-4 w-4 text-gray-500" />
-                      <span>{selectedUser.phone_number}</span>
-                    </span>
-                  )}
-                  {selectedUser?.address && (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-gray-50 border border-gray-200 text-gray-700">
-                      <MapPinIcon className="h-4 w-4 text-gray-500" />
-                      <span className="truncate max-w-[75vw] sm:max-w-[220px]">{selectedUser.address}</span>
-                    </span>
-                  )}
-                </div>
               </div>
             </div>
-          </ProfileCard>
+            <div className="px-6 py-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {selectedUser?.email && (
+                  <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                    <EnvelopeIcon className="h-4 w-4 text-gray-500 flex-shrink-0" />
+                    <span className="text-sm text-gray-700 truncate">{selectedUser.email}</span>
+                  </div>
+                )}
+                {selectedUser?.phone_number && (
+                  <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                    <PhoneIcon className="h-4 w-4 text-gray-500 flex-shrink-0" />
+                    <span className="text-sm text-gray-700">{selectedUser.phone_number}</span>
+                  </div>
+                )}
+                {selectedUser?.address && (
+                  <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                    <MapPinIcon className="h-4 w-4 text-gray-500 flex-shrink-0" />
+                    <span className="text-sm text-gray-700 truncate">{selectedUser.address}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
 
           {/* Contact Information */}
           <ProfileSection
@@ -1286,70 +1284,82 @@ export default function AdminFurParentsPage() {
             subtitle="Personal contact details and account information"
           >
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <ProfileCard className="border border-gray-200">
-                <ProfileFormGroup title="Contact Details" subtitle="Primary contact information">
-                  <div className="space-y-4">
-                    <ProfileField
-                      label="Email Address"
-                      value={selectedUser?.email}
-                      icon={<EnvelopeIcon className="h-5 w-5" />}
-                      className="bg-white border border-gray-200"
-                      valueClassName="text-gray-800"
-                    />
-                    {selectedUser?.phone_number && (
-                      <ProfileField
-                        label="Phone Number"
-                        value={selectedUser.phone_number}
-                        icon={<PhoneIcon className="h-5 w-5" />}
-                        className="bg-white border border-gray-200"
-                        valueClassName="text-gray-800"
-                      />
-                    )}
-                    {selectedUser?.address && (
-                      <ProfileField
-                        label="Home Address"
-                        value={<div className="break-words">{selectedUser.address}</div>}
-                        icon={<MapPinIcon className="h-5 w-5" />}
-                        className="bg-white border border-gray-200"
-                        valueClassName="text-gray-800"
-                      />
-                    )}
+              <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+                <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-4 py-3 border-b border-gray-200">
+                  <div className="flex items-center gap-2">
+                    <EnvelopeIcon className="h-5 w-5 text-[var(--primary-green)]" />
+                    <div>
+                      <h3 className="text-sm font-semibold text-gray-900">Contact Details</h3>
+                      <p className="text-xs text-gray-600">Primary contact information</p>
+                    </div>
                   </div>
-                </ProfileFormGroup>
-              </ProfileCard>
+                </div>
+                <div className="p-4 space-y-4">
+                  <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                    <EnvelopeIcon className="h-5 w-5 text-gray-500 flex-shrink-0" />
+                    <div>
+                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Email Address</p>
+                      <p className="text-sm font-semibold text-gray-900">{selectedUser?.email}</p>
+                    </div>
+                  </div>
+                  {selectedUser?.phone_number && (
+                    <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                      <PhoneIcon className="h-5 w-5 text-gray-500 flex-shrink-0" />
+                      <div>
+                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Phone Number</p>
+                        <p className="text-sm font-semibold text-gray-900">{selectedUser.phone_number}</p>
+                      </div>
+                    </div>
+                  )}
+                  {selectedUser?.address && (
+                    <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                      <MapPinIcon className="h-5 w-5 text-gray-500 flex-shrink-0 mt-0.5" />
+                      <div className="flex-1">
+                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Home Address</p>
+                        <p className="text-sm font-semibold text-gray-900 break-words">{selectedUser.address}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
 
-              <ProfileCard className="border border-gray-200">
-                <ProfileFormGroup title="Account Details" subtitle="Registration and verification status">
-                  <div className="space-y-4">
-                    <ProfileField
-                      label="Registration Date"
-                      value={selectedUser ? formatDate(selectedUser.created_at) : 'N/A'}
-                      icon={<CalendarIcon className="h-5 w-5" />}
-                      className="bg-white border border-gray-200"
-                      valueClassName="text-gray-800"
-                    />
-                    <ProfileField
-                      label="Verification Status"
-                      value={
-                        selectedUser?.is_verified ? (
-                          <span className="inline-flex items-center text-green-600 font-medium">
-                            <CheckCircleIcon className="h-4 w-4 mr-1" />
-                            Verified Account
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center text-yellow-600 font-medium">
-                            <ExclamationTriangleIcon className="h-4 w-4 mr-1" />
-                            Not Verified
-                          </span>
-                        )
-                      }
-                      icon={<CheckCircleIcon className="h-5 w-5" />}
-                      className="bg-white border border-gray-200"
-                      valueClassName="text-gray-800"
-                    />
+              <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+                <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-4 py-3 border-b border-gray-200">
+                  <div className="flex items-center gap-2">
+                    <CheckCircleIcon className="h-5 w-5 text-[var(--primary-green)]" />
+                    <div>
+                      <h3 className="text-sm font-semibold text-gray-900">Account Details</h3>
+                      <p className="text-xs text-gray-600">Registration and verification status</p>
+                    </div>
                   </div>
-                </ProfileFormGroup>
-              </ProfileCard>
+                </div>
+                <div className="p-4 space-y-4">
+                  <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                    <CalendarIcon className="h-5 w-5 text-gray-500 flex-shrink-0" />
+                    <div>
+                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Registration Date</p>
+                      <p className="text-sm font-semibold text-gray-900">{selectedUser ? formatDate(selectedUser.created_at) : 'N/A'}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                    <CheckCircleIcon className="h-5 w-5 text-gray-500 flex-shrink-0" />
+                    <div>
+                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Verification Status</p>
+                      {selectedUser?.is_verified ? (
+                        <span className="inline-flex items-center gap-1.5 text-green-600 font-medium">
+                          <CheckCircleIcon className="h-4 w-4" />
+                          <span className="text-sm font-semibold">Verified Account</span>
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 text-yellow-600 font-medium">
+                          <ExclamationTriangleIcon className="h-4 w-4" />
+                          <span className="text-sm font-semibold">Not Verified</span>
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </ProfileSection>
 
@@ -1365,13 +1375,13 @@ export default function AdminFurParentsPage() {
                   id: 'registered-pets',
                   label: 'Registered Pets',
                   value: selectedUser?.pets ?? 0,
-                  icon: <HeartIcon className="h-5 w-5" />,
+                  icon: <HeartIcon className="h-5 w-5 text-[var(--primary-green)]" />,
                 },
                 {
                   id: 'completed-bookings',
                   label: 'Completed Bookings',
                   value: selectedUser?.completedBookings ?? 0,
-                  icon: <ChartBarIcon className="h-5 w-5" />,
+                  icon: <ChartBarIcon className="h-5 w-5 text-[var(--primary-green)]" />,
                 },
               ]}
             />
@@ -1424,15 +1434,15 @@ export default function AdminFurParentsPage() {
             >
               <div className="space-y-4">
                 {selectedUser.appeals.map((appeal) => (
-                  <ProfileCard key={appeal.appeal_id} className="border-l-4 border-l-blue-500">
+                  <ProfileCard key={appeal.appeal_id} className="border-l-4 border-l-[var(--primary-green)]">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <div className="flex items-center space-x-2 mb-2">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            appeal.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                            appeal.status === 'under_review' ? 'bg-blue-100 text-blue-800' :
-                            appeal.status === 'approved' ? 'bg-green-100 text-green-800' :
-                            'bg-red-100 text-red-800'
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${
+                            appeal.status === 'pending' ? 'bg-gray-50 text-gray-700 border-gray-200' :
+                            appeal.status === 'under_review' ? 'bg-gray-50 text-gray-700 border-gray-200' :
+                            appeal.status === 'approved' ? 'bg-gray-50 text-gray-700 border-gray-200' :
+                            'bg-gray-50 text-gray-700 border-gray-200'
                           }`}>
                             {appeal.status.replace('_', ' ').toUpperCase()}
                           </span>
