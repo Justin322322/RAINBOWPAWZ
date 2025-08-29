@@ -60,7 +60,7 @@ export default function MapComponent({
   const [providerCoordinates, setProviderCoordinates] = useState<Map<number, [number, number]>>(new Map());
   const [isGeocoding, setIsGeocoding] = useState(false);
   const [geocodeError, setGeocodeError] = useState<string | null>(null);
-  const [geocodeAccuracy, setGeocodeAccuracy] = useState<string | null>(null);
+  const [_geocodeAccuracy, setGeocodeAccuracy] = useState<string | null>(null);
 
   const [routeInstructions, setRouteInstructions] = useState<RouteInstructions | null>(null);
   const [selectedProviderName, setSelectedProviderName] = useState<string | null>(null);
