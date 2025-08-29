@@ -1,61 +1,70 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { verifySecureAuth } from '@/lib/secureAuth';
 
-// Store active SSE connections
-const sseConnections = new Map<string, ReadableStreamDefaultController>();
+export const runtime = 'edge';
+
+// Active SSE connections
+const sseConnections = new Map<string, ReadableStreamDefaultController<Uint8Array>>();
 
 /**
- * GET - Server-Sent Events endpoint for real-time notifications
+ * GET - Server-Sent Events endpoint
  */
 export async function GET(request: NextRequest) {
   try {
-    // Use secure authentication
     const user = await verifySecureAuth(request);
     if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' },
+      });
     }
 
-    // Create unique connection ID
     const connectionId = `${user.userId}_${user.accountType}_${Date.now()}`;
+    const encoder = new TextEncoder();
 
-    // Create SSE stream
-    const stream = new ReadableStream({
+    let controllerRef: ReadableStreamDefaultController<Uint8Array> | null = null;
+    let keepAlive: NodeJS.Timeout;
+
+    const stream = new ReadableStream<Uint8Array>({
       start(controller) {
-        // Store connection for broadcasting
+        controllerRef = controller;
         sseConnections.set(connectionId, controller);
 
-        // Send initial connection confirmation
-        controller.enqueue(`data: ${JSON.stringify({
-          type: 'connection',
-          message: 'Connected to real-time notifications',
-          timestamp: new Date().toISOString()
-        })}\n\n`);
+        // Initial connection message
+        controller.enqueue(
+          encoder.encode(
+            `data: ${JSON.stringify({
+              type: 'connection',
+              message: 'Connected to real-time notifications',
+              timestamp: new Date().toISOString(),
+            })}\n\n`
+          )
+        );
 
-        // Send keep-alive every 30 seconds
-        const keepAlive = setInterval(() => {
+        // Keep-alive pings
+        keepAlive = setInterval(() => {
           try {
-            controller.enqueue(`data: ${JSON.stringify({
-              type: 'ping',
-              timestamp: new Date().toISOString()
-            })}\n\n`);
+            controller.enqueue(
+              encoder.encode(
+                `data: ${JSON.stringify({
+                  type: 'ping',
+                  timestamp: new Date().toISOString(),
+                })}\n\n`
+              )
+            );
           } catch {
-            console.log('Keep-alive failed, connection closed:', connectionId);
             clearInterval(keepAlive);
             sseConnections.delete(connectionId);
           }
         }, 30000);
-
-        // Clean up on connection close
-        request.signal.addEventListener('abort', () => {
-          clearInterval(keepAlive);
-          sseConnections.delete(connectionId);
-          console.log('SSE connection closed:', connectionId);
-        });
       },
-      cancel() {
-        sseConnections.delete(connectionId);
-        console.log('SSE connection cancelled:', connectionId);
-      }
+      cancel(reason) {
+        if (keepAlive) clearInterval(keepAlive);
+        if (controllerRef) {
+          sseConnections.delete(connectionId);
+        }
+        console.log('SSE connection closed:', connectionId, 'reason:', reason);
+      },
     });
 
     return new Response(stream, {
@@ -64,62 +73,85 @@ export async function GET(request: NextRequest) {
         'Cache-Control': 'no-cache, no-store, must-revalidate',
         'Connection': 'keep-alive',
         'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Cache-Control',
       },
     });
-
   } catch (error) {
     console.error('SSE endpoint error:', error);
-    return NextResponse.json({
-      error: 'Internal server error',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 });
+    return new Response(
+      JSON.stringify({
+        error: 'Internal server error',
+        details: error instanceof Error ? error.message : 'Unknown error',
+      }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
+    );
   }
 }
 
 /**
- * Broadcast notification to specific user
+ * Broadcast to specific user
  */
-export function broadcastToUser(userId: string, accountType: string, notification: any) {
-  const userConnections = Array.from(sseConnections.entries()).filter(([connId]) => {
-    return connId.startsWith(`${userId}_${accountType}_`);
-  });
+export function broadcastToUser(
+  userId: string,
+  accountType: string,
+  notification: any
+) {
+  const encoder = new TextEncoder();
 
-  userConnections.forEach(([connId, controller]) => {
+  const userConnections = Array.from(sseConnections.entries()).filter(
+    ([connId]) => connId.startsWith(`${userId}_${accountType}_`)
+  );
+
+  for (const [connId, controller] of userConnections) {
     try {
-      controller.enqueue(`data: ${JSON.stringify({
-        type: 'notification',
-        notification,
-        timestamp: new Date().toISOString()
-      })}\n\n`);
+      controller.enqueue(
+        encoder.encode(
+          `data: ${JSON.stringify({
+            type: 'notification',
+            notification,
+            timestamp: new Date().toISOString(),
+          })}\n\n`
+        )
+      );
     } catch {
-      console.log('Failed to send notification via SSE, removing connection:', connId);
+      console.log(
+        'Failed to send notification via SSE, removing connection:',
+        connId
+      );
       sseConnections.delete(connId);
     }
-  });
+  }
 }
 
 /**
- * Broadcast to all connected users
+ * Broadcast to all
  */
 export function broadcastToAll(notification: any) {
-  Array.from(sseConnections.entries()).forEach(([connId, controller]) => {
+  const encoder = new TextEncoder();
+
+  for (const [connId, controller] of sseConnections.entries()) {
     try {
-      controller.enqueue(`data: ${JSON.stringify({
-        type: 'system_notification',
-        notification,
-        timestamp: new Date().toISOString()
-      })}\n\n`);
+      controller.enqueue(
+        encoder.encode(
+          `data: ${JSON.stringify({
+            type: 'system_notification',
+            notification,
+            timestamp: new Date().toISOString(),
+          })}\n\n`
+        )
+      );
     } catch {
-      console.log('Failed to send system notification via SSE, removing connection:', connId);
+      console.log(
+        'Failed to send system notification via SSE, removing connection:',
+        connId
+      );
       sseConnections.delete(connId);
     }
-  });
+  }
 }
 
 /**
- * Get active connections count
+ * Active connections count
  */
 export function getActiveConnections() {
   return sseConnections.size;
-} 
+}
