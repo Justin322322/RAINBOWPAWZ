@@ -1,4 +1,4 @@
-// src/app/api/packages/route.ts
+// src/app/api/admin/services/listing/route.ts
 
 import { NextRequest, NextResponse } from 'next/server';
 import { query, checkTableExists } from '@/lib/db';
@@ -10,497 +10,377 @@ async function safeQuery(queryString: string, params: any[] = []): Promise<any[]
   try {
     return await query(queryString, params) as any[];
   } catch (error) {
-    console.error(`[DEBUG] Query failed: ${queryString}`, error);
+    console.error(`Query failed: ${queryString}`, error);
     return [];
   }
 }
 
-type RawServiceRow = Record<string, any>;
-type PackageResponse = {
-  id: number;
-  name: string;
-  description: string;
-  category: string;
-  cremationType: string;
-  processingTime: string;
-  price: string;
-  priceValue: number;
-  conditions: string;
-  status: 'active' | 'inactive';
-  cremationCenter: string;
-  providerId: number;
-  rating: number;
-  bookings: number;
-  revenue: number;
-  formattedRevenue: string;
-  image: string | null;
-  images: string[];
-  inclusions: string[];
-  addOns: string[];
-  reviewsCount: number;
-};
+// Helper function to get valid package IDs
+function getValidPackageIds(rows: any[]): number[] {
+  return rows
+    .map(r => r.package_id)
+    .filter(id => id != null && !isNaN(id));
+}
 
-export async function GET(request: NextRequest) {
-  // --- Authentication ---
-  const user = await verifySecureAuth(request);
-  if (!user) {
-    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+// Helper function to build IN clause with placeholders
+function buildInClause(ids: number[]): { clause: string; params: any[] } {
+  if (ids.length === 0) return { clause: '', params: [] };
+  const placeholders = ids.map(() => '?').join(',');
+  return { clause: `IN (${placeholders})`, params: ids };
+}
+
+// Helper function to get available columns from service_providers table
+async function getServiceProviderColumns(): Promise<string[]> {
+  try {
+    const result = await safeQuery(`
+      SELECT COLUMN_NAME
+      FROM INFORMATION_SCHEMA.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'service_providers'
+    `);
+    return result.map((col: any) => col.COLUMN_NAME.toLowerCase());
+  } catch (error) {
+    console.error('Error fetching service_providers columns:', error);
+    return [];
   }
+}
 
-  if (user.accountType !== 'admin') {
-    return NextResponse.json({ success: false, error: 'Forbidden: Admin access required' }, { status: 403 });
-  }
+// Helper function to build main service query
+async function buildServiceQuery(search: string, statusFilter: string, categoryFilter: string) {
+  const spColumns = await getServiceProviderColumns();
+  const joinSP = await checkTableExists('service_providers');
 
-  // --- Query params ---
-  const url = new URL(request.url);
-  const s = url.searchParams.get('search') || '';
-  const statusF = url.searchParams.get('status') || 'all';
-  const catF = url.searchParams.get('category') || 'all';
-  const page = Math.max(1, parseInt(url.searchParams.get('page') || '1'));
-  const limit = Math.max(1, parseInt(url.searchParams.get('limit') || '20'));
-  const offset = (page - 1) * limit;
-
-  // --- Ensure table exists ---
-  const tableExists = await checkTableExists('service_packages');
-
-  if (!tableExists) {
-    return NextResponse.json({
-      success: true,
-      services: [],
-      pagination: { total: 0, page, limit, totalPages: 0 },
-      stats: {
-        activeServices: 0,
-        totalBookings: 0,
-        verifiedCenters: 0
-      }
-    });
-  }
-
-  // --- Build main query with proper JOINs ---
-  const cols = [
+  // Base columns that always exist
+  const baseCols = [
     'p.package_id', 'p.name', 'p.description',
     "COALESCE(p.price,0) AS price",
     "COALESCE(p.is_active,1) AS is_active",
     "COALESCE(p.category,'standard') AS category",
     "COALESCE(p.cremation_type,'') AS cremationType",
     "COALESCE(p.processing_time,'2-3 days') AS processingTime",
-    "COALESCE(p.conditions,'') AS conditions",
-    "sp.provider_id AS providerId", 
-    "COALESCE(sp.name,'Cremation Center') AS providerName",
-    "COALESCE(sp.business_name,'Cremation Center') AS businessName",
-    "COALESCE(sp.address,'') AS providerAddress",
-    "COALESCE(sp.phone,'') AS providerPhone",
-    "COALESCE(sp.email,'') AS providerEmail"
+    "COALESCE(p.conditions,'') AS conditions"
   ];
 
-  // Build the JOIN clause - using the correct column names for joining
-  const joinSP = await checkTableExists('service_providers')
-    ? 'LEFT JOIN service_providers sp ON p.provider_id=sp.provider_id'
-    : '';
+  // Add service provider columns if they exist
+  const spCols = [];
+  if (joinSP) {
+    spCols.push("sp.provider_id AS providerId");
+    if (spColumns.includes('name')) spCols.push("COALESCE(sp.name,'Cremation Center') AS providerName");
+    if (spColumns.includes('address')) spCols.push("COALESCE(sp.address,'') AS providerAddress");
+    if (spColumns.includes('phone')) spCols.push("COALESCE(sp.phone,'') AS providerPhone");
+  }
 
-  // SECURITY FIX: Build safe query with validated components
-  const colsStr = cols.join(', ');
-  let sql = `SELECT ${colsStr} FROM service_packages p ${joinSP} WHERE 1=1`;
+  const colsStr = [...baseCols, ...spCols].join(', ');
+  const joinClause = joinSP ? 'LEFT JOIN service_providers sp ON p.provider_id=sp.provider_id' : '';
+
+  let sql = `SELECT ${colsStr} FROM service_packages p ${joinClause} WHERE 1=1`;
   const params: any[] = [];
 
-  if (s) {
-    sql += ' AND (p.name LIKE ? OR sp.name LIKE ? OR sp.business_name LIKE ?)';
-    params.push(`%${s}%`, `%${s}%`, `%${s}%`);
+  // Build search conditions
+  if (search) {
+    const searchConditions = ['p.name LIKE ?'];
+    params.push(`%${search}%`);
+
+    if (joinSP && spColumns.includes('name')) {
+      searchConditions.push('sp.name LIKE ?');
+      params.push(`%${search}%`);
+    }
+
+    sql += ` AND (${searchConditions.join(' OR ')})`;
   }
-  if (statusF !== 'all') {
+
+  // Add filters
+  if (statusFilter !== 'all') {
     sql += ' AND p.is_active = ?';
-    params.push(statusF === 'active' ? 1 : 0);
+    params.push(statusFilter === 'active' ? 1 : 0);
   }
-  if (catF !== 'all') {
+
+  if (categoryFilter !== 'all') {
     sql += ' AND p.category = ?';
-    params.push(catF);
-  }
-  sql += ` ORDER BY p.created_at DESC LIMIT ${Number(limit)} OFFSET ${Number(offset)}`;
-
-  // --- Execute main query with fallback ---
-  let rows: RawServiceRow[] = [];
-  try {
-    const result = await query(sql, params);
-
-    if (Array.isArray(result)) {
-      rows = result as RawServiceRow[];
-    } else {
-      console.error('Unexpected query result format:', result);
-      throw new Error('Unexpected query result format');
-    }
-  } catch (err) {
-    console.error('Primary query failed:', err);
-    try {
-      // Fallback to simple query
-      const fallbackQuery = `
-        SELECT
-          package_id as id,
-          name,
-          description,
-          0 AS price,
-          1 AS is_active,
-          'standard' AS category,
-          '' AS cremationType,
-          '2-3 days' AS processingTime,
-          '' AS conditions,
-          'Cremation Center' AS providerName,
-          0 AS providerId
-        FROM service_packages
-        LIMIT ${Number(limit)} OFFSET ${Number(offset)}
-      `;
-      const fallbackResult = await query(fallbackQuery, []);
-      rows = Array.isArray(fallbackResult) ? fallbackResult as RawServiceRow[] : [];
-    } catch (fallbackError: any) {
-      console.error('Fallback query also failed:', fallbackError);
-      return NextResponse.json({
-        success: false,
-        error: 'Failed to fetch services',
-        details: process.env.NODE_ENV === 'development' ?
-          (fallbackError.message || String(fallbackError)) :
-          undefined
-      }, { status: 500 });
-    }
+    params.push(categoryFilter);
   }
 
-  // --- Total count ---
-  let total = 0;
-  try {
-    const countResult = await safeQuery(`SELECT COUNT(*) AS t FROM service_packages`);
-    total = +(countResult[0]?.t || 0);
-  } catch (error) {
-    console.error('Total count query failed:', error);
-    total = rows.length;
-  }
+  sql += ' ORDER BY p.created_at DESC';
 
-  // --- Revenue stats ---
-  let totalRev = 0;
-  let formattedTotalRev = '₱0.00';
-  let monthlyRev = '₱0.00';
-  try {
-    const revenueData = await calculateRevenue();
-    totalRev = revenueData.totalRevenue || 0;
-    formattedTotalRev = formatRevenue(totalRev);
-    monthlyRev = formatRevenue(revenueData.monthlyRevenue || 0);
-  } catch (error) {
-    console.error('Error calculating revenue:', error);
-    // Continue with zeros if revenue calculation fails
-    totalRev = 0;
-    formattedTotalRev = '₱0.00';
-    monthlyRev = '₱0.00';
-  }
-
-  // --- Batch fetch additional data ---
-  const inclusionsTableExists = await checkTableExists('package_inclusions');
-  const addonsTableExists = await checkTableExists('package_addons');
-  const bookingsTableExists = await checkTableExists('service_bookings') || await checkTableExists('bookings');
-  const reviewsTableExists = await checkTableExists('reviews');
-  const imagesTableExists = await checkTableExists('package_images');
-
-  // Batch fetch inclusions and addons for all packages
-  let allInclusions: Record<number, string[]> = {};
-  let allAddons: Record<number, string[]> = {};
-  let allBookings: Record<number, number> = {};
-  let allReviews: Record<number, { reviewsCount: number; rating: number }> = {};
-  let allImages: Record<number, string[]> = {};
-
-  // Fetch inclusions
-  if (inclusionsTableExists && rows.length > 0) {
-    try {
-      const packageIds = rows.map(r => r.package_id);
-      const placeholders = packageIds.map(() => '?').join(',');
-      const inclusionsResult = await query(
-        `SELECT package_id, description FROM package_inclusions WHERE package_id IN (${placeholders})`,
-        packageIds
-      ) as any[];
-
-      inclusionsResult.forEach(inc => {
-        if (!allInclusions[inc.package_id]) {
-          allInclusions[inc.package_id] = [];
-        }
-        allInclusions[inc.package_id].push(inc.description);
-      });
-    } catch (error) {
-      console.error('Error fetching inclusions:', error);
-    }
-  }
-
-  // Fetch addons
-  if (addonsTableExists && rows.length > 0) {
-    try {
-      const packageIds = rows.map(r => r.package_id);
-      const placeholders = packageIds.map(() => '?').join(',');
-      const addonsResult = await query(
-        `SELECT package_id, description FROM package_addons WHERE package_id IN (${placeholders})`,
-        packageIds
-      ) as any[];
-
-      addonsResult.forEach(addon => {
-        if (!allAddons[addon.package_id]) {
-          allAddons[addon.package_id] = [];
-        }
-        allAddons[addon.package_id].push(addon.description);
-      });
-    } catch (error) {
-      console.error('Error fetching addons:', error);
-    }
-  }
-
-  // Fetch bookings count for each package
-  if (bookingsTableExists && rows.length > 0) {
-    try {
-      const packageIds = rows.map(r => r.package_id);
-      const placeholders = packageIds.map(() => '?').join(',');
-      
-      // Try service_bookings first, then fallback to bookings
-      let bookingsQuery = '';
-      if (await checkTableExists('service_bookings')) {
-        bookingsQuery = `
-          SELECT package_id, COUNT(*) as count 
-          FROM service_bookings 
-          WHERE package_id IN (${placeholders}) 
-          GROUP BY package_id
-        `;
-      } else if (await checkTableExists('bookings')) {
-        bookingsQuery = `
-          SELECT package_id, COUNT(*) as count 
-          FROM bookings 
-          WHERE package_id IN (${placeholders}) 
-          GROUP BY package_id
-        `;
-      }
-
-      if (bookingsQuery) {
-        const bookingsResult = await query(bookingsQuery, packageIds) as any[];
-        bookingsResult.forEach(booking => {
-          allBookings[booking.package_id] = parseInt(booking.count, 10) || 0;
-        });
-      }
-    } catch (error) {
-      console.error('Error fetching bookings data:', error);
-    }
-  }
-
-  // Fetch reviews count and average rating
-  if (reviewsTableExists && rows.length > 0) {
-    try {
-      const packageIds = rows.map(r => r.package_id);
-      const placeholders = packageIds.map(() => '?').join(',');
-      
-      // Try to join with service_bookings first, then fallback to direct package_id
-      let reviewsQuery = '';
-      if (await checkTableExists('service_bookings')) {
-        reviewsQuery = `
-          SELECT 
-            sb.package_id, 
-            COUNT(r.id) as reviewsCount, 
-            AVG(r.rating) as rating 
-          FROM reviews r
-          JOIN service_bookings sb ON r.booking_id = sb.id
-          WHERE sb.package_id IN (${placeholders}) 
-          GROUP BY sb.package_id
-        `;
-      } else {
-        reviewsQuery = `
-          SELECT 
-            package_id, 
-            COUNT(id) as reviewsCount, 
-            AVG(rating) as rating 
-          FROM reviews 
-          WHERE package_id IN (${placeholders}) 
-          GROUP BY package_id
-        `;
-      }
-
-      const reviewsResult = await query(reviewsQuery, packageIds) as any[];
-      reviewsResult.forEach(review => {
-        allReviews[review.package_id] = {
-          reviewsCount: parseInt(review.reviewsCount, 10) || 0,
-          rating: parseFloat(review.rating) || 0
-        };
-      });
-    } catch (error) {
-      console.error('Error fetching reviews data:', error);
-    }
-  }
-
-  // Fetch package images
-  if (imagesTableExists && rows.length > 0) {
-    try {
-      const packageIds = rows.map(r => r.package_id);
-      const placeholders = packageIds.map(() => '?').join(',');
-
-      const imageResults = await query(
-        `SELECT package_id, image_path, image_data FROM package_images
-         WHERE package_id IN (${placeholders})
-         ORDER BY display_order, package_id`,
-        packageIds
-      ) as any[];
-
-      // Group images by package ID and convert to API paths or base64 data URLs
-      imageResults.forEach((img: any) => {
-        if (!allImages[img.package_id]) {
-          allImages[img.package_id] = [];
-        }
-
-        // Check if we have base64 image data
-        if (img.image_data) {
-          // Convert base64 data to data URL
-          const dataUrl = `data:image/png;base64,${img.image_data}`;
-          allImages[img.package_id].push(dataUrl);
-        } else if (img.image_path && !img.image_path.startsWith('blob:')) {
-          // Convert file path to API path
-          let apiPath;
-          if (img.image_path.startsWith('/api/image/')) {
-            apiPath = img.image_path; // Already correct
-          } else if (img.image_path.startsWith('/uploads/packages/')) {
-            apiPath = `/api/image/packages/${img.image_path.substring('/uploads/packages/'.length)}`;
-          } else if (img.image_path.startsWith('uploads/packages/')) {
-            apiPath = `/api/image/packages/${img.image_path.substring('uploads/packages/'.length)}`;
-          } else if (img.image_path.includes('packages/')) {
-            const parts = img.image_path.split('packages/');
-            if (parts.length > 1) {
-              apiPath = `/api/image/packages/${parts[1]}`;
-            }
-          } else {
-            // Default fallback
-            apiPath = `/api/image/packages/${img.image_path}`;
-          }
-
-          // Verify the image exists before adding it
-          try {
-            // For now, just add the path - the frontend will handle 404s gracefully
-            allImages[img.package_id].push(apiPath);
-          } catch (error) {
-            console.error(`Error processing image path for package ${img.package_id}:`, error);
-          }
-        }
-      });
-    } catch (error) {
-      console.error('Error fetching package images:', error);
-    }
-  }
-
-  // Process services with all fetched data
-  const services: PackageResponse[] = rows.map(r => {
-    const status = r.is_active ? 'active' : 'inactive';
-    const priceVal = +r.price;
-    const priceFmt = `₱${priceVal.toLocaleString('en-US',{ minimumFractionDigits:2, maximumFractionDigits:2 })}`;
-
-    // Get data from pre-fetched results
-    const images = allImages[r.package_id] || [];
-    const [image] = images;
-    const incs = allInclusions[r.package_id] || [];
-    const adds = allAddons[r.package_id] || [];
-    const reviewData = allReviews[r.package_id] || { reviewsCount: 0, rating: 0 };
-    const bookings = allBookings[r.package_id] || 0;
-
-    // Use business name if available, fallback to provider name
-    const centerName = r.businessName || r.providerName || 'Cremation Center';
-
-    return {
-      id: r.package_id,
-      name: r.name,
-      description: r.description,
-      category: r.category,
-      cremationType: r.cremationType,
-      processingTime: r.processingTime,
-      price: priceFmt,
-      priceValue: priceVal,
-      conditions: r.conditions,
-      status,
-      cremationCenter: centerName,
-      providerId: r.providerId,
-      rating: reviewData.rating,
-      bookings,
-      reviewsCount: reviewData.reviewsCount,
-      revenue: 0,
-      formattedRevenue: `₱0.00`,
-      image: image || null,
-      images,
-      inclusions: incs,
-      addOns: adds,
-    };
-  });
-
-  // --- Calculate comprehensive stats ---
-  const activeServices = services.filter(s => s.status === 'active').length;
-
-  // Get total bookings count across all service packages
-  let totalBookings = 0;
-  try {
-    if (await checkTableExists('service_bookings')) {
-      const bookingsResult = await safeQuery('SELECT COUNT(*) as count FROM service_bookings');
-      totalBookings = bookingsResult[0]?.count || 0;
-    } else if (await checkTableExists('bookings')) {
-      const bookingsResult = await safeQuery('SELECT COUNT(*) as count FROM bookings');
-      totalBookings = bookingsResult[0]?.count || 0;
-    }
-  } catch (error) {
-    console.error('Error fetching total bookings:', error);
-    // Fallback to sum of individual package bookings
-    totalBookings = services.reduce((sum, service) => sum + service.bookings, 0);
-  }
-
-  // Get verified/approved cremation centers count
-  let verifiedCenters = 0;
-  try {
-    if (await checkTableExists('service_providers')) {
-      // Check which columns exist in the service_providers table
-      const columnsResult = await safeQuery(`
-        SELECT COLUMN_NAME
-        FROM INFORMATION_SCHEMA.COLUMNS
-        WHERE TABLE_SCHEMA = DATABASE()
-        AND TABLE_NAME = 'service_providers'
-      `);
-
-      const columns = columnsResult.map(col => col.COLUMN_NAME.toLowerCase());
-
-      // Build query based on available columns
-      let whereClause = '';
-
-      if (columns.includes('application_status')) {
-        whereClause = "WHERE application_status IN ('approved', 'verified')";
-      } else if (columns.includes('status')) {
-        whereClause = "WHERE status = 'active' OR status = 'approved'";
-      } else if (columns.includes('is_verified')) {
-        whereClause = "WHERE is_verified = 1";
-      } else {
-        // If no status columns, count all providers
-        whereClause = '';
-      }
-
-      const centersResult = await safeQuery(`
-        SELECT COUNT(*) as count
-        FROM service_providers
-        ${whereClause}
-      `);
-
-      verifiedCenters = centersResult[0]?.count || 0;
-    }
-  } catch (error) {
-    console.error('Error fetching verified centers:', error);
-    verifiedCenters = 0;
-  }
-
-  // --- Build response ---
-  const totalPages = Math.ceil(total / limit) || 1;
-
-  return NextResponse.json({
-    success: true,
-    services,
-    totalRevenue: totalRev,
-    formattedTotalRevenue: formattedTotalRev,
-    monthlyRevenue: monthlyRev,
-    serviceProvidersCount: verifiedCenters,
-    activeServicesCount: activeServices,
-    stats: {
-      activeServices,
-      totalBookings,
-      verifiedCenters,
-      monthlyRevenue: monthlyRev,
-      totalRevenue: formattedTotalRev
-    },
-    pagination: { total, page, limit, totalPages }
-  });
+  return { sql, params };
 }
 
+// Helper function to fetch related data for packages
+async function fetchRelatedData(packageIds: number[]) {
+  const results = {
+    inclusions: {} as Record<number, string[]>,
+    addons: {} as Record<number, string[]>,
+    bookings: {} as Record<number, number>,
+    reviews: {} as Record<number, { reviewsCount: number; rating: number }>,
+    images: {} as Record<number, string[]>
+  };
+
+  if (packageIds.length === 0) return results;
+
+  const { clause, params } = buildInClause(packageIds);
+
+  // Helper to fetch table data
+  const fetchTableData = async (tableName: string, columns: string) => {
+    if (await checkTableExists(tableName)) {
+      return await safeQuery(
+        `SELECT ${columns} FROM ${tableName} WHERE package_id ${clause}`,
+        params
+      );
+    }
+    return [];
+  };
+
+  // Fetch inclusions and addons in parallel
+  const [inclusions, addons] = await Promise.all([
+    fetchTableData('package_inclusions', 'package_id, description'),
+    fetchTableData('package_addons', 'package_id, description')
+  ]);
+
+  // Process inclusions
+  inclusions.forEach((inc: any) => {
+    if (!results.inclusions[inc.package_id]) results.inclusions[inc.package_id] = [];
+    results.inclusions[inc.package_id].push(inc.description);
+  });
+
+  // Process addons
+  addons.forEach((addon: any) => {
+    if (!results.addons[addon.package_id]) results.addons[addon.package_id] = [];
+    results.addons[addon.package_id].push(addon.description);
+  });
+
+  // Fetch bookings
+  const bookingsTable = await checkTableExists('service_bookings')
+    ? 'service_bookings'
+    : await checkTableExists('bookings')
+    ? 'bookings'
+    : null;
+
+  if (bookingsTable) {
+    const bookings = await safeQuery(
+      `SELECT package_id, COUNT(*) as count FROM ${bookingsTable} WHERE package_id ${clause} GROUP BY package_id`,
+      params
+    );
+    bookings.forEach((booking: any) => {
+      results.bookings[booking.package_id] = parseInt(booking.count, 10) || 0;
+    });
+  }
+
+  // Fetch reviews
+  if (await checkTableExists('reviews')) {
+    const reviewsTable = await checkTableExists('service_bookings') ? 'service_bookings' : null;
+    let reviewsQuery = `SELECT package_id, COUNT(id) as reviewsCount, AVG(rating) as rating FROM reviews WHERE package_id ${clause} GROUP BY package_id`;
+
+    if (reviewsTable) {
+      reviewsQuery = `
+        SELECT sb.package_id, COUNT(r.id) as reviewsCount, AVG(r.rating) as rating
+        FROM reviews r
+        JOIN ${reviewsTable} sb ON r.booking_id = sb.id
+        WHERE sb.package_id ${clause}
+        GROUP BY sb.package_id
+      `;
+    }
+
+    const reviews = await safeQuery(reviewsQuery, params);
+    reviews.forEach((review: any) => {
+      results.reviews[review.package_id] = {
+        reviewsCount: parseInt(review.reviewsCount, 10) || 0,
+        rating: parseFloat(review.rating) || 0
+      };
+    });
+  }
+
+  // Fetch images
+  if (await checkTableExists('package_images')) {
+    const images = await safeQuery(
+      `SELECT package_id, image_path, image_data FROM package_images WHERE package_id ${clause} ORDER BY display_order, package_id`,
+      params
+    );
+
+    images.forEach((img: any) => {
+      if (!results.images[img.package_id]) results.images[img.package_id] = [];
+
+      if (img.image_data) {
+        results.images[img.package_id].push(`data:image/png;base64,${img.image_data}`);
+      } else if (img.image_path) {
+        let apiPath = `/api/image/packages/${img.image_path}`;
+        if (img.image_path.startsWith('/uploads/packages/')) {
+          apiPath = `/api/image/packages/${img.image_path.substring('/uploads/packages/'.length)}`;
+        } else if (img.image_path.startsWith('uploads/packages/')) {
+          apiPath = `/api/image/packages/${img.image_path.substring('uploads/packages/'.length)}`;
+        }
+        results.images[img.package_id].push(apiPath);
+      }
+    });
+  }
+
+  return results;
+}
+
+export async function GET(request: NextRequest) {
+  try {
+    // Authentication
+    const user = await verifySecureAuth(request);
+    if (!user) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
+
+    if (user.accountType !== 'admin') {
+      return NextResponse.json({ success: false, error: 'Forbidden: Admin access required' }, { status: 403 });
+    }
+
+    // Parse query parameters
+    const url = new URL(request.url);
+    const search = url.searchParams.get('search') || '';
+    const statusFilter = url.searchParams.get('status') || 'all';
+    const categoryFilter = url.searchParams.get('category') || 'all';
+    const page = Math.max(1, parseInt(url.searchParams.get('page') || '1'));
+    const limit = Math.max(1, parseInt(url.searchParams.get('limit') || '20'));
+
+    // Check if service_packages table exists
+    if (!(await checkTableExists('service_packages'))) {
+      return NextResponse.json({
+        success: true,
+        services: [],
+        pagination: { total: 0, page, limit, totalPages: 0 },
+        stats: { activeServices: 0, totalBookings: 0, verifiedCenters: 0 }
+      });
+    }
+
+    // Build and execute main query
+    const { sql, params } = await buildServiceQuery(search, statusFilter, categoryFilter);
+    const paginatedSql = `${sql} LIMIT ${limit} OFFSET ${(page - 1) * limit}`;
+
+    let rows: any[] = [];
+    try {
+      rows = await safeQuery(paginatedSql, params);
+    } catch (error) {
+      console.error('Primary query failed:', error);
+      // Try fallback query
+      const fallbackRows = await safeQuery(`
+        SELECT
+          package_id as id, name, description, 0 AS price, 1 AS is_active,
+          'standard' AS category, '' AS cremationType, '2-3 days' AS processingTime,
+          '' AS conditions, 'Cremation Center' AS providerName, 0 AS providerId
+        FROM service_packages
+        ORDER BY created_at DESC
+        LIMIT ${limit} OFFSET ${(page - 1) * limit}
+      `);
+      rows = fallbackRows.map(row => ({ ...row, package_id: row.id }));
+    }
+
+    // Get total count
+    const countResult = await safeQuery(`SELECT COUNT(*) AS total FROM service_packages`);
+    const total = +(countResult[0]?.total || 0);
+
+    // Fetch related data if we have services
+    const packageIds = getValidPackageIds(rows);
+    const relatedData = await fetchRelatedData(packageIds);
+
+    // Process services with related data
+    const services = rows.map(r => {
+      const status = r.is_active ? 'active' : 'inactive';
+      const priceVal = +r.price;
+      const priceFmt = `₱${priceVal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+      const images = relatedData.images[r.package_id] || [];
+      const [image] = images;
+      const inclusions = relatedData.inclusions[r.package_id] || [];
+      const addOns = relatedData.addons[r.package_id] || [];
+      const bookings = relatedData.bookings[r.package_id] || 0;
+      const reviewData = relatedData.reviews[r.package_id] || { reviewsCount: 0, rating: 0 };
+
+      const centerName = r.providerName || r.name || 'Cremation Center';
+
+      return {
+        id: r.package_id,
+        name: r.name,
+        description: r.description,
+        category: r.category,
+        cremationType: r.cremationType,
+        processingTime: r.processingTime,
+        price: priceFmt,
+        priceValue: priceVal,
+        conditions: r.conditions,
+        status,
+        cremationCenter: centerName,
+        providerId: r.providerId,
+        rating: reviewData.rating,
+        bookings,
+        reviewsCount: reviewData.reviewsCount,
+        revenue: 0,
+        formattedRevenue: '₱0.00',
+        image: image || null,
+        images,
+        inclusions,
+        addOns,
+      };
+    });
+
+    // Calculate stats
+    const activeServices = services.filter(s => s.status === 'active').length;
+    const totalBookings = Object.values(relatedData.bookings).reduce((sum, count) => sum + count, 0);
+
+    // Get verified centers count
+    let verifiedCenters = 0;
+    const spColumns = await getServiceProviderColumns();
+    if (await checkTableExists('service_providers')) {
+      let whereClause = '';
+      if (spColumns.includes('application_status')) {
+        whereClause = "WHERE application_status IN ('approved', 'verified')";
+      } else if (spColumns.includes('status')) {
+        whereClause = "WHERE status = 'active' OR status = 'approved'";
+      } else if (spColumns.includes('is_verified')) {
+        whereClause = "WHERE is_verified = 1";
+      }
+
+      if (whereClause) {
+        const centersResult = await safeQuery(`SELECT COUNT(*) as count FROM service_providers ${whereClause}`);
+        verifiedCenters = centersResult[0]?.count || 0;
+      }
+    }
+
+    // Revenue calculation (with error handling)
+    let totalRev = 0;
+    let formattedTotalRev = '₱0.00';
+    let monthlyRev = '₱0.00';
+    try {
+      const revenueData = await calculateRevenue();
+      totalRev = revenueData.totalRevenue || 0;
+      formattedTotalRev = formatRevenue(totalRev);
+      monthlyRev = formatRevenue(revenueData.monthlyRevenue || 0);
+    } catch (error) {
+      console.error('Revenue calculation failed:', error);
+    }
+
+    return NextResponse.json({
+      success: true,
+      services,
+      totalRevenue: totalRev,
+      formattedTotalRevenue: formattedTotalRev,
+      monthlyRevenue: monthlyRev,
+      serviceProvidersCount: verifiedCenters,
+      activeServicesCount: activeServices,
+      stats: {
+        activeServices,
+        totalBookings,
+        verifiedCenters,
+        monthlyRevenue: monthlyRev,
+        totalRevenue: formattedTotalRev
+      },
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit) || 1
+      }
+    });
+
+  } catch (error) {
+    console.error('Services listing API error:', error);
+    return NextResponse.json({
+      success: false,
+      error: 'Failed to fetch services',
+      details: process.env.NODE_ENV === 'development' ? (error as Error).message : undefined
+    }, { status: 500 });
+  }
+}

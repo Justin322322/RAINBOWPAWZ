@@ -36,25 +36,15 @@ export const PackageImage: React.FC<PackageImageProps> = ({
         typeof img === 'string'
       );
 
-      // Debug logging for image arrays
-      if (process.env.NODE_ENV === 'development') {
-        console.log('[DEBUG] PackageImage - Received images array:', images);
-        console.log('[DEBUG] PackageImage - Filtered images:', filtered);
-      }
+
 
       return filtered.length > 0 ? filtered : [];
     }
     // Process single src as fallback
     else if (src && typeof src === 'string') {
-      if (process.env.NODE_ENV === 'development') {
-        console.log('[DEBUG] PackageImage - Using single src:', src);
-      }
       return [src];
     }
     // No valid images
-    if (process.env.NODE_ENV === 'development') {
-      console.log('[DEBUG] PackageImage - No valid images found');
-    }
     return [];
   }, [images, src]);
 
