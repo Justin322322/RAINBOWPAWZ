@@ -7,8 +7,8 @@ export async function GET(request: NextRequest) {
     const url = new URL(request.url);
     const packageIdParam = url.searchParams.get('packageId');
     const providerId = url.searchParams.get('providerId');
-    const page = +url.searchParams.get('page')! || 1;
-    const limit = +url.searchParams.get('limit')! || 10;
+    const page = Math.max(1, parseInt(url.searchParams.get('page') || '1') || 1);
+    const limit = Math.max(1, Math.min(100, parseInt(url.searchParams.get('limit') || '10') || 10));
     const offset = (page - 1) * limit;
     const includeInactive = url.searchParams.get('includeInactive') === 'true';
 
@@ -24,6 +24,12 @@ export async function GET(request: NextRequest) {
 
     if (providerId) {
       const providerIdInt = parseInt(providerId);
+      if (isNaN(providerIdInt)) {
+        return NextResponse.json(
+          { error: 'Invalid provider ID format' },
+          { status: 400 }
+        );
+      }
       whereClause = 'WHERE provider_id = ?';
       queryParams.push(providerIdInt);
       if (!includeInactive) {
@@ -55,14 +61,24 @@ export async function GET(request: NextRequest) {
       LIMIT ? OFFSET ?
     `;
 
-    // Add pagination parameters
-    const finalQueryParams = [...queryParams, Number(limit), Number(offset)];
+    // Add pagination parameters - ensure they are proper integers and handle edge cases
+    const limitInt = Math.max(1, Math.min(100, parseInt(limit.toString()) || 10));
+    const offsetInt = Math.max(0, parseInt(offset.toString()) || 0);
+    const finalQueryParams = [...queryParams, limitInt, offsetInt];
 
     console.log('Main query:', mainQuery);
     console.log('Final query params:', finalQueryParams);
 
-    const rows = (await query(mainQuery, finalQueryParams)) as any[];
-    console.log('Query executed successfully, rows returned:', rows.length);
+    let rows: any[];
+    try {
+      rows = (await query(mainQuery, finalQueryParams)) as any[];
+      console.log('Query executed successfully, rows returned:', rows.length);
+    } catch (queryError) {
+      console.error('Database query failed:', queryError);
+      console.error('Query:', mainQuery);
+      console.error('Parameters:', finalQueryParams);
+      throw new Error(`Database query failed: ${queryError instanceof Error ? queryError.message : 'Unknown error'}`);
+    }
 
     // Simple count query
     const countQuery = `
@@ -70,7 +86,16 @@ export async function GET(request: NextRequest) {
       FROM service_packages
       ${whereClause}
     `;
-    const countRows = (await query(countQuery, queryParams)) as any[];
+    let countRows: any[];
+    try {
+      countRows = (await query(countQuery, queryParams)) as any[];
+      console.log('Count query executed successfully');
+    } catch (countError) {
+      console.error('Count query failed:', countError);
+      console.error('Count query:', countQuery);
+      console.error('Count parameters:', queryParams);
+      throw new Error(`Count query failed: ${countError instanceof Error ? countError.message : 'Unknown error'}`);
+    }
     const total = +(countRows[0]?.total || 0);
     console.log('Count query executed, total:', total);
 
