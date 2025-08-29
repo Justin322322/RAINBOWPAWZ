@@ -1236,81 +1236,83 @@ export default function AdminCremationCentersPage() {
         contentClassName="max-h-[85vh] overflow-y-auto"
       >
         <div className="space-y-6">
-          {/* Overview Header */}
-          <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-            <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
-              <div className="flex items-center gap-4">
-                <div className="h-16 w-16 rounded-full ring-2 ring-[var(--primary-green)] ring-offset-2 overflow-hidden bg-white flex-shrink-0">
-                  {selectedCenter?.profile_picture && !imageLoadError ? (
-                    <Image
-                      src={getProfilePictureUrl(selectedCenter.profile_picture)}
-                      alt={selectedCenter.name}
-                      width={64}
-                      height={64}
-                      className="h-full w-full object-cover"
-                      onError={() => {
-                        setImageLoadError(true);
-                      }}
-                    />
-                  ) : (
-                    <div className="h-full w-full flex items-center justify-center">
-                      <BuildingStorefrontIcon className="h-8 w-8 text-gray-400" />
+          {/* Center Overview */}
+          <div className="flex flex-col sm:flex-row sm:items-start gap-6">
+            <div className="flex items-center gap-4 flex-shrink-0">
+              <div className="h-16 w-16 rounded-full ring-2 ring-[var(--primary-green)] ring-offset-2 overflow-hidden bg-white flex-shrink-0">
+                {selectedCenter?.profile_picture && !imageLoadError ? (
+                  <Image
+                    src={getProfilePictureUrl(selectedCenter.profile_picture)}
+                    alt={selectedCenter.name}
+                    width={64}
+                    height={64}
+                    className="h-full w-full object-cover"
+                    onError={() => {
+                      setImageLoadError(true);
+                    }}
+                  />
+                ) : (
+                  <div className="h-full w-full flex items-center justify-center">
+                    <BuildingStorefrontIcon className="h-8 w-8 text-gray-400" />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="flex-1 min-w-0">
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center gap-3 flex-wrap">
+                  <h1 className="text-2xl font-bold text-gray-900">
+                    {selectedCenter?.name}
+                  </h1>
+                  {selectedCenter?.verification_status === 'verified' || selectedCenter?.application_status === 'approved' ? (
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-green-50 text-green-700 px-3 py-1 text-xs font-medium border border-green-200">
+                      <ShieldCheckIcon className="h-4 w-4" />
+                      Verified
+                    </span>
+                  ) : selectedCenter?.verification_status === 'restricted' ? (
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-red-50 text-red-700 px-3 py-1 text-xs font-medium border border-red-200">
+                      <ShieldExclamationIcon className="h-4 w-4" />
+                      Restricted
+                    </span>
+                  ) : null}
+                </div>
+
+                <div className="flex items-center gap-4 flex-wrap text-sm text-gray-600">
+                  <span className="font-mono bg-gray-100 px-2 py-1 rounded text-xs">
+                    ID: {selectedCenter?.id}
+                  </span>
+                  {selectedCenter && getStatusBadge(selectedCenter.status, selectedCenter.verified, selectedCenter)}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+                  {selectedCenter?.email && (
+                    <div className="flex items-center gap-2">
+                      <EnvelopeIcon className="h-4 w-4 text-[var(--primary-green)] flex-shrink-0" />
+                      <span className="text-sm text-gray-700">{selectedCenter.email}</span>
+                    </div>
+                  )}
+                  {selectedCenter?.phone && (
+                    <div className="flex items-center gap-2">
+                      <PhoneIcon className="h-4 w-4 text-[var(--primary-green)] flex-shrink-0" />
+                      <span className="text-sm text-gray-700">{selectedCenter.phone}</span>
+                    </div>
+                  )}
+                  {(selectedCenter?.city || selectedCenter?.province) && (
+                    <div className="flex items-center gap-2">
+                      <MapPinIcon className="h-4 w-4 text-[var(--primary-green)] flex-shrink-0" />
+                      <span className="text-sm text-gray-700">
+                        {[selectedCenter?.city, selectedCenter?.province].filter(Boolean).join(', ')}
+                      </span>
                     </div>
                   )}
                 </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex flex-col gap-2">
-                    <div className="flex items-center gap-3 flex-wrap">
-                      <h1 className="text-2xl font-bold text-gray-900 truncate">
-                        {selectedCenter?.name}
-                      </h1>
-                      {selectedCenter?.verification_status === 'verified' || selectedCenter?.application_status === 'approved' ? (
-                        <span className="inline-flex items-center gap-1.5 rounded-full bg-green-50 text-green-700 px-3 py-1 text-xs font-medium border border-green-200">
-                          <ShieldCheckIcon className="h-4 w-4" />
-                          Verified
-                        </span>
-                      ) : selectedCenter?.verification_status === 'restricted' ? (
-                        <span className="inline-flex items-center gap-1.5 rounded-full bg-red-50 text-red-700 px-3 py-1 text-xs font-medium border border-red-200">
-                          <ShieldExclamationIcon className="h-4 w-4" />
-                          Restricted
-                        </span>
-                      ) : null}
-                    </div>
-                    <div className="flex items-center gap-3 flex-wrap">
-                      <span className="font-mono bg-gray-100 border border-gray-300 text-gray-700 px-3 py-1 rounded-lg text-sm">
-                        ID: {selectedCenter?.id}
-                      </span>
-                      {selectedCenter && getStatusBadge(selectedCenter.status, selectedCenter.verified, selectedCenter)}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className="px-6 py-4">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                {selectedCenter?.email && (
-                  <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                    <EnvelopeIcon className="h-4 w-4 text-gray-500 flex-shrink-0" />
-                    <span className="text-sm text-gray-700 truncate">{selectedCenter.email}</span>
-                  </div>
-                )}
-                {selectedCenter?.phone && (
-                  <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                    <PhoneIcon className="h-4 w-4 text-gray-500 flex-shrink-0" />
-                    <span className="text-sm text-gray-700">{selectedCenter.phone}</span>
-                  </div>
-                )}
-                {(selectedCenter?.city || selectedCenter?.province) && (
-                  <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                    <MapPinIcon className="h-4 w-4 text-gray-500 flex-shrink-0" />
-                    <span className="text-sm text-gray-700 truncate">
-                      {[selectedCenter?.city, selectedCenter?.province].filter(Boolean).join(', ')}
-                    </span>
-                  </div>
-                )}
               </div>
             </div>
           </div>
+
+          {/* Separator */}
+          <hr className="border-gray-200 my-6" />
 
           {/* Description Section */}
           <ProfileSection
@@ -1355,80 +1357,64 @@ export default function AdminCremationCentersPage() {
           </ProfileSection>
 
           {/* Contact Information */}
-          <ProfileSection
-            title="Contact Information"
-            subtitle="Owner and business contact details"
-          >
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-                <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-4 py-3 border-b border-gray-200">
-                  <div className="flex items-center gap-2">
-                    <UserCircleIcon className="h-5 w-5 text-[var(--primary-green)]" />
-                    <div>
-                      <h3 className="text-sm font-semibold text-gray-900">Owner Details</h3>
-                      <p className="text-xs text-gray-600">Primary contact person</p>
-                    </div>
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <UserCircleIcon className="h-5 w-5 text-[var(--primary-green)]" />
+              Contact Information
+            </h3>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {/* Owner Details */}
+              <div>
+                <h4 className="text-sm font-medium text-gray-700 uppercase tracking-wide mb-3 flex items-center gap-2">
+                  <UserCircleIcon className="h-4 w-4 text-[var(--primary-green)]" />
+                  Owner Details
+                </h4>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm font-medium text-gray-600 min-w-[100px]">Name:</span>
+                    <span className="text-sm text-gray-900">{selectedCenter?.owner}</span>
                   </div>
-                </div>
-                <div className="p-4 space-y-4">
-                  <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                    <UserCircleIcon className="h-5 w-5 text-gray-500 flex-shrink-0" />
-                    <div>
-                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Owner Name</p>
-                      <p className="text-sm font-semibold text-gray-900">{selectedCenter?.owner}</p>
-                    </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm font-medium text-gray-600 min-w-[100px]">Email:</span>
+                    <span className="text-sm text-gray-900">{selectedCenter?.email}</span>
                   </div>
-                  <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                    <EnvelopeIcon className="h-5 w-5 text-gray-500 flex-shrink-0" />
-                    <div>
-                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Email Address</p>
-                      <p className="text-sm font-semibold text-gray-900">{selectedCenter?.email}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                    <PhoneIcon className="h-5 w-5 text-gray-500 flex-shrink-0" />
-                    <div>
-                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Phone Number</p>
-                      <p className="text-sm font-semibold text-gray-900">{selectedCenter?.phone}</p>
-                    </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm font-medium text-gray-600 min-w-[100px]">Phone:</span>
+                    <span className="text-sm text-gray-900">{selectedCenter?.phone}</span>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-                <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-4 py-3 border-b border-gray-200">
-                  <div className="flex items-center gap-2">
-                    <BuildingStorefrontIcon className="h-5 w-5 text-[var(--primary-green)]" />
-                    <div>
-                      <h3 className="text-sm font-semibold text-gray-900">Business Details</h3>
-                      <p className="text-xs text-gray-600">Location and registration information</p>
-                    </div>
-                  </div>
-                </div>
-                <div className="p-4 space-y-4">
-                  <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                    <MapPinIcon className="h-5 w-5 text-gray-500 flex-shrink-0 mt-0.5" />
+              {/* Business Details */}
+              <div>
+                <h4 className="text-sm font-medium text-gray-700 uppercase tracking-wide mb-3 flex items-center gap-2">
+                  <BuildingStorefrontIcon className="h-4 w-4 text-[var(--primary-green)]" />
+                  Business Details
+                </h4>
+                <div className="space-y-3">
+                  <div className="flex items-start gap-3">
+                    <span className="text-sm font-medium text-gray-600 min-w-[100px] mt-0.5">Address:</span>
                     <div className="flex-1">
-                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Business Address</p>
-                      <p className="text-sm font-semibold text-gray-900 break-words">{selectedCenter?.address}</p>
+                      <div className="text-sm text-gray-900">{selectedCenter?.address}</div>
                       {(selectedCenter?.city || selectedCenter?.province) && (
-                        <p className="text-sm text-gray-600 mt-1">
+                        <div className="text-sm text-gray-600 mt-1">
                           {[selectedCenter?.city, selectedCenter?.province].filter(Boolean).join(', ')}
-                        </p>
+                        </div>
                       )}
                     </div>
                   </div>
-                  <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                    <CalendarIcon className="h-5 w-5 text-gray-500 flex-shrink-0" />
-                    <div>
-                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Registration Date</p>
-                      <p className="text-sm font-semibold text-gray-900">{selectedCenter?.registrationDate}</p>
-                    </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm font-medium text-gray-600 min-w-[100px]">Registered:</span>
+                    <span className="text-sm text-gray-900">{selectedCenter?.registrationDate}</span>
                   </div>
                 </div>
               </div>
             </div>
-          </ProfileSection>
+          </div>
+
+          {/* Separator */}
+          <hr className="border-gray-200 my-6" />
 
           {/* Business Performance */}
           <ProfileSection
