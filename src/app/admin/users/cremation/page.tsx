@@ -30,10 +30,7 @@ import { Button } from '@/components/ui/Button';
   import { MetricGrid } from '@/components/ui/MetricGrid';
 import {
   ProfileCard,
-  ProfileSection,
-  ProfileField,
-
-  ProfileFormGroup
+  ProfileSection
 } from '@/components/ui/ProfileLayout';
 import { ProfileButton } from '@/components/ui/ProfileFormComponents';
 import { getProfilePictureUrl } from '@/utils/imageUtils';

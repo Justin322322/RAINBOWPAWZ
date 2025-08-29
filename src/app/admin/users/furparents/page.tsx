@@ -27,9 +27,7 @@ import { Modal } from '@/components/ui/Modal';
 import {
   ProfileCard,
   ProfileSection,
-  ProfileField,
-
-  ProfileFormGroup
+  ProfileField
 } from '@/components/ui/ProfileLayout';
 import { ProfileButton } from '@/components/ui/ProfileFormComponents';
 import { getProfilePictureUrl } from '@/utils/imageUtils';
