@@ -14,13 +14,13 @@ export async function GET(request: NextRequest) {
     if (q) params.push(`%${q}%`);
 
     const inclusions = (await query(
-      `SELECT description FROM package_inclusion_suggestions ${likeClause} ORDER BY popularity DESC, description ASC LIMIT ?`,
-      [...params, Number(limit)]
+      `SELECT description FROM package_inclusion_suggestions ${likeClause} ORDER BY popularity DESC, description ASC LIMIT ${Number(limit)}`,
+      params
     )) as any[];
 
     const addOns = (await query(
-      `SELECT name, default_price FROM package_addon_suggestions ${q ? 'WHERE name LIKE ?' : ''} ORDER BY popularity DESC, name ASC LIMIT ?`,
-      q ? [`%${q}%`, Number(limit)] : [Number(limit)]
+      `SELECT name, default_price FROM package_addon_suggestions ${q ? 'WHERE name LIKE ?' : ''} ORDER BY popularity DESC, name ASC LIMIT ${Number(limit)}`,
+      q ? [`%${q}%`] : []
     )) as any[];
 
     return NextResponse.json({
