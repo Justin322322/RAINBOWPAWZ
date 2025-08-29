@@ -637,6 +637,7 @@ function ServiceDetailsModal({
       document.removeEventListener('keydown', handleEscKey);
     };
   }, [onClose]);
+
   // Format the service data for display
   const formattedName = service.name || 'Unnamed Service';
   const formattedCenter = service.cremationCenter || 'Cremation Center';
@@ -651,10 +652,10 @@ function ServiceDetailsModal({
     : 0;
 
   // Ensure bookings is a valid number
-  const _bookings = typeof service.bookings === 'number' && !isNaN(service.bookings)
+  const bookings = typeof service.bookings === 'number' && !isNaN(service.bookings)
     ? service.bookings
     : 0;
-    
+
   const reviewsCount = typeof service.reviewsCount === 'number' && !isNaN(service.reviewsCount)
     ? service.reviewsCount
     : 0;
@@ -695,191 +696,164 @@ function ServiceDetailsModal({
         {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto modal-scrollbar">
           <div className="p-4 sm:p-6 pb-6 sm:pb-8">
-            <div className="flex flex-col space-y-4 sm:space-y-6">
-            {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
-              <div className="flex items-center">
-                <div className="h-12 w-12 sm:h-16 sm:w-16 bg-[var(--primary-green)] text-white rounded-full flex items-center justify-center mr-3 sm:mr-4 flex-shrink-0">
-                  <FireIcon className="h-6 w-6 sm:h-10 sm:w-10" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <h3 className="text-lg sm:text-2xl font-semibold text-gray-900 truncate">{formattedName}</h3>
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-2 mt-1 space-y-1 sm:space-y-0">
-                    <span className="text-sm sm:text-base text-gray-600 truncate">Provider: {formattedCenter}</span>
-                    <span className="hidden sm:inline">•</span>
-                    <span className="flex items-center">
+            <div className="space-y-6">
+              {/* Header Section */}
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between space-y-4 sm:space-y-0">
+                <div className="flex items-start space-x-4">
+                  <div className="h-12 w-12 sm:h-16 sm:w-16 bg-[var(--primary-green)] text-white rounded-full flex items-center justify-center flex-shrink-0">
+                    <FireIcon className="h-6 w-6 sm:h-8 sm:w-8" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-xl sm:text-2xl font-semibold text-gray-900 mb-1">{formattedName}</h3>
+                    <p className="text-sm text-gray-600 mb-2">{formattedCenter}</p>
+                    <div className="flex items-center space-x-3">
                       <StatusBadge status={service.status} />
-                    </span>
+                      <span className="text-sm text-gray-500">•</span>
+                      <span className="text-sm text-gray-600">{service.category}</span>
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div className="flex justify-end sm:justify-start">
-                <span className="text-xl sm:text-2xl font-bold text-[var(--primary-green)]">{formattedPrice}</span>
-              </div>
-            </div>
-
-            {/* Image */}
-            <div className="bg-gray-50 p-3 sm:p-4 rounded-lg overflow-hidden h-48 sm:h-64 relative">
-              {service.images.length === 0 || imageError[service.id] ? (
-                <div className="w-full h-full flex flex-col items-center justify-center bg-gray-100 p-4 text-center">
-                  <svg className="h-16 w-16 text-gray-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                      d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                  <span className="text-sm text-gray-500">No image available</span>
+                <div className="flex flex-col items-end">
+                  <span className="text-2xl sm:text-3xl font-bold text-[var(--primary-green)]">{formattedPrice}</span>
+                  {reviewsCount > 0 && (
+                    <div className="flex items-center space-x-1 mt-1">
+                      <StarRating rating={rating} size="small" />
+                      <span className="text-sm text-gray-600">
+                        {rating.toFixed(1)} ({reviewsCount} reviews)
+                      </span>
+                    </div>
+                  )}
                 </div>
-              ) : (
-                <PackageImage
-                  images={service.images}
-                  alt={formattedName}
-                  size="large"
-                  className="object-cover w-full h-full rounded-lg"
-                  onError={() => setImageError(prev => ({ ...prev, [service.id]: true }))}
-                />
-              )}
-              <div className="absolute top-2 right-2">
-                <CategoryBadge category={service.category} />
               </div>
-            </div>
 
-            {/* Service Details */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+              {/* Image Section */}
+              <div className="relative">
+                {service.images.length === 0 || imageError[service.id] ? (
+                  <div className="w-full h-48 sm:h-64 bg-gray-100 rounded-lg flex flex-col items-center justify-center">
+                    <svg className="h-16 w-16 text-gray-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                        d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    <span className="text-sm text-gray-500">No image available</span>
+                  </div>
+                ) : (
+                  <div className="w-full h-48 sm:h-64 rounded-lg overflow-hidden">
+                    <PackageImage
+                      images={service.images}
+                      alt={formattedName}
+                      size="large"
+                      className="object-cover w-full h-full"
+                      onError={() => setImageError(prev => ({ ...prev, [service.id]: true }))}
+                    />
+                  </div>
+                )}
+                <div className="absolute top-3 right-3">
+                  <CategoryBadge category={service.category} />
+                </div>
+              </div>
+
+              {/* Separator */}
+              <hr className="border-gray-200" />
+
               {/* Service Information */}
               <div>
-                <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-3 sm:mb-4">Service Information</h3>
-                <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 sm:p-4 space-y-3 sm:space-y-4">
-                  <div className="flex items-start space-x-3">
-                    <div className="w-5 h-5 text-gray-500 mt-0.5 flex-shrink-0">
+                <h4 className="text-lg font-medium text-gray-900 mb-4">Service Information</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-5 h-5 text-[var(--primary-green)] flex-shrink-0">
                       <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                       </svg>
                     </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-gray-700">Cremation Type</p>
-                      <p className="text-gray-900">{formattedType}</p>
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">Cremation Type</p>
+                      <p className="text-sm text-gray-900">{formattedType}</p>
                     </div>
                   </div>
 
-                  <div className="flex items-start space-x-3">
-                    <div className="w-5 h-5 text-gray-500 mt-0.5 flex-shrink-0">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-5 h-5 text-[var(--primary-green)] flex-shrink-0">
                       <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
                     </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-gray-700">Processing Time</p>
-                      <p className="text-gray-900">{formattedTime}</p>
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">Processing Time</p>
+                      <p className="text-sm text-gray-900">{formattedTime}</p>
                     </div>
                   </div>
 
-                  <div className="flex items-start space-x-3">
-                    <div className="w-5 h-5 text-gray-500 mt-0.5 flex-shrink-0">
-                      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-                      </svg>
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-gray-700">Rating</p>
-                      <div className="flex items-center space-x-2">
-                        <StarRating rating={rating} size="small" />
-                        <span className="text-sm text-gray-700">
-                          {reviewsCount > 0 ? `${rating.toFixed(1)} / 5 (${reviewsCount} reviews)` : 'No ratings yet'}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Booking Information */}
-              <div>
-                <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-3 sm:mb-4">Booking Information</h3>
-                <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 sm:p-4 space-y-3 sm:space-y-4">
-                  <div className="flex items-start space-x-3">
-                    <div className="w-5 h-5 text-gray-500 mt-0.5 flex-shrink-0">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-5 h-5 text-[var(--primary-green)] flex-shrink-0">
                       <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                       </svg>
                     </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-gray-700">Total Bookings</p>
-                      <p className="text-gray-900">{_bookings}</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start space-x-3">
-                    <div className="w-5 h-5 text-gray-500 mt-0.5 flex-shrink-0">
-                      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-                      </svg>
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-gray-700">Total Reviews</p>
-                      <p className="text-gray-900">{reviewsCount}</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start space-x-3">
-                    <div className="w-5 h-5 text-gray-500 mt-0.5 flex-shrink-0">
-                      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.99 1.99 0 013 12V7a4 4 0 014-4z" />
-                      </svg>
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-gray-700">Category</p>
-                      <p className="text-gray-900">{service.category}</p>
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">Total Bookings</p>
+                      <p className="text-sm text-gray-900">{bookings}</p>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
 
-            {/* Description */}
-            <div>
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Description</h3>
-              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                <p className="text-gray-700 leading-relaxed">{formattedDescription}</p>
-              </div>
-            </div>
+              {/* Separator */}
+              <hr className="border-gray-200" />
 
-            {/* Service Details */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-              {/* Inclusions */}
+              {/* Description */}
               <div>
-                <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-3 sm:mb-4">Inclusions</h3>
-                <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 sm:p-4">
+                <h4 className="text-lg font-medium text-gray-900 mb-3">Description</h4>
+                <p className="text-sm text-gray-700 leading-relaxed">{formattedDescription}</p>
+              </div>
+
+              {/* Separator */}
+              <hr className="border-gray-200" />
+
+              {/* Inclusions and Add-ons */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div>
+                  <h4 className="text-lg font-medium text-gray-900 mb-3">What's Included</h4>
                   {inclusions.length > 0 ? (
-                    <ul className="list-disc pl-4 sm:pl-5 space-y-1 text-sm text-gray-700">
-                      {inclusions.map((item, idx) => <li key={idx}>{item}</li>)}
+                    <ul className="space-y-2">
+                      {inclusions.map((item, idx) => (
+                        <li key={idx} className="flex items-start space-x-2">
+                          <span className="text-[var(--primary-green)] mt-1">•</span>
+                          <span className="text-sm text-gray-700">{item}</span>
+                        </li>
+                      ))}
                     </ul>
                   ) : (
-                    <p className="text-sm text-gray-500">No inclusions specified</p>
+                    <p className="text-sm text-gray-500 italic">No inclusions specified</p>
                   )}
                 </div>
-              </div>
 
-              {/* Add-ons */}
-              <div>
-                <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-3 sm:mb-4">Add-ons</h3>
-                <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 sm:p-4">
+                <div>
+                  <h4 className="text-lg font-medium text-gray-900 mb-3">Add-ons Available</h4>
                   {addOns.length > 0 ? (
-                    <ul className="list-disc pl-4 sm:pl-5 space-y-1 text-sm text-gray-700">
-                      {addOns.map((item, idx) => <li key={idx}>{item}</li>)}
+                    <ul className="space-y-2">
+                      {addOns.map((item, idx) => (
+                        <li key={idx} className="flex items-start space-x-2">
+                          <span className="text-[var(--primary-green)] mt-1">+</span>
+                          <span className="text-sm text-gray-700">{item}</span>
+                        </li>
+                      ))}
                     </ul>
                   ) : (
-                    <p className="text-sm text-gray-500">No add-ons specified</p>
+                    <p className="text-sm text-gray-500 italic">No add-ons available</p>
                   )}
                 </div>
               </div>
-            </div>
 
-            {/* Conditions */}
-            <div>
-              <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-3 sm:mb-4">Terms & Conditions</h3>
-              <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 sm:p-4">
-                <p className="text-sm sm:text-base text-gray-700 leading-relaxed">{formattedConditions}</p>
+              {/* Separator */}
+              <hr className="border-gray-200" />
+
+              {/* Terms & Conditions */}
+              <div>
+                <h4 className="text-lg font-medium text-gray-900 mb-3">Terms & Conditions</h4>
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <p className="text-sm text-gray-700 leading-relaxed">{formattedConditions}</p>
+                </div>
               </div>
-            </div>
             </div>
           </div>
         </div>
