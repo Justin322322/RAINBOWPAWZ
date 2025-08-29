@@ -171,22 +171,22 @@ async function fetchRelatedData(packageIds: number[]) {
     let reviewsQuery = `SELECT package_id, COUNT(id) as reviewsCount, AVG(rating) as rating FROM reviews WHERE package_id ${clause} GROUP BY package_id`;
 
     if (reviewsTable) {
-      reviewsQuery = `
+        reviewsQuery = `
         SELECT sb.package_id, COUNT(r.id) as reviewsCount, AVG(r.rating) as rating
-        FROM reviews r
+          FROM reviews r
         JOIN ${reviewsTable} sb ON r.booking_id = sb.id
         WHERE sb.package_id ${clause}
-        GROUP BY sb.package_id
-      `;
+          GROUP BY sb.package_id
+        `;
     }
 
     const reviews = await safeQuery(reviewsQuery, params);
     reviews.forEach((review: any) => {
       results.reviews[review.package_id] = {
-        reviewsCount: parseInt(review.reviewsCount, 10) || 0,
-        rating: parseFloat(review.rating) || 0
-      };
-    });
+          reviewsCount: parseInt(review.reviewsCount, 10) || 0,
+          rating: parseFloat(review.rating) || 0
+        };
+      });
   }
 
   // Fetch images
@@ -238,7 +238,7 @@ async function fetchRelatedData(packageIds: number[]) {
             // Try to use image_path as fallback if base64 is invalid
             if (img.image_path) {
               console.log(`[DEBUG] Falling back to image_path for package ${img.package_id}`);
-              let apiPath;
+          let apiPath;
               if (img.image_path.startsWith('/api/image/')) {
                 apiPath = img.image_path;
               } else if (img.image_path.startsWith('/uploads/packages/')) {
@@ -254,8 +254,8 @@ async function fetchRelatedData(packageIds: number[]) {
               }
               results.images[img.package_id].push(apiPath);
             }
-          }
-        } else {
+            }
+          } else {
           console.error(`[DEBUG] Package ${img.package_id} has malformed base64 data (length: ${cleanBase64.length})`);
         }
       } else if (img.image_path) {
@@ -354,12 +354,12 @@ export async function GET(request: NextRequest) {
 
     // Process services with related data
     const services = rows.map(r => {
-      const status = r.is_active ? 'active' : 'inactive';
-      const priceVal = +r.price;
+    const status = r.is_active ? 'active' : 'inactive';
+    const priceVal = +r.price;
       const priceFmt = `₱${priceVal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
       const images = relatedData.images[r.package_id] || [];
-      const [image] = images;
+    const [image] = images;
       const inclusions = relatedData.inclusions[r.package_id] || [];
       const addOns = relatedData.addons[r.package_id] || [];
       const bookings = relatedData.bookings[r.package_id] || 0;
@@ -372,30 +372,30 @@ export async function GET(request: NextRequest) {
         console.log(`[DEBUG] Service ${r.package_id} (${r.name}) images:`, images);
       }
 
-      return {
-        id: r.package_id,
-        name: r.name,
-        description: r.description,
-        category: r.category,
-        cremationType: r.cremationType,
-        processingTime: r.processingTime,
-        price: priceFmt,
-        priceValue: priceVal,
-        conditions: r.conditions,
-        status,
-        cremationCenter: centerName,
-        providerId: r.providerId,
-        rating: reviewData.rating,
-        bookings,
-        reviewsCount: reviewData.reviewsCount,
-        revenue: 0,
+    return {
+      id: r.package_id,
+      name: r.name,
+      description: r.description,
+      category: r.category,
+      cremationType: r.cremationType,
+      processingTime: r.processingTime,
+      price: priceFmt,
+      priceValue: priceVal,
+      conditions: r.conditions,
+      status,
+      cremationCenter: centerName,
+      providerId: r.providerId,
+      rating: reviewData.rating,
+      bookings,
+      reviewsCount: reviewData.reviewsCount,
+      revenue: 0,
         formattedRevenue: '₱0.00',
-        image: image || null,
-        images,
+      image: image || null,
+      images,
         inclusions,
         addOns,
-      };
-    });
+    };
+  });
 
     console.log('[DEBUG] Final services data with images:', services.map(s => ({
       id: s.id,
@@ -405,11 +405,11 @@ export async function GET(request: NextRequest) {
     })));
 
     // Calculate stats
-    const activeServices = services.filter(s => s.status === 'active').length;
+  const activeServices = services.filter(s => s.status === 'active').length;
     const totalBookings = Object.values(relatedData.bookings).reduce((sum, count) => sum + count, 0);
 
     // Get verified centers count
-    let verifiedCenters = 0;
+  let verifiedCenters = 0;
     const spColumns = await getServiceProviderColumns();
     if (await checkTableExists('service_providers')) {
       let whereClause = '';
@@ -423,8 +423,8 @@ export async function GET(request: NextRequest) {
 
       if (whereClause) {
         const centersResult = await safeQuery(`SELECT COUNT(*) as count FROM service_providers ${whereClause}`);
-        verifiedCenters = centersResult[0]?.count || 0;
-      }
+      verifiedCenters = centersResult[0]?.count || 0;
+    }
     }
 
     // Revenue calculation (with error handling)
@@ -440,21 +440,21 @@ export async function GET(request: NextRequest) {
       console.error('Revenue calculation failed:', error);
     }
 
-    return NextResponse.json({
-      success: true,
-      services,
-      totalRevenue: totalRev,
-      formattedTotalRevenue: formattedTotalRev,
+  return NextResponse.json({
+    success: true,
+    services,
+    totalRevenue: totalRev,
+    formattedTotalRevenue: formattedTotalRev,
+    monthlyRevenue: monthlyRev,
+    serviceProvidersCount: verifiedCenters,
+    activeServicesCount: activeServices,
+    stats: {
+      activeServices,
+      totalBookings,
+      verifiedCenters,
       monthlyRevenue: monthlyRev,
-      serviceProvidersCount: verifiedCenters,
-      activeServicesCount: activeServices,
-      stats: {
-        activeServices,
-        totalBookings,
-        verifiedCenters,
-        monthlyRevenue: monthlyRev,
-        totalRevenue: formattedTotalRev
-      },
+      totalRevenue: formattedTotalRev
+    },
       pagination: {
         total,
         page,
