@@ -196,21 +196,45 @@ async function fetchRelatedData(packageIds: number[]) {
       params
     );
 
+    console.log('[DEBUG] Found images in database:', images.length);
+    console.log('[DEBUG] Raw image data from database:', images);
+
     images.forEach((img: any) => {
       if (!results.images[img.package_id]) results.images[img.package_id] = [];
 
       if (img.image_data) {
-        results.images[img.package_id].push(`data:image/png;base64,${img.image_data}`);
+        const dataUrl = `data:image/png;base64,${img.image_data}`;
+        console.log(`[DEBUG] Package ${img.package_id} has base64 data:`, dataUrl.substring(0, 50) + '...');
+        results.images[img.package_id].push(dataUrl);
       } else if (img.image_path) {
-        let apiPath = `/api/image/packages/${img.image_path}`;
-        if (img.image_path.startsWith('/uploads/packages/')) {
+        console.log(`[DEBUG] Package ${img.package_id} has image path:`, img.image_path);
+
+        // Try multiple path formats to find the correct one
+        let apiPath;
+        if (img.image_path.startsWith('/api/image/')) {
+          apiPath = img.image_path;
+        } else if (img.image_path.startsWith('/uploads/packages/')) {
           apiPath = `/api/image/packages/${img.image_path.substring('/uploads/packages/'.length)}`;
         } else if (img.image_path.startsWith('uploads/packages/')) {
           apiPath = `/api/image/packages/${img.image_path.substring('uploads/packages/'.length)}`;
+        } else if (img.image_path.includes('/')) {
+          // Extract filename from any path
+          const parts = img.image_path.split('/');
+          const filename = parts[parts.length - 1];
+          apiPath = `/api/image/packages/${filename}`;
+        } else {
+          // Assume it's just a filename
+          apiPath = `/api/image/packages/${img.image_path}`;
         }
+
+        console.log(`[DEBUG] Converted to API path:`, apiPath);
         results.images[img.package_id].push(apiPath);
+      } else {
+        console.log(`[DEBUG] Package ${img.package_id} has no image data or path`);
       }
     });
+  } else {
+    console.log('[DEBUG] package_images table does not exist');
   }
 
   return results;
@@ -291,6 +315,11 @@ export async function GET(request: NextRequest) {
 
       const centerName = r.providerName || r.name || 'Cremation Center';
 
+      // Debug logging for images
+      if (images.length > 0) {
+        console.log(`[DEBUG] Service ${r.package_id} (${r.name}) images:`, images);
+      }
+
       return {
         id: r.package_id,
         name: r.name,
@@ -315,6 +344,13 @@ export async function GET(request: NextRequest) {
         addOns,
       };
     });
+
+    console.log('[DEBUG] Final services data with images:', services.map(s => ({
+      id: s.id,
+      name: s.name,
+      imageCount: s.images.length,
+      firstImage: s.images[0] ? s.images[0].substring(0, 50) : null
+    })));
 
     // Calculate stats
     const activeServices = services.filter(s => s.status === 'active').length;

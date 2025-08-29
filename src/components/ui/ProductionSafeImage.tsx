@@ -98,6 +98,8 @@ export const ProductionSafeImage: React.FC<ProductionSafeImageProps> = ({
     console.log('ProductionSafeImage - Current imgSrc:', imgSrc);
     console.log('ProductionSafeImage - Final src:', finalSrc);
     console.log('ProductionSafeImage - Error state:', error);
+    console.log('ProductionSafeImage - Is base64:', imgSrc.startsWith('data:'));
+    console.log('ProductionSafeImage - Is API path:', imgSrc.startsWith('/api/'));
   }
 
   // Use Next.js Image component for better optimization

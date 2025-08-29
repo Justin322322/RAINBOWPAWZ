@@ -36,7 +36,13 @@ export const PackageImage: React.FC<PackageImageProps> = ({
         typeof img === 'string'
       );
 
-
+      // Debug logging for image arrays
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[DEBUG] PackageImage - Received images array:', images);
+        console.log('[DEBUG] PackageImage - Filtered images:', filtered);
+        console.log('[DEBUG] PackageImage - First image type:', filtered.length > 0 ? typeof filtered[0] : 'none');
+        console.log('[DEBUG] PackageImage - First image starts with:', filtered.length > 0 ? filtered[0].substring(0, 50) : 'none');
+      }
 
       return filtered.length > 0 ? filtered : [];
     }
