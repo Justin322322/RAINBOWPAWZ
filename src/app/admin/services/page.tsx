@@ -812,7 +812,7 @@ function ServiceDetailsModal({
               {/* Inclusions and Add-ons */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div>
-                  <h4 className="text-lg font-medium text-gray-900 mb-3">What's Included</h4>
+                  <h4 className="text-lg font-medium text-gray-900 mb-3">What&apos;s Included</h4>
                   {inclusions.length > 0 ? (
                     <ul className="space-y-2">
                       {inclusions.map((item, idx) => (
