@@ -222,7 +222,7 @@ function useServices(params: {
   return { services, loading, stats, pagination, setPagination };
 }
 
-export default function AdminServicesPage() {
+const AdminServicesPage = React.memo(function AdminServicesPage() {
   const [userName]       = useState('System Administrator');
   const [searchTerm, setSearchTerm]       = useState('');
   const [statusFilter, setStatusFilter]   = useState('all');
@@ -507,7 +507,9 @@ export default function AdminServicesPage() {
       )}
     </AdminDashboardLayout>
   );
-}
+});
+
+export default AdminServicesPage;
 
 
 // ——— Helper components below ———

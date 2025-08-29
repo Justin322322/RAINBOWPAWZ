@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
+import React, { useState, useEffect, useRef, useCallback, memo, useMemo } from 'react';
 import AdminDashboardLayout from '@/components/navigation/AdminDashboardLayout';
 import Image from 'next/image';
 import {
@@ -69,7 +69,7 @@ interface Appeal {
   resolved_at?: string;
 }
 
-export default function AdminFurParentsPage() {
+const AdminFurParentsPage = React.memo(function AdminFurParentsPage() {
   const [userName] = useState('System Administrator');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -237,18 +237,23 @@ export default function AdminFurParentsPage() {
     setAvatarError(false);
   }, [selectedUser?.profile_picture]);
 
-  // Filter users based on search term and status
-  const filteredUsers = users.filter(user => {
-    const matchesSearch = searchTerm === '' ||
-      user.first_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.last_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (user.user_id?.toString() || '').includes(searchTerm);
+  // Filter users based on search term and status (memoized for performance)
+  const filteredUsers = useMemo(() => {
+    if (!searchTerm && statusFilter === 'all') return users;
 
-    const matchesStatus = statusFilter === 'all' ? true : user.status === statusFilter;
+    const searchLower = searchTerm.toLowerCase();
+    return users.filter(user => {
+      const matchesSearch = !searchTerm ||
+        user.first_name?.toLowerCase().includes(searchLower) ||
+        user.last_name?.toLowerCase().includes(searchLower) ||
+        user.email?.toLowerCase().includes(searchLower) ||
+        (user.user_id?.toString() || '').includes(searchTerm);
 
-    return matchesSearch && matchesStatus;
-  });
+      const matchesStatus = statusFilter === 'all' ? true : user.status === statusFilter;
+
+      return matchesSearch && matchesStatus;
+    });
+  }, [users, searchTerm, statusFilter]);
 
   const handleViewDetails = useCallback(async (user: User) => {
     // Load user appeals when viewing details
@@ -1593,4 +1598,6 @@ export default function AdminFurParentsPage() {
       </Modal>
     </AdminDashboardLayout>
   );
-}
+});
+
+export default AdminFurParentsPage;

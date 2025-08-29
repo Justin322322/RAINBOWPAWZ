@@ -1,4 +1,3 @@
-import fs from 'fs';
 import { join } from 'path';
 import { promises as fsPromises } from 'fs';
 
@@ -18,8 +17,10 @@ export async function cleanupOldFiles(
     // Create path to the directory
     const directory = join(process.cwd(), 'public', 'uploads', dirType, userId);
     
-    // Check if directory exists
-    if (!fs.existsSync(directory)) {
+    // Check if directory exists (async version for better performance)
+    try {
+      await fsPromises.access(directory);
+    } catch {
       return [];
     }
     

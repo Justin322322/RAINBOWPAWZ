@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
     console.log('Executing simple query with WHERE clause:', whereClause);
     console.log('Query parameters:', queryParams);
 
-    // Simple query to get packages (inline numeric LIMIT/OFFSET to avoid prepared stmt issues)
+    // Simple query to get packages with parameterized LIMIT/OFFSET for security
     const mainQuery = `
       SELECT
         package_id as id,
@@ -52,13 +52,16 @@ export async function GET(request: NextRequest) {
       FROM service_packages
       ${whereClause}
       ORDER BY created_at DESC
-      LIMIT ${Number(limit)} OFFSET ${Number(offset)}
+      LIMIT ? OFFSET ?
     `;
-    
+
+    // Add pagination parameters
+    const finalQueryParams = [...queryParams, Number(limit), Number(offset)];
+
     console.log('Main query:', mainQuery);
-    console.log('Final query params:', [...queryParams]);
-    
-    const rows = (await query(mainQuery, [...queryParams])) as any[];
+    console.log('Final query params:', finalQueryParams);
+
+    const rows = (await query(mainQuery, finalQueryParams)) as any[];
     console.log('Query executed successfully, rows returned:', rows.length);
 
     // Simple count query
@@ -83,7 +86,7 @@ export async function GET(request: NextRequest) {
     // Collect package ids for enrichment
     const packageIds = rows.map((p: any) => p.id);
 
-    // Fetch images for all packages in one query
+    // Fetch images for all packages in one query (use parameterized query)
     let imagesByPackage: Record<number, string[]> = {};
     if (packageIds.length > 0) {
       const placeholders = packageIds.map(() => '?').join(',');
@@ -95,28 +98,40 @@ export async function GET(request: NextRequest) {
         packageIds
       )) as any[];
 
+      // Optimized image processing with pre-computed path mappings
+      const pathMappings = {
+        '/api/image/': (path: string) => path,
+        '/uploads/': (path: string) => `/api/image/${path.substring('/uploads/'.length)}`,
+        'uploads/': (path: string) => `/api/image/${path.substring('uploads/'.length)}`,
+        'packages/': (path: string) => {
+          const parts = path.split('packages/');
+          return parts.length > 1 ? `/api/image/packages/${parts[1]}` : path;
+        }
+      };
+
       imagesByPackage = imagesRows.reduce((acc: Record<number, string[]>, row: any) => {
         const id = Number(row.packageId);
         const rawPath: string | null = row.image_path || null;
         const dataUrl: string | null = row.image_data || null;
         let resolved: string | null = null;
 
+        // Fast path for base64 data URLs
         if (dataUrl && typeof dataUrl === 'string' && dataUrl.startsWith('data:image/')) {
-          resolved = dataUrl; // use base64 directly
+          resolved = dataUrl;
         } else if (rawPath && typeof rawPath === 'string') {
-          // Normalize to API route
-          let path = rawPath;
-          if (path.startsWith('/api/image/')) {
-            resolved = path;
-          } else if (path.startsWith('/uploads/')) {
-            resolved = `/api/image/${path.substring('/uploads/'.length)}`;
-          } else if (path.startsWith('uploads/')) {
-            resolved = `/api/image/${path.substring('uploads/'.length)}`;
-          } else if (path.includes('packages/')) {
-            const parts = path.split('packages/');
-            resolved = parts.length > 1 ? `/api/image/packages/${parts[1]}` : path;
-          } else {
-            resolved = path;
+          // Use pre-computed mappings for better performance
+          for (const [prefix, mapper] of Object.entries(pathMappings)) {
+            if (rawPath.startsWith(prefix)) {
+              resolved = mapper(rawPath);
+              break;
+            }
+          }
+
+          // Fallback for paths that don't match known patterns
+          if (!resolved) {
+            resolved = rawPath.includes('packages/')
+              ? pathMappings['packages/'](rawPath)
+              : rawPath;
           }
         }
 

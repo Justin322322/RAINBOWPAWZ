@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, memo } from 'react';
+import React, { useState, useEffect, useCallback, memo, useMemo } from 'react';
 import AdminDashboardLayout from '@/components/navigation/AdminDashboardLayout';
 import Image from 'next/image';
 import {
@@ -139,7 +139,7 @@ const RestrictModal = memo(function RestrictModal({
   );
 });
 
-export default function AdminCremationCentersPage() {
+const AdminCremationCentersPage = React.memo(function AdminCremationCentersPage() {
   const [userName] = useState('System Administrator');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -340,39 +340,42 @@ export default function AdminCremationCentersPage() {
     }
   }, [showDetailsModal]);
 
-  // Filter cremation centers based on search term and status filter
-  const filteredCenters = cremationCenters.filter(center => {
-    const matchesSearch =
-      center.name?.toLowerCase?.()?.includes(searchTerm.toLowerCase()) ||
-      center.owner?.toLowerCase?.()?.includes(searchTerm.toLowerCase()) ||
-      String(center.id)?.toLowerCase?.()?.includes(searchTerm.toLowerCase()) ||
-      center.address?.toLowerCase?.()?.includes(searchTerm.toLowerCase());
+  // Filter cremation centers based on search term and status filter (memoized for performance)
+  const filteredCenters = useMemo(() => {
+    const searchLower = searchTerm.toLowerCase();
+    return cremationCenters.filter(center => {
+      const matchesSearch =
+        center.name?.toLowerCase?.()?.includes(searchLower) ||
+        center.owner?.toLowerCase?.()?.includes(searchLower) ||
+        String(center.id)?.toLowerCase?.()?.includes(searchLower) ||
+        center.address?.toLowerCase?.()?.includes(searchLower);
 
-    // Check all possible status fields
-    const isRestricted =
-      center.application_status === 'restricted' ||
-      center.verification_status === 'restricted' ||
-      center.status === 'restricted';
+      // Check all possible status fields
+      const isRestricted =
+        center.application_status === 'restricted' ||
+        center.verification_status === 'restricted' ||
+        center.status === 'restricted';
 
-    const isVerified =
-      center.verified === true ||
-      center.application_status === 'approved' ||
-      center.application_status === 'verified' ||
-      center.verification_status === 'verified';
+      const isVerified =
+        center.verified === true ||
+        center.application_status === 'approved' ||
+        center.application_status === 'verified' ||
+        center.verification_status === 'verified';
 
-    // Determine actual status for filtering
-    const actualStatus = isRestricted ? 'restricted' :
-                        (isVerified ? 'active' :
-                         center.application_status || center.status || 'pending');
+      // Determine actual status for filtering
+      const actualStatus = isRestricted ? 'restricted' :
+                          (isVerified ? 'active' :
+                           center.application_status || center.status || 'pending');
 
-    const matchesStatus = statusFilter === 'all'
-      ? true
-      : (actualStatus === statusFilter ||
-         center.application_status === statusFilter ||
-         center.verification_status === statusFilter);
+      const matchesStatus = statusFilter === 'all'
+        ? true
+        : (actualStatus === statusFilter ||
+           center.application_status === statusFilter ||
+           center.verification_status === statusFilter);
 
-    return matchesSearch && matchesStatus;
-  });
+      return matchesSearch && matchesStatus;
+    });
+  }, [cremationCenters, searchTerm, statusFilter]);
 
   const loadCenterAppeals = useCallback(async (centerId: number | string) => {
     try {
@@ -1645,4 +1648,6 @@ export default function AdminCremationCentersPage() {
       </Modal>
     </AdminDashboardLayout>
   );
-}
+});
+
+export default AdminCremationCentersPage;
