@@ -30,8 +30,6 @@ type PackageResponse = {
   reviewsCount: number;
 };
 
-// Removed listImagePaths function - now using database-based image fetching
-
 export async function GET(request: NextRequest) {
   // --- Authentication ---
   const user = await verifySecureAuth(request);
@@ -57,11 +55,16 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       services: [],
-      pagination: { total: 0, page, limit, totalPages: 0 }
+      pagination: { total: 0, page, limit, totalPages: 0 },
+      stats: {
+        activeServices: 0,
+        totalBookings: 0,
+        verifiedCenters: 0
+      }
     });
   }
 
-  // --- Build main query ---
+  // --- Build main query with proper JOINs ---
   const cols = [
     'p.package_id', 'p.name', 'p.description',
     "COALESCE(p.price,0) AS price",
@@ -70,20 +73,27 @@ export async function GET(request: NextRequest) {
     "COALESCE(p.cremation_type,'') AS cremationType",
     "COALESCE(p.processing_time,'2-3 days') AS processingTime",
     "COALESCE(p.conditions,'') AS conditions",
-    "sp.provider_id AS providerId", "COALESCE(sp.name,'Cremation Center') AS providerName"
+    "sp.provider_id AS providerId", 
+    "COALESCE(sp.name,'Cremation Center') AS providerName",
+    "COALESCE(sp.business_name,'Cremation Center') AS businessName",
+    "COALESCE(sp.address,'') AS providerAddress",
+    "COALESCE(sp.phone,'') AS providerPhone",
+    "COALESCE(sp.email,'') AS providerEmail"
   ];
+
   // Build the JOIN clause - using the correct column names for joining
   const joinSP = await checkTableExists('service_providers')
     ? 'LEFT JOIN service_providers sp ON p.provider_id=sp.provider_id'
     : '';
+
   // SECURITY FIX: Build safe query with validated components
   const colsStr = cols.join(', ');
   let sql = `SELECT ${colsStr} FROM service_packages p ${joinSP} WHERE 1=1`;
   const params: any[] = [];
 
   if (s) {
-    sql += ' AND (p.name LIKE ? OR sp.name LIKE ?)';
-    params.push(`%${s}%`, `%${s}%`);
+    sql += ' AND (p.name LIKE ? OR sp.name LIKE ? OR sp.business_name LIKE ?)';
+    params.push(`%${s}%`, `%${s}%`, `%${s}%`);
   }
   if (statusF !== 'all') {
     sql += ' AND p.is_active = ?';
@@ -148,118 +158,162 @@ export async function GET(request: NextRequest) {
   }
 
   // --- Revenue stats ---
-  // Ensure we have proper revenue values using the standardized revenueCalculator
   let totalRev = 0;
   let formattedTotalRev = '₱0.00';
   let monthlyRev = '₱0.00';
   try {
     const revenueData = await calculateRevenue();
     totalRev = revenueData.totalRevenue || 0;
-    
-    // Format revenue correctly using the formatRevenue utility
     formattedTotalRev = formatRevenue(totalRev);
     monthlyRev = formatRevenue(revenueData.monthlyRevenue || 0);
   } catch (error) {
     console.error('Error calculating revenue:', error);
   }
 
-  // --- Format each service ---
-  // First, check if tables exist to avoid repeated queries for each service
+  // --- Batch fetch additional data ---
   const inclusionsTableExists = await checkTableExists('package_inclusions');
   const addonsTableExists = await checkTableExists('package_addons');
-  const _bookingsTableExists = await checkTableExists('bookings');
+  const bookingsTableExists = await checkTableExists('service_bookings') || await checkTableExists('bookings');
   const reviewsTableExists = await checkTableExists('reviews');
+  const imagesTableExists = await checkTableExists('package_images');
 
   // Batch fetch inclusions and addons for all packages
   let allInclusions: Record<number, string[]> = {};
   let allAddons: Record<number, string[]> = {};
+  let allBookings: Record<number, number> = {};
+  let allReviews: Record<number, { reviewsCount: number; rating: number }> = {};
+  let allImages: Record<number, string[]> = {};
 
-  if (inclusionsTableExists) {
+  // Fetch inclusions
+  if (inclusionsTableExists && rows.length > 0) {
     try {
       const packageIds = rows.map(r => r.package_id);
-      if (packageIds.length > 0) {
-        // SECURITY FIX: Create parameterized query for package inclusions
-        const placeholders = packageIds.map(() => '?').join(',');
-        const inclusionsResult = await query(
-          `SELECT package_id, description FROM package_inclusions WHERE package_id IN (${placeholders})`,
-          packageIds
-        ) as any[];
+      const placeholders = packageIds.map(() => '?').join(',');
+      const inclusionsResult = await query(
+        `SELECT package_id, description FROM package_inclusions WHERE package_id IN (${placeholders})`,
+        packageIds
+      ) as any[];
 
-        // Group inclusions by package_id
-        inclusionsResult.forEach(inc => {
-          if (!allInclusions[inc.package_id]) {
-            allInclusions[inc.package_id] = [];
-          }
-          allInclusions[inc.package_id].push(inc.description);
-        });
-      }
+      inclusionsResult.forEach(inc => {
+        if (!allInclusions[inc.package_id]) {
+          allInclusions[inc.package_id] = [];
+        }
+        allInclusions[inc.package_id].push(inc.description);
+      });
     } catch (error) {
       console.error('Error fetching inclusions:', error);
     }
   }
 
-  if (addonsTableExists) {
+  // Fetch addons
+  if (addonsTableExists && rows.length > 0) {
     try {
       const packageIds = rows.map(r => r.package_id);
-      if (packageIds.length > 0) {
-        // SECURITY FIX: Create parameterized query for package addons
-        const placeholders = packageIds.map(() => '?').join(',');
-        const addonsResult = await query(
-          `SELECT package_id, description FROM package_addons WHERE package_id IN (${placeholders})`,
-          packageIds
-        ) as any[];
+      const placeholders = packageIds.map(() => '?').join(',');
+      const addonsResult = await query(
+        `SELECT package_id, description FROM package_addons WHERE package_id IN (${placeholders})`,
+        packageIds
+      ) as any[];
 
-        // Group addons by package_id
-        addonsResult.forEach(addon => {
-          if (!allAddons[addon.package_id]) {
-            allAddons[addon.package_id] = [];
-          }
-          allAddons[addon.package_id].push(addon.description);
-        });
-      }
+      addonsResult.forEach(addon => {
+        if (!allAddons[addon.package_id]) {
+          allAddons[addon.package_id] = [];
+        }
+        allAddons[addon.package_id].push(addon.description);
+      });
     } catch (error) {
       console.error('Error fetching addons:', error);
     }
   }
 
-  // Batch fetch reviews count and average rating
-  let allReviews: Record<number, { reviewsCount: number; rating: number }> = {};
-  if (reviewsTableExists) {
+  // Fetch bookings count for each package
+  if (bookingsTableExists && rows.length > 0) {
     try {
       const packageIds = rows.map(r => r.package_id);
-      if (packageIds.length > 0) {
-        const placeholders = packageIds.map(() => '?').join(',');
-        const reviewsResult = await query(
-          `SELECT 
-             sb.package_id, 
-             COUNT(r.id) as reviewsCount, 
-             AVG(r.rating) as rating 
-           FROM reviews r
-           JOIN service_bookings sb ON r.booking_id = sb.id
-           WHERE sb.package_id IN (${placeholders}) 
-           GROUP BY sb.package_id`,
-          packageIds
-        ) as any[];
+      const placeholders = packageIds.map(() => '?').join(',');
+      
+      // Try service_bookings first, then fallback to bookings
+      let bookingsQuery = '';
+      if (await checkTableExists('service_bookings')) {
+        bookingsQuery = `
+          SELECT package_id, COUNT(*) as count 
+          FROM service_bookings 
+          WHERE package_id IN (${placeholders}) 
+          GROUP BY package_id
+        `;
+      } else if (await checkTableExists('bookings')) {
+        bookingsQuery = `
+          SELECT package_id, COUNT(*) as count 
+          FROM bookings 
+          WHERE package_id IN (${placeholders}) 
+          GROUP BY package_id
+        `;
+      }
 
-        reviewsResult.forEach(review => {
-          allReviews[review.package_id] = {
-            reviewsCount: parseInt(review.reviewsCount, 10) || 0,
-            rating: parseFloat(review.rating) || 0
-          };
+      if (bookingsQuery) {
+        const bookingsResult = await query(bookingsQuery, packageIds) as any[];
+        bookingsResult.forEach(booking => {
+          allBookings[booking.package_id] = parseInt(booking.count, 10) || 0;
         });
       }
+    } catch (error) {
+      console.error('Error fetching bookings data:', error);
+    }
+  }
+
+  // Fetch reviews count and average rating
+  if (reviewsTableExists && rows.length > 0) {
+    try {
+      const packageIds = rows.map(r => r.package_id);
+      const placeholders = packageIds.map(() => '?').join(',');
+      
+      // Try to join with service_bookings first, then fallback to direct package_id
+      let reviewsQuery = '';
+      if (await checkTableExists('service_bookings')) {
+        reviewsQuery = `
+          SELECT 
+            sb.package_id, 
+            COUNT(r.id) as reviewsCount, 
+            AVG(r.rating) as rating 
+          FROM reviews r
+          JOIN service_bookings sb ON r.booking_id = sb.id
+          WHERE sb.package_id IN (${placeholders}) 
+          GROUP BY sb.package_id
+        `;
+      } else {
+        reviewsQuery = `
+          SELECT 
+            package_id, 
+            COUNT(id) as reviewsCount, 
+            AVG(rating) as rating 
+          FROM reviews 
+          WHERE package_id IN (${placeholders}) 
+          GROUP BY package_id
+        `;
+      }
+
+      const reviewsResult = await query(reviewsQuery, packageIds) as any[];
+      reviewsResult.forEach(review => {
+        allReviews[review.package_id] = {
+          reviewsCount: parseInt(review.reviewsCount, 10) || 0,
+          rating: parseFloat(review.rating) || 0
+        };
+      });
     } catch (error) {
       console.error('Error fetching reviews data:', error);
     }
   }
 
-  // Get images from database for all packages
-  let allImages: Record<number, string[]> = {};
-  try {
-    const packageIds = rows.map(r => r.package_id);
-    if (packageIds.length > 0) {
+  // Fetch package images
+  if (imagesTableExists && rows.length > 0) {
+    try {
+      const packageIds = rows.map(r => r.package_id);
+      const placeholders = packageIds.map(() => '?').join(',');
+      
       const imageResults = await query(
-        `SELECT package_id, image_path FROM package_images WHERE package_id IN (${packageIds.map(() => '?').join(',')}) ORDER BY display_order`,
+        `SELECT package_id, image_path FROM package_images 
+         WHERE package_id IN (${placeholders}) 
+         ORDER BY display_order, package_id`,
         packageIds
       ) as any[];
 
@@ -291,60 +345,56 @@ export async function GET(request: NextRequest) {
           allImages[img.package_id].push(apiPath);
         }
       });
+    } catch (error) {
+      console.error('Error fetching package images:', error);
     }
-  } catch (error) {
-    console.error('Error fetching package images:', error);
   }
 
-  // Process services in parallel but with reduced database queries
-  const services: PackageResponse[] = await Promise.all(
-    rows.map(async r => {
-      const status = r.is_active ? 'active' : 'inactive';
-      const priceVal = +r.price;
-      const priceFmt = `₱${priceVal.toLocaleString('en-US',{ minimumFractionDigits:2, maximumFractionDigits:2 })}`;
+  // Process services with all fetched data
+  const services: PackageResponse[] = rows.map(r => {
+    const status = r.is_active ? 'active' : 'inactive';
+    const priceVal = +r.price;
+    const priceFmt = `₱${priceVal.toLocaleString('en-US',{ minimumFractionDigits:2, maximumFractionDigits:2 })}`;
 
-      // Get images from pre-fetched database results
-      const images = allImages[r.package_id] || [];
-      const [image] = images;
+    // Get data from pre-fetched results
+    const images = allImages[r.package_id] || [];
+    const [image] = images;
+    const incs = allInclusions[r.package_id] || [];
+    const adds = allAddons[r.package_id] || [];
+    const reviewData = allReviews[r.package_id] || { reviewsCount: 0, rating: 0 };
+    const bookings = allBookings[r.package_id] || 0;
 
-      // Get inclusions and addons from pre-fetched data
-      const incs = allInclusions[r.package_id] || [];
-      const adds = allAddons[r.package_id] || [];
-      const reviewData = allReviews[r.package_id] || { reviewsCount: 0, rating: 0 };
+    // Use business name if available, fallback to provider name
+    const centerName = r.businessName || r.providerName || 'Cremation Center';
 
-      // Default values for bookings and rating
-      let bookings = 0, _rating = 0;
+    return {
+      id: r.package_id,
+      name: r.name,
+      description: r.description,
+      category: r.category,
+      cremationType: r.cremationType,
+      processingTime: r.processingTime,
+      price: priceFmt,
+      priceValue: priceVal,
+      conditions: r.conditions,
+      status,
+      cremationCenter: centerName,
+      providerId: r.providerId,
+      rating: reviewData.rating,
+      bookings,
+      reviewsCount: reviewData.reviewsCount,
+      revenue: 0,
+      formattedRevenue: `₱0.00`,
+      image: image || null,
+      images,
+      inclusions: incs,
+      addOns: adds,
+    };
+  });
 
-      // Map package_id to id for frontend compatibility
-      return {
-        id: r.package_id,
-        name: r.name,
-        description: r.description,
-        category: r.category,
-        cremationType: r.cremationType,
-        processingTime: r.processingTime,
-        price: priceFmt,
-        priceValue: priceVal,
-        conditions: r.conditions,
-        status,
-        cremationCenter: r.providerName,
-        providerId: r.providerId,
-        rating: reviewData.rating,
-        bookings,
-        reviewsCount: reviewData.reviewsCount,
-        revenue: 0,
-        formattedRevenue: `₱0.00`,
-        image: image || null,
-        images,
-        inclusions: incs,
-        addOns: adds,
-      };
-    })
-  );
-
-  // --- Build response ---
-  const totalPages = Math.ceil(total / limit) || 1;
-
+  // --- Calculate comprehensive stats ---
+  const activeServices = services.filter(s => s.status === 'active').length;
+  
   // Get total bookings count across all service packages
   let totalBookings = 0;
   try {
@@ -357,14 +407,15 @@ export async function GET(request: NextRequest) {
     }
   } catch (error) {
     console.error('Error fetching total bookings:', error);
-    totalBookings = 0;
+    // Fallback to sum of individual package bookings
+    totalBookings = services.reduce((sum, service) => sum + service.bookings, 0);
   }
 
   // Get verified/approved cremation centers count
   let verifiedCenters = 0;
   try {
     if (await checkTableExists('service_providers')) {
-      // First check which columns exist in the service_providers table
+      // Check which columns exist in the service_providers table
       const columnsResult = await query(`
         SELECT COLUMN_NAME 
         FROM INFORMATION_SCHEMA.COLUMNS 
@@ -381,6 +432,8 @@ export async function GET(request: NextRequest) {
         whereClause = "WHERE application_status IN ('approved', 'verified')";
       } else if (columns.includes('status')) {
         whereClause = "WHERE status = 'active' OR status = 'approved'";
+      } else if (columns.includes('is_verified')) {
+        whereClause = "WHERE is_verified = 1";
       } else {
         // If no status columns, count all providers
         whereClause = '';
@@ -399,6 +452,9 @@ export async function GET(request: NextRequest) {
     verifiedCenters = 0;
   }
 
+  // --- Build response ---
+  const totalPages = Math.ceil(total / limit) || 1;
+
   return NextResponse.json({
     success: true,
     services,
@@ -406,11 +462,11 @@ export async function GET(request: NextRequest) {
     formattedTotalRevenue: formattedTotalRev,
     monthlyRevenue: monthlyRev,
     serviceProvidersCount: verifiedCenters,
-    activeServicesCount: services.filter(s => s.status === 'active').length,
+    activeServicesCount: activeServices,
     stats: {
-      activeServices: services.filter(s => s.status === 'active').length,
-      totalBookings: totalBookings,
-      verifiedCenters: verifiedCenters,
+      activeServices,
+      totalBookings,
+      verifiedCenters,
       monthlyRevenue: monthlyRev,
       totalRevenue: formattedTotalRev
     },
