@@ -394,7 +394,7 @@ async function notifyUserOfRestriction(userId: number, reason: string, duration?
       try {
         const smsResult = await sendSMS({
           to: user.phone,
-          message: `🚨 Your RainbowPaws cremation center account has been restricted. Reason: ${reason}. You can submit an appeal at ${getServerAppUrl()}/appeals`
+          message: `🚨 Your RainbowPaws cremation center account has been restricted. Reason: ${reason}. You can submit an appeal through your account or contact support.`
         });
         
         if (smsResult.success) {

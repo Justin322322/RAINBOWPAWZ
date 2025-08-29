@@ -260,7 +260,7 @@ async function notifyUserOfRestriction(user: any, reason: string, duration?: str
       try {
         const smsResult = await sendSMS({
           to: user.phone,
-          message: `🚨 Your RainbowPaws account has been restricted. Reason: ${reason}. You can submit an appeal at ${process.env.NEXT_PUBLIC_BASE_URL}/appeals`
+          message: `🚨 Your RainbowPaws account has been restricted. Reason: ${reason}. You can submit an appeal through your account or contact support.`
         });
         
         if (smsResult.success) {
