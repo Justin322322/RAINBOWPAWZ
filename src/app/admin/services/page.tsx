@@ -760,46 +760,46 @@ function ServiceDetailsModal({
                 <h4 className="text-lg font-medium text-gray-900 mb-4">Service Details</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   {/* Cremation Type Card */}
-                  <div className="bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 rounded-xl p-4">
+                  <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
                     <div className="flex items-center space-x-3">
-                      <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-                        <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <div className="w-8 h-8 bg-gray-50 rounded-full flex items-center justify-center flex-shrink-0">
+                        <svg className="w-4 h-4 text-[var(--primary-green)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>
                       </div>
                       <div>
-                        <p className="text-xs font-medium text-green-700 uppercase tracking-wide">Cremation Type</p>
-                        <p className="text-sm font-semibold text-green-900">{formattedType}</p>
+                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Cremation Type</p>
+                        <p className="text-sm font-semibold text-gray-900">{formattedType}</p>
                       </div>
                     </div>
                   </div>
 
                   {/* Processing Time Card */}
-                  <div className="bg-gradient-to-br from-blue-50 to-cyan-50 border border-blue-200 rounded-xl p-4">
+                  <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
                     <div className="flex items-center space-x-3">
-                      <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-                        <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <div className="w-8 h-8 bg-gray-50 rounded-full flex items-center justify-center flex-shrink-0">
+                        <svg className="w-4 h-4 text-[var(--primary-green)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                       </div>
                       <div>
-                        <p className="text-xs font-medium text-blue-700 uppercase tracking-wide">Processing Time</p>
-                        <p className="text-sm font-semibold text-blue-900">{formattedTime}</p>
+                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Processing Time</p>
+                        <p className="text-sm font-semibold text-gray-900">{formattedTime}</p>
                       </div>
                     </div>
                   </div>
 
                   {/* Total Bookings Card */}
-                  <div className="bg-gradient-to-br from-purple-50 to-indigo-50 border border-purple-200 rounded-xl p-4">
+                  <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
                     <div className="flex items-center space-x-3">
-                      <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0">
-                        <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <div className="w-8 h-8 bg-gray-50 rounded-full flex items-center justify-center flex-shrink-0">
+                        <svg className="w-4 h-4 text-[var(--primary-green)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                         </svg>
                       </div>
                       <div>
-                        <p className="text-xs font-medium text-purple-700 uppercase tracking-wide">Total Bookings</p>
-                        <p className="text-sm font-semibold text-purple-900">{bookings}</p>
+                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Total Bookings</p>
+                        <p className="text-sm font-semibold text-gray-900">{bookings}</p>
                       </div>
                     </div>
                   </div>
@@ -823,10 +823,10 @@ function ServiceDetailsModal({
               {/* What's Included & Add-ons */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* What's Included Card */}
-                <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-                  <div className="bg-gradient-to-r from-green-600 to-emerald-600 px-4 py-3">
-                    <h4 className="text-lg font-semibold text-white flex items-center">
-                      <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm">
+                  <div className="bg-gray-50 border-b border-gray-200 px-4 py-3">
+                    <h4 className="text-lg font-semibold text-gray-900 flex items-center">
+                      <svg className="w-5 h-5 mr-2 text-[var(--primary-green)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
                       What&apos;s Included
@@ -837,14 +837,14 @@ function ServiceDetailsModal({
                       <div className="space-y-3">
                         {inclusions.map((item, idx) => (
                           <div key={idx} className="flex items-start space-x-3">
-                            <div className="w-2 h-2 bg-green-500 rounded-full mt-2 flex-shrink-0"></div>
+                            <div className="w-2 h-2 bg-[var(--primary-green)] rounded-full mt-2 flex-shrink-0"></div>
                             <span className="text-sm text-gray-700 leading-relaxed">{item}</span>
                           </div>
                         ))}
                       </div>
                     ) : (
-                      <div className="text-center py-4">
-                        <svg className="w-8 h-8 text-gray-300 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <div className="text-center py-8">
+                        <svg className="w-12 h-12 text-gray-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2M4 13h2m8-5v2m0 0v2m0-2h2m-2 0h-2" />
                         </svg>
                         <p className="text-sm text-gray-500">No inclusions specified</p>
@@ -854,10 +854,10 @@ function ServiceDetailsModal({
                 </div>
 
                 {/* Add-ons Card */}
-                <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-                  <div className="bg-gradient-to-r from-amber-500 to-orange-500 px-4 py-3">
-                    <h4 className="text-lg font-semibold text-white flex items-center">
-                      <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm">
+                  <div className="bg-gray-50 border-b border-gray-200 px-4 py-3">
+                    <h4 className="text-lg font-semibold text-gray-900 flex items-center">
+                      <svg className="w-5 h-5 mr-2 text-[var(--primary-green)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                       </svg>
                       Add-ons Available
@@ -868,14 +868,14 @@ function ServiceDetailsModal({
                       <div className="space-y-3">
                         {addOns.map((item, idx) => (
                           <div key={idx} className="flex items-start space-x-3">
-                            <div className="w-2 h-2 bg-amber-500 rounded-full mt-2 flex-shrink-0"></div>
+                            <div className="w-2 h-2 bg-[var(--primary-green)] rounded-full mt-2 flex-shrink-0"></div>
                             <span className="text-sm text-gray-700 leading-relaxed">{item}</span>
                           </div>
                         ))}
                       </div>
                     ) : (
-                      <div className="text-center py-4">
-                        <svg className="w-8 h-8 text-gray-300 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <div className="text-center py-8">
+                        <svg className="w-12 h-12 text-gray-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                         <p className="text-sm text-gray-500">No add-ons available</p>
