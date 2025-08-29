@@ -42,7 +42,10 @@ export async function GET(request: NextRequest) {
     console.log('Executing simple query with WHERE clause:', whereClause);
     console.log('Query parameters:', queryParams);
 
-    // Simple query to get packages with parameterized LIMIT/OFFSET for security
+    // Simple query to get packages - inline LIMIT/OFFSET to avoid prepared statement issues
+    const limitInt = Math.max(1, Math.min(100, parseInt(String(limit)) || 10));
+    const offsetInt = Math.max(0, parseInt(String(offset)) || 0);
+
     const mainQuery = `
       SELECT
         package_id as id,
@@ -58,13 +61,19 @@ export async function GET(request: NextRequest) {
       FROM service_packages
       ${whereClause}
       ORDER BY created_at DESC
-      LIMIT ? OFFSET ?
+      LIMIT ${Number(limitInt)} OFFSET ${Number(offsetInt)}
     `;
 
-    // Add pagination parameters - ensure they are proper integers and handle edge cases
-    const limitInt = Math.max(1, Math.min(100, parseInt(limit.toString()) || 10));
-    const offsetInt = Math.max(0, parseInt(offset.toString()) || 0);
-    const finalQueryParams = [...queryParams, limitInt, offsetInt];
+    // Only include WHERE clause parameters in the prepared statement, not pagination
+    const finalQueryParams = queryParams.map(param => {
+      // Convert provider_id to proper integer type if it's a string
+      if (typeof param === 'number') return param;
+      if (typeof param === 'string') {
+        const num = parseInt(param);
+        return isNaN(num) ? param : num;
+      }
+      return param;
+    });
 
     console.log('Main query:', mainQuery);
     console.log('Final query params:', finalQueryParams);

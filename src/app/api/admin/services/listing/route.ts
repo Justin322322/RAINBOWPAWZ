@@ -324,12 +324,13 @@ export async function GET(request: NextRequest) {
 
     // Build and execute main query
     const { sql, params } = await buildServiceQuery(search, statusFilter, categoryFilter);
-    const paginatedSql = `${sql} LIMIT ? OFFSET ?`;
-    const paginationParams = [...params, Number(limit), (page - 1) * Number(limit)];
+    const limitInt = Number(limit);
+    const offsetInt = (page - 1) * Number(limit);
+    const paginatedSql = `${sql} LIMIT ${limitInt} OFFSET ${offsetInt}`;
 
     let rows: any[] = [];
     try {
-      rows = await safeQuery(paginatedSql, paginationParams);
+      rows = await safeQuery(paginatedSql, params);
     } catch (error) {
       console.error('Primary query failed:', error);
       // Try fallback query
@@ -340,8 +341,8 @@ export async function GET(request: NextRequest) {
           '' AS conditions, 'Cremation Center' AS providerName, 0 AS providerId
         FROM service_packages
         ORDER BY created_at DESC
-        LIMIT ? OFFSET ?
-      `, [Number(limit), (page - 1) * Number(limit)]);
+        LIMIT ${limitInt} OFFSET ${offsetInt}
+      `, []);
       rows = fallbackRows.map(row => ({ ...row, package_id: row.id }));
     }
 
