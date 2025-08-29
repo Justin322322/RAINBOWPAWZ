@@ -158,8 +158,9 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Add order by and limit
-    sql += ` ORDER BY created_at DESC LIMIT ${Number(limit)} OFFSET ${Number(offset)}`;
+    // Add order by and limit (use parameterized query to prevent SQL injection)
+    sql += ` ORDER BY created_at DESC LIMIT ? OFFSET ?`;
+    queryParams.push(Number(limit), Number(offset));
 
     // Execute the query
     const bookings = await query(sql, queryParams) as any[];

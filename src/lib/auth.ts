@@ -13,11 +13,12 @@ export const getServerSession = async () => {
   try {
     // Get the cookie value directly from the request headers
     // This is a workaround for the cookies() function type issues
+    // Note: Development should use proper authentication, not hardcoded values
     const cookieHeader = process.env.NODE_ENV === 'development'
-      ? { 'auth_token': 'test_user_id_admin' } // Mock cookie for development
+      ? {} // No mock cookie in development for security
       : {};
 
-    const authCookieValue = cookieHeader['auth_token'];
+    const authCookieValue = (cookieHeader as any)['auth_token'];
 
     if (!authCookieValue) {
       return null;
