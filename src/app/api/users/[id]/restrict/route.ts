@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { broadcastToUser, Notification } from '@/app/api/notifications/sse/route';
+import { randomUUID } from 'crypto';
+import { broadcastToUser } from '@/app/api/notifications/sse/route';
+import type { Notification } from '@/types/notification';
 import { query, withTransaction } from '@/lib/db';
 import { verifySecureAuth } from '@/lib/secureAuth';
 import { createNotificationFast } from '@/utils/notificationService';
@@ -225,12 +227,12 @@ async function notifyUserOfRestriction(user: any, reason: string, duration?: str
       const targetUserId = (user.user_id || user.id)?.toString();
       if (targetUserId) {
         const notification: Notification = {
-          id: Date.now().toString(),
+          id: randomUUID(),
           title,
           message,
           type: 'error',
-          is_read: 0,
-          link: null,
+          is_read: false as any, // Using boolean false as requested for consistency with SSE/in-app payloads
+          link: '/appeals',
           created_at: new Date().toISOString()
         };
         broadcastToUser(targetUserId, 'user', notification);

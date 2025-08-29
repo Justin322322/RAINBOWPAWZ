@@ -2,7 +2,7 @@ import { query } from '@/lib/db';
 import { createNotification } from '@/utils/notificationService';
 import { createBusinessNotification } from '@/utils/businessNotificationService';
 import { sendEmail } from '@/lib/consolidatedEmailService';
-import { Notification as SSENotification } from '@/app/api/notifications/sse/route';
+import { Notification as SSENotification, NotificationType } from '@/types/notification';
 import { createBookingConfirmationEmail, createBookingStatusUpdateEmail } from '@/lib/emailTemplates';
 import { sendSMS, createBookingSMSMessage } from '@/lib/httpSmsService';
 
@@ -69,7 +69,7 @@ export async function createBookingNotification(
     // Determine notification content based on type
     let title: string;
     let message: string;
-    let type: 'info' | 'success' | 'warning' | 'error' = 'info';
+    let type: NotificationType = 'info';
     let link: string;
     let sendEmailNotification = false;
 
@@ -156,10 +156,10 @@ export async function createBookingNotification(
       const accountType = 'user'; // Most booking notifications go to fur parents
 
       const sseNotification: SSENotification = {
-        id: Date.now().toString(), // Temporary ID for instant display
+        id: Date.now(), // Temporary ID for instant display
         title,
         message,
-        type: type as 'info' | 'warning' | 'error' | 'success' // Ensure type matches SSE interface
+        type: type as NotificationType
       };
       broadcastToUser(user_id.toString(), accountType, sseNotification);
     }
@@ -189,7 +189,7 @@ export async function createPaymentNotification(
 
     let title: string;
     let message: string;
-    let type: 'info' | 'success' | 'warning' | 'error' = 'info';
+    let type: NotificationType = 'info';
     let link = `/user/furparent_dashboard/bookings?bookingId=${bookingId}`;
 
     switch (paymentStatus) {
@@ -241,20 +241,11 @@ export async function createPaymentNotification(
       // Determine user account type (assume 'user' for most bookings, 'business' for providers)
       const accountType = 'user'; // Most booking notifications go to fur parents
 
-      const _notification = {
-        id: Date.now().toString(), // Temporary ID for instant display
-        title,
-        message,
-        type,
-        is_read: 0,
-        link: null,
-        created_at: new Date().toISOString()
-      };
       const sseNotification: SSENotification = {
-        id: Date.now().toString(), // Temporary ID for instant display
+        id: Date.now(), // Temporary ID for instant display
         title,
         message,
-        type: type as 'info' | 'warning' | 'error' | 'success' // Ensure type matches SSE interface
+        type: type as NotificationType
       };
       broadcastToUser(user_id.toString(), accountType, sseNotification);
     }
@@ -644,10 +635,10 @@ async function createProviderNotification(
     // Broadcast instant notification to provider via SSE if available
     if (broadcastToUser) {
       const sseNotification: SSENotification = {
-        id: Date.now().toString(), // Temporary ID for instant display
+        id: Date.now(), // Temporary ID for instant display
         title,
         message,
-        type: notificationType === 'booking_cancelled' ? 'warning' : 'info',
+        type: (notificationType === 'booking_cancelled' ? 'warning' : 'info') as NotificationType,
         link
       };
       broadcastToUser(providerUserId.toString(), 'business', sseNotification);
@@ -730,8 +721,7 @@ async function scheduleReminder(bookingId: number, reminderType: string, schedul
     // Insert the reminder
     await query(
       'INSERT INTO booking_reminders (booking_id, reminder_type, scheduled_time) VALUES (?, ?, ?)',
-      [bookingId, reminderType, scheduledTime.toISOString().slice(0, 19).replace('T', ' ')]
-    );
+      [bookingId, reminderType, scheduledTime]    );
   } catch (error) {
     console.error('Error scheduling reminder:', error);
   }

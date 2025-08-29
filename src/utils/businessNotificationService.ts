@@ -1,7 +1,9 @@
 import { query } from '@/lib/db';
-import { broadcastToUser, Notification } from '@/app/api/notifications/sse/route';
+import { broadcastToUser } from '@/app/api/notifications/sse/route';
+import type { Notification } from '@/lib/notifications';
 import { sendEmail } from '@/lib/consolidatedEmailService';
 import { getServerAppUrl } from '@/utils/appUrl';
+import { NotificationType } from '@/types/notification';
 
 // Import the standardized base email template
 const baseEmailTemplate = (content: string) => `
@@ -96,7 +98,7 @@ interface BusinessNotificationParams {
   userId: number;
   title: string;
   message: string;
-  type: 'info' | 'success' | 'warning' | 'error';
+  type: NotificationType;
   link?: string | null;
   shouldSendEmail?: boolean;
   emailSubject?: string;
@@ -134,11 +136,14 @@ export async function createBusinessNotification({
       };
     }
 
-    // Insert the notification
+    // Create a deterministic timestamp for both INSERT and notification object
+    const createdAt = new Date().toISOString();
+
+    // Insert the notification with the deterministic timestamp
     const result = await query(
       `INSERT INTO notifications (user_id, title, message, type, link, is_read, created_at)
-       VALUES (?, ?, ?, ?, ?, 0, NOW())`,
-      [userId, title, message, type, link]
+       VALUES (?, ?, ?, ?, ?, 0, ?)`,
+      [userId, title, message, type, link, createdAt]
     ) as any;
 
     console.log('Business notification created successfully:', result.insertId);
@@ -146,16 +151,25 @@ export async function createBusinessNotification({
     // Broadcast instant notification to business user via SSE
     try {
       const notification: Notification = {
-        id: (result.insertId || Date.now()).toString(),
+        id: result.insertId || Date.now(),
         title,
         message,
         type,
-        is_read: 0,
+        is_read: false,
         link,
-        created_at: new Date().toISOString()
+        created_at: createdAt || new Date().toISOString()
       };
       broadcastToUser(String(userId), 'business', notification);
-    } catch {}
+    } catch (error) {
+      // Log SSE broadcast failure without exposing PII or notification payload
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorStack = error instanceof Error ? error.stack : undefined;
+
+      console.warn(
+        `Failed to broadcast SSE to 'business' channel: ${errorMessage}`,
+        errorStack ? { stack: errorStack } : {}
+      );
+    }
 
     // Send email notification if requested and user has email notifications enabled
     if (shouldSendEmail) {

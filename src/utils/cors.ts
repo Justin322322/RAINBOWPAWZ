@@ -6,6 +6,8 @@ import { NextRequest } from 'next/server';
  * Environment Variables:
  * - CORS_ALLOWED_ORIGINS: Comma-separated list of allowed origins (e.g., "https://example.com,https://app.example.com")
  * - NEXT_PUBLIC_APP_URL: Fallback origin for production (automatically included)
+ * - CORS_ALLOW_CREDENTIALS: Enable/disable credentials support (true/false, defaults to false for security)
+ *   Accepted values: 'true', 'false', '1', '0', 'yes', 'no', 'on', 'off'
  *
  * Security Features:
  * - Validates request Origin header against allowlist
@@ -13,10 +15,12 @@ import { NextRequest } from 'next/server';
  * - Returns 403 for unauthorized origins
  * - Handles preflight OPTIONS requests
  * - Supports wildcard patterns (e.g., *.example.com)
+ * - Configurable credentials support with safe defaults (false)
  *
  * Usage:
  * ```typescript
- * // In API routes
+ * // Set CORS_ALLOW_CREDENTIALS=true in your environment to enable credentials
+ * // Defaults to false for security - only enable when needed
  * import { createCORSHeaders, handleOptionsRequest } from '@/utils/cors';
  *
  * export async function GET(request: NextRequest) {
@@ -29,6 +33,26 @@ import { NextRequest } from 'next/server';
  * }
  * ```
  */
+
+/**
+ * Parse boolean environment variable with safe defaults
+ * Accepts: 'true', 'false', '1', '0', 'yes', 'no'
+ * Returns: boolean value with default fallback
+ */
+function parseBooleanEnv(envValue: string | undefined, defaultValue: boolean = false): boolean {
+  if (!envValue) return defaultValue;
+
+  const normalized = envValue.toLowerCase().trim();
+  const truthyValues = ['true', '1', 'yes', 'on'];
+  const falsyValues = ['false', '0', 'no', 'off'];
+
+  if (truthyValues.includes(normalized)) return true;
+  if (falsyValues.includes(normalized)) return false;
+
+  // Log warning for invalid values but return default
+  console.warn(`Invalid boolean value for CORS_ALLOW_CREDENTIALS: "${envValue}". Using default: ${defaultValue}`);
+  return defaultValue;
+}
 
 /**
  * CORS configuration interface
@@ -90,7 +114,9 @@ function getCORSConfig(): CORSConfig {
       'X-Api-Version',
       'X-CSRF-Token'
     ],
-    allowCredentials: true, // Required for authentication
+    // Read allowCredentials from environment variable with safe default (false)
+    // Set CORS_ALLOW_CREDENTIALS=true to enable credentials, defaults to false for security
+    allowCredentials: parseBooleanEnv(process.env.CORS_ALLOW_CREDENTIALS, false),
     maxAge: 86400 // 24 hours
   };
 }
@@ -109,17 +135,41 @@ function isOriginAllowed(origin: string | null, allowedOrigins: string[]): boole
   // Check if origin matches any wildcard patterns
   for (const allowedOrigin of allowedOrigins) {
     if (allowedOrigin.includes('*')) {
-      // Simple wildcard matching (e.g., *.example.com)
-      const pattern = allowedOrigin.replace(/\*/g, '.*');
-      const regex = new RegExp(`^${pattern}$`);
-      if (regex.test(origin)) {
-        return true;
+      try {
+        // If allowedOrigin contains no '*' (shouldn't happen here but for safety)
+        if (!allowedOrigin.includes('*')) {
+          if (allowedOrigin === origin) {
+            return true;
+          }
+          continue;
+        }
+
+        // First escape all regex metacharacters except the wildcard '*'
+        // This prevents regex injection attacks
+        const escaped = allowedOrigin.replace(/[.+?^${}()|[\]\\]/g, '\\$&');
+        // Then replace the literal '*' with '.*' to implement wildcard behavior
+        const pattern = escaped.replace(/\*/g, '.*');
+        // Build the anchored pattern with ^...$ to match the entire origin
+        const regex = new RegExp(`^${pattern}$`);
+
+        if (regex.test(origin)) {
+          return true;
+        }
+      } catch (error) {
+        // Handle invalid regex patterns gracefully
+        console.warn(`Invalid regex pattern for origin: ${allowedOrigin}`, error);
+        // Fall back to exact string match for security
+        if (allowedOrigin === origin) {
+          return true;
+        }
       }
     }
   }
 
-  return false;
+  return false; // Add missing return statement
 }
+
+
 
 /**
  * Create CORS headers for a response
@@ -138,9 +188,13 @@ export function createCORSHeaders(request: NextRequest, customHeaders: Record<st
     corsHeaders['Access-Control-Allow-Origin'] = origin;
   }
 
-  // Always set credentials to true for authenticated endpoints
-  corsHeaders['Access-Control-Allow-Credentials'] = 'true';
+  // Set credentials based on configuration (defaults to false for security)
+  if (config.allowCredentials) {
+    corsHeaders['Access-Control-Allow-Credentials'] = 'true';
+  }
 
+  // Important: Add Vary header when response depends on Origin
+  corsHeaders['Vary'] = 'Origin';
   return corsHeaders;
 }
 
@@ -163,12 +217,20 @@ export function handleOptionsRequest(request: NextRequest): Response {
   }
 
   const headers: Record<string, string> = {
-    'Access-Control-Allow-Origin': origin || '',
-    'Access-Control-Allow-Credentials': 'true',
     'Access-Control-Allow-Methods': config.allowedMethods.join(', '),
     'Access-Control-Allow-Headers': config.allowedHeaders.join(', '),
     'Access-Control-Max-Age': config.maxAge.toString(),
   };
+
+  // Only set credentials header if configured to allow credentials
+  if (config.allowCredentials) {
+    headers['Access-Control-Allow-Credentials'] = 'true';
+  }
+
+  // Only set Access-Control-Allow-Origin header when origin is valid
+  if (origin) {
+    headers['Access-Control-Allow-Origin'] = origin;
+  }
 
   return new Response(null, {
     status: 200,
@@ -225,13 +287,27 @@ export function createCORSResponse(
       ...init,
       headers: corsHeaders
     });
-  } catch {
-    // If CORS validation fails, return 403
-    return new Response('Forbidden', {
-      status: 403,
-      headers: {
-        'Content-Type': 'text/plain'
-      }
-    });
+  } catch (error) {
+    // Check if this is a known CORS validation failure
+    if (error instanceof Error && error.message === 'CORS policy violation: Origin not allowed') {
+      // If CORS validation fails, return 403 with preserved headers
+      const corsHeaders = createCORSHeaders(request);
+      return new Response('Forbidden', {
+        status: 403,
+        headers: {
+          'Content-Type': 'text/plain',
+          ...corsHeaders
+        }
+      });
+    } else {
+      // For unexpected errors, log and return 500
+      console.error('Unexpected error in CORS response creation:', error);
+      return new Response('Internal Server Error', {
+        status: 500,
+        headers: {
+          'Content-Type': 'text/plain'
+        }
+      });
+    }
   }
 }

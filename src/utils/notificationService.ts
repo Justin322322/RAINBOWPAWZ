@@ -2,6 +2,7 @@ import { query } from '@/lib/db';
 import { sendEmail } from '@/lib/consolidatedEmailService';
 import { getServerAppUrl } from '@/utils/appUrl';
 import { OkPacket, ResultSetHeader } from 'mysql2';
+import { NotificationType } from '@/types/notification';
 
 // Import the standardized base email template
 const baseEmailTemplate = (content: string) => `
@@ -96,7 +97,7 @@ interface CreateNotificationParams {
   userId: number;
   title: string;
   message: string;
-  type: 'info' | 'success' | 'warning' | 'error';
+  type: NotificationType;
   link?: string | null;
   shouldSendEmail?: boolean;
   emailSubject?: string;
@@ -130,7 +131,7 @@ export async function createNotificationFast({
   userId: number;
   title: string;
   message: string;
-  type?: 'info' | 'success' | 'warning' | 'error';
+  type?: NotificationType;
   link?: string | null;
 }): Promise<NotificationResult> {
   try {
@@ -197,7 +198,7 @@ async function insertNotificationWithRetry(
   userId: number,
   title: string,
   message: string,
-  type: string,
+  type: NotificationType,
   link: string | null
 ): Promise<InsertResult> {
   const maxRetries = 3;
@@ -238,7 +239,7 @@ async function sendEmailNotification(
   userId: number,
   title: string,
   message: string,
-  type: string,
+  type: NotificationType,
   link: string | null,
   emailSubject?: string
 ): Promise<void> {
@@ -314,7 +315,7 @@ async function getUserEmailData(userId: number): Promise<UserEmailData | null> {
 /**
  * Create HTML email content for notification
  */
-function createEmailHtml(firstName: string, title: string, message: string, type: string, link: string | null): string {
+function createEmailHtml(firstName: string, title: string, message: string, type: NotificationType, link: string | null): string {
   const getButtonText = () => {
     if (title.includes('Booking')) return 'View Booking';
     if (title.includes('Profile')) return 'View Profile';

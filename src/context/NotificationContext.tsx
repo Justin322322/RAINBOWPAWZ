@@ -4,15 +4,22 @@ import React, { createContext, useContext, useState, useEffect, useRef, ReactNod
 import { getUserIdAsync, getAccountTypeAsync, hasAuthToken } from '../utils/auth';
 import { useToast } from './ToastContext';
 
-export interface Notification {
-  id: number;
-  title: string;
-  message: string;
-  type: 'info' | 'success' | 'warning' | 'error';
-  is_read: number;
-  link: string | null;
-  created_at: string;
-}
+import { Notification } from '@/types/notification';
+
+/**
+ * Converts API notification response to proper Notification object
+ * API returns is_read as number (0|1), but TypeScript expects boolean
+ */
+const convertApiNotificationToNotification = (apiNotification: any): Notification => ({
+  id: apiNotification.id,
+  title: apiNotification.title,
+  message: apiNotification.message,
+  type: apiNotification.type,
+  is_read: Boolean(apiNotification.is_read), // Convert number to boolean
+  link: apiNotification.link,
+  created_at: apiNotification.created_at,
+  meta: apiNotification.meta
+});
 
 interface NotificationContextType {
   notifications: Notification[];
@@ -148,7 +155,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
           'Authorization': `Bearer ${await getAuthTokenAsync()}`,
         },
         credentials: 'include', // Include httpOnly cookies for secure auth
-        // signal: controller.signal // This line is removed as per the new fetchNotifications
+        signal: controller.signal
       });
 
       // Clear timeout since request completed and remove from tracking set
@@ -190,17 +197,20 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       }
 
       const data = await response.json();
-      const notifications = data.notifications || [];
+      const rawNotifications = data.notifications || [];
       const unreadCount = data.unread_count || 0;
+
+      // Convert API notifications to proper Notification objects
+      const notifications = rawNotifications.map(convertApiNotificationToNotification);
 
       if (process.env.NODE_ENV === 'development') {
         console.log('Fetched notifications:', notifications);
         console.log('Unread count from API:', unreadCount);
-        console.log('Calculated unread count:', notifications.filter((n: Notification) => n.is_read === 0).length);
+        console.log('Calculated unread count:', notifications.filter((n: Notification) => !n.is_read).length);
       }
 
       // Ensure unread count is consistent with actual notifications
-      const calculatedUnreadCount = notifications.filter((n: Notification) => n.is_read === 0).length;
+      const calculatedUnreadCount = notifications.filter((n: Notification) => !n.is_read).length;
       const finalUnreadCount = Math.max(unreadCount, calculatedUnreadCount);
 
       setNotifications(notifications);
@@ -259,12 +269,12 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       setNotifications(prev => {
         const updated = prev.map(notification =>
           notification.id === notificationId
-            ? { ...notification, is_read: 1 }
+            ? { ...notification, is_read: true }
             : notification
         );
 
         // Recalculate unread count from the updated notifications
-        const newUnreadCount = updated.filter(n => n.is_read === 0).length;
+        const newUnreadCount = updated.filter(n => !n.is_read).length;
         if (process.env.NODE_ENV === 'development') {
           console.log('Updated unread count:', newUnreadCount, 'for notification:', notificationId);
         }
@@ -314,7 +324,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
 
       // Update local state
       setNotifications(prev =>
-        prev.map(notification => ({ ...notification, is_read: 1 }))
+        prev.map(notification => ({ ...notification, is_read: true }))
       );
 
       setUnreadCount(0);
@@ -374,7 +384,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       // Update unread count if the removed notification was unread
       setUnreadCount(prev => {
         const removedNotification = notifications.find(n => n.id === notificationId);
-        if (removedNotification && removedNotification.is_read === 0) {
+        if (removedNotification && !removedNotification.is_read) {
           return Math.max(0, prev - 1);
         }
         return prev;
@@ -435,28 +445,25 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
                   {
                     // New notification received - add to state instantly (with duplicate prevention)
                     const newNotification = data.notification;
-                    let isNewNotification = false;
+                    const convertedNotification = convertApiNotificationToNotification(newNotification);
 
                     setNotifications(prev => {
                       // Check if notification already exists
-                      const existingIndex = prev.findIndex(n => n.id === newNotification.id);
+                      const existingIndex = prev.findIndex(n => n.id === convertedNotification.id);
 
                       if (existingIndex !== -1) {
                         // Update existing notification
                         const updated = [...prev];
-                        updated[existingIndex] = newNotification;
+                        updated[existingIndex] = convertedNotification;
                         return updated;
                       } else {
-                        // Add new notification
-                        isNewNotification = true;
-                        return [newNotification, ...prev];
+                        // Add new notification and update unread count
+                        if (!convertedNotification.is_read) {
+                          setUnreadCount(prevCount => prevCount + 1);
+                        }
+                        return [convertedNotification, ...prev];
                       }
                     });
-
-                    // Update unread count only for new unread notifications
-                    if (isNewNotification && newNotification.is_read === 0) {
-                      setUnreadCount(prev => prev + 1);
-                    }
 
                     console.log('Instant notification received:', newNotification.title);
                   }
@@ -473,14 +480,15 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
                       if (existingIndex !== -1) {
                         // Update existing notification
                         const updated = [...prev];
-                        updated[existingIndex] = sysNotification;
+                        updated[existingIndex] = convertApiNotificationToNotification(sysNotification);
                         return updated;
                       } else {
                         // Add new notification and update unread count
-                        if (sysNotification.is_read === 0) {
+                        const convertedNotification = convertApiNotificationToNotification(sysNotification);
+                        if (!convertedNotification.is_read) {
                           setUnreadCount(prevCount => prevCount + 1);
                         }
-                        return [sysNotification, ...prev];
+                        return [convertedNotification, ...prev];
                       }
                     });
                   }

@@ -1,17 +1,10 @@
 import { NextRequest } from 'next/server';
 import { verifySecureAuth } from '@/lib/secureAuth';
 import { createCORSHeaders, handleOptionsRequest, createCORSResponse } from '@/utils/cors';
+import type { Notification } from '@/types/notification';
 
 // Using Node.js runtime for JWT authentication compatibility
 // Edge runtime doesn't support Node.js crypto and stream modules required by jsonwebtoken
-
-export interface Notification {
-  id?: string;
-  title: string;
-  message: string;
-  type: 'info' | 'warning' | 'error' | 'success';
-  [key: string]: any;
-}
 
 // Constants for connection management
 const MAX_CONNECTIONS_PER_USER = 5;
@@ -108,6 +101,8 @@ export async function OPTIONS(request: NextRequest) {
  * GET - Server-Sent Events endpoint
  */
 export async function GET(request: NextRequest) {
+  let keepAlive: NodeJS.Timeout | undefined;
+
   try {
     const user = await verifySecureAuth(request);
     if (!user) {
@@ -161,7 +156,14 @@ export async function GET(request: NextRequest) {
     const connectionId = `${user.userId}_${user.accountType}_${Date.now()}`;
 
     let controllerRef: ReadableStreamDefaultController<Uint8Array> | null = null;
-    let keepAlive: NodeJS.Timeout | undefined;
+
+    // Cleanup function to ensure timer is always cleared
+    const cleanupKeepAlive = () => {
+      if (keepAlive) {
+        clearInterval(keepAlive);
+        keepAlive = undefined;
+      }
+    };
 
     const stream = new ReadableStream<Uint8Array>({
       start(controller) {
@@ -201,7 +203,7 @@ export async function GET(request: NextRequest) {
               timestamp: new Date().toISOString()
             });
 
-            if (keepAlive) clearInterval(keepAlive);
+            cleanupKeepAlive();
             sseConnections.delete(connectionId);
             // Clean up connection timestamps
             cleanupConnectionTimestamps(user.userId, user.accountType);
@@ -209,7 +211,7 @@ export async function GET(request: NextRequest) {
         }, 30000);
       },
       cancel(reason) {
-        if (keepAlive) clearInterval(keepAlive);
+        cleanupKeepAlive();
         if (controllerRef) {
           sseConnections.delete(connectionId);
           // Clean up connection timestamps
@@ -230,6 +232,12 @@ export async function GET(request: NextRequest) {
       headers: corsHeaders,
     });
   } catch (error) {
+    // Ensure keep-alive timer is cleaned up on any error
+    if (keepAlive) {
+      clearInterval(keepAlive);
+      keepAlive = undefined;
+    }
+
     console.error('SSE endpoint error:', error);
     return createCORSResponse(
       JSON.stringify({

@@ -1,9 +1,10 @@
 import { query } from '@/lib/db';
 import { createNotification } from '@/utils/notificationService';
+import { NotificationRecord, NotificationType } from '@/types/notification';
 
 interface UserNotificationData {
   userId: number;
-  type: string;
+  type: NotificationType;
   title: string;
   message: string;
   entityId?: number;
@@ -11,24 +12,13 @@ interface UserNotificationData {
   emailSubject?: string;
 }
 
-interface NotificationRecord {
-  id: number;
-  user_id: number;
-  title: string;
-  message: string;
-  type: 'info' | 'success' | 'warning' | 'error';
-  is_read: boolean; // Database returns boolean
-  link: string | null;
-  created_at: string;
-}
-
 interface ConvertedNotificationRecord {
   id: number;
   user_id: number;
   title: string;
   message: string;
-  type: 'info' | 'success' | 'warning' | 'error';
-  is_read: number; // Frontend expects number (0 or 1)
+  type: NotificationType;
+  is_read: number; // Frontend expects number (0 or 1) - converted from boolean
   link: string | null;
   created_at: string;
 }
@@ -61,7 +51,7 @@ export async function createUserNotification({
       userId,
       title,
       message,
-      type: type as 'info' | 'success' | 'warning' | 'error',
+      type,
       link,
       shouldSendEmail,
       emailSubject
@@ -80,7 +70,7 @@ export async function createUserNotification({
 /**
  * Determine the appropriate link for a notification type
  */
-function determineNotificationLink(type: string, entityId?: number): string | null {
+function determineNotificationLink(type: NotificationType, entityId?: number): string | null {
   if (type === 'refund_processed' || type === 'refund_approved') {
     return entityId 
       ? `/user/furparent_dashboard/bookings?bookingId=${entityId}`
@@ -153,14 +143,17 @@ export async function getUserNotifications(userId: number, limit: number = 10): 
   try {
     await ensureNotificationsTable();
     const idColumn = await getNotificationIdColumn();
-    
+
+    // Validate and sanitize the limit parameter to prevent SQL injection
+    const validatedLimit = Math.min(Math.max(parseInt(String(limit)) || 10, 1), 100);
+
     const selectQuery = idColumn === 'notification_id'
-      ? `SELECT notification_id as id, user_id, title, message, type, is_read, link, created_at 
-         FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT ${Number(limit)}`
-      : `SELECT id, user_id, title, message, type, is_read, link, created_at 
-         FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT ${Number(limit)}`;
-    
-    const notifications = await query(selectQuery, [userId]) as NotificationRecord[];
+      ? `SELECT notification_id as id, user_id, title, message, type, is_read, link, created_at
+         FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT ?`
+      : `SELECT id, user_id, title, message, type, is_read, link, created_at
+         FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT ?`;
+
+    const notifications = await query(selectQuery, [userId, validatedLimit]) as NotificationRecord[];
     
     // Convert boolean is_read to number (0 or 1) to match frontend expectations
     const convertedNotifications = (notifications || []).map(notification => ({

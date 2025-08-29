@@ -5,8 +5,14 @@ export const MYSQL_PORT = parseInt(process.env.DB_PORT || "3306");
 
 // Helper function to get SSL config
 export const getSSLConfig = () => {
-  // Always use SSL for Railway database if DATABASE_URL is present
-  if (process.env.DATABASE_URL || process.env.MYSQL_URL) {
+  const databaseUrl = process.env.DATABASE_URL || process.env.MYSQL_URL;
+  
+  // Skip SSL for local development or localhost URLs
+  if (!databaseUrl || databaseUrl.includes('localhost') || databaseUrl.includes('127.0.0.1')) {
+    return undefined;
+  }
+  
+  if (databaseUrl) {
     // Railway MySQL requires SSL
     if (isRailwayMySQL()) {
       return { rejectUnauthorized: false }; // Railway uses self-signed certificates
@@ -20,6 +26,8 @@ export const getSSLConfig = () => {
   }
   return undefined; // No SSL for local development
 };
+// Maximum allowed connection timeout in milliseconds
+const MAX_CONNECT_TIMEOUT = 60000;
 
 // Helper function to get configurable connect timeout with fallback to 5000ms
 export const getConnectTimeout = (): number => {
@@ -28,12 +36,18 @@ export const getConnectTimeout = (): number => {
     return 5000; // Default fallback: 5000ms
   }
 
-  const parsed = parseInt(envValue, 10);
-  if (isNaN(parsed) || parsed <= 0) {
-    return 5000; // Default fallback: 5000ms for invalid values
+  // Validate that the input is a pure digit string (reject values like "5s" or "1e3")
+  if (!/^\d+$/.test(envValue)) {
+    return 5000; // Default fallback: 5000ms for invalid format
   }
 
-  return parsed; // Return the parsed positive integer in milliseconds
+  const parsed = parseInt(envValue, 10);
+  if (isNaN(parsed) || parsed <= 0) {
+    return 5000; // Default fallback: 5000ms for zero or invalid values
+  }
+
+  // Clamp the value to the maximum allowed timeout
+  return Math.min(parsed, MAX_CONNECT_TIMEOUT);
 };
 
 // Detect PlanetScale/Vitess environment

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { query, testConnection, checkTableExists, withTransaction } from '@/lib/db';
+import { ensureEmailIndex } from '@/lib/db/schema';
 import bcrypt from 'bcryptjs';
 import { generateOtp } from '@/lib/otpService';
 import { createAdminNotification } from '@/utils/adminNotificationService';
@@ -95,6 +96,12 @@ export async function POST(request: Request) {
       });
     }
 
+    // Ensure the functional index on LOWER(email) exists for optimal performance
+    const indexEnsured = await ensureEmailIndex();
+    if (!indexEnsured) {
+      console.warn('Failed to ensure email index exists, proceeding with registration anyway');
+    }
+
     // Parse request body
     let data;
     try {
@@ -161,11 +168,14 @@ export async function POST(request: Request) {
       });
     }
 
+    // Pre-normalize email to lowercase for consistent comparison and better index utilization
+    const normalizedEmail = data.email.toLowerCase();
+
     // Check if email already exists in users table (for all account types)
-    // Use LOWER(email) for case-insensitive duplicate check to leverage the new index
+    // Use LOWER(email) for case-insensitive duplicate check to leverage the functional index
     const emailCheckResult = await query(
-      `SELECT user_id FROM users WHERE LOWER(email) = LOWER(?) LIMIT 1`,
-      [data.email]
+      `SELECT user_id FROM users WHERE LOWER(email) = ? LIMIT 1`,
+      [normalizedEmail]
     ) as any[];
 
     if (emailCheckResult && emailCheckResult.length > 0) {
@@ -233,7 +243,7 @@ export async function POST(request: Request) {
           }
 
           const values = [
-            data.email,
+            normalizedEmail, // Use normalized email for consistency
             hashedPassword,
             data.firstName,
             data.lastName,
@@ -244,7 +254,7 @@ export async function POST(request: Request) {
           ];
 
           console.log("Inserting user with values:", {
-            email: data.email,
+            email: normalizedEmail, // Log the normalized email used in database
             password: "REDACTED",
             firstName: data.firstName,
             lastName: data.lastName,
@@ -256,7 +266,11 @@ export async function POST(request: Request) {
 
           const userResult = await transaction.query(sql, values) as any;
           userId = userResult.insertId;
-        } catch (insertError) {
+        } catch (insertError: any) {
+          // Handle duplicate key errors gracefully
+          if (insertError?.errno === 1062 || insertError?.code === 'ER_DUP_ENTRY') {
+            throw new Error('DUPLICATE_EMAIL');
+          }
           throw insertError;
         }
 
@@ -482,6 +496,17 @@ export async function POST(request: Request) {
     if (error instanceof Error) {
       console.error("Error message:", error.message);
       console.error("Error stack:", error.stack);
+
+      // Handle duplicate email error specifically
+      if (error.message === 'DUPLICATE_EMAIL') {
+        return NextResponse.json({
+          error: 'Email already exists',
+          message: 'An account with this email address already exists.'
+        }, {
+          status: 400,
+          headers
+        });
+      }
     }
 
     return NextResponse.json({
