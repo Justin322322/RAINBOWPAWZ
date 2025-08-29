@@ -254,9 +254,21 @@ export default function AdminServicesPage() {
     category: categoryFilter,
     page,
     limit,
-    onError: (msg) => setNotification({ message: msg, type: 'error' }),
+    onError: (msg) => {
+      console.log('[DEBUG] Services API Error:', msg);
+      setNotification({ message: msg, type: 'error' });
+    },
     shouldFetch: shouldFetch
   });
+
+  // Debug: Log services data when it loads
+  React.useEffect(() => {
+    if (services.length > 0) {
+      console.log('[DEBUG] Services loaded:', services.length);
+      console.log('[DEBUG] First service sample:', services[0]);
+      console.log('[DEBUG] First service images:', services[0]?.images);
+    }
+  }, [services]);
 
   // Track initial load state
   useEffect(() => {

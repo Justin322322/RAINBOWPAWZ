@@ -328,40 +328,51 @@ export async function GET(request: NextRequest) {
     try {
       const packageIds = rows.map(r => r.package_id);
       const placeholders = packageIds.map(() => '?').join(',');
-      
+
       const imageResults = await query(
-        `SELECT package_id, image_path FROM package_images 
-         WHERE package_id IN (${placeholders}) 
+        `SELECT package_id, image_path, image_data FROM package_images
+         WHERE package_id IN (${placeholders})
          ORDER BY display_order, package_id`,
         packageIds
       ) as any[];
 
-      // Group images by package ID and convert to API paths
+      // Group images by package ID and convert to API paths or base64 data URLs
       imageResults.forEach((img: any) => {
         if (!allImages[img.package_id]) {
           allImages[img.package_id] = [];
         }
-        
-        const imagePath = img.image_path;
-        if (imagePath && !imagePath.startsWith('blob:')) {
-          // Convert to API path
+
+        // Check if we have base64 image data
+        if (img.image_data) {
+          // Convert base64 data to data URL
+          const dataUrl = `data:image/png;base64,${img.image_data}`;
+          allImages[img.package_id].push(dataUrl);
+        } else if (img.image_path && !img.image_path.startsWith('blob:')) {
+          // Convert file path to API path
           let apiPath;
-          if (imagePath.startsWith('/api/image/')) {
-            apiPath = imagePath; // Already correct
-          } else if (imagePath.startsWith('/uploads/packages/')) {
-            apiPath = `/api/image/packages/${imagePath.substring('/uploads/packages/'.length)}`;
-          } else if (imagePath.startsWith('uploads/packages/')) {
-            apiPath = `/api/image/packages/${imagePath.substring('uploads/packages/'.length)}`;
-          } else if (imagePath.includes('packages/')) {
-            const parts = imagePath.split('packages/');
+          if (img.image_path.startsWith('/api/image/')) {
+            apiPath = img.image_path; // Already correct
+          } else if (img.image_path.startsWith('/uploads/packages/')) {
+            apiPath = `/api/image/packages/${img.image_path.substring('/uploads/packages/'.length)}`;
+          } else if (img.image_path.startsWith('uploads/packages/')) {
+            apiPath = `/api/image/packages/${img.image_path.substring('uploads/packages/'.length)}`;
+          } else if (img.image_path.includes('packages/')) {
+            const parts = img.image_path.split('packages/');
             if (parts.length > 1) {
               apiPath = `/api/image/packages/${parts[1]}`;
             }
           } else {
             // Default fallback
-            apiPath = `/api/image/packages/${imagePath}`;
+            apiPath = `/api/image/packages/${img.image_path}`;
           }
-          allImages[img.package_id].push(apiPath);
+
+          // Verify the image exists before adding it
+          try {
+            // For now, just add the path - the frontend will handle 404s gracefully
+            allImages[img.package_id].push(apiPath);
+          } catch (error) {
+            console.error(`Error processing image path for package ${img.package_id}:`, error);
+          }
         }
       });
     } catch (error) {
