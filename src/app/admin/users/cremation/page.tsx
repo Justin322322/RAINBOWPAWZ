@@ -28,11 +28,7 @@ import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
   import { MetricGrid } from '@/components/ui/MetricGrid';
-import {
-  ProfileCard,
-  ProfileSection
-} from '@/components/ui/ProfileLayout';
-import { ProfileButton } from '@/components/ui/ProfileFormComponents';
+
 import { getProfilePictureUrl } from '@/utils/imageUtils';
 import DocumentThumbnailGrid from '@/components/admin/DocumentThumbnailGrid';
 
