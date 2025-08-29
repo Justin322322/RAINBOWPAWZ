@@ -1,7 +1,8 @@
 import { NextRequest } from 'next/server';
 import { verifySecureAuth } from '@/lib/secureAuth';
 
-export const runtime = 'edge';
+// Using Node.js runtime for JWT authentication compatibility
+// Edge runtime doesn't support Node.js crypto and stream modules required by jsonwebtoken
 
 // Active SSE connections
 const sseConnections = new Map<string, ReadableStreamDefaultController<Uint8Array>>();
