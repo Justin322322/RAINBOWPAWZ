@@ -63,9 +63,27 @@ export const ProductionSafeImage: React.FC<ProductionSafeImageProps> = ({
       return fallbackSrc;
     }
 
-    // If it's already a base64 data URL, use it directly
+    // If it's already a base64 data URL, validate and use it
     if (imgSrc.startsWith('data:image/')) {
-      return imgSrc;
+      try {
+        // Validate the base64 data URL format
+        const urlParts = imgSrc.split(',');
+        if (urlParts.length === 2) {
+          const header = urlParts[0];
+          const data = urlParts[1];
+
+          // Check if header is valid
+          if (header.includes('data:image/') && header.includes('base64')) {
+            // Test if base64 data is valid
+            atob(data);
+            return imgSrc;
+          }
+        }
+        // If validation fails, fall through to other options
+        console.warn('Invalid base64 data URL format:', imgSrc.substring(0, 50));
+      } catch (e) {
+        console.warn('Invalid base64 data:', e);
+      }
     }
 
     // If it's already an API route, use it directly

@@ -48,7 +48,13 @@ export async function GET(
 
   const fullPath = join(process.cwd(), 'public', 'uploads', safeRelative);
 
+  // Debug logging
+  console.log('[DEBUG] Image API request for:', safeRelative);
+  console.log('[DEBUG] Full path:', fullPath);
+  console.log('[DEBUG] File exists:', existsSync(fullPath));
+
   if (!existsSync(fullPath)) {
+    console.log('[DEBUG] Image file not found:', fullPath);
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
 
@@ -56,6 +62,8 @@ export async function GET(
     const stat = statSync(fullPath);
     const stream = createReadStream(fullPath);
     const contentType = getContentType(fullPath);
+
+    console.log('[DEBUG] Serving image:', fullPath, 'Content-Type:', contentType, 'Size:', stat.size);
 
     return new NextResponse(stream as unknown as ReadableStream, {
       status: 200,
@@ -65,7 +73,8 @@ export async function GET(
         'Cache-Control': 'public, max-age=86400'
       }
     });
-  } catch {
+  } catch (error) {
+    console.error('[DEBUG] Error reading image file:', error);
     return NextResponse.json({ error: 'Failed to read file' }, { status: 500 });
   }
 }

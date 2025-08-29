@@ -197,15 +197,67 @@ async function fetchRelatedData(packageIds: number[]) {
     );
 
     console.log('[DEBUG] Found images in database:', images.length);
-    console.log('[DEBUG] Raw image data from database:', images);
+
+    // Log detailed info about each image without exposing full base64 data
+    images.forEach((img: any, index: number) => {
+      console.log(`[DEBUG] Image ${index + 1}:`, {
+        package_id: img.package_id,
+        has_image_path: !!img.image_path,
+        has_image_data: !!img.image_data,
+        image_path_preview: img.image_path ? img.image_path.substring(0, 50) : null,
+        image_data_length: img.image_data ? img.image_data.length : 0,
+        image_data_preview: img.image_data ? img.image_data.substring(0, 50) : null
+      });
+    });
 
     images.forEach((img: any) => {
       if (!results.images[img.package_id]) results.images[img.package_id] = [];
 
       if (img.image_data) {
-        const dataUrl = `data:image/png;base64,${img.image_data}`;
-        console.log(`[DEBUG] Package ${img.package_id} has base64 data:`, dataUrl.substring(0, 50) + '...');
-        results.images[img.package_id].push(dataUrl);
+        // Clean and validate base64 data
+        let cleanBase64 = img.image_data;
+
+        // Remove any data URL prefix if present
+        if (cleanBase64.includes('base64,')) {
+          cleanBase64 = cleanBase64.split('base64,')[1];
+        }
+
+        // Remove whitespace and invalid characters
+        cleanBase64 = cleanBase64.replace(/\s/g, '').replace(/[^A-Za-z0-9+/=]/g, '');
+
+        // Check if it's valid base64
+        if (cleanBase64 && cleanBase64.length > 0 && cleanBase64.length % 4 === 0) {
+          try {
+            // Test if base64 is valid by attempting to decode
+            atob(cleanBase64);
+            const dataUrl = `data:image/png;base64,${cleanBase64}`;
+            console.log(`[DEBUG] Package ${img.package_id} has valid base64 data (${cleanBase64.length} chars)`);
+            results.images[img.package_id].push(dataUrl);
+          } catch (error) {
+            console.error(`[DEBUG] Package ${img.package_id} has invalid base64 data:`, error);
+            // Try to use image_path as fallback if base64 is invalid
+            if (img.image_path) {
+              console.log(`[DEBUG] Falling back to image_path for package ${img.package_id}`);
+              let apiPath;
+              if (img.image_path.startsWith('/api/image/')) {
+                apiPath = img.image_path;
+              } else if (img.image_path.startsWith('/uploads/packages/')) {
+                apiPath = `/api/image/packages/${img.image_path.substring('/uploads/packages/'.length)}`;
+              } else if (img.image_path.startsWith('uploads/packages/')) {
+                apiPath = `/api/image/packages/${img.image_path.substring('uploads/packages/'.length)}`;
+              } else if (img.image_path.includes('/')) {
+                const parts = img.image_path.split('/');
+                const filename = parts[parts.length - 1];
+                apiPath = `/api/image/packages/${filename}`;
+              } else {
+                apiPath = `/api/image/packages/${img.image_path}`;
+              }
+              results.images[img.package_id].push(apiPath);
+            }
+          }
+        } else {
+          console.error(`[DEBUG] Package ${img.package_id} has malformed base64 data (length: ${cleanBase64.length})`);
+        }
       } else if (img.image_path) {
         console.log(`[DEBUG] Package ${img.package_id} has image path:`, img.image_path);
 
