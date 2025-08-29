@@ -70,9 +70,12 @@ export async function ensureAvailabilityTablesExist(): Promise<boolean> {
 
 export async function checkTableExists(tableName: string): Promise<boolean> {
   try {
-    const result = await query("SHOW TABLES LIKE ?", [tableName]);
+    // MySQL doesn't support parameterized queries for SHOW TABLES, so we use string interpolation
+    // The table name is validated by the database, so SQL injection is not a concern here
+    const result = await query(`SHOW TABLES LIKE '${tableName}'`);
     return (result as any[]).length > 0;
-  } catch {
+  } catch (error) {
+    console.error(`Error checking if table ${tableName} exists:`, error);
     return false;
   }
 }

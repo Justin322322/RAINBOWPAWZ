@@ -41,21 +41,15 @@ type PackageResponse = {
 };
 
 export async function GET(request: NextRequest) {
-  console.log('[DEBUG] Services listing API called');
-
   // --- Authentication ---
   const user = await verifySecureAuth(request);
   if (!user) {
-    console.log('[DEBUG] Services listing: Unauthorized user');
     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   }
 
   if (user.accountType !== 'admin') {
-    console.log('[DEBUG] Services listing: Forbidden - not admin');
     return NextResponse.json({ success: false, error: 'Forbidden: Admin access required' }, { status: 403 });
   }
-
-  console.log('[DEBUG] Services listing: User authenticated as admin');
 
   // --- Query params ---
   const url = new URL(request.url);
@@ -67,12 +61,9 @@ export async function GET(request: NextRequest) {
   const offset = (page - 1) * limit;
 
   // --- Ensure table exists ---
-  console.log('[DEBUG] Checking if service_packages table exists...');
   const tableExists = await checkTableExists('service_packages');
-  console.log('[DEBUG] service_packages table exists:', tableExists);
 
   if (!tableExists) {
-    console.log('[DEBUG] service_packages table does not exist, returning empty response');
     return NextResponse.json({
       success: true,
       services: [],
@@ -84,8 +75,6 @@ export async function GET(request: NextRequest) {
       }
     });
   }
-
-  console.log('[DEBUG] service_packages table exists, proceeding with query');
 
   // --- Build main query with proper JOINs ---
   const cols = [
@@ -129,19 +118,12 @@ export async function GET(request: NextRequest) {
   sql += ` ORDER BY p.created_at DESC LIMIT ${Number(limit)} OFFSET ${Number(offset)}`;
 
   // --- Execute main query with fallback ---
-  console.log('[DEBUG] Final SQL query:', sql);
-  console.log('[DEBUG] Query parameters:', params);
-
   let rows: RawServiceRow[] = [];
   try {
-    console.log('[DEBUG] Executing main query...');
     const result = await query(sql, params);
-    console.log('[DEBUG] Query result type:', typeof result);
-    console.log('[DEBUG] Query result length:', Array.isArray(result) ? result.length : 'not array');
 
     if (Array.isArray(result)) {
       rows = result as RawServiceRow[];
-      console.log('[DEBUG] Successfully got', rows.length, 'rows from main query');
     } else {
       console.error('Unexpected query result format:', result);
       throw new Error('Unexpected query result format');
@@ -185,9 +167,8 @@ export async function GET(request: NextRequest) {
   try {
     const countResult = await safeQuery(`SELECT COUNT(*) AS t FROM service_packages`);
     total = +(countResult[0]?.t || 0);
-    console.log('[DEBUG] Total count query successful:', total);
   } catch (error) {
-    console.error('[DEBUG] Total count query failed:', error);
+    console.error('Total count query failed:', error);
     total = rows.length;
   }
 
@@ -200,9 +181,8 @@ export async function GET(request: NextRequest) {
     totalRev = revenueData.totalRevenue || 0;
     formattedTotalRev = formatRevenue(totalRev);
     monthlyRev = formatRevenue(revenueData.monthlyRevenue || 0);
-    console.log('[DEBUG] Revenue calculation successful:', { totalRev, formattedTotalRev, monthlyRev });
   } catch (error) {
-    console.error('[DEBUG] Error calculating revenue:', error);
+    console.error('Error calculating revenue:', error);
     // Continue with zeros if revenue calculation fails
     totalRev = 0;
     formattedTotalRev = '₱0.00';
@@ -433,25 +413,19 @@ export async function GET(request: NextRequest) {
 
   // --- Calculate comprehensive stats ---
   const activeServices = services.filter(s => s.status === 'active').length;
-  console.log('[DEBUG] Active services count:', activeServices);
 
   // Get total bookings count across all service packages
   let totalBookings = 0;
   try {
     if (await checkTableExists('service_bookings')) {
-      console.log('[DEBUG] Using service_bookings table for total bookings');
       const bookingsResult = await safeQuery('SELECT COUNT(*) as count FROM service_bookings');
       totalBookings = bookingsResult[0]?.count || 0;
     } else if (await checkTableExists('bookings')) {
-      console.log('[DEBUG] Using bookings table for total bookings');
       const bookingsResult = await safeQuery('SELECT COUNT(*) as count FROM bookings');
       totalBookings = bookingsResult[0]?.count || 0;
-    } else {
-      console.log('[DEBUG] No bookings table found, using fallback');
     }
-    console.log('[DEBUG] Total bookings count:', totalBookings);
   } catch (error) {
-    console.error('[DEBUG] Error fetching total bookings:', error);
+    console.error('Error fetching total bookings:', error);
     // Fallback to sum of individual package bookings
     totalBookings = services.reduce((sum, service) => sum + service.bookings, 0);
   }
@@ -460,7 +434,6 @@ export async function GET(request: NextRequest) {
   let verifiedCenters = 0;
   try {
     if (await checkTableExists('service_providers')) {
-      console.log('[DEBUG] service_providers table exists, checking columns');
       // Check which columns exist in the service_providers table
       const columnsResult = await safeQuery(`
         SELECT COLUMN_NAME
@@ -470,7 +443,6 @@ export async function GET(request: NextRequest) {
       `);
 
       const columns = columnsResult.map(col => col.COLUMN_NAME.toLowerCase());
-      console.log('[DEBUG] Available columns in service_providers:', columns);
 
       // Build query based on available columns
       let whereClause = '';
@@ -486,7 +458,6 @@ export async function GET(request: NextRequest) {
         whereClause = '';
       }
 
-      console.log('[DEBUG] Using where clause:', whereClause);
       const centersResult = await safeQuery(`
         SELECT COUNT(*) as count
         FROM service_providers
@@ -494,24 +465,14 @@ export async function GET(request: NextRequest) {
       `);
 
       verifiedCenters = centersResult[0]?.count || 0;
-      console.log('[DEBUG] Verified centers count:', verifiedCenters);
-    } else {
-      console.log('[DEBUG] service_providers table does not exist');
     }
   } catch (error) {
-    console.error('[DEBUG] Error fetching verified centers:', error);
+    console.error('Error fetching verified centers:', error);
     verifiedCenters = 0;
   }
 
   // --- Build response ---
   const totalPages = Math.ceil(total / limit) || 1;
-
-  console.log('[DEBUG] Final response data:');
-  console.log('[DEBUG] - Total services found:', total);
-  console.log('[DEBUG] - Services array length:', services.length);
-  console.log('[DEBUG] - Active services count:', activeServices);
-  console.log('[DEBUG] - Total pages:', totalPages);
-  console.log('[DEBUG] - First service sample:', services.length > 0 ? services[0] : 'No services');
 
   return NextResponse.json({
     success: true,
