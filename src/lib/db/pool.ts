@@ -80,7 +80,7 @@ function tryCreatePoolFromDatabaseUrl(): mysql.Pool | null {
       queueLimit: 0,
       multipleStatements: false,
       ssl: getSSLConfig(),
-      connectTimeout: 10000,
+      connectTimeout: 5000,
       idleTimeout: 60000,
     });
     return pool;
@@ -100,7 +100,7 @@ const dbConfig = {
   connectionLimit: process.env.NODE_ENV === "production" ? 20 : 10, // Increased pool size
   queueLimit: 0,
   socketPath: undefined,
-  connectTimeout: 10000,
+  connectTimeout: 5000,
   debug: process.env.NODE_ENV === "development",
   multipleStatements: false,
   ssl: getSSLConfig(),
@@ -120,7 +120,7 @@ const productionConfig = {
   // Railway/PlanetScale requires SSL in production
   ssl: getSSLConfig(),
   // Database optimizations
-  connectTimeout: 60000,
+  connectTimeout: 5000,
   idleTimeout: 60000,
 };
 
@@ -164,7 +164,7 @@ function initPool(): mysql.Pool {
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0,
-    connectTimeout: 10000,
+    connectTimeout: 5000,
     ssl: undefined,
   } as const;
   console.log('Using local database (fallback)');

@@ -33,7 +33,7 @@ export async function query(sql: string, params: any[] = []): Promise<QueryResul
       const pool = getPool();
       const [results] = await Promise.race([
         pool.execute(sql, params),
-        new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Query execution timeout")), 15000)),
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Query execution timeout")), 8000)),
       ]);
       const durationMs = Date.now() - startedAt;
       if (durationMs > 200) {

@@ -27,9 +27,9 @@ export async function POST(request: Request) {
     });
   }
 
-  // Set timeout for the entire operation (25 seconds for Vercel)
+  // Set timeout for the entire operation (15 seconds for Vercel serverless)
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 20000);
+  const timeoutId = setTimeout(() => controller.abort(), 15000);
 
   try {
     const body = await request.json();
@@ -113,7 +113,7 @@ export async function POST(request: Request) {
             try {
               const adminResult = await Promise.race([
                 query('SELECT username, full_name, admin_role FROM admin_profiles WHERE user_id = ? LIMIT 1', [user.user_id]),
-                new Promise((_, reject) => setTimeout(() => reject(new Error('Admin profile query timeout')), 3000))
+                new Promise((_, reject) => setTimeout(() => reject(new Error('Admin profile query timeout')), 2000))
               ]) as any[];
 
               if (adminResult && adminResult.length > 0) {
@@ -138,7 +138,7 @@ export async function POST(request: Request) {
                    FROM service_providers WHERE user_id = ? LIMIT 1`,
                   [user.user_id]
                 ),
-                new Promise((_, reject) => setTimeout(() => reject(new Error('Business profile query timeout')), 3000))
+                new Promise((_, reject) => setTimeout(() => reject(new Error('Business profile query timeout')), 2000))
               ]) as any[];
 
               if (businessResult && businessResult.length > 0) {
