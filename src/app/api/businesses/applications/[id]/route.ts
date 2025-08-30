@@ -106,6 +106,13 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     // Prepare documents array
     const documents = [];
 
+    // Debug logging for document paths
+    console.log('Business document paths found:', {
+      business_permit_path: business.business_permit_path,
+      government_id_path: business.government_id_path,
+      bir_certificate_path: business.bir_certificate_path
+    });
+
     if (business.business_permit_path) {
       documents.push({
         type: 'Business Permit',
@@ -126,6 +133,8 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
         url: business.bir_certificate_path
       });
     }
+
+    console.log('Final documents array:', documents);
 
     // Status handling
     const applicationStatus = business.application_status || 'pending';

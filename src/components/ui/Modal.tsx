@@ -154,7 +154,7 @@ const Modal: React.FC<ModalProps> = ({
     <AnimatePresence>
       {isOpen && (
         <div
-          className={`fixed inset-0 flex items-center justify-center p-2 sm:p-4 md:p-6 ${customZIndex || 'z-[9999]'}`}
+          className={`fixed inset-0 flex items-center justify-center p-2 sm:p-4 md:p-6 ${customZIndex || 'z-[10000]'}`}
           role="dialog"
           aria-modal="true"
           aria-labelledby={shouldUseAriaLabelledBy ? modalTitleId : undefined}
@@ -166,7 +166,7 @@ const Modal: React.FC<ModalProps> = ({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15, ease: "easeOut" }}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm"
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[10000]"
             onClick={closeOnOverlayClick ? onClose : undefined}
             aria-hidden="true"
           />
@@ -182,7 +182,7 @@ const Modal: React.FC<ModalProps> = ({
               sizeClasses[size],
               // Make mobile layout more spacious; ensure full width on >= sm within max-w
               "max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col",
-              "z-[9999] focus:outline-none",
+              "z-[10001] focus:outline-none",
               className,
               dialogClassName // For backward compatibility
             )}

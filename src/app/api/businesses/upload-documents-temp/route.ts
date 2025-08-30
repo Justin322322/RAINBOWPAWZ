@@ -91,7 +91,11 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      filePaths,
+      filePaths: {
+        business_permit_path: filePaths.business_permit_path,
+        bir_certificate_path: filePaths.bir_certificate_path,
+        government_id_path: filePaths.government_id_path
+      },
       message: 'Documents uploaded to temporary storage successfully'
     });
 

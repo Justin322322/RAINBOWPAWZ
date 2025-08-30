@@ -67,6 +67,21 @@ export async function POST(request: Request) {
   // Test database connection first
   const _dbConnected = await testConnection();
 
+  // Parse and log the incoming request data for debugging
+  let requestData;
+  try {
+    requestData = await request.clone().json();
+    console.log('Registration API received data:', {
+      account_type: requestData.account_type,
+      hasDocumentUrls: !!(requestData as any).documentUrls,
+      email: requestData.email,
+      firstName: requestData.firstName,
+      businessName: requestData.businessName
+    });
+  } catch (e) {
+    console.log('Could not parse request data for logging:', e);
+  }
+
   // Add CORS headers
   const headers = {
     'Access-Control-Allow-Origin': '*',
@@ -260,7 +275,14 @@ export async function POST(request: Request) {
         }
 
         // If it's a business account, also create an entry in the service_providers table
+        console.log('Checking for business account creation:', {
+          account_type: data.account_type,
+          userId,
+          hasDocumentUrls: !!(data as any).documentUrls
+        });
+
         if (data.account_type === 'business' && userId) {
+          console.log('Creating service provider for business account');
           try {
             // Insert service provider with simplified query
             const businessData = data as BusinessRegistrationData;
@@ -320,11 +342,20 @@ export async function POST(request: Request) {
             // Format business phone number (already validated above)
             const formattedBusinessPhone = formatPhoneNumber(businessData.businessPhone);
 
-            // Extract document URLs if provided
-            const documentUrls = (data as any).documentUrls || {};
+            // Extract document URLs if provided (from the request data)
+            const documentUrls = (businessData as any).documentUrls || {};
             const businessPermitPath = documentUrls.business_permit_path || null;
             const birCertificatePath = documentUrls.bir_certificate_path || null;
             const governmentIdPath = documentUrls.government_id_path || null;
+
+            // Debug logging for documents
+            console.log('Business registration document URLs received:', {
+              documentUrls,
+              businessPermitPath,
+              birCertificatePath,
+              governmentIdPath,
+              businessDataKeys: Object.keys(businessData)
+            });
 
             const values = [
               userId,
