@@ -66,19 +66,9 @@ export const useOTPVerification = ({
 
   const generateOTP = useCallback(async (signal?: AbortSignal, isResend: boolean = false) => {
     if ((isResending && isResend) || (isGeneratingInitial && !isResend) || resendCooldown > 0) {
-      console.log('🔄 OTP generation skipped:', {
-        isResending,
-        isGeneratingInitial,
-        isResend,
-        resendCooldown,
-        reason: (isResending && isResend) ? 'already resending' :
-                (isGeneratingInitial && !isResend) ? 'already generating initial' :
-                resendCooldown > 0 ? `cooldown: ${resendCooldown}s` : 'unknown'
-      });
+      // Skip if already generating or in cooldown
       return;
     }
-
-    console.log('🚀 Starting OTP generation:', { isResend, isGeneratingInitial, isResending });
 
     if (isResend) {
       setIsResending(true);
@@ -121,10 +111,7 @@ export const useOTPVerification = ({
       setErrorMessage(error instanceof Error ? error.message : 'An unexpected error occurred');
     } finally {
       // Reset loading state, but be careful about aborted operations
-      console.log('🏁 OTP generation finally block:', { isResend, aborted: signal?.aborted });
-
       if (!signal?.aborted) {
-        console.log('✅ Resetting loading state (not aborted)');
         if (isResend) {
           setIsResending(false);
         } else {
@@ -132,7 +119,6 @@ export const useOTPVerification = ({
         }
       } else {
         // If aborted, still reset after a short delay to handle edge cases
-        console.log('⏳ Resetting loading state after abort delay');
         setTimeout(() => {
           if (isResend) {
             setIsResending(false);
@@ -142,9 +128,8 @@ export const useOTPVerification = ({
         }, 100);
       }
     }
-    // Removed isResending and isGeneratingInitial from dependencies as they are state values
-    // that would cause unnecessary recreations. The function handles the current state internally.
-  }, [generateOTPRequestBody, setStoredCooldownEndTime, initialOtpSentKey, isResending, isGeneratingInitial, resendCooldown]);
+    // Only include stable dependencies - the function handles current state internally
+  }, [generateOTPRequestBody, setStoredCooldownEndTime, initialOtpSentKey]);
 
   const verifyOTP = useCallback(async () => {
     const otpString = otp.join('');
@@ -211,7 +196,7 @@ export const useOTPVerification = ({
     }
     // Return undefined when no cleanup is needed
     return undefined;
-  }, [generateOTP, initialOtpSentKey]);
+  }, [initialOtpSentKey]); // Remove generateOTP from dependencies to prevent infinite loop
 
   useEffect(() => {
     const cooldownEndTime = getStoredCooldownEndTime();
