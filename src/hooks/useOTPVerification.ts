@@ -65,7 +65,20 @@ export const useOTPVerification = ({
   }, [cooldownKey]);
 
   const generateOTP = useCallback(async (signal?: AbortSignal, isResend: boolean = false) => {
-    if ((isResending && isResend) || (isGeneratingInitial && !isResend) || resendCooldown > 0) return;
+    if ((isResending && isResend) || (isGeneratingInitial && !isResend) || resendCooldown > 0) {
+      console.log('🔄 OTP generation skipped:', {
+        isResending,
+        isGeneratingInitial,
+        isResend,
+        resendCooldown,
+        reason: (isResending && isResend) ? 'already resending' :
+                (isGeneratingInitial && !isResend) ? 'already generating initial' :
+                resendCooldown > 0 ? `cooldown: ${resendCooldown}s` : 'unknown'
+      });
+      return;
+    }
+
+    console.log('🚀 Starting OTP generation:', { isResend, isGeneratingInitial, isResending });
 
     if (isResend) {
       setIsResending(true);
@@ -107,13 +120,26 @@ export const useOTPVerification = ({
       }
       setErrorMessage(error instanceof Error ? error.message : 'An unexpected error occurred');
     } finally {
-      // Only update loading state if not aborted
+      // Reset loading state, but be careful about aborted operations
+      console.log('🏁 OTP generation finally block:', { isResend, aborted: signal?.aborted });
+
       if (!signal?.aborted) {
+        console.log('✅ Resetting loading state (not aborted)');
         if (isResend) {
           setIsResending(false);
         } else {
           setIsGeneratingInitial(false);
         }
+      } else {
+        // If aborted, still reset after a short delay to handle edge cases
+        console.log('⏳ Resetting loading state after abort delay');
+        setTimeout(() => {
+          if (isResend) {
+            setIsResending(false);
+          } else {
+            setIsGeneratingInitial(false);
+          }
+        }, 100);
       }
     }
     // Removed isResending and isGeneratingInitial from dependencies as they are state values
@@ -168,14 +194,20 @@ export const useOTPVerification = ({
 
   useEffect(() => {
     const initialOtpSent = sessionStorage.getItem(initialOtpSentKey) === 'true';
+    console.log('🔍 Initial OTP check:', { initialOtpSent, initialOtpSentKey });
+
     if (!initialOtpSent) {
+      console.log('📤 Triggering initial OTP generation');
       const abortController = new AbortController();
       generateOTP(abortController.signal, false); // false = initial generation
 
       // Cleanup function to abort the operation on unmount
       return () => {
+        console.log('🧹 Aborting initial OTP generation');
         abortController.abort();
       };
+    } else {
+      console.log('✅ Initial OTP already sent, skipping generation');
     }
     // Return undefined when no cleanup is needed
     return undefined;
