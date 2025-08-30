@@ -23,6 +23,7 @@ import { Modal } from '@/components/ui/Modal';
 
 import { getProfilePictureUrl } from '@/utils/imageUtils';
 
+import { LoadingSpinner } from '@/app/admin/services/client';
 
 
 // Types and interfaces
@@ -664,7 +665,7 @@ const AdminFurParentsPage = React.memo(function AdminFurParentsPage() {
                 onChange={(e) => setStatusFilter(e.target.value)}
                 className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)] sm:text-sm appearance-none"
               >
-                <option value="all">All Statuses </option>
+                <option value="all">All Statuses</option>
                 <option value="active">Active</option>
                 <option value="restricted">Restricted</option>
                 <option value="suspended">Suspended</option>
@@ -802,10 +803,7 @@ const AdminFurParentsPage = React.memo(function AdminFurParentsPage() {
 
         {/* Loading state */}
         {loading && (
-          <div className="px-6 py-12 text-center">
-            <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[var(--primary-green)] mb-4"></div>
-            <p className="text-gray-600">Loading fur parents...</p>
-          </div>
+          <LoadingSpinner message="Loading fur parents..." className="px-6" />
         )}
 
         {/* Error state */}

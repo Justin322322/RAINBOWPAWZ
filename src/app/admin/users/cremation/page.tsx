@@ -818,7 +818,7 @@ const AdminCremationCentersPage = React.memo(function AdminCremationCentersPage(
                 onChange={(e) => setStatusFilter(e.target.value)}
                 className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)] sm:text-sm appearance-none"
               >
-                <option value="all">All Statuses </option>
+                <option value="all">All Statuses</option>
                 <option value="active">Active</option>
                 <option value="verified">Verified</option>
                 <option value="approved">Approved</option>
