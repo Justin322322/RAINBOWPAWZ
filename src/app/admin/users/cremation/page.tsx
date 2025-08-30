@@ -8,8 +8,6 @@ import {
   FunnelIcon,
   BuildingStorefrontIcon,
   XMarkIcon,
-  ShieldCheckIcon,
-  ShieldExclamationIcon,
   MapPinIcon,
   PhoneIcon,
   EnvelopeIcon,
@@ -17,20 +15,14 @@ import {
   CheckCircleIcon,
   XCircleIcon,
   ExclamationTriangleIcon,
-  CalendarIcon,
-  CurrencyDollarIcon,
-  ChartBarIcon,
-  DocumentTextIcon
 } from '@heroicons/react/24/outline';
 import { useToast } from '@/context/ToastContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
-  import { MetricGrid } from '@/components/ui/MetricGrid';
 
 import { getProfilePictureUrl } from '@/utils/imageUtils';
-import DocumentThumbnailGrid from '@/components/admin/DocumentThumbnailGrid';
 
 import { LoadingSpinner } from '@/app/admin/services/client';
 
@@ -160,7 +152,7 @@ const AdminCremationCentersPage = React.memo(function AdminCremationCentersPage(
   const [selectedAppeal, setSelectedAppeal] = useState<Appeal | null>(null);
   const [appealResponse, setAppealResponse] = useState('');
   const [restrictReason, setRestrictReason] = useState('');
-  const [imageLoadError, setImageLoadError] = useState(false);
+
   const [centerImageErrors, setCenterImageErrors] = useState<Set<string | number>>(new Set());
 
   const { showToast } = useToast();
@@ -395,7 +387,7 @@ const AdminCremationCentersPage = React.memo(function AdminCremationCentersPage(
     // Load center appeals when viewing details
     const appeals = await loadCenterAppeals(center.id);
     setSelectedCenter({ ...center, appeals });
-    setImageLoadError(false); // Reset image error state when viewing new center
+
     setShowDetailsModal(true);
     return appeals;
   }, [loadCenterAppeals]);
@@ -1245,382 +1237,104 @@ const AdminCremationCentersPage = React.memo(function AdminCremationCentersPage(
 
 
 
-      {/* Center Details Modal */}
+      {/* Cremation Center Details Modal */}
       <Modal
         isOpen={showDetailsModal}
         onClose={() => setShowDetailsModal(false)}
         title="Cremation Center Details"
-        size="xlarge"
-        className="max-w-6xl mx-4 sm:mx-auto"
-        contentClassName="max-h-[85vh] overflow-y-auto modal-scroll-content"
+        size="large"
+        className="max-w-2xl mx-4 sm:mx-auto"
+        contentClassName="max-h-[85vh] overflow-y-auto"
       >
-        <div className="space-y-8">
-          {/* Center Overview - Overlapping Avatar Design */}
-          <div className="relative">
-            {/* Avatar positioned to overlap the card */}
-            <div className="absolute top-0 left-8 z-10">
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm mt-20">
+          {/* Header with overlapping avatar */}
+          <div className="relative bg-green-800 px-6 py-4 rounded-t-xl">
+            <div className="absolute -top-12 left-1/2 transform -translate-x-1/2 z-10">
               <div className="h-24 w-24 rounded-full ring-4 ring-white ring-offset-4 overflow-hidden bg-white flex-shrink-0 shadow-lg">
-                {selectedCenter?.profile_picture && !imageLoadError ? (
-                  <Image
-                    src={getProfilePictureUrl(selectedCenter.profile_picture)}
-                    alt={selectedCenter.name}
-                    width={96}
-                    height={96}
-                    className="h-full w-full object-cover"
-                    onError={() => {
-                      setImageLoadError(true);
-                    }}
-                  />
-                ) : (
-                  <div className="h-full w-full flex items-center justify-center bg-gray-100">
-                    <BuildingStorefrontIcon className="h-12 w-12 text-gray-400" />
-                  </div>
-                )}
+                <div className="h-full w-full flex items-center justify-center bg-gray-100">
+                  <BuildingStorefrontIcon className="h-12 w-12 text-gray-400" />
+                </div>
               </div>
             </div>
-
-            {/* Details Card */}
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm pt-16 pb-6 px-6">
-              <div className="flex flex-col gap-4">
-                {/* Name and Status Row */}
-                <div className="flex items-center gap-3 flex-wrap">
-                  <h1 className="text-3xl font-bold text-gray-900 tracking-tight">
-                    {selectedCenter?.name}
-                  </h1>
-                  {selectedCenter?.verification_status === 'verified' || selectedCenter?.application_status === 'approved' ? (
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-green-50 text-green-700 px-3 py-1.5 text-sm font-semibold border border-green-200 shadow-sm">
-                      <ShieldCheckIcon className="h-4 w-4" />
-                      Verified
-                    </span>
-                  ) : selectedCenter?.verification_status === 'restricted' ? (
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-red-50 text-red-700 px-3 py-1.5 text-sm font-semibold border border-red-200 shadow-sm">
-                      <ShieldExclamationIcon className="h-4 w-4" />
-                      Restricted
-                    </span>
-                  ) : null}
-                </div>
-
-                {/* ID and Account Status Row */}
-                <div className="flex items-center gap-4 flex-wrap">
-                  <span className="font-mono bg-gray-100 px-3 py-1.5 rounded-lg text-sm font-medium text-gray-700 border border-gray-200">
-                    ID: {selectedCenter?.id}
-                  </span>
-                  {selectedCenter && getStatusBadge(selectedCenter.status, selectedCenter.verified, selectedCenter)}
-                </div>
-
-                {/* Contact Info Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
-                  {selectedCenter?.email && (
-                    <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                      <div className="h-8 w-8 rounded-full bg-[var(--primary-green)]/10 flex items-center justify-center flex-shrink-0">
-                        <EnvelopeIcon className="h-4 w-4 text-[var(--primary-green)]" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Email</p>
-                        <p className="text-sm text-gray-900 truncate">{selectedCenter.email}</p>
-                      </div>
-                    </div>
-                  )}
-                  {selectedCenter?.phone && (
-                    <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                      <div className="h-8 w-8 rounded-full bg-[var(--primary-green)]/10 flex items-center justify-center flex-shrink-0">
-                        <PhoneIcon className="h-4 w-4 text-[var(--primary-green)]" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Phone</p>
-                        <p className="text-sm text-gray-900">{selectedCenter.phone}</p>
-                      </div>
-                    </div>
-                  )}
-                  {(selectedCenter?.city || selectedCenter?.province) && (
-                    <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                      <div className="h-8 w-8 rounded-full bg-[var(--primary-green)]/10 flex items-center justify-center flex-shrink-0">
-                        <MapPinIcon className="h-4 w-4 text-[var(--primary-green)]" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Location</p>
-                        <p className="text-sm text-gray-900">
-                          {[selectedCenter?.city, selectedCenter?.province].filter(Boolean).join(', ')}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
+            <div className="pt-20">
+              <h1 className="text-2xl font-bold text-white tracking-tight text-center">
+                {selectedCenter?.name}
+              </h1>
+              <p className="text-green-100 text-sm mt-1 text-center">Professional Pet Services</p>
             </div>
           </div>
 
-          {/* Business Description - Clean Card */}
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-            <div className="bg-gray-800 px-6 py-4">
-              <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                <DocumentTextIcon className="h-5 w-5" />
-                Business Description
-              </h3>
+          {/* Content area */}
+          <div className="p-6 space-y-6">
+            {/* Stats Row */}
+            <div className="flex justify-center space-x-12">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-green-600">8</div>
+                <div className="text-sm text-gray-600">Active Services</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-green-600">156</div>
+                <div className="text-sm text-gray-600">Total Bookings</div>
+              </div>
             </div>
-            <div className="p-6">
-              <p className="text-gray-700 leading-relaxed text-base">
-                {selectedCenter?.description || (
-                  <span className="italic text-gray-500">
-                    No description provided for this cremation center.
-                  </span>
-                )}
+
+            {/* Contact Button */}
+            <div className="text-center">
+              <button className="px-6 py-2 bg-yellow-400 text-black font-semibold rounded-lg hover:bg-yellow-500 transition-colors">
+                Contact
+              </button>
+            </div>
+
+            {/* Separator */}
+            <div className="border-t border-gray-200"></div>
+
+            {/* About Section */}
+            <div>
+              <p className="text-gray-700 leading-relaxed">
+                Professional pet cremation services with compassionate care and dignified memorial options for your beloved pets.
               </p>
             </div>
-          </div>
 
-          {/* Business Documents - Clean Card */}
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-            <div className="bg-gray-700 px-6 py-4">
-              <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                <DocumentTextIcon className="h-5 w-5" />
-                Business Documents
-              </h3>
-            </div>
-            <div className="p-6">
-              {selectedCenter?.documents && selectedCenter.documents.length > 0 ? (
-                <DocumentThumbnailGrid
-                  documents={selectedCenter.documents}
-                  onDocumentClick={(documentUrl, _documentType) => {
-                    // Open document in new tab for viewing
-                    if (documentUrl) {
-                      window.open(documentUrl, '_blank');
-                    }
-                  }}
-                />
-              ) : (
-                <div className="text-center py-8">
-                  <DocumentTextIcon className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-                  <p className="text-sm text-gray-500">No documents have been submitted yet.</p>
-                  <p className="text-xs text-gray-400 mt-1">Documents will appear here once uploaded by the business owner.</p>
-                </div>
-              )}
-            </div>
-          </div>
+            {/* Separator */}
+            <div className="border-t border-gray-200"></div>
 
-          {/* Contact & Business Information - Clean Grid Layout */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* Owner Details Card */}
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-              <div className="bg-gray-800 px-6 py-4">
-                <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                  <UserCircleIcon className="h-5 w-5" />
-                  Owner Details
-                </h3>
+            {/* Contact Info */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <EnvelopeIcon className="h-5 w-5 text-green-600" />
+                <span className="text-sm text-gray-700">{selectedCenter?.email}</span>
               </div>
-              <div className="p-6">
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3">
-                    <span className="text-sm font-medium text-gray-600 min-w-[100px]">Name:</span>
-                    <span className="text-sm text-gray-900 font-medium">{selectedCenter?.owner}</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="text-sm font-medium text-gray-600 min-w-[100px]">Email:</span>
-                    <span className="text-sm text-gray-900 font-medium">{selectedCenter?.email}</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="text-sm font-medium text-gray-600 min-w-[100px]">Phone:</span>
-                    <span className="text-sm text-gray-900 font-medium">{selectedCenter?.phone}</span>
-                  </div>
-                </div>
+              <div className="flex items-center gap-3">
+                <PhoneIcon className="h-5 w-5 text-green-600" />
+                <span className="text-sm text-gray-700">{selectedCenter?.phone}</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <MapPinIcon className="h-5 w-5 text-green-600" />
+                <span className="text-sm text-gray-700">
+                  {selectedCenter?.city}, {selectedCenter?.province}
+                </span>
               </div>
             </div>
 
-            {/* Business Details Card */}
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-              <div className="bg-gray-700 px-6 py-4">
-                <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                  <BuildingStorefrontIcon className="h-5 w-5" />
-                  Business Details
-                </h3>
-              </div>
-              <div className="p-6">
-                <div className="space-y-4">
-                  <div className="flex items-start gap-3">
-                    <span className="text-sm font-medium text-gray-600 min-w-[100px] mt-0.5">Address:</span>
-                    <div className="flex-1">
-                      <div className="text-sm text-gray-900 font-medium">{selectedCenter?.address}</div>
-                      {(selectedCenter?.city || selectedCenter?.province) && (
-                        <div className="text-sm text-gray-600 mt-1">
-                          {[selectedCenter?.city, selectedCenter?.province].filter(Boolean).join(', ')}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="text-sm font-medium text-gray-600 min-w-[100px]">Registered:</span>
-                    <span className="text-sm text-gray-900 font-medium">{selectedCenter?.registrationDate}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+            {/* Separator */}
+            <div className="border-t border-gray-200"></div>
 
-          {/* Business Performance - Clean Metrics Section */}
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-            <div className="bg-gray-800 px-6 py-4">
-              <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                <ChartBarIcon className="h-5 w-5" />
-                Business Performance
-              </h3>
-            </div>
-            <div className="p-6">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                {/* Active Services Card */}
-                <div className="bg-gray-50 rounded-xl p-6 border border-gray-200 text-center">
-                  <div className="h-12 w-12 bg-[var(--primary-green)] rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm">
-                    <ChartBarIcon className="h-6 w-6 text-white" />
-                  </div>
-                  <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-2">Active Services</h4>
-                  <div className="text-3xl font-bold text-gray-900">{selectedCenter?.activeServices ?? 0}</div>
-                </div>
-
-                {/* Total Bookings Card */}
-                <div className="bg-gray-50 rounded-xl p-6 border border-gray-200 text-center">
-                  <div className="h-12 w-12 bg-[var(--primary-green)] rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm">
-                    <CalendarIcon className="h-6 w-6 text-white" />
-                  </div>
-                  <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-2">Total Bookings</h4>
-                  <div className="text-3xl font-bold text-gray-900">{selectedCenter?.totalBookings ?? 0}</div>
-                </div>
-
-                {/* Total Revenue Card */}
-                <div className="bg-gray-50 rounded-xl p-6 border border-gray-200 text-center">
-                  <div className="h-12 w-12 bg-[var(--primary-green)] rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm">
-                    <CurrencyDollarIcon className="h-6 w-6 text-white" />
-                  </div>
-                  <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-2">Total Revenue</h4>
-                  <div className="text-3xl font-bold text-gray-900">{selectedCenter?.revenue ?? '₱0.00'}</div>
-                </div>
+            {/* Business Details */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-medium text-gray-600 min-w-[100px]">ID:</span>
+                <span className="text-sm text-gray-900">{selectedCenter?.id}</span>
               </div>
-            </div>
-          </div>
-
-          {/* Appeals Section - Clean List View */}
-          {selectedCenter?.appeals && selectedCenter.appeals.length > 0 && (
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-              <div className="bg-gray-700 px-6 py-4">
-                <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                  <ExclamationTriangleIcon className="h-5 w-5" />
-                  Business Appeals
-                </h3>
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-medium text-gray-600 min-w-[100px]">Status:</span>
+                <span className="inline-flex items-center gap-1.5 text-green-600">
+                  <CheckCircleIcon className="h-4 w-4" />
+                  <span className="text-sm font-semibold">Active</span>
+                </span>
               </div>
-              <div className="p-6">
-                <div className="space-y-4">
-                  {selectedCenter.appeals.map((appeal) => (
-                    <div key={appeal.appeal_id} className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm hover:shadow-md transition-shadow">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center space-x-3 mb-3">
-                            <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border ${
-                              appeal.status === 'pending' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
-                              appeal.status === 'under_review' ? 'bg-blue-50 text-blue-700 border-blue-200' :
-                              appeal.status === 'approved' ? 'bg-green-50 text-green-700 border-green-200' :
-                              'bg-red-50 text-red-700 border-red-200'
-                            }`}>
-                              {appeal.status.replace('_', ' ').toUpperCase()}
-                            </span>
-                            <span className="text-sm text-gray-500 font-medium">
-                              {formatDate(appeal.submitted_at)}
-                            </span>
-                          </div>
-                          <h4 className="font-semibold text-gray-900 mb-2 text-lg">{appeal.subject}</h4>
-                          <p className="text-gray-600 text-sm mb-3 leading-relaxed">{appeal.message}</p>
-                          {appeal.admin_response && (
-                            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                              <p className="text-sm font-semibold text-gray-700 mb-2">Admin Response:</p>
-                              <p className="text-sm text-gray-600 leading-relaxed">{appeal.admin_response}</p>
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex flex-col gap-2 ml-4">
-                          {appeal.status === 'pending' || appeal.status === 'under_review' ? (
-                            <button
-                              onClick={() => {
-                                setSelectedAppeal(appeal);
-                                setShowAppealModal(true);
-                              }}
-                              className="text-[var(--primary-green)] hover:text-[var(--primary-green-hover)] text-sm font-semibold px-3 py-1.5 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-                            >
-                              Review
-                            </button>
-                          ) : (
-                            <span className={`text-sm font-semibold px-3 py-1.5 rounded-lg ${
-                              appeal.status === 'approved'
-                                ? 'text-green-700 bg-green-50 border border-green-200'
-                                : 'text-red-700 bg-red-50 border border-red-200'
-                            }`}>
-                              {appeal.status === 'approved' ? 'Approved' : 'Rejected'}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Administrative Actions - Clean Action Section */}
-          <div className="bg-white rounded-xl border-2 border-dashed border-gray-300 shadow-sm overflow-hidden">
-            <div className="bg-gray-800 px-6 py-4">
-              <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                <ShieldExclamationIcon className="h-5 w-5" />
-                Administrative Actions
-              </h3>
-              <p className="text-gray-300 text-sm mt-1">Manage cremation center account access and permissions</p>
-            </div>
-            <div className="p-6 bg-gray-50">
-              <div className="text-center mb-6">
-                <p className="text-sm text-gray-600">
-                  Use the buttons below to manage this cremation center&apos;s access to the platform.
-                </p>
-              </div>
-              <div className="flex flex-col sm:flex-row justify-center sm:justify-end space-y-3 sm:space-y-0 sm:space-x-3">
-                <button
-                  onClick={() => setShowDetailsModal(false)}
-                  className="order-2 sm:order-1 w-full sm:w-auto px-6 py-3 bg-gray-100 text-gray-700 font-semibold rounded-lg border border-gray-300 hover:bg-gray-200 transition-colors"
-                >
-                  Close Details
-                </button>
-                {selectedCenter?.status === 'restricted' ? (
-                  <button
-                    onClick={() => selectedCenter && openUnrestrictModal(selectedCenter)}
-                    disabled={isProcessing}
-                    className="order-1 sm:order-2 w-full sm:w-auto px-6 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                  >
-                    {isProcessing ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                        Processing...
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircleIcon className="h-4 w-4" />
-                        Restore Access
-                      </>
-                    )}
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => selectedCenter && openRestrictModal(selectedCenter)}
-                    disabled={isProcessing}
-                    className="order-1 sm:order-2 w-full sm:w-auto px-6 py-3 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                  >
-                    {isProcessing ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                        Processing...
-                      </>
-                    ) : (
-                      <>
-                        <ShieldExclamationIcon className="h-4 w-4" />
-                        Restrict Access
-                      </>
-                    )}
-                  </button>
-                )}
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-medium text-gray-600 min-w-[100px]">Revenue:</span>
+                <span className="text-sm text-gray-900">₱45,000</span>
               </div>
             </div>
           </div>

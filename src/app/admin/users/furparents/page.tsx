@@ -6,32 +6,22 @@ import Image from 'next/image';
 import {
   MagnifyingGlassIcon,
   FunnelIcon,
-  UserCircleIcon,
   XMarkIcon,
-  ShieldExclamationIcon,
   MapPinIcon,
   PhoneIcon,
   EnvelopeIcon,
+  UserCircleIcon,
   CheckCircleIcon,
   XCircleIcon,
   ExclamationTriangleIcon,
-  HeartIcon,
-  ChartBarIcon,
-  DocumentTextIcon
 } from '@heroicons/react/24/outline';
 import { useToast } from '@/context/ToastContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
-  import { Badge, Button } from '@/components/ui';
+import { Badge, Button } from '@/components/ui';
 import { Modal } from '@/components/ui/Modal';
-import {
-  ProfileCard,
-  ProfileSection,
-  ProfileField
-} from '@/components/ui/ProfileLayout';
-import { ProfileButton } from '@/components/ui/ProfileFormComponents';
+
 import { getProfilePictureUrl } from '@/utils/imageUtils';
-  import { MetricGrid } from '@/components/ui/MetricGrid';
 
 
 
@@ -1197,15 +1187,14 @@ const AdminFurParentsPage = React.memo(function AdminFurParentsPage() {
         isOpen={showDetailsModal}
         onClose={() => setShowDetailsModal(false)}
         title="Fur Parent Details"
-        size="xlarge"
-        className="max-w-6xl mx-4 sm:mx-auto"
+        size="large"
+        className="max-w-2xl mx-4 sm:mx-auto"
         contentClassName="max-h-[85vh] overflow-y-auto"
       >
-        <div className="space-y-8">
-          {/* User Overview - Overlapping Avatar Design */}
-          <div className="relative">
-            {/* Avatar positioned to overlap the card */}
-            <div className="absolute top-0 left-8 z-10">
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm mt-20">
+          {/* Header with overlapping avatar */}
+          <div className="relative bg-green-800 px-6 py-4 rounded-t-xl">
+            <div className="absolute -top-12 left-1/2 transform -translate-x-1/2 z-10">
               <div className="h-24 w-24 rounded-full ring-4 ring-white ring-offset-4 overflow-hidden bg-white flex-shrink-0 shadow-lg">
                 {selectedUser?.profile_picture && !avatarError ? (
                   <Image
@@ -1229,345 +1218,83 @@ const AdminFurParentsPage = React.memo(function AdminFurParentsPage() {
                 )}
               </div>
             </div>
-
-            {/* Details Card */}
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm pt-16 pb-6 px-6">
-              <div className="flex flex-col gap-4">
-                {/* Name and Status Row */}
-                <div className="flex items-center gap-3 flex-wrap">
-                  <h1 className="text-3xl font-bold text-gray-900 tracking-tight">
-                    {selectedUser?.first_name} {selectedUser?.last_name}
-                  </h1>
-                  {selectedUser?.is_verified && (
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-green-50 text-green-700 px-3 py-1.5 text-sm font-semibold border border-green-200 shadow-sm">
-                      <CheckCircleIcon className="h-4 w-4" />
-                      Verified
-                    </span>
-                  )}
-                  {selectedUser?.status === 'restricted' && (
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-red-50 text-red-700 px-3 py-1.5 text-sm font-semibold border border-red-200 shadow-sm">
-                      <ShieldExclamationIcon className="h-4 w-4" />
-                      Restricted
-                    </span>
-                  )}
-                </div>
-
-                {/* ID and Account Status Row */}
-                <div className="flex items-center gap-4 flex-wrap">
-                  <span className="font-mono bg-gray-100 px-3 py-1.5 rounded-lg text-sm font-medium text-gray-700 border border-gray-200">
-                    ID: {selectedUser?.user_id}
-                  </span>
-                  {selectedUser && getStatusBadge(selectedUser.status)}
-                </div>
-
-                {/* Contact Info Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
-                  {selectedUser?.email && (
-                    <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                      <div className="h-8 w-8 rounded-full bg-[var(--primary-green)]/10 flex items-center justify-center flex-shrink-0">
-                        <EnvelopeIcon className="h-4 w-4 text-[var(--primary-green)]" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Email</p>
-                        <p className="text-sm text-gray-900 truncate">{selectedUser.email}</p>
-                      </div>
-                    </div>
-                  )}
-                  {selectedUser?.phone_number && (
-                    <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                      <div className="h-8 w-8 rounded-full bg-[var(--primary-green)]/10 flex items-center justify-center flex-shrink-0">
-                        <PhoneIcon className="h-4 w-4 text-[var(--primary-green)]" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Phone</p>
-                        <p className="text-sm text-gray-900">{selectedUser.phone_number}</p>
-                      </div>
-                    </div>
-                  )}
-                  {selectedUser?.address && (
-                    <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                      <div className="h-8 w-8 rounded-full bg-[var(--primary-green)]/10 flex items-center justify-center flex-shrink-0">
-                        <MapPinIcon className="h-4 w-4 text-[var(--primary-green)]" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Address</p>
-                        <p className="text-sm text-gray-900">{selectedUser.address}</p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
+            <div className="pt-20">
+              <h1 className="text-2xl font-bold text-white tracking-tight text-center">
+                {selectedUser?.first_name} {selectedUser?.last_name}
+              </h1>
+              <p className="text-green-100 text-sm mt-1 text-center">Fur Parent</p>
             </div>
           </div>
 
-          {/* Contact & Account Information - Clean Card Layout */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* Contact Information Card */}
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-              <div className="bg-gray-800 px-6 py-4">
-                <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                  <EnvelopeIcon className="h-5 w-5" />
-                  Contact Information
-                </h3>
+          {/* Content area */}
+          <div className="p-6 space-y-6">
+            {/* Stats Row */}
+            <div className="flex justify-center space-x-12">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-green-600">12</div>
+                <div className="text-sm text-gray-600">Followers</div>
               </div>
-              <div className="p-6">
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3">
-                    <span className="text-sm font-medium text-gray-600 min-w-[100px]">Email:</span>
-                    <span className="text-sm text-gray-900 font-medium">{selectedUser?.email}</span>
-                  </div>
-                  {selectedUser?.phone_number && (
-                    <div className="flex items-center gap-3">
-                      <span className="text-sm font-medium text-gray-600 min-w-[100px]">Phone:</span>
-                      <span className="text-sm text-gray-900 font-medium">{selectedUser.phone_number}</span>
-                    </div>
-                  )}
-                  {selectedUser?.address && (
-                    <div className="flex items-start gap-3">
-                      <span className="text-sm font-medium text-gray-600 min-w-[100px] mt-0.5">Address:</span>
-                      <span className="text-sm text-gray-900 font-medium">{selectedUser.address}</span>
-                    </div>
-                  )}
-                </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-green-600">1000</div>
+                <div className="text-sm text-gray-600">Following</div>
               </div>
             </div>
 
-            {/* Account Details Card */}
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-              <div className="bg-gray-700 px-6 py-4">
-                <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                  <CheckCircleIcon className="h-5 w-5" />
-                  Account Details
-                </h3>
-              </div>
-              <div className="p-6">
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3">
-                    <span className="text-sm font-medium text-gray-600 min-w-[100px]">Registered:</span>
-                    <span className="text-sm text-gray-900 font-medium">{selectedUser ? formatDate(selectedUser.created_at) : 'N/A'}</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="text-sm font-medium text-gray-600 min-w-[100px]">Status:</span>
-                    {selectedUser?.is_verified ? (
-                      <span className="inline-flex items-center gap-1.5 text-green-600 font-medium">
-                        <CheckCircleIcon className="h-4 w-4" />
-                        <span className="text-sm font-semibold">Verified</span>
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1.5 text-yellow-600 font-medium">
-                        <ExclamationTriangleIcon className="h-4 w-4" />
-                        <span className="text-sm font-semibold">Not Verified</span>
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
+            {/* Follow Button */}
+            <div className="text-center">
+              <button className="px-6 py-2 bg-yellow-400 text-black font-semibold rounded-lg hover:bg-yellow-500 transition-colors">
+                Follow
+              </button>
             </div>
-          </div>
 
-          {/* User Activity - Clean Metrics Section */}
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-            <div className="bg-gray-800 px-6 py-4">
-              <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                <ChartBarIcon className="h-5 w-5" />
-                User Activity
-              </h3>
-              <p className="text-gray-300 text-sm mt-1">Pet registrations and booking history</p>
-            </div>
-            <div className="p-6">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                {/* Registered Pets Card */}
-                <div className="bg-gray-50 rounded-xl p-6 border border-gray-200 text-center">
-                  <div className="h-12 w-12 bg-[var(--primary-green)] rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm">
-                    <HeartIcon className="h-6 w-6 text-white" />
-                  </div>
-                  <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-2">Registered Pets</h4>
-                  <div className="text-3xl font-bold text-gray-900">{selectedUser?.pets ?? 0}</div>
-                </div>
+            {/* Separator */}
+            <div className="border-t border-gray-200"></div>
 
-                {/* Completed Bookings Card */}
-                <div className="bg-gray-50 rounded-xl p-6 border border-gray-200 text-center">
-                  <div className="h-12 w-12 bg-[var(--primary-green)] rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm">
-                    <ChartBarIcon className="h-6 w-6 text-white" />
-                  </div>
-                  <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-2">Completed Bookings</h4>
-                  <div className="text-3xl font-bold text-gray-900">{selectedUser?.completedBookings ?? 0}</div>
-                </div>
-              </div>
+            {/* About Section */}
+            <div>
+              <p className="text-gray-700 leading-relaxed">
+                Morgan has collected ants since they were six years old and now has many dozen ants but none in their pants.
+              </p>
             </div>
-          </div>
 
-          {/* Restriction Information - Clean Alert Section */}
-          {selectedUser?.status === 'restricted' && selectedUser?.restriction && (
-            <div className="bg-white rounded-xl border-2 border-red-200 shadow-sm overflow-hidden">
-              <div className="bg-red-600 px-6 py-4">
-                <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                  <ShieldExclamationIcon className="h-5 w-5" />
-                  Restriction Information
-                </h3>
-                <p className="text-red-100 text-sm mt-1">Details about account restrictions</p>
-              </div>
-              <div className="p-6 bg-red-50">
-                <div className="flex items-start space-x-4">
-                  <div className="flex-shrink-0 mt-1">
-                    <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center shadow-sm">
-                      <ShieldExclamationIcon className="h-5 w-5 text-red-600" />
-                    </div>
-                  </div>
-                  <div className="flex-1 space-y-4">
-                    <div>
-                      <h4 className="text-lg font-semibold text-red-800 mb-3">Account Restricted</h4>
-                      <div className="space-y-3">
-                        <div className="flex items-center gap-3">
-                          <span className="text-sm font-medium text-red-700 min-w-[120px]">Date Restricted:</span>
-                          <span className="text-sm text-red-900 font-medium bg-red-100 px-3 py-1.5 rounded-lg">
-                            {formatDate(selectedUser.restriction.restriction_date)}
-                          </span>
-                        </div>
-                        {selectedUser.restriction.reason && (
-                          <div className="flex items-start gap-3">
-                            <span className="text-sm font-medium text-red-700 min-w-[120px] mt-0.5">Reason:</span>
-                            <span className="text-sm text-red-900 bg-red-100 px-3 py-1.5 rounded-lg flex-1">
-                              {selectedUser.restriction.reason}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
+            {/* Separator */}
+            <div className="border-t border-gray-200"></div>
 
-          {/* Appeals Section - Clean List View */}
-          {selectedUser?.appeals && selectedUser.appeals.length > 0 && (
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-              <div className="bg-gray-700 px-6 py-4">
-                <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                  <DocumentTextIcon className="h-5 w-5" />
-                  User Appeals
-                </h3>
-                <p className="text-gray-300 text-sm mt-1">Appeals submitted by this user</p>
+            {/* Contact Info */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <EnvelopeIcon className="h-5 w-5 text-green-600" />
+                <span className="text-sm text-gray-700">{selectedUser?.email}</span>
               </div>
-              <div className="p-6">
-                <div className="space-y-4">
-                  {selectedUser.appeals.map((appeal) => (
-                    <div key={appeal.appeal_id} className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm hover:shadow-md transition-shadow">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center space-x-3 mb-3">
-                            <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border ${
-                              appeal.status === 'pending' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
-                              appeal.status === 'under_review' ? 'bg-blue-50 text-blue-700 border-blue-200' :
-                              appeal.status === 'approved' ? 'bg-green-50 text-green-700 border-green-200' :
-                              'bg-red-50 text-red-700 border-red-200'
-                            }`}>
-                              {appeal.status.replace('_', ' ').toUpperCase()}
-                            </span>
-                            <span className="text-sm text-gray-500 font-medium">
-                              {formatDate(appeal.submitted_at)}
-                            </span>
-                          </div>
-                          <h4 className="font-semibold text-gray-900 mb-2 text-lg">{appeal.subject}</h4>
-                          <p className="text-gray-600 text-sm mb-3 leading-relaxed">{appeal.message}</p>
-                          {appeal.admin_response && (
-                            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                              <p className="text-sm font-semibold text-gray-700 mb-2">Admin Response:</p>
-                              <p className="text-sm text-gray-600 leading-relaxed">{appeal.admin_response}</p>
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex space-x-2 ml-4">
-                          {appeal.status === 'pending' || appeal.status === 'under_review' ? (
-                            <button
-                              onClick={() => {
-                                setSelectedAppeal(appeal);
-                                setShowAppealModal(true);
-                              }}
-                              className="text-blue-600 hover:text-blue-800 text-sm font-semibold hover:bg-blue-50 px-3 py-1.5 rounded-lg transition-colors"
-                            >
-                              Review
-                            </button>
-                          ) : (
-                            <span className="text-sm text-gray-500 font-medium">
-                              {appeal.status === 'approved' ? 'Approved' : 'Rejected'}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+              <div className="flex items-center gap-3">
+                <PhoneIcon className="h-5 w-5 text-green-600" />
+                <span className="text-sm text-gray-700">{selectedUser?.phone_number}</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <MapPinIcon className="h-5 w-5 text-green-600" />
+                <span className="text-sm text-gray-700">{selectedUser?.address}</span>
               </div>
             </div>
-          )}
 
-          {/* Administrative Actions - Clean Action Section */}
-          <div className="bg-white rounded-xl border-2 border-dashed border-gray-300 shadow-sm overflow-hidden">
-            <div className="bg-gray-800 px-6 py-4">
-              <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                <ShieldExclamationIcon className="h-5 w-5" />
-                Administrative Actions
-              </h3>
-              <p className="text-gray-300 text-sm mt-1">Manage fur parent account access and permissions</p>
-            </div>
-            <div className="p-6 bg-gray-50">
-              <div className="text-center mb-6">
-                <p className="text-sm text-gray-600">
-                  Use the buttons below to manage this fur parent&apos;s access to the platform.
-                </p>
+            {/* Separator */}
+            <div className="border-t border-gray-200"></div>
+
+            {/* Account Details */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-medium text-gray-600 min-w-[100px]">ID:</span>
+                <span className="text-sm text-gray-900">{selectedUser?.user_id}</span>
               </div>
-              <div className="flex flex-col sm:flex-row justify-center sm:justify-end space-y-3 sm:space-y-0 sm:space-x-3">
-                <button
-                  onClick={() => setShowDetailsModal(false)}
-                  className="order-2 sm:order-1 w-full sm:w-auto px-6 py-3 bg-gray-100 text-gray-700 font-semibold rounded-lg border border-gray-300 hover:bg-gray-200 transition-colors"
-                >
-                  Close Details
-                </button>
-                {selectedUser?.status === 'restricted' ? (
-                  <button
-                    onClick={() => {
-                      setShowDetailsModal(false);
-                      selectedUser && openUnrestrictModal(selectedUser);
-                    }}
-                    disabled={isProcessing}
-                    className="order-1 sm:order-2 w-full sm:w-auto px-6 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                  >
-                    {isProcessing ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                        Processing...
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircleIcon className="h-4 w-4" />
-                        Restore Access
-                      </>
-                    )}
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => {
-                      setShowDetailsModal(false);
-                      selectedUser && openRestrictModal(selectedUser);
-                    }}
-                    disabled={isProcessing}
-                    className="order-1 sm:order-2 w-full sm:w-auto px-6 py-3 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                  >
-                    {isProcessing ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                        Processing...
-                      </>
-                    ) : (
-                      <>
-                        <ShieldExclamationIcon className="h-4 w-4" />
-                        Restrict Access
-                      </>
-                    )}
-                  </button>
-                )}
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-medium text-gray-600 min-w-[100px]">Status:</span>
+                <span className="inline-flex items-center gap-1.5 text-green-600">
+                  <CheckCircleIcon className="h-4 w-4" />
+                  <span className="text-sm font-semibold">Active</span>
+                </span>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-medium text-gray-600 min-w-[100px]">Joined:</span>
+                <span className="text-sm text-gray-900">{selectedUser?.created_at}</span>
               </div>
             </div>
           </div>
