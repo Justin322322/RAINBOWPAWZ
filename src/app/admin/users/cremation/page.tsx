@@ -1251,9 +1251,19 @@ const AdminCremationCentersPage = React.memo(function AdminCremationCentersPage(
           <div className="relative bg-green-800 px-6 py-4 rounded-t-xl">
             <div className="absolute -top-12 left-1/2 transform -translate-x-1/2 z-10">
               <div className="h-24 w-24 rounded-full ring-4 ring-white ring-offset-4 overflow-hidden bg-white flex-shrink-0 shadow-lg">
-                <div className="h-full w-full flex items-center justify-center bg-gray-100">
-                  <BuildingStorefrontIcon className="h-12 w-12 text-gray-400" />
-                </div>
+                {selectedCenter?.profile_picture ? (
+                  <Image
+                    src={getProfilePictureUrl(selectedCenter.profile_picture)}
+                    alt={selectedCenter.name}
+                    width={96}
+                    height={96}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <div className="h-full w-full flex items-center justify-center bg-gray-100">
+                    <BuildingStorefrontIcon className="h-12 w-12 text-gray-400" />
+                  </div>
+                )}
               </div>
             </div>
             <div className="pt-20">
@@ -1269,20 +1279,13 @@ const AdminCremationCentersPage = React.memo(function AdminCremationCentersPage(
             {/* Stats Row */}
             <div className="flex justify-center space-x-12">
               <div className="text-center">
-                <div className="text-2xl font-bold text-green-600">8</div>
+                <div className="text-2xl font-bold text-green-600">{selectedCenter?.activeServices || 0}</div>
                 <div className="text-sm text-gray-600">Active Services</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-green-600">156</div>
+                <div className="text-2xl font-bold text-green-600">{selectedCenter?.totalBookings || 0}</div>
                 <div className="text-sm text-gray-600">Total Bookings</div>
               </div>
-            </div>
-
-            {/* Contact Button */}
-            <div className="text-center">
-              <button className="px-6 py-2 bg-yellow-400 text-black font-semibold rounded-lg hover:bg-yellow-500 transition-colors">
-                Contact
-              </button>
             </div>
 
             {/* Separator */}
@@ -1291,7 +1294,7 @@ const AdminCremationCentersPage = React.memo(function AdminCremationCentersPage(
             {/* About Section */}
             <div>
               <p className="text-gray-700 leading-relaxed">
-                Professional pet cremation services with compassionate care and dignified memorial options for your beloved pets.
+                {selectedCenter?.description || 'Professional pet cremation services with compassionate care and dignified memorial options for your beloved pets.'}
               </p>
             </div>
 
@@ -1311,7 +1314,7 @@ const AdminCremationCentersPage = React.memo(function AdminCremationCentersPage(
               <div className="flex items-center gap-3">
                 <MapPinIcon className="h-5 w-5 text-green-600" />
                 <span className="text-sm text-gray-700">
-                  {selectedCenter?.city}, {selectedCenter?.province}
+                  {selectedCenter?.address || `${selectedCenter?.city || ''}${selectedCenter?.city && selectedCenter?.province ? ', ' : ''}${selectedCenter?.province || ''}`}
                 </span>
               </div>
             </div>
@@ -1327,15 +1330,22 @@ const AdminCremationCentersPage = React.memo(function AdminCremationCentersPage(
               </div>
               <div className="flex items-center gap-3">
                 <span className="text-sm font-medium text-gray-600 min-w-[100px]">Status:</span>
-                <span className="inline-flex items-center gap-1.5 text-green-600">
-                  <CheckCircleIcon className="h-4 w-4" />
-                  <span className="text-sm font-semibold">Active</span>
-                </span>
+                                 {getStatusBadge(selectedCenter?.status || '', selectedCenter?.verified || false, selectedCenter || undefined)}
               </div>
               <div className="flex items-center gap-3">
-                <span className="text-sm font-medium text-gray-600 min-w-[100px]">Revenue:</span>
-                <span className="text-sm text-gray-900">₱45,000</span>
+                <span className="text-sm font-medium text-gray-600 min-w-[100px]">Owner:</span>
+                <span className="text-sm text-gray-900">{selectedCenter?.owner}</span>
               </div>
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-medium text-gray-600 min-w-[100px]">Registered:</span>
+                <span className="text-sm text-gray-900">{selectedCenter?.registrationDate ? formatDate(selectedCenter.registrationDate) : 'N/A'}</span>
+              </div>
+              {selectedCenter?.rating && (
+                <div className="flex items-center gap-3">
+                  <span className="text-sm font-medium text-gray-600 min-w-[100px]">Rating:</span>
+                  <span className="text-sm text-gray-900">{selectedCenter.rating}/5</span>
+                </div>
+              )}
             </div>
           </div>
         </div>

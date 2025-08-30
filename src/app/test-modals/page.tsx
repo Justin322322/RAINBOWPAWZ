@@ -17,36 +17,35 @@ export default function TestModalsPage() {
 
   // Sample data for Fur Parent
   const sampleFurParent = {
-    first_name: 'Reygn',
-    last_name: 'Tumbaga',
-    user_id: 40,
-    email: 'reygndanielle.espiritu.tumbaga@apcas.ph.education',
+    user_id: 'FP001',
+    first_name: 'Morgan',
+    last_name: 'Smith',
+    email: 'morgan.smith@email.com',
     phone_number: '+63 912 345 6789',
-    address: 'Sta. Rosa, Pilar, Bataan',
-    created_at: '2025-08-30',
-    is_verified: true,
+    address: '123 Pet Street, Quezon City, Metro Manila',
+    created_at: '2024-01-15T10:30:00Z',
+    bio: 'Passionate pet lover with 3 dogs and 2 cats. Always looking for the best care for my furry family members.',
     status: 'active',
-    pets: 0,
-    completedBookings: 0
+    is_verified: true,
+    last_login: '2024-12-29T14:20:00Z'
   };
 
-  // Sample data for Cremation Center
   const sampleCremationCenter = {
-    id: 15,
-    name: 'Rainbow Paws Cremation Center',
-    owner: 'John Smith',
-    email: 'info@rainbowpaws.com',
-    phone: '+63 912 345 6789',
-    address: '123 Main Street, Makati',
-    city: 'Makati',
+    id: 'CC001',
+    name: 'Peaceful Paws Cremation Services',
+    owner: 'Maria Santos',
+    email: 'info@peacefulpaws.com',
+    phone: '+63 923 456 7890',
+    address: '456 Memorial Drive, Makati City, Metro Manila',
+    city: 'Makati City',
     province: 'Metro Manila',
-    registrationDate: '2024-01-15',
-    status: 'active',
-    verified: true,
+    description: 'Professional and compassionate pet cremation services. We understand the deep bond between pets and their families, providing dignified memorial options with care and respect.',
     activeServices: 8,
     totalBookings: 156,
-    revenue: '₱45,230.00',
-    description: 'Professional pet cremation services with compassionate care and dignified memorial options for your beloved pets.'
+    registrationDate: '2023-06-20T09:00:00Z',
+    status: 'active',
+    verified: true,
+    rating: 4.8
   };
 
   return (
@@ -116,7 +115,7 @@ export default function TestModalsPage() {
               <h1 className="text-2xl font-bold text-white tracking-tight text-center">
                 {sampleFurParent.first_name} {sampleFurParent.last_name}
               </h1>
-              <p className="text-green-100 text-sm mt-1 text-center">Ant Collector</p>
+              <p className="text-green-100 text-sm mt-1 text-center">Fur Parent</p>
             </div>
           </div>
 
@@ -125,20 +124,13 @@ export default function TestModalsPage() {
             {/* Stats Row */}
             <div className="flex justify-center space-x-12">
               <div className="text-center">
-                <div className="text-2xl font-bold text-green-600">12</div>
-                <div className="text-sm text-gray-600">Followers</div>
+                <div className="text-2xl font-bold text-green-600">5</div>
+                <div className="text-sm text-gray-600">Pets</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-green-600">1000</div>
-                <div className="text-sm text-gray-600">Following</div>
+                <div className="text-2xl font-bold text-green-600">12</div>
+                <div className="text-sm text-gray-600">Bookings</div>
               </div>
-            </div>
-
-            {/* Follow Button */}
-            <div className="text-center">
-              <button className="px-6 py-2 bg-yellow-400 text-black font-semibold rounded-lg hover:bg-yellow-500 transition-colors">
-                Follow
-              </button>
             </div>
 
             {/* Separator */}
@@ -147,7 +139,7 @@ export default function TestModalsPage() {
             {/* About Section */}
             <div>
               <p className="text-gray-700 leading-relaxed">
-                Morgan has collected ants since they were six years old and now has many dozen ants but none in their pants.
+                {sampleFurParent.bio}
               </p>
             </div>
 
@@ -236,13 +228,6 @@ export default function TestModalsPage() {
               </div>
             </div>
 
-            {/* Action Button */}
-            <div className="text-center">
-              <button className="px-6 py-2 bg-yellow-400 text-black font-semibold rounded-lg hover:bg-yellow-500 transition-colors">
-                Contact
-              </button>
-            </div>
-
             {/* Separator */}
             <div className="border-t border-gray-200"></div>
 
@@ -291,8 +276,8 @@ export default function TestModalsPage() {
                 </span>
               </div>
               <div className="flex items-center gap-3">
-                <span className="text-sm font-medium text-gray-600 min-w-[100px]">Revenue:</span>
-                <span className="text-sm text-gray-900">{sampleCremationCenter.revenue}</span>
+                <span className="text-sm font-medium text-gray-600 min-w-[100px]">Rating:</span>
+                <span className="text-sm text-gray-900">{sampleCremationCenter.rating}/5</span>
               </div>
             </div>
           </div>

@@ -47,6 +47,9 @@ interface User {
     restriction_date: string;
   };
   appeals?: Appeal[];
+  bio?: string;
+  last_login?: string;
+  verified?: boolean;
 }
 
 interface Appeal {
@@ -81,7 +84,7 @@ const AdminFurParentsPage = React.memo(function AdminFurParentsPage() {
   const [showAppealModal, setShowAppealModal] = useState(false);
   const [selectedAppeal, setSelectedAppeal] = useState<Appeal | null>(null);
   const [appealResponse, setAppealResponse] = useState('');
-  const [avatarError, setAvatarError] = useState(false);
+
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { showToast } = useToast();
   const [pagination, setPagination] = useState({
@@ -223,10 +226,7 @@ const AdminFurParentsPage = React.memo(function AdminFurParentsPage() {
     }
   }, [users]); // handleViewDetails will be added after its definition
 
-  // Reset avatar error when selectedUser profile picture changes
-  useEffect(() => {
-    setAvatarError(false);
-  }, [selectedUser?.profile_picture]);
+
 
   // Filter users based on search term and status (memoized for performance)
   const filteredUsers = useMemo(() => {
@@ -506,7 +506,7 @@ const AdminFurParentsPage = React.memo(function AdminFurParentsPage() {
   };
 
   // Get status badge based on user status
-  const getStatusBadge = (status: UserStatus) => {
+  const getStatusBadge = (status: UserStatus, _isVerified: boolean) => {
     switch (status) {
       case 'active':
         return (
@@ -875,7 +875,7 @@ const AdminFurParentsPage = React.memo(function AdminFurParentsPage() {
                               <h3 className="text-sm font-medium text-gray-900 truncate">
                                 {user.first_name} {user.last_name}
                               </h3>
-                              {getStatusBadge(user.status)}
+                              {getStatusBadge(user.status, user.is_verified)}
                               {user.appeals && user.appeals.some(appeal => appeal.status === 'pending') && (
                                 <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
                                   Appeal Pending
@@ -1009,7 +1009,7 @@ const AdminFurParentsPage = React.memo(function AdminFurParentsPage() {
                         </td>
                         <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center space-x-2">
-                            {getStatusBadge(user.status)}
+                            {getStatusBadge(user.status, user.is_verified)}
                             {user.appeals && user.appeals.some(appeal => appeal.status === 'pending') && (
                               <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
                                 Appeal
@@ -1182,7 +1182,7 @@ const AdminFurParentsPage = React.memo(function AdminFurParentsPage() {
         icon={<CheckCircleIcon className="h-6 w-6 text-green-600" />}
       />
 
-      {/* User Details Modal */}
+      {/* Fur Parent Details Modal */}
       <Modal
         isOpen={showDetailsModal}
         onClose={() => setShowDetailsModal(false)}
@@ -1196,24 +1196,17 @@ const AdminFurParentsPage = React.memo(function AdminFurParentsPage() {
           <div className="relative bg-green-800 px-6 py-4 rounded-t-xl">
             <div className="absolute -top-12 left-1/2 transform -translate-x-1/2 z-10">
               <div className="h-24 w-24 rounded-full ring-4 ring-white ring-offset-4 overflow-hidden bg-white flex-shrink-0 shadow-lg">
-                {selectedUser?.profile_picture && !avatarError ? (
+                {selectedUser?.profile_picture ? (
                   <Image
                     src={getProfilePictureUrl(selectedUser.profile_picture)}
                     alt={`${selectedUser?.first_name} ${selectedUser?.last_name}`}
                     width={96}
                     height={96}
                     className="h-full w-full object-cover"
-                    onError={() => setAvatarError(true)}
                   />
                 ) : (
                   <div className="h-full w-full flex items-center justify-center bg-gray-100">
-                    {avatarError ? (
-                      <svg className="h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                      </svg>
-                    ) : (
-                      <UserCircleIcon className="h-12 w-12 text-gray-400" />
-                    )}
+                    <UserCircleIcon className="h-12 w-12 text-gray-400" />
                   </div>
                 )}
               </div>
@@ -1231,20 +1224,13 @@ const AdminFurParentsPage = React.memo(function AdminFurParentsPage() {
             {/* Stats Row */}
             <div className="flex justify-center space-x-12">
               <div className="text-center">
-                <div className="text-2xl font-bold text-green-600">12</div>
-                <div className="text-sm text-gray-600">Followers</div>
+                <div className="text-2xl font-bold text-green-600">-</div>
+                <div className="text-sm text-gray-600">Pets</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-green-600">1000</div>
-                <div className="text-sm text-gray-600">Following</div>
+                <div className="text-2xl font-bold text-green-600">-</div>
+                <div className="text-sm text-gray-600">Bookings</div>
               </div>
-            </div>
-
-            {/* Follow Button */}
-            <div className="text-center">
-              <button className="px-6 py-2 bg-yellow-400 text-black font-semibold rounded-lg hover:bg-yellow-500 transition-colors">
-                Follow
-              </button>
             </div>
 
             {/* Separator */}
@@ -1253,7 +1239,7 @@ const AdminFurParentsPage = React.memo(function AdminFurParentsPage() {
             {/* About Section */}
             <div>
               <p className="text-gray-700 leading-relaxed">
-                Morgan has collected ants since they were six years old and now has many dozen ants but none in their pants.
+                {selectedUser?.bio || 'No bio available for this user.'}
               </p>
             </div>
 
@@ -1268,11 +1254,11 @@ const AdminFurParentsPage = React.memo(function AdminFurParentsPage() {
               </div>
               <div className="flex items-center gap-3">
                 <PhoneIcon className="h-5 w-5 text-green-600" />
-                <span className="text-sm text-gray-700">{selectedUser?.phone_number}</span>
+                <span className="text-sm text-gray-700">{selectedUser?.phone_number || 'No phone number'}</span>
               </div>
               <div className="flex items-center gap-3">
                 <MapPinIcon className="h-5 w-5 text-green-600" />
-                <span className="text-sm text-gray-700">{selectedUser?.address}</span>
+                <span className="text-sm text-gray-700">{selectedUser?.address || 'No address provided'}</span>
               </div>
             </div>
 
@@ -1287,15 +1273,18 @@ const AdminFurParentsPage = React.memo(function AdminFurParentsPage() {
               </div>
               <div className="flex items-center gap-3">
                 <span className="text-sm font-medium text-gray-600 min-w-[100px]">Status:</span>
-                <span className="inline-flex items-center gap-1.5 text-green-600">
-                  <CheckCircleIcon className="h-4 w-4" />
-                  <span className="text-sm font-semibold">Active</span>
-                </span>
+                                 {getStatusBadge(selectedUser?.status || 'inactive', selectedUser?.is_verified || false)}
               </div>
               <div className="flex items-center gap-3">
                 <span className="text-sm font-medium text-gray-600 min-w-[100px]">Joined:</span>
-                <span className="text-sm text-gray-900">{selectedUser?.created_at}</span>
+                <span className="text-sm text-gray-900">{selectedUser?.created_at ? formatDate(selectedUser.created_at) : 'N/A'}</span>
               </div>
+              {selectedUser?.last_login && (
+                <div className="flex items-center gap-3">
+                  <span className="text-sm font-medium text-gray-600 min-w-[100px]">Last Login:</span>
+                  <span className="text-sm text-gray-900">{formatDate(selectedUser.last_login)}</span>
+                </div>
+              )}
             </div>
           </div>
         </div>
