@@ -664,13 +664,13 @@ const AdminFurParentsPage = React.memo(function AdminFurParentsPage() {
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)] sm:text-sm appearance-none"
+                className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)] sm:text-sm appearance-none"
               >
-                <option value="all">All Statuses</option>
-                <option value="active">Active</option>
-                <option value="restricted">Restricted</option>
-                <option value="suspended">Suspended</option>
-                <option value="inactive">Inactive</option>
+                <option value="all" className="text-gray-900">All Statuses</option>
+                <option value="active" className="text-gray-900">Active</option>
+                <option value="restricted" className="text-gray-900">Restricted</option>
+                <option value="suspended" className="text-gray-900">Suspended</option>
+                <option value="inactive" className="text-gray-900">Inactive</option>
               </select>
               <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
                 <svg className="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
