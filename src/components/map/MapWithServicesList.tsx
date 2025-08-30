@@ -228,7 +228,7 @@ export default function MapWithServicesList({
       </div>
 
       {/* Main Content */}
-      <div className="flex flex-col lg:flex-row gap-6 min-h-[600px]">
+      <div className="flex flex-col lg:flex-row gap-6">
         {/* Services List - Left Side on Desktop */}
         <AnimatePresence>
           {showServices && (
@@ -239,7 +239,7 @@ export default function MapWithServicesList({
               transition={{ duration: 0.2 }}
               className="lg:w-1/4 xl:w-1/3"
             >
-              <div className="bg-white rounded-lg shadow-md border border-gray-200 h-full">
+              <div className="bg-white rounded-lg shadow-md border border-gray-200">
                 <div className="p-4 border-b border-gray-200">
                   <h3 className="text-lg font-semibold text-gray-900">
                     Service Providers
@@ -254,7 +254,7 @@ export default function MapWithServicesList({
                   )}
                 </div>
 
-                <div className="p-4 h-full overflow-y-auto max-h-[550px]">
+                <div className="p-4 overflow-y-auto">
                   {providersForPagination.length === 0 ? (
                     <div className="text-center py-12">
                       <MapPinIcon className="h-12 w-12 mx-auto text-gray-300 mb-4" />
@@ -367,7 +367,7 @@ export default function MapWithServicesList({
 
         {/* Map - Right Side on Desktop */}
         <div className="lg:w-3/4 xl:w-2/3">
-          <div className="bg-white rounded-lg shadow-md border border-gray-200 h-full">
+          <div className="bg-white rounded-lg shadow-md border border-gray-200">
             <div className="p-4 border-b border-gray-200">
               <h3 className="text-lg font-semibold text-gray-900">Map View</h3>
               {userLocation ? (
