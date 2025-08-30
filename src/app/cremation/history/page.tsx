@@ -456,7 +456,7 @@ function CremationHistoryPage({ userData }: { userData: any }) {
               onChange={(e) => setStatusFilter(e.target.value)}
               className="block w-full pl-3 pr-10 py-2 border border-gray-300 rounded-md leading-5 bg-white focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)] sm:text-sm"
             >
-              <option value="all">All Statuses</option>
+              <option value="all">All Statuses </option>
               <option value="completed">Completed</option>
               <option value="cancelled">Cancelled</option>
               <option value="in_progress">In Progress</option>

@@ -664,7 +664,7 @@ const AdminFurParentsPage = React.memo(function AdminFurParentsPage() {
                 onChange={(e) => setStatusFilter(e.target.value)}
                 className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)] sm:text-sm appearance-none"
               >
-                <option value="all">All Statuses</option>
+                <option value="all">All Statuses </option>
                 <option value="active">Active</option>
                 <option value="restricted">Restricted</option>
                 <option value="suspended">Suspended</option>
