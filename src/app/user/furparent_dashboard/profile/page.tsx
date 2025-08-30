@@ -43,6 +43,11 @@ function ProfilePage({ userData: initialUserData }: ProfilePageProps) {
   const [showSkeleton, setShowSkeleton] = useState(!initialUserData); // Don't show skeleton if we have initial data
   const [initialLoading, setInitialLoading] = useState(!initialUserData); // Don't show initial loading if we have data
 
+  // Track if we've already initialized to prevent multiple renders
+  const [hasInitialized, setHasInitialized] = useState(false);
+
+  console.log('🔄 [Profile] Initialization state - hasInitialized:', hasInitialized, 'userData:', !!userData);
+
   // Edit mode states
   const [isEditingPersonal, setIsEditingPersonal] = useState(false);
   const [isEditingContact, setIsEditingContact] = useState(false);
@@ -72,26 +77,33 @@ function ProfilePage({ userData: initialUserData }: ProfilePageProps) {
   // Geolocation states
   const [isGettingLocation, setIsGettingLocation] = useState(false);
 
-  // Update local userData when prop changes
+  // Update local userData when prop changes - only run once
   useEffect(() => {
+    if (hasInitialized) {
+      console.log('🔄 [Profile] Already initialized, skipping');
+      return;
+    }
+
     if (initialUserData) {
       console.log('📥 [Profile] Received initial user data:', initialUserData);
       setUserData(initialUserData);
       setInitialLoading(false);
+      setHasInitialized(true);
       return; // Early return when we have data
     }
 
-    console.log('⚠️ [Profile] No initial user data received');
+    console.log('⚠️ [Profile] No initial user data received, waiting...');
     // If no initial data, wait a bit and then start the loading timeout
     const timeout = setTimeout(() => {
       if (!userData) {
         console.log('⏰ [Profile] No user data after timeout, showing skeleton');
         setInitialLoading(false);
+        setHasInitialized(true);
       }
     }, 1000); // Wait 1 second for user data to load
 
     return () => clearTimeout(timeout);
-  }, [initialUserData, userData]);
+  }, [initialUserData, userData, hasInitialized]);
 
   // Listen for user data updates from profile changes
   useEffect(() => {

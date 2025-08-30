@@ -357,6 +357,7 @@ const withUserAuth = <P extends object>(
         />
 
         {/* Render the component with blur effect if OTP verification is required */}
+        {console.log('🔐 [withUserAuth] Rendering component with userData:', userData)}
         <div
           className={userData.is_otp_verified === 0 && showOTPModal ? 'filter blur-sm pointer-events-none' : ''}
           style={{ position: 'relative', minHeight: '100vh' }}

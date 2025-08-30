@@ -9,7 +9,6 @@ interface FurParentDashboardLayoutProps {
   children: React.ReactNode;
   activePage?: string;
   userName?: string;
-  userData?: UserData;
 }
 
 function FurParentDashboardLayout({
@@ -21,6 +20,8 @@ function FurParentDashboardLayout({
   const pathname = usePathname();
   const [activePage, setActivePage] = useState('');
   const [currentUserData, setCurrentUserData] = useState<UserData | undefined>(userData);
+
+  console.log('🏗️ [Layout] FurParentDashboardLayout rendered with userData:', userData);
 
   // Listen for user data updates
   useEffect(() => {
