@@ -114,7 +114,9 @@ const withUserAuth = <P extends object>(
 
       // Fast check first to prevent flashing
       const fastCheck = fastAuthCheck();
+      console.log('🔐 [withUserAuth] Fast check result:', fastCheck);
       if (fastCheck.authenticated && fastCheck.accountType === 'user' && fastCheck.userData) {
+        console.log('🔐 [withUserAuth] Using fast check user data');
         setUserData(fastCheck.userData);
         setIsAuthenticated(true);
         globalUserAuthState = {
@@ -135,9 +137,11 @@ const withUserAuth = <P extends object>(
 
       // Check cached user data
       const cachedUserData = sessionStorage.getItem('user_data');
+      console.log('🔐 [withUserAuth] Checking cached user data:', !!cachedUserData);
       if (cachedUserData) {
         try {
           const parsedData = JSON.parse(cachedUserData);
+          console.log('🔐 [withUserAuth] Using cached user data:', parsedData);
           setUserData(parsedData);
           setIsAuthenticated(true);
           globalUserAuthState = {
@@ -161,6 +165,7 @@ const withUserAuth = <P extends object>(
 
       // Perform secure auth check
       const checkAuth = async () => {
+        console.log('🔐 [withUserAuth] Starting secure auth check...');
         try {
           // Use the user-specific API check that includes full user data
           const response = await fetch('/api/auth/check-user-status', {
@@ -171,6 +176,8 @@ const withUserAuth = <P extends object>(
               'Cache-Control': 'no-cache'
             },
           });
+
+          console.log('🔐 [withUserAuth] Auth API response status:', response.status);
 
           if (!response.ok) {
             if (response.status === 401 || response.status === 403) {
@@ -185,8 +192,10 @@ const withUserAuth = <P extends object>(
           }
 
           const result = await response.json();
+          console.log('🔐 [withUserAuth] Auth check result:', result);
 
           if (!result.success || !result.user) {
+            console.log('🔐 [withUserAuth] Auth check failed - success:', result.success, 'user exists:', !!result.user);
             // Don't redirect if user is currently logging out
             const isLoggingOut = sessionStorage.getItem('is_logging_out') === 'true';
             if (!isLoggingOut) {
@@ -196,6 +205,7 @@ const withUserAuth = <P extends object>(
           }
 
           const fetchedUserData = result.user;
+          console.log('🔐 [withUserAuth] Fetched user data:', fetchedUserData);
 
           // Ensure the user is a fur parent
           if (fetchedUserData.user_type !== 'user' && fetchedUserData.role !== 'fur_parent') {
