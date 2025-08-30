@@ -237,7 +237,7 @@ export default function MapWithServicesList({
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
               transition={{ duration: 0.2 }}
-              className="lg:w-1/4 xl:w-1/3"
+              className="lg:w-1/4 xl:w-1/3 lg:self-start"
             >
               <div className="bg-white rounded-lg shadow-md border border-gray-200">
                 <div className="p-4 border-b border-gray-200">
@@ -254,9 +254,9 @@ export default function MapWithServicesList({
                   )}
                 </div>
 
-                <div className="p-4 overflow-y-auto">
+                <div className="p-4">
                   {providersForPagination.length === 0 ? (
-                    <div className="text-center py-12">
+                    <div className="text-center py-8">
                       <MapPinIcon className="h-12 w-12 mx-auto text-gray-300 mb-4" />
                       <h4 className="text-lg font-medium text-gray-700 mb-2">
                         {serviceProviders.length === 0 ? 'No service providers found' : 'No providers match your filters'}
@@ -271,11 +271,11 @@ export default function MapWithServicesList({
                   ) : (
                     <>
                       {/* Provider Cards */}
-                      <div className="space-y-4">
+                      <div className="space-y-3">
                         {currentProviders.map(provider => (
                           <div
                             key={provider.id}
-                            className={`border rounded-lg p-4 transition-all duration-200 hover:shadow-md ${
+                            className={`border rounded-lg p-3 transition-all duration-200 hover:shadow-md ${
                               selectedProviderId === provider.id 
                                 ? 'border-[var(--primary-green)] bg-green-50' 
                                 : 'border-gray-200 hover:border-gray-300'
@@ -293,7 +293,7 @@ export default function MapWithServicesList({
                               <span className="line-clamp-2">{provider.address?.replace(', Philippines', '')}</span>
                             </p>
                             
-                            <div className="flex justify-between items-center mb-3">
+                            <div className="flex justify-between items-center mb-2">
                               <span className="text-sm text-[var(--primary-green)] font-medium">
                                 {provider.distance}
                               </span>
@@ -323,7 +323,7 @@ export default function MapWithServicesList({
 
                       {/* Pagination */}
                       {totalPages > 1 && (
-                        <div className="flex justify-center mt-6 pt-4 border-t border-gray-200">
+                        <div className="flex justify-center mt-4 pt-3 border-t border-gray-200">
                           <nav className="flex items-center space-x-2">
                             <button
                               onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
@@ -385,7 +385,7 @@ export default function MapWithServicesList({
             </div>
 
             <div className="p-4">
-              <div className="w-full h-[600px] rounded-lg overflow-hidden">
+              <div className="w-full h-[500px] rounded-lg overflow-hidden">
                 {serviceProviders.length === 0 || !userLocation ? (
                   <div className="w-full h-full flex items-center justify-center bg-gray-100 rounded-lg text-center p-8">
                     <div>
