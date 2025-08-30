@@ -152,6 +152,35 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
     setIsLoading(true);
     setErrorMessage('');
 
+    // Validate required fields
+    const missingFields = [];
+
+    if (!formData.firstName.trim()) missingFields.push('First Name');
+    if (!formData.lastName.trim()) missingFields.push('Last Name');
+    if (!formData.email.trim()) missingFields.push('Email Address');
+    if (!formData.businessName.trim()) missingFields.push('Business Name');
+    if (!formData.businessAddress.trim()) missingFields.push('Business Address');
+    if (!formData.businessPhone.trim()) missingFields.push('Business Phone');
+    if (!formData.businessEmail.trim()) missingFields.push('Business Email');
+    if (!formData.businessEntityType) missingFields.push('Business Entity Type');
+    if (!formData.password) missingFields.push('Password');
+    if (!formData.confirmPassword) missingFields.push('Confirm Password');
+    if (!formData.agreeToTerms) missingFields.push('Terms and Conditions');
+
+    if (missingFields.length > 0) {
+      showError(`Please fill in the following required fields: ${missingFields.join(', ')}`);
+      setIsLoading(false);
+      return;
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email.trim()) || !emailRegex.test(formData.businessEmail.trim())) {
+      showError('Please enter valid email addresses');
+      setIsLoading(false);
+      return;
+    }
+
     // Check if passwords match
     if (formData.password !== formData.confirmPassword) {
       showToast('Passwords do not match', 'error');
@@ -167,64 +196,12 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
     }
 
     try {
-      // Create FormData object for file uploads
-      const _formDataObj = new FormData();
+      // Upload documents to temporary storage first (before registration)
+      let uploadedDocumentUrls = null;
 
-      // Add all the form fields
-      const textData = {
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        email: formData.email,
-        sex: formData.sex,
-        password: formData.password,
-        businessName: formData.businessName,
-        businessType: 'cremation', // Set fixed business type for cremation centers
-        businessEntityType: formData.businessEntityType, // Include business entity type
-        businessPhone: formData.businessPhone,
-        businessAddress: formData.businessAddress,
-        businessHours: formData.businessHours || null,
-        serviceDescription: formData.businessDescription || null,
-        account_type: 'business' as const
-      };
-
-      // Log the data being sent for debugging
-
-      // First, try sending the registration data without files
-      const regResponse = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(textData),
-      });
-
-      // Log the response for debugging
-
-      const regData = await regResponse.json();
-
-      if (!regResponse.ok) {
-        // Handle specific error cases with modal overlay
-        if (regData.error === 'Email already exists') {
-          showError('This email is already registered. Please use a different email or try logging in.');
-        } else {
-          showError(regData.error || regData.message || 'Registration failed. Please try again.');
-        }
-        setIsLoading(false);
-        return;
-      }
-
-      // Now upload the documents if registration was successful
       const hasDocuments = formData.birCertificate || formData.businessPermit || formData.governmentId;
 
       if (hasDocuments) {
-        // Validate that files are actually selected
-        const selectedFiles = [];
-        if (formData.businessPermit) selectedFiles.push('Business Permit');
-        if (formData.birCertificate) selectedFiles.push('BIR Certificate');
-        if (formData.governmentId) selectedFiles.push('Government ID');
-
-        console.log('Attempting to upload documents:', selectedFiles);
-
         // Validate file types and sizes before upload
         const maxSize = 10 * 1024 * 1024; // 10MB
         const allowedTypes = [
@@ -265,90 +242,94 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
         }
 
         if (fileValidationErrors.length > 0) {
-          showToast(`Registration successful, but document validation failed: ${fileValidationErrors.join(', ')}. You can upload documents later in your profile.`, 'error');
+          showError(`Document validation failed: ${fileValidationErrors.join(', ')}`);
+          setIsLoading(false);
           return;
         }
 
-         try {
-           // Wait a short moment to ensure database consistency
-           await new Promise(resolve => setTimeout(resolve, 1000));
+        try {
+          // Upload documents to temporary storage (no authentication required)
+          const tempDocFormData = new FormData();
 
-           // Create FormData for documents upload
-           const docFormData = new FormData();
+          if (formData.businessPermit) {
+            tempDocFormData.append('businessPermit', formData.businessPermit);
+          }
+          if (formData.birCertificate) {
+            tempDocFormData.append('birCertificate', formData.birCertificate);
+          }
+          if (formData.governmentId) {
+            tempDocFormData.append('governmentId', formData.governmentId);
+          }
 
-           // Add the user ID from the registration response
-           docFormData.append('userId', regData.userId);
+          const tempUploadResponse = await fetch('/api/businesses/upload-documents-temp', {
+            method: 'POST',
+            body: tempDocFormData
+          });
 
-           // Add service provider ID if available
-           if (regData.serviceProviderId) {
-             docFormData.append('serviceProviderId', regData.serviceProviderId);
-           }
+          if (!tempUploadResponse.ok) {
+            const tempData = await tempUploadResponse.json();
+            showError(`Document upload failed: ${tempData.error || 'Unknown error'}`);
+            setIsLoading(false);
+            return;
+          }
 
-           // Add files if they exist
-           if (formData.businessPermit) {
-             docFormData.append('businessPermit', formData.businessPermit);
-           }
+          uploadedDocumentUrls = await tempUploadResponse.json();
+          console.log('Documents uploaded to temporary storage:', uploadedDocumentUrls);
 
-           if (formData.birCertificate) {
-             docFormData.append('birCertificate', formData.birCertificate);
-           }
+        } catch (tempError) {
+          console.error('Temporary document upload error:', tempError);
+          showError('Failed to upload documents. Please try again.');
+          setIsLoading(false);
+          return;
+        }
+      }
 
-           if (formData.governmentId) {
-             docFormData.append('governmentId', formData.governmentId);
-           }
+      // Now proceed with registration including document URLs
+      const textData = {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        sex: formData.sex,
+        password: formData.password,
+        businessName: formData.businessName,
+        businessType: 'cremation',
+        businessEntityType: formData.businessEntityType,
+        businessPhone: formData.businessPhone,
+        businessAddress: formData.businessAddress,
+        businessHours: formData.businessHours || null,
+        serviceDescription: formData.businessDescription || null,
+        account_type: 'business' as const,
+        // Include uploaded document URLs
+        ...(uploadedDocumentUrls && { documentUrls: uploadedDocumentUrls })
+      };
 
-           // Send the document upload request (cookies will be sent automatically)
-           console.log('Uploading documents with FormData:', {
-             userId: regData.userId,
-             serviceProviderId: regData.serviceProviderId || 'none',
-             files: {
-               businessPermit: formData.businessPermit ? `${formData.businessPermit.name} (${formData.businessPermit.size} bytes, ${formData.businessPermit.type})` : 'none',
-               birCertificate: formData.birCertificate ? `${formData.birCertificate.name} (${formData.birCertificate.size} bytes, ${formData.birCertificate.type})` : 'none',
-               governmentId: formData.governmentId ? `${formData.governmentId.name} (${formData.governmentId.size} bytes, ${formData.governmentId.type})` : 'none'
-             }
-           });
+      console.log('Submitting registration with documents:', textData);
 
-           const docResponse = await fetch('/api/businesses/upload-documents', {
-             method: 'POST',
-             body: docFormData,
-             credentials: 'include' // Ensure cookies are sent
-           });
+      // Register the user with document information
+      const regResponse = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(textData),
+      });
 
-           const docData = await docResponse.json();
+      const regData = await regResponse.json();
 
-           if (!docResponse.ok) {
-             console.error('Document upload failed:', docData);
-             const errorDetails = docData.details ? ` (${docData.details})` : '';
-             const errorMessage = docData.error || 'Unknown error';
+      if (!regResponse.ok) {
+        // Handle specific error cases with modal overlay
+        if (regData.error === 'Email already exists') {
+          showError('This email is already registered. Please use a different email or try logging in.');
+        } else {
+          showError(regData.error || regData.message || 'Registration failed. Please try again.');
+        }
+        setIsLoading(false);
+        return;
+      }
 
-             // Show specific error message
-             showToast(`Registration successful, but document upload failed: ${errorMessage}${errorDetails}. You can upload documents later in your profile.`, 'error');
-
-             // Log more details for debugging
-             console.error('Document upload response:', {
-               status: docResponse.status,
-               statusText: docResponse.statusText,
-               data: docData,
-               files: {
-                 businessPermit: formData.businessPermit ? `${formData.businessPermit.name} (${formData.businessPermit.size} bytes)` : 'none',
-                 birCertificate: formData.birCertificate ? `${formData.birCertificate.name} (${formData.birCertificate.size} bytes)` : 'none',
-                 governmentId: formData.governmentId ? `${formData.governmentId.name} (${formData.governmentId.size} bytes)` : 'none'
-               }
-             });
-           } else {
-             if (docData.warnings && docData.warnings.length > 0) {
-               showToast(`Registration successful! Some documents had issues: ${docData.warnings.join(', ')}`, 'warning');
-             } else {
-               showToast('Registration and document upload successful!', 'success');
-             }
-           }
-         } catch (docError) {
-           console.error('Document upload error:', docError);
-           const errorMessage = docError instanceof Error ? docError.message : 'Unknown error occurred';
-
-           // Show specific error message
-           showToast(`Registration successful, but document upload failed: ${errorMessage}. You can upload documents later in your profile.`, 'error');
-         }
+      // Success!
+      if (hasDocuments) {
+        showToast('Registration and document upload successful!', 'success');
       } else {
         showToast('Registration successful!', 'success');
       }

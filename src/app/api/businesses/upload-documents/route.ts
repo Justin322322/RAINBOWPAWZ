@@ -11,13 +11,12 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
 export async function POST(request: NextRequest) {
   try {
-    // Require secure authentication for all uploads; ignore any client-supplied userId
-    const contentType = request.headers.get('content-type') || '';
+    // Require secure authentication for all uploads
     const user = await verifySecureAuth(request);
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    
+
     const userId: string = user.userId;
     const accountType: string = user.accountType;
 
@@ -32,19 +31,15 @@ export async function POST(request: NextRequest) {
     // 1) JSON body: client already uploaded to Blob, we just persist URLs
     // 2) multipart/form-data: files are posted here (smaller files only)
 
+    const contentType = request.headers.get('content-type') || '';
     let mode: 'json' | 'form' = contentType.includes('application/json') ? 'json' : 'form';
     let formData: FormData | null = null;
     let jsonBody: any = null;
+
     if (mode === 'form') {
       formData = await request.formData();
     } else {
-      try {
-        jsonBody = await request.json();
-      } catch {
-        // If parsing fails, fallback to form
-        mode = 'form';
-        formData = await request.formData();
-      }
+      jsonBody = await request.json();
     }
 
     // Extract inputs depending on mode

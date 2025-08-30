@@ -299,6 +299,9 @@ export async function POST(request: Request) {
                             address = ?,
                             hours = ?,
                             description = ?,
+                            business_permit_path = ?,
+                            bir_certificate_path = ?,
+                            government_id_path = ?,
                             application_status = ?`;
 
             // Log the values for debugging
@@ -317,6 +320,12 @@ export async function POST(request: Request) {
             // Format business phone number (already validated above)
             const formattedBusinessPhone = formatPhoneNumber(businessData.businessPhone);
 
+            // Extract document URLs if provided
+            const documentUrls = (data as any).documentUrls || {};
+            const businessPermitPath = documentUrls.business_permit_path || null;
+            const birCertificatePath = documentUrls.bir_certificate_path || null;
+            const governmentIdPath = documentUrls.government_id_path || null;
+
             const values = [
               userId,
               businessData.businessName,
@@ -328,6 +337,9 @@ export async function POST(request: Request) {
               businessData.businessAddress,
               businessData.businessHours || null,
               businessData.serviceDescription || null,
+              businessPermitPath,
+              birCertificatePath,
+              governmentIdPath,
               'pending'
             ];
 

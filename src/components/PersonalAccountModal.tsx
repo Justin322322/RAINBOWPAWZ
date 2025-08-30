@@ -129,6 +129,31 @@ const PersonalAccountModal: React.FC<PersonalAccountModalProps> = ({ isOpen, onC
     setErrorMessage('');
     setIsLoading(true);
 
+    // Validate required fields
+    const missingFields = [];
+
+    if (!formData.firstName.trim()) missingFields.push('First Name');
+    if (!formData.lastName.trim()) missingFields.push('Last Name');
+    if (!formData.email.trim()) missingFields.push('Email Address');
+    if (!formData.sex) missingFields.push('Sex');
+    if (!formData.password) missingFields.push('Password');
+    if (!formData.confirmPassword) missingFields.push('Confirm Password');
+    if (!formData.agreeToTerms) missingFields.push('Terms and Conditions');
+
+    if (missingFields.length > 0) {
+      showError(`Please fill in the following required fields: ${missingFields.join(', ')}`);
+      setIsLoading(false);
+      return;
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email.trim())) {
+      showError('Please enter a valid email address');
+      setIsLoading(false);
+      return;
+    }
+
     if (formData.password !== formData.confirmPassword) {
       showToast('Passwords do not match', 'error');
       setIsLoading(false);
