@@ -26,6 +26,7 @@ function FurParentDashboardLayout({
   // Listen for user data updates
   useEffect(() => {
     const handleUserDataUpdate = (event: CustomEvent) => {
+      console.log('🔄 [Layout] Received userDataUpdated event:', event.detail);
       if (event.detail) {
         setCurrentUserData(event.detail);
       }
@@ -38,16 +39,21 @@ function FurParentDashboardLayout({
     };
   }, []);
 
-  // Update current user data when prop changes
+  // Update current user data when prop changes - this is critical for initial data
   useEffect(() => {
     console.log('🔄 [Layout] User data prop changed:', userData);
-    setCurrentUserData(userData);
+    if (userData) {
+      console.log('✅ [Layout] Setting currentUserData from prop:', userData);
+      setCurrentUserData(userData);
+    }
   }, [userData]);
 
   // Use user name from current userData if available
   const displayName = currentUserData?.first_name
     ? `${currentUserData.first_name} ${currentUserData.last_name || ''}`
     : userName;
+
+  console.log('🏗️ [Layout] Current state - currentUserData:', !!currentUserData, 'displayName:', displayName);
 
   // Determine active page based on pathname or prop
   useEffect(() => {
@@ -79,6 +85,7 @@ function FurParentDashboardLayout({
         {/* Clone children and pass currentUserData to them */}
         {React.Children.map(children, (child) => {
           if (React.isValidElement(child)) {
+            console.log('🏗️ [Layout] Cloning child with userData:', currentUserData);
             return React.cloneElement(child, { userData: currentUserData } as any);
           }
           return child;

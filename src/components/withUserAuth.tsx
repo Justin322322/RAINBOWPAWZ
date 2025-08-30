@@ -103,6 +103,7 @@ const withUserAuth = <P extends object>(
 
         // If OTP is not verified, show OTP modal
         if (globalUserAuthState.userData.is_otp_verified === 0 && !otpVerifiedInSession && !hasShownOTPModalRef.current) {
+          console.log('🔐 [withUserAuth] Setting OTP modal to show (global state)');
           hasShownOTPModalRef.current = true;
           setShowOTPModal(true);
         }
@@ -151,7 +152,14 @@ const withUserAuth = <P extends object>(
 
           // Check OTP status
           const otpVerifiedInSession = sessionStorage.getItem('otp_verified') === 'true';
+          console.log('🔐 [withUserAuth] Cached data OTP status:', { 
+            is_otp_verified: parsedData.is_otp_verified, 
+            otpVerifiedInSession, 
+            hasShownOTPModal: hasShownOTPModalRef.current 
+          });
+          
           if (parsedData.is_otp_verified === 0 && !otpVerifiedInSession && !hasShownOTPModalRef.current) {
+            console.log('🔐 [withUserAuth] Setting OTP modal to show (cached data)');
             hasShownOTPModalRef.current = true;
             setShowOTPModal(true);
           } else if (parsedData.is_otp_verified === 1 || otpVerifiedInSession) {
@@ -224,7 +232,14 @@ const withUserAuth = <P extends object>(
 
           // Check OTP status after successful auth
           const otpVerifiedInSession = sessionStorage.getItem('otp_verified') === 'true';
+          console.log('🔐 [withUserAuth] API auth check OTP status:', { 
+            is_otp_verified: fetchedUserData.is_otp_verified, 
+            otpVerifiedInSession, 
+            hasShownOTPModal: hasShownOTPModalRef.current 
+          });
+          
           if (fetchedUserData.is_otp_verified === 0 && !otpVerifiedInSession && !hasShownOTPModalRef.current) {
+            console.log('🔐 [withUserAuth] Setting OTP modal to show (API auth check)');
             hasShownOTPModalRef.current = true;
             setShowOTPModal(true);
           } else if (fetchedUserData.is_otp_verified === 1 || otpVerifiedInSession) {
@@ -246,6 +261,7 @@ const withUserAuth = <P extends object>(
 
     // Handle successful OTP verification
     const handleOTPVerificationSuccess = async () => {
+      console.log('✅ [withUserAuth] OTP verification success handler called');
       if (userData) {
         try {
           // First, refresh user data from server to ensure we have latest verification status
@@ -265,6 +281,8 @@ const withUserAuth = <P extends object>(
                 is_otp_verified: 1 // Ensure it's marked as verified
               };
 
+              console.log('✅ [withUserAuth] Server refresh successful, updating state with:', serverUserData);
+
               // Update all state and storage with server data
               setUserData(serverUserData);
               sessionStorage.setItem('user_data', JSON.stringify(serverUserData));
@@ -277,17 +295,19 @@ const withUserAuth = <P extends object>(
                 userData: serverUserData
               };
 
-              console.log('✅ OTP verification successful - user data refreshed from server');
+              console.log('✅ [withUserAuth] OTP verification successful - user data refreshed from server');
             }
           }
         } catch (error) {
-          console.warn('Failed to refresh user data from server, using local update:', error);
+          console.warn('⚠️ [withUserAuth] Failed to refresh user data from server, using local update:', error);
 
           // Fallback to local update if server refresh fails
           const updatedUserData = {
             ...userData,
             is_otp_verified: 1
           };
+
+          console.log('✅ [withUserAuth] Using local update for OTP verification:', updatedUserData);
 
           setUserData(updatedUserData);
           sessionStorage.setItem('user_data', JSON.stringify(updatedUserData));
@@ -302,6 +322,7 @@ const withUserAuth = <P extends object>(
 
         // Close OTP modal after a brief delay to show success message
         setTimeout(() => {
+          console.log('🔐 [withUserAuth] Closing OTP modal');
           setShowOTPModal(false);
         }, 2000);
 
@@ -335,9 +356,35 @@ const withUserAuth = <P extends object>(
     };
 
     // Show loading screen while authenticating
-    if (!isAuthenticated || !userData) {
+    if (!isAuthenticated || !userData || typeof userData !== 'object') {
+      console.log('🔐 [withUserAuth] Showing loading screen - isAuthenticated:', isAuthenticated, 'userData:', !!userData, 'userData type:', typeof userData);
       return <AuthLoadingScreen />;
     }
+
+    // Additional safety check to ensure userData has required properties
+    if (!userData.id && !userData.user_id) {
+      console.log('🔐 [withUserAuth] User data missing required ID fields:', userData);
+      return <AuthLoadingScreen />;
+    }
+
+    // Check if OTP verification is required and handle accordingly
+    const otpVerifiedInSession = sessionStorage.getItem('otp_verified') === 'true';
+    const needsOTPVerification = userData.is_otp_verified === 0 && !otpVerifiedInSession;
+    
+    console.log('🔐 [withUserAuth] OTP status check:', { 
+      is_otp_verified: userData.is_otp_verified, 
+      otpVerifiedInSession, 
+      needsOTPVerification,
+      showOTPModal 
+    });
+
+    // If OTP verification is needed but modal is not shown, show loading
+    if (needsOTPVerification && !showOTPModal) {
+      console.log('🔐 [withUserAuth] OTP verification needed, showing loading screen');
+      return <AuthLoadingScreen />;
+    }
+
+    console.log('🔐 [withUserAuth] Ready to render component with userData:', userData);
 
     return (
       <>
@@ -349,6 +396,7 @@ const withUserAuth = <P extends object>(
             userEmail={userData.email}
             userId={userData.user_id || userData.id}
             onClose={() => {
+              console.log('🔐 [withUserAuth] OTP modal closed by user');
               // If user closes without verifying, redirect to home (unless logging out)
               const isLoggingOut = sessionStorage.getItem('is_logging_out') === 'true';
               if (!isLoggingOut) {
@@ -357,6 +405,13 @@ const withUserAuth = <P extends object>(
             }}
           />
         )}
+
+        {/* Debug info for OTP modal */}
+        {console.log('🔐 [withUserAuth] OTP modal state:', { 
+          is_otp_verified: userData.is_otp_verified, 
+          showOTPModal, 
+          otpVerifiedInSession: sessionStorage.getItem('otp_verified') === 'true' 
+        })}
 
         {/* Get Started Modal */}
         <GetStartedModal

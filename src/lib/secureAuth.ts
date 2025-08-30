@@ -9,14 +9,18 @@ import { generateToken } from '@/lib/jwt';
 export async function verifySecureAuth(request: NextRequest): Promise<{ userId: string; accountType: string } | null> {
   try {
     const authToken = getAuthTokenFromRequest(request);
+    console.log('🔐 [secureAuth] Auth token found:', !!authToken);
 
     if (!authToken) {
+      console.log('❌ [secureAuth] No auth token found');
       return null;
     }
 
     const authData = await parseAuthToken(authToken);
+    console.log('🔐 [secureAuth] Parsed auth data:', !!authData);
 
     if (!authData) {
+      console.log('❌ [secureAuth] Failed to parse auth token');
       return null;
     }
 
@@ -28,7 +32,10 @@ export async function verifySecureAuth(request: NextRequest): Promise<{ userId: 
         ? (authData as any).userId
         : null;
 
+    console.log('🔐 [secureAuth] Extracted user ID:', extractedUserId);
+
     if (!extractedUserId) {
+      console.log('❌ [secureAuth] No valid user ID found in token');
       return null;
     }
 
@@ -39,16 +46,23 @@ export async function verifySecureAuth(request: NextRequest): Promise<{ userId: 
       typeof accountTypeCandidate === 'string' &&
       (allowedAccountTypes as readonly string[]).includes(accountTypeCandidate);
 
+    console.log('🔐 [secureAuth] Account type validation:', { accountType: accountTypeCandidate, isValid: isValidAccountType });
+
     if (!isValidAccountType) {
+      console.log('❌ [secureAuth] Invalid account type:', accountTypeCandidate);
       return null;
     }
 
-    return {
+    const result = {
       userId: extractedUserId,
       accountType: accountTypeCandidate,
       // Email removed from return type for security - use dedicated API endpoints for user data
     };
-  } catch {
+
+    console.log('✅ [secureAuth] Authentication successful:', result);
+    return result;
+  } catch (error) {
+    console.error('❌ [secureAuth] Error during authentication:', error);
     return null;
   }
 }

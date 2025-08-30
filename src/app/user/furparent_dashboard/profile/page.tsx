@@ -35,6 +35,7 @@ function ProfilePage({ userData: initialUserData }: ProfilePageProps) {
   const { showToast } = useToast();
 
   console.log('📄 [Profile] ProfilePage rendered with initialUserData:', initialUserData);
+  console.log('📄 [Profile] Props received:', { initialUserData: !!initialUserData, type: typeof initialUserData });
 
   // Local userData state that can be updated independently
   const [userData, setUserData] = useState<UserData | undefined>(initialUserData);
@@ -47,6 +48,26 @@ function ProfilePage({ userData: initialUserData }: ProfilePageProps) {
   const [hasInitialized, setHasInitialized] = useState(false);
 
   console.log('🔄 [Profile] Initialization state - hasInitialized:', hasInitialized, 'userData:', !!userData);
+
+  // Try to get user data from session storage if prop is missing
+  useEffect(() => {
+    if (!initialUserData && !userData) {
+      console.log('🔍 [Profile] No user data from props, checking session storage...');
+      try {
+        const cachedUserData = sessionStorage.getItem('user_data');
+        if (cachedUserData) {
+          const parsedData = JSON.parse(cachedUserData);
+          console.log('💾 [Profile] Found user data in session storage:', parsedData);
+          setUserData(parsedData);
+          setInitialLoading(false);
+          setHasInitialized(true);
+          return;
+        }
+      } catch (error) {
+        console.error('❌ [Profile] Error parsing cached user data:', error);
+      }
+    }
+  }, [initialUserData, userData]);
 
   // Edit mode states
   const [isEditingPersonal, setIsEditingPersonal] = useState(false);
@@ -104,6 +125,15 @@ function ProfilePage({ userData: initialUserData }: ProfilePageProps) {
 
     return () => clearTimeout(timeout);
   }, [initialUserData, userData, hasInitialized]);
+
+  // Additional effect to handle prop changes after initialization
+  useEffect(() => {
+    if (initialUserData && initialUserData !== userData) {
+      console.log('🔄 [Profile] Prop changed after initialization, updating userData');
+      setUserData(initialUserData);
+      setInitialLoading(false);
+    }
+  }, [initialUserData, userData]);
 
   // Listen for user data updates from profile changes
   useEffect(() => {
@@ -198,28 +228,47 @@ function ProfilePage({ userData: initialUserData }: ProfilePageProps) {
       clearTimeout(fallbackTimer);
     }
 
-    // If we have userData and initial loading is complete, show skeleton briefly then hide
-    if (!initialLoading && userData) {
-      console.log('⏳ [Profile] Starting skeleton timer');
-      skeletonTimer = setTimeout(() => {
-        console.log('✅ [Profile] Hiding skeleton after timer');
-        setShowSkeleton(false);
-      }, 300); // Reduced from 700ms to 300ms for faster loading
-    }
+    // Hide skeleton with a small delay for smooth transition
+    skeletonTimer = setTimeout(() => {
+      console.log('✅ [Profile] Hiding skeleton - userData available');
+      setShowSkeleton(false);
+    }, 300); // Reduced delay for better responsiveness
 
     return () => {
       if (skeletonTimer) {
-        console.log('🧹 [Profile] Clearing skeleton timer');
         clearTimeout(skeletonTimer);
-      }
-      if (fallbackTimer) {
-        console.log('🧹 [Profile] Clearing fallback timer');
-        clearTimeout(fallbackTimer);
       }
     };
   }, [initialLoading, userData]);
 
+  // Check if OTP verification is needed
+  useEffect(() => {
+    if (userData && userData.is_otp_verified === 0) {
+      const otpVerifiedInSession = sessionStorage.getItem('otp_verified') === 'true';
+      if (!otpVerifiedInSession) {
+        console.log('⚠️ [Profile] OTP verification needed, showing skeleton until verified');
+        setShowSkeleton(true);
+        setInitialLoading(true);
+        return;
+      }
+    }
+  }, [userData]);
 
+  // Don't render content if OTP verification is needed
+  if (userData && userData.is_otp_verified === 0 && sessionStorage.getItem('otp_verified') !== 'true') {
+    console.log('⚠️ [Profile] OTP verification needed, showing skeleton only');
+    return (
+      <div className="min-h-screen bg-gray-50 py-8">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="space-y-6">
+            <SkeletonCard />
+            <SkeletonCard />
+            <SkeletonCard />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Listen for profile picture updates
   useEffect(() => {

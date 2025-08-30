@@ -195,7 +195,7 @@ export const useOTPVerification = ({
     }
     // Return undefined when no cleanup is needed
     return undefined;
-  }, [initialOtpSentKey, userId]); // Include userId to ensure effect runs when user changes
+  }, [initialOtpSentKey, userId, generateOTP]); // Include userId to ensure effect runs when user changes
 
   useEffect(() => {
     const cooldownEndTime = getStoredCooldownEndTime();
