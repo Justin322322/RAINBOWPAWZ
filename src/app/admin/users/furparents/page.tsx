@@ -1265,27 +1265,102 @@ const AdminFurParentsPage = React.memo(function AdminFurParentsPage() {
             {/* Separator */}
             <div className="border-t border-gray-200"></div>
 
-            {/* Account Details */}
-            <div className="space-y-3">
-              <div className="flex items-center gap-3">
-                <span className="text-sm font-medium text-gray-600 min-w-[100px]">ID:</span>
-                <span className="text-sm text-gray-900">{selectedUser?.user_id}</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="text-sm font-medium text-gray-600 min-w-[100px]">Status:</span>
-                                 {getStatusBadge(selectedUser?.status || 'inactive', selectedUser?.is_verified || false)}
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="text-sm font-medium text-gray-600 min-w-[100px]">Joined:</span>
-                <span className="text-sm text-gray-900">{selectedUser?.created_at ? formatDate(selectedUser.created_at) : 'N/A'}</span>
-              </div>
-              {selectedUser?.last_login && (
-                <div className="flex items-center gap-3">
-                  <span className="text-sm font-medium text-gray-600 min-w-[100px]">Last Login:</span>
-                  <span className="text-sm text-gray-900">{formatDate(selectedUser.last_login)}</span>
-                </div>
-              )}
-            </div>
+                         {/* Account Details */}
+             <div className="space-y-3">
+               <div className="flex items-center gap-3">
+                 <span className="text-sm font-medium text-gray-600 min-w-[100px]">ID:</span>
+                 <span className="text-sm text-gray-900">{selectedUser?.user_id}</span>
+               </div>
+               <div className="flex items-center gap-3">
+                 <span className="text-sm font-medium text-gray-600 min-w-[100px]">Status:</span>
+                                  {getStatusBadge(selectedUser?.status || 'inactive', selectedUser?.is_verified || false)}
+               </div>
+               <div className="flex items-center gap-3">
+                 <span className="text-sm font-medium text-gray-600 min-w-[100px]">Joined:</span>
+                 <span className="text-sm text-gray-900">{selectedUser?.created_at ? formatDate(selectedUser.created_at) : 'N/A'}</span>
+               </div>
+               {selectedUser?.last_login && (
+                 <div className="flex items-center gap-3">
+                   <span className="text-sm font-medium text-gray-600 min-w-[100px]">Last Login:</span>
+                   <span className="text-sm text-gray-900">{formatDate(selectedUser.last_login)}</span>
+                 </div>
+               )}
+             </div>
+
+             {/* Restriction Information */}
+             {selectedUser?.restriction && (
+               <>
+                 <div className="border-t border-gray-200"></div>
+                 <div className="space-y-3">
+                   <h3 className="text-sm font-semibold text-gray-900">Restriction Details</h3>
+                   <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                     <div className="flex items-start gap-3">
+                       <ExclamationTriangleIcon className="h-5 w-5 text-red-600 mt-0.5 flex-shrink-0" />
+                       <div className="space-y-2">
+                         <div className="text-sm text-red-800">
+                           <span className="font-medium">Reason:</span> {selectedUser.restriction.reason}
+                         </div>
+                         <div className="text-sm text-red-700">
+                           <span className="font-medium">Restricted on:</span> {formatDate(selectedUser.restriction.restriction_date)}
+                         </div>
+                       </div>
+                     </div>
+                   </div>
+                 </div>
+               </>
+             )}
+
+             {/* Appeals Section */}
+             {selectedUser?.appeals && selectedUser.appeals.length > 0 && (
+               <>
+                 <div className="border-t border-gray-200"></div>
+                 <div className="space-y-3">
+                   <h3 className="text-sm font-semibold text-gray-900">Appeals ({selectedUser.appeals.length})</h3>
+                   <div className="space-y-3">
+                     {selectedUser.appeals.map((appeal) => (
+                       <div key={appeal.appeal_id} className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                         <div className="flex items-start justify-between mb-2">
+                           <h4 className="text-sm font-medium text-gray-900">{appeal.subject}</h4>
+                           <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                             appeal.status === 'pending' ? 'bg-orange-100 text-orange-800' :
+                             appeal.status === 'approved' ? 'bg-green-100 text-green-800' :
+                             appeal.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                             'bg-blue-100 text-blue-800'
+                           }`}>
+                             {appeal.status.replace('_', ' ')}
+                           </span>
+                         </div>
+                         <p className="text-sm text-gray-700 mb-2">{appeal.message}</p>
+                         <div className="text-xs text-gray-500 space-y-1">
+                           <div>Submitted: {formatDate(appeal.submitted_at)}</div>
+                           {appeal.reviewed_at && (
+                             <div>Reviewed: {formatDate(appeal.reviewed_at)}</div>
+                           )}
+                           {appeal.admin_response && (
+                             <div className="mt-2">
+                               <span className="font-medium">Admin Response:</span> {appeal.admin_response}
+                             </div>
+                           )}
+                         </div>
+                         {appeal.status === 'pending' && (
+                           <div className="mt-3 flex gap-2">
+                             <button
+                               onClick={() => {
+                                 setSelectedAppeal(appeal);
+                                 setShowAppealModal(true);
+                               }}
+                               className="px-3 py-1.5 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition-colors"
+                             >
+                               Review Appeal
+                             </button>
+                           </div>
+                         )}
+                       </div>
+                     ))}
+                   </div>
+                 </div>
+               </>
+             )}
           </div>
         </div>
       </Modal>
