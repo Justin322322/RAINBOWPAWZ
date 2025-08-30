@@ -204,6 +204,17 @@ function ProfilePage({ userData: initialUserData }: ProfilePageProps) {
     let skeletonTimer: NodeJS.Timeout | null = null;
     let fallbackTimer: NodeJS.Timeout | null = null;
 
+    // Check if OTP verification is needed
+    if (userData && userData.is_otp_verified === 0) {
+      const otpVerifiedInSession = sessionStorage.getItem('otp_verified') === 'true';
+      if (!otpVerifiedInSession) {
+        console.log('⚠️ [Profile] OTP verification needed, showing skeleton until verified');
+        setShowSkeleton(true);
+        setInitialLoading(true);
+        return;
+      }
+    }
+
     // Show skeleton if we're still loading or don't have userData
     if (initialLoading || !userData) {
       setShowSkeleton(true);
@@ -240,19 +251,6 @@ function ProfilePage({ userData: initialUserData }: ProfilePageProps) {
       }
     };
   }, [initialLoading, userData]);
-
-  // Check if OTP verification is needed
-  useEffect(() => {
-    if (userData && userData.is_otp_verified === 0) {
-      const otpVerifiedInSession = sessionStorage.getItem('otp_verified') === 'true';
-      if (!otpVerifiedInSession) {
-        console.log('⚠️ [Profile] OTP verification needed, showing skeleton until verified');
-        setShowSkeleton(true);
-        setInitialLoading(true);
-        return;
-      }
-    }
-  }, [userData]);
 
   // Don't render content if OTP verification is needed
   if (userData && userData.is_otp_verified === 0 && sessionStorage.getItem('otp_verified') !== 'true') {
