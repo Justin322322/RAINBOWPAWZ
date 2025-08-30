@@ -77,7 +77,6 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
   const [allBookings, setAllBookings] = useState<BookingData[]>([]);
   const [isCheckingDb, setIsCheckingDb] = useState(false);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
-  const [successBookingId, setSuccessBookingId] = useState<string | null>(null);
 
   // Debug userData and track loading state
   const [userDataLoaded, setUserDataLoaded] = useState(false);
@@ -114,7 +113,6 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
 
     if (success === 'true' && bookingId) {
       setShowSuccessMessage(true);
-      setSuccessBookingId(bookingId);
 
       // Clear the URL parameters after a delay
       setTimeout(() => {

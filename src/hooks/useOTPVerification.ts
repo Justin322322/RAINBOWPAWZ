@@ -128,8 +128,7 @@ export const useOTPVerification = ({
         }, 100);
       }
     }
-    // Only include stable dependencies - the function handles current state internally
-  }, [generateOTPRequestBody, setStoredCooldownEndTime, initialOtpSentKey]);
+  }, [generateOTPRequestBody, setStoredCooldownEndTime, initialOtpSentKey, isGeneratingInitial, isResending, resendCooldown]);
 
   const verifyOTP = useCallback(async () => {
     const otpString = otp.join('');
@@ -206,7 +205,7 @@ export const useOTPVerification = ({
         setResendCooldown(remainingTime);
       }
     }
-  }, [getStoredCooldownEndTime]);
+  }, [getStoredCooldownEndTime, generateOTP]);
 
   useEffect(() => {
     if (resendCooldown > 0) {
