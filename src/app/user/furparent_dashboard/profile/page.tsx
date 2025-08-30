@@ -252,22 +252,6 @@ function ProfilePage({ userData: initialUserData }: ProfilePageProps) {
     };
   }, [initialLoading, userData]);
 
-  // Don't render content if OTP verification is needed
-  if (userData && userData.is_otp_verified === 0 && sessionStorage.getItem('otp_verified') !== 'true') {
-    console.log('⚠️ [Profile] OTP verification needed, showing skeleton only');
-    return (
-      <div className="min-h-screen bg-gray-50 py-8">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="space-y-6">
-            <SkeletonCard />
-            <SkeletonCard />
-            <SkeletonCard />
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   // Listen for profile picture updates
   useEffect(() => {
     const handleProfilePictureUpdate = (event: CustomEvent) => {
