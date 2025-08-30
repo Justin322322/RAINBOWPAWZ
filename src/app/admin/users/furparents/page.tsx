@@ -645,7 +645,7 @@ const AdminFurParentsPage = React.memo(function AdminFurParentsPage() {
             <p className="text-gray-600 mt-1">Manage fur parent accounts</p>
           </div>
           <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3 w-full md:w-auto">
-            <div className="relative flex-grow sm:max-w-xs">
+            <div className="relative flex-1 min-w-0 sm:max-w-xs">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
               </div>
@@ -657,14 +657,14 @@ const AdminFurParentsPage = React.memo(function AdminFurParentsPage() {
                 placeholder="Search fur parents..."
               />
             </div>
-            <div className="relative flex-grow sm:max-w-xs">
+            <div className="relative flex-1 min-w-0 sm:max-w-xs">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <FunnelIcon className="h-5 w-5 text-gray-400" />
               </div>
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)] sm:text-sm appearance-none"
+                className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)] sm:text-sm appearance-none min-w-0"
               >
                 <option value="all" className="text-gray-900">All Statuses</option>
                 <option value="active" className="text-gray-900">Active</option>
