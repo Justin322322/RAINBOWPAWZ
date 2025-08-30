@@ -237,7 +237,7 @@ export default function MapWithServicesList({
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
               transition={{ duration: 0.2 }}
-              className="lg:w-1/3 xl:w-2/5"
+              className="lg:w-1/4 xl:w-1/3"
             >
               <div className="bg-white rounded-lg shadow-md border border-gray-200 h-full">
                 <div className="p-4 border-b border-gray-200">
@@ -366,7 +366,7 @@ export default function MapWithServicesList({
         </AnimatePresence>
 
         {/* Map - Right Side on Desktop */}
-        <div className="lg:w-2/3 xl:w-3/5">
+        <div className="lg:w-3/4 xl:w-2/3">
           <div className="bg-white rounded-lg shadow-md border border-gray-200 h-full">
             <div className="p-4 border-b border-gray-200">
               <h3 className="text-lg font-semibold text-gray-900">Map View</h3>
@@ -385,7 +385,7 @@ export default function MapWithServicesList({
             </div>
 
             <div className="p-4">
-              <div className="w-full h-[500px] rounded-lg overflow-hidden">
+              <div className="w-full h-[600px] rounded-lg overflow-hidden">
                 {serviceProviders.length === 0 || !userLocation ? (
                   <div className="w-full h-full flex items-center justify-center bg-gray-100 rounded-lg text-center p-8">
                     <div>

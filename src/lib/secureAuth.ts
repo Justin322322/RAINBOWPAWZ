@@ -93,10 +93,12 @@ export function setSecureAuthCookies(
 
   response.cookies.set('auth_token', token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test', // Secure in production and test
+    sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax', // Strict in production, lax in development
     maxAge: cookieMaxAge,
     path: '/',
+    // Add domain if in production to ensure proper cookie handling
+    ...(process.env.NODE_ENV === 'production' && { domain: process.env.VERCEL_URL ? `.${process.env.VERCEL_URL.replace('https://', '')}` : undefined })
   });
 }
 

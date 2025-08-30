@@ -364,21 +364,44 @@ function clearLocalStorage(): void {
  */
 function clearCookies(): void {
   const hostname = window.location.hostname;
-  const sameSiteValue = 'Lax';
-
-  // Clear the cookie with simple approach - don't specify domain
-  document.cookie = `${AUTH_TOKEN_COOKIE}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=${sameSiteValue}`;
-  document.cookie = `${AUTH_TOKEN_COOKIE}=; path=/; max-age=0; SameSite=${sameSiteValue}`;
+  
+  // Clear auth token cookie with multiple approaches for compatibility
+  const cookiesToClear = [
+    `${AUTH_TOKEN_COOKIE}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`,
+    `${AUTH_TOKEN_COOKIE}=; path=/; max-age=0`,
+    `${AUTH_TOKEN_COOKIE}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`,
+    `${AUTH_TOKEN_COOKIE}=; path=/; max-age=0; SameSite=Lax`
+  ];
 
   // Clear for localhost specifically
-  if (hostname === 'localhost') {
-    document.cookie = `${AUTH_TOKEN_COOKIE}=; path=/; domain=localhost; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=${sameSiteValue}`;
-    document.cookie = `${AUTH_TOKEN_COOKIE}=; path=/; domain=localhost; max-age=0; SameSite=${sameSiteValue}`;
+  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    cookiesToClear.push(
+      `${AUTH_TOKEN_COOKIE}=; path=/; domain=localhost; expires=Thu, 01 Jan 1970 00:00:00 GMT`,
+      `${AUTH_TOKEN_COOKIE}=; path=/; domain=localhost; max-age=0`
+    );
   }
 
-  // Clear any other potential auth-related cookies
-  document.cookie = `user_id=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=${sameSiteValue}`;
-  document.cookie = `account_type=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=${sameSiteValue}`;
+  // Clear all variations
+  cookiesToClear.forEach(cookie => {
+    document.cookie = cookie;
+  });
+
+  // Clear other auth-related cookies
+  const otherCookies = ['user_id', 'account_type', 'otp_verified', 'user_data'];
+  otherCookies.forEach(cookieName => {
+    document.cookie = `${cookieName}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+    document.cookie = `${cookieName}=; path=/; max-age=0`;
+  });
+
+  // Also clear from session storage
+  try {
+    sessionStorage.removeItem('user_data');
+    sessionStorage.removeItem('admin_data');
+    sessionStorage.removeItem('otp_verified');
+    sessionStorage.removeItem('auth_token');
+  } catch (error) {
+    console.warn('Failed to clear session storage:', error);
+  }
 }
 
 /**
