@@ -90,7 +90,11 @@ const withAdminAuth = <P_Original extends object>(
 
           if (!response.ok) {
             if (response.status === 401 || response.status === 403) {
-              router.replace('/');
+              // Don't redirect if user is currently logging out
+              const isLoggingOut = sessionStorage.getItem('is_logging_out') === 'true';
+              if (!isLoggingOut) {
+                router.replace('/');
+              }
               return;
             }
             throw new Error('Auth check failed');
@@ -99,7 +103,11 @@ const withAdminAuth = <P_Original extends object>(
           const result = await response.json();
 
           if (!result.authenticated || result.accountType !== 'admin') {
-            router.replace('/');
+            // Don't redirect if user is currently logging out
+            const isLoggingOut = sessionStorage.getItem('is_logging_out') === 'true';
+            if (!isLoggingOut) {
+              router.replace('/');
+            }
             return;
           }
 
@@ -129,14 +137,22 @@ const withAdminAuth = <P_Original extends object>(
             } catch {
             }
 
-            router.replace('/');
+            // Don't redirect if user is currently logging out
+            const isLoggingOut = sessionStorage.getItem('is_logging_out') === 'true';
+            if (!isLoggingOut) {
+              router.replace('/');
+            }
             return;
           }
 
           const fetchedAdminData = await response.json();
 
           if (!fetchedAdminData.user_type || fetchedAdminData.user_type !== 'admin') {
-            router.replace('/');
+            // Don't redirect if user is currently logging out
+            const isLoggingOut = sessionStorage.getItem('is_logging_out') === 'true';
+            if (!isLoggingOut) {
+              router.replace('/');
+            }
             return;
           }
 

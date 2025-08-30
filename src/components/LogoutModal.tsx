@@ -55,6 +55,9 @@ export default function LogoutModal({ isOpen, onClose, userName = 'User' }: Logo
       // Clear global user auth state
       clearGlobalUserAuthState();
 
+      // Set logout flag to prevent 401 modal errors during logout
+      sessionStorage.setItem('is_logging_out', 'true');
+
       // Clear session storage - be more thorough for cremation users
       sessionStorage.removeItem('user_data');
       sessionStorage.removeItem('admin_data');
@@ -76,17 +79,22 @@ export default function LogoutModal({ isOpen, onClose, userName = 'User' }: Logo
 
       // Redirect to home page after a short delay
       setTimeout(() => {
+        // Clear the logout flag after redirect
+        sessionStorage.removeItem('is_logging_out');
         router.push('/');
       }, 1500);
     } catch {
+      // Set logout flag to prevent 401 modal errors during logout
+      sessionStorage.setItem('is_logging_out', 'true');
+
       // Still clear the token and redirect even if the API call fails
       clearAuthToken();
-      
+
       // Clear business verification cache even on error (functionality removed)
       clearGlobalAdminAuthState();
       clearGlobalBusinessAuthState();
       clearGlobalUserAuthState();
-      
+
       showToast('Logged out successfully', 'success');
       router.push('/');
     }

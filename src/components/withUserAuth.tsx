@@ -174,7 +174,11 @@ const withUserAuth = <P extends object>(
 
           if (!response.ok) {
             if (response.status === 401 || response.status === 403) {
-              router.replace('/');
+              // Don't redirect if user is currently logging out
+              const isLoggingOut = sessionStorage.getItem('is_logging_out') === 'true';
+              if (!isLoggingOut) {
+                router.replace('/');
+              }
               return;
             }
             throw new Error('Auth check failed');
@@ -183,7 +187,11 @@ const withUserAuth = <P extends object>(
           const result = await response.json();
 
           if (!result.success || !result.user) {
-            router.replace('/');
+            // Don't redirect if user is currently logging out
+            const isLoggingOut = sessionStorage.getItem('is_logging_out') === 'true';
+            if (!isLoggingOut) {
+              router.replace('/');
+            }
             return;
           }
 
@@ -191,7 +199,11 @@ const withUserAuth = <P extends object>(
 
           // Ensure the user is a fur parent
           if (fetchedUserData.user_type !== 'user' && fetchedUserData.role !== 'fur_parent') {
-            router.replace('/');
+            // Don't redirect if user is currently logging out
+            const isLoggingOut = sessionStorage.getItem('is_logging_out') === 'true';
+            if (!isLoggingOut) {
+              router.replace('/');
+            }
             return;
           }
 
@@ -211,7 +223,11 @@ const withUserAuth = <P extends object>(
 
         } catch (error) {
           console.error('[withUserAuth] Error during auth check:', error);
-          router.replace('/');
+          // Don't redirect if user is currently logging out
+          const isLoggingOut = sessionStorage.getItem('is_logging_out') === 'true';
+          if (!isLoggingOut) {
+            router.replace('/');
+          }
         }
       };
 
@@ -285,8 +301,11 @@ const withUserAuth = <P extends object>(
             userEmail={userData.email}
             userId={userData.user_id || userData.id}
             onClose={() => {
-              // If user closes without verifying, redirect to home
-              router.replace('/');
+              // If user closes without verifying, redirect to home (unless logging out)
+              const isLoggingOut = sessionStorage.getItem('is_logging_out') === 'true';
+              if (!isLoggingOut) {
+                router.replace('/');
+              }
             }}
           />
         )}

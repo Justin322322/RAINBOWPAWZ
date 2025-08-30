@@ -107,19 +107,28 @@ const withBusinessVerification = <P extends object>(
             // Handle different error types
             if (response.status === 401) {
               // Unauthorized - user is not logged in
-              if (process.env.NODE_ENV === 'development') {
+              const isLoggingOut = sessionStorage.getItem('is_logging_out') === 'true';
+              if (!isLoggingOut) {
+                if (process.env.NODE_ENV === 'development') {
+                }
+                router.push('/');
               }
-              router.push('/');
             } else if (response.status === 403) {
               // Forbidden - user is not a business user
-              if (process.env.NODE_ENV === 'development') {
+              const isLoggingOut = sessionStorage.getItem('is_logging_out') === 'true';
+              if (!isLoggingOut) {
+                if (process.env.NODE_ENV === 'development') {
+                }
+                router.push('/');
               }
-              router.push('/');
             } else {
               // Other errors - redirect to home
-              if (process.env.NODE_ENV === 'development') {
+              const isLoggingOut = sessionStorage.getItem('is_logging_out') === 'true';
+              if (!isLoggingOut) {
+                if (process.env.NODE_ENV === 'development') {
+                }
+                router.push('/');
               }
-              router.push('/');
             }
             return;
           }
@@ -135,7 +144,11 @@ const withBusinessVerification = <P extends object>(
             // Clear any stale auth data before redirecting
             // Cache clearing removed
             globalBusinessAuthState = { verified: false, userData: null };
-            router.push('/');
+            // Don't redirect if user is currently logging out
+            const isLoggingOut = sessionStorage.getItem('is_logging_out') === 'true';
+            if (!isLoggingOut) {
+              router.push('/');
+            }
             return;
           }
 
@@ -158,7 +171,11 @@ const withBusinessVerification = <P extends object>(
             // Clear any stale auth data before redirecting
             // Cache clearing removed
             globalBusinessAuthState = { verified: false, userData: null };
-            router.push('/');
+            // Don't redirect if user is currently logging out
+            const isLoggingOut = sessionStorage.getItem('is_logging_out') === 'true';
+            if (!isLoggingOut) {
+              router.push('/');
+            }
             return;
           }
 
@@ -233,9 +250,10 @@ const withBusinessVerification = <P extends object>(
           const isLogoutScenario = typeof window !== 'undefined' &&
                                   (window.location.pathname === '/' ||
                                    document.cookie.indexOf('auth_token') === -1);
+          const isLoggingOut = sessionStorage.getItem('is_logging_out') === 'true';
 
           // Only show errors and redirect if not in logout scenario
-          if (!isLogoutScenario) {
+          if (!isLogoutScenario && !isLoggingOut) {
             // Clear any stale auth data before redirecting
             // Cache clearing removed
             globalBusinessAuthState = { verified: false, userData: null };
