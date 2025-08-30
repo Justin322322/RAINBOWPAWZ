@@ -1,12 +1,72 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Modal, Input, Button, Checkbox, Alert, SelectInput } from '@/components/ui';
+import { Modal, Input, Button, Checkbox, SelectInput } from '@/components/ui';
 import { EyeIcon, EyeSlashIcon, ArrowRightIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import PrivacyPolicyModal from '@/components/PrivacyPolicyModal';
 import { useToast } from '@/context/ToastContext';
 import PhilippinePhoneInput from '@/components/ui/PhilippinePhoneInput';
 import PasswordCriteria from '@/components/ui/PasswordCriteria';
+
+// Error Modal Component
+interface ErrorModalProps {
+  isOpen: boolean;
+  title: string;
+  message: string;
+  onClose: () => void;
+}
+
+const ErrorModal: React.FC<ErrorModalProps> = ({ isOpen, title, message, onClose }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg max-w-md w-full mx-4">
+        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+          <div className="flex items-center">
+            <div className="flex-shrink-0">
+              <svg className="h-6 w-6 text-red-400" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+              </svg>
+            </div>
+            <h3 className="ml-3 text-lg font-medium text-gray-900">{title}</h3>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            <span className="sr-only">Close</span>
+            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <div className="p-6">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-red-400" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm text-gray-700">{message}</p>
+            </div>
+          </div>
+        </div>
+        <div className="flex justify-end px-6 py-4 bg-gray-50 rounded-b-lg">
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 type PersonalAccountModalProps = {
   isOpen: boolean;
@@ -29,6 +89,7 @@ const PersonalAccountModal: React.FC<PersonalAccountModalProps> = ({ isOpen, onC
   });
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [showErrorModal, setShowErrorModal] = useState(false);
   const [isPasswordValid, setIsPasswordValid] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -37,6 +98,18 @@ const PersonalAccountModal: React.FC<PersonalAccountModalProps> = ({ isOpen, onC
   // Handle password strength updates from PasswordCriteria component
   const handlePasswordStrengthChange = (_strength: number, isValid: boolean) => {
     setIsPasswordValid(isValid);
+  };
+
+  // Helper function to show error modal
+  const showError = (message: string) => {
+    setErrorMessage(message);
+    setShowErrorModal(true);
+  };
+
+  // Helper function to close error modal
+  const closeErrorModal = () => {
+    setShowErrorModal(false);
+    setErrorMessage('');
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -114,13 +187,12 @@ const PersonalAccountModal: React.FC<PersonalAccountModalProps> = ({ isOpen, onC
         }
 
         if (!response.ok) {
-          // Handle server errors with both inline and toast notifications
+          // Handle server errors with modal overlay
           const errorMsg = data.error === 'Email already exists'
             ? 'This email is already registered. Please use a different email or try logging in.'
             : data.error || data.message || 'Registration failed. Please try again.';
-          
-          setErrorMessage(errorMsg);
-          showToast(errorMsg, 'error');
+
+          showError(errorMsg);
           return;
         }
 
@@ -136,8 +208,7 @@ const PersonalAccountModal: React.FC<PersonalAccountModalProps> = ({ isOpen, onC
           errorMessage = 'Request timed out. The server took too long to respond.';
         }
 
-        setErrorMessage(errorMessage);
-        showToast(errorMessage, 'error');
+        showError(errorMessage);
       }
     } catch (error) {
 
@@ -146,8 +217,7 @@ const PersonalAccountModal: React.FC<PersonalAccountModalProps> = ({ isOpen, onC
       }
 
       const errorMsg = error instanceof Error ? error.message : 'Failed to create account. Please try again.';
-      showToast(errorMsg, 'error');
-      setErrorMessage(errorMsg);
+      showError(errorMsg);
     } finally {
       setIsLoading(false);
     }
@@ -187,13 +257,7 @@ const PersonalAccountModal: React.FC<PersonalAccountModalProps> = ({ isOpen, onC
               <p className="text-gray-500 mt-2">Join our community and create beautiful memorials for your pets.</p>
             </div>
           
-          {errorMessage && (
-            <div className="mb-6">
-              <Alert variant="error" title="Registration Error" onClose={() => setErrorMessage('')} dismissible>
-                <p>{errorMessage}</p>
-              </Alert>
-            </div>
-          )}
+
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -346,6 +410,16 @@ const PersonalAccountModal: React.FC<PersonalAccountModalProps> = ({ isOpen, onC
           setIsPrivacyPolicyOpen(false);
         }}
       />
+
+      {/* Error Modal */}
+      {showErrorModal && (
+        <ErrorModal
+          isOpen={showErrorModal}
+          title="Registration Error"
+          message={errorMessage}
+          onClose={closeErrorModal}
+        />
+      )}
     </>
   );
 };

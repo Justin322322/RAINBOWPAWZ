@@ -23,6 +23,66 @@ import {
 } from '@heroicons/react/24/outline';
 import { getImagePath } from '@/utils/imageUtils';
 import PhilippinePhoneInput from '@/components/ui/PhilippinePhoneInput';
+
+// Error Modal Component
+interface ErrorModalProps {
+  isOpen: boolean;
+  title: string;
+  message: string;
+  onClose: () => void;
+}
+
+const ErrorModal: React.FC<ErrorModalProps> = ({ isOpen, title, message, onClose }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg max-w-md w-full mx-4">
+        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+          <div className="flex items-center">
+            <div className="flex-shrink-0">
+              <svg className="h-6 w-6 text-red-400" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+              </svg>
+            </div>
+            <h3 className="ml-3 text-lg font-medium text-gray-900">{title}</h3>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            <span className="sr-only">Close</span>
+            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <div className="p-6">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-red-400" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm text-gray-700">{message}</p>
+            </div>
+          </div>
+        </div>
+        <div className="flex justify-end px-6 py-4 bg-gray-50 rounded-b-lg">
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 import ProfilePictureUpload from '@/components/profile/ProfilePictureUpload';
 import {
   ProfileLayout,
@@ -76,6 +136,8 @@ function CremationProfilePage({ userData }: { userData: any }) {
   // Document upload states
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
+  const [showUploadErrorModal, setShowUploadErrorModal] = useState(false);
+  const [showPasswordErrorModal, setShowPasswordErrorModal] = useState(false);
   const [documents, setDocuments] = useState({
     businessPermit: { file: null as File | null, preview: null as string | null },
     birCertificate: { file: null as File | null, preview: null as string | null },
@@ -97,6 +159,27 @@ function CremationProfilePage({ userData }: { userData: any }) {
   const isMountedRef = useRef(true);
   const abortControllerRef = useRef<AbortController | null>(null);
   const showToastRef = useRef(showToast);
+
+  // Helper functions for error modals
+  const showUploadError = (message: string) => {
+    setUploadError(message);
+    setShowUploadErrorModal(true);
+  };
+
+  const showPasswordError = (message: string) => {
+    setPasswordError(message);
+    setShowPasswordErrorModal(true);
+  };
+
+  const closeUploadErrorModal = () => {
+    setShowUploadErrorModal(false);
+    setUploadError('');
+  };
+
+  const closePasswordErrorModal = () => {
+    setShowPasswordErrorModal(false);
+    setPasswordError('');
+  };
 
   useEffect(() => {
     showToastRef.current = showToast;
@@ -291,10 +374,10 @@ function CremationProfilePage({ userData }: { userData: any }) {
         setConfirmPassword('');
         setTimeout(() => setPasswordSuccess(''), 3000);
       } else {
-        setPasswordError(data.error || 'Failed to update password');
+        showPasswordError(data.error || 'Failed to update password');
       }
     } catch (error) {
-      setPasswordError(error instanceof Error ? error.message : 'Failed to update password');
+      showPasswordError(error instanceof Error ? error.message : 'Failed to update password');
     }
   };
 
@@ -392,9 +475,18 @@ function CremationProfilePage({ userData }: { userData: any }) {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: keyof typeof documents) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      const validTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
+      const validTypes = [
+        'application/pdf',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'image/jpeg',
+        'image/png',
+        'image/jpg',
+        'image/gif',
+        'image/webp'
+      ];
       if (!validTypes.includes(file.type)) {
-        showToast('Please select a valid file (PDF, JPG, or PNG)', 'error');
+        showToast('Please select a valid file (PDF, Word documents, or images)', 'error');
         return;
       }
       const maxSize = 10 * 1024 * 1024; // 10MB
@@ -489,7 +581,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
                 governmentId: { file: null, preview: null }
             });
         } catch (error) {
-            setUploadError(error instanceof Error ? error.message : 'Failed to upload documents');
+            showUploadError(error instanceof Error ? error.message : 'Failed to upload documents');
         } finally {
             setUploading(false);
         }
@@ -689,7 +781,6 @@ function CremationProfilePage({ userData }: { userData: any }) {
                           <ProfileCard>
                             <form onSubmit={handlePasswordChange} className="space-y-6">
                                 {passwordSuccess && <ProfileAlert type="success" message={passwordSuccess} onClose={() => setPasswordSuccess('')} />}
-                                {passwordError && <ProfileAlert type="error" message={passwordError} onClose={() => setPasswordError('')} />}
                                 
                                 <ProfileFormGroup title="Security" subtitle="Choose a strong, new password">
                                   <ProfileInput label="Current Password" type="password" value={currentPassword} onChange={setCurrentPassword} required icon={<KeyIcon className="h-5 w-5" />} />
@@ -713,7 +804,6 @@ function CremationProfilePage({ userData }: { userData: any }) {
                             showSkeleton={showSkeleton || initialLoading}
                         >
                             <ProfileCard>
-                                {uploadError && <ProfileAlert type="error" message={uploadError} onClose={() => setUploadError('')} className="mb-6" />}
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                                     {/* Business Permit */}
                                     <div className="space-y-3">
@@ -817,6 +907,26 @@ function CremationProfilePage({ userData }: { userData: any }) {
                         </div>
                     </div>
                 )}
+
+                {/* Error Modals */}
+                {showPasswordErrorModal && (
+                    <ErrorModal
+                        isOpen={showPasswordErrorModal}
+                        title="Password Update Error"
+                        message={passwordError}
+                        onClose={closePasswordErrorModal}
+                    />
+                )}
+
+                {showUploadErrorModal && (
+                    <ErrorModal
+                        isOpen={showUploadErrorModal}
+                        title="Document Upload Error"
+                        message={uploadError}
+                        onClose={closeUploadErrorModal}
+                    />
+                )}
+
             </ProfileLayout>
         </CremationDashboardLayout>
     );

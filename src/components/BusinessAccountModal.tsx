@@ -1,13 +1,73 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Modal, Input, Button, Checkbox, Alert, SelectInput } from '@/components/ui';
+import { Modal, Input, Button, Checkbox, SelectInput } from '@/components/ui';
 import { EyeIcon, EyeSlashIcon, ArrowRightIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import PrivacyPolicyModal from '@/components/PrivacyPolicyModal';
 import { useToast } from '@/context/ToastContext';
 import PhilippinePhoneInput from '@/components/ui/PhilippinePhoneInput';
 import PasswordCriteria from '@/components/ui/PasswordCriteria';
 import FileInputWithThumbnail from '@/components/ui/FileInputWithThumbnail';
+
+// Error Modal Component
+interface ErrorModalProps {
+  isOpen: boolean;
+  title: string;
+  message: string;
+  onClose: () => void;
+}
+
+const ErrorModal: React.FC<ErrorModalProps> = ({ isOpen, title, message, onClose }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg max-w-md w-full mx-4">
+        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+          <div className="flex items-center">
+            <div className="flex-shrink-0">
+              <svg className="h-6 w-6 text-red-400" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+              </svg>
+            </div>
+            <h3 className="ml-3 text-lg font-medium text-gray-900">{title}</h3>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            <span className="sr-only">Close</span>
+            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <div className="p-6">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-red-400" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm text-gray-700">{message}</p>
+            </div>
+          </div>
+        </div>
+        <div className="flex justify-end px-6 py-4 bg-gray-50 rounded-b-lg">
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 type BusinessAccountModalProps = {
   isOpen: boolean;
@@ -39,6 +99,7 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
   });
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [showErrorModal, setShowErrorModal] = useState(false);
   const [isPasswordValid, setIsPasswordValid] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -47,6 +108,18 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
   // Handle password strength updates from PasswordCriteria component
   const handlePasswordStrengthChange = (_strength: number, isValid: boolean) => {
     setIsPasswordValid(isValid);
+  };
+
+  // Helper function to show error modal
+  const showError = (message: string) => {
+    setErrorMessage(message);
+    setShowErrorModal(true);
+  };
+
+  // Helper function to close error modal
+  const closeErrorModal = () => {
+    setShowErrorModal(false);
+    setErrorMessage('');
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -130,11 +203,11 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
       const regData = await regResponse.json();
 
       if (!regResponse.ok) {
-        // Handle specific error cases with inline errors only
+        // Handle specific error cases with modal overlay
         if (regData.error === 'Email already exists') {
-          setErrorMessage('This email is already registered. Please use a different email or try logging in.');
+          showError('This email is already registered. Please use a different email or try logging in.');
         } else {
-          setErrorMessage(regData.error || regData.message || 'Registration failed. Please try again.');
+          showError(regData.error || regData.message || 'Registration failed. Please try again.');
         }
         setIsLoading(false);
         return;
@@ -142,27 +215,36 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
 
       // Now upload the documents if registration was successful
       const hasDocuments = formData.birCertificate || formData.businessPermit || formData.governmentId;
-      
+
       if (hasDocuments) {
         // Validate that files are actually selected
         const selectedFiles = [];
         if (formData.businessPermit) selectedFiles.push('Business Permit');
         if (formData.birCertificate) selectedFiles.push('BIR Certificate');
         if (formData.governmentId) selectedFiles.push('Government ID');
-        
+
         console.log('Attempting to upload documents:', selectedFiles);
-        
+
         // Validate file types and sizes before upload
         const maxSize = 10 * 1024 * 1024; // 10MB
-        const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
-        
+        const allowedTypes = [
+          'application/pdf',
+          'application/msword',
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          'image/jpeg',
+          'image/png',
+          'image/jpg',
+          'image/gif',
+          'image/webp'
+        ];
+
         const fileValidationErrors = [];
         if (formData.businessPermit) {
           if (formData.businessPermit.size > maxSize) {
             fileValidationErrors.push('Business Permit: File too large (max 10MB)');
           }
           if (!allowedTypes.includes(formData.businessPermit.type)) {
-            fileValidationErrors.push('Business Permit: Invalid file type (PDF, JPG, PNG only)');
+            fileValidationErrors.push('Business Permit: Invalid file type (PDF, Word documents, images only)');
           }
         }
         if (formData.birCertificate) {
@@ -170,7 +252,7 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
             fileValidationErrors.push('BIR Certificate: File too large (max 10MB)');
           }
           if (!allowedTypes.includes(formData.birCertificate.type)) {
-            fileValidationErrors.push('BIR Certificate: Invalid file type (PDF, JPG, PNG only)');
+            fileValidationErrors.push('BIR Certificate: Invalid file type (PDF, Word documents, images only)');
           }
         }
         if (formData.governmentId) {
@@ -178,24 +260,29 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
             fileValidationErrors.push('Government ID: File too large (max 10MB)');
           }
           if (!allowedTypes.includes(formData.governmentId.type)) {
-            fileValidationErrors.push('Government ID: Invalid file type (PDF, JPG, PNG only)');
+            fileValidationErrors.push('Government ID: Invalid file type (PDF, Word documents, images only)');
           }
         }
-        
+
         if (fileValidationErrors.length > 0) {
           showToast(`Registration successful, but document validation failed: ${fileValidationErrors.join(', ')}. You can upload documents later in your profile.`, 'error');
           return;
         }
-        
+
          try {
-           // Add a longer delay to ensure the service provider record is fully committed
-           await new Promise(resolve => setTimeout(resolve, 5000));
-           
+           // Wait a short moment to ensure database consistency
+           await new Promise(resolve => setTimeout(resolve, 1000));
+
            // Create FormData for documents upload
            const docFormData = new FormData();
 
            // Add the user ID from the registration response
            docFormData.append('userId', regData.userId);
+
+           // Add service provider ID if available
+           if (regData.serviceProviderId) {
+             docFormData.append('serviceProviderId', regData.serviceProviderId);
+           }
 
            // Add files if they exist
            if (formData.businessPermit) {
@@ -213,13 +300,14 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
            // Send the document upload request (cookies will be sent automatically)
            console.log('Uploading documents with FormData:', {
              userId: regData.userId,
+             serviceProviderId: regData.serviceProviderId || 'none',
              files: {
                businessPermit: formData.businessPermit ? `${formData.businessPermit.name} (${formData.businessPermit.size} bytes, ${formData.businessPermit.type})` : 'none',
                birCertificate: formData.birCertificate ? `${formData.birCertificate.name} (${formData.birCertificate.size} bytes, ${formData.birCertificate.type})` : 'none',
                governmentId: formData.governmentId ? `${formData.governmentId.name} (${formData.governmentId.size} bytes, ${formData.governmentId.type})` : 'none'
              }
            });
-           
+
            const docResponse = await fetch('/api/businesses/upload-documents', {
              method: 'POST',
              body: docFormData,
@@ -232,10 +320,10 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
              console.error('Document upload failed:', docData);
              const errorDetails = docData.details ? ` (${docData.details})` : '';
              const errorMessage = docData.error || 'Unknown error';
-             
+
              // Show specific error message
              showToast(`Registration successful, but document upload failed: ${errorMessage}${errorDetails}. You can upload documents later in your profile.`, 'error');
-             
+
              // Log more details for debugging
              console.error('Document upload response:', {
                status: docResponse.status,
@@ -257,7 +345,7 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
          } catch (docError) {
            console.error('Document upload error:', docError);
            const errorMessage = docError instanceof Error ? docError.message : 'Unknown error occurred';
-           
+
            // Show specific error message
            showToast(`Registration successful, but document upload failed: ${errorMessage}. You can upload documents later in your profile.`, 'error');
          }
@@ -274,7 +362,7 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
       }, 1500);
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Failed to create account. Please try again.';
-      setErrorMessage(errorMsg);
+      showError(errorMsg);
     } finally {
       setIsLoading(false);
     }
@@ -314,13 +402,7 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
             <p className="text-gray-500 mt-2">Join our network of trusted pet memorial service providers.</p>
           </div>
 
-          {errorMessage && (
-            <div className="mb-6">
-              <Alert variant="error" title="Registration Error" onClose={() => setErrorMessage('')} dismissible>
-                <p>{errorMessage}</p>
-              </Alert>
-            </div>
-          )}
+
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="border-b border-gray-200 pb-6">
@@ -478,6 +560,16 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
           setIsPrivacyPolicyOpen(false);
         }}
       />
+
+      {/* Error Modal */}
+      {showErrorModal && (
+        <ErrorModal
+          isOpen={showErrorModal}
+          title="Registration Error"
+          message={errorMessage}
+          onClose={closeErrorModal}
+        />
+      )}
     </>
   );
 };

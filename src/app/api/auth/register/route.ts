@@ -378,15 +378,36 @@ export async function POST(request: Request) {
     };
 
     // Execute the registration process
-    let userId;
+    let registrationResult;
     try {
-      userId = await registerUser();
+      const userId = await registerUser();
+      let serviceProviderId = null;
+
+      // For business accounts, get the service provider ID
+      if (data.account_type === 'business' && userId) {
+        try {
+          const providerResult = await query(
+            'SELECT provider_id FROM service_providers WHERE user_id = ?',
+            [userId]
+          ) as any[];
+          if (providerResult && providerResult.length > 0) {
+            serviceProviderId = providerResult[0].provider_id;
+          }
+        } catch (providerError) {
+          console.error("Error fetching service provider ID:", providerError);
+          // Continue without service provider ID
+        }
+      }
+
+      registrationResult = { userId, serviceProviderId };
     } catch (regError) {
       console.error("Registration process failed:", regError);
       throw regError;
     }
 
-    if (userId) {
+    if (registrationResult && registrationResult.userId) {
+      const { userId, serviceProviderId } = registrationResult;
+
       // Send welcome email
       try {
         const accountType = data.account_type === 'personal' ? 'personal' : 'business';
@@ -458,7 +479,8 @@ export async function POST(request: Request) {
       const response = NextResponse.json({
         success: true,
         message: 'Registration successful',
-        userId: userId
+        userId: userId,
+        serviceProviderId: serviceProviderId
       }, {
         status: 200,
         headers

@@ -52,7 +52,10 @@ export async function POST(request: NextRequest) {
     const birCertificate: File | null = mode === 'form' ? (formData!.get('birCertificate') as File | null) : null;
     const governmentId: File | null = mode === 'form' ? (formData!.get('governmentId') as File | null) : null;
     const providedUrls = mode === 'json' ? (jsonBody?.filePaths || {}) : {};
-    
+
+    // Extract service provider ID if provided (for registration flow)
+    const providedServiceProviderId = mode === 'form' ? formData!.get('serviceProviderId') as string | null : jsonBody?.serviceProviderId || null;
+
     // Check if at least one file is provided
     if (mode === 'form' && !businessPermit && !birCertificate && !governmentId && Object.keys(providedUrls).length === 0) {
       return NextResponse.json({ error: 'At least one document must be uploaded' }, { status: 400 });
@@ -142,13 +145,27 @@ export async function POST(request: NextRequest) {
       }
 
       // Try to associate to a provider if present; if not, still return success with file paths
-      const providerResult = await query(
-        'SELECT provider_id FROM service_providers WHERE user_id = ?',
-        [userId]
-      ) as any[];
+      let providerId: string | null = providedServiceProviderId || null;
 
-      if (providerResult && providerResult.length > 0) {
-        const providerId = providerResult[0].provider_id;
+      // If no provider ID was provided, try to find it
+      if (!providerId) {
+        try {
+          const providerResult = await query(
+            'SELECT provider_id FROM service_providers WHERE user_id = ?',
+            [userId]
+          ) as any[];
+
+          if (providerResult && providerResult.length > 0) {
+            providerId = providerResult[0].provider_id;
+          }
+        } catch (error) {
+          console.error('Error fetching service provider:', error);
+          // Continue without provider ID
+        }
+      }
+
+      // If we have a provider ID, update the database
+      if (providerId) {
         try {
           const updateFields: string[] = [];
           const updateValues: any[] = [];
@@ -171,9 +188,12 @@ export async function POST(request: NextRequest) {
               updateValues
             );
           }
-        } catch {
+        } catch (error) {
+          console.error('Error updating service provider documents:', error);
           // Silently continue if database update fails
         }
+      } else {
+        console.warn('No service provider found for user', userId, '- documents uploaded but not associated with provider record');
       }
 
       // Return success response regardless, with filePaths for client to use if needed
@@ -184,15 +204,19 @@ export async function POST(request: NextRequest) {
       });
 
     } catch (error) {
+      console.error('Error processing document upload:', error);
       return NextResponse.json({
         error: 'Failed to process documents',
-        details: error instanceof Error ? error.message : 'Unknown error'
+        details: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString()
       }, { status: 500 });
     }
   } catch (error) {
+    console.error('Critical error in document upload API:', error);
     return NextResponse.json({
       error: 'Failed to process file upload',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      details: error instanceof Error ? error.message : 'Unknown error',
+      timestamp: new Date().toISOString()
     }, { status: 500 });
   }
 }
