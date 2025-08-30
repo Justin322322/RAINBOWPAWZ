@@ -131,7 +131,6 @@ export async function POST(request: NextRequest) {
     });
 
     // Handle refund notification outside transaction (not critical for booking integrity)
-    let refundInfo: any = null;
     if (cancellationResult.refundId) {
       try {
         // Create admin notification for refund request
