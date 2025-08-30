@@ -15,13 +15,13 @@ const AuthLoadingScreen: React.FC = () => {
           transition={{ duration: 0.5 }}
           className="mb-8"
         >
-          <div className="inline-block p-4 bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-gray-100/50">
+          <div className="inline-block p-6 bg-[var(--primary-green)] rounded-full shadow-xl border-4 border-white/20">
             <Image
               src="/logo.png"
               alt="Rainbow Paws Logo"
               width={80}
               height={80}
-              className="h-20 w-auto drop-shadow-lg filter brightness-110 contrast-105"
+              className="h-20 w-auto filter brightness-110 contrast-105"
             />
           </div>
         </motion.div>
