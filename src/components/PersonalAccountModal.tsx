@@ -57,14 +57,14 @@ const PersonalAccountModal: React.FC<PersonalAccountModalProps> = ({ isOpen, onC
     setIsLoading(true);
 
     if (formData.password !== formData.confirmPassword) {
-      setErrorMessage('Passwords do not match');
+      showToast('Passwords do not match', 'error');
       setIsLoading(false);
       return;
     }
 
     // Validate password strength before submission
     if (!isPasswordValid) {
-      setErrorMessage('Password must meet all security requirements: at least 8 characters with uppercase, lowercase, numbers, and special characters');
+      showToast('Password must meet all security requirements: at least 8 characters with uppercase, lowercase, numbers, and special characters', 'error');
       setIsLoading(false);
       return;
     }

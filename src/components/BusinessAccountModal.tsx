@@ -79,9 +79,16 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
     setIsLoading(true);
     setErrorMessage('');
 
+    // Check if passwords match
+    if (formData.password !== formData.confirmPassword) {
+      showToast('Passwords do not match', 'error');
+      setIsLoading(false);
+      return;
+    }
+
     // Validate password strength before submission
     if (!isPasswordValid) {
-      setErrorMessage('Password must meet all security requirements: at least 8 characters with uppercase, lowercase, numbers, and special characters');
+      showToast('Password must meet all security requirements: at least 8 characters with uppercase, lowercase, numbers, and special characters', 'error');
       setIsLoading(false);
       return;
     }
@@ -134,56 +141,126 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
       }
 
       // Now upload the documents if registration was successful
-      if (formData.birCertificate || formData.businessPermit || formData.governmentId) {
-        try {
-          // Add a small delay to ensure the service provider record is fully committed
-          await new Promise(resolve => setTimeout(resolve, 2000));
-
-          // Create FormData for documents upload
-          const docFormData = new FormData();
-
-          // Add the user ID from the registration response
-          docFormData.append('userId', regData.userId);
-
-          // Add files if they exist
-          if (formData.businessPermit) {
-            docFormData.append('businessPermit', formData.businessPermit);
+      const hasDocuments = formData.birCertificate || formData.businessPermit || formData.governmentId;
+      
+      if (hasDocuments) {
+        // Validate that files are actually selected
+        const selectedFiles = [];
+        if (formData.businessPermit) selectedFiles.push('Business Permit');
+        if (formData.birCertificate) selectedFiles.push('BIR Certificate');
+        if (formData.governmentId) selectedFiles.push('Government ID');
+        
+        console.log('Attempting to upload documents:', selectedFiles);
+        
+        // Validate file types and sizes before upload
+        const maxSize = 10 * 1024 * 1024; // 10MB
+        const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
+        
+        const fileValidationErrors = [];
+        if (formData.businessPermit) {
+          if (formData.businessPermit.size > maxSize) {
+            fileValidationErrors.push('Business Permit: File too large (max 10MB)');
           }
-
-          if (formData.birCertificate) {
-            docFormData.append('birCertificate', formData.birCertificate);
+          if (!allowedTypes.includes(formData.businessPermit.type)) {
+            fileValidationErrors.push('Business Permit: Invalid file type (PDF, JPG, PNG only)');
           }
-
-          if (formData.governmentId) {
-            docFormData.append('governmentId', formData.governmentId);
-          }
-
-          // Send the document upload request (cookies will be sent automatically)
-          const docResponse = await fetch('/api/businesses/upload-documents', {
-            method: 'POST',
-            body: docFormData,
-            credentials: 'include' // Ensure cookies are sent
-          });
-
-          const docData = await docResponse.json();
-
-          if (!docResponse.ok) {
-            console.error('Document upload failed:', docData);
-            const errorDetails = docData.details ? ` (${docData.details})` : '';
-            // Show warning but continue with registration
-            showToast(`Registration successful, but document upload failed: ${docData.error || 'Unknown error'}${errorDetails}. You can upload documents later in your profile.`, 'warning');
-          } else {
-            if (docData.warnings && docData.warnings.length > 0) {
-              showToast(`Registration successful! Some documents had issues: ${docData.warnings.join(', ')}`, 'warning');
-            } else {
-              showToast('Registration and document upload successful!', 'success');
-            }
-          }
-        } catch (docError) {
-          console.error('Document upload error:', docError);
-          // Show warning but continue with registration
-          showToast('Registration successful, but document upload failed. You can upload documents later in your profile.', 'warning');
         }
+        if (formData.birCertificate) {
+          if (formData.birCertificate.size > maxSize) {
+            fileValidationErrors.push('BIR Certificate: File too large (max 10MB)');
+          }
+          if (!allowedTypes.includes(formData.birCertificate.type)) {
+            fileValidationErrors.push('BIR Certificate: Invalid file type (PDF, JPG, PNG only)');
+          }
+        }
+        if (formData.governmentId) {
+          if (formData.governmentId.size > maxSize) {
+            fileValidationErrors.push('Government ID: File too large (max 10MB)');
+          }
+          if (!allowedTypes.includes(formData.governmentId.type)) {
+            fileValidationErrors.push('Government ID: Invalid file type (PDF, JPG, PNG only)');
+          }
+        }
+        
+        if (fileValidationErrors.length > 0) {
+          showToast(`Registration successful, but document validation failed: ${fileValidationErrors.join(', ')}. You can upload documents later in your profile.`, 'error');
+          return;
+        }
+        
+         try {
+           // Add a longer delay to ensure the service provider record is fully committed
+           await new Promise(resolve => setTimeout(resolve, 5000));
+           
+           // Create FormData for documents upload
+           const docFormData = new FormData();
+
+           // Add the user ID from the registration response
+           docFormData.append('userId', regData.userId);
+
+           // Add files if they exist
+           if (formData.businessPermit) {
+             docFormData.append('businessPermit', formData.businessPermit);
+           }
+
+           if (formData.birCertificate) {
+             docFormData.append('birCertificate', formData.birCertificate);
+           }
+
+           if (formData.governmentId) {
+             docFormData.append('governmentId', formData.governmentId);
+           }
+
+           // Send the document upload request (cookies will be sent automatically)
+           console.log('Uploading documents with FormData:', {
+             userId: regData.userId,
+             files: {
+               businessPermit: formData.businessPermit ? `${formData.businessPermit.name} (${formData.businessPermit.size} bytes, ${formData.businessPermit.type})` : 'none',
+               birCertificate: formData.birCertificate ? `${formData.birCertificate.name} (${formData.birCertificate.size} bytes, ${formData.birCertificate.type})` : 'none',
+               governmentId: formData.governmentId ? `${formData.governmentId.name} (${formData.governmentId.size} bytes, ${formData.governmentId.type})` : 'none'
+             }
+           });
+           
+           const docResponse = await fetch('/api/businesses/upload-documents', {
+             method: 'POST',
+             body: docFormData,
+             credentials: 'include' // Ensure cookies are sent
+           });
+
+           const docData = await docResponse.json();
+
+           if (!docResponse.ok) {
+             console.error('Document upload failed:', docData);
+             const errorDetails = docData.details ? ` (${docData.details})` : '';
+             const errorMessage = docData.error || 'Unknown error';
+             
+             // Show specific error message
+             showToast(`Registration successful, but document upload failed: ${errorMessage}${errorDetails}. You can upload documents later in your profile.`, 'error');
+             
+             // Log more details for debugging
+             console.error('Document upload response:', {
+               status: docResponse.status,
+               statusText: docResponse.statusText,
+               data: docData,
+               files: {
+                 businessPermit: formData.businessPermit ? `${formData.businessPermit.name} (${formData.businessPermit.size} bytes)` : 'none',
+                 birCertificate: formData.birCertificate ? `${formData.birCertificate.name} (${formData.birCertificate.size} bytes)` : 'none',
+                 governmentId: formData.governmentId ? `${formData.governmentId.name} (${formData.governmentId.size} bytes)` : 'none'
+               }
+             });
+           } else {
+             if (docData.warnings && docData.warnings.length > 0) {
+               showToast(`Registration successful! Some documents had issues: ${docData.warnings.join(', ')}`, 'warning');
+             } else {
+               showToast('Registration and document upload successful!', 'success');
+             }
+           }
+         } catch (docError) {
+           console.error('Document upload error:', docError);
+           const errorMessage = docError instanceof Error ? docError.message : 'Unknown error occurred';
+           
+           // Show specific error message
+           showToast(`Registration successful, but document upload failed: ${errorMessage}. You can upload documents later in your profile.`, 'error');
+         }
       } else {
         showToast('Registration successful!', 'success');
       }

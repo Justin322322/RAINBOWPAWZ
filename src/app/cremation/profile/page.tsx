@@ -255,17 +255,17 @@ function CremationProfilePage({ userData }: { userData: any }) {
     setPasswordSuccess('');
 
     if (!currentPassword || !newPassword || !confirmPassword) {
-      setPasswordError('All password fields are required');
+      showToast('All password fields are required', 'error');
       return;
     }
     if (newPassword !== confirmPassword) {
-      setPasswordError('New passwords do not match');
+      showToast('New passwords do not match', 'error');
       return;
     }
 
     const passwordValidation = validatePasswordStrength(newPassword);
     if (!passwordValidation.isValid) {
-      setPasswordError(passwordValidation.message);
+      showToast(passwordValidation.message, 'error');
       return;
     }
 
