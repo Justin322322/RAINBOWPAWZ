@@ -18,8 +18,9 @@ import {
 import { useToast } from '@/context/ToastContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
-import { Badge, Button } from '@/components/ui';
+import { Badge } from '@/components/ui';
 import { Modal } from '@/components/ui/Modal';
+import { Button } from '@/components/ui/Button';
 
 import { getProfilePictureUrl } from '@/utils/imageUtils';
 
