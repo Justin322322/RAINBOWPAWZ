@@ -9,7 +9,10 @@ interface DeclineModalProps {
   onClose: () => void;
   onDecline: (reason: string, requestDocuments: boolean) => Promise<void>;
   title?: string;
-  minLength?: number;
+  message?: string;
+  declineText?: string;
+  cancelText?: string;
+  customZIndex?: string; // Custom z-index for nested modals
 }
 
 const DeclineModal: React.FC<DeclineModalProps> = ({
@@ -17,7 +20,8 @@ const DeclineModal: React.FC<DeclineModalProps> = ({
   onClose,
   onDecline,
   title = 'Decline Application',
-  minLength = 10
+  minLength = 10,
+  customZIndex
 }) => {
   const [reason, setReason] = useState('');
   const [requestDocuments, setRequestDocuments] = useState(false);
@@ -58,7 +62,7 @@ const DeclineModal: React.FC<DeclineModalProps> = ({
       {isOpen && (
         <div
           className="fixed inset-0 flex items-center justify-center p-4 md:p-6"
-          style={{ zIndex: 9999 }}
+          style={{ zIndex: customZIndex ? parseInt(customZIndex.replace('z-[', '').replace(']', '')) : 9999 }}
           role="dialog"
           aria-modal="true"
         >

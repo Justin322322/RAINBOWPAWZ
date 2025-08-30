@@ -14,6 +14,7 @@ interface ConfirmationModalProps {
   cancelText?: string;
   confirmButtonClass?: string;
   icon?: React.ReactNode;
+  customZIndex?: string;
 }
 
 const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
@@ -25,7 +26,8 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   confirmText = 'Confirm',
   cancelText = 'Cancel',
   confirmButtonClass = 'bg-green-600 hover:bg-green-700',
-  icon = null
+  icon = null,
+  customZIndex,
 }) => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isSuccess, setIsSuccess] = useState<boolean>(false);
@@ -34,7 +36,7 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
       {isOpen && (
         <div
           className="fixed inset-0 flex items-center justify-center p-4 md:p-6"
-          style={{ zIndex: 9999 }}
+          style={{ zIndex: customZIndex ? parseInt(customZIndex.replace('z-[', '').replace(']', '')) : 9999 }}
           role="dialog"
           aria-modal="true"
         >

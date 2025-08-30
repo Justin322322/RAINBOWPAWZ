@@ -27,6 +27,7 @@ interface ModalProps {
   ariaLabel?: string;
   ariaDescribedBy?: string;
   initialFocus?: React.RefObject<HTMLElement>;
+  customZIndex?: string; // New prop for custom z-index
 }
 
 const Modal: React.FC<ModalProps> = ({
@@ -50,6 +51,7 @@ const Modal: React.FC<ModalProps> = ({
   ariaLabel,
   ariaDescribedBy,
   initialFocus,
+  customZIndex,
 }) => {
   const modalRef = useRef<HTMLDivElement>(null);
   const previousActiveElement = useRef<HTMLElement | null>(null);
@@ -152,7 +154,7 @@ const Modal: React.FC<ModalProps> = ({
     <AnimatePresence>
       {isOpen && (
         <div
-          className="fixed inset-0 z-[9999] flex items-center justify-center p-2 sm:p-4 md:p-6"
+          className={`fixed inset-0 flex items-center justify-center p-2 sm:p-4 md:p-6 ${customZIndex || 'z-[9999]'}`}
           role="dialog"
           aria-modal="true"
           aria-labelledby={shouldUseAriaLabelledBy ? modalTitleId : undefined}

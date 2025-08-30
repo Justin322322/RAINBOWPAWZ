@@ -72,12 +72,14 @@ const RestrictModal = memo(function RestrictModal({
   centerToAction,
   initialReason,
   onConfirm,
+  customZIndex,
 }: {
   isOpen: boolean;
   onClose: () => void;
   centerToAction: { name?: string } | null;
   initialReason: string;
   onConfirm: (reason: string) => void;
+  customZIndex?: string;
 }) {
   const [reason, setReason] = useState(initialReason);
 
@@ -94,6 +96,7 @@ const RestrictModal = memo(function RestrictModal({
       title="Restrict Cremation Center"
       size="medium"
       variant="danger"
+      customZIndex={customZIndex}
     >
       <div className="flex items-start mb-4">
         <div className="mr-3 flex-shrink-0">
@@ -1235,6 +1238,7 @@ const AdminCremationCentersPage = React.memo(function AdminCremationCentersPage(
         centerToAction={centerToAction}
         initialReason={restrictReason}
         onConfirm={(reason) => { setRestrictReason(reason); centerToAction && handleRestrictCenter(centerToAction); }}
+        customZIndex="z-[99999]"
       />
 
       {/* Unrestrict Confirmation Modal */}

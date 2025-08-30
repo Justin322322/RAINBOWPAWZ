@@ -567,12 +567,14 @@ const AdminFurParentsPage = React.memo(function AdminFurParentsPage() {
     userToAction,
     initialReason,
     onConfirm,
+    customZIndex,
   }: {
     isOpen: boolean;
     onClose: () => void;
     userToAction: { first_name?: string; last_name?: string } | null;
     initialReason: string;
     onConfirm: (reason: string) => void;
+    customZIndex?: string;
   }) {
     const [reason, setReason] = useState(initialReason);
 
@@ -589,6 +591,7 @@ const AdminFurParentsPage = React.memo(function AdminFurParentsPage() {
         title="Restrict Fur Parent"
         size="medium"
         variant="danger"
+        customZIndex={customZIndex}
       >
         <div className="flex items-start mb-4">
           <div className="mr-3 flex-shrink-0">
@@ -1178,6 +1181,7 @@ const AdminFurParentsPage = React.memo(function AdminFurParentsPage() {
         userToAction={userToAction}
         initialReason={restrictReason}
         onConfirm={(reason) => { setRestrictReason(reason); handleRestrictUser(); }}
+        customZIndex="z-[99999]"
       />
 
       {/* Unrestrict Confirmation Modal */}
