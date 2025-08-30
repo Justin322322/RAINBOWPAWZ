@@ -599,7 +599,7 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
               <div className="ml-3">
                 <p className="text-green-800 font-medium">Booking successfully created!</p>
                 <p className="text-green-700 text-sm mt-1">
-                  Your booking (ID: {successBookingId}) has been confirmed. You can view the details below.
+                  Your booking has been confirmed. You can view the details below.
                 </p>
               </div>
               <button
@@ -926,7 +926,7 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
                               Booking Details
                             </Dialog.Title>
                             <p className="text-sm text-white/80 mt-1 truncate">
-                              Booking #{selectedBooking.id} • {formatDateTime(selectedBooking.booking_date, selectedBooking.booking_time)}
+                              {formatDateTime(selectedBooking.booking_date, selectedBooking.booking_time)}
                             </p>
                           </div>
                           <button
@@ -981,7 +981,7 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
                               <div className="flex-1 text-center sm:text-left">
                                 <div className="mb-4">
                                   <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 mb-1">{selectedBooking.pet_name}</h2>
-                                  <p className="text-sm sm:text-base text-gray-600">Booking #{selectedBooking.id}</p>
+                                  <p className="text-sm sm:text-base text-gray-600">{selectedBooking.pet_type || 'Pet'}</p>
                                 </div>
 
                                 <div className="space-y-3">
@@ -1230,7 +1230,7 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
                         Booking Cancelled
                       </Dialog.Title>
                       <p className="mt-2 text-sm text-gray-500">
-                        Your booking (ID: {selectedBooking.id}) has been successfully cancelled.
+                        Your booking has been successfully cancelled.
                       </p>
                     </div>
                   ) : (

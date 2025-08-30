@@ -73,27 +73,34 @@ function ProfilePage({ userData: initialUserData }: ProfilePageProps) {
   // Update local userData when prop changes
   useEffect(() => {
     if (initialUserData) {
+      console.log('📥 [Profile] Received initial user data:', initialUserData);
       setUserData(initialUserData);
+    } else {
+      console.log('⚠️ [Profile] No initial user data received');
     }
   }, [initialUserData]);
 
   // Listen for user data updates from profile changes
   useEffect(() => {
     const handleUserDataUpdate = (event: CustomEvent) => {
+      console.log('🔄 [Profile] Received userDataUpdated event:', event.detail);
       if (event.detail) {
         setUserData(event.detail);
         // Also update session storage to keep it in sync
         try {
           sessionStorage.setItem('user_data', JSON.stringify(event.detail));
+          console.log('💾 [Profile] Updated session storage with new user data');
         } catch (error) {
-          console.error('Failed to update session storage:', error);
+          console.error('❌ [Profile] Failed to update session storage:', error);
         }
       }
     };
 
+    console.log('🎧 [Profile] Setting up userDataUpdated event listener');
     window.addEventListener('userDataUpdated', handleUserDataUpdate as EventListener);
 
     return () => {
+      console.log('🔇 [Profile] Removing userDataUpdated event listener');
       window.removeEventListener('userDataUpdated', handleUserDataUpdate as EventListener);
     };
   }, []);
@@ -101,6 +108,7 @@ function ProfilePage({ userData: initialUserData }: ProfilePageProps) {
   // Initialize form data on first load
   useEffect(() => {
     if (userData && initialLoading) {
+      console.log('🔧 [Profile] Initializing form data with user data:', userData);
       setPersonalInfo({
         firstName: userData.first_name || '',
         lastName: userData.last_name || ''
@@ -117,6 +125,7 @@ function ProfilePage({ userData: initialUserData }: ProfilePageProps) {
       }
 
       setInitialLoading(false);
+      console.log('✅ [Profile] Initial loading complete');
     }
   }, [userData, initialLoading]);
 
@@ -138,17 +147,49 @@ function ProfilePage({ userData: initialUserData }: ProfilePageProps) {
   // Skeleton loading control with minimum delay (600-800ms for fur parent standards)
   useEffect(() => {
     let skeletonTimer: NodeJS.Timeout | null = null;
+    let fallbackTimer: NodeJS.Timeout | null = null;
 
+    // Show skeleton if we're still loading or don't have userData
+    if (initialLoading || !userData) {
+      setShowSkeleton(true);
+      console.log('🔄 [Profile] Showing skeleton - initialLoading:', initialLoading, 'userData:', !!userData);
+
+      // Fallback: Force hide skeleton after 10 seconds to prevent infinite loading
+      fallbackTimer = setTimeout(() => {
+        console.log('⚠️ [Profile] Fallback: Force hiding skeleton after 10s timeout');
+        setShowSkeleton(false);
+        setInitialLoading(false);
+      }, 10000);
+
+      return () => {
+        if (fallbackTimer) {
+          clearTimeout(fallbackTimer);
+        }
+      };
+    }
+
+    // Clear fallback timer if we have data
+    if (fallbackTimer) {
+      clearTimeout(fallbackTimer);
+    }
+
+    // If we have userData and initial loading is complete, show skeleton briefly then hide
     if (!initialLoading && userData) {
-      // Add minimum 700ms delay for proper skeleton visibility
+      console.log('⏳ [Profile] Starting skeleton timer');
       skeletonTimer = setTimeout(() => {
+        console.log('✅ [Profile] Hiding skeleton after timer');
         setShowSkeleton(false);
       }, 700);
     }
 
     return () => {
       if (skeletonTimer) {
+        console.log('🧹 [Profile] Clearing skeleton timer');
         clearTimeout(skeletonTimer);
+      }
+      if (fallbackTimer) {
+        console.log('🧹 [Profile] Clearing fallback timer');
+        clearTimeout(fallbackTimer);
       }
     };
   }, [initialLoading, userData]);
@@ -157,15 +198,19 @@ function ProfilePage({ userData: initialUserData }: ProfilePageProps) {
 
   // Listen for profile picture updates
   useEffect(() => {
-    const handleProfilePictureUpdate = () => {
+    const handleProfilePictureUpdate = (event: CustomEvent) => {
+      console.log('🖼️ [Profile] Received profilePictureUpdated event:', event.detail);
       // Force refresh of profile picture display
       setProfilePictureTimestamp(Date.now());
+      console.log('🔄 [Profile] Updated profile picture timestamp for refresh');
     };
 
-    window.addEventListener('profilePictureUpdated', handleProfilePictureUpdate);
+    console.log('🎧 [Profile] Setting up profilePictureUpdated event listener');
+    window.addEventListener('profilePictureUpdated', handleProfilePictureUpdate as EventListener);
 
     return () => {
-      window.removeEventListener('profilePictureUpdated', handleProfilePictureUpdate);
+      console.log('🔇 [Profile] Removing profilePictureUpdated event listener');
+      window.removeEventListener('profilePictureUpdated', handleProfilePictureUpdate as EventListener);
     };
   }, []);
 
@@ -418,21 +463,59 @@ function ProfilePage({ userData: initialUserData }: ProfilePageProps) {
 
   // Fallback geocoding service configuration
   const fallbackGeocode = async (latitude: number, longitude: number): Promise<string> => {
-    // Fallback to a simple coordinate-based address format
-    const approxLocation = `Approximate location: ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+    console.log('🗺️ [Geocoding] Using fallback geocoding for coordinates:', latitude, longitude);
 
-    // Determine approximate city/region based on coordinates
-    if (latitude >= 14.0 && latitude <= 15.0 && longitude >= 120.0 && longitude <= 121.5) {
-      return `${approxLocation} (Bataan Province area, Philippines)`;
+    // Try to determine location based on known coordinate ranges in Philippines
+    let locationDescription = '';
+
+    // Manila area
+    if (latitude >= 14.40 && latitude <= 14.75 && longitude >= 120.85 && longitude <= 121.15) {
+      locationDescription = 'Metro Manila area';
+    }
+    // Cebu area
+    else if (latitude >= 10.25 && latitude <= 10.35 && longitude >= 123.85 && longitude <= 123.95) {
+      locationDescription = 'Cebu City area';
+    }
+    // Davao area
+    else if (latitude >= 7.05 && latitude <= 7.15 && longitude >= 125.55 && longitude <= 125.65) {
+      locationDescription = 'Davao City area';
+    }
+    // Bataan area
+    else if (latitude >= 14.5 && latitude <= 14.8 && longitude >= 120.3 && longitude <= 120.7) {
+      locationDescription = 'Bataan Province area';
+    }
+    // General Luzon
+    else if (latitude >= 14.0 && latitude <= 16.5 && longitude >= 119.5 && longitude <= 122.0) {
+      locationDescription = 'Luzon Island area';
+    }
+    // Visayas
+    else if (latitude >= 9.0 && latitude <= 12.0 && longitude >= 122.0 && longitude <= 125.0) {
+      locationDescription = 'Visayas region';
+    }
+    // Mindanao
+    else if (latitude >= 5.0 && latitude <= 9.0 && longitude >= 125.0 && longitude <= 127.0) {
+      locationDescription = 'Mindanao Island area';
+    }
+    // General Philippines
+    else if (latitude >= 4.5 && latitude <= 21.0 && longitude >= 115.0 && longitude <= 127.0) {
+      locationDescription = 'Philippines';
+    }
+    else {
+      locationDescription = 'Unknown location in Philippines';
     }
 
-    return `${approxLocation} (Philippines)`;
+    const formattedAddress = `Near ${latitude.toFixed(4)}, ${longitude.toFixed(4)} (${locationDescription})`;
+    console.log('🗺️ [Geocoding] Generated fallback address:', formattedAddress);
+    return formattedAddress;
   };
 
   // Enhanced reverse geocoding with rate limiting and timeout
   const reverseGeocode = async (latitude: number, longitude: number): Promise<string> => {
+    console.log('🗺️ [Geocoding] Starting reverse geocoding for:', latitude, longitude);
+
     // Check rate limit
     if (!checkNominatimRateLimit()) {
+      console.warn('🗺️ [Geocoding] Rate limited');
       throw new Error('Rate limited. Please wait a moment before trying again.');
     }
 
@@ -441,6 +524,7 @@ function ProfilePage({ userData: initialUserData }: ProfilePageProps) {
     const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
 
     try {
+      console.log('🗺️ [Geocoding] Calling geocoding API...');
       // Use our API endpoint instead of direct Nominatim calls
       const response = await fetch(
         `/api/geocoding?lat=${latitude}&lon=${longitude}&type=reverse`,
@@ -452,6 +536,8 @@ function ProfilePage({ userData: initialUserData }: ProfilePageProps) {
           signal: controller.signal
         }
       );
+
+      console.log('🗺️ [Geocoding] API response status:', response.status);
 
       clearTimeout(timeoutId);
 
@@ -465,11 +551,32 @@ function ProfilePage({ userData: initialUserData }: ProfilePageProps) {
       }
 
       const data = await response.json();
+      console.log('🗺️ [Geocoding] Reverse geocoding response:', data);
+
       if (data && data.display_name) {
         return data.display_name;
-      } else {
-        throw new Error('Could not determine address from location');
       }
+
+      // Try to construct an address from available data
+      if (data && data.address) {
+        const addr = data.address;
+        const parts = [];
+
+        if (addr.house_number) parts.push(addr.house_number);
+        if (addr.road) parts.push(addr.road);
+        if (addr.suburb || addr.neighbourhood) parts.push(addr.suburb || addr.neighbourhood);
+        if (addr.city || addr.town || addr.village) parts.push(addr.city || addr.town || addr.village);
+        if (addr.state) parts.push(addr.state);
+        if (addr.country) parts.push(addr.country);
+
+        if (parts.length > 0) {
+          const constructedAddress = parts.join(', ');
+          console.log('🗺️ [Geocoding] Constructed address from components:', constructedAddress);
+          return constructedAddress;
+        }
+      }
+
+      throw new Error('Could not determine address from location');
     } catch (error: any) {
       clearTimeout(timeoutId);
       if (error.name === 'AbortError') {
@@ -515,17 +622,26 @@ function ProfilePage({ userData: initialUserData }: ProfilePageProps) {
         const address = await reverseGeocode(latitude, longitude);
         setContactInfo(prev => ({ ...prev, address }));
         showToast('Location detected successfully! Please review and update if needed.', 'success');
+        console.log('✅ [Location] Successfully geocoded address:', address);
       } catch (geocodeError: any) {
-        console.warn('Reverse geocoding failed:', geocodeError.message);
+        console.warn('❌ [Location] Reverse geocoding failed:', geocodeError.message);
 
-        // Fallback: just show coordinates
-        const fallbackAddress = `Latitude: ${latitude.toFixed(6)}, Longitude: ${longitude.toFixed(6)}`;
-        setContactInfo(prev => ({ ...prev, address: fallbackAddress }));
+        // Try fallback geocoding instead of just showing coordinates
+        try {
+          const fallbackAddress = await fallbackGeocode(latitude, longitude);
+          setContactInfo(prev => ({ ...prev, address: fallbackAddress }));
+          showToast('Location detected with approximate address. Please review and update if needed.', 'warning');
+          console.log('⚠️ [Location] Used fallback geocoding:', fallbackAddress);
+        } catch (fallbackError: any) {
+          console.error('❌ [Location] Fallback geocoding also failed:', fallbackError.message);
+          // Last resort: show coordinates
+          const coordinateAddress = `Coordinates: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
+          setContactInfo(prev => ({ ...prev, address: coordinateAddress }));
+          showToast('Location detected but address lookup failed. Coordinates shown instead.', 'warning');
+        }
 
         if (geocodeError.message.includes('Rate limited')) {
           showToast('Please wait a moment before detecting location again.', 'warning');
-        } else {
-          showToast('Location detected but could not determine address. Please enter your address manually.', 'warning');
         }
       }
     } catch (error: any) {

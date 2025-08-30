@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthTokenFromRequest } from '@/utils/auth';
-import { query } from '@/lib/db';
+import { query, withTransaction } from '@/lib/db';
 
 // Import the email templates
 import { createBookingStatusUpdateEmail, createRefundNotificationEmail } from '@/lib/emailTemplates';
@@ -56,121 +56,130 @@ export async function POST(request: NextRequest) {
     }
 
 
-    // Get booking details first to check payment status
-    let bookingDetails: any = null;
+    // Initialize refund info variable
     let refundInfo: any = null;
 
-    try {
-      const bookingResult = await query(
-        `SELECT sb.*, u.email, u.first_name, u.last_name
-         FROM service_bookings sb
-         JOIN users u ON sb.user_id = u.user_id
-         WHERE sb.id = ? AND sb.user_id = ?`,
-        [bookingId, userId]
-      ) as any[];
+    // First, validate that the booking exists and belongs to the user
+    const bookingExistsQuery = `
+      SELECT id, status, payment_status, price, pet_name
+      FROM bookings
+      WHERE id = ? AND user_id = ?
+    `;
+    const existingBooking = await query(bookingExistsQuery, [bookingId, userId]) as any[];
 
-      if (bookingResult && bookingResult.length > 0) {
-        bookingDetails = bookingResult[0];
-      }
-    } catch (error) {
-      console.error('Error fetching booking details:', error);
+    if (!existingBooking || existingBooking.length === 0) {
+      return NextResponse.json({
+        error: 'Booking not found or does not belong to this user'
+      }, { status: 404 });
     }
 
-    // Update the booking status in the database
-    try {
-      // First try to update in the service_bookings table
-      const updateResult = await query(
-        `UPDATE service_bookings
+    const bookingData = existingBooking[0];
+
+    // Check if booking is already cancelled
+    if (bookingData.status === 'cancelled') {
+      return NextResponse.json({
+        error: 'Booking is already cancelled'
+      }, { status: 400 });
+    }
+
+    // Check if booking can be cancelled (only pending or confirmed bookings can be cancelled)
+    if (!['pending', 'confirmed'].includes(bookingData.status)) {
+      return NextResponse.json({
+        error: `Cannot cancel booking with status: ${bookingData.status}`
+      }, { status: 400 });
+    }
+
+    // Perform cancellation operations in a transaction for consistency
+    const cancellationResult = await withTransaction(async (transaction) => {
+      // Update the booking status in the database
+      const updateResult = await transaction.query(
+        `UPDATE bookings
          SET status = 'cancelled', updated_at = NOW()
-         WHERE id = ? AND user_id = ?`,
+         WHERE id = ? AND user_id = ? AND status IN ('pending', 'confirmed')`,
         [bookingId, userId]
-      );
+      ) as any;
 
-      // If no rows were affected, try the bookings table
-      if (updateResult && 'affectedRows' in updateResult && updateResult.affectedRows === 0) {
-        const bookingsUpdateResult = await query(
-          `UPDATE bookings
-           SET status = 'cancelled', updated_at = NOW()
-           WHERE id = ? AND user_id = ?`,
-          [bookingId, userId]
-        );
+      // Verify the update was successful
+      if (!updateResult || updateResult.affectedRows === 0) {
+        throw new Error('Failed to update booking status - it may have already been processed');
+      }
 
-        if (bookingsUpdateResult && 'affectedRows' in bookingsUpdateResult && bookingsUpdateResult.affectedRows === 0) {
-          // We'll still continue with the process to maintain backward compatibility
+      let refundId: number | null = null;
+
+      // Create refund request if payment was made
+      if (bookingData.payment_status === 'paid') {
+        try {
+          // Check refund eligibility
+          const eligibilityCheck = await checkRefundEligibility(parseInt(bookingId));
+
+          if (eligibilityCheck.eligible) {
+            // Create refund request (pending admin approval)
+            refundId = await createRefundRecord({
+              booking_id: parseInt(bookingId),
+              reason: REFUND_REASONS.USER_REQUESTED,
+              amount: parseFloat(bookingData.price),
+              notes: 'Refund request due to booking cancellation'
+            });
+          }
+        } catch (refundError) {
+          console.error('Refund request error:', refundError);
+          // Continue with cancellation even if refund request fails
         }
       }
-    } catch (dbError) {
-      console.error('Database update error:', dbError);
-      // Continue with the process even if the database update fails
-    }
 
-    // Create refund request if payment was made (not automatic processing)
-    if (bookingDetails && bookingDetails.payment_status === 'paid') {
+      return { refundId };
+    });
+
+    // Handle refund notification outside transaction (not critical for booking integrity)
+    let refundInfo: any = null;
+    if (cancellationResult.refundId) {
       try {
-        // Check refund eligibility
-        const eligibilityCheck = await checkRefundEligibility(parseInt(bookingId));
+        // Create admin notification for refund request
+        const result = await createAdminNotification({
+          type: 'refund_request',
+          title: 'Refund Request - Booking Cancelled',
+          message: `Refund request for cancelled booking #${bookingId} (${bookingData.pet_name}) - Amount: ₱${parseFloat(bookingData.price).toFixed(2)}`,
+          entityType: 'refund',
+          entityId: cancellationResult.refundId
+        });
 
-        if (eligibilityCheck.eligible) {
-          // Create refund request (pending admin approval)
-          const refundId = await createRefundRecord({
-            booking_id: parseInt(bookingId),
-            reason: REFUND_REASONS.USER_REQUESTED,
-            amount: parseFloat(bookingDetails.price),
-            notes: 'Refund request due to booking cancellation'
-          });
-
-          // Create admin notification for refund request
-                        try {
-                // Use the createAdminNotification function instead of direct query
-                const result = await createAdminNotification({
-                  type: 'refund_request',
-                  title: 'Refund Request - Booking Cancelled',
-                  message: `Refund request for cancelled booking #${bookingId} (${bookingDetails.pet_name}) - Amount: ₱${parseFloat(bookingDetails.price).toFixed(2)}`,
-                  entityType: 'refund',
-                  entityId: refundId
-                });
-                
-                if (!result.success) {
-                  console.error('Failed to create admin notification:', result.error);
-                } else {
-                }
-              } catch (notificationError) {
-                console.error('Failed to create admin notification:', notificationError);
-              }
-
-          refundInfo = {
-            status: 'pending',
-            message: 'Refund request submitted. Our team will review and process it within 1-2 business days.',
-            amount: parseFloat(bookingDetails.price)
-          };
-
-          // Send refund request notification email
-          if (bookingDetails.email) {
-            try {
-              const refundEmailContent = createRefundNotificationEmail({
-                customerName: `${bookingDetails.first_name} ${bookingDetails.last_name}`,
-                bookingId: bookingId,
-                petName: bookingDetails.pet_name || 'Your pet',
-                amount: parseFloat(bookingDetails.price),
-                reason: REFUND_REASONS.USER_REQUESTED,
-                status: 'pending',
-                paymentMethod: bookingDetails.payment_method,
-                estimatedDays: undefined // Will be determined after admin approval
-              });
-
-              await sendEmail({
-                to: bookingDetails.email,
-                subject: refundEmailContent.subject,
-                html: refundEmailContent.html
-              });
-            } catch (emailError) {
-              console.error('Refund email error:', emailError);
-            }
-          }
+        if (!result.success) {
+          console.error('Failed to create admin notification:', result.error);
         }
-      } catch (refundError) {
-        console.error('Refund request error:', refundError);
-        // Continue with cancellation even if refund request fails
+
+        refundInfo = {
+          status: 'pending',
+          message: 'Refund request submitted. Our team will review and process it within 1-2 business days.',
+          amount: parseFloat(bookingData.price)
+        };
+
+        // Send refund request notification email
+        try {
+          const userResult = await query('SELECT email, first_name, last_name FROM users WHERE user_id = ?', [userId]) as any[];
+          if (userResult && userResult.length > 0) {
+            const userData = userResult[0];
+            const refundEmailContent = createRefundNotificationEmail({
+              customerName: `${userData.first_name} ${userData.last_name}`,
+              bookingId: bookingId,
+              petName: bookingData.pet_name || 'Your pet',
+              amount: parseFloat(bookingData.price),
+              reason: REFUND_REASONS.USER_REQUESTED,
+              status: 'pending',
+              paymentMethod: 'N/A',
+              estimatedDays: undefined
+            });
+
+            await sendEmail({
+              to: userData.email,
+              subject: refundEmailContent.subject,
+              html: refundEmailContent.html
+            });
+          }
+        } catch (emailError) {
+          console.error('Refund email error:', emailError);
+        }
+      } catch (notificationError) {
+        console.error('Failed to create admin notification:', notificationError);
       }
     }
 
@@ -189,137 +198,66 @@ export async function POST(request: NextRequest) {
 
     // Send booking cancellation email
     try {
+      // Get user details for email
+      const userResult = await query('SELECT email, first_name, last_name FROM users WHERE user_id = ?', [userId]) as any[];
 
-      // Get booking details from database (in a real app)
-      // For now, we'll use mock data
-      let bookingDetails;
-      let userEmail = '';
+      if (!userResult || userResult.length === 0) {
+        console.error('User not found for booking cancellation email');
+        // Continue with the process even if email fails
+      } else {
+        const userData = userResult[0];
 
-      try {
-        // Try to get real booking data and user email from database
-        const bookingResult = await query(
-          `SELECT b.*, u.email, u.first_name, u.last_name, 'N/A' as pet_name
-           FROM bookings b
-           JOIN users u ON b.user_id = u.user_id
-           WHERE b.id = ? AND b.user_id = ?`,
-          [bookingId, userId]
-        ) as any[];
-
-        if (bookingResult && bookingResult.length > 0) {
-          const booking = bookingResult[0];
-          userEmail = booking.email;
-
-          // Format date for email
-          const bookingDate = new Date(booking.booking_date);
-          const formattedDate = bookingDate.toLocaleDateString('en-US', {
-            weekday: 'long',
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric'
-          });
-
-          bookingDetails = {
-            customerName: `${booking.first_name} ${booking.last_name}`,
-            serviceName: booking.service_name,
-            providerName: booking.provider_name,
-            bookingDate: formattedDate,
-            bookingTime: booking.booking_time,
-            petName: booking.pet_name,
-            bookingId: booking.id,
-            status: 'cancelled',
-            notes: 'Your booking has been cancelled as requested.'
-          };
-        }
-      } catch {
-        // Continue with mock data if we can't get real data
-      }
-
-      // If we couldn't get real data, use mock data
-      if (!bookingDetails) {
-        // Get user email from database
-        try {
-          const userResult = await query('SELECT email, first_name, last_name FROM users WHERE user_id = ?', [userId]) as any[];
-          if (userResult && userResult.length > 0) {
-            userEmail = userResult[0].email;
-
-            // Create mock booking details
-            bookingDetails = {
-              customerName: `${userResult[0].first_name} ${userResult[0].last_name}`,
-              serviceName: 'Pet Memorial Service' as string,
-              providerName: 'Rainbow Paws Provider' as string,
-              bookingDate: new Date().toLocaleDateString('en-US', {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
-              }),
-              bookingTime: '10:00 AM' as string,
-              petName: 'Your Pet' as string,
-              bookingId: bookingId as string | number,
-              status: 'cancelled' as const,
-              notes: 'Your booking has been cancelled as requested.'
-            };
-          }
-        } catch {
-        }
-      }
-
-      // If we still don't have an email or booking details, use fallbacks
-      if (!userEmail) {
-        userEmail = 'user@example.com';
-      }
-
-      if (!bookingDetails) {
-        bookingDetails = {
-          customerName: 'Valued Customer',
-          serviceName: 'Pet Memorial Service' as string,
-          providerName: 'Rainbow Paws Provider' as string,
+        // Create booking details for email using validated data
+        const bookingDetails = {
+          customerName: `${userData.first_name} ${userData.last_name}`,
+          serviceName: 'Pet Memorial Service',
+          providerName: 'Rainbow Paws Provider',
           bookingDate: new Date().toLocaleDateString('en-US', {
             weekday: 'long',
             year: 'numeric',
             month: 'long',
             day: 'numeric'
           }),
-          bookingTime: '10:00 AM' as string,
-          petName: 'Your Pet' as string,
-          bookingId: bookingId as string | number,
-          status: 'cancelled' as const,
+          bookingTime: '10:00 AM',
+          petName: bookingData.pet_name || 'Your Pet',
+          bookingId: bookingId,
+          status: 'cancelled',
           notes: 'Your booking has been cancelled as requested.'
         };
-      }
 
-      // Create email content using template
-      const emailContent = createBookingStatusUpdateEmail({
-        customerName: bookingDetails.customerName,
-        serviceName: bookingDetails.serviceName,
-        providerName: bookingDetails.providerName,
-        bookingDate: bookingDetails.bookingDate,
-        bookingTime: bookingDetails.bookingTime,
-        petName: bookingDetails.petName,
-        bookingId: bookingDetails.bookingId,
-        status: 'cancelled' as const,
-        notes: bookingDetails.notes
-      });
-
-      // Send email using unified email service
-      try {
-        const emailResult = await sendEmail({
-          to: userEmail,
-          subject: emailContent.subject,
-          html: emailContent.html
+        // Create email content using template
+        const emailContent = createBookingStatusUpdateEmail({
+          customerName: bookingDetails.customerName,
+          serviceName: bookingDetails.serviceName,
+          providerName: bookingDetails.providerName,
+          bookingDate: bookingDetails.bookingDate,
+          bookingTime: bookingDetails.bookingTime,
+          petName: bookingDetails.petName,
+          bookingId: bookingDetails.bookingId,
+          status: 'cancelled' as const,
+          notes: bookingDetails.notes
         });
 
-        if (emailResult.success) {
-        } else {
-          // Continue with the cancellation process even if the email fails
+        // Send email using unified email service
+        try {
+          const emailResult = await sendEmail({
+            to: userData.email,
+            subject: emailContent.subject,
+            html: emailContent.html
+          });
+
+          if (!emailResult.success) {
+            console.error('Failed to send cancellation email');
+          }
+        } catch (emailError) {
+          console.error('Error sending cancellation email:', emailError);
         }
-      } catch {
-        // Continue with the cancellation process even if the email fails
       }
     } catch {
       // Continue with the cancellation process even if the email fails
     }
 
+    // Return success response
     return NextResponse.json({
       success: true,
       message: refundInfo
