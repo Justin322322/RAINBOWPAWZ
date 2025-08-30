@@ -1426,6 +1426,36 @@ const AdminCremationCentersPage = React.memo(function AdminCremationCentersPage(
                 </div>
               </>
             )}
+
+            {/* Administrative Actions */}
+            <div className="border-t border-gray-200"></div>
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold text-gray-900">Administrative Actions</h3>
+              <div className="flex gap-3">
+                {selectedCenter?.status !== 'restricted' ? (
+                  <button
+                    onClick={() => {
+                      setCenterToAction(selectedCenter);
+                      setRestrictReason('');
+                      setShowRestrictModal(true);
+                    }}
+                    className="px-4 py-2 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 transition-colors"
+                  >
+                    Restrict Center
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => {
+                      setCenterToAction(selectedCenter);
+                      setShowRestoreModal(true);
+                    }}
+                    className="px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors"
+                  >
+                    Unrestrict Center
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </Modal>

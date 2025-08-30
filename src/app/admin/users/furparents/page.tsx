@@ -1361,6 +1361,36 @@ const AdminFurParentsPage = React.memo(function AdminFurParentsPage() {
                  </div>
                </>
              )}
+
+             {/* Administrative Actions */}
+             <div className="border-t border-gray-200"></div>
+             <div className="space-y-3">
+               <h3 className="text-sm font-semibold text-gray-900">Administrative Actions</h3>
+               <div className="flex gap-3">
+                 {selectedUser?.status !== 'restricted' ? (
+                   <button
+                     onClick={() => {
+                       setUserToAction(selectedUser);
+                       setRestrictReason('');
+                       setShowRestrictModal(true);
+                     }}
+                     className="px-4 py-2 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 transition-colors"
+                   >
+                     Restrict User
+                   </button>
+                 ) : (
+                   <button
+                     onClick={() => {
+                       setUserToAction(selectedUser);
+                       setShowRestoreModal(true);
+                     }}
+                     className="px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors"
+                   >
+                     Unrestrict User
+                   </button>
+                 )}
+               </div>
+             </div>
           </div>
         </div>
       </Modal>
