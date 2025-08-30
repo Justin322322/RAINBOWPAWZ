@@ -156,10 +156,8 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
                   >
                     {resendCooldown > 0
                       ? `Resend code in ${resendCooldown}s`
-                      : isResending
+                      : (isResending || isGeneratingInitial)
                       ? 'Sending...'
-                      : isGeneratingInitial
-                      ? 'Generate OTP'
                       : 'Resend verification code'}
                   </Button>
                 </div>

@@ -179,7 +179,7 @@ export const useOTPVerification = ({
 
   useEffect(() => {
     const initialOtpSent = sessionStorage.getItem(initialOtpSentKey) === 'true';
-    console.log('🔍 Initial OTP check:', { initialOtpSent, initialOtpSentKey });
+    console.log('🔍 Initial OTP check:', { initialOtpSent, initialOtpSentKey, userId });
 
     if (!initialOtpSent) {
       console.log('📤 Triggering initial OTP generation');
@@ -196,7 +196,7 @@ export const useOTPVerification = ({
     }
     // Return undefined when no cleanup is needed
     return undefined;
-  }, [initialOtpSentKey]); // Remove generateOTP from dependencies to prevent infinite loop
+  }, [initialOtpSentKey, userId]); // Include userId to ensure effect runs when user changes
 
   useEffect(() => {
     const cooldownEndTime = getStoredCooldownEndTime();
