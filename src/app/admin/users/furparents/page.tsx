@@ -337,10 +337,15 @@ const AdminFurParentsPage = React.memo(function AdminFurParentsPage() {
     // Close details modal if it's open to avoid modal conflicts
     if (showDetailsModal) {
       setShowDetailsModal(false);
+      // Use setTimeout to ensure the details modal closes before opening restrict modal
+      setTimeout(() => {
+        setShowRestrictModal(true);
+        setOpenDropdownId(null);
+      }, 150);
+    } else {
+      setShowRestrictModal(true);
+      setOpenDropdownId(null);
     }
-    setShowRestrictModal(true);
-    // Close dropdown if open
-    setOpenDropdownId(null);
   };
 
   // Function to open the unrestrict modal
@@ -349,10 +354,15 @@ const AdminFurParentsPage = React.memo(function AdminFurParentsPage() {
     // Close details modal if it's open to avoid modal conflicts
     if (showDetailsModal) {
       setShowDetailsModal(false);
+      // Use setTimeout to ensure the details modal closes before opening restore modal
+      setTimeout(() => {
+        setShowRestoreModal(true);
+        setOpenDropdownId(null);
+      }, 150);
+    } else {
+      setShowRestoreModal(true);
+      setOpenDropdownId(null);
     }
-    setShowRestoreModal(true);
-    // Close dropdown if open
-    setOpenDropdownId(null);
   };
 
   // Function to toggle dropdown

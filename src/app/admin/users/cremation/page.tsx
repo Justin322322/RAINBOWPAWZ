@@ -468,8 +468,13 @@ const AdminCremationCentersPage = React.memo(function AdminCremationCentersPage(
     // Close details modal if it's open to avoid modal conflicts
     if (showDetailsModal) {
       setShowDetailsModal(false);
+      // Use setTimeout to ensure the details modal closes before opening restrict modal
+      setTimeout(() => {
+        setShowRestrictModal(true);
+      }, 150);
+    } else {
+      setShowRestrictModal(true);
     }
-    setShowRestrictModal(true);
   };
 
   // Function to open the unrestrict modal
@@ -478,8 +483,13 @@ const AdminCremationCentersPage = React.memo(function AdminCremationCentersPage(
     // Close details modal if it's open to avoid modal conflicts
     if (showDetailsModal) {
       setShowDetailsModal(false);
+      // Use setTimeout to ensure the details modal closes before opening restore modal
+      setTimeout(() => {
+        setShowRestoreModal(true);
+      }, 150);
+    } else {
+      setShowRestoreModal(true);
     }
-    setShowRestoreModal(true);
   };
 
 
