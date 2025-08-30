@@ -34,12 +34,14 @@ interface ProfilePageProps {
 function ProfilePage({ userData: initialUserData }: ProfilePageProps) {
   const { showToast } = useToast();
 
+  console.log('📄 [Profile] ProfilePage rendered with initialUserData:', initialUserData);
+
   // Local userData state that can be updated independently
   const [userData, setUserData] = useState<UserData | undefined>(initialUserData);
 
   // Skeleton loading state with minimum delay
-  const [showSkeleton, setShowSkeleton] = useState(true);
-  const [initialLoading, setInitialLoading] = useState(true);
+  const [showSkeleton, setShowSkeleton] = useState(!initialUserData); // Don't show skeleton if we have initial data
+  const [initialLoading, setInitialLoading] = useState(!initialUserData); // Don't show initial loading if we have data
 
   // Edit mode states
   const [isEditingPersonal, setIsEditingPersonal] = useState(false);
@@ -75,10 +77,21 @@ function ProfilePage({ userData: initialUserData }: ProfilePageProps) {
     if (initialUserData) {
       console.log('📥 [Profile] Received initial user data:', initialUserData);
       setUserData(initialUserData);
-    } else {
-      console.log('⚠️ [Profile] No initial user data received');
+      setInitialLoading(false);
+      return; // Early return when we have data
     }
-  }, [initialUserData]);
+
+    console.log('⚠️ [Profile] No initial user data received');
+    // If no initial data, wait a bit and then start the loading timeout
+    const timeout = setTimeout(() => {
+      if (!userData) {
+        console.log('⏰ [Profile] No user data after timeout, showing skeleton');
+        setInitialLoading(false);
+      }
+    }, 1000); // Wait 1 second for user data to load
+
+    return () => clearTimeout(timeout);
+  }, [initialUserData, userData]);
 
   // Listen for user data updates from profile changes
   useEffect(() => {
@@ -154,12 +167,12 @@ function ProfilePage({ userData: initialUserData }: ProfilePageProps) {
       setShowSkeleton(true);
       console.log('🔄 [Profile] Showing skeleton - initialLoading:', initialLoading, 'userData:', !!userData);
 
-      // Fallback: Force hide skeleton after 10 seconds to prevent infinite loading
+      // Fallback: Force hide skeleton after 5 seconds to prevent infinite loading
       fallbackTimer = setTimeout(() => {
-        console.log('⚠️ [Profile] Fallback: Force hiding skeleton after 10s timeout');
+        console.log('⚠️ [Profile] Fallback: Force hiding skeleton after 5s timeout');
         setShowSkeleton(false);
         setInitialLoading(false);
-      }, 10000);
+      }, 5000); // Reduced from 10s to 5s
 
       return () => {
         if (fallbackTimer) {
@@ -179,7 +192,7 @@ function ProfilePage({ userData: initialUserData }: ProfilePageProps) {
       skeletonTimer = setTimeout(() => {
         console.log('✅ [Profile] Hiding skeleton after timer');
         setShowSkeleton(false);
-      }, 700);
+      }, 300); // Reduced from 700ms to 300ms for faster loading
     }
 
     return () => {

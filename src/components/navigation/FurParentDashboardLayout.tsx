@@ -39,6 +39,7 @@ function FurParentDashboardLayout({
 
   // Update current user data when prop changes
   useEffect(() => {
+    console.log('🔄 [Layout] User data prop changed:', userData);
     setCurrentUserData(userData);
   }, [userData]);
 
