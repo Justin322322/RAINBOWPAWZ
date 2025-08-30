@@ -10,7 +10,7 @@ interface PoolStats {
   queuedRequests: number;
 }
 
-export async function getDatabaseHealth(): Promise<{
+async function _getDatabaseHealth(): Promise<{
   isConnected: boolean;
   poolStats: PoolStats;
   responseTime: number;

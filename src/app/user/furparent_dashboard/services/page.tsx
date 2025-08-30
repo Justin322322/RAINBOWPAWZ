@@ -9,7 +9,7 @@ type LocationData = {
   source: 'profile' | 'default' | 'geolocation';
 };
 import { cacheManager } from '@/utils/cache';
-import withUserAuth from '@/components/withUserAuth';
+// OTP verification is handled by the layout
 
 interface ServicesPageProps {
   userData?: any;
@@ -226,5 +226,5 @@ function ServicesPage({ userData }: ServicesPageProps) {
   );
 }
 
-// Export the component wrapped with auth HOC
-export default withUserAuth(ServicesPage);
+// OTP verification is handled by the layout
+export default ServicesPage;

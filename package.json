@@ -63,8 +63,6 @@
       "eslint-config-next",
       "eslint-plugin-unused-imports"
     ],
-    "ignoreBinaries": [
-      "knip"
-    ]
+    "ignoreBinaries": []
   }
 }

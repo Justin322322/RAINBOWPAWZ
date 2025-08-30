@@ -3,14 +3,7 @@ const apiKey = process.env.HTTPSMS_API_KEY || 'uk_SMVOkSvVaC-rg9-oXlbnOu8_bylIkC
 const fromNumber = process.env.HTTPSMS_FROM_NUMBER || '+639163178412';
 const baseUrl = 'https://api.httpsms.com/v1';
 
-// Add debugging information
-console.log('🔍 SMS Service Configuration:');
-console.log('  API Key:', apiKey ? `${apiKey.substring(0, 8)}...` : '❌ NOT SET');
-console.log('  From Number:', fromNumber || '❌ NOT SET');
-console.log('  Base URL:', baseUrl);
-console.log('  Environment:', process.env.NODE_ENV);
-console.log('  Timestamp:', new Date().toISOString());
-console.log('  Using hardcoded fallback:', !process.env.HTTPSMS_API_KEY ? '✅ YES' : '❌ NO');
+// SMS configuration loaded - debug logging removed to prevent log pollution
 
 interface SendSMSParams {
   to: string;

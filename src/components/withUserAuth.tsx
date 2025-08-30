@@ -235,27 +235,65 @@ const withUserAuth = <P extends object>(
     }, [router, checkFirstTimeLogin]);
 
     // Handle successful OTP verification
-    const handleOTPVerificationSuccess = () => {
+    const handleOTPVerificationSuccess = async () => {
       if (userData) {
-        const updatedUserData = {
-          ...userData,
-          is_otp_verified: 1
-        };
+        try {
+          // First, refresh user data from server to ensure we have latest verification status
+          const refreshResponse = await fetch('/api/auth/check-user-status', {
+            credentials: 'include',
+            headers: {
+              'Cache-Control': 'no-cache'
+            }
+          });
 
-        // Update all state and storage
-        setUserData(updatedUserData);
-        sessionStorage.setItem('user_data', JSON.stringify(updatedUserData));
-        sessionStorage.setItem('otp_verified', 'true');
-        sessionStorage.removeItem('needs_otp_verification');
+          if (refreshResponse.ok) {
+            const refreshData = await refreshResponse.json();
+            if (refreshData.success && refreshData.user) {
+              // Use server data as the source of truth
+              const serverUserData = {
+                ...refreshData.user,
+                is_otp_verified: 1 // Ensure it's marked as verified
+              };
 
-        // Update global state
-        globalUserAuthState = {
-          verified: true,
-          userData: updatedUserData
-        };
+              // Update all state and storage with server data
+              setUserData(serverUserData);
+              sessionStorage.setItem('user_data', JSON.stringify(serverUserData));
+              sessionStorage.setItem('otp_verified', 'true');
+              sessionStorage.removeItem('needs_otp_verification');
 
-        // Close OTP modal
-        setShowOTPModal(false);
+              // Update global state
+              globalUserAuthState = {
+                verified: true,
+                userData: serverUserData
+              };
+
+              console.log('✅ OTP verification successful - user data refreshed from server');
+            }
+          }
+        } catch (error) {
+          console.warn('Failed to refresh user data from server, using local update:', error);
+
+          // Fallback to local update if server refresh fails
+          const updatedUserData = {
+            ...userData,
+            is_otp_verified: 1
+          };
+
+          setUserData(updatedUserData);
+          sessionStorage.setItem('user_data', JSON.stringify(updatedUserData));
+          sessionStorage.setItem('otp_verified', 'true');
+          sessionStorage.removeItem('needs_otp_verification');
+
+          globalUserAuthState = {
+            verified: true,
+            userData: updatedUserData
+          };
+        }
+
+        // Close OTP modal after a brief delay to show success message
+        setTimeout(() => {
+          setShowOTPModal(false);
+        }, 2000);
 
         // Check if Get Started modal should be shown
         setTimeout(checkFirstTimeLogin, 500);

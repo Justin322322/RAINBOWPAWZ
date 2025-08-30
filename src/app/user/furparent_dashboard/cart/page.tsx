@@ -10,7 +10,7 @@ import {
   CheckIcon
 } from '@heroicons/react/24/outline';
 import { useCart } from '@/contexts/CartContext';
-import withOTPVerification from '@/components/withOTPVerification';
+// OTP verification is handled by the layout
 
 interface CartPageProps {
   _userData?: any;
@@ -202,4 +202,4 @@ function CartPage({ _userData }: CartPageProps) {
   );
 }
 
-export default withOTPVerification(CartPage);
+export default CartPage;

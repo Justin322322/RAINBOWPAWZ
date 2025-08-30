@@ -12,7 +12,7 @@ import {
   ClockIcon,
   ExclamationCircleIcon
 } from '@heroicons/react/24/outline';
-import withOTPVerification from '@/components/withOTPVerification';
+// OTP verification is handled by the layout
 import FurParentPageSkeleton from '@/components/ui/FurParentPageSkeleton';
 
 interface CartItem {
@@ -274,4 +274,4 @@ function CartPage({ _userData }: CartPageProps) {
   );
 }
 
-export default withOTPVerification(CartPage);
+export default CartPage;

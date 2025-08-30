@@ -1,4 +1,4 @@
-export interface UploadResult {
+interface UploadResult {
   url: string;
 }
 

@@ -167,7 +167,7 @@ function convertDocumentPath(path: string): string {
  * @param url The image URL
  * @returns The URL with a cache-busting parameter
  */
-export function addCacheBuster(url: string): string {
+function addCacheBuster(url: string): string {
   const timestamp = Date.now();
   const separator = url.includes('?') ? '&' : '?';
   return `${url}${separator}t=${timestamp}`;

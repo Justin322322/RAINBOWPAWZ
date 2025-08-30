@@ -81,16 +81,7 @@ const PersonalAccountModal: React.FC<PersonalAccountModalProps> = ({ isOpen, onC
       const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
 
       try {
-        // Create a simple test request first to check if the server is responding
-        try {
-          const _testResponse = await fetch(`/api/health-check`, {
-            method: 'GET',
-            signal: AbortSignal.timeout(5000) // 5 second timeout
-          });
-        } catch {
-        }
-
-        // Now send the actual registration request
+        // Send the registration request
         const response = await fetch(`/api/auth/register`, {
           method: 'POST',
           headers: {

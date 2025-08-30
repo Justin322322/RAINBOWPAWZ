@@ -263,34 +263,76 @@ const withOTPVerification = <P extends object>(
       checkAuth();
     }, [router, hasShownOTPModal, userData]);
 
-    const handleVerificationSuccess = () => {
+    const handleVerificationSuccess = async () => {
       // Update user data to reflect verification
       if (userData) {
-        const updatedUserData = {
-          ...userData,
-          is_otp_verified: 1
-        };
-
-        // Update component state first
-        setUserData(updatedUserData);
-
-        // Then update all persistence mechanisms
         try {
-          // 1. Session storage
-          sessionStorage.setItem('user_data', JSON.stringify(updatedUserData));
-          sessionStorage.setItem('otp_verified', 'true');
-          sessionStorage.removeItem('needs_otp_verification');
+          // First, refresh user data from server to ensure we have latest verification status
+          const refreshResponse = await fetch(`/api/users/${userData.id}?t=${Date.now()}`, {
+            credentials: 'include',
+            headers: {
+              'Cache-Control': 'no-cache'
+            }
+          });
 
-          // 2. Global state
-          globalUserAuthState = {
-            verified: true,
-            userData: updatedUserData
+          if (refreshResponse.ok) {
+            const serverUserData = await refreshResponse.json();
+
+            // Use server data as the source of truth
+            const updatedUserData = {
+              ...serverUserData,
+              is_otp_verified: 1 // Ensure it's marked as verified
+            };
+
+            // Update component state first
+            setUserData(updatedUserData);
+
+            // Then update all persistence mechanisms
+            try {
+              // 1. Session storage
+              sessionStorage.setItem('user_data', JSON.stringify(updatedUserData));
+              sessionStorage.setItem('otp_verified', 'true');
+              sessionStorage.removeItem('needs_otp_verification');
+
+              // 2. Global state
+              globalUserAuthState = {
+                verified: true,
+                userData: updatedUserData
+              };
+
+              // 3. Additional localStorage backup
+              localStorage.setItem('user_verified', 'true');
+
+              console.log('✅ OTP verification successful - user data refreshed from server');
+            } catch (storageError) {
+              console.warn('Failed to update storage after OTP verification:', storageError);
+            }
+          }
+        } catch (error) {
+          console.warn('Failed to refresh user data from server, using local update:', error);
+
+          // Fallback to local update if server refresh fails
+          const updatedUserData = {
+            ...userData,
+            is_otp_verified: 1
           };
 
-          // 3. Additional localStorage backup
-          localStorage.setItem('user_verified', 'true');
+          setUserData(updatedUserData);
 
-        } catch {
+          try {
+            sessionStorage.setItem('user_data', JSON.stringify(updatedUserData));
+            sessionStorage.setItem('otp_verified', 'true');
+            sessionStorage.removeItem('needs_otp_verification');
+
+            globalUserAuthState = {
+              verified: true,
+              userData: updatedUserData
+            };
+
+            localStorage.setItem('user_verified', 'true');
+          } catch (storageError) {
+            console.warn('Failed to update storage in fallback:', storageError);
+          }
         }
       }
 

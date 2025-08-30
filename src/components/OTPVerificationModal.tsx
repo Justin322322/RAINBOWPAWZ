@@ -25,6 +25,7 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
     errorMessage,
     isLoading,
     isResending,
+    isGeneratingInitial,
     resendCooldown,
     verificationStatus,
     inputRefs,
@@ -49,12 +50,13 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
   useEffect(() => {
     if (verificationStatus === 'success') {
       const timer = setTimeout(() => {
-        onClose();
+        // Don't call onClose() for successful verification - let parent handle it
+        // onClose(); // Commented out to prevent unwanted redirects
       }, 1500);
       return () => clearTimeout(timer);
     }
     return undefined;
-  }, [verificationStatus, onClose]);
+  }, [verificationStatus]);
 
   if (!isOpen) {
     return null;
@@ -146,8 +148,8 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
                     {isLoading ? 'Verifying...' : 'Verify Account'}
                   </Button>
                   <Button
-                    onClick={() => generateOTP()}
-                    disabled={isResending || resendCooldown > 0}
+                    onClick={() => generateOTP(undefined, true)} // undefined = no abort signal, true = this is a resend
+                    disabled={(isResending || isGeneratingInitial) || resendCooldown > 0}
                     variant="link"
                     size="sm"
                     fullWidth
@@ -156,6 +158,8 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
                       ? `Resend code in ${resendCooldown}s`
                       : isResending
                       ? 'Sending...'
+                      : isGeneratingInitial
+                      ? 'Generate OTP'
                       : 'Resend verification code'}
                   </Button>
                 </div>

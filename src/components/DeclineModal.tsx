@@ -13,6 +13,7 @@ interface DeclineModalProps {
   declineText?: string;
   cancelText?: string;
   customZIndex?: string; // Custom z-index for nested modals
+  minLength?: number; // Minimum length for decline reason
 }
 
 const DeclineModal: React.FC<DeclineModalProps> = ({

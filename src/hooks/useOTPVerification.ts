@@ -15,6 +15,7 @@ export const useOTPVerification = ({
   const [errorMessage, setErrorMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isResending, setIsResending] = useState(false);
+  const [isGeneratingInitial, setIsGeneratingInitial] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
   const [verificationStatus, setVerificationStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   
@@ -63,10 +64,14 @@ export const useOTPVerification = ({
     }
   }, [cooldownKey]);
 
-  const generateOTP = useCallback(async (signal?: AbortSignal) => {
-    if (isResending || resendCooldown > 0) return;
+  const generateOTP = useCallback(async (signal?: AbortSignal, isResend: boolean = false) => {
+    if ((isResending && isResend) || (isGeneratingInitial && !isResend) || resendCooldown > 0) return;
 
-    setIsResending(true);
+    if (isResend) {
+      setIsResending(true);
+    } else {
+      setIsGeneratingInitial(true);
+    }
     setErrorMessage('');
 
     try {
@@ -104,12 +109,16 @@ export const useOTPVerification = ({
     } finally {
       // Only update loading state if not aborted
       if (!signal?.aborted) {
-        setIsResending(false);
+        if (isResend) {
+          setIsResending(false);
+        } else {
+          setIsGeneratingInitial(false);
+        }
       }
     }
-    // Removed isResending and resendCooldown from dependencies as they are state values
+    // Removed isResending and isGeneratingInitial from dependencies as they are state values
     // that would cause unnecessary recreations. The function handles the current state internally.
-  }, [generateOTPRequestBody, setStoredCooldownEndTime, initialOtpSentKey, isResending, resendCooldown]);
+  }, [generateOTPRequestBody, setStoredCooldownEndTime, initialOtpSentKey, isResending, isGeneratingInitial, resendCooldown]);
 
   const verifyOTP = useCallback(async () => {
     const otpString = otp.join('');
@@ -161,8 +170,8 @@ export const useOTPVerification = ({
     const initialOtpSent = sessionStorage.getItem(initialOtpSentKey) === 'true';
     if (!initialOtpSent) {
       const abortController = new AbortController();
-      generateOTP(abortController.signal);
-      
+      generateOTP(abortController.signal, false); // false = initial generation
+
       // Cleanup function to abort the operation on unmount
       return () => {
         abortController.abort();
@@ -224,6 +233,7 @@ export const useOTPVerification = ({
     errorMessage,
     isLoading,
     isResending,
+    isGeneratingInitial,
     resendCooldown,
     verificationStatus,
     inputRefs,

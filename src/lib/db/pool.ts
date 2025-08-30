@@ -4,7 +4,7 @@ import mysql from "mysql2/promise";
 export const MYSQL_PORT = parseInt(process.env.DB_PORT || "3306");
 
 // Helper function to get SSL config
-export const getSSLConfig = () => {
+const getSSLConfig = () => {
   // Always use SSL for Railway database if DATABASE_URL is present
   if (process.env.DATABASE_URL || process.env.MYSQL_URL) {
     // Railway MySQL requires SSL
@@ -41,7 +41,7 @@ export function isPlanetScale(): boolean {
 }
 
 // Detect Railway MySQL environment
-export function isRailwayMySQL(): boolean {
+function isRailwayMySQL(): boolean {
   const url = process.env.DATABASE_URL || process.env.MYSQL_URL || "";
   const host = (() => {
     try {
@@ -124,7 +124,7 @@ const productionConfig = {
   idleTimeout: 60000,
 };
 
-export const finalConfig = process.env.NODE_ENV === "production" ? productionConfig : dbConfig;
+const _finalConfig = process.env.NODE_ENV === "production" ? productionConfig : dbConfig;
 
 type GlobalWithMysql = typeof globalThis & { __rainbowMysqlPool?: mysql.Pool };
 const globalForMysql = globalThis as unknown as GlobalWithMysql;
@@ -196,6 +196,6 @@ export async function recreatePool(): Promise<void> {
   }
 }
 
-export type { mysql };
+
 
 

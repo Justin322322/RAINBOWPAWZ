@@ -13,7 +13,7 @@ import {
   XMarkIcon,
   InformationCircleIcon
 } from '@heroicons/react/24/outline';
-import withUserAuth, { UserData } from '@/components/withUserAuth';
+import { UserData } from '@/components/withUserAuth';
 import Image from 'next/image';
 import { getProfilePictureUrl } from '@/utils/imageUtils';
 import PhilippinePhoneInput from '@/components/ui/PhilippinePhoneInput';
@@ -914,4 +914,4 @@ function ProfilePage({ userData: initialUserData }: ProfilePageProps) {
   );
 }
 
-export default withUserAuth(ProfilePage);
+export default ProfilePage;

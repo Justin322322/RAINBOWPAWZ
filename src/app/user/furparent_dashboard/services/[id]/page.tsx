@@ -18,7 +18,7 @@ import {
 import FurParentPageSkeleton from '@/components/ui/FurParentPageSkeleton';
 import { handleImageError } from '@/utils/imageUtils';
 import ReviewsList from '@/components/reviews/ReviewsList';
-import withUserAuth from '@/components/withUserAuth';
+// OTP verification is handled by the layout
 import { formatPrice } from '@/utils/numberUtils';
 // LocationData type removed with geolocation utils
 type LocationData = {
@@ -715,5 +715,5 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
   );
 }
 
-// Export the component wrapped with auth HOC
-export default withUserAuth(ServiceDetailPage);
+// OTP verification is handled by the layout
+export default ServiceDetailPage;
