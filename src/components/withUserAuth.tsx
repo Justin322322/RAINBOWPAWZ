@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { fastAuthCheck } from '@/utils/auth';
 import OTPVerificationModal from '@/components/OTPVerificationModal';
 import GetStartedModal from '@/components/GetStartedModal';
+import AuthLoadingScreen from '@/components/AuthLoadingScreen';
 
 // Define the shape of the user data
 export interface UserData {
@@ -269,9 +270,9 @@ const withUserAuth = <P extends object>(
       hasShownGetStartedModalRef.current = true;
     };
 
-    // Don't render anything while authenticating
+    // Show loading screen while authenticating
     if (!isAuthenticated || !userData) {
-      return null;
+      return <AuthLoadingScreen />;
     }
 
     return (

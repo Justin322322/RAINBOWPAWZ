@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { fastAuthCheck } from '@/utils/auth';
+import AuthLoadingScreen from '@/components/AuthLoadingScreen';
 
 // Define the shape of the admin data
 interface AdminData {
@@ -151,7 +152,7 @@ const withAdminAuth = <P_Original extends object>(
     }, [router, retrievedAdminData, isAuthenticated]); // Added dependencies
 
     if (!isAuthenticated || !retrievedAdminData) {
-      return null; // Or loading indicator
+      return <AuthLoadingScreen />;
     }
 
     // Pass props directly without processing

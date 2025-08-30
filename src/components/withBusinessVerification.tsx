@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import AuthLoadingScreen from '@/components/AuthLoadingScreen';
 // import { fastAuthCheck } from '@/utils/auth';
 // Business verification cache functionality removed
 
@@ -252,7 +253,7 @@ const withBusinessVerification = <P extends object>(
 
     // Show loading state while checking verification
     if (isLoading) {
-      return null;
+      return <AuthLoadingScreen />;
     }
 
     // Only render component if authenticated and verified
