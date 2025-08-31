@@ -79,6 +79,11 @@ function AdminLogsPage({ adminData }: { adminData: any }) {
 
   // Fetch logs function
   const fetchLogs = useCallback(async (page = 1, showLoading = true) => {
+    // Don't make API calls if user is logging out
+    if (sessionStorage.getItem('is_logging_out') === 'true') {
+      return;
+    }
+    
     if (showLoading) setLoading(true);
     setError(null);
 
@@ -103,6 +108,13 @@ function AdminLogsPage({ adminData }: { adminData: any }) {
       });
 
       if (!response.ok) {
+        // Handle 401 Unauthorized specifically (likely due to logout)
+        if (response.status === 401) {
+          // Don't show error for 401 during logout - just return silently
+          if (sessionStorage.getItem('is_logging_out') === 'true') {
+            return;
+          }
+        }
         throw new Error(`Failed to fetch logs: ${response.status}`);
       }
 
@@ -125,10 +137,24 @@ function AdminLogsPage({ adminData }: { adminData: any }) {
     fetchLogs(1);
   }, [fetchLogs]);
 
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      // Clear any active intervals
+      if (refreshInterval) {
+        clearInterval(refreshInterval);
+      }
+    };
+  }, []);
+
   // Auto-refresh setup
   useEffect(() => {
     if (autoRefresh) {
       const interval = setInterval(() => {
+        // Check if user is still authenticated and not logging out before making API call
+        if (sessionStorage.getItem('is_logging_out') === 'true') {
+          return;
+        }
         fetchLogs(currentPage, false);
       }, 30000); // Refresh every 30 seconds
       setRefreshInterval(interval);
