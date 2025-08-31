@@ -3,7 +3,7 @@
   "regions": ["sin1"],
   "functions": {
     "src/app/api/**/*.ts": {
-      "runtime": "@vercel/node"
+      "runtime": "nodejs18.x"
     }
   }
 }
