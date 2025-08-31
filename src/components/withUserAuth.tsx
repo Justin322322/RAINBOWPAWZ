@@ -192,7 +192,20 @@ const withUserAuth = <P extends object>(
               // Don't redirect if user is currently logging out
               const isLoggingOut = sessionStorage.getItem('is_logging_out') === 'true';
               if (!isLoggingOut) {
-                router.replace('/');
+                console.log('🔐 [withUserAuth] Auth failed with 401/403, clearing state and redirecting');
+                // Clear auth state properly before redirecting
+                clearGlobalUserAuthState();
+                // Set logout flag to prevent additional API calls
+                sessionStorage.setItem('is_logging_out', 'true');
+                // Clear auth data
+                sessionStorage.removeItem('user_data');
+                sessionStorage.removeItem('auth_user_id');
+                sessionStorage.removeItem('auth_account_type');
+                // Redirect after a brief delay to allow cleanup
+                setTimeout(() => {
+                  sessionStorage.removeItem('is_logging_out');
+                  router.replace('/');
+                }, 100);
               }
               return;
             }
@@ -207,7 +220,20 @@ const withUserAuth = <P extends object>(
             // Don't redirect if user is currently logging out
             const isLoggingOut = sessionStorage.getItem('is_logging_out') === 'true';
             if (!isLoggingOut) {
-              router.replace('/');
+              console.log('🔐 [withUserAuth] Auth check failed, clearing state and redirecting');
+              // Clear auth state properly before redirecting
+              clearGlobalUserAuthState();
+              // Set logout flag to prevent additional API calls
+              sessionStorage.setItem('is_logging_out', 'true');
+              // Clear auth data
+              sessionStorage.removeItem('user_data');
+              sessionStorage.removeItem('auth_user_id');
+              sessionStorage.removeItem('auth_account_type');
+              // Redirect after a brief delay to allow cleanup
+              setTimeout(() => {
+                sessionStorage.removeItem('is_logging_out');
+                router.replace('/');
+              }, 100);
             }
             return;
           }
@@ -220,7 +246,20 @@ const withUserAuth = <P extends object>(
             // Don't redirect if user is currently logging out
             const isLoggingOut = sessionStorage.getItem('is_logging_out') === 'true';
             if (!isLoggingOut) {
-              router.replace('/');
+              console.log('🔐 [withUserAuth] User type validation failed, clearing state and redirecting');
+              // Clear auth state properly before redirecting
+              clearGlobalUserAuthState();
+              // Set logout flag to prevent additional API calls
+              sessionStorage.setItem('is_logging_out', 'true');
+              // Clear auth data
+              sessionStorage.removeItem('user_data');
+              sessionStorage.removeItem('auth_user_id');
+              sessionStorage.removeItem('auth_account_type');
+              // Redirect after a brief delay to allow cleanup
+              setTimeout(() => {
+                sessionStorage.removeItem('is_logging_out');
+                router.replace('/');
+              }, 100);
             }
             return;
           }
@@ -251,7 +290,20 @@ const withUserAuth = <P extends object>(
           // Don't redirect if user is currently logging out
           const isLoggingOut = sessionStorage.getItem('is_logging_out') === 'true';
           if (!isLoggingOut) {
-            router.replace('/');
+            console.log('🔐 [withUserAuth] Auth check error, clearing state and redirecting');
+            // Clear auth state properly before redirecting
+            clearGlobalUserAuthState();
+            // Set logout flag to prevent additional API calls
+            sessionStorage.setItem('is_logging_out', 'true');
+            // Clear auth data
+            sessionStorage.removeItem('user_data');
+            sessionStorage.removeItem('auth_user_id');
+            sessionStorage.removeItem('auth_account_type');
+            // Redirect after a brief delay to allow cleanup
+            setTimeout(() => {
+              sessionStorage.removeItem('is_logging_out');
+              router.replace('/');
+            }, 100);
           }
         }
       };

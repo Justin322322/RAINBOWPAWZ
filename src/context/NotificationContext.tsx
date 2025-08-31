@@ -78,8 +78,8 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
   const timeoutIdsRef = useRef<Set<NodeJS.Timeout>>(new Set());
 
   const fetchNotifications = useCallback(async (unreadOnly = false) => {
-    // Check if user has auth token
-    if (typeof window !== 'undefined' && !hasAuthToken()) {
+    // Check if user has auth token or if logout is in progress
+    if (typeof window !== 'undefined' && (!hasAuthToken() || sessionStorage.getItem('is_logging_out') === 'true')) {
       return { notifications: [], unreadCount: 0 };
     }
 
@@ -518,7 +518,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
               console.warn('Max SSE reconnection attempts reached. Falling back to periodic refresh.');
               // Fallback to periodic refresh if SSE fails completely
               fallbackInterval = setInterval(() => {
-                if (hasAuthToken()) {
+                if (hasAuthToken() && sessionStorage.getItem('is_logging_out') !== 'true') {
                   fetchNotifications().catch(_err => {
                     // Silent fail for background updates
                   });
@@ -536,7 +536,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
           console.error('Failed to setup SSE:', error);
           // Fallback to polling if SSE is not supported
           sseFallbackInterval = setInterval(() => {
-            if (hasAuthToken()) {
+            if (hasAuthToken() && sessionStorage.getItem('is_logging_out') !== 'true') {
               fetchNotifications().catch(_err => {
                 // Silent fail for background updates
               });
