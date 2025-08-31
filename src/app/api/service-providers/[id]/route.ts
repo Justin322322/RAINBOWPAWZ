@@ -91,7 +91,8 @@ export async function GET(
           sp.provider_type as type,
           sp.created_at,
           u.profile_picture,
-          ${hasSPAppStatus ? 'sp.application_status' : hasSPVerStatus ? 'sp.verification_status' : "'unknown' as status"}
+          ${hasSPAppStatus ? 'sp.application_status' : hasSPVerStatus ? 'sp.verification_status' : "'unknown' as status"},
+          COALESCE(sp.hours, 'Not specified') as operational_hours
         FROM service_providers sp
         LEFT JOIN users u ON sp.user_id = u.user_id
         WHERE ${whereClause}

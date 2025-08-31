@@ -8,7 +8,8 @@ import {
   MapPinIcon,
   CalendarIcon,
   EyeIcon,
-  EyeSlashIcon
+  EyeSlashIcon,
+  ClockIcon
 } from '@heroicons/react/24/outline';
 import { motion, AnimatePresence } from 'framer-motion';
 import MapFilters, { FilterState, ServiceProvider as FilterServiceProvider } from './MapFilters';
@@ -138,7 +139,7 @@ export default function MapWithServicesList({
     applyFilters();
   }, [filters, serviceProviders]);
 
-  const mappedProvidersForFilter = useMemo(() => 
+  const mappedProvidersForFilter = useMemo(() =>
     serviceProviders.map(provider => ({
       id: provider.id,
       name: provider.name,
@@ -146,7 +147,8 @@ export default function MapWithServicesList({
       type: provider.type || 'cremation',
       distance: provider.distance || '',
       distanceValue: provider.distanceValue || 0,
-      packages: provider.packages || 0
+      packages: provider.packages || 0,
+      operational_hours: provider.operational_hours || 'Not specified'
     })), [serviceProviders]);
 
   const mappedProvidersForMap = useMemo(() => 
@@ -288,11 +290,18 @@ export default function MapWithServicesList({
                               </span>
                             </div>
                             
-                            <p className="text-sm text-gray-600 mb-2 flex items-start">
+                            <p className="text-sm text-gray-600 mb-1 flex items-start">
                               <MapPinIcon className="h-3 w-3 text-[var(--primary-green)] mr-1 flex-shrink-0 mt-0.5" />
                               <span className="line-clamp-2">{provider.address?.replace(', Philippines', '')}</span>
                             </p>
-                            
+
+                            {provider.operational_hours && provider.operational_hours !== 'Not specified' && (
+                              <p className="text-sm text-gray-600 mb-2 flex items-start">
+                                <ClockIcon className="h-3 w-3 text-[var(--primary-green)] mr-1 flex-shrink-0 mt-0.5" />
+                                <span className="line-clamp-1">{provider.operational_hours}</span>
+                              </p>
+                            )}
+
                             <div className="flex justify-between items-center mb-2">
                               <span className="text-sm text-[var(--primary-green)] font-medium">
                                 {provider.distance}

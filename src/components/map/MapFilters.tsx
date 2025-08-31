@@ -29,6 +29,7 @@ export interface ServiceProvider {
   distance: string;
   distanceValue: number;
   packages: number;
+  operational_hours?: string;
 }
 
 interface MapFiltersProps {

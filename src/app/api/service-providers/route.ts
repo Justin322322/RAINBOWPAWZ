@@ -160,7 +160,7 @@ export async function GET(request: Request) {
       providersResult = await query(`
         SELECT
           sp.provider_id as id,
-          CASE 
+          CASE
             WHEN sp.name LIKE '%Cremation%' OR sp.name LIKE '%Memorial%' OR sp.name LIKE '%Pet%' OR sp.name LIKE '%Service%' OR sp.name LIKE '%Center%' OR sp.name LIKE '%Care%' THEN sp.name
             ELSE CONCAT(COALESCE(NULLIF(TRIM(sp.name), ''), CONCAT(u.first_name, ' ', u.last_name)), ' Pet Cremation Services')
           END as name,
@@ -170,7 +170,8 @@ export async function GET(request: Request) {
           ${columnNames.has('provider_type') ? 'sp.provider_type' : "'cremation'"} as type,
           sp.created_at,
           u.profile_picture,
-          ${hasApplicationStatus ? 'sp.application_status' : hasVerificationStatus ? 'sp.verification_status' : "'approved' as application_status"}
+          ${hasApplicationStatus ? 'sp.application_status' : hasVerificationStatus ? 'sp.verification_status' : "'approved' as application_status"},
+          COALESCE(sp.hours, 'Not specified') as operational_hours
         FROM service_providers sp
         LEFT JOIN users u ON sp.user_id = u.user_id
         WHERE ${whereClause}

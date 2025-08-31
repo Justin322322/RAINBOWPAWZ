@@ -408,6 +408,12 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
                   <MapPinIcon className="h-5 w-5 mr-2 flex-shrink-0" />
                   <span>{provider.address?.replace(', Philippines', '')}</span>
                 </p>
+                {provider.operational_hours && provider.operational_hours !== 'Not specified' && (
+                  <p className="mt-2 text-lg text-white/80 flex items-center justify-center md:justify-start">
+                    <ClockIcon className="h-5 w-5 mr-2 flex-shrink-0" />
+                    <span>{provider.operational_hours}</span>
+                  </p>
+                )}
                 <div className="mt-8 border-l-4 border-white/30 pl-6 max-w-md mx-auto md:mx-0">
                   <p className="text-white/90 text-lg italic leading-relaxed">
                     &quot;{provider.description || 'Professional pet cremation services with care and compassion.'}&quot;
