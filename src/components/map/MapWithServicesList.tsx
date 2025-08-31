@@ -151,18 +151,20 @@ export default function MapWithServicesList({
       operational_hours: provider.operational_hours || 'Not specified'
     })), [serviceProviders]);
 
-  const mappedProvidersForMap = useMemo(() => 
+  const mappedProvidersForMap = useMemo(() =>
     serviceProviders.map(provider => ({
       id: provider.id,
       name: provider.name,
-      address: provider.address
+      address: provider.address,
+      operational_hours: provider.operational_hours || 'Not specified'
     })), [serviceProviders]);
 
-  const mappedFilteredProvidersForMap = useMemo(() => 
+  const mappedFilteredProvidersForMap = useMemo(() =>
     filteredProviders.length > 0 ? filteredProviders.map(provider => ({
       id: provider.id,
       name: provider.name,
-      address: provider.address
+      address: provider.address,
+      operational_hours: provider.operational_hours || 'Not specified'
     })) : undefined, [filteredProviders]);
 
   // Pagination - use filtered providers for pagination

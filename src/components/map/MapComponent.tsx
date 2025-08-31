@@ -22,6 +22,7 @@ interface ServiceProvider {
   distance?: string;
   distanceValue?: number;
   packages?: number;
+  operational_hours?: string;
 }
 
 interface MapComponentProps {
@@ -326,10 +327,20 @@ export default function MapComponent({
       }).addTo(mapRef.current!);
 
       // Add popup with provider info and get directions functionality
+      const operationalHoursHtml = provider.operational_hours && provider.operational_hours !== 'Not specified'
+        ? `<p style="color: #6b7280; font-size: 11px; margin: 0 0 8px 0; display: flex; align-items: center; justify-center: center;">
+             <svg style="width: 12px; height: 12px; margin-right: 4px; color: #2F7B5F;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+             </svg>
+             ${provider.operational_hours}
+           </p>`
+        : '';
+
       marker.bindPopup(`
         <div style="text-align: center; padding: 8px;">
           <h3 style="color: #2F7B5F; font-size: 14px; font-weight: 600; margin: 0 0 8px 0;">${provider.name}</h3>
-          <p style="color: #6b7280; font-size: 12px; margin: 0 0 12px 0;">${provider.address}</p>
+          <p style="color: #6b7280; font-size: 12px; margin: 0 0 8px 0;">${provider.address}</p>
+          ${operationalHoursHtml}
           <div style="display: flex; gap: 6px; justify-content: center;">
             <button id="directions-btn-${provider.id}" style="
               background: #2F7B5F;
