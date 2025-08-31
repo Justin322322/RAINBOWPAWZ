@@ -18,6 +18,7 @@ import {
 import FurParentPageSkeleton from '@/components/ui/FurParentPageSkeleton';
 import { handleImageError } from '@/utils/imageUtils';
 import ReviewsList from '@/components/reviews/ReviewsList';
+import StaticMapComponent from '@/components/map/StaticMapComponent';
 // OTP verification is handled by the layout
 import { formatPrice } from '@/utils/numberUtils';
 // LocationData type removed with geolocation utils
@@ -396,28 +397,48 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
             <div className="absolute inset-0 bg-gradient-to-t from-[var(--primary-green)] via-transparent to-transparent md:bg-gradient-to-r" aria-hidden="true" />
 
             <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 sm:py-24 md:py-32 text-center md:text-left">
-              <div className="md:w-3/5 lg:w-1/2">
-                <div className="flex flex-col items-center md:flex-row gap-4 mb-4">
-                  <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white tracking-tight">{provider.name}</h1>
-                  <div className="flex-shrink-0 flex items-center bg-white/10 backdrop-blur-sm px-3 py-1 rounded-full text-sm">
-                    <StarIcon className="h-5 w-5 text-yellow-300 mr-2" />
-                    <span className="font-semibold text-white">{provider.rating ? provider.rating.toFixed(1) : 'New'}</span>
+              <div className="flex flex-col lg:flex-row gap-8 items-start">
+                <div className="lg:w-1/2">
+                  <div className="flex flex-col items-center md:flex-row gap-4 mb-4">
+                    <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white tracking-tight">{provider.name}</h1>
+                    <div className="flex-shrink-0 flex items-center bg-white/10 backdrop-blur-sm px-3 py-1 rounded-full text-sm">
+                      <StarIcon className="h-5 w-5 text-yellow-300 mr-2" />
+                      <span className="font-semibold text-white">{provider.rating ? provider.rating.toFixed(1) : 'New'}</span>
+                    </div>
+                  </div>
+                  <p className="mt-4 text-lg text-white/80 flex items-center justify-center md:justify-start">
+                    <MapPinIcon className="h-5 w-5 mr-2 flex-shrink-0" />
+                    <span>{provider.address?.replace(', Philippines', '')}</span>
+                  </p>
+                  {provider.operational_hours && provider.operational_hours !== 'Not specified' && (
+                    <p className="mt-2 text-lg text-white/80 flex items-center justify-center md:justify-start">
+                      <ClockIcon className="h-5 w-5 mr-2 flex-shrink-0" />
+                      <span>{provider.operational_hours}</span>
+                    </p>
+                  )}
+                  <div className="mt-8 border-l-4 border-white/30 pl-6 max-w-md mx-auto md:mx-0">
+                    <p className="text-white/90 text-lg italic leading-relaxed">
+                      &quot;{provider.description || 'Professional pet cremation services with care and compassion.'}&quot;
+                    </p>
                   </div>
                 </div>
-                <p className="mt-4 text-lg text-white/80 flex items-center justify-center md:justify-start">
-                  <MapPinIcon className="h-5 w-5 mr-2 flex-shrink-0" />
-                  <span>{provider.address?.replace(', Philippines', '')}</span>
-                </p>
-                {provider.operational_hours && provider.operational_hours !== 'Not specified' && (
-                  <p className="mt-2 text-lg text-white/80 flex items-center justify-center md:justify-start">
-                    <ClockIcon className="h-5 w-5 mr-2 flex-shrink-0" />
-                    <span>{provider.operational_hours}</span>
-                  </p>
-                )}
-                <div className="mt-8 border-l-4 border-white/30 pl-6 max-w-md mx-auto md:mx-0">
-                  <p className="text-white/90 text-lg italic leading-relaxed">
-                    &quot;{provider.description || 'Professional pet cremation services with care and compassion.'}&quot;
-                  </p>
+                
+                {/* Map Section - Right Side */}
+                <div className="lg:w-1/2 w-full">
+                  <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
+                    <div className="text-center mb-3">
+                      <h3 className="text-white font-semibold text-lg mb-2">Location</h3>
+                      <div className="flex items-center justify-center gap-2 text-white/80">
+                        <img src="/logo.png" alt="Pawrest" className="w-5 h-5" />
+                        <span className="text-sm">Powered by Pawrest</span>
+                      </div>
+                    </div>
+                    <StaticMapComponent
+                      providerAddress={provider.address}
+                      providerName={provider.name}
+                      className="w-full h-64"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
