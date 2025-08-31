@@ -423,14 +423,14 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
                   </div>
                 </div>
                 
-                {/* Map Section - Right Side */}
-                <div className="w-full lg:w-1/2 order-1 lg:order-2 mb-6 lg:mb-0">
-                  <StaticMapComponent
-                    providerAddress={provider.address}
-                    providerName={provider.name}
-                    className="w-full h-64 sm:h-80 md:h-96 lg:h-[512px]"
-                  />
-                </div>
+                                 {/* Map Section - Right Side */}
+                 <div className="w-full lg:w-1/2 order-1 lg:order-2 mb-6 lg:mb-0">
+                   <StaticMapComponent
+                     providerAddress={provider.address}
+                     providerName={provider.name}
+                     className="w-full h-64 sm:h-72 md:h-80 lg:h-96"
+                   />
+                 </div>
               </div>
             </div>
           </div>

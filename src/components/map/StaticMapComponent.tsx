@@ -57,9 +57,14 @@ export default function StaticMapComponent({
           touchZoom: false,
           doubleClickZoom: false,
           boxZoom: false,
-          keyboard: false,
-          tap: false
+          keyboard: false
         });
+
+        // Set a lower z-index to prevent overriding navigation
+        const mapContainer = mapRef.current.getContainer();
+        if (mapContainer) {
+          mapContainer.style.zIndex = '1';
+        }
 
         // Add OpenStreetMap tiles
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -94,27 +99,28 @@ export default function StaticMapComponent({
         }).addTo(mapRef.current);
 
         // Add static info overlay
-        const infoOverlay = L.control({ position: 'bottomleft' });
-        infoOverlay.onAdd = function() {
-          const div = L.DomUtil.create('div', 'info-overlay-static');
-          div.innerHTML = `
-            <div style="
-              background: rgba(255, 255, 255, 0.95);
-              padding: 8px 12px;
-              border-radius: 6px;
-              box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-              font-family: Arial, sans-serif;
-              font-size: 12px;
-              color: #2F7B5F;
-              font-weight: 600;
-              border-left: 3px solid #2F7B5F;
-            ">
-              ${providerName}
-            </div>
-          `;
-          return div;
-        };
-        infoOverlay.addTo(mapRef.current);
+        const infoOverlay = L.Control.extend({
+          onAdd: function() {
+            const div = L.DomUtil.create('div', 'info-overlay-static');
+            div.innerHTML = `
+              <div style="
+                background: rgba(255, 255, 255, 0.95);
+                padding: 8px 12px;
+                border-radius: 6px;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+                font-family: Arial, sans-serif;
+                font-size: 12px;
+                color: #2F7B5F;
+                font-weight: 600;
+                border-left: 3px solid #2F7B5F;
+              ">
+                ${providerName}
+              </div>
+            `;
+            return div;
+          }
+        });
+        new infoOverlay({ position: 'bottomleft' }).addTo(mapRef.current);
 
         setIsLoading(false);
       } catch (err) {
