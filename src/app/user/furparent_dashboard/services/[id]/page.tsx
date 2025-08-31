@@ -396,127 +396,118 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
             <div className="absolute inset-0 bg-[var(--primary-green-light)] mix-blend-multiply" aria-hidden="true" />
             <div className="absolute inset-0 bg-gradient-to-t from-[var(--primary-green)] via-transparent to-transparent md:bg-gradient-to-r" aria-hidden="true" />
 
-            <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 sm:py-24 md:py-32 text-center md:text-left">
-              <div className="flex flex-col lg:flex-row gap-8 items-start">
-                <div className="lg:w-1/2">
-                  <div className="flex flex-col items-center md:flex-row gap-4 mb-4">
-                    <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white tracking-tight">{provider.name}</h1>
+            <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 md:py-20 lg:py-24 xl:py-32 text-center lg:text-left">
+              <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 items-start">
+                <div className="w-full lg:w-1/2 order-2 lg:order-1">
+                  <div className="flex flex-col items-center lg:items-start gap-3 lg:gap-4 mb-4">
+                    <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-white tracking-tight text-center lg:text-left">{provider.name}</h1>
                     <div className="flex-shrink-0 flex items-center bg-white/10 backdrop-blur-sm px-3 py-1 rounded-full text-sm">
                       <StarIcon className="h-5 w-5 text-yellow-300 mr-2" />
                       <span className="font-semibold text-white">{provider.rating ? provider.rating.toFixed(1) : 'New'}</span>
                     </div>
                   </div>
-                  <p className="mt-4 text-lg text-white/80 flex items-center justify-center md:justify-start">
-                    <MapPinIcon className="h-5 w-5 mr-2 flex-shrink-0" />
-                    <span>{provider.address?.replace(', Philippines', '')}</span>
+                  <p className="mt-3 lg:mt-4 text-base lg:text-lg text-white/80 flex items-center justify-center lg:justify-start">
+                    <MapPinIcon className="h-4 w-4 lg:h-5 lg:w-5 mr-2 flex-shrink-0" />
+                    <span className="text-center lg:text-left">{provider.address?.replace(', Philippines', '')}</span>
                   </p>
                   {provider.operational_hours && provider.operational_hours !== 'Not specified' && (
-                    <p className="mt-2 text-lg text-white/80 flex items-center justify-center md:justify-start">
-                      <ClockIcon className="h-5 w-5 mr-2 flex-shrink-0" />
-                      <span>{provider.operational_hours}</span>
+                    <p className="mt-2 lg:mt-2 text-base lg:text-lg text-white/80 flex items-center justify-center lg:justify-start">
+                      <ClockIcon className="h-4 w-4 lg:h-5 lg:w-5 mr-2 flex-shrink-0" />
+                      <span className="text-center lg:text-left">{provider.operational_hours}</span>
                     </p>
                   )}
-                  <div className="mt-8 border-l-4 border-white/30 pl-6 max-w-md mx-auto md:mx-0">
-                    <p className="text-white/90 text-lg italic leading-relaxed">
+                  <div className="mt-6 lg:mt-8 border-l-4 border-white/30 pl-4 lg:pl-6 max-w-md mx-auto lg:mx-0">
+                    <p className="text-white/90 text-base lg:text-lg italic leading-relaxed text-center lg:text-left">
                       &quot;{provider.description || 'Professional pet cremation services with care and compassion.'}&quot;
                     </p>
                   </div>
                 </div>
                 
                 {/* Map Section - Right Side */}
-                <div className="lg:w-1/2 w-full">
-                  <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
-                    <div className="text-center mb-3">
-                      <h3 className="text-white font-semibold text-lg mb-2">Location</h3>
-                      <div className="flex items-center justify-center gap-2 text-white/80">
-                        <img src="/logo.png" alt="Pawrest" className="w-5 h-5" />
-                        <span className="text-sm">Powered by Pawrest</span>
-                      </div>
-                    </div>
-                    <StaticMapComponent
-                      providerAddress={provider.address}
-                      providerName={provider.name}
-                      className="w-full h-64"
-                    />
-                  </div>
+                <div className="w-full lg:w-1/2 order-1 lg:order-2 mb-6 lg:mb-0">
+                  <StaticMapComponent
+                    providerAddress={provider.address}
+                    providerName={provider.name}
+                    className="w-full h-64 sm:h-80 md:h-96 lg:h-[512px]"
+                  />
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Main Content */}
-          <div className="bg-gray-50 py-12">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              {/* Back button and Tabs */}
-              <div className="flex justify-between items-center mb-8">
-                <button
-                  onClick={() => router.back()}
-                  className="flex items-center text-[var(--primary-green)] hover:text-[var(--primary-green-hover)] transition-colors"
-                >
-                  <ArrowLeftIcon className="h-5 w-5 mr-2" />
-                  <span>Back to Services</span>
-                </button>
-                
-                <div className="flex space-x-1 bg-gray-200 p-1 rounded-lg">
-                  <button
-                    onClick={() => setActiveTab('packages')}
-                    className={`px-4 py-2 text-sm font-medium rounded-md ${
-                      activeTab === 'packages' ? 'bg-white text-[var(--primary-green)] shadow' : 'text-gray-600 hover:bg-gray-300'
-                    }`}
-                  >
-                    Packages
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('reviews')}
-                    className={`px-4 py-2 text-sm font-medium rounded-md ${
-                      activeTab === 'reviews' ? 'bg-white text-[var(--primary-green)] shadow' : 'text-gray-600 hover:bg-gray-300'
-                    }`}
-                  >
-                    Reviews
-                  </button>
-                </div>
-              </div>
+                     {/* Main Content */}
+           <div className="bg-gray-50 py-8 sm:py-12">
+             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+               {/* Back button and Tabs */}
+               <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6 sm:mb-8">
+                 <button
+                   onClick={() => router.back()}
+                   className="flex items-center justify-center sm:justify-start text-[var(--primary-green)] hover:text-[var(--primary-green-hover)] transition-colors"
+                 >
+                   <ArrowLeftIcon className="h-5 w-5 mr-2" />
+                   <span>Back to Services</span>
+                 </button>
+                 
+                 <div className="flex space-x-1 bg-gray-200 p-1 rounded-lg self-center sm:self-auto">
+                   <button
+                     onClick={() => setActiveTab('packages')}
+                     className={`px-3 sm:px-4 py-2 text-sm font-medium rounded-md ${
+                       activeTab === 'packages' ? 'bg-white text-[var(--primary-green)] shadow' : 'text-gray-600 hover:bg-gray-300'
+                     }`}
+                   >
+                     Packages
+                   </button>
+                   <button
+                     onClick={() => setActiveTab('reviews')}
+                     className={`px-3 sm:px-4 py-2 text-sm font-medium rounded-md ${
+                       activeTab === 'reviews' ? 'bg-white text-[var(--primary-green)] shadow' : 'text-gray-600 hover:bg-gray-300'
+                     }`}
+                   >
+                     Reviews
+                   </button>
+                 </div>
+               </div>
 
-              {activeTab === 'packages' && (
-                <div>
-                  <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
-                    <h2 className="text-4xl font-bold text-[var(--primary-green)]">Our Packages</h2>
-                    <div className="mt-4 md:mt-0 flex items-center">
-                      <span className="mr-2 text-gray-700">Sort By:</span>
-                      <div className="relative">
-                        <select
-                          value={sortBy}
-                          onChange={(e) => setSortBy(e.target.value)}
-                          className="appearance-none bg-white border border-gray-300 rounded-md py-2 pl-3 pr-10 text-sm focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
-                        >
-                          <option value="all">All</option>
-                          <option value="price_low">Price: Low to High</option>
-                          <option value="price_high">Price: High to Low</option>
-                        </select>
-                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
-                          <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-                          </svg>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                             {activeTab === 'packages' && (
+                 <div>
+                   <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
+                     <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-[var(--primary-green)] text-center md:text-left mb-4 md:mb-0">Our Packages</h2>
+                     <div className="flex items-center justify-center md:justify-start">
+                       <span className="mr-2 text-gray-700 text-sm sm:text-base">Sort By:</span>
+                       <div className="relative">
+                         <select
+                           value={sortBy}
+                           onChange={(e) => setSortBy(e.target.value)}
+                           className="appearance-none bg-white border border-gray-300 rounded-md py-2 pl-3 pr-10 text-sm focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
+                         >
+                           <option value="all">All</option>
+                           <option value="price_low">Price: Low to High</option>
+                           <option value="price_high">Price: High to Low</option>
+                         </select>
+                         <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                           <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                             <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                           </svg>
+                         </div>
+                       </div>
+                     </div>
+                   </div>
 
                   <div className="h-px w-full bg-gray-300 mb-8"></div>
 
-                  {/* Packages Carousel */}
-                  <div className="relative">
-                    <div className="flex items-center justify-between mb-6">
-                      <button
-                        onClick={handlePrevPackage}
-                        disabled={currentPackageIndex === 0}
-                        className="p-2 rounded-full bg-[var(--primary-green)] text-white disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        <ChevronLeftIcon className="h-6 w-6" />
-                      </button>
-
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full mx-4">
-                        {getSortedPackages().slice(currentPackageIndex, currentPackageIndex + 3).map((pkg: any) => (
+                                     {/* Packages Carousel */}
+                   <div className="relative">
+                     <div className="flex items-center justify-between mb-6">
+                       <button
+                         onClick={handlePrevPackage}
+                         disabled={currentPackageIndex === 0}
+                         className="p-2 rounded-full bg-[var(--primary-green)] text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                       >
+                         <ChevronLeftIcon className="h-6 w-6" />
+                       </button>
+ 
+                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 w-full mx-2 sm:mx-4">
+                         {getSortedPackages().slice(currentPackageIndex, currentPackageIndex + 3).map((pkg: any) => (
                           <div key={pkg.id} className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
                             <div className="h-48 relative overflow-hidden bg-gray-100 group">
                               {pkg.images && pkg.images.length > 0 ? (
@@ -721,17 +712,17 @@ function ServiceDetailPage({ userData }: ServiceDetailPageProps) {
                 </div>
               )}
               
-              {activeTab === 'reviews' && (
-                <div>
-                  <div className="text-center mb-8">
-                    <h2 className="text-3xl font-bold text-[var(--primary-green)] mb-2">What Our Customers Say</h2>
-                    <p className="text-gray-600 max-w-2xl mx-auto">
-                      Read authentic reviews from pet parents who have trusted us with their beloved companions.
-                    </p>
-                  </div>
-                  <ReviewsList providerId={Number(providerId)} className="" />
-                </div>
-              )}
+                             {activeTab === 'reviews' && (
+                 <div>
+                   <div className="text-center mb-6 sm:mb-8">
+                     <h2 className="text-2xl sm:text-3xl font-bold text-[var(--primary-green)] mb-2">What Our Customers Say</h2>
+                     <p className="text-gray-600 max-w-2xl mx-auto text-sm sm:text-base px-4 sm:px-0">
+                       Read authentic reviews from pet parents who have trusted us with their beloved companions.
+                     </p>
+                   </div>
+                   <ReviewsList providerId={Number(providerId)} className="" />
+                 </div>
+               )}
             </div>
           </div>
         </>
