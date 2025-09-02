@@ -101,10 +101,14 @@ export default function PendingVerificationPage() {
               const verificationNotes = detailResult.verificationNotes || '';
 
               // Check if documents are required based on notes or status
-              const requiresDocuments = verificationNotes.toLowerCase().includes('documents') ||
-                                       verificationNotes.toLowerCase().includes('additional') ||
-                                       verificationNotes.toLowerCase().includes('upload') ||
-                                       verificationNotes.toLowerCase().includes('required');
+              const normalized = verificationNotes.toLowerCase();
+              const knownDocCodes = Object.keys(documentTypeMap);
+              const hasDocCodeMention = knownDocCodes.some((code) =>
+                normalized.includes(code) || normalized.includes(code.replace(/_/g, ' '))
+              );
+              const requiresDocuments =
+                /(documents?|additional|upload|required|missing|need|provide|submit)/i.test(normalized) ||
+                hasDocCodeMention;
 
               if (requiresDocuments) {
                 setDocumentsRequired(true);
@@ -112,17 +116,20 @@ export default function PendingVerificationPage() {
 
                 // Try to parse specific required documents from the notes
                 // Look for patterns like "Required documents: business_permit, bir_certificate"
-                const requiredDocsMatch = verificationNotes.match(/required documents?:?\s*([^.\n]*)/i);
+                const requiredDocsMatch = normalized.match(/required documents?:?\s*([^.\n]*)/i);
                 if (requiredDocsMatch) {
                   const docsText = requiredDocsMatch[1].trim();
-                  // Split by comma and clean up
-                  const docs: string[] = docsText.split(',')
-                    .map((doc: string) => doc.trim().toLowerCase().replace(/\s+/g, '_'))
-                    .filter((doc: string) => doc.length > 0);
-                  setRequiredDocuments(docs);
+                  const docs = docsText
+                    .split(/[,\s]+/)
+                    .map((d) => d.trim().toLowerCase().replace(/\s+/g, '_'))
+                    .filter((d) => knownDocCodes.includes(d));
+                  setRequiredDocuments(docs.length ? docs : knownDocCodes);
                 } else {
-                  // Fallback to showing all documents if we can't parse specific ones
-                  setRequiredDocuments(['business_permit', 'bir_certificate', 'government_id']);
+                  // Fallback: infer from mentions of known codes; otherwise show all
+                  const inferred = knownDocCodes.filter(
+                    (code) => normalized.includes(code) || normalized.includes(code.replace(/_/g, ' '))
+                  );
+                  setRequiredDocuments(inferred.length ? inferred : knownDocCodes);
                 }
               }
             }
