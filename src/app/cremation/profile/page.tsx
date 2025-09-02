@@ -200,12 +200,13 @@ function CremationProfilePage({ userData }: { userData: any }) {
       }
       abortControllerRef.current = new AbortController();
 
-      const response = await fetch(`/api/cremation/profile`, {
+      const response = await fetch(`/api/cremation/profile?t=${Date.now()}` , {
         method: 'GET',
         headers: {
-          'Cache-Control': 'max-age=60', // Allow 1 minute caching
+          'Cache-Control': 'no-cache',
           'Pragma': 'no-cache'
         },
+        cache: 'no-store',
         credentials: 'include',
         signal: abortControllerRef.current.signal
       });
@@ -772,7 +773,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
                                                     id="address"
                                                     name="address"
                                                     value={contactInfo.address}
-                                                    onChange={(e) => startContactTransition(() => setContactInfo(prev => ({ ...prev, address: e.target.value })))}
+                                                    onChange={(e) => setContactInfo(prev => ({ ...prev, address: e.target.value }))}
                                                     placeholder="Enter your complete address"
                                                     autoComplete="street-address"
                                                     spellCheck={false}
@@ -780,7 +781,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
                                                     tabIndex={0}
                                                     className="block w-full rounded-md border border-gray-300 bg-white text-gray-900 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary-green)] focus-visible:border-transparent pl-10 pr-32 py-2.5"
                                                 />
-                                                <button type="button" onClick={handleGetLocation} disabled={isGettingLocation} className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm font-medium text-[var(--primary-green)] hover:text-[var(--primary-green-hover)] disabled:text-gray-400 disabled:cursor-not-allowed">
+                                                <button type="button" onClick={(e) => { e.preventDefault(); handleGetLocation(); }} disabled={isGettingLocation} className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm font-medium text-[var(--primary-green)] hover:text-[var(--primary-green-hover)] disabled:text-gray-400 disabled:cursor-not-allowed">
                                                     {isGettingLocation ? 'Detecting...' : 'Use My Location'}
                                                 </button>
                                             </div>

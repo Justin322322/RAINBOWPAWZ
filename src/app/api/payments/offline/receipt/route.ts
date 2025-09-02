@@ -3,23 +3,27 @@ import { verifySecureAuth } from '@/lib/secureAuth';
 import { query } from '@/lib/db';
 
 async function ensureReceiptTable(): Promise<void> {
-  await query(`
-    CREATE TABLE IF NOT EXISTS payment_receipts (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      booking_id INT NOT NULL,
-      user_id INT NULL,
-      provider_id INT NULL,
-      receipt_path TEXT NOT NULL,
-      status ENUM('awaiting','confirmed','rejected') NOT NULL DEFAULT 'awaiting',
-      notes TEXT NULL,
-      confirmed_by INT NULL,
-      confirmed_at DATETIME NULL,
-      reject_reason TEXT NULL,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-      UNIQUE KEY uniq_booking (booking_id)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-  `);
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS payment_receipts (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        booking_id INT NOT NULL,
+        user_id INT NULL,
+        provider_id INT NULL,
+        receipt_path TEXT NOT NULL,
+        status ENUM('awaiting','confirmed','rejected') NOT NULL DEFAULT 'awaiting',
+        notes TEXT NULL,
+        confirmed_by INT NULL,
+        confirmed_at DATETIME NULL,
+        reject_reason TEXT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        UNIQUE KEY uniq_booking (booking_id)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+  } catch {
+    // DDL may be blocked in production; ignore
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -106,22 +110,37 @@ export async function POST(request: NextRequest) {
 
     await ensureReceiptTable();
 
-    // Upsert by booking
-    const existing = await query(
-      'SELECT id FROM payment_receipts WHERE booking_id = ? LIMIT 1',
-      [bookingId]
-    ) as any[];
+    // Upsert by booking if table exists; otherwise fallback to service_bookings
+    let tableExists = false;
+    try {
+      const t = await query("SELECT COUNT(*) as c FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'payment_receipts'") as any[];
+      tableExists = (t?.[0]?.c || 0) > 0;
+    } catch {}
 
-    if (existing && existing.length > 0) {
-      await query(
-        'UPDATE payment_receipts SET receipt_path = ?, status = \"awaiting\", notes = ?, user_id = ?, provider_id = ?, updated_at = NOW() WHERE booking_id = ?',
-        [path, notes, Number(user.userId), providerId, bookingId]
-      );
+    if (tableExists) {
+      const existing = await query(
+        'SELECT id FROM payment_receipts WHERE booking_id = ? LIMIT 1',
+        [bookingId]
+      ) as any[];
+
+      if (existing && existing.length > 0) {
+        await query(
+          'UPDATE payment_receipts SET receipt_path = ?, status = \"awaiting\", notes = ?, user_id = ?, provider_id = ?, updated_at = NOW() WHERE booking_id = ?',
+          [path, notes, Number(user.userId), providerId, bookingId]
+        );
+      } else {
+        await query(
+          'INSERT INTO payment_receipts (booking_id, user_id, provider_id, receipt_path, status, notes) VALUES (?, ?, ?, ?, \"awaiting\", ?)',
+          [bookingId, Number(user.userId), providerId, path, notes]
+        );
+      }
     } else {
-      await query(
-        'INSERT INTO payment_receipts (booking_id, user_id, provider_id, receipt_path, status, notes) VALUES (?, ?, ?, ?, \"awaiting\", ?)',
-        [bookingId, Number(user.userId), providerId, path, notes]
-      );
+      try {
+        const current = await query('SELECT special_requests FROM service_bookings WHERE id = ? LIMIT 1', [bookingId]) as any[];
+        const prev = current?.[0]?.special_requests || '';
+        const appended = prev ? `${prev}\nReceipt: ${path}` : `Receipt: ${path}`;
+        await query('UPDATE service_bookings SET special_requests = ? WHERE id = ?', [appended, bookingId]);
+      } catch {}
     }
 
     // Best-effort: notify provider
@@ -161,16 +180,30 @@ export async function GET(request: NextRequest) {
 
     await ensureReceiptTable();
 
-    const rows = await query(
-      'SELECT booking_id, user_id, provider_id, receipt_path, status, notes, confirmed_by, confirmed_at, reject_reason, created_at, updated_at FROM payment_receipts WHERE booking_id = ? LIMIT 1',
-      [bookingId]
-    ) as any[];
+    // Try primary table first
+    let receipt: any = null;
+    try {
+      const rows = await query(
+        'SELECT booking_id, user_id, provider_id, receipt_path, status, notes, confirmed_by, confirmed_at, reject_reason, created_at, updated_at FROM payment_receipts WHERE booking_id = ? LIMIT 1',
+        [bookingId]
+      ) as any[];
+      if (rows && rows.length > 0) receipt = rows[0];
+    } catch {}
 
-    if (!rows || rows.length === 0) {
+    if (!receipt) {
+      // Fallback to service_bookings.special_requests
+      try {
+        const r = await query('SELECT special_requests FROM service_bookings WHERE id = ? LIMIT 1', [bookingId]) as any[];
+        const text: string = r?.[0]?.special_requests || '';
+        const m = text.match(/Receipt:\s*(\S+)/i);
+        if (m) {
+          return NextResponse.json({ exists: true, receipt: { receipt_path: m[1], status: 'awaiting', notes: null } });
+        }
+      } catch {}
       return NextResponse.json({ exists: false });
     }
 
-    return NextResponse.json({ exists: true, receipt: rows[0] });
+    return NextResponse.json({ exists: true, receipt });
   } catch {
     return NextResponse.json({ error: 'Failed to fetch receipt' }, { status: 500 });
   }
