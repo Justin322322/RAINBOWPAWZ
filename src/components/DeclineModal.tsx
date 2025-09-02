@@ -35,9 +35,7 @@ const DeclineModal: React.FC<DeclineModalProps> = ({
   const documentTypes = [
     { id: 'business_permit', label: 'Business Permit', description: 'Official business registration document' },
     { id: 'bir_certificate', label: 'BIR Certificate', description: 'Bureau of Internal Revenue certificate' },
-    { id: 'government_id', label: 'Government ID', description: 'Valid government-issued ID of owner' },
-    { id: 'proof_of_address', label: 'Proof of Address', description: 'Utility bill or bank statement' },
-    { id: 'additional_photos', label: 'Additional Photos', description: 'Photos of business premises/facilities' }
+    { id: 'government_id', label: 'Government ID', description: 'Valid government-issued ID of owner' }
   ];
 
   const handleSubmit = async () => {

@@ -492,9 +492,7 @@ export const createBusinessVerificationEmail = (businessDetails: {
         const documentLabels = {
           'business_permit': 'Business Permit',
           'bir_certificate': 'BIR Certificate',
-          'government_id': 'Government ID',
-          'proof_of_address': 'Proof of Address',
-          'additional_photos': 'Additional Photos'
+          'government_id': 'Government ID'
         };
 
         documentsList = businessDetails.requiredDocuments.map(docType => {

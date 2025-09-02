@@ -20,8 +20,6 @@ export default function PendingVerificationPage() {
     businessPermit: null as File | null,
     birCertificate: null as File | null,
     governmentId: null as File | null,
-    proofOfAddress: null as File | null,
-    additionalPhotos: null as File | null,
   });
 
   // Document type mapping
@@ -40,16 +38,6 @@ export default function PendingVerificationPage() {
       label: 'Government ID',
       description: 'Valid government-issued ID of owner',
       apiField: 'governmentId'
-    },
-    proof_of_address: {
-      label: 'Proof of Address',
-      description: 'Utility bill or bank statement showing business address',
-      apiField: 'proofOfAddress'
-    },
-    additional_photos: {
-      label: 'Additional Photos',
-      description: 'Photos of business premises or facilities',
-      apiField: 'additionalPhotos'
     }
   };
   const [uploadProgress, setUploadProgress] = useState(0);
