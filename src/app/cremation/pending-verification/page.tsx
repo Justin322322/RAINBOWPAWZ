@@ -54,6 +54,33 @@ export default function PendingVerificationPage() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploading, setUploading] = useState(false);
   const [uploadComplete, setUploadComplete] = useState(false);
+
+  // Local image previews for selected files
+  const [localPreviews, setLocalPreviews] = useState<{ businessPermit?: string | null; birCertificate?: string | null; governmentId?: string | null }>({});
+
+  // Generate/revoke object URLs when files change
+  useEffect(() => {
+    const nextPreviews: { businessPermit?: string | null; birCertificate?: string | null; governmentId?: string | null } = {};
+    const urlsToRevoke: string[] = [];
+
+    (['businessPermit','birCertificate','governmentId'] as const).forEach((key) => {
+      const f = uploadingFiles[key];
+      if (f && f.type && f.type.startsWith('image/')) {
+        const url = URL.createObjectURL(f);
+        nextPreviews[key] = url;
+        urlsToRevoke.push(url);
+      } else {
+        nextPreviews[key] = null;
+      }
+    });
+    setLocalPreviews(nextPreviews);
+
+    return () => {
+      urlsToRevoke.forEach(u => {
+        try { URL.revokeObjectURL(u); } catch {}
+      });
+    };
+  }, [uploadingFiles.businessPermit, uploadingFiles.birCertificate, uploadingFiles.governmentId]);
   const getDocumentImageSource = (documentPath: string | null | undefined): string => {
     if (!documentPath) return '';
     if (documentPath.startsWith('data:')) return documentPath;
@@ -485,9 +512,24 @@ export default function PendingVerificationPage() {
                               disabled={uploading}
                             />
                             {uploadingFiles[docInfo.apiField] && (
-                              <p className="text-xs text-green-600 mt-1">
-                                ✓ {uploadingFiles[docInfo.apiField]?.name}
-                              </p>
+                              <div className="mt-2">
+                                <p className="text-xs text-green-600">✓ {uploadingFiles[docInfo.apiField]?.name}</p>
+                                {docInfo.apiField === 'businessPermit' && localPreviews.businessPermit && (
+                                  <div className="mt-2 border rounded overflow-hidden bg-gray-50">
+                                    <Image src={localPreviews.businessPermit} alt="Business Permit preview" width={800} height={600} className="max-h-56 w-full object-contain" />
+                                  </div>
+                                )}
+                                {docInfo.apiField === 'birCertificate' && localPreviews.birCertificate && (
+                                  <div className="mt-2 border rounded overflow-hidden bg-gray-50">
+                                    <Image src={localPreviews.birCertificate} alt="BIR Certificate preview" width={800} height={600} className="max-h-56 w-full object-contain" />
+                                  </div>
+                                )}
+                                {docInfo.apiField === 'governmentId' && localPreviews.governmentId && (
+                                  <div className="mt-2 border rounded overflow-hidden bg-gray-50">
+                                    <Image src={localPreviews.governmentId} alt="Government ID preview" width={800} height={600} className="max-h-56 w-full object-contain" />
+                                  </div>
+                                )}
+                              </div>
                             )}
                           </div>
                         );

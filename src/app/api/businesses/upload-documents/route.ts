@@ -292,6 +292,39 @@ export async function POST(request: NextRequest) {
             );
 
             console.log(`Updated service provider ${providerId} with ${Object.keys(filePaths).length} document(s) and changed status to reviewing`);
+
+            // Also upsert into business_documents table as a secondary source of truth
+            try {
+              await query(`
+                CREATE TABLE IF NOT EXISTS business_documents (
+                  provider_id INT PRIMARY KEY,
+                  business_permit_data TEXT NULL,
+                  bir_certificate_data TEXT NULL,
+                  government_id_data TEXT NULL,
+                  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+
+              const existing = await query('SELECT provider_id FROM business_documents WHERE provider_id = ? LIMIT 1', [providerId]) as any[];
+              const docValues = [
+                filePaths.business_permit_path || null,
+                filePaths.bir_certificate_path || null,
+                filePaths.government_id_path || null,
+                providerId
+              ];
+              if (existing && existing.length > 0) {
+                await query(
+                  'UPDATE business_documents SET business_permit_data = COALESCE(?, business_permit_data), bir_certificate_data = COALESCE(?, bir_certificate_data), government_id_data = COALESCE(?, government_id_data) WHERE provider_id = ?',
+                  docValues
+                );
+              } else {
+                await query(
+                  'INSERT INTO business_documents (business_permit_data, bir_certificate_data, government_id_data, provider_id) VALUES (?, ?, ?, ?)',
+                  docValues
+                );
+              }
+            } catch (docErr) {
+              console.warn('Failed to upsert business_documents:', docErr);
+            }
           }
         } catch (error) {
           console.error('Error updating service provider documents:', error);
