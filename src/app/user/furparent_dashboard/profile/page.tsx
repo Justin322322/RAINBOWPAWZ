@@ -17,6 +17,7 @@ import { UserData } from '@/components/withUserAuth';
 import Image from 'next/image';
 import { getProfilePictureUrl } from '@/utils/imageUtils';
 import PhilippinePhoneInput from '@/components/ui/PhilippinePhoneInput';
+import { Input } from '@/components/ui/Input';
 import {
   ProfileField
 } from '@/components/ui/ProfileLayout';
@@ -941,33 +942,32 @@ function ProfilePage({ userData: initialUserData }: ProfilePageProps) {
 
                     <div className="space-y-2">
                       <label className="block text-sm font-medium text-gray-700">Address</label>
-                      <div className="relative">
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                          <MapPinIcon className="h-5 w-5 text-gray-400" />
-                        </div>
-                        <input
-                          type="text"
-                          value={contactInfo.address}
-                          onChange={(e) => setContactInfo(prev => ({ ...prev, address: e.target.value }))}
-                          placeholder="Enter your complete address"
-                          className="block w-full rounded-md border border-gray-300 bg-white text-gray-900 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary-green)] focus-visible:border-transparent pl-10 pr-32 py-2.5"
-                        />
-                        <button
-                          type="button"
-                          onClick={getCurrentLocation}
-                          disabled={isGettingLocation}
-                          className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm font-medium text-[var(--primary-green)] hover:text-[var(--primary-green-hover)] disabled:text-gray-400 disabled:cursor-not-allowed"
-                        >
-                          {isGettingLocation ? (
-                            <div className="flex items-center">
-                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[var(--primary-green)] mr-2"></div>
-                              Getting...
-                            </div>
-                          ) : (
-                            'Use Current Location'
-                          )}
-                        </button>
-                      </div>
+                      <Input
+                        id="fp-address"
+                        name="fp-address"
+                        value={contactInfo.address}
+                        onChange={(e) => setContactInfo(prev => ({ ...prev, address: e.target.value }))}
+                        placeholder="Enter your complete address"
+                        size="lg"
+                        leftIcon={<MapPinIcon className="h-5 w-5 text-gray-400" />}
+                        rightIcon={
+                          <button
+                            type="button"
+                            onClick={getCurrentLocation}
+                            disabled={isGettingLocation}
+                            className="text-sm font-medium text-[var(--primary-green)] hover:text-[var(--primary-green-hover)] disabled:text-gray-400 disabled:cursor-not-allowed"
+                          >
+                            {isGettingLocation ? (
+                              <div className="flex items-center">
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[var(--primary-green)] mr-2"></div>
+                                Getting...
+                              </div>
+                            ) : (
+                              'Use Current Location'
+                            )}
+                          </button>
+                        }
+                      />
                       <div className="text-xs text-gray-500 mt-1">
                         Location detection powered by{' '}
                         <a
