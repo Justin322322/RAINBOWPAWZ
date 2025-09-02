@@ -41,8 +41,7 @@
     "allowSyntheticDefaultImports": true,
     "baseUrl": ".",
     "types": [
-      "node",
-      "vitest/globals"
+      "node"
     ]
   },
   "include": [
