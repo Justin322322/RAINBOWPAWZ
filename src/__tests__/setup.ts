@@ -42,23 +42,49 @@ global.File = class MockFile {
   size: number;
   type: string;
   lastModified: number;
+  #data: Uint8Array;
 
   constructor(bits: any[], filename: string, options: any = {}) {
     this.name = filename;
-    this.size = bits.length;
     this.type = options.type || '';
     this.lastModified = Date.now();
+
+    const enc = new TextEncoder();
+    const chunks = (bits || []).map((b) => {
+      if (typeof b === 'string') {
+        return enc.encode(b);
+      }
+      if (b instanceof ArrayBuffer) {
+        return new Uint8Array(b);
+      }
+      if (ArrayBuffer.isView(b)) {
+        return new Uint8Array(b.buffer);
+      }
+      return new Uint8Array(0);
+    });
+
+    const total = chunks.reduce((sum, chunk) => sum + chunk.byteLength, 0);
+    this.#data = new Uint8Array(total);
+
+    let offset = 0;
+    for (const chunk of chunks) {
+      this.#data.set(chunk, offset);
+      offset += chunk.byteLength;
+    }
+
+    this.size = this.#data.byteLength;
   }
 
   arrayBuffer() {
-    return Promise.resolve(new ArrayBuffer(0));
+    // Return a copy of the underlying buffer
+    return Promise.resolve(this.#data.buffer.slice(0));
   }
 
   text() {
-    return Promise.resolve('');
+    // Decode the bytes as UTF-8 text
+    return Promise.resolve(new TextDecoder().decode(this.#data));
   }
 } as any;
-
 // Mock FormData
 global.FormData = class MockFormData {
   private data: Map<string, any> = new Map();
