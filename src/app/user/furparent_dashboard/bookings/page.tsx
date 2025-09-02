@@ -721,12 +721,12 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
               </div>
             ) : bookings.length === 0 ? (
               <div className="bg-gray-50 p-8 rounded-lg text-center">
-                <div className="w-32 h-32 mx-auto mb-4 flex items-center justify-center">
+                <div className="w-48 h-48 mx-auto mb-6 flex items-center justify-center">
                   <Image
                     src="/no-bookings.png"
                     alt="No bookings found"
-                    width={128}
-                    height={128}
+                    width={192}
+                    height={192}
                     className="w-full h-full object-contain"
                   />
                 </div>

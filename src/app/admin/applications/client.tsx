@@ -194,12 +194,12 @@ function AdminApplicationsContent() {
           </div>
         ) : filteredApplications.length === 0 ? (
           <div className="px-6 py-8 text-center">
-            <div className="w-32 h-32 mx-auto mb-4 flex items-center justify-center">
+            <div className="w-48 h-48 mx-auto mb-6 flex items-center justify-center">
               <Image
                 src="/no-application.png"
                 alt="No applications found"
-                width={128}
-                height={128}
+                width={192}
+                height={192}
                 className="w-full h-full object-contain"
               />
             </div>

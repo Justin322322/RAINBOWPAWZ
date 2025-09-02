@@ -378,12 +378,12 @@ function CremationDashboardPage({ userData }: { userData: any }) {
             </ul>
           ) : (
             <div className="flex flex-col items-center justify-center h-64">
-              <div className="w-24 h-24 mx-auto mb-4 flex items-center justify-center">
+              <div className="w-40 h-40 mx-auto mb-6 flex items-center justify-center">
                 <Image
                   src="/no-bookings.png"
                   alt="No recent bookings"
-                  width={96}
-                  height={96}
+                  width={160}
+                  height={160}
                   className="w-full h-full object-contain"
                 />
               </div>
@@ -440,12 +440,12 @@ function CremationDashboardPage({ userData }: { userData: any }) {
             </div>
           ) : (
             <div className="p-6 text-center">
-              <div className="w-32 h-32 mx-auto mb-4 flex items-center justify-center">
+              <div className="w-48 h-48 mx-auto mb-6 flex items-center justify-center">
                 <Image
                   src="/no-reviews.png"
                   alt="No reviews yet"
-                  width={128}
-                  height={128}
+                  width={192}
+                  height={192}
                   className="w-full h-full object-contain"
                 />
               </div>
@@ -505,12 +505,12 @@ function CremationDashboardPage({ userData }: { userData: any }) {
           ) : (
             <div className="p-6">
               <div className="text-center mb-4">
-                <div className="w-24 h-24 mx-auto mb-4 flex items-center justify-center">
+                <div className="w-40 h-40 mx-auto mb-6 flex items-center justify-center">
                   <Image
                     src="/no-bookings.png"
                     alt="Manage availability"
-                    width={96}
-                    height={96}
+                    width={160}
+                    height={160}
                     className="w-full h-full object-contain"
                   />
                 </div>

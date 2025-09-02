@@ -114,12 +114,12 @@ const ReviewsList: React.FC<ReviewsListProps> = ({ providerId, className = '' })
   if (reviews.length === 0) {
     return (
       <div className={`text-center py-6 ${className}`}>
-        <div className="w-24 h-24 mx-auto mb-4 flex items-center justify-center">
+        <div className="w-40 h-40 mx-auto mb-6 flex items-center justify-center">
           <Image
             src="/no-reviews.png"
             alt="No reviews yet"
-            width={96}
-            height={96}
+            width={160}
+            height={160}
             className="w-full h-full object-contain"
           />
         </div>

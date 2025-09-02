@@ -369,8 +369,8 @@ function CremationBookingsPage({ userData }: { userData: any }) {
               <Image
                 src="/no-bookings.png"
                 alt="No bookings found"
-                width={128}
-                height={128}
+                width={192}
+                height={192}
                 className="w-full h-full object-contain"
               />
             </div>

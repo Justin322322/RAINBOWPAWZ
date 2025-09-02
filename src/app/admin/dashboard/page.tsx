@@ -430,12 +430,12 @@ function AdminDashboardPage({ adminData }: { adminData: any }) {
           </div>
         ) : (
           <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 text-center">
-            <div className="w-32 h-32 mx-auto mb-4 flex items-center justify-center">
+            <div className="w-48 h-48 mx-auto mb-6 flex items-center justify-center">
               <Image
                 src="/no-application.png"
                 alt="No recent applications found"
-                width={128}
-                height={128}
+                width={192}
+                height={192}
                 className="w-full h-full object-contain"
               />
             </div>
