@@ -56,6 +56,11 @@ describe('Email and Notification Tests', () => {
     });
 
     it('should handle email sending failure', async () => {
+      // Ensure SMTP path is taken and cache is bypassed
+      process.env.SMTP_USER = 'test-user';
+      process.env.SMTP_PASS = 'test-pass';
+      vi.spyOn(Date, 'now').mockReturnValue(Date.now() + 10 * 60 * 1000); // expire cached transporter
+
       // Mock email failure
       const nodemailer = await import('nodemailer');
       const mockTransport = {
@@ -74,6 +79,7 @@ describe('Email and Notification Tests', () => {
 
       expect(result.success).toBe(false);
       expect(result.error).toBe('SMTP Error');
+    });
     });
   });
 
