@@ -4,6 +4,43 @@ import { sendBusinessVerificationEmail, sendApplicationDeclineEmail } from '@/li
 import { logAdminAction, getAdminIdFromRequest } from '@/utils/adminUtils';
 import mysql from 'mysql2/promise';
 
+/**
+ * Handles POST requests to decline a business application or request specific documents.
+ *
+ * Updates the application's verification status to "declined" for the target business record (either in
+ * service_providers or business_profiles), stores the provided verification note, sets verification_date,
+ * and updated_at. If requested, the handler treats the action as "request specific documents": it still sets
+ * the application status to "declined" (per schema) but sends a different email/notification payload that
+ * includes the required document list. The function also creates an in-app business notification and logs
+ * the admin action. Non-critical failures in email sending, notification creation, or admin logging do not
+ * cause the main operation to fail.
+ *
+ * Behavior highlights:
+ * - Requires admin authentication via the incoming request; returns 401 if unauthenticated.
+ * - Validates the route `id` and the decline `note` (minimum 10 characters); returns 400 on invalid input.
+ * - Detects which table to operate on (service_providers or business_profiles) and safely updates the record.
+ * - Returns 404 if the business record is not found.
+ * - Attempts to send an email to the business owner:
+ *   - If `requestDocuments` is true, sends a documents-required email including `requiredDocuments`.
+ *   - Otherwise, sends an application-declined email with the reason.
+ * - Creates an in-app notification for the business owner and logs the admin action (both are best-effort).
+ *
+ * @param id - The business/application ID extracted from the route parameters (numeric string).
+ * @returns A NextResponse JSON with the shape:
+ *   {
+ *     message: string,            // success message describing the performed action
+ *     businessId: number,         // numeric ID of the affected business
+ *     businessName?: string,      // optional display name of the business (when available)
+ *     emailSent: boolean          // whether the notification email was successfully sent
+ *   }
+ *
+ * Possible HTTP status codes:
+ * - 200: Success (documents requested or application declined)
+ * - 400: Invalid input (bad ID or insufficient note)
+ * - 401: Unauthorized (admin access required)
+ * - 404: Business profile not found
+ * - 500: Server error (schema issues or unexpected failures)
+ */
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const { id } = params;

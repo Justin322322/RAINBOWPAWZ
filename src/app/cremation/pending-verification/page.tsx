@@ -7,6 +7,27 @@ import { LoadingSpinner } from '@/app/cremation/components/LoadingComponents';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DocumentIcon, CloudArrowUpIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 
+/**
+ * Renders the "Account Pending Verification" client page and manages the provider verification flow.
+ *
+ * This React component displays the verification status UI, conditionally prompts for additional
+ * documents (parsed from the provider's verification notes), and provides a client-side upload flow
+ * for required documents. On mount it:
+ * - Calls /api/auth/check-business-status to obtain the current service provider and application status.
+ * - If necessary, fetches /api/businesses/applications/{provider_id} to determine whether additional
+ *   documents are required and to parse a list of required document types.
+ * - Redirects the user to the dashboard or restricted page when the application status is `approved` or `restricted`.
+ *
+ * The upload flow:
+ * - Collects selected files for required document types, builds a FormData payload, and POSTs to /api/businesses/upload-documents (credentials included).
+ * - On successful upload, attempts to create an admin notification via /api/notifications/system and reloads the page.
+ *
+ * Side effects:
+ * - Network requests (status checks, detail fetch, document upload, admin notification) are performed with credentials included (httpOnly cookies).
+ * - May navigate (router.push) or reload the page based on authentication/status/upload outcomes.
+ *
+ * @returns The page component JSX.
+ */
 export default function PendingVerificationPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);

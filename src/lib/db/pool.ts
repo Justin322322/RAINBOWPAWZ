@@ -131,6 +131,18 @@ const globalForMysql = globalThis as unknown as GlobalWithMysql;
 
 let _pool: mysql.Pool;
 
+/**
+ * Initialize and return a MySQL connection pool based on the current environment and configuration.
+ *
+ * Behavior:
+ * - During build time (NEXT_PHASE === 'phase-production-build') returns a small dummy pool and skips real DB initialization.
+ * - If a usable DATABASE_URL or MYSQL_URL is present, attempts to create and return a cloud pool from that URL.
+ * - In production (NODE_ENV === 'production') a valid DATABASE_URL or MYSQL_URL is required; if absent or unusable, an error is thrown and no fallback to localhost is performed.
+ * - In non-production fallback to a local pool using localhost/root/rainbow_paws defaults.
+ *
+ * @returns A configured mysql.Pool instance appropriate for the current environment.
+ * @throws Error If running in production and no valid DATABASE_URL or MYSQL_URL can be used.
+ */
 function initPool(): mysql.Pool {
   // Skip database initialization during build time
   if (process.env.NEXT_PHASE === 'phase-production-build') {

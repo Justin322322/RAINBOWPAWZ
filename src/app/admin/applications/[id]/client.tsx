@@ -54,6 +54,30 @@ interface Application {
   application_status?: string;
 }
 
+/**
+ * Renders and manages the admin-facing detail view for a single cremation-center application.
+ *
+ * This component loads application data, resolves the authoritative status (priority: URL param >
+ * session/local/cookie storage > direct DB status check > API response), and exposes UI for viewing
+ * submitted documents, approving, or declining the application. It normalizes document URLs for
+ * production before opening the document viewer, and performs the following side effects:
+ * - Fetches application status and full application data from API endpoints.
+ * - On approve: POSTs to the approve endpoint, updates local state, shows a success overlay, and
+ *   re-fetches data after a short delay.
+ * - On decline: POSTs to the decline endpoint (sending an optional requiredDocuments array), updates
+ *   local state, shows a success overlay, persists the new status to session/local storage and a
+ *   cookie as backups, and forces a hard page reload with the new status in the query string.
+ * - Shows inline error state or toasts for network failures; most errors are handled and surfaced
+ *   to the user rather than thrown.
+ *
+ * Notes:
+ * - The component maintains internal loading, error, modal, processing, and animation states.
+ * - Document URL normalization covers data URLs, API/image routes, uploads, and a fallback
+ *   production image path utility.
+ *
+ * @param id - The application/business identifier used to fetch and manage the specific application.
+ * @returns A React element containing the application detail UI.
+ */
 function ApplicationDetailContent({ id }: ApplicationDetailContentProps) {
   const router = useRouter();
   const { showToast } = useToast();

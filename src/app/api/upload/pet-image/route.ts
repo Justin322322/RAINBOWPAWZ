@@ -5,6 +5,28 @@ import { query } from '@/lib/db';
 // Maximum file size (5MB)
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
+/**
+ * Handles POST requests to upload a pet image.
+ *
+ * Authenticates the requester (allowed account types: "user", "fur_parent", "personal"), validates a single uploaded file (must be an image and <= 5MB), converts it to a base64 data URL, and either:
+ * - Persists the image to the pets table (photo_path) when a positive petId is provided and the pet belongs to the authenticated user, or
+ * - Returns the base64 data URL for temporary client-side storage when no valid petId is provided.
+ *
+ * On successful storage returns JSON with success=true, a generated filePath, imageData/imagePath (the data URL), petId (numeric when saved, null for temporary), and a message.
+ *
+ * Returns JSON error responses with appropriate HTTP status codes:
+ * - 401 Unauthorized when authentication fails
+ * - 403 Forbidden for disallowed account types or when pet ownership/access is denied
+ * - 400 Bad Request for missing file, non-image file types, or file size > 5MB
+ * - 404 Not Found if a DB update affected no rows when attempting to save to a pet record
+ * - 500 Internal Server Error for unexpected processing errors (includes an error details field when available)
+ *
+ * Side effects:
+ * - May update the pets.photo_path column when saving an image for an owned pet.
+ *
+ * Notes:
+ * - Image data is returned and stored as a data URL (`data:<mime>;base64,<data>`).
+ */
 export async function POST(request: NextRequest) {
   try {
     console.log('Pet image upload started');
