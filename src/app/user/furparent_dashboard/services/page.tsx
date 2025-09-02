@@ -313,7 +313,7 @@ function ServicesPage({ userData }: ServicesPageProps) {
               {!isLoading && serviceProviders.length > 0 && (
                 <div className="mt-8 space-y-6">
                   {/* Statistics Cards */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg p-4 border border-blue-200">
                       <div className="text-2xl font-bold text-blue-600">
                         {statistics.totalProviders}
@@ -325,12 +325,6 @@ function ServicesPage({ userData }: ServicesPageProps) {
                         {statistics.filteredCount}
                       </div>
                       <div className="text-sm text-green-700">Nearby Providers</div>
-                    </div>
-                    <div className="bg-gradient-to-r from-purple-50 to-purple-100 rounded-lg p-4 border border-purple-200">
-                      <div className="text-2xl font-bold text-purple-600">
-                        {pagination.total}
-                      </div>
-                      <div className="text-sm text-purple-700">In Your Area</div>
                     </div>
                   </div>
 
