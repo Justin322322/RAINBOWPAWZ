@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { LoadingSpinner } from '@/app/cremation/components/LoadingComponents';
 import { motion, AnimatePresence } from 'framer-motion';
-import { DocumentIcon, CloudArrowUpIcon, CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/outline';
+import { DocumentIcon, CloudArrowUpIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 
 export default function PendingVerificationPage() {
   const router = useRouter();
@@ -226,7 +226,7 @@ export default function PendingVerificationPage() {
         throw new Error(errorData.error || 'Upload failed');
       }
 
-      const result = await response.json();
+      await response.json(); // Success response
       setUploadComplete(true);
 
       // Create notification for admin about document upload

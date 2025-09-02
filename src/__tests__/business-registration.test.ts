@@ -26,7 +26,7 @@ vi.mock('@/utils/businessNotificationService', () => ({
 import { POST as registerBusiness } from '@/app/api/auth/register/route';
 import { query } from '@/lib/db';
 import { verifySecureAuth } from '@/lib/secureAuth';
-import { getAuthTokenFromRequest } from '@/utils/auth';
+// Removed unused import: getAuthTokenFromRequest
 
 describe('Business Registration Tests', () => {
   beforeEach(() => {
