@@ -82,21 +82,26 @@ export async function POST(request: NextRequest) {
         putFn = (blob as any)?.put;
       } catch {}
     }
-    if (!putFn) {
-      return NextResponse.json({ error: 'Storage not configured' }, { status: 500 });
-    }
 
+    // Prepare file data once
     const arrayBuffer = await file.arrayBuffer();
     const ext = file.type.split('/')[1] || 'png';
-    const key = `uploads/bookings/${bookingId}/payment_receipt_${Date.now()}.${ext}`;
-    const result = await putFn(key, Buffer.from(arrayBuffer), {
-      access: 'public',
-      contentType: file.type,
-      token: blobToken,
-    });
-    const path = result?.url || '';
+
+    // Prefer Blob storage; gracefully fallback to base64 data URL if not configured
+    let path = '';
+    if (putFn) {
+      const key = `uploads/bookings/${bookingId}/payment_receipt_${Date.now()}.${ext}`;
+      const result = await putFn(key, Buffer.from(arrayBuffer), {
+        access: 'public',
+        contentType: file.type,
+        token: blobToken,
+      });
+      path = result?.url || '';
+    }
     if (!path) {
-      return NextResponse.json({ error: 'Failed to store receipt' }, { status: 500 });
+      // Fallback: store as base64 data URL so upload still works without blob config
+      const base64 = Buffer.from(arrayBuffer).toString('base64');
+      path = `data:${file.type};base64,${base64}`;
     }
 
     await ensureReceiptTable();

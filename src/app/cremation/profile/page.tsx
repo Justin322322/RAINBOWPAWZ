@@ -769,9 +769,15 @@ function CremationProfilePage({ userData }: { userData: any }) {
                                                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><MapPinIcon className="h-5 w-5 text-gray-400" /></div>
                                                 <input
                                                     type="text"
+                                                    id="address"
+                                                    name="address"
                                                     value={contactInfo.address}
                                                     onChange={(e) => startContactTransition(() => setContactInfo(prev => ({ ...prev, address: e.target.value })))}
                                                     placeholder="Enter your complete address"
+                                                    autoComplete="street-address"
+                                                    spellCheck={false}
+                                                    readOnly={false}
+                                                    tabIndex={0}
                                                     className="block w-full rounded-md border border-gray-300 bg-white text-gray-900 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary-green)] focus-visible:border-transparent pl-10 pr-32 py-2.5"
                                                 />
                                                 <button type="button" onClick={handleGetLocation} disabled={isGettingLocation} className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm font-medium text-[var(--primary-green)] hover:text-[var(--primary-green-hover)] disabled:text-gray-400 disabled:cursor-not-allowed">
