@@ -14,19 +14,6 @@ async function tableExists(tableName: string): Promise<boolean> {
   }
 }
 
-async function ensurePaymentQrTable(): Promise<void> {
-  // Only attempt DDL if explicitly allowed
-  if (process.env.ALLOW_DDL === 'true') {
-    await query(`
-      CREATE TABLE IF NOT EXISTS provider_payment_qr (
-        provider_id INT PRIMARY KEY,
-        qr_path MEDIUMTEXT NULL,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-    `);
-  }
-}
-
 export async function GET(request: NextRequest) {
   try {
     const user = await verifySecureAuth(request);
@@ -117,7 +104,7 @@ export async function POST(request: NextRequest) {
     let arrayBuffer: ArrayBuffer;
     try {
       arrayBuffer = await file.arrayBuffer();
-    } catch (bufferError) {
+    } catch {
       return NextResponse.json({
         error: 'Failed to process file. Please try again.',
         code: 'FILE_READ_ERROR'
