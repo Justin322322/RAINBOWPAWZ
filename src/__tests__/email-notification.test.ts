@@ -139,7 +139,7 @@ describe('Email and Notification Tests', () => {
 
       const result = createApplicationDeclineEmail(applicationDetails);
 
-      expect(result.subject).toContain('Declined');
+      expect(result.subject).toContain('Application Status Update');
       expect(result.html).toContain('regret to inform you');
       expect(result.html).toContain('Incomplete information');
     });
