@@ -155,8 +155,8 @@ describe('Email and Notification Tests', () => {
 
       const result = createBusinessVerificationEmail(businessDetails);
 
-      expect(result.subject).toContain('Documents Required');
-      expect(result.html).toContain('we need additional documents');
+      expect(result.subject).toContain('Specific Documents Required');
+      expect(result.html).toContain('upload specific documents');
     });
   });
 });
