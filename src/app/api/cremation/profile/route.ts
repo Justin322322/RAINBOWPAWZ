@@ -7,6 +7,23 @@ import bcrypt from 'bcryptjs';
 // Ensure this route is always dynamic and not statically cached
 export const dynamic = 'force-dynamic';
 
+async function ensureBusinessDocumentsTable(): Promise<void> {
+  try {
+    // Create table if not exists with MEDIUMTEXT columns to store base64/data URLs
+    await query(`
+      CREATE TABLE IF NOT EXISTS business_documents (
+        provider_id INT PRIMARY KEY,
+        business_permit_data MEDIUMTEXT NULL,
+        bir_certificate_data MEDIUMTEXT NULL,
+        government_id_data MEDIUMTEXT NULL,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+  } catch {
+    // best-effort; ignore
+  }
+}
+
 // GET - Retrieve cremation provider profile
 export async function GET(request: NextRequest) {
   try {
@@ -70,20 +87,29 @@ export async function GET(request: NextRequest) {
 
     if (needsHydration) {
       try {
-        const docRows = await query(
-          'SELECT business_permit_data, bir_certificate_data, government_id_data FROM business_documents WHERE provider_id = ? LIMIT 1',
-          [row.provider_id]
+        // Best effort: ensure table exists; if not possible, skip
+        await ensureBusinessDocumentsTable();
+
+        // Verify table exists before querying (avoid throwing)
+        const tableExists = await query(
+          `SELECT COUNT(*) as c FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'business_documents'`
         ) as any[];
-        if (docRows && docRows.length > 0) {
-          const doc = docRows[0];
-          if (!businessPermitPath || businessPermitPath === 'stored') {
-            businessPermitPath = doc.business_permit_data || businessPermitPath;
-          }
-          if (!birCertificatePath || birCertificatePath === 'stored') {
-            birCertificatePath = doc.bir_certificate_data || birCertificatePath;
-          }
-          if (!governmentIdPath || governmentIdPath === 'stored') {
-            governmentIdPath = doc.government_id_data || governmentIdPath;
+        if (tableExists?.[0]?.c > 0) {
+          const docRows = await query(
+            'SELECT business_permit_data, bir_certificate_data, government_id_data FROM business_documents WHERE provider_id = ? LIMIT 1',
+            [row.provider_id]
+          ) as any[];
+          if (docRows && docRows.length > 0) {
+            const doc = docRows[0];
+            if (!businessPermitPath || businessPermitPath === 'stored') {
+              businessPermitPath = doc.business_permit_data || businessPermitPath;
+            }
+            if (!birCertificatePath || birCertificatePath === 'stored') {
+              birCertificatePath = doc.bir_certificate_data || birCertificatePath;
+            }
+            if (!governmentIdPath || governmentIdPath === 'stored') {
+              governmentIdPath = doc.government_id_data || governmentIdPath;
+            }
           }
         }
       } catch (docErr) {
