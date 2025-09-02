@@ -278,7 +278,9 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
             return;
           }
 
-          uploadedDocumentUrls = await tempUploadResponse.json();
+          const tempJson = await tempUploadResponse.json();
+          // Normalize to the plain mapping expected by the API and register route
+          uploadedDocumentUrls = tempJson?.filePaths ?? tempJson ?? {};
           console.log('Documents uploaded to temporary storage:', uploadedDocumentUrls);
 
         } catch (tempError) {

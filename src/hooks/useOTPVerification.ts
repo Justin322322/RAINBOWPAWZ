@@ -74,6 +74,10 @@ export const useOTPVerification = ({
       setIsResending(true);
     } else {
       setIsGeneratingInitial(true);
+      // Mark initial OTP as sent/in-progress immediately to prevent repeat triggers on remounts
+      try {
+        sessionStorage.setItem(initialOtpSentKey, 'true');
+      } catch {}
     }
     setErrorMessage('');
 

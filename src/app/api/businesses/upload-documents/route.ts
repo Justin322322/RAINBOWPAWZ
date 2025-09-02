@@ -117,6 +117,7 @@ export async function POST(request: NextRequest) {
     // Check if this is a migration request
     if (request.method === 'POST') {
       if (mode === 'json') {
+        // Parse JSON body once and reuse it throughout the handler
         jsonBody = await request.json();
         if (jsonBody?.action === 'migrate') {
           mode = 'migrate';
@@ -130,9 +131,10 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    if (mode === 'form') {
+    // Ensure body is parsed if it wasn't already parsed above
+    if (mode === 'form' && !formData) {
       formData = await request.formData();
-    } else if (mode === 'json') {
+    } else if (mode === 'json' && !jsonBody) {
       jsonBody = await request.json();
     }
 
