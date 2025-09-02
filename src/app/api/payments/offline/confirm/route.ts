@@ -39,30 +39,42 @@ export async function POST(request: NextRequest) {
 
     await ensureReceiptTable();
 
-    // Ensure receipt exists
-    const rows = await query('SELECT id FROM payment_receipts WHERE booking_id = ? LIMIT 1', [bookingId]) as any[];
-    if (!rows || rows.length === 0) {
-      return NextResponse.json({ error: 'No receipt to confirm' }, { status: 404 });
+    // Check if table exists; if not, we will operate directly on service_bookings as a fallback
+    let tableExists = false;
+    try {
+      const t = await query("SELECT COUNT(*) as c FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'payment_receipts'") as any[];
+      tableExists = (t?.[0]?.c || 0) > 0;
+    } catch {}
+
+    if (tableExists) {
+      // Ensure receipt exists in payment_receipts
+      const rows = await query('SELECT id FROM payment_receipts WHERE booking_id = ? LIMIT 1', [bookingId]) as any[];
+      if (!rows || rows.length === 0) {
+        return NextResponse.json({ error: 'No receipt to confirm' }, { status: 404 });
+      }
     }
 
     if (action === 'confirm') {
-      await query(
-        'UPDATE payment_receipts SET status = \"confirmed\", confirmed_by = ?, confirmed_at = NOW(), reject_reason = NULL WHERE booking_id = ?',
-        [Number(user.userId), bookingId]
-      );
-      // Best-effort update booking payment status field if exists
+      if (tableExists) {
+        await query(
+          'UPDATE payment_receipts SET status = \"confirmed\", confirmed_by = ?, confirmed_at = NOW(), reject_reason = NULL WHERE booking_id = ?',
+          [Number(user.userId), bookingId]
+        );
+      }
+      // Update booking payment_status regardless of receipts table existence
       try {
-        await query('UPDATE service_bookings SET payment_status = \"paid\" WHERE booking_id = ?', [bookingId]);
+        await query('UPDATE service_bookings SET payment_status = \"paid\" WHERE id = ?', [bookingId]);
       } catch {}
       return NextResponse.json({ success: true });
     } else {
-      await query(
-        'UPDATE payment_receipts SET status = \"rejected\", confirmed_by = ?, confirmed_at = NOW(), reject_reason = ? WHERE booking_id = ?',
-        [Number(user.userId), reason, bookingId]
-      );
-      // Best-effort set unpaid/awaiting in bookings
+      if (tableExists) {
+        await query(
+          'UPDATE payment_receipts SET status = \"rejected\", confirmed_by = ?, confirmed_at = NOW(), reject_reason = ? WHERE booking_id = ?',
+          [Number(user.userId), reason, bookingId]
+        );
+      }
       try {
-        await query('UPDATE service_bookings SET payment_status = \"awaiting_payment_confirmation\" WHERE booking_id = ?', [bookingId]);
+        await query('UPDATE service_bookings SET payment_status = \"awaiting_payment_confirmation\" WHERE id = ?', [bookingId]);
       } catch {}
       return NextResponse.json({ success: true });
     }

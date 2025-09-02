@@ -11,7 +11,6 @@ import {
   UserIcon,
   EnvelopeIcon,
   PhoneIcon,
-  MapPinIcon,
   BuildingStorefrontIcon,
   ArrowUpTrayIcon,
   ExclamationTriangleIcon,

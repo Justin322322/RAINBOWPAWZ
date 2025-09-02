@@ -478,7 +478,7 @@ function BookingDetailsPage({ userData }: BookingDetailsProps) {
 
                 {/* Action Buttons */}
                 <motion.div
-                  className="flex flex-col sm:flex-row gap-2 min-w-fit"
+                  className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto"
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3, delay: 0.2 }}
@@ -487,7 +487,7 @@ function BookingDetailsPage({ userData }: BookingDetailsProps) {
                     <>
                       <motion.button
                         onClick={() => updateBookingStatus('cancelled')}
-                        className={`px-4 py-2 border border-red-300 text-red-700 rounded-md text-sm font-medium hover:bg-red-50 flex items-center justify-center transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${
+                        className={`px-4 py-2 border border-red-300 text-red-700 rounded-md text-sm font-medium hover:bg-red-50 flex items-center justify-center transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto ${
                           updateSuccess ? 'bg-green-50 border-green-300 text-green-700' : ''
                         }`}
                         disabled={updating || updateSuccess}
@@ -511,10 +511,10 @@ function BookingDetailsPage({ userData }: BookingDetailsProps) {
                       </motion.button>
                       <motion.button
                         onClick={() => updateBookingStatus('confirmed')}
-                        className={`px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 flex items-center justify-center transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${
+                        className={`px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 flex items-center justify-center transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto ${
                           updateSuccess ? 'bg-green-600 hover:bg-green-700' : ''
                         }`}
-                        disabled={updating || updateSuccess}
+                        disabled={updating || updateSuccess || booking.payment_method === 'qr_manual' && (booking.payment_status !== 'paid')}
                         whileHover={{ scale: updating || updateSuccess ? 1 : 1.02 }}
                         whileTap={{ scale: updating || updateSuccess ? 1 : 0.98 }}
                       >
@@ -534,18 +534,23 @@ function BookingDetailsPage({ userData }: BookingDetailsProps) {
                         {updating ? 'Confirming...' : updateSuccess ? 'Success!' : 'Confirm Booking'}
                       </motion.button>
                       {booking.payment_method === 'qr_manual' && (
-                        <motion.button
-                          onClick={openReceiptReview}
-                          className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md text-sm font-medium hover:bg-gray-50 flex items-center justify-center transition-all duration-200 disabled:opacity-50"
-                          disabled={receiptLoading}
-                        >
-                          {receiptLoading ? (
-                            <ArrowPathIcon className="h-4 w-4 mr-2 animate-spin" />
-                          ) : (
-                            <CreditCardIcon className="h-4 w-4 mr-2" />
-                          )}
-                          Review Receipt
-                        </motion.button>
+                        <motion.div className="relative group w-full sm:w-auto">
+                          <motion.button
+                            onClick={openReceiptReview}
+                            className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md text-sm font-medium hover:bg-gray-50 flex items-center justify-center transition-all duration-200 disabled:opacity-50 w-full sm:w-auto"
+                            disabled={receiptLoading}
+                          >
+                            {receiptLoading ? (
+                              <ArrowPathIcon className="h-4 w-4 mr-2 animate-spin" />
+                            ) : (
+                              <CreditCardIcon className="h-4 w-4 mr-2" />
+                            )}
+                            Review Receipt
+                          </motion.button>
+                          <div className="absolute left-1/2 -translate-x-1/2 mt-2 hidden sm:group-hover:block bg-gray-900 text-white text-xs rounded px-2 py-1 whitespace-nowrap shadow z-20">
+                            Review and confirm the uploaded receipt before confirming the booking.
+                          </div>
+                        </motion.div>
                       )}
                     </>
                   )}
@@ -553,7 +558,7 @@ function BookingDetailsPage({ userData }: BookingDetailsProps) {
                   {booking.status === 'confirmed' && (
                     <motion.button
                       onClick={() => updateBookingStatus('in_progress')}
-                      className={`px-4 py-2 bg-purple-600 text-white rounded-md text-sm font-medium hover:bg-purple-700 flex items-center justify-center transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${
+                      className={`px-4 py-2 bg-purple-600 text-white rounded-md text-sm font-medium hover:bg-purple-700 flex items-center justify-center transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto ${
                         updateSuccess ? 'bg-green-600 hover:bg-green-700' : ''
                       }`}
                       disabled={updating || updateSuccess}
@@ -580,7 +585,7 @@ function BookingDetailsPage({ userData }: BookingDetailsProps) {
                   {booking.status === 'in_progress' && (
                     <motion.button
                       onClick={() => updateBookingStatus('completed')}
-                      className={`px-4 py-2 bg-green-600 text-white rounded-md text-sm font-medium hover:bg-green-700 flex items-center justify-center transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${
+                      className={`px-4 py-2 bg-green-600 text-white rounded-md text-sm font-medium hover:bg-green-700 flex items-center justify-center transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto ${
                         updateSuccess ? 'bg-green-700' : ''
                       }`}
                       disabled={updating || updateSuccess}
