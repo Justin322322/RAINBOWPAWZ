@@ -135,8 +135,8 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       sanitizedRequiredDocuments = validationResult;
     }
 
-    // Determine the correct status based on whether documents are being requested
-    const applicationStatus = requestDocuments ? 'documents_required' : 'declined';
+    // Determine the desired status based on whether documents are being requested
+    const desiredStatus = requestDocuments ? 'documents_required' : 'declined';
 
     // Check which table exists: business_profiles or service_providers
     const tableCheckResult = await query(`
@@ -167,16 +167,34 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     // SECURITY FIX: Check columns and update safely for each table type
     let updateResult;
     if (useServiceProvidersTable) {
-      // Check if service_providers has the application_status column (avoid SHOW + placeholders incompatibility)
+      // Check if service_providers has the application_status column and fetch allowed enum values if present
       const columnsResult = await query(
-        `SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
+        `SELECT COLUMN_TYPE FROM INFORMATION_SCHEMA.COLUMNS
          WHERE TABLE_SCHEMA = DATABASE()
            AND TABLE_NAME = ?
            AND COLUMN_NAME = ?
          LIMIT 1`,
         ['service_providers', 'application_status']
       ) as any[];
-      const _hasApplicationStatus = columnsResult.length > 0;
+
+      // Default fallback statuses if we cannot detect enum values
+      let statusToSet = desiredStatus;
+      try {
+        if (columnsResult && columnsResult.length > 0 && typeof columnsResult[0].COLUMN_TYPE === 'string') {
+          const columnType: string = columnsResult[0].COLUMN_TYPE; // e.g., "enum('pending','approved','declined')"
+          const match = columnType.match(/enum\((.+)\)/i);
+          const values = match ? match[1].split(',').map(v => v.trim().replace(/^'|'$/g, '')) : [];
+          // If desired status is not supported by enum, choose a safe fallback
+          if (!values.includes(desiredStatus)) {
+            statusToSet = values.includes('reviewing') ? 'reviewing' : (values.includes('pending') ? 'pending' : (values[0] || 'pending'));
+          }
+        } else {
+          // Column may not be enum or not present; fallback to pending
+          statusToSet = desiredStatus === 'documents_required' ? 'pending' : desiredStatus;
+        }
+      } catch {
+        statusToSet = desiredStatus === 'documents_required' ? 'pending' : desiredStatus;
+      }
 
       updateResult = await query(
         `UPDATE service_providers
@@ -185,19 +203,34 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
              verification_date = NOW(),
              updated_at = NOW()
          WHERE provider_id = ?`,
-        [applicationStatus, structuredNotes, businessId]
+        [statusToSet, structuredNotes, businessId]
       ) as unknown as mysql.ResultSetHeader;
     } else {
-      // Check if business_profiles has the application_status column (avoid SHOW + placeholders incompatibility)
+      // Check if business_profiles has the application_status column and fetch allowed enum values if present
       const columnsResult = await query(
-        `SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
+        `SELECT COLUMN_TYPE FROM INFORMATION_SCHEMA.COLUMNS
          WHERE TABLE_SCHEMA = DATABASE()
            AND TABLE_NAME = ?
            AND COLUMN_NAME = ?
          LIMIT 1`,
         ['business_profiles', 'application_status']
       ) as any[];
-      const _hasApplicationStatus = columnsResult.length > 0;
+
+      let statusToSet = desiredStatus;
+      try {
+        if (columnsResult && columnsResult.length > 0 && typeof columnsResult[0].COLUMN_TYPE === 'string') {
+          const columnType: string = columnsResult[0].COLUMN_TYPE;
+          const match = columnType.match(/enum\((.+)\)/i);
+          const values = match ? match[1].split(',').map(v => v.trim().replace(/^'|'$/g, '')) : [];
+          if (!values.includes(desiredStatus)) {
+            statusToSet = values.includes('reviewing') ? 'reviewing' : (values.includes('pending') ? 'pending' : (values[0] || 'pending'));
+          }
+        } else {
+          statusToSet = desiredStatus === 'documents_required' ? 'pending' : desiredStatus;
+        }
+      } catch {
+        statusToSet = desiredStatus === 'documents_required' ? 'pending' : desiredStatus;
+      }
 
       updateResult = await query(
         `UPDATE business_profiles
@@ -206,7 +239,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
              verification_date = NOW(),
              updated_at = NOW()
          WHERE id = ?`,
-        [applicationStatus, structuredNotes, businessId]
+        [statusToSet, structuredNotes, businessId]
       ) as unknown as mysql.ResultSetHeader;
     }
 
