@@ -205,7 +205,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
              verification_notes = ?,
              verification_date = NOW(),
              updated_at = NOW()
-         WHERE provider_id = ?`,
+         WHERE id = ?`,
         [applicationStatus, structuredNotes, businessId]
       ) as unknown as mysql.ResultSetHeader;
     }

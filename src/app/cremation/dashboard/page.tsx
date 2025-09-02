@@ -68,6 +68,61 @@ function CremationDashboardPage({ userData }: { userData: any }) {
     },
   ];
 
+  // Function to migrate temp documents to permanent storage
+  const migrateTempDocuments = async (serviceProviderId: string) => {
+    try {
+      console.log('Checking for temp documents to migrate...');
+
+      // First, get the current document paths from the database
+      const providerResponse = await fetch(`/api/businesses/applications/${serviceProviderId}`, {
+        credentials: 'include'
+      });
+
+      if (!providerResponse.ok) {
+        console.error('Failed to fetch service provider data for migration');
+        return;
+      }
+
+      const providerData = await providerResponse.json();
+
+      // Check if any documents are in temp storage
+      const tempUrls: Record<string, string> = {};
+      if (providerData.documents) {
+        providerData.documents.forEach((doc: any) => {
+          if (doc.url && doc.url.includes('temp/registration')) {
+            const docType = doc.type.toLowerCase().replace(' ', '_') + '_path';
+            tempUrls[docType] = doc.url;
+          }
+        });
+      }
+
+      if (Object.keys(tempUrls).length > 0) {
+        console.log('Found temp documents to migrate:', tempUrls);
+
+        const migrationResponse = await fetch('/api/businesses/upload-documents', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+          body: JSON.stringify({
+            action: 'migrate',
+            tempUrls: tempUrls
+          }),
+        });
+
+        if (migrationResponse.ok) {
+          const migrationResult = await migrationResponse.json();
+          console.log('Background document migration successful:', migrationResult);
+        } else {
+          console.error('Background document migration failed:', await migrationResponse.text());
+        }
+      }
+    } catch (error) {
+      console.error('Error during background document migration:', error);
+    }
+  };
+
   // Fetch dashboard data - simplified like admin
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -97,13 +152,23 @@ function CremationDashboardPage({ userData }: { userData: any }) {
         }
 
         const result = await response.json();
-        
+
         // The cremation dashboard API returns data directly, not wrapped in a success object
         if (result.error) {
           setError(result.error || 'Failed to fetch dashboard data');
         } else {
           // API returns data directly with stats array
           setDashboardData(result);
+
+          // Check for and migrate any temp documents in the background
+          // This runs silently and doesn't affect the dashboard loading
+          if (userData?.business_id || userData?.provider_id) {
+            const serviceProviderId = userData.business_id || userData.provider_id;
+            // Run migration in background without awaiting
+            migrateTempDocuments(serviceProviderId.toString()).catch(err =>
+              console.error('Background migration failed:', err)
+            );
+          }
         }
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';

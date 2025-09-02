@@ -335,6 +335,50 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
         return;
       }
 
+      // If we have temp documents, migrate them to permanent storage
+      if (hasDocuments && uploadedDocumentUrls) {
+        try {
+          console.log('Migrating temp documents to permanent storage...');
+
+          // Extract temp URLs from the uploaded document response
+          const tempUrls = {
+            business_permit_path: uploadedDocumentUrls.business_permit_path || null,
+            bir_certificate_path: uploadedDocumentUrls.bir_certificate_path || null,
+            government_id_path: uploadedDocumentUrls.government_id_path || null
+          };
+
+          // Filter out null values
+          const filteredTempUrls = Object.fromEntries(
+            Object.entries(tempUrls).filter(([_, value]) => value !== null)
+          );
+
+          if (Object.keys(filteredTempUrls).length > 0) {
+            const migrationResponse = await fetch('/api/businesses/upload-documents', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              credentials: 'include',
+              body: JSON.stringify({
+                action: 'migrate',
+                tempUrls: filteredTempUrls
+              }),
+            });
+
+            if (migrationResponse.ok) {
+              const migrationResult = await migrationResponse.json();
+              console.log('Document migration successful:', migrationResult);
+            } else {
+              console.error('Document migration failed:', await migrationResponse.text());
+              // Don't fail registration if migration fails - documents will still work from temp storage
+            }
+          }
+        } catch (migrationError) {
+          console.error('Error during document migration:', migrationError);
+          // Continue with registration even if migration fails
+        }
+      }
+
       // Success!
       if (hasDocuments) {
         showToast('Registration and document upload successful!', 'success');
