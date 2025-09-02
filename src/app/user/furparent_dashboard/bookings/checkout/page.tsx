@@ -14,7 +14,8 @@ import {
   PaperAirplaneIcon,
   ExclamationCircleIcon,
   TruckIcon,
-  PlusCircleIcon
+  PlusCircleIcon,
+  TrashIcon
 } from '@heroicons/react/24/outline';
 
 import FurParentPageSkeleton from '@/components/ui/FurParentPageSkeleton';
@@ -82,7 +83,62 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
   const [paymentMethod, setPaymentMethod] = useState<string>('gcash');
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [receiptProgress, setReceiptProgress] = useState(0);
+  const [receiptPreview, setReceiptPreview] = useState<string | null>(null);
   const [_providerQr, _setProviderQr] = useState<string | null>(null);
+  const [orderSummaryOffset, setOrderSummaryOffset] = useState(0);
+
+  // Handle receipt file selection with preview
+  const handleReceiptFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    setReceiptFile(file);
+
+    if (file) {
+      // Create preview URL
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setReceiptPreview(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      setReceiptPreview(null);
+    }
+  };
+
+  // Remove selected receipt file
+  const removeReceiptFile = () => {
+    setReceiptFile(null);
+    setReceiptPreview(null);
+    setReceiptProgress(0);
+    // Reset file input
+    const fileInput = document.getElementById('receipt-file-input') as HTMLInputElement;
+    if (fileInput) {
+      fileInput.value = '';
+    }
+  };
+
+  // Handle Order Summary positioning on scroll
+  useEffect(() => {
+    const handleScroll = () => {
+      const orderSummaryElement = document.getElementById('order-summary');
+      if (!orderSummaryElement) return;
+
+      const rect = orderSummaryElement.getBoundingClientRect();
+      const navbarHeight = window.innerWidth >= 768 ? 80 : 64; // md:h-20 (80px) or h-16 (64px)
+
+      // If the Order Summary is getting covered by the navbar
+      if (rect.top < navbarHeight + 32) { // 32px for some padding
+        const offset = navbarHeight + 32 - rect.top;
+        setOrderSummaryOffset(offset);
+      } else {
+        setOrderSummaryOffset(0);
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    handleScroll(); // Check initial position
+
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
   const [isProcessing, setIsProcessing] = useState(false);
   const [checkoutComplete, setCheckoutComplete] = useState(false);
   const [petName, setPetName] = useState('');
@@ -1477,14 +1533,63 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                                   <div>
                                     <label className="text-sm font-medium text-gray-700">Upload payment receipt (image)</label>
                                     <input
+                                      id="receipt-file-input"
                                       type="file"
                                       accept="image/*"
                                       className="block mt-1 text-sm"
-                                      onChange={(e) => setReceiptFile(e.target.files?.[0] || null)}
+                                      onChange={handleReceiptFileChange}
                                     />
-                                    {receiptFile && (
-                                      <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
-                                        <div className="bg-[var(--primary-green)] h-2 rounded-full" style={{ width: `${receiptProgress}%` }} />
+
+                                    {/* File Preview */}
+                                    {receiptPreview && (
+                                      <div className="mt-3 relative">
+                                        <div className="bg-white border-2 border-gray-200 rounded-lg p-3 shadow-sm">
+                                          <div className="flex items-start space-x-3">
+                                            {/* Thumbnail */}
+                                            <div className="flex-shrink-0">
+                                              <Image
+                                                src={receiptPreview}
+                                                alt="Receipt preview"
+                                                width={60}
+                                                height={60}
+                                                className="w-16 h-16 object-cover rounded border"
+                                              />
+                                            </div>
+
+                                            {/* File Info */}
+                                            <div className="flex-1 min-w-0">
+                                              <p className="text-sm font-medium text-gray-900 truncate">
+                                                {receiptFile?.name}
+                                              </p>
+                                              <p className="text-xs text-gray-500">
+                                                {(receiptFile?.size || 0) < 1024 * 1024
+                                                  ? `${Math.round((receiptFile?.size || 0) / 1024)} KB`
+                                                  : `${Math.round((receiptFile?.size || 0) / (1024 * 1024))} MB`
+                                                }
+                                              </p>
+
+                                              {/* Progress Bar */}
+                                              {receiptProgress > 0 && (
+                                                <div className="w-full bg-gray-200 rounded-full h-1.5 mt-2">
+                                                  <div
+                                                    className="bg-[var(--primary-green)] h-1.5 rounded-full transition-all duration-300"
+                                                    style={{ width: `${receiptProgress}%` }}
+                                                  />
+                                                </div>
+                                              )}
+                                            </div>
+
+                                            {/* Remove Button */}
+                                            <button
+                                              type="button"
+                                              onClick={removeReceiptFile}
+                                              className="flex-shrink-0 p-1 text-gray-400 hover:text-red-500 transition-colors"
+                                              title="Remove file"
+                                            >
+                                              <TrashIcon className="h-4 w-4" />
+                                            </button>
+                                          </div>
+                                        </div>
                                       </div>
                                     )}
                                   </div>
@@ -1666,10 +1771,15 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
             {/* Order Summary */}
             <div className="lg:col-span-1">
               <motion.div
+                id="order-summary"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.2 }}
                 className="bg-white rounded-lg shadow-md overflow-hidden sticky top-8"
+                style={{
+                  transform: orderSummaryOffset > 0 ? `translateY(${orderSummaryOffset}px)` : 'none',
+                  transition: 'transform 0.2s ease-out'
+                }}
               >
                 <div className="bg-[var(--primary-green)] p-6">
                   <h2 className="text-xl font-bold text-white">Order Summary</h2>
