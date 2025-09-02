@@ -467,39 +467,7 @@ export default function PendingVerificationPage() {
 
                   {/* Document Upload Form */}
                   <div className="space-y-4">
-                    {Object.keys(availableDocuments).length > 0 || uploadComplete ? (
-                      <>
-                        <div className="mb-4 p-3 bg-green-50 rounded border border-green-200">
-                          <p className="text-sm text-green-800 text-center">Documents submitted. Your application is now under review.</p>
-                        </div>
-                        <div className="grid grid-cols-1 gap-4">
-                          {availableDocuments.business_permit_path && (
-                            <div className="border rounded-lg p-3">
-                              <div className="text-sm font-medium mb-2">Business Permit</div>
-                              <div className="w-full overflow-hidden rounded">
-                                <Image src={getDocumentImageSource(availableDocuments.business_permit_path)} alt="Business Permit" width={800} height={600} className="max-h-56 w-full object-contain bg-gray-50" />
-                              </div>
-                            </div>
-                          )}
-                          {availableDocuments.bir_certificate_path && (
-                            <div className="border rounded-lg p-3">
-                              <div className="text-sm font-medium mb-2">BIR Certificate</div>
-                              <div className="w-full overflow-hidden rounded">
-                                <Image src={getDocumentImageSource(availableDocuments.bir_certificate_path)} alt="BIR Certificate" width={800} height={600} className="max-h-56 w-full object-contain bg-gray-50" />
-                              </div>
-                            </div>
-                          )}
-                          {availableDocuments.government_id_path && (
-                            <div className="border rounded-lg p-3">
-                              <div className="text-sm font-medium mb-2">Government ID</div>
-                              <div className="w-full overflow-hidden rounded">
-                                <Image src={getDocumentImageSource(availableDocuments.government_id_path)} alt="Government ID" width={800} height={600} className="max-h-56 w-full object-contain bg-gray-50" />
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </>
-                    ) : requiredDocuments.length > 0 ? (
+                    {requiredDocuments.length > 0 ? (
                       requiredDocuments.map(docType => {
                         const docInfo = documentTypeMap[docType];
                         if (!docInfo) return null;
@@ -546,15 +514,46 @@ export default function PendingVerificationPage() {
                         );
                       })
                     ) : (
-                      <div className="text-center py-8">
-                        <DocumentIcon className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-                        <p className="text-sm text-gray-500">
-                          No specific documents have been requested yet.
-                        </p>
-                        <p className="text-xs text-gray-400 mt-1">
-                          Please contact support if you believe this is an error.
-                        </p>
-                      </div>
+                      <>
+                        {(Object.keys(availableDocuments).length > 0 || uploadComplete) && (
+                          <div className="mb-4 p-3 bg-green-50 rounded border border-green-200">
+                            <p className="text-sm text-green-800 text-center">Documents submitted. Your application is now under review.</p>
+                          </div>
+                        )}
+                        <div className="grid grid-cols-1 gap-4">
+                          {availableDocuments.business_permit_path && (
+                            <div className="border rounded-lg p-3">
+                              <div className="text-sm font-medium mb-2">Business Permit</div>
+                              <div className="w-full overflow-hidden rounded">
+                                <Image src={getDocumentImageSource(availableDocuments.business_permit_path)} alt="Business Permit" width={800} height={600} className="max-h-56 w-full object-contain bg-gray-50" />
+                              </div>
+                            </div>
+                          )}
+                          {availableDocuments.bir_certificate_path && (
+                            <div className="border rounded-lg p-3">
+                              <div className="text-sm font-medium mb-2">BIR Certificate</div>
+                              <div className="w-full overflow-hidden rounded">
+                                <Image src={getDocumentImageSource(availableDocuments.bir_certificate_path)} alt="BIR Certificate" width={800} height={600} className="max-h-56 w-full object-contain bg-gray-50" />
+                              </div>
+                            </div>
+                          )}
+                          {availableDocuments.government_id_path && (
+                            <div className="border rounded-lg p-3">
+                              <div className="text-sm font-medium mb-2">Government ID</div>
+                              <div className="w-full overflow-hidden rounded">
+                                <Image src={getDocumentImageSource(availableDocuments.government_id_path)} alt="Government ID" width={800} height={600} className="max-h-56 w-full object-contain bg-gray-50" />
+                              </div>
+                            </div>
+                          )}
+                          {Object.keys(availableDocuments).length === 0 && !uploadComplete && (
+                            <div className="text-center py-8">
+                              <DocumentIcon className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                              <p className="text-sm text-gray-500">No specific documents have been requested yet.</p>
+                              <p className="text-xs text-gray-400 mt-1">Please contact support if you believe this is an error.</p>
+                            </div>
+                          )}
+                        </div>
+                      </>
                     )}
 
                     {/* Upload Button */}
