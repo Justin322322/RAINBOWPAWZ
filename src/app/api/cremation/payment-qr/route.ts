@@ -14,6 +14,18 @@ async function tableExists(tableName: string): Promise<boolean> {
   }
 }
 
+async function columnExists(tableName: string, columnName: string): Promise<boolean> {
+  try {
+    const rows = await query(
+      `SELECT COUNT(*) as c FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = ? AND column_name = ?`,
+      [tableName, columnName]
+    ) as any[];
+    return Number(rows?.[0]?.c || 0) > 0;
+  } catch {
+    return false;
+  }
+}
+
 export async function GET(request: NextRequest) {
   try {
     const user = await verifySecureAuth(request);
@@ -45,8 +57,8 @@ export async function GET(request: NextRequest) {
       } catch {}
     }
 
-    // Fallback to service_providers column if not found
-    if (!qrPath) {
+    // Fallback to service_providers column if not found and column exists
+    if (!qrPath && (await columnExists('service_providers', 'payment_qr_path'))) {
       try {
         const spRows = await query(
           'SELECT payment_qr_path FROM service_providers WHERE provider_id = ? LIMIT 1',
@@ -129,11 +141,13 @@ export async function POST(request: NextRequest) {
       } catch {}
     }
 
-    // Always denormalize onto service_providers (preferred source when DDL blocked)
-    try {
-      await query('UPDATE service_providers SET payment_qr_path = ? WHERE provider_id = ?', [dataUrl, providerId]);
-    } catch (e: any) {
-      return NextResponse.json({ error: 'Failed to save payment QR', details: e?.message }, { status: 500 });
+    // Denormalize onto service_providers only if column exists
+    if (await columnExists('service_providers', 'payment_qr_path')) {
+      try {
+        await query('UPDATE service_providers SET payment_qr_path = ? WHERE provider_id = ?', [dataUrl, providerId]);
+      } catch (e: any) {
+        return NextResponse.json({ error: 'Failed to save payment QR', details: e?.message }, { status: 500 });
+      }
     }
 
     return NextResponse.json({ success: true, qrPath: dataUrl });
