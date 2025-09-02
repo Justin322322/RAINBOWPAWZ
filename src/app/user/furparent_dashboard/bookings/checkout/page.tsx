@@ -80,6 +80,9 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
     return () => clearTimeout(authTimeout);
   }, [userData]);
   const [paymentMethod, setPaymentMethod] = useState<string>('gcash');
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [receiptProgress, setReceiptProgress] = useState(0);
+  const [_providerQr, _setProviderQr] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [checkoutComplete, setCheckoutComplete] = useState(false);
   const [petName, setPetName] = useState('');
@@ -899,6 +902,41 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
         }
       }
 
+      // For manual QR transfer, upload receipt (if provided) and set awaiting confirmation
+      if (paymentMethod === 'qr_manual') {
+        try {
+          if (receiptFile) {
+            const fd = new FormData();
+            fd.append('bookingId', String(bookingId));
+            fd.append('file', receiptFile);
+            const resp = await new Promise<Response>((resolve, reject) => {
+              const xhr = new XMLHttpRequest();
+              xhr.open('POST', '/api/payments/offline/receipt');
+              xhr.withCredentials = true;
+              xhr.upload.onprogress = (evt) => {
+                if (evt.lengthComputable) setReceiptProgress(Math.round((evt.loaded / evt.total) * 100));
+              };
+              xhr.onload = () => resolve(new Response(xhr.responseText, { status: xhr.status }));
+              xhr.onerror = () => reject(new Response(null, { status: xhr.status || 500 }));
+              xhr.send(fd);
+            });
+            if (!resp.ok) {
+              const t = await resp.text();
+              throw new Error(t || 'Failed to upload receipt');
+            }
+          }
+
+          showToast('Booking created. Awaiting provider confirmation.', 'success');
+          router.push('/user/furparent_dashboard/bookings');
+          return;
+        } catch (err) {
+          console.error('Receipt upload error:', err);
+          showToast('Booking created, but receipt upload failed. You can re-upload from your bookings.', 'warning');
+          router.push('/user/furparent_dashboard/bookings');
+          return;
+        }
+      }
+
       // For cash payments, show completion message
       // Clear cart if booking was from cart
       if (searchParams.get('fromCart') === 'true') {
@@ -1367,7 +1405,15 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                       </h3>
 
                       <div className="space-y-3">
-                        <div className="flex items-center p-4 border rounded-md bg-blue-50 border-blue-200">
+                        <label className="flex items-center p-4 border rounded-md cursor-pointer hover:bg-gray-50 transition-colors">
+                          <input
+                            type="radio"
+                            name="payment-method"
+                            value="gcash"
+                            checked={paymentMethod === 'gcash'}
+                            onChange={() => setPaymentMethod('gcash')}
+                            className="h-4 w-4 text-[var(--primary-green)] focus:ring-[var(--primary-green)]"
+                          />
                           <div className="h-6 w-6 flex-shrink-0 relative">
                             <Image
                               src="/images/check-icon.svg"
@@ -1384,15 +1430,52 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                               Pay securely using your GCash account. You will receive payment instructions after booking.
                             </p>
                           </div>
-                          <CheckIcon className="h-5 w-5 ml-auto text-green-500" />
-                        </div>
+                        </label>
 
-                        {/* Hidden input to maintain the payment method state */}
-                        <input
-                          type="hidden"
-                          name="payment-method"
-                          value="gcash"
-                        />
+                        <label className="block p-4 border rounded-md cursor-pointer hover:bg-gray-50 transition-colors">
+                          <div className="flex items-start">
+                            <input
+                              type="radio"
+                              name="payment-method"
+                              value="qr_manual"
+                              checked={paymentMethod === 'qr_manual'}
+                              onChange={() => setPaymentMethod('qr_manual')}
+                              className="h-4 w-4 mt-1 text-[var(--primary-green)] focus:ring-[var(--primary-green)]"
+                            />
+                            <div className="ml-3 flex-1">
+                              <span className="font-medium text-gray-800">QR Transfer (manual confirmation)</span>
+                              <p className="text-sm text-gray-600 mt-1">
+                                Transfer using the provider&apos;s QR. Upload your receipt; your booking will be confirmed after the provider verifies payment.
+                              </p>
+                              {paymentMethod === 'qr_manual' && (
+                                <div className="mt-3 space-y-3">
+                                  {_providerQr ? (
+                                    <div className="bg-gray-50 rounded p-3">
+                                      <div className="text-xs text-gray-500 mb-2">Scan this QR to pay:</div>
+                                      <Image src={_providerQr} alt="Payment QR" width={300} height={300} className="w-full max-h-64 object-contain" />
+                                    </div>
+                                  ) : (
+                                    <div className="text-xs text-gray-500">Provider has not uploaded a QR yet.</div>
+                                  )}
+                                  <div>
+                                    <label className="text-sm font-medium text-gray-700">Upload payment receipt (image)</label>
+                                    <input
+                                      type="file"
+                                      accept="image/*"
+                                      className="block mt-1 text-sm"
+                                      onChange={(e) => setReceiptFile(e.target.files?.[0] || null)}
+                                    />
+                                    {receiptFile && (
+                                      <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+                                        <div className="bg-[var(--primary-green)] h-2 rounded-full" style={{ width: `${receiptProgress}%` }} />
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </label>
                       </div>
                     </div>
 

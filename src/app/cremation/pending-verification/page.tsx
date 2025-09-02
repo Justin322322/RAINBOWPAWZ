@@ -80,7 +80,7 @@ export default function PendingVerificationPage() {
         try { URL.revokeObjectURL(u); } catch {}
       });
     };
-  }, [uploadingFiles.businessPermit, uploadingFiles.birCertificate, uploadingFiles.governmentId]);
+  }, [uploadingFiles]);
   const getDocumentImageSource = (documentPath: string | null | undefined): string => {
     if (!documentPath) return '';
     if (documentPath.startsWith('data:')) return documentPath;

@@ -18,6 +18,7 @@ import {
   ProfileButton,
   ProfileAlert
 } from '@/components/ui/ProfileFormComponents';
+import Image from 'next/image';
 
 interface CremationSettingsProps {
   userData: any;
@@ -40,6 +41,24 @@ function CremationSettingsPage({ userData }: CremationSettingsProps) {
     type: 'success' | 'error' | 'warning';
     text: string;
   } | null>(null);
+
+  // Payment QR
+  const [qrPath, setQrPath] = useState<string | null>(null);
+  const [qrUploading, setQrUploading] = useState(false);
+  const [qrProgress, setQrProgress] = useState(0);
+
+  useEffect(() => {
+    const loadQr = async () => {
+      try {
+        const res = await fetch('/api/cremation/payment-qr', { credentials: 'include' });
+        if (res.ok) {
+          const j = await res.json();
+          setQrPath(j.qrPath || null);
+        }
+      } catch {}
+    };
+    loadQr();
+  }, []);
 
   // Load current settings on component mount
   useEffect(() => {
@@ -271,6 +290,71 @@ function CremationSettingsPage({ userData }: CremationSettingsProps) {
                   >
                     {isSaving ? 'Saving...' : 'Save Settings'}
                   </ProfileButton>
+                </div>
+
+                {/* Payment QR */}
+                <div className="mt-10">
+                  <h3 className="font-medium text-gray-900 mb-2">Payment QR</h3>
+                  <p className="text-sm text-gray-500 mb-4">Upload a QR code (e.g., GCash/Maya) your customers can scan.</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+                    <div className="border rounded-xl p-4">
+                      {qrPath ? (
+                        <div>
+                          <div className="text-sm text-gray-600 mb-2">Current QR</div>
+                          <div className="w-full bg-gray-50 rounded overflow-hidden">
+                            <Image src={qrPath} alt="Payment QR" width={600} height={600} className="w-full max-h-80 object-contain" />
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-sm text-gray-500">No QR uploaded yet.</div>
+                      )}
+                    </div>
+                    <div className="border rounded-xl p-4">
+                      <div className="text-sm text-gray-600 mb-2">Upload / Replace</div>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          setQrUploading(true);
+                          setQrProgress(0);
+                          try {
+                            const fd = new FormData();
+                            fd.append('file', file);
+                            const resp = await new Promise<Response>((resolve, reject) => {
+                              const xhr = new XMLHttpRequest();
+                              xhr.open('POST', '/api/cremation/payment-qr');
+                              xhr.withCredentials = true;
+                              xhr.upload.onprogress = (evt) => {
+                                if (evt.lengthComputable) setQrProgress(Math.round((evt.loaded / evt.total) * 100));
+                              };
+                              xhr.onload = () => resolve(new Response(xhr.responseText, { status: xhr.status }));
+                              xhr.onerror = () => reject(new Response(null, { status: xhr.status || 500 }));
+                              xhr.send(fd);
+                            });
+                            if (!resp.ok) {
+                              const t = await resp.text();
+                              throw new Error(t || 'Upload failed');
+                            }
+                            const j = await resp.json().catch(() => ({}));
+                            setQrPath(j.qrPath || null);
+                            setMessage({ type: 'success', text: 'Payment QR saved.' });
+                          } catch (err) {
+                            setMessage({ type: 'error', text: err instanceof Error ? err.message : 'Failed to upload QR' });
+                          } finally {
+                            setQrUploading(false);
+                            setQrProgress(0);
+                          }
+                        }}
+                      />
+                      {qrUploading && (
+                        <div className="w-full bg-gray-200 rounded-full h-2 mt-3">
+                          <div className="bg-[var(--primary-green)] h-2 rounded-full" style={{ width: `${qrProgress}%` }} />
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </>
             )}

@@ -13,7 +13,11 @@ import {
   XMarkIcon,
   EnvelopeIcon,
   FunnelIcon,
-  PencilSquareIcon
+  PencilSquareIcon,
+  CheckCircleIcon,
+  XCircleIcon,
+  DocumentIcon,
+  ClockIcon
 } from '@heroicons/react/24/outline';
 import { LoadingSpinner } from '@/app/cremation/components/LoadingComponents';
 
@@ -23,6 +27,8 @@ function CremationBookingsPage({ userData }: { userData: any }) {
   const [paymentFilter, setPaymentFilter] = useState('all');
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState<any>(null);
+  const [showConfirmPaymentModal, setShowConfirmPaymentModal] = useState(false);
+  const [selectedBookingForPayment, setSelectedBookingForPayment] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [bookings, setBookings] = useState<any[]>([]);
   const [_stats, setStats] = useState({
@@ -139,6 +145,75 @@ function CremationBookingsPage({ userData }: { userData: any }) {
     setPaymentFilter(e.target.value);
   };
 
+  const handleConfirmPayment = (booking: any) => {
+    setSelectedBookingForPayment(booking);
+    setShowConfirmPaymentModal(true);
+  };
+
+  const handleConfirmPaymentAction = async (action: 'confirm' | 'reject', reason?: string) => {
+    if (!selectedBookingForPayment) return;
+
+    try {
+      const response = await fetch('/api/payments/offline/confirm', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          bookingId: selectedBookingForPayment.id,
+          action,
+          reason: reason || ''
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to process payment confirmation');
+      }
+
+      const data = await response.json();
+      showToast(data.message, 'success');
+
+      // Close modal and refresh bookings
+      setShowConfirmPaymentModal(false);
+      setSelectedBookingForPayment(null);
+
+      // Refresh the bookings data
+      const providerId = userData?.business_id || userData?.provider_id || 999;
+      const queryParams = new URLSearchParams({
+        providerId: providerId.toString()
+      });
+
+      if (searchTerm.trim()) {
+        queryParams.append('searchTerm', searchTerm.trim());
+      }
+
+      if (statusFilter && statusFilter !== 'all') {
+        queryParams.append('statusFilter', statusFilter);
+      }
+
+      if (paymentFilter && paymentFilter !== 'all') {
+        queryParams.append('paymentFilter', paymentFilter);
+      }
+
+      const refreshResponse = await fetch(`/api/cremation/bookings?${queryParams.toString()}`, {
+        method: 'GET',
+        headers: {
+          'Cache-Control': 'no-cache'
+        }
+      });
+
+      if (refreshResponse.ok) {
+        const refreshData = await refreshResponse.json();
+        setBookings(refreshData.bookings || []);
+      }
+
+    } catch (error) {
+      console.error('Error confirming payment:', error);
+      showToast(error instanceof Error ? error.message : 'Failed to process payment confirmation', 'error');
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     switch(status) {
       case 'scheduled':
@@ -176,6 +251,42 @@ function CremationBookingsPage({ userData }: { userData: any }) {
         return (
           <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800 min-w-[90px] justify-center">
             {status}
+          </span>
+        );
+    }
+  };
+
+  const getPaymentStatusBadge = (paymentStatus: string) => {
+    switch(paymentStatus) {
+      case 'paid':
+        return (
+          <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 min-w-[90px] justify-center">
+            Paid
+          </span>
+        );
+      case 'partially_paid':
+        return (
+          <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800 min-w-[90px] justify-center">
+            Partially Paid
+          </span>
+        );
+      case 'awaiting_payment_confirmation':
+        return (
+          <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-orange-100 text-orange-800 min-w-[90px] justify-center">
+            Awaiting Confirmation
+          </span>
+        );
+      case 'payment_rejected':
+        return (
+          <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800 min-w-[90px] justify-center">
+            Payment Rejected
+          </span>
+        );
+      case 'not_paid':
+      default:
+        return (
+          <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800 min-w-[90px] justify-center">
+            Not Paid
           </span>
         );
     }
@@ -340,23 +451,7 @@ function CremationBookingsPage({ userData }: { userData: any }) {
                       {getStatusBadge(booking.status)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      {booking.paymentMethod === 'gcash' ? (
-                        <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 min-w-[90px] justify-center">
-                          Paid (GCash)
-                        </span>
-                      ) : booking.paymentStatus === 'paid' ? (
-                        <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 min-w-[90px] justify-center">
-                          Paid
-                        </span>
-                      ) : booking.paymentStatus === 'partially_paid' ? (
-                        <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800 min-w-[90px] justify-center">
-                          Partially Paid
-                        </span>
-                      ) : (
-                        <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800 min-w-[90px] justify-center">
-                          Not Paid
-                        </span>
-                      )}
+                      {getPaymentStatusBadge(booking.paymentStatus)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex justify-end space-x-2">
@@ -367,6 +462,15 @@ function CremationBookingsPage({ userData }: { userData: any }) {
                           <EyeIcon className="h-4 w-4 mr-1" />
                           View
                         </button>
+                        {booking.paymentStatus === 'awaiting_payment_confirmation' && booking.paymentReceipt && (
+                          <button
+                            onClick={() => handleConfirmPayment(booking)}
+                            className="inline-flex items-center px-2.5 py-1.5 border border-green-300 text-xs font-medium rounded text-green-700 bg-green-50 hover:bg-green-100"
+                          >
+                            <CheckCircleIcon className="h-4 w-4 mr-1" />
+                            Confirm Payment
+                          </button>
+                        )}
                         <Link
                           href={`/cremation/bookings/${booking.id}`}
                           className="inline-flex items-center px-2.5 py-1.5 border border-gray-300 text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50"
@@ -478,7 +582,225 @@ function CremationBookingsPage({ userData }: { userData: any }) {
           </div>
         </div>
       )}
+
+      {/* Confirm Payment Modal */}
+      {showConfirmPaymentModal && selectedBookingForPayment && (
+        <ConfirmPaymentModal
+          booking={selectedBookingForPayment}
+          onClose={() => {
+            setShowConfirmPaymentModal(false);
+            setSelectedBookingForPayment(null);
+          }}
+          onConfirm={handleConfirmPaymentAction}
+        />
+      )}
     </CremationDashboardLayout>
+  );
+}
+
+// Confirm Payment Modal Component
+function ConfirmPaymentModal({
+  booking,
+  onClose,
+  onConfirm
+}: {
+  booking: any;
+  onClose: () => void;
+  onConfirm: (action: 'confirm' | 'reject', reason?: string) => void;
+}) {
+  const [action, setAction] = useState<'confirm' | 'reject'>('confirm');
+  const [rejectionReason, setRejectionReason] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  const handleSubmit = async () => {
+    setIsProcessing(true);
+    try {
+      await onConfirm(action, action === 'reject' ? rejectionReason : undefined);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        {/* Header */}
+        <div className="bg-[var(--primary-green)] text-white px-4 sm:px-6 py-3 sm:py-4">
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-lg sm:text-xl font-medium text-white">Confirm Payment</h1>
+              <p className="text-sm text-white/80 mt-1">
+                Booking #{booking.id} • {booking.petName}
+              </p>
+            </div>
+            <button
+              onClick={onClose}
+              className="text-white hover:text-white/80 transition-colors duration-200 p-2 rounded-lg hover:bg-white/10 flex-shrink-0 ml-2"
+            >
+              <XMarkIcon className="w-5 h-5 sm:w-6 sm:h-6" />
+            </button>
+          </div>
+        </div>
+
+        <div className="p-6 space-y-6">
+          {/* Booking Details */}
+          <div className="bg-white rounded-xl shadow-md border border-gray-200 p-5">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Booking Details</h2>
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-medium text-gray-700">Pet Name</span>
+                <span className="text-sm text-gray-900">{booking.petName}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-medium text-gray-700">Owner</span>
+                <span className="text-sm text-gray-900">{booking.owner.name}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-medium text-gray-700">Service</span>
+                <span className="text-sm text-gray-900">{booking.package}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-medium text-gray-700">Total Amount</span>
+                <span className="text-lg font-bold text-[var(--primary-green)]">
+                  ₱{parseFloat(booking.price).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Payment Receipt */}
+          {booking.paymentReceipt && (
+            <div className="bg-white rounded-xl shadow-md border border-gray-200 p-5">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">Payment Receipt</h2>
+              <div className="space-y-4">
+                <div className="flex items-center space-x-4">
+                  <div className="flex-shrink-0">
+                    <DocumentIcon className="h-12 w-12 text-gray-400" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-sm font-medium text-gray-900">Payment Receipt</h3>
+                        <p className="text-sm text-gray-500">Uploaded on {booking.paymentReceipt.uploadedAt}</p>
+                        {booking.paymentReceipt.notes && (
+                          <p className="text-sm text-gray-600 mt-1">{booking.paymentReceipt.notes}</p>
+                        )}
+                      </div>
+                      <a
+                        href={booking.paymentReceipt.receiptPath}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center px-3 py-1.5 border border-gray-300 text-sm font-medium rounded text-gray-700 bg-white hover:bg-gray-50"
+                      >
+                        <EyeIcon className="h-4 w-4 mr-1" />
+                        View Receipt
+                      </a>
+                    </div>
+                  </div>
+                </div>
+                {booking.paymentReceipt.rejectionReason && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                    <div className="flex">
+                      <XCircleIcon className="h-5 w-5 text-red-400" />
+                      <div className="ml-3">
+                        <h3 className="text-sm font-medium text-red-800">Previous Rejection Reason</h3>
+                        <p className="text-sm text-red-700 mt-1">{booking.paymentReceipt.rejectionReason}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Action Selection */}
+          <div className="bg-white rounded-xl shadow-md border border-gray-200 p-5">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Action</h2>
+            <div className="space-y-4">
+              <div className="flex space-x-4">
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    name="paymentAction"
+                    value="confirm"
+                    checked={action === 'confirm'}
+                    onChange={(e) => setAction(e.target.value as 'confirm')}
+                    className="h-4 w-4 text-[var(--primary-green)] focus:ring-[var(--primary-green)] border-gray-300"
+                  />
+                  <span className="ml-2 text-sm font-medium text-gray-900">Confirm Payment</span>
+                </label>
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    name="paymentAction"
+                    value="reject"
+                    checked={action === 'reject'}
+                    onChange={(e) => setAction(e.target.value as 'reject')}
+                    className="h-4 w-4 text-[var(--primary-green)] focus:ring-[var(--primary-green)] border-gray-300"
+                  />
+                  <span className="ml-2 text-sm font-medium text-gray-900">Reject Payment</span>
+                </label>
+              </div>
+
+              {action === 'reject' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Rejection Reason <span className="text-red-500">*</span>
+                  </label>
+                  <textarea
+                    value={rejectionReason}
+                    onChange={(e) => setRejectionReason(e.target.value)}
+                    placeholder="Please provide a reason for rejecting this payment..."
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
+                    rows={3}
+                    required
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="border-t border-gray-200 bg-gray-50 px-6 py-4 rounded-b-2xl">
+          <div className="flex justify-end space-x-3">
+            <button
+              onClick={onClose}
+              className="inline-flex items-center px-6 py-3 bg-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors duration-200"
+              disabled={isProcessing}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSubmit}
+              disabled={isProcessing || (action === 'reject' && !rejectionReason.trim())}
+              className={`inline-flex items-center px-6 py-3 text-white text-sm font-medium rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors duration-200 ${
+                action === 'confirm'
+                  ? 'bg-[var(--primary-green)] hover:bg-[var(--primary-green-hover)] focus:ring-green-500'
+                  : 'bg-red-600 hover:bg-red-700 focus:ring-red-500'
+              } disabled:opacity-50 disabled:cursor-not-allowed`}
+            >
+              {isProcessing ? (
+                <>
+                  <ClockIcon className="h-4 w-4 mr-2 animate-spin" />
+                  Processing...
+                </>
+              ) : action === 'confirm' ? (
+                <>
+                  <CheckCircleIcon className="h-4 w-4 mr-2" />
+                  Confirm Payment
+                </>
+              ) : (
+                <>
+                  <XCircleIcon className="h-4 w-4 mr-2" />
+                  Reject Payment
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 

@@ -2,6 +2,33 @@ import { NextRequest, NextResponse } from 'next/server';
 import { query, withTransaction } from '@/lib/db';
 import { createBookingNotification, scheduleBookingReminders } from '@/utils/comprehensiveNotificationService';
 
+// Helper function to ensure payment_receipts table exists
+async function ensurePaymentReceiptsTable() {
+  const createTableQuery = `
+    CREATE TABLE IF NOT EXISTS payment_receipts (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      booking_id INT NOT NULL,
+      user_id INT NOT NULL,
+      receipt_path VARCHAR(500),
+      notes TEXT,
+      status ENUM('awaiting', 'confirmed', 'rejected') DEFAULT 'awaiting',
+      uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      confirmed_by INT NULL,
+      confirmed_at TIMESTAMP NULL,
+      rejection_reason TEXT,
+      INDEX idx_booking_id (booking_id),
+      INDEX idx_user_id (user_id),
+      INDEX idx_status (status)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `;
+
+  try {
+    await query(createTableQuery);
+  } catch (error) {
+    console.error('Error creating payment_receipts table:', error);
+  }
+}
+
 export async function GET(request: NextRequest) {
   try {
     // Get provider ID from the request query parameters
@@ -267,6 +294,33 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // Fetch payment receipts for all bookings
+    let paymentReceipts: Record<number, any> = {};
+    if (bookingIds.length > 0) {
+      try {
+        await ensurePaymentReceiptsTable();
+
+        const receiptsQuery = `
+          SELECT booking_id, receipt_path, notes, status, uploaded_at, confirmed_by, confirmed_at, rejection_reason
+          FROM payment_receipts
+          WHERE booking_id IN (${bookingIds.map(() => '?').join(',')})
+          ORDER BY uploaded_at DESC
+        `;
+
+        const receipts = await query(receiptsQuery, bookingIds) as any[];
+
+        // Group receipts by booking_id (take the latest one)
+        paymentReceipts = receipts.reduce((acc: Record<number, any>, receipt: any) => {
+          if (!acc[receipt.booking_id]) {
+            acc[receipt.booking_id] = receipt;
+          }
+          return acc;
+        }, {});
+      } catch (error) {
+        console.error('Error fetching payment receipts:', error);
+      }
+    }
+
     // Format the bookings data for response
     const formattedBookings = bookings.map((booking: any) => {
       // Get add-ons for this booking
@@ -274,6 +328,27 @@ export async function GET(request: NextRequest) {
 
       // Calculate add-ons total price
       const addOnsTotal = addOns.reduce((total: number, addon: any) => total + addon.price, 0);
+
+      // Get payment receipt info
+      const paymentReceipt = paymentReceipts[booking.id];
+
+      // Determine payment status with manual payment logic
+      let paymentStatus = booking.payment_method === 'gcash' ? 'paid' : (hasPaymentStatusColumn ? (booking.payment_status || 'not_paid') : 'not_paid');
+
+      // If payment method is qr_transfer and there's a receipt, update status accordingly
+      if (booking.payment_method === 'qr_transfer') {
+        if (paymentReceipt) {
+          if (paymentReceipt.status === 'confirmed') {
+            paymentStatus = 'paid';
+          } else if (paymentReceipt.status === 'awaiting') {
+            paymentStatus = 'awaiting_payment_confirmation';
+          } else if (paymentReceipt.status === 'rejected') {
+            paymentStatus = 'payment_rejected';
+          }
+        } else {
+          paymentStatus = 'awaiting_payment_confirmation';
+        }
+      }
 
       return {
         id: booking.id,
@@ -295,13 +370,20 @@ export async function GET(request: NextRequest) {
         price: booking.price || 0,
         basePrice: (booking.price || 0) - addOnsTotal - (booking.delivery_fee || 0),
         paymentMethod: booking.payment_method || 'cash',
-        paymentStatus: booking.payment_method === 'gcash' ? 'paid' : (hasPaymentStatusColumn ? (booking.payment_status || 'not_paid') : 'not_paid'),
+        paymentStatus: paymentStatus,
         deliveryOption: booking.delivery_option || 'pickup',
         deliveryDistance: booking.delivery_distance || 0,
         deliveryFee: booking.delivery_fee || 0,
         addOns: addOns,
         addOnsTotal: addOnsTotal,
-        createdAt: formatDate(booking.created_at)
+        createdAt: formatDate(booking.created_at),
+        paymentReceipt: paymentReceipt ? {
+          receiptPath: paymentReceipt.receipt_path,
+          notes: paymentReceipt.notes,
+          status: paymentReceipt.status,
+          uploadedAt: formatDate(paymentReceipt.uploaded_at),
+          rejectionReason: paymentReceipt.rejection_reason
+        } : null
       };
     });
 
