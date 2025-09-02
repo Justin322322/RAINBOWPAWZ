@@ -177,7 +177,7 @@ const AdminRefundsPage = React.memo(function AdminRefundsPage() {
     limit: 20,
     hasMore: false
   });
-  const [statistics, setStatistics] = useState({
+  const [_statistics, setStatistics] = useState({
     total_refunds: 0,
     pending_count: 0,
     processing_count: 0,
@@ -662,27 +662,7 @@ const AdminRefundsPage = React.memo(function AdminRefundsPage() {
           </div>
         )}
 
-        {/* Statistics Summary */}
-        <div className="mt-8 grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-white rounded-xl shadow-md border border-gray-100 p-4">
-            <div className="text-2xl font-bold text-[var(--primary-green)]">
-              ₱{statistics.total_refunded_amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
-            </div>
-            <div className="text-sm text-gray-600">Total Refunded</div>
-          </div>
-          <div className="bg-white rounded-xl shadow-md border border-gray-100 p-4">
-            <div className="text-2xl font-bold text-blue-600">{statistics.pending_count}</div>
-            <div className="text-sm text-gray-600">Pending</div>
-          </div>
-          <div className="bg-white rounded-xl shadow-md border border-gray-100 p-4">
-            <div className="text-2xl font-bold text-green-600">{statistics.processed_count}</div>
-            <div className="text-sm text-gray-600">Processed</div>
-          </div>
-          <div className="bg-white rounded-xl shadow-md border border-gray-100 p-4">
-            <div className="text-2xl font-bold text-red-600">{statistics.failed_count}</div>
-            <div className="text-sm text-gray-600">Failed</div>
-          </div>
-        </div>
+
 
         {/* Refund Details Modal */}
         <Modal

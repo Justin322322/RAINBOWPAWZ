@@ -282,7 +282,7 @@ function useServices(params: {
       controller.abort();
       if (retryTimer) clearTimeout(retryTimer);
     };
-  }, [search, status, category, page, limit, onError, retryCount, shouldFetch, cacheKey, lastFetchTime]);
+  }, [search, status, category, page, limit, onError, shouldFetch, cacheKey, lastFetchTime]);
 
   return { services, loading, stats, pagination, setPagination };
 }
