@@ -385,24 +385,35 @@ function CremationProfilePage({ userData }: { userData: any }) {
     e.preventDefault();
     setContactSuccess('');
 
+    console.log('🔍 DEBUG: Contact update started');
+    console.log('🔍 DEBUG: Current contactInfo state:', contactInfo);
+
     try {
+      const payload = { contactInfo };
+      console.log('🔍 DEBUG: Sending payload:', payload);
+
       const response = await fetch('/api/cremation/profile', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contactInfo }),
+        body: JSON.stringify(payload),
         credentials: 'include'
       });
+
+      console.log('🔍 DEBUG: Response status:', response.status);
       const data = await response.json();
+      console.log('🔍 DEBUG: Response data:', data);
 
       if (response.ok) {
+        console.log('✅ DEBUG: Contact update successful');
         setContactSuccess('Contact information updated successfully!');
         await fetchProfileData(false);
         setTimeout(() => setContactSuccess(''), 3000);
       } else {
+        console.log('❌ DEBUG: Contact update failed:', data.error);
         showToast(data.error || 'Failed to update contact information', 'error');
       }
     } catch (error) {
-      console.error('Error updating contact information:', error);
+      console.error('❌ DEBUG: Error updating contact information:', error);
       showToast('Failed to update contact information. Please try again.', 'error');
     }
   };

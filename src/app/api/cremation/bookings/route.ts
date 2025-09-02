@@ -31,20 +31,26 @@ async function ensurePaymentReceiptsTable() {
 
 export async function GET(request: NextRequest) {
   try {
+    console.log('🔍 DEBUG: GET /api/cremation/bookings called');
+
     // Get provider ID from the request query parameters
-    const url = new URL(request.url);
-    const providerId = url.searchParams.get('providerId');
-    const statusFilter = url.searchParams.get('status') || 'all';
-    const searchTerm = url.searchParams.get('search') || '';
-    const paymentStatusFilter = url.searchParams.get('paymentStatus') || 'all';
-    const limit = parseInt(url.searchParams.get('limit') || '50');
-    const offset = parseInt(url.searchParams.get('offset') || '0');
+    const requestUrl = new URL(request.url);
+    const providerId = requestUrl.searchParams.get('providerId');
+    const statusFilter = requestUrl.searchParams.get('status') || 'all';
+    const searchTerm = requestUrl.searchParams.get('search') || '';
+    const paymentStatusFilter = requestUrl.searchParams.get('paymentStatus') || 'all';
+    const limit = parseInt(requestUrl.searchParams.get('limit') || '50');
+    const offset = parseInt(requestUrl.searchParams.get('offset') || '0');
+
+    console.log('🔍 DEBUG: Query parameters:', { providerId, statusFilter, searchTerm, paymentStatusFilter, limit, offset });
 
     if (!providerId) {
       return NextResponse.json({
         error: 'Provider ID is required'
       }, { status: 400 });
     }
+
+    console.log('🔍 DEBUG: Checking table structure...');
 
     // First, check which table structure is available
     const tablesCheckQuery = `
@@ -53,18 +59,29 @@ export async function GET(request: NextRequest) {
       WHERE TABLE_SCHEMA = DATABASE()
       AND TABLE_NAME IN ('service_bookings', 'bookings')
     `;
+
+    console.log('🔍 DEBUG: Executing table check query...');
     const tablesResult = await query(tablesCheckQuery) as any[];
+    console.log('🔍 DEBUG: Table check result:', tablesResult);
+
     const tableNames = tablesResult.map((row: any) => row.TABLE_NAME.toLowerCase());
+    console.log('🔍 DEBUG: Available tables:', tableNames);
 
     const useServiceBookings = tableNames.includes('service_bookings');
+    console.log('🔍 DEBUG: Using service_bookings table:', useServiceBookings);
+
+    console.log('🔍 DEBUG: Fetching service packages for provider:', providerId);
 
     // First, get the service packages for this provider
     const servicePackagesQuery = `
       SELECT package_id FROM service_packages WHERE provider_id = ?
     `;
+    console.log('🔍 DEBUG: Executing service packages query...');
     const servicePackages = await query(servicePackagesQuery, [providerId]) as any[];
+    console.log('🔍 DEBUG: Service packages result:', servicePackages);
 
     if (!servicePackages || servicePackages.length === 0) {
+      console.log('⚠️ DEBUG: No service packages found for provider');
       return NextResponse.json({
         bookings: [],
         stats: {
@@ -86,6 +103,8 @@ export async function GET(request: NextRequest) {
     let sql;
     const queryParams: any[] = [];
 
+    console.log('🔍 DEBUG: Checking payment_status column...');
+
     // Check if payment_status column exists in service_bookings table
     const columnsQuery = `
       SELECT COLUMN_NAME
@@ -94,9 +113,15 @@ export async function GET(request: NextRequest) {
       AND TABLE_NAME = 'service_bookings'
     `;
 
+    console.log('🔍 DEBUG: Executing columns query...');
     const columnsResult = await query(columnsQuery) as any[];
+    console.log('🔍 DEBUG: Columns result:', columnsResult);
+
     const columns = columnsResult.map((col: any) => col.COLUMN_NAME.toLowerCase());
+    console.log('🔍 DEBUG: Available columns:', columns);
+
     const hasPaymentStatusColumn = columns.includes('payment_status');
+    console.log('🔍 DEBUG: Has payment_status column:', hasPaymentStatusColumn);
 
     if (useServiceBookings) {
       // Using service_bookings table
@@ -190,8 +215,13 @@ export async function GET(request: NextRequest) {
     const offsetInt = Number(offset);
     sql += ` ORDER BY created_at DESC LIMIT ${limitInt} OFFSET ${offsetInt}`;
 
+    console.log('🔍 DEBUG: Final SQL query:', sql);
+    console.log('🔍 DEBUG: Query parameters:', queryParams);
+
     // Execute the query
+    console.log('🔍 DEBUG: Executing main bookings query...');
     const bookings = await query(sql, queryParams) as any[];
+    console.log('🔍 DEBUG: Bookings query result count:', bookings?.length || 0);
 
     // Get booking stats - adjust queries based on the table being used
     let statsQueries;
@@ -400,14 +430,24 @@ export async function GET(request: NextRequest) {
       }
     });
   } catch (error) {
-    console.error('Error in GET /api/cremation/bookings:', error);
+    console.error('❌ ERROR in GET /api/cremation/bookings:', error);
+    console.error('❌ ERROR details:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      name: error instanceof Error ? error.name : 'Unknown',
+      code: (error as any)?.code || 'NO_CODE'
+    });
 
     // Return more detailed error information for debugging
     return NextResponse.json({
       error: 'Failed to fetch bookings data',
       message: error instanceof Error ? error.message : 'Unknown error',
       stack: error instanceof Error ? error.stack : undefined,
-      details: JSON.stringify(error)
+      details: JSON.stringify(error),
+      debug_info: {
+        providerId: null, // Will be available in production logs
+        timestamp: new Date().toISOString()
+      }
     }, { status: 500 });
   }
 }
