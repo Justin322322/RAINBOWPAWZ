@@ -180,15 +180,24 @@ export async function GET(request: NextRequest) {
 
     await ensureReceiptTable();
 
-    // Try primary table first
-    let receipt: any = null;
+    // Check if payment_receipts table exists before querying to avoid noisy errors
+    let tableExists = false;
     try {
-      const rows = await query(
-        'SELECT booking_id, user_id, provider_id, receipt_path, status, notes, confirmed_by, confirmed_at, reject_reason, created_at, updated_at FROM payment_receipts WHERE booking_id = ? LIMIT 1',
-        [bookingId]
-      ) as any[];
-      if (rows && rows.length > 0) receipt = rows[0];
+      const t = await query("SELECT COUNT(*) as c FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'payment_receipts'") as any[];
+      tableExists = (t?.[0]?.c || 0) > 0;
     } catch {}
+
+    // Try primary table first if available
+    let receipt: any = null;
+    if (tableExists) {
+      try {
+        const rows = await query(
+          'SELECT booking_id, user_id, provider_id, receipt_path, status, notes, confirmed_by, confirmed_at, reject_reason, created_at, updated_at FROM payment_receipts WHERE booking_id = ? LIMIT 1',
+          [bookingId]
+        ) as any[];
+        if (rows && rows.length > 0) receipt = rows[0];
+      } catch {}
+    }
 
     if (!receipt) {
       // Fallback to service_bookings.special_requests

@@ -114,7 +114,11 @@ function CremationProfilePage({ userData }: { userData: any }) {
     lastName: '',
     email: '',
     phone: '',
-    address: ''
+    address: '',
+    streetAddress: '',
+    city: '',
+    province: '',
+    postalCode: ''
   });
   const [, startContactTransition] = useTransition();
   const [contactSuccess, setContactSuccess] = useState('');
@@ -271,13 +275,15 @@ function CremationProfilePage({ userData }: { userData: any }) {
 
       // Update form states with fetched data
       if (data.profile) {
-        setContactInfo({
+        setContactInfo(prev => ({
+          ...prev,
           firstName: data.profile.first_name || '',
           lastName: data.profile.last_name || '',
           email: data.profile.email || '',
           phone: data.profile.business_phone || data.profile.phone || '',
-          address: data.profile.business_address || data.profile.address || ''
-        });
+          address: data.profile.business_address || data.profile.address || '',
+          streetAddress: data.profile.business_address || data.profile.address || ''
+        }));
         setBusinessInfo({
           businessName: data.profile.business_name || '',
           description: data.profile.description || '',
@@ -391,7 +397,15 @@ function CremationProfilePage({ userData }: { userData: any }) {
     console.log('🔍 DEBUG: Current contactInfo state:', contactInfo);
 
     try {
-      const payload = { contactInfo };
+      // Combine segmented address fields (fallback to single street if others empty)
+      const combinedAddress = [
+        (contactInfo.streetAddress || contactInfo.address || '').trim(),
+        contactInfo.city?.trim(),
+        contactInfo.province?.trim(),
+        contactInfo.postalCode?.trim()
+      ].filter(Boolean).join(', ');
+
+      const payload = { contactInfo: { ...contactInfo, address: combinedAddress } };
       console.log('🔍 DEBUG: Sending payload:', payload);
 
       const response = await fetch('/api/cremation/profile', {
@@ -765,14 +779,15 @@ function CremationProfilePage({ userData }: { userData: any }) {
                                         </ProfileGrid>
                                         <ProfileInput label="Email Address" type="email" value={contactInfo.email} onChange={(value) => startContactTransition(() => setContactInfo(prev => ({ ...prev, email: value })))} required icon={<EnvelopeIcon className="h-5 w-5" />} />
                                         <PhilippinePhoneInput id="phone" name="phone" label="Phone Number" value={contactInfo.phone} onChange={(value) => startContactTransition(() => setContactInfo(prev => ({ ...prev, phone: value })))} />
-                                        <div className="space-y-2">
-                                            <label className="block text-sm font-medium text-gray-700">Address</label>
+                                        <div className="space-y-4">
+                                          <div>
+                                            <label className="block text-sm font-medium text-gray-700">Street Address</label>
                                             <Input
-                                              id="address"
-                                              name="address"
-                                              value={contactInfo.address}
-                                              onChange={(e) => setContactInfo(prev => ({ ...prev, address: e.target.value }))}
-                                              placeholder="Enter your complete address"
+                                              id="streetAddress"
+                                              name="streetAddress"
+                                              value={contactInfo.streetAddress}
+                                              onChange={(e) => setContactInfo(prev => ({ ...prev, streetAddress: e.target.value }))}
+                                              placeholder="123 Main Street"
                                               size="lg"
                                               autoComplete="street-address"
                                               leftIcon={<MapPinIcon className="h-5 w-5 text-gray-400" />}
@@ -787,6 +802,36 @@ function CremationProfilePage({ userData }: { userData: any }) {
                                                 </button>
                                               }
                                             />
+                                          </div>
+                                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                            <Input
+                                              id="city"
+                                              name="city"
+                                              label={undefined}
+                                              placeholder="City/Municipality"
+                                              value={contactInfo.city}
+                                              onChange={(e) => setContactInfo(prev => ({ ...prev, city: e.target.value }))}
+                                              size="lg"
+                                            />
+                                            <Input
+                                              id="province"
+                                              name="province"
+                                              label={undefined}
+                                              placeholder="Province"
+                                              value={contactInfo.province}
+                                              onChange={(e) => setContactInfo(prev => ({ ...prev, province: e.target.value }))}
+                                              size="lg"
+                                            />
+                                            <Input
+                                              id="postalCode"
+                                              name="postalCode"
+                                              label={undefined}
+                                              placeholder="Postal Code (optional)"
+                                              value={contactInfo.postalCode}
+                                              onChange={(e) => setContactInfo(prev => ({ ...prev, postalCode: e.target.value }))}
+                                              size="lg"
+                                            />
+                                          </div>
                                         </div>
                                     </ProfileFormGroup>
                                     <div className="flex justify-end pt-4 border-t border-gray-100">

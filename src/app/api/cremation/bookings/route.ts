@@ -324,20 +324,40 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Fetch payment receipts for all bookings
+    // Fetch payment receipts for all bookings (graceful if table not present)
     let paymentReceipts: Record<number, any> = {};
     if (bookingIds.length > 0) {
       try {
         await ensurePaymentReceiptsTable();
 
-        const receiptsQuery = `
-          SELECT booking_id, receipt_path, notes, status, uploaded_at, confirmed_by, confirmed_at, rejection_reason
-          FROM payment_receipts
-          WHERE booking_id IN (${bookingIds.map(() => '?').join(',')})
-          ORDER BY uploaded_at DESC
-        `;
+        // Verify table exists before querying to avoid errors when DDL is blocked
+        let tableExists = false;
+        try {
+          const t = await query("SELECT COUNT(*) as c FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'payment_receipts'") as any[];
+          tableExists = (t?.[0]?.c || 0) > 0;
+        } catch {}
 
-        const receipts = await query(receiptsQuery, bookingIds) as any[];
+        let receipts: any[] = [];
+        if (tableExists) {
+          const receiptsQuery = `
+            SELECT booking_id, receipt_path, notes, status, uploaded_at, confirmed_by, confirmed_at, rejection_reason
+            FROM payment_receipts
+            WHERE booking_id IN (${bookingIds.map(() => '?').join(',')})
+            ORDER BY uploaded_at DESC
+          `;
+          receipts = await query(receiptsQuery, bookingIds) as any[];
+        } else {
+          // Fallback: parse from special_requests where we appended "Receipt: <url>"
+          const specials = await query(
+            `SELECT id, special_requests FROM service_bookings WHERE id IN (${bookingIds.map(() => '?').join(',')})`,
+            bookingIds
+          ) as any[];
+          receipts = (specials || []).map((r: any) => {
+            const text: string = r?.special_requests || '';
+            const m = text.match(/Receipt:\s*(\S+)/i);
+            return m ? { booking_id: r.id, receipt_path: m[1], status: 'awaiting' } : null;
+          }).filter(Boolean) as any[];
+        }
 
         // Group receipts by booking_id (take the latest one)
         paymentReceipts = receipts.reduce((acc: Record<number, any>, receipt: any) => {
