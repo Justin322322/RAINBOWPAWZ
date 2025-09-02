@@ -1,49 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
-import { getServerSession } from '@/lib/auth';
+import { verifySecureAuth } from '@/lib/secureAuth';
 import fs from 'fs';
 import path from 'path';
 
 export async function GET(request: NextRequest) {
   try {
-    // For testing/development, we'll use a hardcoded provider ID if auth fails
-    let providerId;
-
-    try {
-      // Get the authenticated user
-      const session = await getServerSession();
-      if (!session || !session.user) {
-      } else {
-        // Get the provider ID from the user session
-        const userId = session.user.id;
-
-        // Fetch provider ID from the service_providers table for this user
-        const userQuery = `
-          SELECT provider_id as id FROM service_providers WHERE user_id = ?
-        `;
-        const userResult = await query(userQuery, [userId]) as any[];
-
-        if (userResult && userResult.length > 0) {
-          providerId = userResult[0].id;
-        } else {
-        }
-      }
-    } catch {
+    // Enforce authentication and scope to the authenticated business provider
+    const user = await verifySecureAuth(request);
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-
-    if (!providerId) {
-      // If we couldn't get a provider ID from the session, get the first provider ID from the database
-      const providerQuery = `SELECT provider_id as id FROM service_providers LIMIT 1`;
-      const providerResult = await query(providerQuery) as any[];
-
-      if (!providerResult || providerResult.length === 0) {
-        return NextResponse.json({
-          error: 'No service providers found in the database'
-        }, { status: 404 });
-      }
-
-      providerId = providerResult[0].id;
+    if (user.accountType !== 'business') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
+    const providerRow = await query(
+      'SELECT provider_id as id FROM service_providers WHERE user_id = ? LIMIT 1',
+      [user.userId]
+    ) as any[];
+    if (!providerRow || providerRow.length === 0) {
+      return NextResponse.json({ error: 'Provider not found for user' }, { status: 404 });
+    }
+    const providerId = providerRow[0].id;
 
     // Get query parameters
     const url = new URL(request.url);

@@ -17,6 +17,7 @@ import { UserData } from '@/components/withUserAuth';
 import Image from 'next/image';
 import { getProfilePictureUrl } from '@/utils/imageUtils';
 import PhilippinePhoneInput from '@/components/ui/PhilippinePhoneInput';
+import { Input } from '@/components/ui/Input';
 import {
   ProfileField
 } from '@/components/ui/ProfileLayout';
@@ -81,7 +82,11 @@ function ProfilePage({ userData: initialUserData }: ProfilePageProps) {
   const [contactInfo, setContactInfo] = useState({
     email: '',
     phone: '',
-    address: ''
+    address: '',
+    streetAddress: '',
+    city: '',
+    province: '',
+    postalCode: ''
   });
 
   // Profile picture states
@@ -168,11 +173,13 @@ function ProfilePage({ userData: initialUserData }: ProfilePageProps) {
         firstName: userData.first_name || '',
         lastName: userData.last_name || ''
       });
-      setContactInfo({
+      setContactInfo(prev => ({
+        ...prev,
         email: userData.email || '',
         phone: userData.phone || '',
-        address: userData.address || ''
-      });
+        address: userData.address || '',
+        streetAddress: userData.address || ''
+      }));
 
       // Update profile picture timestamp to force refresh if user has a profile picture
       if (userData.profile_picture) {
@@ -191,11 +198,13 @@ function ProfilePage({ userData: initialUserData }: ProfilePageProps) {
         firstName: userData.first_name || '',
         lastName: userData.last_name || ''
       });
-      setContactInfo({
+      setContactInfo(prev => ({
+        ...prev,
         email: userData.email || '',
         phone: userData.phone || '',
-        address: userData.address || ''
-      });
+        address: userData.address || '',
+        streetAddress: userData.address || ''
+      }));
     }
   }, [userData, isEditingPersonal, isEditingContact, initialLoading]);
 
@@ -452,6 +461,14 @@ function ProfilePage({ userData: initialUserData }: ProfilePageProps) {
     setIsUpdatingContact(true);
 
     try {
+      // Combine segmented address for saving
+      const combinedAddress = [
+        (contactInfo.streetAddress || contactInfo.address || '').trim(),
+        contactInfo.city?.trim(),
+        contactInfo.province?.trim(),
+        contactInfo.postalCode?.trim()
+      ].filter(Boolean).join(', ');
+
       const response = await fetch(`/api/users/${userData.user_id || userData.id}/update`, {
         method: 'PUT',
         headers: {
@@ -462,7 +479,7 @@ function ProfilePage({ userData: initialUserData }: ProfilePageProps) {
           lastName: userData.last_name,
           email: contactInfo.email,
           phoneNumber: contactInfo.phone,
-          address: contactInfo.address,
+          address: combinedAddress,
         }),
       });
 
@@ -939,39 +956,40 @@ function ProfilePage({ userData: initialUserData }: ProfilePageProps) {
                       />
                     </div>
 
-                    <div className="space-y-2">
-                      <label className="block text-sm font-medium text-gray-700">
-                        Address
-        
-                      </label>
-                      <div className="relative">
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                          <MapPinIcon className="h-5 w-5 text-gray-400" />
-                        </div>
-                        <input
-                          type="text"
-                          value={contactInfo.address}
-                          onChange={(e) => setContactInfo(prev => ({ ...prev, address: e.target.value }))}
-                          placeholder="Enter your complete address"
-                          className="block w-full rounded-lg border border-gray-300 shadow-sm bg-white
-                            focus:border-[var(--primary-green)] focus:ring-[var(--primary-green)] focus:ring-1
-                            pl-10 pr-32 py-2.5 transition-colors duration-200 text-gray-900"
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">Street Address</label>
+                        <Input
+                          id="fp-street"
+                          name="fp-street"
+                          value={contactInfo.streetAddress}
+                          onChange={(e) => setContactInfo(prev => ({ ...prev, streetAddress: e.target.value }))}
+                          placeholder="123 Main Street"
+                          size="lg"
+                          
+                          rightIcon={
+                            <button
+                              type="button"
+                              onClick={getCurrentLocation}
+                              disabled={isGettingLocation}
+                              className="text-sm font-medium text-[var(--primary-green)] hover:text-[var(--primary-green-hover)] disabled:text-gray-400 disabled:cursor-not-allowed"
+                            >
+                              {isGettingLocation ? (
+                                <div className="flex items-center">
+                                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[var(--primary-green)] mr-2"></div>
+                                  Getting...
+                                </div>
+                              ) : (
+                                'Use Current Location'
+                              )}
+                            </button>
+                          }
                         />
-                        <button
-                          type="button"
-                          onClick={getCurrentLocation}
-                          disabled={isGettingLocation}
-                          className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm font-medium text-[var(--primary-green)] hover:text-[var(--primary-green-hover)] disabled:text-gray-400 disabled:cursor-not-allowed"
-                        >
-                          {isGettingLocation ? (
-                            <div className="flex items-center">
-                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[var(--primary-green)] mr-2"></div>
-                              Getting...
-                            </div>
-                          ) : (
-                            'Use Current Location'
-                          )}
-                        </button>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <Input id="fp-city" name="fp-city" label={undefined} placeholder="City/Municipality" value={contactInfo.city} onChange={(e) => setContactInfo(prev => ({ ...prev, city: e.target.value }))} size="lg" />
+                        <Input id="fp-province" name="fp-province" label={undefined} placeholder="Province" value={contactInfo.province} onChange={(e) => setContactInfo(prev => ({ ...prev, province: e.target.value }))} size="lg" />
+                        <Input id="fp-postal" name="fp-postal" label={undefined} placeholder="Postal Code (optional)" value={contactInfo.postalCode} onChange={(e) => setContactInfo(prev => ({ ...prev, postalCode: e.target.value }))} size="lg" />
                       </div>
                       <div className="text-xs text-gray-500 mt-1">
                         Location detection powered by{' '}

@@ -23,6 +23,7 @@ import withBusinessVerification from '@/components/withBusinessVerification';
 import { useToast } from '@/context/ToastContext';
 import BookingTimeline from '@/components/booking/BookingTimeline';
 import CremationCertificate from '@/components/certificates/CremationCertificate';
+import Image from 'next/image';
 import { SkeletonCard } from '@/components/ui/SkeletonLoader';
 
 interface BookingDetailsProps {
@@ -72,6 +73,10 @@ function BookingDetailsPage({ userData }: BookingDetailsProps) {
   const [_previousStatus, setPreviousStatus] = useState<string | null>(null);
   const [lastUpdateTime, setLastUpdateTime] = useState<number>(0);
   const [updateSuccess, setUpdateSuccess] = useState(false);
+  const [showReceiptModal, setShowReceiptModal] = useState(false);
+  const [receiptData, setReceiptData] = useState<{ receipt_path: string; status: string; notes?: string | null } | null>(null);
+  const [receiptLoading, setReceiptLoading] = useState(false);
+  const [receiptActionLoading, setReceiptActionLoading] = useState(false);
 
   // Flag to prevent re-fetching after successful updates
   const hasInitiallyLoaded = useRef(false);
@@ -298,6 +303,73 @@ function BookingDetailsPage({ userData }: BookingDetailsProps) {
     setShowCertificate(true);
   };
 
+  // Helpers for receipt rendering
+  const getReceiptUrlFromNotes = (notes?: string | null): string | null => {
+    if (!notes) return null;
+    const m = notes.match(/Receipt:\s*(\S+)/i);
+    return m ? m[1] : null;
+  };
+  const filteredSpecialNotes = (() => {
+    const t = booking?.notes || '';
+    if (!t) return '';
+    return t.replace(/Receipt:\s*\S+/gi, '').trim();
+  })();
+
+  const getPaymentMethodLabel = (method?: string) => {
+    if (!method) return 'Not specified';
+    switch (method) {
+      case 'gcash':
+        return 'GCash';
+      case 'qr_manual':
+        return 'QR Transfer (manual confirmation)';
+      case 'cash':
+        return 'Cash';
+      default:
+        return method.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+    }
+  };
+
+  const openReceiptReview = async () => {
+    if (!params.id) return;
+    setReceiptLoading(true);
+    try {
+      const res = await fetch(`/api/payments/offline/receipt?bookingId=${params.id}`, { credentials: 'include' });
+      const j = await res.json();
+      if (res.ok && j.exists && j.receipt) {
+        setReceiptData({ receipt_path: j.receipt.receipt_path, status: j.receipt.status, notes: j.receipt.notes });
+        setShowReceiptModal(true);
+      } else {
+        showToastRef.current?.('No receipt found for this booking.', 'warning');
+      }
+    } catch {
+      showToastRef.current?.('Failed to load receipt.', 'error');
+    } finally {
+      setReceiptLoading(false);
+    }
+  };
+
+  const confirmOrRejectReceipt = async (action: 'confirm' | 'reject', reason?: string) => {
+    if (!params.id) return;
+    setReceiptActionLoading(true);
+    try {
+      const res = await fetch('/api/payments/offline/confirm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ bookingId: Number(params.id), action, reason: reason || null })
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(j.error || 'Failed to update receipt');
+      setShowReceiptModal(false);
+      showToastRef.current?.(action === 'confirm' ? 'Payment confirmed.' : 'Receipt rejected.', 'success');
+      setBooking(prev => prev ? { ...prev, payment_status: action === 'confirm' ? 'paid' : 'awaiting_payment_confirmation' } : prev);
+    } catch (err) {
+      showToastRef.current?.(err instanceof Error ? err.message : 'Failed to process action', 'error');
+    } finally {
+      setReceiptActionLoading(false);
+    }
+  };
+
   // Remove the old SimpleProgressTimeline component - now using the improved BookingTimeline
 
 
@@ -418,7 +490,7 @@ function BookingDetailsPage({ userData }: BookingDetailsProps) {
 
                 {/* Action Buttons */}
                 <motion.div
-                  className="flex flex-col sm:flex-row gap-2 min-w-fit"
+                  className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto"
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3, delay: 0.2 }}
@@ -427,7 +499,7 @@ function BookingDetailsPage({ userData }: BookingDetailsProps) {
                     <>
                       <motion.button
                         onClick={() => updateBookingStatus('cancelled')}
-                        className={`px-4 py-2 border border-red-300 text-red-700 rounded-md text-sm font-medium hover:bg-red-50 flex items-center justify-center transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${
+                        className={`px-4 py-2 border border-red-300 text-red-700 rounded-md text-sm font-medium hover:bg-red-50 flex items-center justify-center transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto ${
                           updateSuccess ? 'bg-green-50 border-green-300 text-green-700' : ''
                         }`}
                         disabled={updating || updateSuccess}
@@ -451,10 +523,10 @@ function BookingDetailsPage({ userData }: BookingDetailsProps) {
                       </motion.button>
                       <motion.button
                         onClick={() => updateBookingStatus('confirmed')}
-                        className={`px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 flex items-center justify-center transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${
+                        className={`px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 flex items-center justify-center transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto ${
                           updateSuccess ? 'bg-green-600 hover:bg-green-700' : ''
                         }`}
-                        disabled={updating || updateSuccess}
+                        disabled={updating || updateSuccess || booking.payment_method === 'qr_manual' && (booking.payment_status !== 'paid')}
                         whileHover={{ scale: updating || updateSuccess ? 1 : 1.02 }}
                         whileTap={{ scale: updating || updateSuccess ? 1 : 0.98 }}
                       >
@@ -473,13 +545,48 @@ function BookingDetailsPage({ userData }: BookingDetailsProps) {
                         )}
                         {updating ? 'Confirming...' : updateSuccess ? 'Success!' : 'Confirm Booking'}
                       </motion.button>
+                      {booking.payment_method === 'qr_manual' && (
+                        <div className="relative w-full sm:w-auto">
+                          <motion.button
+                            onClick={openReceiptReview}
+                            className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md text-sm font-medium hover:bg-gray-50 flex items-center justify-center transition-all duration-200 disabled:opacity-50 w-full sm:w-auto"
+                            disabled={receiptLoading}
+                          >
+                            {receiptLoading ? (
+                              <ArrowPathIcon className="h-4 w-4 mr-2 animate-spin" />
+                            ) : (
+                              <CreditCardIcon className="h-4 w-4 mr-2" />
+                            )}
+                            Review Receipt
+                          </motion.button>
+                          {/* Persistent guidance bubble */}
+                          {booking.payment_status !== 'paid' && (
+                            <>
+                              {/* Mobile: below and centered */}
+                              <div className="block md:hidden absolute top-full left-1/2 -translate-x-1/2 mt-2 z-20 max-w-[250px]">
+                                <div className="bg-gray-900 text-white text-xs rounded-md px-3 py-2 shadow-lg leading-5 relative">
+                                  <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-0 h-0 border-l-6 border-r-6 border-b-6 border-l-transparent border-r-transparent border-b-gray-900" />
+                                  Please review and confirm the receipt before confirming the booking.
+                                </div>
+                              </div>
+                              {/* Desktop: to the right, vertically centered */}
+                              <div className="hidden md:block absolute left-full top-1/2 -translate-y-1/2 ml-3 z-20 max-w-[260px]">
+                                <div className="bg-gray-900 text-white text-xs rounded-md px-3 py-2 shadow-lg leading-5 relative">
+                                  <div className="absolute left-[-6px] top-1/2 -translate-y-1/2 w-0 h-0 border-t-6 border-b-6 border-r-6 border-t-transparent border-b-transparent border-r-gray-900" />
+                                  Please review and confirm the receipt before confirming the booking.
+                                </div>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      )}
                     </>
                   )}
 
                   {booking.status === 'confirmed' && (
                     <motion.button
                       onClick={() => updateBookingStatus('in_progress')}
-                      className={`px-4 py-2 bg-purple-600 text-white rounded-md text-sm font-medium hover:bg-purple-700 flex items-center justify-center transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${
+                      className={`px-4 py-2 bg-purple-600 text-white rounded-md text-sm font-medium hover:bg-purple-700 flex items-center justify-center transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto ${
                         updateSuccess ? 'bg-green-600 hover:bg-green-700' : ''
                       }`}
                       disabled={updating || updateSuccess}
@@ -506,7 +613,7 @@ function BookingDetailsPage({ userData }: BookingDetailsProps) {
                   {booking.status === 'in_progress' && (
                     <motion.button
                       onClick={() => updateBookingStatus('completed')}
-                      className={`px-4 py-2 bg-green-600 text-white rounded-md text-sm font-medium hover:bg-green-700 flex items-center justify-center transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${
+                      className={`px-4 py-2 bg-green-600 text-white rounded-md text-sm font-medium hover:bg-green-700 flex items-center justify-center transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto ${
                         updateSuccess ? 'bg-green-700' : ''
                       }`}
                       disabled={updating || updateSuccess}
@@ -590,14 +697,14 @@ function BookingDetailsPage({ userData }: BookingDetailsProps) {
                   </div>
                 </div>
 
-                {/* Special Requests */}
-                {booking.notes && (
+                {/* Special Requests (receipt line removed) */}
+                {filteredSpecialNotes && (
                   <div className="bg-white rounded-lg shadow-sm border border-gray-200">
                     <div className="px-6 py-4 border-b border-gray-200">
                       <h2 className="text-lg font-medium text-gray-900">Special Requests</h2>
                     </div>
                     <div className="p-6">
-                      <p className="text-gray-700 leading-relaxed">{booking.notes}</p>
+                      <p className="text-gray-700 leading-relaxed">{filteredSpecialNotes}</p>
                     </div>
                   </div>
                 )}
@@ -646,7 +753,7 @@ function BookingDetailsPage({ userData }: BookingDetailsProps) {
                       <h3 className="text-sm font-medium text-gray-500 mb-1">Payment Method</h3>
                       <p className="text-base font-medium text-gray-900 flex items-center">
                         <CreditCardIcon className="h-4 w-4 mr-2 text-gray-400" />
-                        {booking.payment_method || 'Not specified'}
+                        {getPaymentMethodLabel(booking.payment_method)}
                       </p>
                     </div>
                     <div>
@@ -660,6 +767,18 @@ function BookingDetailsPage({ userData }: BookingDetailsProps) {
                       <h3 className="text-sm font-medium text-gray-700 mb-1">Total Amount</h3>
                       <p className="text-xl font-semibold text-gray-900">₱{parseFloat(booking.price.toString()).toLocaleString()}</p>
                     </div>
+                    {booking.payment_method === 'qr_manual' && (
+                      <div>
+                        <h3 className="text-sm font-medium text-gray-500 mb-2">Payment Receipt</h3>
+                        {getReceiptUrlFromNotes(booking.notes) ? (
+                          <div className="border rounded-lg overflow-hidden bg-gray-50">
+                            <Image src={getReceiptUrlFromNotes(booking.notes) as string} alt="Payment Receipt" width={800} height={600} className="w-full h-auto object-contain" />
+                          </div>
+                        ) : (
+                          <p className="text-sm text-gray-500">Receipt pending upload/confirmation.</p>
+                        )}
+                      </div>
+                    )}
                     {booking.delivery_option === 'delivery' && booking.delivery_address && (
                       <div>
                         <h3 className="text-sm font-medium text-gray-500 mb-1">Delivery Address</h3>
@@ -686,6 +805,41 @@ function BookingDetailsPage({ userData }: BookingDetailsProps) {
           </div>
         )}
       </main>
+
+      {/* Receipt Review Modal */}
+      {showReceiptModal && receiptData && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-900">Review Payment Receipt</h3>
+              <button onClick={() => setShowReceiptModal(false)} className="text-gray-500 hover:text-gray-700">✕</button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="text-sm text-gray-600">Status: <span className="font-medium">{receiptData.status}</span></div>
+              {receiptData.notes && <div className="text-sm text-gray-600">Notes: {receiptData.notes}</div>}
+              <div className="w-full border rounded-lg overflow-hidden bg-gray-50">
+                <Image src={receiptData.receipt_path} alt="Payment receipt" width={1200} height={800} className="w-full h-auto object-contain" />
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-2">
+              <button
+                className="px-4 py-2 border border-red-300 text-red-700 rounded-md text-sm hover:bg-red-50 disabled:opacity-50"
+                disabled={receiptActionLoading}
+                onClick={() => confirmOrRejectReceipt('reject')}
+              >
+                {receiptActionLoading ? 'Processing...' : 'Reject'}
+              </button>
+              <button
+                className="px-4 py-2 bg-green-600 text-white rounded-md text-sm hover:bg-green-700 disabled:opacity-50"
+                disabled={receiptActionLoading}
+                onClick={() => confirmOrRejectReceipt('confirm')}
+              >
+                {receiptActionLoading ? 'Processing...' : 'Confirm Payment'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </CremationDashboardLayout>
   );
 }

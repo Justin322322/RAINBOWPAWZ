@@ -14,7 +14,8 @@ import {
   PaperAirplaneIcon,
   ExclamationCircleIcon,
   TruckIcon,
-  PlusCircleIcon
+  PlusCircleIcon,
+  TrashIcon
 } from '@heroicons/react/24/outline';
 
 import FurParentPageSkeleton from '@/components/ui/FurParentPageSkeleton';
@@ -80,6 +81,42 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
     return () => clearTimeout(authTimeout);
   }, [userData]);
   const [paymentMethod, setPaymentMethod] = useState<string>('gcash');
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [receiptProgress, setReceiptProgress] = useState(0);
+  const [receiptPreview, setReceiptPreview] = useState<string | null>(null);
+  const [_providerQr, _setProviderQr] = useState<string | null>(null);
+  // Removed dynamic scroll offset; using sticky with top offset
+
+  // Handle receipt file selection with preview
+  const handleReceiptFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    setReceiptFile(file);
+
+    if (file) {
+      // Create preview URL
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setReceiptPreview(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      setReceiptPreview(null);
+    }
+  };
+
+  // Remove selected receipt file
+  const removeReceiptFile = () => {
+    setReceiptFile(null);
+    setReceiptPreview(null);
+    setReceiptProgress(0);
+    // Reset file input
+    const fileInput = document.getElementById('receipt-file-input') as HTMLInputElement;
+    if (fileInput) {
+      fileInput.value = '';
+    }
+  };
+
+  // Removed scroll listener; sticky header handles positioning
   const [isProcessing, setIsProcessing] = useState(false);
   const [checkoutComplete, setCheckoutComplete] = useState(false);
   const [petName, setPetName] = useState('');
@@ -617,6 +654,23 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
     calculateActualDistance();
   }, [currentUserData, bookingData, deliveryOption]);
 
+  useEffect(() => {
+    const fetchProviderQr = async () => {
+      try {
+        if (!providerId) return;
+        const res = await fetch(`/api/cremation/payment-qr?providerId=${providerId}`, {
+          headers: { 'Cache-Control': 'no-cache' },
+          credentials: 'include'
+        });
+        const j = await res.json().catch(() => ({ qrPath: null }));
+        _setProviderQr(j.qrPath || null);
+      } catch {
+        _setProviderQr(null);
+      }
+    };
+    fetchProviderQr();
+  }, [providerId, paymentMethod]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -628,6 +682,12 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
 
     // Mark the form as submitted to show all validation errors
     setValidationErrors(prev => ({ ...prev, formSubmitted: true }));
+
+    // Require receipt for manual QR transfer before proceeding
+    if (paymentMethod === 'qr_manual' && !receiptFile) {
+      showToast('Please upload your payment receipt before proceeding.', 'error');
+      return;
+    }
 
     // Validate all required fields using our validation functions
     const isPetNameValid = validateField('petName', petName, 'Pet name');
@@ -895,6 +955,41 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
           setTimeout(() => {
             router.push('/user/furparent_dashboard/bookings?bookingId=' + bookingId + '&payment_error=true');
           }, 2000);
+          return;
+        }
+      }
+
+      // For manual QR transfer, upload receipt (if provided) and set awaiting confirmation
+      if (paymentMethod === 'qr_manual') {
+        try {
+          if (receiptFile) {
+            const fd = new FormData();
+            fd.append('bookingId', String(bookingId));
+            fd.append('file', receiptFile);
+            const resp = await new Promise<Response>((resolve, reject) => {
+              const xhr = new XMLHttpRequest();
+              xhr.open('POST', '/api/payments/offline/receipt');
+              xhr.withCredentials = true;
+              xhr.upload.onprogress = (evt) => {
+                if (evt.lengthComputable) setReceiptProgress(Math.round((evt.loaded / evt.total) * 100));
+              };
+              xhr.onload = () => resolve(new Response(xhr.responseText, { status: xhr.status }));
+              xhr.onerror = () => reject(new Response(null, { status: xhr.status || 500 }));
+              xhr.send(fd);
+            });
+            if (!resp.ok) {
+              const t = await resp.text();
+              throw new Error(t || 'Failed to upload receipt');
+            }
+          }
+
+          showToast('Booking created. Awaiting provider confirmation.', 'success');
+          router.push('/user/furparent_dashboard/bookings');
+          return;
+        } catch (err) {
+          console.error('Receipt upload error:', err);
+          showToast('Booking created, but receipt upload failed. You can re-upload from your bookings.', 'warning');
+          router.push('/user/furparent_dashboard/bookings');
           return;
         }
       }
@@ -1367,8 +1462,16 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                       </h3>
 
                       <div className="space-y-3">
-                        <div className="flex items-center p-4 border rounded-md bg-blue-50 border-blue-200">
-                          <div className="h-6 w-6 flex-shrink-0 relative">
+                        <label className="flex items-center p-4 border rounded-md cursor-pointer hover:bg-gray-50 transition-colors">
+                          <input
+                            type="radio"
+                            name="payment-method"
+                            value="gcash"
+                            checked={paymentMethod === 'gcash'}
+                            onChange={() => setPaymentMethod('gcash')}
+                            className="h-4 w-4 text-[var(--primary-green)] focus:ring-[var(--primary-green)]"
+                          />
+                          <div className="h-6 w-6 flex-shrink-0 relative ml-2">
                             <Image
                               src="/images/check-icon.svg"
                               alt="GCash"
@@ -1384,15 +1487,101 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                               Pay securely using your GCash account. You will receive payment instructions after booking.
                             </p>
                           </div>
-                          <CheckIcon className="h-5 w-5 ml-auto text-green-500" />
-                        </div>
+                        </label>
 
-                        {/* Hidden input to maintain the payment method state */}
-                        <input
-                          type="hidden"
-                          name="payment-method"
-                          value="gcash"
-                        />
+                        <label className="block p-4 border rounded-md cursor-pointer hover:bg-gray-50 transition-colors">
+                          <div className="flex items-start">
+                            <input
+                              type="radio"
+                              name="payment-method"
+                              value="qr_manual"
+                              checked={paymentMethod === 'qr_manual'}
+                              onChange={() => setPaymentMethod('qr_manual')}
+                              className="h-4 w-4 mt-1 text-[var(--primary-green)] focus:ring-[var(--primary-green)]"
+                            />
+                            <div className="ml-3 flex-1">
+                              <span className="font-medium text-gray-800">QR Transfer (manual confirmation)</span>
+                              <p className="text-sm text-gray-600 mt-1">
+                                Transfer using the provider&apos;s QR. Upload your receipt; your booking will be confirmed after the provider verifies payment.
+                              </p>
+                              {paymentMethod === 'qr_manual' && (
+                                <div className="mt-3 space-y-3">
+                                  {_providerQr ? (
+                                    <div className="bg-gray-50 rounded p-3">
+                                      <div className="text-xs text-gray-500 mb-2">Scan this QR to pay:</div>
+                                      <Image src={_providerQr} alt="Payment QR" width={300} height={300} className="w-full max-h-64 object-contain" />
+                                    </div>
+                                  ) : (
+                                    <div className="text-xs text-gray-500">Provider has not uploaded a QR yet.</div>
+                                  )}
+                                  <div>
+                                    <label className="text-sm font-medium text-gray-700">Upload payment receipt (image)</label>
+                                    <input
+                                      id="receipt-file-input"
+                                      type="file"
+                                      accept="image/*"
+                                      className="block mt-1 text-sm"
+                                      onChange={handleReceiptFileChange}
+                                    />
+
+                                    {/* File Preview */}
+                                    {receiptPreview && (
+                                      <div className="mt-3 relative">
+                                        <div className="bg-white border-2 border-gray-200 rounded-lg p-3 shadow-sm">
+                                          <div className="flex items-start space-x-3">
+                                            {/* Thumbnail */}
+                                            <div className="flex-shrink-0">
+                                              <Image
+                                                src={receiptPreview}
+                                                alt="Receipt preview"
+                                                width={60}
+                                                height={60}
+                                                className="w-16 h-16 object-cover rounded border"
+                                              />
+                                            </div>
+
+                                            {/* File Info */}
+                                            <div className="flex-1 min-w-0">
+                                              <p className="text-sm font-medium text-gray-900 truncate">
+                                                {receiptFile?.name}
+                                              </p>
+                                              <p className="text-xs text-gray-500">
+                                                {(receiptFile?.size || 0) < 1024 * 1024
+                                                  ? `${Math.round((receiptFile?.size || 0) / 1024)} KB`
+                                                  : `${Math.round((receiptFile?.size || 0) / (1024 * 1024))} MB`
+                                                }
+                                              </p>
+
+                                              {/* Progress Bar */}
+                                              {receiptProgress > 0 && (
+                                                <div className="w-full bg-gray-200 rounded-full h-1.5 mt-2">
+                                                  <div
+                                                    className="bg-[var(--primary-green)] h-1.5 rounded-full transition-all duration-300"
+                                                    style={{ width: `${receiptProgress}%` }}
+                                                  />
+                                                </div>
+                                              )}
+                                            </div>
+
+                                            {/* Remove Button */}
+                                            <button
+                                              type="button"
+                                              onClick={removeReceiptFile}
+                                              className="flex-shrink-0 p-1 text-gray-400 hover:text-red-500 transition-colors"
+                                              title="Remove file"
+                                            >
+                                              <TrashIcon className="h-4 w-4" />
+                                            </button>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </label>
                       </div>
                     </div>
 
@@ -1515,10 +1704,12 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                   <div className="mt-8">
                     <button
                       type="submit"
-                      disabled={isProcessing}
+                      disabled={isProcessing || (paymentMethod === 'qr_manual' && !receiptFile)}
                       className={`w-full py-3 px-4 ${
                         Object.keys(validationErrors).filter(key => key !== 'formSubmitted').length > 0 && validationErrors.formSubmitted
                           ? 'bg-gray-400 hover:bg-gray-500'
+                          : (paymentMethod === 'qr_manual' && !receiptFile)
+                          ? 'bg-gray-400'
                           : 'bg-[var(--primary-green)] hover:bg-[var(--primary-green-hover)]'
                       } text-white font-medium rounded-md transition-colors disabled:opacity-70 flex items-center justify-center`}
                       onClick={(e) => {
@@ -1534,6 +1725,10 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                             firstErrorField.scrollIntoView({ behavior: 'smooth', block: 'center' });
                           }
                         }
+                        if (paymentMethod === 'qr_manual' && !receiptFile) {
+                          e.preventDefault();
+                          showToast('Please upload your payment receipt to continue.', 'warning');
+                        }
                       }}
                     >
                       {isProcessing ? (
@@ -1545,6 +1740,11 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                         <>
                           <ExclamationCircleIcon className="h-5 w-5 mr-2" />
                           Fix Required Fields
+                        </>
+                      ) : (paymentMethod === 'qr_manual' && !receiptFile) ? (
+                        <>
+                          <ExclamationCircleIcon className="h-5 w-5 mr-2" />
+                          Upload Receipt to Continue
                         </>
                       ) : (
                         <>
@@ -1566,10 +1766,11 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
             {/* Order Summary */}
             <div className="lg:col-span-1">
               <motion.div
+                id="order-summary"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.2 }}
-                className="bg-white rounded-lg shadow-md overflow-hidden sticky top-8"
+                className="bg-white rounded-lg shadow-md overflow-hidden sticky top-20 md:top-24"
               >
                 <div className="bg-[var(--primary-green)] p-6">
                   <h2 className="text-xl font-bold text-white">Order Summary</h2>

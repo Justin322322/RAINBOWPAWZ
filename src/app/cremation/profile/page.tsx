@@ -11,7 +11,6 @@ import {
   UserIcon,
   EnvelopeIcon,
   PhoneIcon,
-  MapPinIcon,
   BuildingStorefrontIcon,
   ArrowUpTrayIcon,
   ExclamationTriangleIcon,
@@ -23,6 +22,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { getImagePath } from '@/utils/imageUtils';
 import PhilippinePhoneInput from '@/components/ui/PhilippinePhoneInput';
+import { Input } from '@/components/ui/Input';
 
 // Error Modal Component
 interface ErrorModalProps {
@@ -113,7 +113,11 @@ function CremationProfilePage({ userData }: { userData: any }) {
     lastName: '',
     email: '',
     phone: '',
-    address: ''
+    address: '',
+    streetAddress: '',
+    city: '',
+    province: '',
+    postalCode: ''
   });
   const [, startContactTransition] = useTransition();
   const [contactSuccess, setContactSuccess] = useState('');
@@ -200,12 +204,13 @@ function CremationProfilePage({ userData }: { userData: any }) {
       }
       abortControllerRef.current = new AbortController();
 
-      const response = await fetch(`/api/cremation/profile`, {
+      const response = await fetch(`/api/cremation/profile?t=${Date.now()}` , {
         method: 'GET',
         headers: {
-          'Cache-Control': 'max-age=60', // Allow 1 minute caching
+          'Cache-Control': 'no-cache',
           'Pragma': 'no-cache'
         },
+        cache: 'no-store',
         credentials: 'include',
         signal: abortControllerRef.current.signal
       });
@@ -267,15 +272,37 @@ function CremationProfilePage({ userData }: { userData: any }) {
         return mergedProfile;
       });
 
+      // Helper to parse a combined address string to parts
+      const parseAddress = (addr: string | null | undefined) => {
+        const result = { streetAddress: '', city: '', province: '', postalCode: '' };
+        if (!addr) return result;
+        const parts = addr.split(',').map(p => p.trim()).filter(Boolean);
+        if (parts.length > 0) result.streetAddress = parts[0] || '';
+        if (parts.length > 1) result.city = parts[1] || '';
+        if (parts.length > 2) result.province = parts[2] || '';
+        if (parts.length > 3) {
+          const maybePostal = parts[3].replace(/[^0-9]/g, '');
+          result.postalCode = maybePostal || '';
+        }
+        return result;
+      };
+
       // Update form states with fetched data
       if (data.profile) {
-        setContactInfo({
+        const combinedAddr = data.profile.business_address || data.profile.address || '';
+        const parsed = parseAddress(combinedAddr);
+        setContactInfo(prev => ({
+          ...prev,
           firstName: data.profile.first_name || '',
           lastName: data.profile.last_name || '',
           email: data.profile.email || '',
           phone: data.profile.business_phone || data.profile.phone || '',
-          address: data.profile.business_address || data.profile.address || ''
-        });
+          address: combinedAddr,
+          streetAddress: parsed.streetAddress,
+          city: parsed.city,
+          province: parsed.province,
+          postalCode: parsed.postalCode
+        }));
         setBusinessInfo({
           businessName: data.profile.business_name || '',
           description: data.profile.description || '',
@@ -385,24 +412,43 @@ function CremationProfilePage({ userData }: { userData: any }) {
     e.preventDefault();
     setContactSuccess('');
 
+    console.log('🔍 DEBUG: Contact update started');
+    console.log('🔍 DEBUG: Current contactInfo state:', contactInfo);
+
     try {
+      // Combine segmented address fields (fallback to single street if others empty)
+      const combinedAddress = [
+        (contactInfo.streetAddress || contactInfo.address || '').trim(),
+        contactInfo.city?.trim(),
+        contactInfo.province?.trim(),
+        contactInfo.postalCode?.trim()
+      ].filter(Boolean).join(', ');
+
+      const payload = { contactInfo: { ...contactInfo, address: combinedAddress } };
+      console.log('🔍 DEBUG: Sending payload:', payload);
+
       const response = await fetch('/api/cremation/profile', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contactInfo }),
+        body: JSON.stringify(payload),
         credentials: 'include'
       });
+
+      console.log('🔍 DEBUG: Response status:', response.status);
       const data = await response.json();
+      console.log('🔍 DEBUG: Response data:', data);
 
       if (response.ok) {
+        console.log('✅ DEBUG: Contact update successful');
         setContactSuccess('Contact information updated successfully!');
         await fetchProfileData(false);
         setTimeout(() => setContactSuccess(''), 3000);
       } else {
+        console.log('❌ DEBUG: Contact update failed:', data.error);
         showToast(data.error || 'Failed to update contact information', 'error');
       }
     } catch (error) {
-      console.error('Error updating contact information:', error);
+      console.error('❌ DEBUG: Error updating contact information:', error);
       showToast('Failed to update contact information. Please try again.', 'error');
     }
   };
@@ -752,15 +798,58 @@ function CremationProfilePage({ userData }: { userData: any }) {
                                         </ProfileGrid>
                                         <ProfileInput label="Email Address" type="email" value={contactInfo.email} onChange={(value) => startContactTransition(() => setContactInfo(prev => ({ ...prev, email: value })))} required icon={<EnvelopeIcon className="h-5 w-5" />} />
                                         <PhilippinePhoneInput id="phone" name="phone" label="Phone Number" value={contactInfo.phone} onChange={(value) => startContactTransition(() => setContactInfo(prev => ({ ...prev, phone: value })))} />
-                                        <div className="space-y-2">
-                                            <label className="block text-sm font-medium text-gray-700">Address</label>
-                                            <div className="relative">
-                                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><MapPinIcon className="h-5 w-5 text-gray-400" /></div>
-                                                <input type="text" value={contactInfo.address} onChange={(e) => startContactTransition(() => setContactInfo(prev => ({ ...prev, address: e.target.value })))} placeholder="Enter your complete address" className="block w-full rounded-lg border border-gray-300 shadow-sm bg-white focus:border-[var(--primary-green)] focus:ring-[var(--primary-green)] focus:ring-1 pl-10 pr-32 py-2.5" />
-                                                <button type="button" onClick={handleGetLocation} disabled={isGettingLocation} className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm text-[var(--primary-green)] hover:text-green-700 disabled:text-gray-400">
-                                                    {isGettingLocation ? 'Detecting...' : 'Use My Location'}
+                                        <div className="space-y-4">
+                                          <div>
+                                            <label className="block text-sm font-medium text-gray-700">Street Address</label>
+                                            <Input
+                                              id="streetAddress"
+                                              name="streetAddress"
+                                              value={contactInfo.streetAddress}
+                                              onChange={(e) => setContactInfo(prev => ({ ...prev, streetAddress: e.target.value }))}
+                                              placeholder="123 Main Street"
+                                              size="lg"
+                                              autoComplete="street-address"
+                                              rightIcon={
+                                                <button
+                                                  type="button"
+                                                  onClick={(e) => { e.preventDefault(); handleGetLocation(); }}
+                                                  disabled={isGettingLocation}
+                                                  className="text-sm font-medium text-[var(--primary-green)] hover:text-[var(--primary-green-hover)] disabled:text-gray-400 disabled:cursor-not-allowed"
+                                                >
+                                                  {isGettingLocation ? 'Detecting...' : 'Use My Location'}
                                                 </button>
-                                            </div>
+                                              }
+                                            />
+                                          </div>
+                                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                            <Input
+                                              id="city"
+                                              name="city"
+                                              label={undefined}
+                                              placeholder="City/Municipality"
+                                              value={contactInfo.city}
+                                              onChange={(e) => setContactInfo(prev => ({ ...prev, city: e.target.value }))}
+                                              size="lg"
+                                            />
+                                            <Input
+                                              id="province"
+                                              name="province"
+                                              label={undefined}
+                                              placeholder="Province"
+                                              value={contactInfo.province}
+                                              onChange={(e) => setContactInfo(prev => ({ ...prev, province: e.target.value }))}
+                                              size="lg"
+                                            />
+                                            <Input
+                                              id="postalCode"
+                                              name="postalCode"
+                                              label={undefined}
+                                              placeholder="Postal Code (optional)"
+                                              value={contactInfo.postalCode}
+                                              onChange={(e) => setContactInfo(prev => ({ ...prev, postalCode: e.target.value }))}
+                                              size="lg"
+                                            />
+                                          </div>
                                         </div>
                                     </ProfileFormGroup>
                                     <div className="flex justify-end pt-4 border-t border-gray-100">

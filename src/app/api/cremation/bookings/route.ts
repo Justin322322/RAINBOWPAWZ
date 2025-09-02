@@ -2,22 +2,55 @@ import { NextRequest, NextResponse } from 'next/server';
 import { query, withTransaction } from '@/lib/db';
 import { createBookingNotification, scheduleBookingReminders } from '@/utils/comprehensiveNotificationService';
 
+// Helper function to ensure payment_receipts table exists
+async function ensurePaymentReceiptsTable() {
+  const createTableQuery = `
+    CREATE TABLE IF NOT EXISTS payment_receipts (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      booking_id INT NOT NULL,
+      user_id INT NOT NULL,
+      receipt_path VARCHAR(500),
+      notes TEXT,
+      status ENUM('awaiting', 'confirmed', 'rejected') DEFAULT 'awaiting',
+      uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      confirmed_by INT NULL,
+      confirmed_at TIMESTAMP NULL,
+      rejection_reason TEXT,
+      INDEX idx_booking_id (booking_id),
+      INDEX idx_user_id (user_id),
+      INDEX idx_status (status)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `;
+
+  try {
+    await query(createTableQuery);
+  } catch (error) {
+    console.error('Error creating payment_receipts table:', error);
+  }
+}
+
 export async function GET(request: NextRequest) {
   try {
+    console.log('🔍 DEBUG: GET /api/cremation/bookings called');
+
     // Get provider ID from the request query parameters
-    const url = new URL(request.url);
-    const providerId = url.searchParams.get('providerId');
-    const statusFilter = url.searchParams.get('status') || 'all';
-    const searchTerm = url.searchParams.get('search') || '';
-    const paymentStatusFilter = url.searchParams.get('paymentStatus') || 'all';
-    const limit = parseInt(url.searchParams.get('limit') || '50');
-    const offset = parseInt(url.searchParams.get('offset') || '0');
+    const requestUrl = new URL(request.url);
+    const providerId = requestUrl.searchParams.get('providerId');
+    const statusFilter = requestUrl.searchParams.get('status') || 'all';
+    const searchTerm = requestUrl.searchParams.get('search') || '';
+    const paymentStatusFilter = requestUrl.searchParams.get('paymentStatus') || 'all';
+    const limit = parseInt(requestUrl.searchParams.get('limit') || '50');
+    const offset = parseInt(requestUrl.searchParams.get('offset') || '0');
+
+    console.log('🔍 DEBUG: Query parameters:', { providerId, statusFilter, searchTerm, paymentStatusFilter, limit, offset });
 
     if (!providerId) {
       return NextResponse.json({
         error: 'Provider ID is required'
       }, { status: 400 });
     }
+
+    console.log('🔍 DEBUG: Checking table structure...');
 
     // First, check which table structure is available
     const tablesCheckQuery = `
@@ -26,18 +59,29 @@ export async function GET(request: NextRequest) {
       WHERE TABLE_SCHEMA = DATABASE()
       AND TABLE_NAME IN ('service_bookings', 'bookings')
     `;
+
+    console.log('🔍 DEBUG: Executing table check query...');
     const tablesResult = await query(tablesCheckQuery) as any[];
+    console.log('🔍 DEBUG: Table check result:', tablesResult);
+
     const tableNames = tablesResult.map((row: any) => row.TABLE_NAME.toLowerCase());
+    console.log('🔍 DEBUG: Available tables:', tableNames);
 
     const useServiceBookings = tableNames.includes('service_bookings');
+    console.log('🔍 DEBUG: Using service_bookings table:', useServiceBookings);
+
+    console.log('🔍 DEBUG: Fetching service packages for provider:', providerId);
 
     // First, get the service packages for this provider
     const servicePackagesQuery = `
       SELECT package_id FROM service_packages WHERE provider_id = ?
     `;
+    console.log('🔍 DEBUG: Executing service packages query...');
     const servicePackages = await query(servicePackagesQuery, [providerId]) as any[];
+    console.log('🔍 DEBUG: Service packages result:', servicePackages);
 
     if (!servicePackages || servicePackages.length === 0) {
+      console.log('⚠️ DEBUG: No service packages found for provider');
       return NextResponse.json({
         bookings: [],
         stats: {
@@ -59,6 +103,8 @@ export async function GET(request: NextRequest) {
     let sql;
     const queryParams: any[] = [];
 
+    console.log('🔍 DEBUG: Checking payment_status column...');
+
     // Check if payment_status column exists in service_bookings table
     const columnsQuery = `
       SELECT COLUMN_NAME
@@ -67,9 +113,15 @@ export async function GET(request: NextRequest) {
       AND TABLE_NAME = 'service_bookings'
     `;
 
+    console.log('🔍 DEBUG: Executing columns query...');
     const columnsResult = await query(columnsQuery) as any[];
+    console.log('🔍 DEBUG: Columns result:', columnsResult);
+
     const columns = columnsResult.map((col: any) => col.COLUMN_NAME.toLowerCase());
+    console.log('🔍 DEBUG: Available columns:', columns);
+
     const hasPaymentStatusColumn = columns.includes('payment_status');
+    console.log('🔍 DEBUG: Has payment_status column:', hasPaymentStatusColumn);
 
     if (useServiceBookings) {
       // Using service_bookings table
@@ -163,8 +215,13 @@ export async function GET(request: NextRequest) {
     const offsetInt = Number(offset);
     sql += ` ORDER BY created_at DESC LIMIT ${limitInt} OFFSET ${offsetInt}`;
 
+    console.log('🔍 DEBUG: Final SQL query:', sql);
+    console.log('🔍 DEBUG: Query parameters:', queryParams);
+
     // Execute the query
+    console.log('🔍 DEBUG: Executing main bookings query...');
     const bookings = await query(sql, queryParams) as any[];
+    console.log('🔍 DEBUG: Bookings query result count:', bookings?.length || 0);
 
     // Get booking stats - adjust queries based on the table being used
     let statsQueries;
@@ -267,6 +324,53 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // Fetch payment receipts for all bookings (graceful if table not present)
+    let paymentReceipts: Record<number, any> = {};
+    if (bookingIds.length > 0) {
+      try {
+        await ensurePaymentReceiptsTable();
+
+        // Verify table exists before querying to avoid errors when DDL is blocked
+        let tableExists = false;
+        try {
+          const t = await query("SELECT COUNT(*) as c FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'payment_receipts'") as any[];
+          tableExists = (t?.[0]?.c || 0) > 0;
+        } catch {}
+
+        let receipts: any[] = [];
+        if (tableExists) {
+          const receiptsQuery = `
+            SELECT booking_id, receipt_path, notes, status, uploaded_at, confirmed_by, confirmed_at, rejection_reason
+            FROM payment_receipts
+            WHERE booking_id IN (${bookingIds.map(() => '?').join(',')})
+            ORDER BY uploaded_at DESC
+          `;
+          receipts = await query(receiptsQuery, bookingIds) as any[];
+        } else {
+          // Fallback: parse from special_requests where we appended "Receipt: <url>"
+          const specials = await query(
+            `SELECT id, special_requests FROM service_bookings WHERE id IN (${bookingIds.map(() => '?').join(',')})`,
+            bookingIds
+          ) as any[];
+          receipts = (specials || []).map((r: any) => {
+            const text: string = r?.special_requests || '';
+            const m = text.match(/Receipt:\s*(\S+)/i);
+            return m ? { booking_id: r.id, receipt_path: m[1], status: 'awaiting' } : null;
+          }).filter(Boolean) as any[];
+        }
+
+        // Group receipts by booking_id (take the latest one)
+        paymentReceipts = receipts.reduce((acc: Record<number, any>, receipt: any) => {
+          if (!acc[receipt.booking_id]) {
+            acc[receipt.booking_id] = receipt;
+          }
+          return acc;
+        }, {});
+      } catch (error) {
+        console.error('Error fetching payment receipts:', error);
+      }
+    }
+
     // Format the bookings data for response
     const formattedBookings = bookings.map((booking: any) => {
       // Get add-ons for this booking
@@ -274,6 +378,27 @@ export async function GET(request: NextRequest) {
 
       // Calculate add-ons total price
       const addOnsTotal = addOns.reduce((total: number, addon: any) => total + addon.price, 0);
+
+      // Get payment receipt info
+      const paymentReceipt = paymentReceipts[booking.id];
+
+      // Determine payment status with manual payment logic
+      let paymentStatus = booking.payment_method === 'gcash' ? 'paid' : (hasPaymentStatusColumn ? (booking.payment_status || 'not_paid') : 'not_paid');
+
+      // If payment method is qr_transfer and there's a receipt, update status accordingly
+      if (booking.payment_method === 'qr_transfer') {
+        if (paymentReceipt) {
+          if (paymentReceipt.status === 'confirmed') {
+            paymentStatus = 'paid';
+          } else if (paymentReceipt.status === 'awaiting') {
+            paymentStatus = 'awaiting_payment_confirmation';
+          } else if (paymentReceipt.status === 'rejected') {
+            paymentStatus = 'payment_rejected';
+          }
+        } else {
+          paymentStatus = 'awaiting_payment_confirmation';
+        }
+      }
 
       return {
         id: booking.id,
@@ -295,13 +420,20 @@ export async function GET(request: NextRequest) {
         price: booking.price || 0,
         basePrice: (booking.price || 0) - addOnsTotal - (booking.delivery_fee || 0),
         paymentMethod: booking.payment_method || 'cash',
-        paymentStatus: booking.payment_method === 'gcash' ? 'paid' : (hasPaymentStatusColumn ? (booking.payment_status || 'not_paid') : 'not_paid'),
+        paymentStatus: paymentStatus,
         deliveryOption: booking.delivery_option || 'pickup',
         deliveryDistance: booking.delivery_distance || 0,
         deliveryFee: booking.delivery_fee || 0,
         addOns: addOns,
         addOnsTotal: addOnsTotal,
-        createdAt: formatDate(booking.created_at)
+        createdAt: formatDate(booking.created_at),
+        paymentReceipt: paymentReceipt ? {
+          receiptPath: paymentReceipt.receipt_path,
+          notes: paymentReceipt.notes,
+          status: paymentReceipt.status,
+          uploadedAt: formatDate(paymentReceipt.uploaded_at),
+          rejectionReason: paymentReceipt.rejection_reason
+        } : null
       };
     });
 
@@ -318,14 +450,24 @@ export async function GET(request: NextRequest) {
       }
     });
   } catch (error) {
-    console.error('Error in GET /api/cremation/bookings:', error);
+    console.error('❌ ERROR in GET /api/cremation/bookings:', error);
+    console.error('❌ ERROR details:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      name: error instanceof Error ? error.name : 'Unknown',
+      code: (error as any)?.code || 'NO_CODE'
+    });
 
     // Return more detailed error information for debugging
     return NextResponse.json({
       error: 'Failed to fetch bookings data',
       message: error instanceof Error ? error.message : 'Unknown error',
       stack: error instanceof Error ? error.stack : undefined,
-      details: JSON.stringify(error)
+      details: JSON.stringify(error),
+      debug_info: {
+        providerId: null, // Will be available in production logs
+        timestamp: new Date().toISOString()
+      }
     }, { status: 500 });
   }
 }
