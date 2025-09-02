@@ -1,13 +1,19 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, DragEvent } from 'react';
 import CremationDashboardLayout from '@/components/navigation/CremationDashboardLayout';
 import withBusinessVerification from '@/components/withBusinessVerification';
 import {
   BellIcon,
   DevicePhoneMobileIcon,
   EnvelopeIcon,
-  Cog6ToothIcon
+  Cog6ToothIcon,
+  QrCodeIcon,
+  CloudArrowUpIcon,
+  XMarkIcon,
+  CheckCircleIcon,
+  ExclamationTriangleIcon,
+  PhotoIcon
 } from '@heroicons/react/24/outline';
 import {
   ProfileLayout,
@@ -46,6 +52,9 @@ function CremationSettingsPage({ userData }: CremationSettingsProps) {
   const [qrPath, setQrPath] = useState<string | null>(null);
   const [qrUploading, setQrUploading] = useState(false);
   const [qrProgress, setQrProgress] = useState(0);
+  const [qrDragOver, setQrDragOver] = useState(false);
+  const [qrError, setQrError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const loadQr = async () => {
@@ -82,6 +91,119 @@ function CremationSettingsPage({ userData }: CremationSettingsProps) {
 
     loadSettings();
   }, []);
+
+  // Payment QR handlers
+  const validateFile = (file: File): string | null => {
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    const maxSize = 10 * 1024 * 1024; // 10MB
+
+    if (!allowedTypes.includes(file.type)) {
+      return 'Please upload a JPEG, PNG, or WebP image.';
+    }
+
+    if (file.size > maxSize) {
+      return 'File size must be less than 10MB.';
+    }
+
+    return null;
+  };
+
+  const uploadQrFile = async (file: File) => {
+    const validationError = validateFile(file);
+    if (validationError) {
+      setQrError(validationError);
+      return;
+    }
+
+    setQrUploading(true);
+    setQrProgress(0);
+    setQrError(null);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await new Promise<Response>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', '/api/cremation/payment-qr');
+        xhr.withCredentials = true;
+
+        xhr.upload.onprogress = (event) => {
+          if (event.lengthComputable) {
+            setQrProgress(Math.round((event.loaded / event.total) * 100));
+          }
+        };
+
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            resolve(new Response(xhr.responseText, {
+              status: xhr.status,
+              headers: { 'Content-Type': 'application/json' }
+            }));
+          } else {
+            reject(new Error(xhr.responseText || `HTTP ${xhr.status}`));
+          }
+        };
+
+        xhr.onerror = () => reject(new Error('Network error occurred'));
+        xhr.send(formData);
+      });
+
+      const result = await response.json();
+      setQrPath(result.qrPath);
+      setMessage({ type: 'success', text: 'Payment QR code uploaded successfully!' });
+
+    } catch (error) {
+      console.error('Upload error:', error);
+      let errorMessage = 'Failed to upload QR code. Please try again.';
+
+      if (error instanceof Error) {
+        try {
+          const errorData = JSON.parse(error.message);
+          errorMessage = errorData.error || errorMessage;
+        } catch {
+          errorMessage = error.message;
+        }
+      }
+
+      setQrError(errorMessage);
+      setMessage({ type: 'error', text: errorMessage });
+    } finally {
+      setQrUploading(false);
+      setQrProgress(0);
+    }
+  };
+
+  const handleFileSelect = (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    const file = files[0];
+    uploadQrFile(file);
+  };
+
+  const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setQrDragOver(true);
+  };
+
+  const handleDragLeave = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setQrDragOver(false);
+  };
+
+  const handleDrop = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setQrDragOver(false);
+    const files = e.dataTransfer.files;
+    handleFileSelect(files);
+  };
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    handleFileSelect(e.target.files);
+  };
+
+  const triggerFileInput = () => {
+    fileInputRef.current?.click();
+  };
 
   // Skeleton loading control with minimum delay
   useEffect(() => {
@@ -292,72 +414,158 @@ function CremationSettingsPage({ userData }: CremationSettingsProps) {
                   </ProfileButton>
                 </div>
 
-                {/* Payment QR */}
-                <div className="mt-10">
-                  <h3 className="font-medium text-gray-900 mb-2">Payment QR</h3>
-                  <p className="text-sm text-gray-500 mb-4">Upload a QR code (e.g., GCash/Maya) your customers can scan.</p>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-                    <div className="border rounded-xl p-4">
-                      {qrPath ? (
-                        <div>
-                          <div className="text-sm text-gray-600 mb-2">Current QR</div>
-                          <div className="w-full bg-gray-50 rounded overflow-hidden">
-                            <Image src={qrPath} alt="Payment QR" width={600} height={600} className="w-full max-h-80 object-contain" />
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="text-sm text-gray-500">No QR uploaded yet.</div>
-                      )}
-                    </div>
-                    <div className="border rounded-xl p-4">
-                      <div className="text-sm text-gray-600 mb-2">Upload / Replace</div>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={async (e) => {
-                          const file = e.target.files?.[0];
-                          if (!file) return;
-                          setQrUploading(true);
-                          setQrProgress(0);
-                          try {
-                            const fd = new FormData();
-                            fd.append('file', file);
-                            const resp = await new Promise<Response>((resolve, reject) => {
-                              const xhr = new XMLHttpRequest();
-                              xhr.open('POST', '/api/cremation/payment-qr');
-                              xhr.withCredentials = true;
-                              xhr.upload.onprogress = (evt) => {
-                                if (evt.lengthComputable) setQrProgress(Math.round((evt.loaded / evt.total) * 100));
-                              };
-                              xhr.onload = () => resolve(new Response(xhr.responseText, { status: xhr.status }));
-                              xhr.onerror = () => reject(new Response(null, { status: xhr.status || 500 }));
-                              xhr.send(fd);
-                            });
-                            if (!resp.ok) {
-                              const t = await resp.text();
-                              throw new Error(t || 'Upload failed');
-                            }
-                            const j = await resp.json().catch(() => ({}));
-                            setQrPath(j.qrPath || null);
-                            setMessage({ type: 'success', text: 'Payment QR saved.' });
-                          } catch (err) {
-                            setMessage({ type: 'error', text: err instanceof Error ? err.message : 'Failed to upload QR' });
-                          } finally {
-                            setQrUploading(false);
-                            setQrProgress(0);
-                          }
-                        }}
-                      />
-                      {qrUploading && (
-                        <div className="w-full bg-gray-200 rounded-full h-2 mt-3">
-                          <div className="bg-[var(--primary-green)] h-2 rounded-full" style={{ width: `${qrProgress}%` }} />
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
+
               </>
             )}
+          </ProfileCard>
+        </ProfileSection>
+
+        {/* Payment QR Section */}
+        <ProfileSection
+          title="Payment QR Code"
+          subtitle="Upload your payment QR code (GCash, Maya, etc.) for customers to scan during checkout"
+          showSkeleton={false}
+        >
+          <ProfileCard>
+            <div className="space-y-6">
+              {/* Hidden file input */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={handleFileInputChange}
+                className="hidden"
+              />
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Current QR Display */}
+                <div className="space-y-4">
+                  <div className="flex items-center space-x-2">
+                    <QrCodeIcon className="h-5 w-5 text-gray-600" />
+                    <h3 className="text-lg font-medium text-gray-900">Current QR Code</h3>
+                  </div>
+
+                  {qrPath ? (
+                    <div className="relative group">
+                      <div className="bg-white border-2 border-gray-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
+                        <div className="aspect-square max-w-sm mx-auto bg-gray-50 rounded-lg overflow-hidden">
+                          <Image
+                            src={qrPath}
+                            alt="Payment QR Code"
+                            width={400}
+                            height={400}
+                            className="w-full h-full object-contain"
+                          />
+                        </div>
+                        <div className="mt-3 text-center">
+                          <p className="text-sm text-gray-600">Your payment QR code is active</p>
+                          <div className="flex items-center justify-center mt-2">
+                            <CheckCircleIcon className="h-4 w-4 text-green-500 mr-1" />
+                            <span className="text-sm text-green-700">Ready for checkout</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="bg-gray-50 border-2 border-dashed border-gray-300 rounded-xl p-8 text-center">
+                      <PhotoIcon className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+                      <p className="text-sm text-gray-500">No QR code uploaded yet</p>
+                      <p className="text-xs text-gray-400 mt-1">Upload a QR code to enable manual payments</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Upload Section */}
+                <div className="space-y-4">
+                  <div className="flex items-center space-x-2">
+                    <CloudArrowUpIcon className="h-5 w-5 text-gray-600" />
+                    <h3 className="text-lg font-medium text-gray-900">Upload New QR Code</h3>
+                  </div>
+
+                  {/* Upload Area */}
+                  <div
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                    onClick={triggerFileInput}
+                    className={`relative border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all duration-200 ${
+                      qrDragOver
+                        ? 'border-[var(--primary-green)] bg-green-50'
+                        : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50'
+                    } ${qrUploading ? 'pointer-events-none opacity-60' : ''}`}
+                  >
+                    {qrUploading ? (
+                      <div className="space-y-4">
+                        <div className="animate-spin mx-auto">
+                          <CloudArrowUpIcon className="h-12 w-12 text-[var(--primary-green)]" />
+                        </div>
+                        <div className="space-y-2">
+                          <p className="text-sm font-medium text-gray-900">Uploading QR Code...</p>
+                          <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div
+                              className="bg-[var(--primary-green)] h-2 rounded-full transition-all duration-300"
+                              style={{ width: `${qrProgress}%` }}
+                            />
+                          </div>
+                          <p className="text-xs text-gray-500">{qrProgress}% complete</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        <div className={`mx-auto ${qrDragOver ? 'animate-bounce' : ''}`}>
+                          <CloudArrowUpIcon className={`h-12 w-12 ${qrDragOver ? 'text-[var(--primary-green)]' : 'text-gray-400'}`} />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">
+                            {qrDragOver ? 'Drop your QR code here' : 'Click to upload or drag & drop'}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            JPEG, PNG, or WebP (max 10MB)
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          className="inline-flex items-center px-4 py-2 bg-[var(--primary-green)] text-white text-sm font-medium rounded-lg hover:bg-[var(--primary-green-hover)] transition-colors"
+                        >
+                          <CloudArrowUpIcon className="h-4 w-4 mr-2" />
+                          Choose File
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Error Display */}
+                  {qrError && (
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                      <div className="flex items-start">
+                        <ExclamationTriangleIcon className="h-5 w-5 text-red-500 mt-0.5 mr-3 flex-shrink-0" />
+                        <div>
+                          <h4 className="text-sm font-medium text-red-800">Upload Error</h4>
+                          <p className="text-sm text-red-700 mt-1">{qrError}</p>
+                        </div>
+                        <button
+                          onClick={() => setQrError(null)}
+                          className="ml-auto text-red-400 hover:text-red-600"
+                        >
+                          <XMarkIcon className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Instructions */}
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <h4 className="text-sm font-medium text-blue-800 mb-2">💡 Tips for best results:</h4>
+                    <ul className="text-xs text-blue-700 space-y-1">
+                      <li>• Use a clear, high-resolution QR code image</li>
+                      <li>• Ensure the QR code is well-lit and in focus</li>
+                      <li>• Test the QR code works before uploading</li>
+                      <li>• Customers will scan this during checkout</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
           </ProfileCard>
         </ProfileSection>
       </ProfileLayout>

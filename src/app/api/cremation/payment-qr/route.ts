@@ -81,31 +81,70 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Provider not found' }, { status: 404 });
     }
 
-    // Upload to Blob
+    // Upload to Blob with proper error handling
     const blobToken = process.env.BLOB_READ_WRITE_TOKEN;
-    let putFn: any = null;
-    if (typeof blobToken === 'string' && blobToken.length > 0) {
-      try {
-        const blob = await import('@vercel/blob');
-        putFn = (blob as any)?.put;
-      } catch {}
-    }
-    if (!putFn) {
-      return NextResponse.json({ error: 'Storage not configured' }, { status: 500 });
+    if (!blobToken || typeof blobToken !== 'string') {
+      return NextResponse.json({
+        error: 'Storage service not configured. Please contact support.',
+        code: 'STORAGE_CONFIG_ERROR'
+      }, { status: 500 });
     }
 
-    const arrayBuffer = await file.arrayBuffer();
+    let putFn: ((key: string, data: Buffer, options: any) => Promise<any>) | null = null;
+    try {
+      const { put } = await import('@vercel/blob');
+      putFn = put;
+    } catch (importError) {
+      console.error('Failed to import blob storage:', importError);
+      return NextResponse.json({
+        error: 'Storage service unavailable. Please try again later.',
+        code: 'STORAGE_IMPORT_ERROR'
+      }, { status: 500 });
+    }
+
+    if (!putFn) {
+      return NextResponse.json({
+        error: 'Storage service not available. Please contact support.',
+        code: 'STORAGE_FUNCTION_ERROR'
+      }, { status: 500 });
+    }
+
+    // Convert file to buffer
+    let arrayBuffer: ArrayBuffer;
+    try {
+      arrayBuffer = await file.arrayBuffer();
+    } catch (bufferError) {
+      console.error('Failed to read file buffer:', bufferError);
+      return NextResponse.json({
+        error: 'Failed to process file. Please try again.',
+        code: 'FILE_READ_ERROR'
+      }, { status: 400 });
+    }
+
     const ext = file.type.split('/')[1] || 'png';
     const key = `uploads/businesses/${user.userId}/payment_qr_${Date.now()}.${ext}`;
-    const result = await putFn(key, Buffer.from(arrayBuffer), {
-      access: 'public',
-      contentType: file.type,
-      token: blobToken,
-    });
+
+    let result;
+    try {
+      result = await putFn(key, Buffer.from(arrayBuffer), {
+        access: 'public',
+        contentType: file.type,
+        token: blobToken,
+      });
+    } catch (uploadError) {
+      console.error('Failed to upload to blob storage:', uploadError);
+      return NextResponse.json({
+        error: 'Failed to upload file. Please check your connection and try again.',
+        code: 'UPLOAD_ERROR'
+      }, { status: 500 });
+    }
 
     const qrPath = result?.url || '';
     if (!qrPath) {
-      return NextResponse.json({ error: 'Failed to store file' }, { status: 500 });
+      return NextResponse.json({
+        error: 'Upload completed but file URL is missing. Please try again.',
+        code: 'UPLOAD_URL_MISSING'
+      }, { status: 500 });
     }
 
     await ensurePaymentQrTable();
