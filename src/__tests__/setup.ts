@@ -87,19 +87,21 @@ global.File = class MockFile {
 } as any;
 // Mock FormData
 global.FormData = class MockFormData {
-  private data: Map<string, any> = new Map();
+  private data: Map<string, any[]> = new Map();
 
   append(key: string, value: any) {
-    this.data.set(key, value);
+    const arr = this.data.get(key) ?? [];
+    arr.push(value);
+    this.data.set(key, arr);
   }
 
   get(key: string) {
-    return this.data.get(key) || null;
+    const arr = this.data.get(key);
+    return arr && arr.length ? arr[0] : null;
   }
 
   getAll(key: string) {
-    const value = this.data.get(key);
-    return value ? [value] : [];
+    return [...(this.data.get(key) ?? [])];
   }
 
   has(key: string) {
@@ -110,11 +112,12 @@ global.FormData = class MockFormData {
     this.data.delete(key);
   }
 
-  forEach(callback: (value: any, key: string) => void) {
-    this.data.forEach(callback);
+  forEach(callback: (value: any, key: string, form: any) => void) {
+    this.data.forEach((values, key) => {
+      values.forEach((v) => callback(v, key, this));
+    });
   }
 } as any;
-
 // Mock URL constructor
 global.URL = class MockURL {
   constructor(url: string) {
