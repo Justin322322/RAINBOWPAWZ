@@ -252,6 +252,22 @@ function ApplicationDetailContent({ id }: ApplicationDetailContentProps) {
     }
   }, [id, fetchApplicationData]);
 
+  // Lightweight auto-refresh: while application is actionable (pending/reviewing/documents_required),
+  // poll for updates every 5s to reflect new uploads or status changes without a manual refresh.
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null;
+    const actionableStatuses = new Set(['pending', 'reviewing', 'documents_required']);
+    const currentStatus = application?.verificationStatus || application?.status;
+    if (currentStatus && actionableStatuses.has(currentStatus)) {
+      interval = setInterval(() => {
+        fetchApplicationData();
+      }, 5000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [application?.verificationStatus, application?.status, fetchApplicationData]);
+
   // Function to open document modal with production-ready image path
   const openDocumentModal = (url: string, type: string): void => {
     // Process the URL to ensure it works in production
