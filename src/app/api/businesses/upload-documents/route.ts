@@ -83,8 +83,8 @@ async function moveDocumentsFromTempToPermanent(tempUrls: Record<string, string>
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-// Maximum file size (10MB for documents)
-const MAX_FILE_SIZE = 10 * 1024 * 1024;
+// Maximum file size (20MB for documents)
+const MAX_FILE_SIZE = 20 * 1024 * 1024;
 
 export async function POST(request: NextRequest) {
   try {
@@ -275,10 +275,10 @@ export async function POST(request: NextRequest) {
             updateValues.push(filePaths.government_id_path);
           }
 
-          // Update application status from 'declined' to 'pending' after document upload
-          // This indicates that additional documents have been provided for review
+          // Update application status to 'reviewing' after document upload
+          // This indicates that additional documents have been provided and are awaiting review
           updateFields.push('application_status = ?');
-          updateValues.push('pending');
+          updateValues.push('reviewing');
 
           // Clear verification notes since documents have been uploaded
           updateFields.push('verification_notes = ?');
@@ -291,7 +291,7 @@ export async function POST(request: NextRequest) {
               updateValues
             );
 
-            console.log(`Updated service provider ${providerId} with ${Object.keys(filePaths).length} document(s) and changed status to pending`);
+            console.log(`Updated service provider ${providerId} with ${Object.keys(filePaths).length} document(s) and changed status to reviewing`);
           }
         } catch (error) {
           console.error('Error updating service provider documents:', error);
@@ -344,6 +344,21 @@ export async function POST(request: NextRequest) {
               );
 
               console.log(`Successfully migrated ${updateFields.length} documents to permanent storage for provider ${providerId}`);
+              // Notify admins that documents were submitted (server-side)
+              try {
+                const { createAdminNotification } = await import('@/utils/adminNotificationService');
+                await createAdminNotification({
+                  type: 'pending_application',
+                  title: 'Additional Documents Submitted',
+                  message: `Provider #${providerId} submitted additional documents for verification.`,
+                  entityType: 'business_application',
+                  entityId: Number(providerId),
+                  shouldSendEmail: false,
+                  emailSubject: 'Additional Documents Submitted'
+                });
+              } catch (notifyErr) {
+                console.warn('Failed to notify admins for migrated documents:', notifyErr);
+              }
             }
           } catch (error) {
             console.error('Error updating service provider with migrated documents:', error);
@@ -358,6 +373,24 @@ export async function POST(request: NextRequest) {
       }
 
       // Return success response regardless, with filePaths for client to use if needed
+      // After non-migration uploads, also notify admins
+      try {
+        if (providerId) {
+          const { createAdminNotification } = await import('@/utils/adminNotificationService');
+          await createAdminNotification({
+            type: 'pending_application',
+            title: 'Additional Documents Submitted',
+            message: `Provider #${providerId} submitted additional documents for verification.`,
+            entityType: 'business_application',
+            entityId: Number(providerId),
+            shouldSendEmail: false,
+            emailSubject: 'Additional Documents Submitted'
+          });
+        }
+      } catch (notifyErr) {
+        console.warn('Failed to notify admins for uploaded documents:', notifyErr);
+      }
+
       return NextResponse.json({
         success: true,
         filePaths,

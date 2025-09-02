@@ -40,6 +40,7 @@ export default function PendingVerificationPage() {
   const [documentsRequired, setDocumentsRequired] = useState(false);
   const [documentsReason, setDocumentsReason] = useState('');
   const [requiredDocuments, setRequiredDocuments] = useState<string[]>([]);
+  const [availableDocuments, setAvailableDocuments] = useState<{ business_permit_path?: string | null; bir_certificate_path?: string | null; government_id_path?: string | null }>({});
 
   // Document upload states
   const [uploadingFiles, setUploadingFiles] = useState<UploadingFiles>({
@@ -49,9 +50,36 @@ export default function PendingVerificationPage() {
   });
 
 
+
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploading, setUploading] = useState(false);
   const [uploadComplete, setUploadComplete] = useState(false);
+  const getDocumentImageSource = (documentPath: string | null | undefined): string => {
+    if (!documentPath) return '';
+    if (documentPath.startsWith('data:')) return documentPath;
+    if (documentPath.startsWith('https://') && documentPath.includes('.public.blob.vercel-storage.com')) {
+      return documentPath;
+    }
+    // Fallback: serve as-is; server will proxy non-blob paths if needed
+    return documentPath;
+  };
+
+  const extractDocumentsFromDetail = (detail: any) => {
+    const docs: any = {};
+    if (detail?.documents && Array.isArray(detail.documents)) {
+      for (const d of detail.documents) {
+        const type = (d?.type || '').toString().toLowerCase().replace(/\s+/g, '_');
+        if (type && d?.url) {
+          docs[`${type}_path`] = d.url;
+        }
+      }
+    }
+    // Also read flat fields if present
+    if (detail?.business_permit_path) docs.business_permit_path = detail.business_permit_path;
+    if (detail?.bir_certificate_path) docs.bir_certificate_path = detail.bir_certificate_path;
+    if (detail?.government_id_path) docs.government_id_path = detail.government_id_path;
+    setAvailableDocuments(docs);
+  };
 
   // Check if we have valid required documents
   useEffect(() => {
@@ -115,6 +143,7 @@ export default function PendingVerificationPage() {
 
             if (detailResponse.ok) {
               const detailResult = await detailResponse.json();
+              extractDocumentsFromDetail(detailResult);
               const verificationNotes = detailResult.verificationNotes || '';
 
               // Check if documents are required based on notes or status
@@ -230,19 +259,46 @@ export default function PendingVerificationPage() {
         formData.append('serviceProviderId', serviceProvider.provider_id.toString());
       }
 
-      const response = await fetch('/api/businesses/upload-documents', {
-        method: 'POST',
-        body: formData,
-        credentials: 'include',
+      // Use XMLHttpRequest to track real upload progress
+      const response = await new Promise<Response>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', '/api/businesses/upload-documents');
+        xhr.withCredentials = true;
+        xhr.upload.onprogress = (event) => {
+          if (event.lengthComputable) {
+            const percent = Math.round((event.loaded / event.total) * 100);
+            setUploadProgress(percent);
+          }
+        };
+        xhr.onload = () => {
+          // Normalize to a Response-like object
+          const ok = xhr.status >= 200 && xhr.status < 300;
+          const res = new Response(xhr.responseText, { status: xhr.status, statusText: xhr.statusText, headers: new Headers({ 'Content-Type': xhr.getResponseHeader('Content-Type') || 'application/json' }) });
+          if (ok) resolve(res); else reject(res);
+        };
+        xhr.onerror = () => reject(new Response(null, { status: xhr.status || 500 }));
+        xhr.send(formData);
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Upload failed');
-      }
-
-      await response.json(); // Success response
+      // If we get here, upload succeeded
+      const respJson = await response.json().catch(() => ({}));
       setUploadComplete(true);
+
+      // Update locally available documents so the section shows what was uploaded
+      if (respJson?.filePaths) {
+        setAvailableDocuments((prev) => ({ ...prev, ...respJson.filePaths }));
+      } else {
+        // As a fallback, refetch details
+        try {
+          if (serviceProvider?.provider_id) {
+            const detailRes = await fetch(`/api/businesses/applications/${serviceProvider.provider_id}`, { credentials: 'include' });
+            if (detailRes.ok) {
+              const detail = await detailRes.json();
+              extractDocumentsFromDetail(detail);
+            }
+          }
+        } catch {}
+      }
 
       // Create notification for admin about document upload
       try {
@@ -272,11 +328,7 @@ export default function PendingVerificationPage() {
         // Don't fail the upload if notification fails
       }
 
-      // Show success message and redirect to dashboard after delay
-      setTimeout(() => {
-        // Redirect to dashboard instead of just reloading
-        window.location.href = '/cremation/dashboard';
-      }, 3000);
+      // Keep user on page to review uploaded documents
 
     } catch (error) {
       console.error('Upload error:', error);
@@ -363,7 +415,7 @@ export default function PendingVerificationPage() {
                     Please upload only the documents listed below.
                   </p>
 
-                  {requiredDocuments.length === 0 && (
+                  {requiredDocuments.length === 0 && Object.keys(availableDocuments).length === 0 && (
                     <div className="mb-4 p-3 bg-red-50 rounded border border-red-300">
                       <p className="text-sm text-red-800">
                         <strong>Error:</strong> No specific documents were specified in the request.
@@ -372,7 +424,7 @@ export default function PendingVerificationPage() {
                     </div>
                   )}
 
-                  {documentsReason && (
+                  {documentsReason && Object.keys(availableDocuments).length === 0 && (
                     <div className="mb-4 p-3 bg-white rounded border border-orange-300">
                       <p className="text-sm text-orange-800">
                         <strong>Reason:</strong> {documentsReason}
@@ -382,7 +434,34 @@ export default function PendingVerificationPage() {
 
                   {/* Document Upload Form */}
                   <div className="space-y-4">
-                    {requiredDocuments.length > 0 ? (
+                    {Object.keys(availableDocuments).length > 0 ? (
+                      <div className="grid grid-cols-1 gap-4">
+                        {availableDocuments.business_permit_path && (
+                          <div className="border rounded-lg p-3">
+                            <div className="text-sm font-medium mb-2">Business Permit</div>
+                            <div className="w-full overflow-hidden rounded">
+                              <Image src={getDocumentImageSource(availableDocuments.business_permit_path)} alt="Business Permit" width={800} height={600} className="max-h-56 w-full object-contain bg-gray-50" />
+                            </div>
+                          </div>
+                        )}
+                        {availableDocuments.bir_certificate_path && (
+                          <div className="border rounded-lg p-3">
+                            <div className="text-sm font-medium mb-2">BIR Certificate</div>
+                            <div className="w-full overflow-hidden rounded">
+                              <Image src={getDocumentImageSource(availableDocuments.bir_certificate_path)} alt="BIR Certificate" width={800} height={600} className="max-h-56 w-full object-contain bg-gray-50" />
+                            </div>
+                          </div>
+                        )}
+                        {availableDocuments.government_id_path && (
+                          <div className="border rounded-lg p-3">
+                            <div className="text-sm font-medium mb-2">Government ID</div>
+                            <div className="w-full overflow-hidden rounded">
+                              <Image src={getDocumentImageSource(availableDocuments.government_id_path)} alt="Government ID" width={800} height={600} className="max-h-56 w-full object-contain bg-gray-50" />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ) : requiredDocuments.length > 0 ? (
                       requiredDocuments.map(docType => {
                         const docInfo = documentTypeMap[docType];
                         if (!docInfo) return null;
@@ -438,13 +517,7 @@ export default function PendingVerificationPage() {
                         >
                           {uploading ? (
                             <>
-                              <motion.div
-                                animate={{ rotate: 360 }}
-                                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                                className="mr-2"
-                              >
-                                <CloudArrowUpIcon className="h-5 w-5" />
-                              </motion.div>
+                              <CloudArrowUpIcon className="h-5 w-5 mr-2" />
                               Uploading... {uploadProgress}%
                             </>
                           ) : uploadComplete ? (
@@ -459,6 +532,14 @@ export default function PendingVerificationPage() {
                             </>
                           )}
                         </button>
+                        {uploading && (
+                          <div className="w-full bg-gray-200 rounded-full h-2 mt-3">
+                            <div
+                              className="bg-orange-500 h-2 rounded-full"
+                              style={{ width: `${uploadProgress}%`, transition: 'width 150ms linear' }}
+                            />
+                          </div>
+                        )}
                         <p className="text-xs text-gray-500 text-center mt-2">
                           Please upload at least one of the required documents above.
                         </p>
