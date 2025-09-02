@@ -2,26 +2,28 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifySecureAuth } from '@/lib/secureAuth';
 import { query } from '@/lib/db';
 
+async function tableExists(tableName: string): Promise<boolean> {
+  try {
+    const rows = await query(
+      `SELECT COUNT(*) as c FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = ?`,
+      [tableName]
+    ) as any[];
+    return Number(rows?.[0]?.c || 0) > 0;
+  } catch {
+    return false;
+  }
+}
+
 async function ensurePaymentQrTable(): Promise<void> {
-  await query(`
-    CREATE TABLE IF NOT EXISTS provider_payment_qr (
-      provider_id INT PRIMARY KEY,
-      qr_path TEXT NULL,
-      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-  `);
-  // Ensure qr_path can hold larger base64 data (auto-migrate to MEDIUMTEXT if needed)
-  const colInfo = await query(
-    `SELECT COLUMN_TYPE FROM INFORMATION_SCHEMA.COLUMNS
-     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'provider_payment_qr' AND COLUMN_NAME = 'qr_path'`
-  ) as any[];
-  const columnType = (colInfo?.[0]?.COLUMN_TYPE || '').toUpperCase();
-  if (columnType && !columnType.includes('MEDIUMTEXT') && !columnType.includes('LONGTEXT')) {
-    try {
-      await query(`ALTER TABLE provider_payment_qr MODIFY COLUMN qr_path MEDIUMTEXT NULL`);
-    } catch {
-      // best-effort; ignore if no permission
-    }
+  // Only attempt DDL if explicitly allowed
+  if (process.env.ALLOW_DDL === 'true') {
+    await query(`
+      CREATE TABLE IF NOT EXISTS provider_payment_qr (
+        provider_id INT PRIMARY KEY,
+        qr_path MEDIUMTEXT NULL,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
   }
 }
 
@@ -31,8 +33,6 @@ export async function GET(request: NextRequest) {
     if (!user || user.accountType !== 'business') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-
-    await ensurePaymentQrTable();
 
     // Resolve provider_id from users
     const rows = await query(
@@ -45,14 +45,33 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: true, qrPath: null });
     }
 
-    const qrRows = await query(
-      'SELECT qr_path FROM provider_payment_qr WHERE provider_id = ? LIMIT 1',
-      [providerId]
-    ) as any[];
+    // Prefer provider_payment_qr if the table exists, else fallback to service_providers.payment_qr_path
+    let qrPath: string | null = null;
 
-    return NextResponse.json({ success: true, qrPath: qrRows?.[0]?.qr_path || null });
-  } catch {
-    return NextResponse.json({ error: 'Failed to fetch payment QR' }, { status: 500 });
+    if (await tableExists('provider_payment_qr')) {
+      try {
+        const qrRows = await query(
+          'SELECT qr_path FROM provider_payment_qr WHERE provider_id = ? LIMIT 1',
+          [providerId]
+        ) as any[];
+        qrPath = qrRows?.[0]?.qr_path || null;
+      } catch {}
+    }
+
+    // Fallback to service_providers column if not found
+    if (!qrPath) {
+      try {
+        const spRows = await query(
+          'SELECT payment_qr_path FROM service_providers WHERE provider_id = ? LIMIT 1',
+          [providerId]
+        ) as any[];
+        qrPath = spRows?.[0]?.payment_qr_path || null;
+      } catch {}
+    }
+
+    return NextResponse.json({ success: true, qrPath });
+  } catch (e: any) {
+    return NextResponse.json({ error: 'Failed to fetch payment QR', details: e?.message }, { status: 500 });
   }
 }
 
@@ -94,13 +113,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Provider not found' }, { status: 404 });
     }
 
-    // Convert file to base64 for database storage (similar to profile picture upload)
-    console.log('Converting QR file to base64...');
+    // Convert file to base64 for database storage
     let arrayBuffer: ArrayBuffer;
     try {
       arrayBuffer = await file.arrayBuffer();
     } catch (bufferError) {
-      console.error('Failed to read file buffer:', bufferError);
       return NextResponse.json({
         error: 'Failed to process file. Please try again.',
         code: 'FILE_READ_ERROR'
@@ -109,39 +126,31 @@ export async function POST(request: NextRequest) {
 
     const base64Data = Buffer.from(arrayBuffer).toString('base64');
     const dataUrl = `data:${file.type};base64,${base64Data}`;
-    console.log('QR file converted to base64, size:', base64Data.length);
 
-    await ensurePaymentQrTable();
-
-    // Store QR code in database
-    console.log('Storing QR code in database...');
-    const existing = await query(
-      'SELECT provider_id FROM provider_payment_qr WHERE provider_id = ? LIMIT 1',
-      [providerId]
-    ) as any[];
-
-    if (existing && existing.length > 0) {
-      await query('UPDATE provider_payment_qr SET qr_path = ? WHERE provider_id = ?', [dataUrl, providerId]);
-      console.log('QR code updated in database');
-    } else {
-      await query('INSERT INTO provider_payment_qr (provider_id, qr_path) VALUES (?, ?)', [providerId, dataUrl]);
-      console.log('QR code inserted into database');
+    // Best-effort: write to provider_payment_qr only if table exists (avoid DDL in production)
+    if (await tableExists('provider_payment_qr')) {
+      try {
+        const existing = await query(
+          'SELECT provider_id FROM provider_payment_qr WHERE provider_id = ? LIMIT 1',
+          [providerId]
+        ) as any[];
+        if (existing && existing.length > 0) {
+          await query('UPDATE provider_payment_qr SET qr_path = ? WHERE provider_id = ?', [dataUrl, providerId]);
+        } else {
+          await query('INSERT INTO provider_payment_qr (provider_id, qr_path) VALUES (?, ?)', [providerId, dataUrl]);
+        }
+      } catch {}
     }
 
-    // Also denormalize onto service_providers if column exists (best-effort)
+    // Always denormalize onto service_providers (preferred source when DDL blocked)
     try {
       await query('UPDATE service_providers SET payment_qr_path = ? WHERE provider_id = ?', [dataUrl, providerId]);
-    } catch {
-      console.log('Could not update service_providers table (column may not exist)');
+    } catch (e: any) {
+      return NextResponse.json({ error: 'Failed to save payment QR', details: e?.message }, { status: 500 });
     }
 
-    return NextResponse.json({
-      success: true,
-      qrPath: dataUrl,
-      message: 'Payment QR code uploaded successfully'
-    });
+    return NextResponse.json({ success: true, qrPath: dataUrl });
   } catch (e: any) {
-    console.error('[payment-qr] Upload failed:', e?.message || e);
     return NextResponse.json({ error: 'Failed to upload payment QR', details: e?.message }, { status: 500 });
   }
 }
