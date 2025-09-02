@@ -132,19 +132,24 @@ const globalForMysql = globalThis as unknown as GlobalWithMysql;
 let _pool: mysql.Pool;
 
 function initPool(): mysql.Pool {
-  // Skip database initialization during build time
-  if (process.env.NEXT_PHASE === 'phase-production-build') {
-    console.log('Skipping database connection during build time');
-    // Return a dummy pool that will fail gracefully during build
-    return mysql.createPool({
-      host: 'localhost',
-      user: 'dummy',
-      password: 'dummy',
-      database: 'dummy',
-      port: 3306,
-      connectionLimit: 1,
-    });
+// Lazy init to avoid build-time side effects; keep dev/serverless cache
+const cachedPool = process.env.NODE_ENV !== "production"
+  ? globalForMysql.__rainbowMysqlPool
+  : undefined;
+if (cachedPool) {
+  _pool = cachedPool;
+}
+
+export function getPool(): mysql.Pool {
+  if (!_pool) {
+    const p = initPool();
+    _pool = p;
+    if (process.env.NODE_ENV !== "production") {
+      globalForMysql.__rainbowMysqlPool = p;
+    }
   }
+  return _pool;
+}
 
   // Always try to use DATABASE_URL first if it's available and valid
   const databaseUrl = process.env.DATABASE_URL || process.env.MYSQL_URL;
