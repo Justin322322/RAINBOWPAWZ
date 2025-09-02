@@ -81,7 +81,10 @@ const PersonalAccountModal: React.FC<PersonalAccountModalProps> = ({ isOpen, onC
     lastName: '',
     email: '',
     sex: '',
-    address: '',
+    streetAddress: '',
+    city: '',
+    province: '',
+    postalCode: '',
     phoneNumber: '',
     password: '',
     confirmPassword: '',
@@ -136,6 +139,9 @@ const PersonalAccountModal: React.FC<PersonalAccountModalProps> = ({ isOpen, onC
     if (!formData.lastName.trim()) missingFields.push('Last Name');
     if (!formData.email.trim()) missingFields.push('Email Address');
     if (!formData.sex) missingFields.push('Sex');
+    if (!formData.streetAddress.trim()) missingFields.push('Street Address');
+    if (!formData.city.trim()) missingFields.push('City');
+    if (!formData.province.trim()) missingFields.push('Province');
     if (!formData.password) missingFields.push('Password');
     if (!formData.confirmPassword) missingFields.push('Confirm Password');
     if (!formData.agreeToTerms) missingFields.push('Terms and Conditions');
@@ -179,6 +185,9 @@ const PersonalAccountModal: React.FC<PersonalAccountModalProps> = ({ isOpen, onC
       const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
 
       try {
+        // Combine address fields into single address string
+        const address = `${formData.streetAddress}, ${formData.city}, ${formData.province}${formData.postalCode ? ', ' + formData.postalCode : ''}, Philippines`;
+
         // Send the registration request
         const response = await fetch(`/api/auth/register`, {
           method: 'POST',
@@ -186,7 +195,13 @@ const PersonalAccountModal: React.FC<PersonalAccountModalProps> = ({ isOpen, onC
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            ...formData,
+            firstName: formData.firstName,
+            lastName: formData.lastName,
+            email: formData.email,
+            sex: formData.sex,
+            address: address,
+            phoneNumber: formData.phoneNumber,
+            password: formData.password,
             account_type: 'personal'
           }),
           signal: controller.signal
@@ -345,15 +360,52 @@ const PersonalAccountModal: React.FC<PersonalAccountModalProps> = ({ isOpen, onC
               />
             </div>
 
-            <Input
-              label="Home Address"
-              id="address"
-              name="address"
-              value={formData.address}
-              onChange={handleChange}
-              placeholder="123 Main St, Balanga City, Bataan, Philippines"
-              size="lg"
-            />
+            <div>
+              <h4 className="text-sm font-medium text-gray-700 mb-4">Home Address</h4>
+              <div className="space-y-4">
+                <Input
+                  label="Street Address"
+                  id="streetAddress"
+                  name="streetAddress"
+                  value={formData.streetAddress}
+                  onChange={handleChange}
+                  placeholder="123 Main Street"
+                  required
+                  size="lg"
+                />
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <Input
+                    label="City/Municipality"
+                    id="city"
+                    name="city"
+                    value={formData.city}
+                    onChange={handleChange}
+                    placeholder="Balanga City"
+                    required
+                    size="lg"
+                  />
+                  <Input
+                    label="Province"
+                    id="province"
+                    name="province"
+                    value={formData.province}
+                    onChange={handleChange}
+                    placeholder="Bataan"
+                    required
+                    size="lg"
+                  />
+                  <Input
+                    label="Postal Code"
+                    id="postalCode"
+                    name="postalCode"
+                    value={formData.postalCode}
+                    onChange={handleChange}
+                    placeholder="2100"
+                    size="lg"
+                  />
+                </div>
+              </div>
+            </div>
 
             <div>
               <Input

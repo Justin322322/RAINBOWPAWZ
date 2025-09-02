@@ -62,33 +62,27 @@ const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
       return url;
     }
 
-    // Ensure URL has a leading slash
-    let formattedUrl = url.startsWith('/') ? url : `/${url}`;
+    // Handle document paths from database (format: documents/{user_id}/{filename})
+    if (url.includes('documents/') || url.includes('business/') || url.includes('businesses/')) {
+      // Remove any leading slash
+      const cleanUrl = url.startsWith('/') ? url.substring(1) : url;
+      return `/api/image/${cleanUrl}`;
+    }
 
-    // If it's a document in the uploads folder, use the API route
-    if (formattedUrl.includes('/uploads/')) {
-      // Extract the path after /uploads/
-      const uploadPath = formattedUrl.substring(formattedUrl.indexOf('/uploads/') + '/uploads/'.length);
-      // Use the API route instead
+    // Handle direct paths that already include uploads
+    if (url.includes('/uploads/')) {
+      const uploadPath = url.substring(url.indexOf('/uploads/') + '/uploads/'.length);
       return `/api/image/${uploadPath}`;
     }
 
-    // For documents that might be in a different format
-    if (formattedUrl.includes('/documents/') || formattedUrl.includes('/business/')) {
-      // Try to extract the relevant path
-      const parts = formattedUrl.split('/');
-      const relevantIndex = parts.findIndex(part =>
-        part === 'documents' || part === 'business' || part === 'businesses'
-      );
-
-      if (relevantIndex >= 0) {
-        const relevantPath = parts.slice(relevantIndex).join('/');
-        return `/api/image/${relevantPath}`;
-      }
+    // Handle relative paths (just filename or partial path)
+    if (!url.startsWith('/')) {
+      // Assume it's a document in the documents directory
+      return `/api/image/documents/${url}`;
     }
 
     // Use the production image path utility as a fallback
-    return getProductionImagePath(formattedUrl);
+    return getProductionImagePath(url);
   };
 
   const formattedDocumentUrl = processDocumentUrl(documentUrl);

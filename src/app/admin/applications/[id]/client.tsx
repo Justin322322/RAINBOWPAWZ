@@ -270,21 +270,21 @@ function ApplicationDetailContent({ id }: ApplicationDetailContentProps) {
       else if (url.startsWith('https://') && url.includes('.public.blob.vercel-storage.com')) {
         processedUrl = url;
       }
-      // For document paths, use the API route
-      else if (url.includes('/documents/') || url.includes('/business/') || url.includes('/businesses/')) {
-        const parts = url.split('/');
-        const relevantIndex = parts.findIndex(part =>
-          part === 'documents' || part === 'business' || part === 'businesses'
-        );
-        if (relevantIndex >= 0) {
-          const relevantPath = parts.slice(relevantIndex).join('/');
-          processedUrl = `/api/image/${relevantPath}`;
-        }
+      // Handle document paths from database (format: documents/{user_id}/{filename})
+      else if (url.includes('documents/') || url.includes('business/') || url.includes('businesses/')) {
+        // Remove any leading slash
+        const cleanUrl = url.startsWith('/') ? url.substring(1) : url;
+        processedUrl = `/api/image/${cleanUrl}`;
       }
-      // For uploads paths, use the API route
+      // Handle direct paths that already include uploads
       else if (url.includes('/uploads/')) {
         const uploadPath = url.substring(url.indexOf('/uploads/') + '/uploads/'.length);
         processedUrl = `/api/image/${uploadPath}`;
+      }
+      // Handle relative paths (just filename or partial path)
+      else if (!url.startsWith('/')) {
+        // Assume it's a document in the documents directory
+        processedUrl = `/api/image/documents/${url}`;
       }
       // For other paths, use the production image path utility
       else {
@@ -292,6 +292,7 @@ function ApplicationDetailContent({ id }: ApplicationDetailContentProps) {
       }
     }
 
+    console.log('Document URL processing:', { original: url, processed: processedUrl });
     setSelectedDocument({ url: processedUrl, type });
     setIsDocumentModalOpen(true);
   };
@@ -346,7 +347,7 @@ function ApplicationDetailContent({ id }: ApplicationDetailContentProps) {
   };
 
   // Function to handle document decline
-  const handleDeclineDocument = async (note: string, requestDocuments: boolean): Promise<void> => {
+  const handleDeclineDocument = async (note: string, requestDocuments: boolean, requiredDocuments?: string[]): Promise<void> => {
     try {
       setIsProcessing(true);
 
@@ -358,6 +359,7 @@ function ApplicationDetailContent({ id }: ApplicationDetailContentProps) {
         body: JSON.stringify({
           note,
           requestDocuments,
+          requiredDocuments: requiredDocuments || [],
         }),
       });
 

@@ -51,9 +51,6 @@
   ],
   "exclude": [
     "node_modules",
-    ".next",
-    "src/__tests__/**/*",
-    "**/*.test.ts",
-    "**/*.test.tsx"
+    ".next"
   ]
 }

@@ -3,6 +3,83 @@ import { verifySecureAuth } from '@/lib/secureAuth';
 import { query } from '@/lib/db';
 // Removed unused imports
 
+/**
+ * Helper function to move documents from temp storage to permanent storage
+ */
+async function moveDocumentsFromTempToPermanent(tempUrls: Record<string, string>, userId: string): Promise<Record<string, string>> {
+  const blobToken = process.env.BLOB_READ_WRITE_TOKEN;
+  const useBlob = typeof blobToken === 'string' && blobToken.length > 0;
+
+  if (!useBlob) {
+    // If not using blob storage, return original URLs (they might be base64 data URLs)
+    return tempUrls;
+  }
+
+  let putFn: any = null;
+  try {
+    const blob = await import('@vercel/blob');
+    putFn = (blob as any)?.put;
+  } catch {
+    return tempUrls;
+  }
+
+  if (!putFn) {
+    return tempUrls;
+  }
+
+  const permanentUrls: Record<string, string> = {};
+
+  try {
+    // Process each document URL
+    for (const [docType, tempUrl] of Object.entries(tempUrls)) {
+      if (!tempUrl || !tempUrl.includes('temp/registration')) {
+        // Skip if not a temp URL or empty
+        permanentUrls[docType] = tempUrl;
+        continue;
+      }
+
+      try {
+        // Download the temp file
+        const tempResponse = await fetch(tempUrl);
+        if (!tempResponse.ok) {
+          console.error(`Failed to download temp file for ${docType}:`, tempUrl);
+          permanentUrls[docType] = tempUrl; // Keep original if download fails
+          continue;
+        }
+
+        const arrayBuffer = await tempResponse.arrayBuffer();
+        const mime = tempResponse.headers.get('content-type') || 'application/octet-stream';
+        const ext = mime.split('/')[1] || 'bin';
+
+        // Upload to permanent location
+        const key = `uploads/businesses/${userId}/${docType}_${Date.now()}.${ext}`;
+        const result = await putFn(key, Buffer.from(arrayBuffer), {
+          access: 'public',
+          contentType: mime,
+          token: blobToken,
+        });
+
+        if (result?.url) {
+          permanentUrls[docType] = result.url;
+          console.log(`Successfully moved ${docType} from temp to permanent storage:`, result.url);
+        } else {
+          console.error(`Failed to upload ${docType} to permanent storage`);
+          permanentUrls[docType] = tempUrl; // Keep original if upload fails
+        }
+      } catch (error) {
+        console.error(`Error moving ${docType} from temp to permanent:`, error);
+        permanentUrls[docType] = tempUrl; // Keep original on error
+      }
+    }
+  } catch (error) {
+    console.error('Error in document migration process:', error);
+    // Return original URLs if migration fails
+    return tempUrls;
+  }
+
+  return permanentUrls;
+}
+
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
@@ -27,18 +104,35 @@ export async function POST(request: NextRequest) {
       }, { status: 403 });
     }
     
-    // Support two modes:
+    // Support three modes:
     // 1) JSON body: client already uploaded to Blob, we just persist URLs
     // 2) multipart/form-data: files are posted here (smaller files only)
+    // 3) migrate: move documents from temp to permanent storage
 
     const contentType = request.headers.get('content-type') || '';
-    let mode: 'json' | 'form' = contentType.includes('application/json') ? 'json' : 'form';
+    let mode: 'json' | 'form' | 'migrate' = contentType.includes('application/json') ? 'json' : 'form';
     let formData: FormData | null = null;
     let jsonBody: any = null;
 
+    // Check if this is a migration request
+    if (request.method === 'POST') {
+      if (mode === 'json') {
+        jsonBody = await request.json();
+        if (jsonBody?.action === 'migrate') {
+          mode = 'migrate';
+        }
+      } else if (mode === 'form') {
+        formData = await request.formData();
+        const action = formData.get('action') as string;
+        if (action === 'migrate') {
+          mode = 'migrate';
+        }
+      }
+    }
+
     if (mode === 'form') {
       formData = await request.formData();
-    } else {
+    } else if (mode === 'json') {
       jsonBody = await request.json();
     }
 
@@ -51,8 +145,8 @@ export async function POST(request: NextRequest) {
     // Extract service provider ID if provided (for registration flow)
     const providedServiceProviderId = mode === 'form' ? formData!.get('serviceProviderId') as string | null : jsonBody?.serviceProviderId || null;
 
-    // Check if at least one file is provided
-    if (mode === 'form' && !businessPermit && !birCertificate && !governmentId && Object.keys(providedUrls).length === 0) {
+    // Check if at least one file is provided (skip for migration mode)
+    if (mode !== 'migrate' && mode === 'form' && !businessPermit && !birCertificate && !governmentId && Object.keys(providedUrls).length === 0) {
       return NextResponse.json({ error: 'At least one document must be uploaded' }, { status: 400 });
     }
 
@@ -164,6 +258,8 @@ export async function POST(request: NextRequest) {
         try {
           const updateFields: string[] = [];
           const updateValues: any[] = [];
+
+          // Add document paths to update
           if (filePaths.business_permit_path) {
             updateFields.push('business_permit_path = ?');
             updateValues.push(filePaths.business_permit_path);
@@ -176,12 +272,24 @@ export async function POST(request: NextRequest) {
             updateFields.push('government_id_path = ?');
             updateValues.push(filePaths.government_id_path);
           }
+
+          // Update application status from 'declined' to 'pending' after document upload
+          // This indicates that additional documents have been provided for review
+          updateFields.push('application_status = ?');
+          updateValues.push('pending');
+
+          // Clear verification notes since documents have been uploaded
+          updateFields.push('verification_notes = ?');
+          updateValues.push('Documents uploaded for review');
+
           if (updateFields.length > 0) {
             updateValues.push(providerId);
             await query(
               `UPDATE service_providers SET ${updateFields.join(', ')}, updated_at = NOW() WHERE provider_id = ?`,
               updateValues
             );
+
+            console.log(`Updated service provider ${providerId} with ${Object.keys(filePaths).length} document(s) and changed status to pending`);
           }
         } catch (error) {
           console.error('Error updating service provider documents:', error);
@@ -189,6 +297,62 @@ export async function POST(request: NextRequest) {
         }
       } else {
         console.warn('No service provider found for user', userId, '- documents uploaded but not associated with provider record');
+      }
+
+      // Handle migration mode
+      if (mode === 'migrate') {
+        const tempUrls = jsonBody?.tempUrls || formData?.get('tempUrls') as string || '{}';
+        let tempUrlsObj: Record<string, string>;
+
+        try {
+          tempUrlsObj = typeof tempUrls === 'string' ? JSON.parse(tempUrls) : tempUrls;
+        } catch {
+          tempUrlsObj = {};
+        }
+
+        console.log('Migrating documents from temp to permanent storage:', tempUrlsObj);
+
+        // Move documents from temp to permanent storage
+        const permanentUrls = await moveDocumentsFromTempToPermanent(tempUrlsObj, userId);
+
+        // Update the service provider with new permanent URLs
+        if (providerId && Object.keys(permanentUrls).length > 0) {
+          try {
+            const updateFields: string[] = [];
+            const updateValues: any[] = [];
+
+            if (permanentUrls.business_permit_path) {
+              updateFields.push('business_permit_path = ?');
+              updateValues.push(permanentUrls.business_permit_path);
+            }
+            if (permanentUrls.bir_certificate_path) {
+              updateFields.push('bir_certificate_path = ?');
+              updateValues.push(permanentUrls.bir_certificate_path);
+            }
+            if (permanentUrls.government_id_path) {
+              updateFields.push('government_id_path = ?');
+              updateValues.push(permanentUrls.government_id_path);
+            }
+
+            if (updateFields.length > 0) {
+              updateValues.push(providerId);
+              await query(
+                `UPDATE service_providers SET ${updateFields.join(', ')}, updated_at = NOW() WHERE provider_id = ?`,
+                updateValues
+              );
+
+              console.log(`Successfully migrated ${updateFields.length} documents to permanent storage for provider ${providerId}`);
+            }
+          } catch (error) {
+            console.error('Error updating service provider with migrated documents:', error);
+          }
+        }
+
+        return NextResponse.json({
+          success: true,
+          permanentUrls,
+          message: 'Documents migrated from temporary to permanent storage successfully'
+        });
       }
 
       // Return success response regardless, with filePaths for client to use if needed

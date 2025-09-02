@@ -145,7 +145,7 @@ function AdminLogsPage({ adminData }: { adminData: any }) {
         clearInterval(refreshInterval);
       }
     };
-  }, []);
+  }, [refreshInterval]);
 
   // Auto-refresh setup
   useEffect(() => {

@@ -2,6 +2,11 @@
 // Load environment variables
 require('dotenv').config({ path: '.env.local' });
 
+// Also load production environment variables if they exist (for builds)
+if (process.env.NODE_ENV === 'production' || process.env.VERCEL_ENV === 'production') {
+  require('dotenv').config({ path: '.env.production', override: false });
+}
+
 // Get port from environment (Railway will set this automatically)
 const port = process.env.PORT || '3000';
 

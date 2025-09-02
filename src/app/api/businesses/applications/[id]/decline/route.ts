@@ -4,6 +4,92 @@ import { sendBusinessVerificationEmail, sendApplicationDeclineEmail } from '@/li
 import { logAdminAction, getAdminIdFromRequest } from '@/utils/adminUtils';
 import mysql from 'mysql2/promise';
 
+// Allowlist of permitted document IDs/names
+const ALLOWED_DOCUMENT_TYPES = new Set([
+  'business_permit',
+  'bir_certificate',
+  'government_id',
+  'mayors_permit',
+  'barangay_clearance',
+  'dti_certificate',
+  'sec_certificate',
+  'tax_clearance',
+  'police_clearance',
+  'nbi_clearance',
+  'fire_safety_certificate',
+  'sanitary_permit',
+  'environmental_clearance',
+  'locational_clearance',
+  'building_permit',
+  'occupancy_permit',
+  'zonal_clearance',
+  'water_bill',
+  'electricity_bill',
+  'telephone_bill'
+]);
+
+/**
+ * Validates and sanitizes the requiredDocuments array
+ * @param documents - Raw documents array from request
+ * @returns Sanitized array of valid document IDs, or null if validation fails
+ */
+function validateAndSanitizeRequiredDocuments(documents: any): string[] | null {
+  // Check if documents is provided and is an array
+  if (!documents || !Array.isArray(documents)) {
+    return null;
+  }
+
+  // Sanitize and validate each document
+  const sanitizedDocs: string[] = [];
+
+  for (const doc of documents) {
+    // Ensure each item is a string
+    if (typeof doc !== 'string') {
+      console.warn('Invalid document type in requiredDocuments:', typeof doc);
+      continue;
+    }
+
+    // Trim whitespace and convert to lowercase for consistency
+    const sanitizedDoc = doc.trim().toLowerCase();
+
+    // Skip empty strings
+    if (!sanitizedDoc) {
+      continue;
+    }
+
+    // Strip HTML and unsafe characters (basic sanitization)
+    const cleanDoc = sanitizedDoc
+      .replace(/<[^>]*>/g, '') // Remove HTML tags
+      .replace(/[<>'"&]/g, '') // Remove potentially dangerous characters
+      .trim();
+
+    // Skip if empty after sanitization
+    if (!cleanDoc) {
+      continue;
+    }
+
+    // Check against allowlist
+    if (!ALLOWED_DOCUMENT_TYPES.has(cleanDoc)) {
+      console.warn(`Document type not allowed: ${cleanDoc}`);
+      return null; // Reject entire request if any document is not allowed
+    }
+
+    sanitizedDocs.push(cleanDoc);
+  }
+
+  // Remove duplicates using Set
+  const uniqueDocs = [...new Set(sanitizedDocs)];
+
+  // Ensure final array is not empty
+  if (uniqueDocs.length === 0) {
+    console.warn('No valid documents provided after sanitization');
+    return null;
+  }
+
+  console.log('Validated and sanitized requiredDocuments:', uniqueDocs);
+  return uniqueDocs;
+}
+
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const { id } = params;
@@ -24,7 +110,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
 
     // Get the decline note from request body
     const body = await request.json();
-    const { note, requestDocuments } = body;
+    const { note, requestDocuments, requiredDocuments } = body;
 
     if (!note || note.trim().length < 10) {
       return NextResponse.json(
@@ -33,9 +119,24 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       );
     }
 
-    // With the updated schema, we only have 'declined' as the status for declined applications
-    // No separate 'documents_required' status in the enum
-    const applicationStatus = 'declined';
+    // Validate and sanitize requiredDocuments if provided
+    let sanitizedRequiredDocuments: string[] | undefined;
+    if (requiredDocuments) {
+      const validationResult = validateAndSanitizeRequiredDocuments(requiredDocuments);
+      if (validationResult === null) {
+        return NextResponse.json(
+          {
+            message: 'Invalid required documents provided. Documents must be valid strings from the allowed list.',
+            allowedDocuments: Array.from(ALLOWED_DOCUMENT_TYPES)
+          },
+          { status: 400 }
+        );
+      }
+      sanitizedRequiredDocuments = validationResult;
+    }
+
+    // Determine the correct status based on whether documents are being requested
+    const applicationStatus = requestDocuments ? 'documents_required' : 'declined';
 
     // Check which table exists: business_profiles or service_providers
     const tableCheckResult = await query(`
@@ -57,15 +158,21 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       }, { status: 500 });
     }
 
+    // Prepare structured notes that include required documents
+    let structuredNotes = note.trim();
+    if (requestDocuments && sanitizedRequiredDocuments && sanitizedRequiredDocuments.length > 0) {
+      structuredNotes += `\n\nRequired documents: ${sanitizedRequiredDocuments.join(', ')}`;
+    }
+
     // SECURITY FIX: Check columns and update safely for each table type
     let updateResult;
     if (useServiceProvidersTable) {
       // Check if service_providers has the application_status column (avoid SHOW + placeholders incompatibility)
       const columnsResult = await query(
-        `SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS 
-         WHERE TABLE_SCHEMA = DATABASE() 
-           AND TABLE_NAME = ? 
-           AND COLUMN_NAME = ? 
+        `SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE()
+           AND TABLE_NAME = ?
+           AND COLUMN_NAME = ?
          LIMIT 1`,
         ['service_providers', 'application_status']
       ) as any[];
@@ -78,15 +185,15 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
              verification_date = NOW(),
              updated_at = NOW()
          WHERE provider_id = ?`,
-        [applicationStatus, note.trim(), businessId]
+        [applicationStatus, structuredNotes, businessId]
       ) as unknown as mysql.ResultSetHeader;
     } else {
       // Check if business_profiles has the application_status column (avoid SHOW + placeholders incompatibility)
       const columnsResult = await query(
-        `SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS 
-         WHERE TABLE_SCHEMA = DATABASE() 
-           AND TABLE_NAME = ? 
-           AND COLUMN_NAME = ? 
+        `SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE()
+           AND TABLE_NAME = ?
+           AND COLUMN_NAME = ?
          LIMIT 1`,
         ['business_profiles', 'application_status']
       ) as any[];
@@ -98,8 +205,8 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
              verification_notes = ?,
              verification_date = NOW(),
              updated_at = NOW()
-         WHERE provider_id = ?`,
-        [applicationStatus, note.trim(), businessId]
+         WHERE id = ?`,
+        [applicationStatus, structuredNotes, businessId]
       ) as unknown as mysql.ResultSetHeader;
     }
 
@@ -149,7 +256,8 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
               businessName: business.business_name || business.name,
               contactName: `${business.first_name} ${business.last_name}`,
               status: 'documents_required',
-              notes: note.trim()
+              notes: note.trim(),
+              requiredDocuments: sanitizedRequiredDocuments || []
             }
           );
         } else {
@@ -178,14 +286,18 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       try {
         const { createBusinessNotification } = await import('@/utils/businessNotificationService');
         
+        const requiredDocsText = sanitizedRequiredDocuments && sanitizedRequiredDocuments.length > 0
+          ? `\n\nRequired documents: ${sanitizedRequiredDocuments.join(', ')}`
+          : '';
+
         await createBusinessNotification({
           userId: business.user_id,
-          title: requestDocuments ? 'Additional Documents Required' : 'Application Declined',
+          title: requestDocuments ? 'Specific Documents Required' : 'Application Declined',
           message: requestDocuments
-            ? `Your business application for ${business.business_name || business.name} requires additional documents. Please check your email for details and upload the required documents.`
+            ? `Your business application for ${business.business_name || business.name} requires specific documents. Please check your email for details and upload the required documents.${requiredDocsText}`
             : `Your business application for ${business.business_name || business.name} has been declined. Reason: ${note.trim()}`,
           type: requestDocuments ? 'warning' : 'error',
-          link: requestDocuments ? '/cremation/documents' : '/cremation/dashboard',
+          link: requestDocuments ? '/cremation/pending-verification' : '/cremation/dashboard',
           shouldSendEmail: false, // Email was already sent above
         });
       } catch (notificationError) {
@@ -200,13 +312,14 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       const tableName = useServiceProvidersTable ? 'service_providers' : 'business_profiles';
       await logAdminAction(
         adminId,
-        requestDocuments ? 'request_documents' : 'decline_business',
+        requestDocuments ? 'request_specific_documents' : 'decline_business',
         tableName,
         businessId,
         {
           businessName: business?.business_name || business?.name,
           notes: note.trim(),
-          requestDocuments: !!requestDocuments
+          requestDocuments: !!requestDocuments,
+          requiredDocuments: sanitizedRequiredDocuments || []
         },
         ipAddress as string
       );

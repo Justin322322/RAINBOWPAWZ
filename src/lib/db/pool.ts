@@ -132,6 +132,14 @@ const globalForMysql = globalThis as unknown as GlobalWithMysql;
 let _pool: mysql.Pool;
 
 function initPool(): mysql.Pool {
+  // Lazy init to avoid build-time side effects; keep dev/serverless cache
+  const cachedPool = process.env.NODE_ENV !== "production"
+    ? globalForMysql.__rainbowMysqlPool
+    : undefined;
+  if (cachedPool) {
+    _pool = cachedPool;
+  }
+
   // Always try to use DATABASE_URL first if it's available and valid
   const databaseUrl = process.env.DATABASE_URL || process.env.MYSQL_URL;
   if (databaseUrl &&
@@ -147,6 +155,9 @@ function initPool(): mysql.Pool {
 
   // Production: require a valid DATABASE_URL and never fall back to localhost
   if (process.env.NODE_ENV === "production") {
+    if (!process.env.DATABASE_URL && !process.env.MYSQL_URL) {
+      throw new Error("DATABASE_URL is required in production and must be valid");
+    }
     const cloudPool = tryCreatePoolFromDatabaseUrl();
     if (!cloudPool) {
       throw new Error("DATABASE_URL is required in production and must be valid");
@@ -171,14 +182,15 @@ function initPool(): mysql.Pool {
   return mysql.createPool(localConfig);
 }
 
-// Initialize pool once, with dev/serverless global cache to avoid hot-reload churn
-const cachedPool = process.env.NODE_ENV !== "production" ? globalForMysql.__rainbowMysqlPool : undefined;
-_pool = cachedPool ?? initPool();
-if (process.env.NODE_ENV !== "production") {
-  globalForMysql.__rainbowMysqlPool = _pool;
-}
-
 export function getPool(): mysql.Pool {
+  if (!_pool) {
+    // Lazy initialization to avoid build-time database connections
+    const cachedPool = process.env.NODE_ENV !== "production" ? globalForMysql.__rainbowMysqlPool : undefined;
+    _pool = cachedPool ?? initPool();
+    if (process.env.NODE_ENV !== "production") {
+      globalForMysql.__rainbowMysqlPool = _pool;
+    }
+  }
   return _pool;
 }
 
@@ -195,7 +207,3 @@ export async function recreatePool(): Promise<void> {
     console.error("Failed to recreate MySQL pool:", reconnectError);
   }
 }
-
-
-
-
