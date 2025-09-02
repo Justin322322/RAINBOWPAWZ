@@ -164,6 +164,17 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
   const [reviewedBookingIds, setReviewedBookingIds] = useState<number[]>([]);
   const [refreshCounter, setRefreshCounter] = useState(0);
 
+  // Helpers to handle receipt inside special_requests
+  const getReceiptUrlFromText = (text?: string | null): string | null => {
+    if (!text) return null;
+    const match = text.match(/Receipt:\s*(\S+)/i);
+    return match ? match[1] : null;
+    };
+  const getFilteredSpecialRequests = (text?: string | null): string => {
+    if (!text) return '';
+    return text.replace(/Receipt:\s*\S+/gi, '').trim();
+  };
+
   useEffect(() => {
     async function fetchBookings() {
       try {
@@ -807,10 +818,10 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
                         </div>
                       </div>
 
-                      {booking.special_requests && booking.special_requests !== 'asdasdasd' && (
+                      {getFilteredSpecialRequests(booking.special_requests) && getFilteredSpecialRequests(booking.special_requests) !== 'asdasdasd' && (
                         <div className="mt-4">
                           <h4 className="text-sm font-medium text-gray-500">Special Instructions</h4>
-                          <p className="mt-1 text-sm text-gray-900">{booking.special_requests}</p>
+                          <p className="mt-1 text-sm text-gray-900">{getFilteredSpecialRequests(booking.special_requests)}</p>
                         </div>
                       )}
                     </div>
@@ -1077,15 +1088,50 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
                             </div>
                           </div>
 
-                          {/* Special Requests */}
-                          {selectedBooking.special_requests && selectedBooking.special_requests !== 'asdasdasd' && (
+                          {/* Special Requests (receipt line stripped) */}
+                          {getFilteredSpecialRequests(selectedBooking.special_requests) && getFilteredSpecialRequests(selectedBooking.special_requests) !== 'asdasdasd' && (
                             <div className="bg-white rounded-xl shadow-md border border-gray-200 p-4 sm:p-5">
                               <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">Special Requests</h2>
                               <div className="bg-gray-50 rounded-lg p-3 sm:p-4">
-                                <p className="text-xs sm:text-sm text-gray-700 leading-relaxed">{selectedBooking.special_requests}</p>
+                                <p className="text-xs sm:text-sm text-gray-700 leading-relaxed">{getFilteredSpecialRequests(selectedBooking.special_requests)}</p>
                               </div>
                             </div>
                           )}
+                          {/* Payment & Delivery with receipt image (if QR manual) */}
+                          <div className="bg-white rounded-xl shadow-md border border-gray-200 p-4 sm:p-5">
+                            <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">Payment & Delivery</h2>
+                            <div className="space-y-3 sm:space-y-4">
+                              <div className="bg-gray-50 rounded-lg p-3 sm:p-4">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-xs sm:text-sm text-gray-600">Payment Method</span>
+                                  <span className="text-xs sm:text-sm font-medium text-gray-900">{selectedBooking.payment_method === 'qr_manual' ? 'QR Transfer (manual confirmation)' : (selectedBooking.payment_method || 'N/A')}</span>
+                                </div>
+                              </div>
+                              {selectedBooking.payment_method === 'qr_manual' && (
+                                <div>
+                                  <h3 className="text-xs sm:text-sm font-medium text-gray-700 mb-2">Payment Receipt</h3>
+                                  {getReceiptUrlFromText(selectedBooking.special_requests) ? (
+                                    <div className="border rounded-lg overflow-hidden bg-gray-50">
+                                      <Image src={getReceiptUrlFromText(selectedBooking.special_requests) as string} alt="Payment Receipt" width={1200} height={800} className="w-full h-auto object-contain" />
+                                    </div>
+                                  ) : (
+                                    <p className="text-xs sm:text-sm text-gray-500">Receipt pending upload/confirmation.</p>
+                                  )}
+                                </div>
+                              )}
+                              {selectedBooking.delivery_option && (
+                                <div className="bg-gray-50 rounded-lg p-3 sm:p-4">
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-xs sm:text-sm text-gray-600">Delivery Option</span>
+                                    <span className="text-xs sm:text-sm font-medium text-gray-900">{selectedBooking.delivery_option}</span>
+                                  </div>
+                                  {selectedBooking.delivery_address && (
+                                    <p className="mt-2 text-xs sm:text-sm text-gray-700">{selectedBooking.delivery_address}</p>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          </div>
 
                           {/* Review Section - Only show for completed bookings */}
                           {selectedBooking.status === 'completed' && (
