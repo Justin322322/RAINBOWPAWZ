@@ -438,44 +438,7 @@ function CremationSettingsPage({ userData }: CremationSettingsProps) {
               />
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Current QR Display */}
-                <div className="space-y-4">
-                  <div className="flex items-center space-x-2">
-                    <QrCodeIcon className="h-5 w-5 text-gray-600" />
-                    <h3 className="text-lg font-medium text-gray-900">Current QR Code</h3>
-                  </div>
-
-                  {qrPath ? (
-                    <div className="relative group">
-                      <div className="bg-white border-2 border-gray-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
-                        <div className="aspect-square max-w-sm mx-auto bg-gray-50 rounded-lg overflow-hidden">
-                          <Image
-                            src={qrPath}
-                            alt="Payment QR Code"
-                            width={400}
-                            height={400}
-                            className="w-full h-full object-contain"
-                          />
-                        </div>
-                        <div className="mt-3 text-center">
-                          <p className="text-sm text-gray-600">Your payment QR code is active</p>
-                          <div className="flex items-center justify-center mt-2">
-                            <CheckCircleIcon className="h-4 w-4 text-green-500 mr-1" />
-                            <span className="text-sm text-green-700">Ready for checkout</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="bg-gray-50 border-2 border-dashed border-gray-300 rounded-xl p-8 text-center">
-                      <PhotoIcon className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-                      <p className="text-sm text-gray-500">No QR code uploaded yet</p>
-                      <p className="text-xs text-gray-400 mt-1">Upload a QR code to enable manual payments</p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Upload Section */}
+                {/* Upload Section - First on both small and large screens */}
                 <div className="space-y-4">
                   <div className="flex items-center space-x-2">
                     <CloudArrowUpIcon className="h-5 w-5 text-gray-600" />
@@ -496,9 +459,7 @@ function CremationSettingsPage({ userData }: CremationSettingsProps) {
                   >
                     {qrUploading ? (
                       <div className="space-y-4">
-                        <div className="animate-spin mx-auto">
-                          <CloudArrowUpIcon className="h-12 w-12 text-[var(--primary-green)]" />
-                        </div>
+                        <CloudArrowUpIcon className="h-12 w-12 text-[var(--primary-green)] mx-auto" />
                         <div className="space-y-2">
                           <p className="text-sm font-medium text-gray-900">Uploading QR Code...</p>
                           <div className="w-full bg-gray-200 rounded-full h-2">
@@ -512,9 +473,7 @@ function CremationSettingsPage({ userData }: CremationSettingsProps) {
                       </div>
                     ) : (
                       <div className="space-y-4">
-                        <div className={`mx-auto ${qrDragOver ? 'animate-bounce' : ''}`}>
-                          <CloudArrowUpIcon className={`h-12 w-12 ${qrDragOver ? 'text-[var(--primary-green)]' : 'text-gray-400'}`} />
-                        </div>
+                        <CloudArrowUpIcon className={`h-12 w-12 mx-auto ${qrDragOver ? 'text-[var(--primary-green)]' : 'text-gray-400'}`} />
                         <div>
                           <p className="text-sm font-medium text-gray-900">
                             {qrDragOver ? 'Drop your QR code here' : 'Click to upload or drag & drop'}
@@ -563,6 +522,43 @@ function CremationSettingsPage({ userData }: CremationSettingsProps) {
                       <li>• Customers will scan this during checkout</li>
                     </ul>
                   </div>
+                </div>
+
+                {/* Current QR Display - Second on both small and large screens */}
+                <div className="space-y-4">
+                  <div className="flex items-center space-x-2">
+                    <QrCodeIcon className="h-5 w-5 text-gray-600" />
+                    <h3 className="text-lg font-medium text-gray-900">Current QR Code</h3>
+                  </div>
+
+                  {qrPath ? (
+                    <div className="relative group">
+                      <div className="bg-white border-2 border-gray-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
+                        <div className="aspect-square max-w-sm mx-auto bg-gray-50 rounded-lg overflow-hidden">
+                          <Image
+                            src={qrPath}
+                            alt="Payment QR Code"
+                            width={400}
+                            height={400}
+                            className="w-full h-full object-contain"
+                          />
+                        </div>
+                        <div className="mt-3 text-center">
+                          <p className="text-sm text-gray-600">Your payment QR code is active</p>
+                          <div className="flex items-center justify-center mt-2">
+                            <CheckCircleIcon className="h-4 w-4 text-green-500 mr-1" />
+                            <span className="text-sm text-green-700">Ready for checkout</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="bg-gray-50 border-2 border-dashed border-gray-300 rounded-xl p-8 text-center">
+                      <PhotoIcon className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+                      <p className="text-sm text-gray-500">No QR code uploaded yet</p>
+                      <p className="text-xs text-gray-400 mt-1">Upload a QR code to enable manual payments</p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

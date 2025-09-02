@@ -81,35 +81,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Provider not found' }, { status: 404 });
     }
 
-    // Upload to Blob with proper error handling
-    const blobToken = process.env.BLOB_READ_WRITE_TOKEN;
-    if (!blobToken || typeof blobToken !== 'string') {
-      return NextResponse.json({
-        error: 'Storage service not configured. Please contact support.',
-        code: 'STORAGE_CONFIG_ERROR'
-      }, { status: 500 });
-    }
-
-    let putFn: ((key: string, data: Buffer, options: any) => Promise<any>) | null = null;
-    try {
-      const { put } = await import('@vercel/blob');
-      putFn = put;
-    } catch (importError) {
-      console.error('Failed to import blob storage:', importError);
-      return NextResponse.json({
-        error: 'Storage service unavailable. Please try again later.',
-        code: 'STORAGE_IMPORT_ERROR'
-      }, { status: 500 });
-    }
-
-    if (!putFn) {
-      return NextResponse.json({
-        error: 'Storage service not available. Please contact support.',
-        code: 'STORAGE_FUNCTION_ERROR'
-      }, { status: 500 });
-    }
-
-    // Convert file to buffer
+    // Convert file to base64 for database storage (similar to profile picture upload)
+    console.log('Converting QR file to base64...');
     let arrayBuffer: ArrayBuffer;
     try {
       arrayBuffer = await file.arrayBuffer();
@@ -121,50 +94,39 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    const ext = file.type.split('/')[1] || 'png';
-    const key = `uploads/businesses/${user.userId}/payment_qr_${Date.now()}.${ext}`;
-
-    let result;
-    try {
-      result = await putFn(key, Buffer.from(arrayBuffer), {
-        access: 'public',
-        contentType: file.type,
-        token: blobToken,
-      });
-    } catch (uploadError) {
-      console.error('Failed to upload to blob storage:', uploadError);
-      return NextResponse.json({
-        error: 'Failed to upload file. Please check your connection and try again.',
-        code: 'UPLOAD_ERROR'
-      }, { status: 500 });
-    }
-
-    const qrPath = result?.url || '';
-    if (!qrPath) {
-      return NextResponse.json({
-        error: 'Upload completed but file URL is missing. Please try again.',
-        code: 'UPLOAD_URL_MISSING'
-      }, { status: 500 });
-    }
+    const base64Data = Buffer.from(arrayBuffer).toString('base64');
+    const dataUrl = `data:${file.type};base64,${base64Data}`;
+    console.log('QR file converted to base64, size:', base64Data.length);
 
     await ensurePaymentQrTable();
 
+    // Store QR code in database
+    console.log('Storing QR code in database...');
     const existing = await query(
       'SELECT provider_id FROM provider_payment_qr WHERE provider_id = ? LIMIT 1',
       [providerId]
     ) as any[];
+
     if (existing && existing.length > 0) {
-      await query('UPDATE provider_payment_qr SET qr_path = ? WHERE provider_id = ?', [qrPath, providerId]);
+      await query('UPDATE provider_payment_qr SET qr_path = ? WHERE provider_id = ?', [dataUrl, providerId]);
+      console.log('QR code updated in database');
     } else {
-      await query('INSERT INTO provider_payment_qr (provider_id, qr_path) VALUES (?, ?)', [providerId, qrPath]);
+      await query('INSERT INTO provider_payment_qr (provider_id, qr_path) VALUES (?, ?)', [providerId, dataUrl]);
+      console.log('QR code inserted into database');
     }
 
     // Also denormalize onto service_providers if column exists (best-effort)
     try {
-      await query('UPDATE service_providers SET payment_qr_path = ? WHERE provider_id = ?', [qrPath, providerId]);
-    } catch {}
+      await query('UPDATE service_providers SET payment_qr_path = ? WHERE provider_id = ?', [dataUrl, providerId]);
+    } catch {
+      console.log('Could not update service_providers table (column may not exist)');
+    }
 
-    return NextResponse.json({ success: true, qrPath });
+    return NextResponse.json({
+      success: true,
+      qrPath: dataUrl,
+      message: 'Payment QR code uploaded successfully'
+    });
   } catch {
     return NextResponse.json({ error: 'Failed to upload payment QR' }, { status: 500 });
   }
