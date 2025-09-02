@@ -303,6 +303,18 @@ function BookingDetailsPage({ userData }: BookingDetailsProps) {
     setShowCertificate(true);
   };
 
+  // Helpers for receipt rendering
+  const getReceiptUrlFromNotes = (notes?: string | null): string | null => {
+    if (!notes) return null;
+    const m = notes.match(/Receipt:\s*(\S+)/i);
+    return m ? m[1] : null;
+  };
+  const filteredSpecialNotes = (() => {
+    const t = booking?.notes || '';
+    if (!t) return '';
+    return t.replace(/Receipt:\s*\S+/gi, '').trim();
+  })();
+
   const getPaymentMethodLabel = (method?: string) => {
     if (!method) return 'Not specified';
     switch (method) {
@@ -534,7 +546,7 @@ function BookingDetailsPage({ userData }: BookingDetailsProps) {
                         {updating ? 'Confirming...' : updateSuccess ? 'Success!' : 'Confirm Booking'}
                       </motion.button>
                       {booking.payment_method === 'qr_manual' && (
-                        <motion.div className="relative group w-full sm:w-auto">
+                        <div className="relative w-full sm:w-auto">
                           <motion.button
                             onClick={openReceiptReview}
                             className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md text-sm font-medium hover:bg-gray-50 flex items-center justify-center transition-all duration-200 disabled:opacity-50 w-full sm:w-auto"
@@ -547,10 +559,16 @@ function BookingDetailsPage({ userData }: BookingDetailsProps) {
                             )}
                             Review Receipt
                           </motion.button>
-                          <div className="absolute left-1/2 -translate-x-1/2 mt-2 hidden sm:group-hover:block bg-gray-900 text-white text-xs rounded px-2 py-1 whitespace-nowrap shadow z-20">
-                            Review and confirm the uploaded receipt before confirming the booking.
-                          </div>
-                        </motion.div>
+                          {/* Persistent bubble pointing to the button */}
+                          {booking.payment_status !== 'paid' && (
+                            <div className="hidden sm:block absolute top-full left-1/2 -translate-x-1/2 mt-2 z-20">
+                              <div className="bg-gray-900 text-white text-xs rounded px-3 py-2 shadow relative">
+                                <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-0 h-0 border-l-8 border-r-8 border-b-8 border-l-transparent border-r-transparent border-b-gray-900" />
+                                Please review and confirm the receipt before confirming the booking.
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       )}
                     </>
                   )}
@@ -669,14 +687,14 @@ function BookingDetailsPage({ userData }: BookingDetailsProps) {
                   </div>
                 </div>
 
-                {/* Special Requests */}
-                {booking.notes && (
+                {/* Special Requests (receipt line removed) */}
+                {filteredSpecialNotes && (
                   <div className="bg-white rounded-lg shadow-sm border border-gray-200">
                     <div className="px-6 py-4 border-b border-gray-200">
                       <h2 className="text-lg font-medium text-gray-900">Special Requests</h2>
                     </div>
                     <div className="p-6">
-                      <p className="text-gray-700 leading-relaxed">{booking.notes}</p>
+                      <p className="text-gray-700 leading-relaxed">{filteredSpecialNotes}</p>
                     </div>
                   </div>
                 )}
@@ -739,6 +757,18 @@ function BookingDetailsPage({ userData }: BookingDetailsProps) {
                       <h3 className="text-sm font-medium text-gray-700 mb-1">Total Amount</h3>
                       <p className="text-xl font-semibold text-gray-900">₱{parseFloat(booking.price.toString()).toLocaleString()}</p>
                     </div>
+                    {booking.payment_method === 'qr_manual' && (
+                      <div>
+                        <h3 className="text-sm font-medium text-gray-500 mb-2">Payment Receipt</h3>
+                        {getReceiptUrlFromNotes(booking.notes) ? (
+                          <div className="border rounded-lg overflow-hidden bg-gray-50">
+                            <Image src={getReceiptUrlFromNotes(booking.notes) as string} alt="Payment Receipt" width={800} height={600} className="w-full h-auto object-contain" />
+                          </div>
+                        ) : (
+                          <p className="text-sm text-gray-500">Receipt pending upload/confirmation.</p>
+                        )}
+                      </div>
+                    )}
                     {booking.delivery_option === 'delivery' && booking.delivery_address && (
                       <div>
                         <h3 className="text-sm font-medium text-gray-500 mb-1">Delivery Address</h3>

@@ -152,7 +152,7 @@ export async function POST(request: NextRequest) {
           title: 'Payment Receipt Submitted',
           message: `Booking #${bookingId} has a new receipt awaiting confirmation.`,
           type: 'info',
-          link: '/cremation/dashboard',
+          link: `/cremation/bookings/${bookingId}`,
           shouldSendEmail: false,
         });
       }
