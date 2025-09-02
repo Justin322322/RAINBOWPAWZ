@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
 import CremationDashboardLayout from '@/components/navigation/CremationDashboardLayout';
 import withBusinessVerification from '@/components/withBusinessVerification';
 import {
@@ -377,7 +378,15 @@ function CremationDashboardPage({ userData }: { userData: any }) {
             </ul>
           ) : (
             <div className="flex flex-col items-center justify-center h-64">
-              <CalendarIcon className="h-12 w-12 text-gray-400 mb-2" />
+              <div className="w-24 h-24 mx-auto mb-4 flex items-center justify-center">
+                <Image
+                  src="/no-bookings.png"
+                  alt="No recent bookings"
+                  width={96}
+                  height={96}
+                  className="w-full h-full object-contain"
+                />
+              </div>
               <h3 className="text-lg font-medium text-gray-900">No recent bookings</h3>
               <p className="text-gray-500 text-center max-w-xs mt-1 text-sm">
                 You don&apos;t have any bookings yet.
@@ -431,7 +440,15 @@ function CremationDashboardPage({ userData }: { userData: any }) {
             </div>
           ) : (
             <div className="p-6 text-center">
-              <StarIcon className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+              <div className="w-32 h-32 mx-auto mb-4 flex items-center justify-center">
+                <Image
+                  src="/no-reviews.png"
+                  alt="No reviews yet"
+                  width={128}
+                  height={128}
+                  className="w-full h-full object-contain"
+                />
+              </div>
               <p className="text-gray-500 text-sm">No reviews yet. Reviews will appear here when customers rate their experience.</p>
             </div>
           )}
@@ -488,7 +505,15 @@ function CremationDashboardPage({ userData }: { userData: any }) {
           ) : (
             <div className="p-6">
               <div className="text-center mb-4">
-                <CalendarIcon className="h-12 w-12 text-gray-400 mx-auto mb-2" />
+                <div className="w-24 h-24 mx-auto mb-4 flex items-center justify-center">
+                  <Image
+                    src="/no-bookings.png"
+                    alt="Manage availability"
+                    width={96}
+                    height={96}
+                    className="w-full h-full object-contain"
+                  />
+                </div>
                 <p className="text-sm text-gray-600 mb-4">
                   Manage your booking availability and time slots.
                 </p>

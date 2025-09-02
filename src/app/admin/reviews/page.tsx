@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { format } from 'date-fns';
 import {
   StarIcon,
@@ -354,8 +355,14 @@ function AdminReviewsPage() {
           </div>
         ) : filteredReviews.length === 0 ? (
           <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 text-center">
-            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gray-100 text-gray-400 mb-4">
-              <StarIcon className="h-6 w-6" />
+            <div className="w-32 h-32 mx-auto mb-4 flex items-center justify-center">
+              <Image
+                src="/no-reviews.png"
+                alt="No reviews found"
+                width={128}
+                height={128}
+                className="w-full h-full object-contain"
+              />
             </div>
             <p className="text-gray-500 text-sm">
               {searchTerm || filterRating !== null || filterProvider

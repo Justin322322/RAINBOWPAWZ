@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { format } from 'date-fns';
 import {
   ArrowPathIcon,
@@ -113,6 +114,15 @@ const ReviewsList: React.FC<ReviewsListProps> = ({ providerId, className = '' })
   if (reviews.length === 0) {
     return (
       <div className={`text-center py-6 ${className}`}>
+        <div className="w-24 h-24 mx-auto mb-4 flex items-center justify-center">
+          <Image
+            src="/no-reviews.png"
+            alt="No reviews yet"
+            width={96}
+            height={96}
+            className="w-full h-full object-contain"
+          />
+        </div>
         <p className="text-gray-500">No reviews yet.</p>
       </div>
     );

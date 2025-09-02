@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { format } from 'date-fns';
 import {
   MagnifyingGlassIcon,
@@ -359,6 +360,15 @@ function AdminRefundsPage() {
         {/* Refunds List */}
         {filteredRefunds.length === 0 ? (
           <div className="text-center py-12 bg-white rounded-xl shadow-md border border-gray-100">
+            <div className="w-32 h-32 mx-auto mb-4 flex items-center justify-center">
+              <Image
+                src="/no-refunds.png"
+                alt="No refunds found"
+                width={128}
+                height={128}
+                className="w-full h-full object-contain"
+              />
+            </div>
             <p className="text-gray-500 text-lg">
               {searchTerm || statusFilter !== 'all'
                 ? 'No refunds match your search criteria.'

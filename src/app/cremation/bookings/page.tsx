@@ -8,7 +8,6 @@ import withBusinessVerification from '@/components/withBusinessVerification';
 import { useToast } from '@/context/ToastContext';
 import {
   MagnifyingGlassIcon,
-  CalendarIcon,
   EyeIcon,
   XMarkIcon,
   EnvelopeIcon,
@@ -366,8 +365,14 @@ function CremationBookingsPage({ userData }: { userData: any }) {
           />
         ) : bookings.length === 0 ? (
           <div className="flex flex-col items-center justify-center p-8 text-center">
-            <div className="text-gray-400 mb-4">
-              <CalendarIcon className="h-12 w-12 mx-auto" />
+            <div className="w-32 h-32 mx-auto mb-4 flex items-center justify-center">
+              <Image
+                src="/no-bookings.png"
+                alt="No bookings found"
+                width={128}
+                height={128}
+                className="w-full h-full object-contain"
+              />
             </div>
             <h3 className="text-lg font-medium text-gray-900 mb-1">No bookings found</h3>
             <p className="text-gray-500 max-w-md">
