@@ -23,6 +23,7 @@ import withBusinessVerification from '@/components/withBusinessVerification';
 import { useToast } from '@/context/ToastContext';
 import BookingTimeline from '@/components/booking/BookingTimeline';
 import CremationCertificate from '@/components/certificates/CremationCertificate';
+import Image from 'next/image';
 import { SkeletonCard } from '@/components/ui/SkeletonLoader';
 
 interface BookingDetailsProps {
@@ -300,6 +301,20 @@ function BookingDetailsPage({ userData }: BookingDetailsProps) {
   // Certificate button handler
   const handleShowCertificate = () => {
     setShowCertificate(true);
+  };
+
+  const getPaymentMethodLabel = (method?: string) => {
+    if (!method) return 'Not specified';
+    switch (method) {
+      case 'gcash':
+        return 'GCash';
+      case 'qr_manual':
+        return 'QR Transfer (manual confirmation)';
+      case 'cash':
+        return 'Cash';
+      default:
+        return method.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+    }
   };
 
   const openReceiptReview = async () => {
@@ -705,7 +720,7 @@ function BookingDetailsPage({ userData }: BookingDetailsProps) {
                       <h3 className="text-sm font-medium text-gray-500 mb-1">Payment Method</h3>
                       <p className="text-base font-medium text-gray-900 flex items-center">
                         <CreditCardIcon className="h-4 w-4 mr-2 text-gray-400" />
-                        {booking.payment_method || 'Not specified'}
+                        {getPaymentMethodLabel(booking.payment_method)}
                       </p>
                     </div>
                     <div>
@@ -757,8 +772,8 @@ function BookingDetailsPage({ userData }: BookingDetailsProps) {
             <div className="p-6 space-y-4">
               <div className="text-sm text-gray-600">Status: <span className="font-medium">{receiptData.status}</span></div>
               {receiptData.notes && <div className="text-sm text-gray-600">Notes: {receiptData.notes}</div>}
-              <div className="w-full border rounded-lg overflow-hidden">
-                <img src={receiptData.receipt_path} alt="Payment receipt" className="w-full max-h-[70vh] object-contain bg-gray-50" />
+              <div className="w-full border rounded-lg overflow-hidden bg-gray-50">
+                <Image src={receiptData.receipt_path} alt="Payment receipt" width={1200} height={800} className="w-full h-auto object-contain" />
               </div>
             </div>
             <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-2">

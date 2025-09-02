@@ -58,14 +58,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'File too large (10MB max)' }, { status: 413 });
     }
 
-    // Resolve provider_id from booking (best-effort)
+    // Resolve provider_id and provider user_id from booking (best-effort)
     let providerId: number | null = null;
+    let providerUserId: number | null = null;
     try {
       const rows = await query(
-        'SELECT provider_id FROM service_bookings WHERE booking_id = ? LIMIT 1',
+        'SELECT provider_id FROM service_bookings WHERE id = ? LIMIT 1',
         [bookingId]
       ) as any[];
       providerId = rows?.[0]?.provider_id ?? null;
+      if (providerId) {
+        const prow = await query('SELECT user_id FROM service_providers WHERE provider_id = ? LIMIT 1', [providerId]) as any[];
+        providerUserId = prow?.[0]?.user_id ?? null;
+      }
     } catch {}
 
     // Upload to Blob
@@ -116,10 +121,10 @@ export async function POST(request: NextRequest) {
 
     // Best-effort: notify provider
     try {
-      if (providerId) {
+      if (providerUserId) {
         const { createBusinessNotification } = await import('@/utils/businessNotificationService');
         await createBusinessNotification({
-          userId: providerId,
+          userId: providerUserId,
           title: 'Payment Receipt Submitted',
           message: `Booking #${bookingId} has a new receipt awaiting confirmation.`,
           type: 'info',

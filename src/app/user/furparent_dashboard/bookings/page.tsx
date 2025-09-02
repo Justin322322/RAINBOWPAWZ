@@ -757,7 +757,7 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
                         {/* Mini Progress Bar */}
                         <div className="mt-2">
                           <div className="flex items-center space-x-1">
-                            <div className="w-full bg-gray-200 rounded-full h-1.5">
+                            <div className="bg-gray-200 rounded-full h-1.5 w-40 sm:w-60 md:w-72 lg:w-80">
                               <div
                                 className={`h-1.5 rounded-full ${
                                   booking.status === 'cancelled'

@@ -142,7 +142,7 @@ function CremationHistoryPage({ userData }: { userData: any }) {
     } finally {
       setLoading(false);
     }
-  }, [userData, showToast, dateFilter]);
+  }, [showToast, dateFilter]);
 
   // Fetch booking history when component mounts or date filter changes
   useEffect(() => {

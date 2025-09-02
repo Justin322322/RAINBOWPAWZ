@@ -85,7 +85,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
   const [receiptProgress, setReceiptProgress] = useState(0);
   const [receiptPreview, setReceiptPreview] = useState<string | null>(null);
   const [_providerQr, _setProviderQr] = useState<string | null>(null);
-  const [orderSummaryOffset, setOrderSummaryOffset] = useState(0);
+  // Removed dynamic scroll offset; using sticky with top offset
 
   // Handle receipt file selection with preview
   const handleReceiptFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -116,29 +116,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
     }
   };
 
-  // Handle Order Summary positioning on scroll
-  useEffect(() => {
-    const handleScroll = () => {
-      const orderSummaryElement = document.getElementById('order-summary');
-      if (!orderSummaryElement) return;
-
-      const rect = orderSummaryElement.getBoundingClientRect();
-      const navbarHeight = window.innerWidth >= 768 ? 80 : 64; // md:h-20 (80px) or h-16 (64px)
-
-      // If the Order Summary is getting covered by the navbar
-      if (rect.top < navbarHeight + 32) { // 32px for some padding
-        const offset = navbarHeight + 32 - rect.top;
-        setOrderSummaryOffset(offset);
-      } else {
-        setOrderSummaryOffset(0);
-      }
-    };
-
-    window.addEventListener('scroll', handleScroll);
-    handleScroll(); // Check initial position
-
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+  // Removed scroll listener; sticky header handles positioning
   const [isProcessing, setIsProcessing] = useState(false);
   const [checkoutComplete, setCheckoutComplete] = useState(false);
   const [petName, setPetName] = useState('');
@@ -1792,11 +1770,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.2 }}
-                className="bg-white rounded-lg shadow-md overflow-hidden sticky top-8"
-                style={{
-                  transform: orderSummaryOffset > 0 ? `translateY(${orderSummaryOffset}px)` : 'none',
-                  transition: 'transform 0.2s ease-out'
-                }}
+                className="bg-white rounded-lg shadow-md overflow-hidden sticky top-20 md:top-24"
               >
                 <div className="bg-[var(--primary-green)] p-6">
                   <h2 className="text-xl font-bold text-white">Order Summary</h2>
