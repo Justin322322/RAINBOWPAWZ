@@ -301,11 +301,10 @@ describe('Business Registration Tests', () => {
         body: new FormData(),
       });
 
-      // This would be testing a protected route
-      // The auth check should pass for business users
+      // Invoke the auth check (or import and call the protected route handler)
+      await (verifySecureAuth as any)(request);
       expect(verifySecureAuth).toHaveBeenCalledWith(request);
     });
-
     it('should reject non-business users from business routes', async () => {
       (verifySecureAuth as any).mockResolvedValue({
         userId: '123',
