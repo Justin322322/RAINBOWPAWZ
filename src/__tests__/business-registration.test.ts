@@ -3,7 +3,7 @@ import { NextRequest } from 'next/server';
 
 // Mock all dependencies
 vi.mock('@/lib/db', () => ({
-  query: vi.fn().mockImplementation((sql: string, params: any[]) => {
+  query: vi.fn().mockImplementation((sql: string, _params: any[]) => {
     // Handle different query types based on SQL content
     if (sql.includes('SELECT user_id FROM users WHERE email')) {
       return Promise.resolve([]); // No existing users
@@ -64,8 +64,6 @@ vi.mock('@/lib/jwt', () => ({
 
 // Import after mocking
 import { POST as registerBusiness } from '@/app/api/auth/register/route';
-import { query } from '@/lib/db';
-import { verifySecureAuth } from '@/lib/secureAuth';
 // Removed unused import: getAuthTokenFromRequest
 
 describe('Business Registration Tests', () => {
