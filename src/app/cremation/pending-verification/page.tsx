@@ -308,7 +308,10 @@ export default function PendingVerificationPage() {
       });
 
       // If we get here, upload succeeded
-      const respJson = await response.json().catch(() => ({}));
+      let respJson: any = {};
+      try {
+        respJson = await response.json();
+      } catch {}
       setUploadComplete(true);
 
       // Update locally available documents so the section shows what was uploaded
@@ -355,7 +358,10 @@ export default function PendingVerificationPage() {
         // Don't fail the upload if notification fails
       }
 
-      // Keep user on page to review uploaded documents
+      // Redirect after short delay to dashboard
+      setTimeout(() => {
+        window.location.href = '/cremation/dashboard';
+      }, 1500);
 
     } catch (error) {
       console.error('Upload error:', error);

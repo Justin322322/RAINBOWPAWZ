@@ -58,9 +58,10 @@ const DocumentThumbnail: React.FC<DocumentThumbnailProps> = ({ document, onDocum
       console.log('Thumbnail URL processing:', { original: documentUrl, processed: processedUrl });
       setThumbnailUrl(processedUrl);
 
-      // Check if it's an image file
+      // Check if it's an image file (support Blob/data URLs as well)
       const imageExtensions = /\.(jpeg|jpg|gif|png|webp)$/i;
-      setIsImageFile(imageExtensions.test(processedUrl));
+      const looksLikeImage = imageExtensions.test(processedUrl) || processedUrl.startsWith('data:image/');
+      setIsImageFile(looksLikeImage);
     }
   }, [documentUrl]);
 

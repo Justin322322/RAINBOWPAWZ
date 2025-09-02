@@ -275,10 +275,34 @@ export async function POST(request: NextRequest) {
             updateValues.push(filePaths.government_id_path);
           }
 
-          // Update application status to 'reviewing' after document upload
-          // This indicates that additional documents have been provided and are awaiting review
+          // Update application status after document upload.
+          // Compute a safe value based on enum values present in DB.
+          let statusToSet: string = 'reviewing';
+          try {
+            const columnsResult = await query(
+              `SELECT COLUMN_TYPE FROM INFORMATION_SCHEMA.COLUMNS
+               WHERE TABLE_SCHEMA = DATABASE()
+                 AND TABLE_NAME = ?
+                 AND COLUMN_NAME = ?
+               LIMIT 1`,
+              ['service_providers', 'application_status']
+            ) as any[];
+            if (columnsResult && columnsResult.length > 0 && typeof columnsResult[0].COLUMN_TYPE === 'string') {
+              const columnType: string = columnsResult[0].COLUMN_TYPE;
+              const match = columnType.match(/enum\((.+)\)/i);
+              const values = match ? match[1].split(',').map((v: string) => v.trim().replace(/^'|'$/g, '')) : [];
+              if (!values.includes('reviewing')) {
+                statusToSet = values.includes('pending') ? 'pending' : (values[0] || 'pending');
+              }
+            } else {
+              statusToSet = 'pending';
+            }
+          } catch {
+            statusToSet = 'pending';
+          }
+
           updateFields.push('application_status = ?');
-          updateValues.push('reviewing');
+          updateValues.push(statusToSet);
 
           // Clear verification notes since documents have been uploaded
           updateFields.push('verification_notes = ?');
