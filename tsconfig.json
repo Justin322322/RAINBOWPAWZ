@@ -41,7 +41,8 @@
     "allowSyntheticDefaultImports": true,
     "baseUrl": ".",
     "types": [
-      "node"
+      "node",
+      "vitest/globals"
     ]
   },
   "include": [
@@ -51,9 +52,6 @@
   ],
   "exclude": [
     "node_modules",
-    ".next",
-    "src/__tests__/**/*",
-    "**/*.test.ts",
-    "**/*.test.tsx"
+    ".next"
   ]
 }

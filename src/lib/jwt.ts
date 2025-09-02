@@ -1,7 +1,7 @@
 import jwt, { SignOptions } from 'jsonwebtoken';
 
 // JWT configuration
-const JWT_SECRET = process.env.JWT_SECRET;
+const JWT_SECRET = process.env.JWT_SECRET || (process.env.NODE_ENV === 'test' ? 'test-jwt-secret-for-testing-purposes-only' : undefined);
 const JWT_SECRET_VALUE: string | undefined = JWT_SECRET;
 
 // Maximum allowed expiration time: 30 days in seconds
@@ -74,8 +74,8 @@ const IS_SERVER_RUNTIME: boolean = (() => {
 })();
 
 // Validate JWT secret at startup - SERVER SIDE ONLY
-if (IS_SERVER_RUNTIME) {
-  // Only validate on server side
+if (IS_SERVER_RUNTIME && process.env.NODE_ENV !== 'test') {
+  // Only validate on server side and not in test environment
   if (!JWT_SECRET) {
     throw new Error('JWT_SECRET environment variable is required but not set');
   }
