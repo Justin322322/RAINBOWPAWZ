@@ -966,7 +966,7 @@ function ProfilePage({ userData: initialUserData }: ProfilePageProps) {
                           onChange={(e) => setContactInfo(prev => ({ ...prev, streetAddress: e.target.value }))}
                           placeholder="123 Main Street"
                           size="lg"
-                          leftIcon={<MapPinIcon className="h-5 w-5 text-gray-400" />}
+                          
                           rightIcon={
                             <button
                               type="button"

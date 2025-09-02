@@ -273,16 +273,36 @@ function CremationProfilePage({ userData }: { userData: any }) {
         return mergedProfile;
       });
 
+      // Helper to parse a combined address string to parts
+      const parseAddress = (addr: string | null | undefined) => {
+        const result = { streetAddress: '', city: '', province: '', postalCode: '' };
+        if (!addr) return result;
+        const parts = addr.split(',').map(p => p.trim()).filter(Boolean);
+        if (parts.length > 0) result.streetAddress = parts[0] || '';
+        if (parts.length > 1) result.city = parts[1] || '';
+        if (parts.length > 2) result.province = parts[2] || '';
+        if (parts.length > 3) {
+          const maybePostal = parts[3].replace(/[^0-9]/g, '');
+          result.postalCode = maybePostal || '';
+        }
+        return result;
+      };
+
       // Update form states with fetched data
       if (data.profile) {
+        const combinedAddr = data.profile.business_address || data.profile.address || '';
+        const parsed = parseAddress(combinedAddr);
         setContactInfo(prev => ({
           ...prev,
           firstName: data.profile.first_name || '',
           lastName: data.profile.last_name || '',
           email: data.profile.email || '',
           phone: data.profile.business_phone || data.profile.phone || '',
-          address: data.profile.business_address || data.profile.address || '',
-          streetAddress: data.profile.business_address || data.profile.address || ''
+          address: combinedAddr,
+          streetAddress: parsed.streetAddress,
+          city: parsed.city,
+          province: parsed.province,
+          postalCode: parsed.postalCode
         }));
         setBusinessInfo({
           businessName: data.profile.business_name || '',
@@ -790,7 +810,6 @@ function CremationProfilePage({ userData }: { userData: any }) {
                                               placeholder="123 Main Street"
                                               size="lg"
                                               autoComplete="street-address"
-                                              leftIcon={<MapPinIcon className="h-5 w-5 text-gray-400" />}
                                               rightIcon={
                                                 <button
                                                   type="button"
