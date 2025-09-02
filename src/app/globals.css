@@ -478,6 +478,31 @@
       font-size: 0.8125rem;
       min-block-size: 50px;
     }
+
+    /* Improve container spacing for mobile */
+    .mobile-container {
+      padding-left: 1rem;
+      padding-right: 1rem;
+    }
+
+    /* Better card spacing for mobile */
+    .mobile-card {
+      padding: 1.25rem;
+      margin-left: 0.5rem;
+      margin-right: 0.5rem;
+    }
+
+    /* Full width cards on mobile */
+    .mobile-full-width {
+      width: 100vw;
+      margin-left: calc(-50vw + 50%);
+      margin-right: calc(-50vw + 50%);
+    }
+
+    /* Better grid gaps for mobile */
+    .mobile-grid-spacing {
+      gap: 1rem;
+    }
   }
 }
 

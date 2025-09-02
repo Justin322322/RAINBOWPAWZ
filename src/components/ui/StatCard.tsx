@@ -62,7 +62,7 @@ export default function StatCard({
     value;
 
   return (
-    <div className={`h-full p-5 rounded-xl border ${colorMap.border} ${colorMap.bg} ${colorMap.hover} shadow-md hover:shadow-lg transition-all duration-200`}>
+    <div className={`h-full p-6 xs:p-5 sm:p-5 rounded-xl border ${colorMap.border} ${colorMap.bg} ${colorMap.hover} shadow-md hover:shadow-lg transition-all duration-200`}>
       <div className="flex items-start">
         <div className={`p-2.5 rounded-lg ${colorMap.iconBg} ${colorMap.iconColor} mr-4 flex-shrink-0`}>
           <div className="h-5 w-5 flex items-center justify-center">

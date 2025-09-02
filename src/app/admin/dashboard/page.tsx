@@ -208,7 +208,7 @@ function AdminDashboardPage({ adminData }: { adminData: any }) {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 xs:grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 xs:gap-5 sm:gap-6 mb-8">
         {isLoading ? (
           // Using standardized skeleton loader
           Array(3).fill(0).map((_, index) => (
@@ -442,7 +442,7 @@ function AdminDashboardPage({ adminData }: { adminData: any }) {
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-lg font-medium text-gray-800">User Distribution</h2>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 xs:grid-cols-1 sm:grid-cols-2 gap-4 xs:gap-5 sm:gap-6">
           {isLoading ? (
             // Using standardized skeleton loader for user distribution
             Array(2).fill(0).map((_, index) => (

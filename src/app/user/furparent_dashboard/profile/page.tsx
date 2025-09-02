@@ -32,6 +32,63 @@ interface ProfilePageProps {
   userData?: UserData;
 }
 
+// Helper function to parse address string into components
+const parseAddress = (addressString: string) => {
+  if (!addressString || addressString.trim() === '') {
+    return {
+      streetAddress: '',
+      city: '',
+      province: '',
+      postalCode: ''
+    };
+  }
+
+  // Remove "Philippines" from the end if it exists
+  let cleanAddress = addressString.replace(/,\s*Philippines$/i, '').trim();
+
+  // Split by comma and clean up each part
+  const parts = cleanAddress.split(',').map(part => part.trim()).filter(part => part !== '');
+
+  // Try to identify each component based on position and content
+  let streetAddress = '';
+  let city = '';
+  let province = '';
+  let postalCode = '';
+
+  if (parts.length >= 1) {
+    // First part is usually the street address
+    streetAddress = parts[0];
+  }
+
+  if (parts.length >= 2) {
+    // Check if the second part looks like a postal code (numbers only or starts with numbers)
+    if (/^\d/.test(parts[1])) {
+      postalCode = parts[1];
+      if (parts.length >= 3) {
+        city = parts[2];
+      }
+      if (parts.length >= 4) {
+        province = parts[3];
+      }
+    } else {
+      city = parts[1];
+      if (parts.length >= 3) {
+        province = parts[2];
+      }
+      if (parts.length >= 4) {
+        postalCode = parts[3];
+      }
+    }
+  }
+
+  return {
+    streetAddress: streetAddress || '',
+    city: city || '',
+    province: province || '',
+    postalCode: postalCode || ''
+  };
+};
+
 function ProfilePage({ userData: initialUserData }: ProfilePageProps) {
   const { showToast } = useToast();
 
@@ -173,12 +230,16 @@ function ProfilePage({ userData: initialUserData }: ProfilePageProps) {
         firstName: userData.first_name || '',
         lastName: userData.last_name || ''
       });
+      const parsedAddress = parseAddress(userData.address || '');
       setContactInfo(prev => ({
         ...prev,
         email: userData.email || '',
         phone: userData.phone || '',
         address: userData.address || '',
-        streetAddress: userData.address || ''
+        streetAddress: parsedAddress.streetAddress,
+        city: parsedAddress.city,
+        province: parsedAddress.province,
+        postalCode: parsedAddress.postalCode
       }));
 
       // Update profile picture timestamp to force refresh if user has a profile picture
@@ -198,12 +259,16 @@ function ProfilePage({ userData: initialUserData }: ProfilePageProps) {
         firstName: userData.first_name || '',
         lastName: userData.last_name || ''
       });
+      const parsedAddress = parseAddress(userData.address || '');
       setContactInfo(prev => ({
         ...prev,
         email: userData.email || '',
         phone: userData.phone || '',
         address: userData.address || '',
-        streetAddress: userData.address || ''
+        streetAddress: parsedAddress.streetAddress,
+        city: parsedAddress.city,
+        province: parsedAddress.province,
+        postalCode: parsedAddress.postalCode
       }));
     }
   }, [userData, isEditingPersonal, isEditingContact, initialLoading]);
@@ -462,12 +527,13 @@ function ProfilePage({ userData: initialUserData }: ProfilePageProps) {
 
     try {
       // Combine segmented address for saving
-      const combinedAddress = [
-        (contactInfo.streetAddress || contactInfo.address || '').trim(),
+      const addressParts = [
+        contactInfo.streetAddress?.trim(),
         contactInfo.city?.trim(),
         contactInfo.province?.trim(),
         contactInfo.postalCode?.trim()
-      ].filter(Boolean).join(', ');
+      ].filter(Boolean);
+      const combinedAddress = addressParts.length > 0 ? addressParts.join(', ') : contactInfo.address || '';
 
       const response = await fetch(`/api/users/${userData.user_id || userData.id}/update`, {
         method: 'PUT',
@@ -496,7 +562,7 @@ function ProfilePage({ userData: initialUserData }: ProfilePageProps) {
         setIsEditingContact(false);
 
         // Update local userData state immediately
-        const updatedUserData = { ...userData, email: contactInfo.email, phone: contactInfo.phone, address: contactInfo.address };
+        const updatedUserData = { ...userData, email: contactInfo.email, phone: contactInfo.phone, address: combinedAddress };
         setUserData(updatedUserData);
 
         // Trigger user data update event
