@@ -620,6 +620,23 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
     calculateActualDistance();
   }, [currentUserData, bookingData, deliveryOption]);
 
+  useEffect(() => {
+    const fetchProviderQr = async () => {
+      try {
+        if (!providerId) return;
+        const res = await fetch(`/api/cremation/payment-qr?providerId=${providerId}`, {
+          headers: { 'Cache-Control': 'no-cache' },
+          credentials: 'include'
+        });
+        const j = await res.json().catch(() => ({ qrPath: null }));
+        _setProviderQr(j.qrPath || null);
+      } catch {
+        _setProviderQr(null);
+      }
+    };
+    fetchProviderQr();
+  }, [providerId, paymentMethod]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -1414,7 +1431,7 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                             onChange={() => setPaymentMethod('gcash')}
                             className="h-4 w-4 text-[var(--primary-green)] focus:ring-[var(--primary-green)]"
                           />
-                          <div className="h-6 w-6 flex-shrink-0 relative">
+                          <div className="h-6 w-6 flex-shrink-0 relative ml-2">
                             <Image
                               src="/images/check-icon.svg"
                               alt="GCash"

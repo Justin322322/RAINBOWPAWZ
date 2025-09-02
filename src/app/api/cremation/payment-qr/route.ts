@@ -28,18 +28,26 @@ async function columnExists(tableName: string, columnName: string): Promise<bool
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await verifySecureAuth(request);
-    if (!user || user.accountType !== 'business') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const url = new URL(request.url);
+    const providerIdParam = url.searchParams.get('providerId');
+
+    let providerId: number | null = null;
+    if (providerIdParam && !Number.isNaN(Number(providerIdParam))) {
+      providerId = Number(providerIdParam);
+    } else {
+      // Fallback: if no providerId provided, allow business-auth to fetch own QR
+      try {
+        const user = await verifySecureAuth(request);
+        if (user && user.accountType === 'business') {
+          const rows = await query(
+            'SELECT provider_id FROM service_providers WHERE user_id = ? LIMIT 1',
+            [user.userId]
+          ) as any[];
+          providerId = rows?.[0]?.provider_id || null;
+        }
+      } catch {}
     }
 
-    // Resolve provider_id from users
-    const rows = await query(
-      'SELECT provider_id FROM service_providers WHERE user_id = ? LIMIT 1',
-      [user.userId]
-    ) as any[];
-
-    const providerId = rows?.[0]?.provider_id;
     if (!providerId) {
       return NextResponse.json({ success: true, qrPath: null });
     }
