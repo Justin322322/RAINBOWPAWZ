@@ -314,7 +314,7 @@ export default function PendingVerificationPage() {
               Documents Submitted Successfully!
             </h3>
             <p className="text-green-700 text-center mb-4">
-              Your documents have been uploaded and your application status has been updated to "Under Review".
+              Your documents have been uploaded and your application status has been updated to &ldquo;Under Review&rdquo;.
               You will be redirected to your dashboard shortly.
             </p>
             <div className="w-full bg-gray-200 rounded-full h-2 mb-4">
