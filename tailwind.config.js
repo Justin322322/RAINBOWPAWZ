@@ -10,6 +10,9 @@ module.exports = {
   ],
   theme: {
     extend: {
+      screens: {
+        'xs': '475px', // iPhone 12 Pro and similar small devices
+      },
       colors: {
         primary: {
           DEFAULT: '#1b5345',

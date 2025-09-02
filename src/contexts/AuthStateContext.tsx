@@ -2,8 +2,10 @@
 
 import React, { createContext, useState, useEffect, ReactNode, useCallback } from 'react';
 
-// Define the shape of the user data
-export interface UserData {
+// UserData interface kept local to this file for AuthStateContext functionality
+// External usage should import from withUserAuth.tsx
+
+interface UserData {
   id: number;
   email: string;
   first_name: string;

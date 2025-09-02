@@ -117,12 +117,12 @@ const Modal: React.FC<ModalProps> = ({
   }, [isOpen]);
 
   const sizeClasses = {
-    small: 'w-[98vw] sm:w-full max-w-md mx-4 sm:mx-auto',
-    medium: 'w-[98vw] sm:w-full max-w-lg mx-4 sm:mx-auto',
-    large: 'w-[98vw] sm:w-full max-w-2xl mx-4 sm:mx-auto',
-    xlarge: 'w-[98vw] sm:w-full max-w-4xl mx-4 sm:mx-auto',
-    '2xl': 'w-[98vw] sm:w-full max-w-5xl mx-4 sm:mx-auto', 
-    fullscreen: 'w-[98vw] sm:w-full max-w-[95vw] sm:max-w-[80vw] max-h-[95vh] sm:max-h-[90vh] mx-2 sm:mx-auto'
+    small: 'w-[95vw] sm:w-full max-w-sm xs:max-w-md mx-2 xs:mx-4 sm:mx-auto',
+    medium: 'w-[95vw] sm:w-full max-w-md xs:max-w-lg mx-2 xs:mx-4 sm:mx-auto',
+    large: 'w-[95vw] sm:w-full max-w-lg xs:max-w-2xl mx-2 xs:mx-4 sm:mx-auto',
+    xlarge: 'w-[95vw] sm:w-full max-w-xl xs:max-w-4xl mx-2 xs:mx-4 sm:mx-auto',
+    '2xl': 'w-[95vw] sm:w-full max-w-2xl xs:max-w-5xl mx-2 xs:mx-4 sm:mx-auto',
+    fullscreen: 'w-[98vw] sm:w-full max-w-[95vw] sm:max-w-[80vw] max-h-[95vh] sm:max-h-[90vh] mx-1 sm:mx-auto'
   };
 
   const variantClasses = {
@@ -191,7 +191,7 @@ const Modal: React.FC<ModalProps> = ({
             {!hideHeader && (headerContent || title) && (
               <div className={cn(
                 variantClasses[variant],
-                "px-4 sm:px-6 py-3 sm:py-4 flex justify-between items-center",
+                "px-5 xs:px-6 sm:px-6 py-4 xs:py-5 sm:py-4 flex justify-between items-center",
                 headerClassName
               )}>
                 {headerContent || (
@@ -229,7 +229,7 @@ const Modal: React.FC<ModalProps> = ({
             )}
 
             <div className={cn(
-              "px-4 sm:px-6 py-4 overflow-y-auto flex-1",
+              "px-5 xs:px-6 sm:px-6 py-5 xs:py-6 sm:py-4 overflow-y-auto flex-1",
               "max-h-[calc(95vh-120px)] sm:max-h-[calc(90vh-120px)]",
               contentClassName
             )}>
@@ -237,7 +237,7 @@ const Modal: React.FC<ModalProps> = ({
             </div>
 
             {footerContent && (
-              <div className="px-4 sm:px-6 py-3 sm:py-4 border-t border-gray-200">
+              <div className="px-5 xs:px-6 sm:px-6 py-4 xs:py-5 sm:py-4 border-t border-gray-200">
                 {footerContent}
               </div>
             )}
