@@ -42,21 +42,22 @@ const DocumentThumbnail: React.FC<DocumentThumbnailProps> = ({ document, onDocum
       } else if (documentUrl.startsWith('/uploads/') || documentUrl.includes('/uploads/')) {
         const uploadPath = documentUrl.substring(documentUrl.indexOf('/uploads/') + '/uploads/'.length);
         processedUrl = `/api/image/${uploadPath}`;
-      } else if (documentUrl.includes('/documents/') || documentUrl.includes('/business/')) {
-        const parts = documentUrl.split('/');
-        const relevantIndex = parts.findIndex(part =>
-          part === 'documents' || part === 'business' || part === 'businesses'
-        );
-        if (relevantIndex >= 0) {
-          const relevantPath = parts.slice(relevantIndex).join('/');
-          processedUrl = `/api/image/${relevantPath}`;
-        }
+      } else if (documentUrl.includes('documents/') || documentUrl.includes('business/') || documentUrl.includes('businesses/')) {
+        // Handle document paths from database (format: documents/{user_id}/{filename})
+        // Remove any leading slash
+        const cleanUrl = documentUrl.startsWith('/') ? documentUrl.substring(1) : documentUrl;
+        processedUrl = `/api/image/${cleanUrl}`;
+      } else if (!documentUrl.startsWith('/')) {
+        // Handle relative paths (just filename or partial path)
+        // Assume it's a document in the documents directory
+        processedUrl = `/api/image/documents/${documentUrl}`;
       } else {
         processedUrl = getProductionImagePath(documentUrl);
       }
 
+      console.log('Thumbnail URL processing:', { original: documentUrl, processed: processedUrl });
       setThumbnailUrl(processedUrl);
-      
+
       // Check if it's an image file
       const imageExtensions = /\.(jpeg|jpg|gif|png|webp)$/i;
       setIsImageFile(imageExtensions.test(processedUrl));

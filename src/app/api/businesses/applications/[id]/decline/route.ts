@@ -135,9 +135,8 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       sanitizedRequiredDocuments = validationResult;
     }
 
-    // With the updated schema, we only have 'declined' as the status for declined applications
-    // No separate 'documents_required' status in the enum
-    const applicationStatus = 'declined';
+    // Determine the correct status based on whether documents are being requested
+    const applicationStatus = requestDocuments ? 'documents_required' : 'declined';
 
     // Check which table exists: business_profiles or service_providers
     const tableCheckResult = await query(`
@@ -159,15 +158,21 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       }, { status: 500 });
     }
 
+    // Prepare structured notes that include required documents
+    let structuredNotes = note.trim();
+    if (requestDocuments && sanitizedRequiredDocuments && sanitizedRequiredDocuments.length > 0) {
+      structuredNotes += `\n\nRequired documents: ${sanitizedRequiredDocuments.join(', ')}`;
+    }
+
     // SECURITY FIX: Check columns and update safely for each table type
     let updateResult;
     if (useServiceProvidersTable) {
       // Check if service_providers has the application_status column (avoid SHOW + placeholders incompatibility)
       const columnsResult = await query(
-        `SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS 
-         WHERE TABLE_SCHEMA = DATABASE() 
-           AND TABLE_NAME = ? 
-           AND COLUMN_NAME = ? 
+        `SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE()
+           AND TABLE_NAME = ?
+           AND COLUMN_NAME = ?
          LIMIT 1`,
         ['service_providers', 'application_status']
       ) as any[];
@@ -180,15 +185,15 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
              verification_date = NOW(),
              updated_at = NOW()
          WHERE provider_id = ?`,
-        [applicationStatus, note.trim(), businessId]
+        [applicationStatus, structuredNotes, businessId]
       ) as unknown as mysql.ResultSetHeader;
     } else {
       // Check if business_profiles has the application_status column (avoid SHOW + placeholders incompatibility)
       const columnsResult = await query(
-        `SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS 
-         WHERE TABLE_SCHEMA = DATABASE() 
-           AND TABLE_NAME = ? 
-           AND COLUMN_NAME = ? 
+        `SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE()
+           AND TABLE_NAME = ?
+           AND COLUMN_NAME = ?
          LIMIT 1`,
         ['business_profiles', 'application_status']
       ) as any[];
@@ -201,7 +206,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
              verification_date = NOW(),
              updated_at = NOW()
          WHERE provider_id = ?`,
-        [applicationStatus, note.trim(), businessId]
+        [applicationStatus, structuredNotes, businessId]
       ) as unknown as mysql.ResultSetHeader;
     }
 

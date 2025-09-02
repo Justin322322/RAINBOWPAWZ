@@ -164,6 +164,8 @@ export async function POST(request: NextRequest) {
         try {
           const updateFields: string[] = [];
           const updateValues: any[] = [];
+
+          // Add document paths to update
           if (filePaths.business_permit_path) {
             updateFields.push('business_permit_path = ?');
             updateValues.push(filePaths.business_permit_path);
@@ -176,12 +178,24 @@ export async function POST(request: NextRequest) {
             updateFields.push('government_id_path = ?');
             updateValues.push(filePaths.government_id_path);
           }
+
+          // Update application status from 'declined' to 'pending' after document upload
+          // This indicates that additional documents have been provided for review
+          updateFields.push('application_status = ?');
+          updateValues.push('pending');
+
+          // Clear verification notes since documents have been uploaded
+          updateFields.push('verification_notes = ?');
+          updateValues.push('Documents uploaded for review');
+
           if (updateFields.length > 0) {
             updateValues.push(providerId);
             await query(
               `UPDATE service_providers SET ${updateFields.join(', ')}, updated_at = NOW() WHERE provider_id = ?`,
               updateValues
             );
+
+            console.log(`Updated service provider ${providerId} with ${Object.keys(filePaths).length} document(s) and changed status to pending`);
           }
         } catch (error) {
           console.error('Error updating service provider documents:', error);

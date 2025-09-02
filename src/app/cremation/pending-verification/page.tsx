@@ -53,6 +53,14 @@ export default function PendingVerificationPage() {
   const [uploading, setUploading] = useState(false);
   const [uploadComplete, setUploadComplete] = useState(false);
 
+  // Check if we have valid required documents
+  useEffect(() => {
+    if (documentsRequired && requiredDocuments.length === 0) {
+      // If documents are required but no specific documents are found, show error
+      setDocumentsReason('No specific documents were specified in the request. Please contact support for clarification.');
+    }
+  }, [documentsRequired, requiredDocuments]);
+
   // Check verification status
   useEffect(() => {
     const checkStatus = async () => {
@@ -123,23 +131,32 @@ export default function PendingVerificationPage() {
                 setDocumentsRequired(true);
                 setDocumentsReason(verificationNotes);
 
-                // Try to parse specific required documents from the notes
-                // Look for patterns like "Required documents: business_permit, bir_certificate"
+                // Try to parse specific required documents from the notes with stricter logic
+                // Look for structured format: "Required documents: business_permit, bir_certificate"
                 const requiredDocsMatch = normalized.match(/required documents?:?\s*([^.\n]*)/i);
                 if (requiredDocsMatch) {
                   const docsText = requiredDocsMatch[1].trim();
+                  // Split by comma and clean up each document name
                   const docs = docsText
-                    .split(/[,\s]+/)
+                    .split(',')
                     .map((d: string) => d.trim().toLowerCase().replace(/\s+/g, '_'))
-                    .filter((d: string) => knownDocCodes.includes(d));
-                  setRequiredDocuments(docs.length ? docs : knownDocCodes);
+                    .filter((d: string) => d.length > 0 && knownDocCodes.includes(d));
+                  setRequiredDocuments(docs);
                 } else {
-                  // Fallback: infer from mentions of known codes; otherwise show all
+                  // Stricter fallback: only show documents that are explicitly mentioned by their exact codes
                   const inferred = knownDocCodes.filter(
-                    (code) => normalized.includes(code) || normalized.includes(code.replace(/_/g, ' '))
+                    (code) => normalized.includes(code) && !normalized.includes(code.replace(/_/g, ' '))
                   );
-                  setRequiredDocuments(inferred.length ? inferred : knownDocCodes);
+                  setRequiredDocuments(inferred);
                 }
+
+                // Debug logging to help identify parsing issues
+                console.log('Document parsing debug:', {
+                  verificationNotes,
+                  normalized,
+                  requiredDocsMatch: requiredDocsMatch ? requiredDocsMatch[1] : null,
+                  parsedDocs: requiredDocsMatch ? requiredDocsMatch[1].split(',').map((d: string) => d.trim().toLowerCase().replace(/\s+/g, '_')).filter((d: string) => knownDocCodes.includes(d)) : []
+                });
               }
             }
           } catch (error) {
@@ -255,10 +272,11 @@ export default function PendingVerificationPage() {
         // Don't fail the upload if notification fails
       }
 
-      // Show success message and reload after delay
+      // Show success message and redirect to dashboard after delay
       setTimeout(() => {
-        window.location.reload();
-      }, 2000);
+        // Redirect to dashboard instead of just reloading
+        window.location.href = '/cremation/dashboard';
+      }, 3000);
 
     } catch (error) {
       console.error('Upload error:', error);
@@ -287,6 +305,27 @@ export default function PendingVerificationPage() {
 
         {loading ? (
           <LoadingSpinner className="py-8" />
+        ) : uploadComplete ? (
+          <div className="mb-6 p-4 bg-green-50 rounded-lg border border-green-200">
+            <div className="flex items-center justify-center mb-4">
+              <CheckCircleIcon className="h-10 w-10 text-green-500" />
+            </div>
+            <h3 className="text-lg font-medium text-green-800 mb-2 text-center">
+              Documents Submitted Successfully!
+            </h3>
+            <p className="text-green-700 text-center mb-4">
+              Your documents have been uploaded and your application status has been updated to "Under Review".
+              You will be redirected to your dashboard shortly.
+            </p>
+            <div className="w-full bg-gray-200 rounded-full h-2 mb-4">
+              <motion.div
+                className="bg-green-500 h-2 rounded-full"
+                initial={{ width: 0 }}
+                animate={{ width: "100%" }}
+                transition={{ duration: 2.5 }}
+              />
+            </div>
+          </div>
         ) : (
           <>
             <div className="mb-6 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
@@ -320,9 +359,18 @@ export default function PendingVerificationPage() {
                   </div>
 
                   <p className="text-orange-700 mb-4 text-center">
-                    Our administrators have requested additional documents for your verification.
-                    Please upload the required documents below.
+                    Our administrators have requested specific documents for your verification.
+                    Please upload only the documents listed below.
                   </p>
+
+                  {requiredDocuments.length === 0 && (
+                    <div className="mb-4 p-3 bg-red-50 rounded border border-red-300">
+                      <p className="text-sm text-red-800">
+                        <strong>Error:</strong> No specific documents were specified in the request.
+                        Please contact support for clarification on what documents are required.
+                      </p>
+                    </div>
+                  )}
 
                   {documentsReason && (
                     <div className="mb-4 p-3 bg-white rounded border border-orange-300">
@@ -334,66 +382,88 @@ export default function PendingVerificationPage() {
 
                   {/* Document Upload Form */}
                   <div className="space-y-4">
-                    {requiredDocuments.map(docType => {
-                      const docInfo = documentTypeMap[docType];
-                      if (!docInfo) return null;
+                    {requiredDocuments.length > 0 ? (
+                      requiredDocuments.map(docType => {
+                        const docInfo = documentTypeMap[docType];
+                        if (!docInfo) return null;
 
-                      return (
-                        <div key={docType} className="border-2 border-dashed border-gray-300 rounded-lg p-4 hover:border-orange-400 transition-colors">
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            {docInfo.label}
-                            <span className="block text-xs text-gray-500 font-normal">
+                        return (
+                          <div key={docType} className="border-2 border-dashed border-gray-300 rounded-lg p-4 hover:border-orange-400 transition-colors">
+                            <div className="flex items-center mb-2">
+                              <div className="w-2 h-2 bg-orange-500 rounded-full mr-2"></div>
+                              <label className="text-sm font-medium text-gray-700">
+                                {docInfo.label}
+                              </label>
+                            </div>
+                            <p className="text-xs text-gray-500 mb-3">
                               {docInfo.description}
-                            </span>
-                          </label>
-                          <input
-                            type="file"
-                            accept=".pdf,.jpg,.jpeg,.png"
-                            onChange={(e) => handleFileChange(docInfo.apiField, e.target.files?.[0] || null)}
-                            className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100"
-                            disabled={uploading}
-                          />
-                          {uploadingFiles[docInfo.apiField] && (
-                            <p className="text-xs text-green-600 mt-1">
-                              ✓ {uploadingFiles[docInfo.apiField]?.name}
                             </p>
-                          )}
-                        </div>
-                      );
-                    })}
+                            <input
+                              type="file"
+                              accept=".pdf,.jpg,.jpeg,.png"
+                              onChange={(e) => handleFileChange(docInfo.apiField, e.target.files?.[0] || null)}
+                              className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100"
+                              disabled={uploading}
+                            />
+                            {uploadingFiles[docInfo.apiField] && (
+                              <p className="text-xs text-green-600 mt-1">
+                                ✓ {uploadingFiles[docInfo.apiField]?.name}
+                              </p>
+                            )}
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <div className="text-center py-8">
+                        <DocumentIcon className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                        <p className="text-sm text-gray-500">
+                          No specific documents have been requested yet.
+                        </p>
+                        <p className="text-xs text-gray-400 mt-1">
+                          Please contact support if you believe this is an error.
+                        </p>
+                      </div>
+                    )}
 
                     {/* Upload Button */}
-                    <button
-                      onClick={handleUpload}
-                      disabled={uploading || !requiredDocuments.every(docType => {
-                        const docInfo = documentTypeMap[docType];
-                        return docInfo && uploadingFiles[docInfo.apiField] !== null;
-                      })}
-                      className="w-full flex items-center justify-center px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-                    >
-                      {uploading ? (
-                        <>
-                          <motion.div
-                            animate={{ rotate: 360 }}
-                            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                            className="mr-2"
-                          >
-                            <CloudArrowUpIcon className="h-5 w-5" />
-                          </motion.div>
-                          Uploading... {uploadProgress}%
-                        </>
-                      ) : uploadComplete ? (
-                        <>
-                          <CheckCircleIcon className="h-5 w-5 mr-2" />
-                          Documents Uploaded Successfully!
-                        </>
-                      ) : (
-                        <>
-                          <CloudArrowUpIcon className="h-5 w-5 mr-2" />
-                          Upload Documents
-                        </>
-                      )}
-                    </button>
+                    {requiredDocuments.length > 0 && (
+                      <div className="mt-4">
+                        <button
+                          onClick={handleUpload}
+                          disabled={uploading || requiredDocuments.every(docType => {
+                            const docInfo = documentTypeMap[docType];
+                            return !docInfo || uploadingFiles[docInfo.apiField] === null;
+                          })}
+                          className="w-full flex items-center justify-center px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                        >
+                          {uploading ? (
+                            <>
+                              <motion.div
+                                animate={{ rotate: 360 }}
+                                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                                className="mr-2"
+                              >
+                                <CloudArrowUpIcon className="h-5 w-5" />
+                              </motion.div>
+                              Uploading... {uploadProgress}%
+                            </>
+                          ) : uploadComplete ? (
+                            <>
+                              <CheckCircleIcon className="h-5 w-5 mr-2" />
+                              Documents Submitted Successfully!
+                            </>
+                          ) : (
+                            <>
+                              <CloudArrowUpIcon className="h-5 w-5 mr-2" />
+                              Upload Required Documents
+                            </>
+                          )}
+                        </button>
+                        <p className="text-xs text-gray-500 text-center mt-2">
+                          Please upload at least one of the required documents above.
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </motion.div>
               )}
