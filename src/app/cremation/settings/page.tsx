@@ -437,7 +437,7 @@ function CremationSettingsPage({ userData }: CremationSettingsProps) {
                 className="hidden"
               />
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 gap-6">
                 {/* Upload Section - First on both small and large screens */}
                 <div className="space-y-4">
                   <div className="flex items-center space-x-2">

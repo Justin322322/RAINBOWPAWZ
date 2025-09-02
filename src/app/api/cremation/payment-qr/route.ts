@@ -10,6 +10,19 @@ async function ensurePaymentQrTable(): Promise<void> {
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
   `);
+  // Ensure qr_path can hold larger base64 data (auto-migrate to MEDIUMTEXT if needed)
+  const colInfo = await query(
+    `SELECT COLUMN_TYPE FROM INFORMATION_SCHEMA.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'provider_payment_qr' AND COLUMN_NAME = 'qr_path'`
+  ) as any[];
+  const columnType = (colInfo?.[0]?.COLUMN_TYPE || '').toUpperCase();
+  if (columnType && !columnType.includes('MEDIUMTEXT') && !columnType.includes('LONGTEXT')) {
+    try {
+      await query(`ALTER TABLE provider_payment_qr MODIFY COLUMN qr_path MEDIUMTEXT NULL`);
+    } catch {
+      // best-effort; ignore if no permission
+    }
+  }
 }
 
 export async function GET(request: NextRequest) {
@@ -127,8 +140,9 @@ export async function POST(request: NextRequest) {
       qrPath: dataUrl,
       message: 'Payment QR code uploaded successfully'
     });
-  } catch {
-    return NextResponse.json({ error: 'Failed to upload payment QR' }, { status: 500 });
+  } catch (e: any) {
+    console.error('[payment-qr] Upload failed:', e?.message || e);
+    return NextResponse.json({ error: 'Failed to upload payment QR', details: e?.message }, { status: 500 });
   }
 }
 
