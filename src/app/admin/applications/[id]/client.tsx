@@ -346,7 +346,7 @@ function ApplicationDetailContent({ id }: ApplicationDetailContentProps) {
   };
 
   // Function to handle document decline
-  const handleDeclineDocument = async (note: string, requestDocuments: boolean): Promise<void> => {
+  const handleDeclineDocument = async (note: string, requestDocuments: boolean, requiredDocuments?: string[]): Promise<void> => {
     try {
       setIsProcessing(true);
 
@@ -358,6 +358,7 @@ function ApplicationDetailContent({ id }: ApplicationDetailContentProps) {
         body: JSON.stringify({
           note,
           requestDocuments,
+          requiredDocuments: requiredDocuments || [],
         }),
       });
 

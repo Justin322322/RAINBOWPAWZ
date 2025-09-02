@@ -132,6 +132,20 @@ const globalForMysql = globalThis as unknown as GlobalWithMysql;
 let _pool: mysql.Pool;
 
 function initPool(): mysql.Pool {
+  // Skip database initialization during build time
+  if (process.env.NEXT_PHASE === 'phase-production-build') {
+    console.log('Skipping database connection during build time');
+    // Return a dummy pool that will fail gracefully during build
+    return mysql.createPool({
+      host: 'localhost',
+      user: 'dummy',
+      password: 'dummy',
+      database: 'dummy',
+      port: 3306,
+      connectionLimit: 1,
+    });
+  }
+
   // Always try to use DATABASE_URL first if it's available and valid
   const databaseUrl = process.env.DATABASE_URL || process.env.MYSQL_URL;
   if (databaseUrl &&
@@ -147,6 +161,9 @@ function initPool(): mysql.Pool {
 
   // Production: require a valid DATABASE_URL and never fall back to localhost
   if (process.env.NODE_ENV === "production") {
+    if (!process.env.DATABASE_URL && !process.env.MYSQL_URL) {
+      throw new Error("DATABASE_URL is required in production and must be valid");
+    }
     const cloudPool = tryCreatePoolFromDatabaseUrl();
     if (!cloudPool) {
       throw new Error("DATABASE_URL is required in production and must be valid");

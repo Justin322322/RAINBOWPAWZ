@@ -83,7 +83,10 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
     email: '',
     sex: '',
     businessName: '',
-    businessAddress: '',
+    businessStreetAddress: '',
+    businessCity: '',
+    businessProvince: '',
+    businessPostalCode: '',
     businessPhone: '',
     businessEmail: '',
     businessDescription: '',
@@ -159,7 +162,9 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
     if (!formData.lastName.trim()) missingFields.push('Last Name');
     if (!formData.email.trim()) missingFields.push('Email Address');
     if (!formData.businessName.trim()) missingFields.push('Business Name');
-    if (!formData.businessAddress.trim()) missingFields.push('Business Address');
+    if (!formData.businessStreetAddress.trim()) missingFields.push('Business Street Address');
+    if (!formData.businessCity.trim()) missingFields.push('Business City');
+    if (!formData.businessProvince.trim()) missingFields.push('Business Province');
     if (!formData.businessPhone.trim()) missingFields.push('Business Phone');
     if (!formData.businessEmail.trim()) missingFields.push('Business Email');
     if (!formData.businessEntityType) missingFields.push('Business Entity Type');
@@ -284,6 +289,9 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
         }
       }
 
+      // Combine address fields into single address string
+      const businessAddress = `${formData.businessStreetAddress}, ${formData.businessCity}, ${formData.businessProvince}${formData.businessPostalCode ? ', ' + formData.businessPostalCode : ''}, Philippines`;
+
       // Now proceed with registration including document URLs
       const textData = {
         firstName: formData.firstName,
@@ -295,7 +303,7 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
         businessType: 'cremation',
         businessEntityType: formData.businessEntityType,
         businessPhone: formData.businessPhone,
-        businessAddress: formData.businessAddress,
+        businessAddress: businessAddress,
         businessHours: formData.businessHours || null,
         serviceDescription: formData.businessDescription || null,
         account_type: 'business' as const,
@@ -405,7 +413,50 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
                 <Input label="Business Hours" id="businessHours" name="businessHours" value={formData.businessHours} onChange={handleChange} placeholder="e.g., Mon-Fri, 9am-5pm" size="lg" />
               </div>
               <div className="mt-6">
-                <Input label="Business Address" id="businessAddress" name="businessAddress" value={formData.businessAddress} onChange={handleChange} placeholder="123 Business St, Balanga City" required size="lg" />
+                <h4 className="text-sm font-medium text-gray-700 mb-4">Business Address</h4>
+                <div className="space-y-4">
+                  <Input
+                    label="Street Address"
+                    id="businessStreetAddress"
+                    name="businessStreetAddress"
+                    value={formData.businessStreetAddress}
+                    onChange={handleChange}
+                    placeholder="123 Business Street"
+                    required
+                    size="lg"
+                  />
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <Input
+                      label="City/Municipality"
+                      id="businessCity"
+                      name="businessCity"
+                      value={formData.businessCity}
+                      onChange={handleChange}
+                      placeholder="Balanga City"
+                      required
+                      size="lg"
+                    />
+                    <Input
+                      label="Province"
+                      id="businessProvince"
+                      name="businessProvince"
+                      value={formData.businessProvince}
+                      onChange={handleChange}
+                      placeholder="Bataan"
+                      required
+                      size="lg"
+                    />
+                    <Input
+                      label="Postal Code"
+                      id="businessPostalCode"
+                      name="businessPostalCode"
+                      value={formData.businessPostalCode}
+                      onChange={handleChange}
+                      placeholder="2100"
+                      size="lg"
+                    />
+                  </div>
+                </div>
               </div>
               <div className="mt-6">
                 <SelectInput

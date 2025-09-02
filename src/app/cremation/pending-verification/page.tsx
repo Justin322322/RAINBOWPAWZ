@@ -4,10 +4,57 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { LoadingSpinner } from '@/app/cremation/components/LoadingComponents';
+import { motion, AnimatePresence } from 'framer-motion';
+import { DocumentIcon, CloudArrowUpIcon, CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/outline';
 
 export default function PendingVerificationPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
+  const [serviceProvider, setServiceProvider] = useState<any>(null);
+  const [documentsRequired, setDocumentsRequired] = useState(false);
+  const [documentsReason, setDocumentsReason] = useState('');
+  const [requiredDocuments, setRequiredDocuments] = useState<string[]>([]);
+
+  // Document upload states
+  const [uploadingFiles, setUploadingFiles] = useState({
+    businessPermit: null as File | null,
+    birCertificate: null as File | null,
+    governmentId: null as File | null,
+    proofOfAddress: null as File | null,
+    additionalPhotos: null as File | null,
+  });
+
+  // Document type mapping
+  const documentTypeMap: Record<string, { label: string; description: string; apiField: keyof typeof uploadingFiles }> = {
+    business_permit: {
+      label: 'Business Permit',
+      description: 'Official business registration document',
+      apiField: 'businessPermit'
+    },
+    bir_certificate: {
+      label: 'BIR Certificate',
+      description: 'Bureau of Internal Revenue certificate',
+      apiField: 'birCertificate'
+    },
+    government_id: {
+      label: 'Government ID',
+      description: 'Valid government-issued ID of owner',
+      apiField: 'governmentId'
+    },
+    proof_of_address: {
+      label: 'Proof of Address',
+      description: 'Utility bill or bank statement showing business address',
+      apiField: 'proofOfAddress'
+    },
+    additional_photos: {
+      label: 'Additional Photos',
+      description: 'Photos of business premises or facilities',
+      apiField: 'additionalPhotos'
+    }
+  };
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploading, setUploading] = useState(false);
+  const [uploadComplete, setUploadComplete] = useState(false);
 
   // Check verification status
   useEffect(() => {
@@ -42,12 +89,61 @@ export default function PendingVerificationPage() {
         }
 
         const serviceProvider = result.serviceProvider;
+        setServiceProvider(serviceProvider);
 
         // If no service provider data exists, stay on pending page
         if (!serviceProvider) {
           setLoading(false);
           return;
         }
+
+        // Check if documents are required (based on verification_notes or application_status)
+        const checkDocumentsRequired = async () => {
+          try {
+            // Fetch detailed service provider data including verification notes
+            const detailResponse = await fetch(`/api/businesses/applications/${serviceProvider.provider_id}`, {
+              credentials: 'include',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+            });
+
+            if (detailResponse.ok) {
+              const detailResult = await detailResponse.json();
+              const verificationNotes = detailResult.verificationNotes || '';
+
+              // Check if documents are required based on notes or status
+              const requiresDocuments = verificationNotes.toLowerCase().includes('documents') ||
+                                       verificationNotes.toLowerCase().includes('additional') ||
+                                       verificationNotes.toLowerCase().includes('upload') ||
+                                       verificationNotes.toLowerCase().includes('required');
+
+              if (requiresDocuments) {
+                setDocumentsRequired(true);
+                setDocumentsReason(verificationNotes);
+
+                // Try to parse specific required documents from the notes
+                // Look for patterns like "Required documents: business_permit, bir_certificate"
+                const requiredDocsMatch = verificationNotes.match(/required documents?:?\s*([^.\n]*)/i);
+                if (requiredDocsMatch) {
+                  const docsText = requiredDocsMatch[1].trim();
+                  // Split by comma and clean up
+                  const docs: string[] = docsText.split(',')
+                    .map((doc: string) => doc.trim().toLowerCase().replace(/\s+/g, '_'))
+                    .filter((doc: string) => doc.length > 0);
+                  setRequiredDocuments(docs);
+                } else {
+                  // Fallback to showing all documents if we can't parse specific ones
+                  setRequiredDocuments(['business_permit', 'bir_certificate', 'government_id']);
+                }
+              }
+            }
+          } catch (error) {
+            console.error('Error checking document requirements:', error);
+          }
+        };
+
+        await checkDocumentsRequired();
 
         // Check application_status
         const applicationStatus = serviceProvider.application_status ?
@@ -76,6 +172,105 @@ export default function PendingVerificationPage() {
     checkStatus();
   }, [router]);
 
+  // File handling functions
+  const handleFileChange = (documentType: keyof typeof uploadingFiles, file: File | null) => {
+    setUploadingFiles(prev => ({
+      ...prev,
+      [documentType]: file
+    }));
+  };
+
+  const handleUpload = async () => {
+    const files = Object.values(uploadingFiles).filter(file => file !== null);
+    if (files.length === 0) {
+      alert('Please select at least one document to upload.');
+      return;
+    }
+
+    setUploading(true);
+    setUploadProgress(0);
+
+    try {
+      const formData = new FormData();
+
+      // Add files to form data based on required documents
+      requiredDocuments.forEach(docType => {
+        const docInfo = documentTypeMap[docType];
+        if (docInfo) {
+          const file = uploadingFiles[docInfo.apiField];
+          if (file) {
+            // Map to API field names
+            const apiFieldName = docType === 'business_permit' ? 'businessPermit' :
+                               docType === 'bir_certificate' ? 'birCertificate' :
+                               docType === 'government_id' ? 'governmentId' :
+                               docType === 'proof_of_address' ? 'proofOfAddress' :
+                               docType === 'additional_photos' ? 'additionalPhotos' : docType;
+            formData.append(apiFieldName, file);
+          }
+        }
+      });
+
+      // Add service provider ID if available
+      if (serviceProvider?.provider_id) {
+        formData.append('serviceProviderId', serviceProvider.provider_id.toString());
+      }
+
+      const response = await fetch('/api/businesses/upload-documents', {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Upload failed');
+      }
+
+      const result = await response.json();
+      setUploadComplete(true);
+
+      // Create notification for admin about document upload
+      try {
+        const notificationResponse = await fetch('/api/notifications/system', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+          body: JSON.stringify({
+            title: 'Business Documents Uploaded',
+            message: `${serviceProvider?.name || 'A business'} has uploaded additional documents for verification review.`,
+            type: 'info',
+            targetUserType: 'admin',
+            relatedEntityType: 'business_application',
+            relatedEntityId: serviceProvider?.provider_id,
+            actionRequired: true,
+            actionUrl: `/admin/applications/${serviceProvider?.provider_id}`,
+          }),
+        });
+
+        if (notificationResponse.ok) {
+          console.log('Admin notification created for document upload');
+        }
+      } catch (notificationError) {
+        console.error('Failed to create admin notification:', notificationError);
+        // Don't fail the upload if notification fails
+      }
+
+      // Show success message and reload after delay
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
+
+    } catch (error) {
+      console.error('Upload error:', error);
+      alert(`Upload failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setUploading(false);
+      setUploadProgress(0);
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-4">
       <div className="max-w-md w-full bg-white rounded-xl shadow-md overflow-hidden text-center">
@@ -95,20 +290,117 @@ export default function PendingVerificationPage() {
         {loading ? (
           <LoadingSpinner className="py-8" />
         ) : (
-          <div className="mb-6 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
-            <div className="flex items-center justify-center mb-4">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
+          <>
+            <div className="mb-6 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+              <div className="flex items-center justify-center mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+
+              <p className="text-gray-700 mb-2">
+                Your business account is currently under review by our administrators.
+              </p>
+              <p className="text-gray-700">
+                You will receive an email notification once your account has been verified.
+              </p>
             </div>
 
-            <p className="text-gray-700 mb-2">
-              Your business account is currently under review by our administrators.
-            </p>
-            <p className="text-gray-700">
-              You will receive an email notification once your account has been verified.
-            </p>
-          </div>
+            {/* Document Upload Section */}
+            <AnimatePresence>
+              {documentsRequired && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className="mb-6 p-4 bg-orange-50 rounded-lg border border-orange-200"
+                >
+                  <div className="flex items-center justify-center mb-4">
+                    <DocumentIcon className="h-8 w-8 text-orange-500 mr-2" />
+                    <h3 className="text-lg font-medium text-orange-800">Additional Documents Required</h3>
+                  </div>
+
+                  <p className="text-orange-700 mb-4 text-center">
+                    Our administrators have requested additional documents for your verification.
+                    Please upload the required documents below.
+                  </p>
+
+                  {documentsReason && (
+                    <div className="mb-4 p-3 bg-white rounded border border-orange-300">
+                      <p className="text-sm text-orange-800">
+                        <strong>Reason:</strong> {documentsReason}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Document Upload Form */}
+                  <div className="space-y-4">
+                    {requiredDocuments.map(docType => {
+                      const docInfo = documentTypeMap[docType];
+                      if (!docInfo) return null;
+
+                      return (
+                        <div key={docType} className="border-2 border-dashed border-gray-300 rounded-lg p-4 hover:border-orange-400 transition-colors">
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            {docInfo.label}
+                            <span className="block text-xs text-gray-500 font-normal">
+                              {docInfo.description}
+                            </span>
+                          </label>
+                          <input
+                            type="file"
+                            accept=".pdf,.jpg,.jpeg,.png"
+                            onChange={(e) => handleFileChange(docInfo.apiField, e.target.files?.[0] || null)}
+                            className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100"
+                            disabled={uploading}
+                          />
+                          {uploadingFiles[docInfo.apiField] && (
+                            <p className="text-xs text-green-600 mt-1">
+                              ✓ {uploadingFiles[docInfo.apiField]?.name}
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })}
+
+                    {/* Upload Button */}
+                    <button
+                      onClick={handleUpload}
+                      disabled={uploading || !requiredDocuments.every(docType => {
+                        const docInfo = documentTypeMap[docType];
+                        return docInfo && uploadingFiles[docInfo.apiField] !== null;
+                      })}
+                      className="w-full flex items-center justify-center px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                    >
+                      {uploading ? (
+                        <>
+                          <motion.div
+                            animate={{ rotate: 360 }}
+                            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                            className="mr-2"
+                          >
+                            <CloudArrowUpIcon className="h-5 w-5" />
+                          </motion.div>
+                          Uploading... {uploadProgress}%
+                        </>
+                      ) : uploadComplete ? (
+                        <>
+                          <CheckCircleIcon className="h-5 w-5 mr-2" />
+                          Documents Uploaded Successfully!
+                        </>
+                      ) : (
+                        <>
+                          <CloudArrowUpIcon className="h-5 w-5 mr-2" />
+                          Upload Documents
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </>
         )}
 
         <div className="mb-6">

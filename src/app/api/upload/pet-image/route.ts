@@ -20,9 +20,9 @@ export async function POST(request: NextRequest) {
     
     const { userId, accountType } = user;
 
-    // Only fur parent accounts can upload pet images
-    if (accountType !== 'user') {
-      console.log('Non-user access attempt:', accountType);
+    // Only fur parent and user accounts can upload pet images
+    if (accountType !== 'user' && accountType !== 'fur_parent' && accountType !== 'personal') {
+      console.log('Unauthorized access attempt:', accountType);
       return NextResponse.json({
         error: 'Only fur parent accounts can upload pet images'
       }, { status: 403 });
@@ -83,9 +83,9 @@ export async function POST(request: NextRequest) {
       console.log('File converted to base64, size:', base64Data.length);
 
       // If petId is provided, save in database
-      if (petId && !isNaN(petIdInt)) {
+      if (petId && !isNaN(petIdInt) && petIdInt > 0) {
         console.log('Saving image to database for pet:', petId);
-        
+
         // Check if pet belongs to this user
         console.log('Checking pet ownership...');
         const petResult = await query(
@@ -99,16 +99,25 @@ export async function POST(request: NextRequest) {
 
           // Update pet with image data
           const updateResult = await query(
-            'UPDATE pets SET profile_picture = ? WHERE pet_id = ?',
+            'UPDATE pets SET photo_path = ? WHERE pet_id = ?',
             [dataUrl, petIdInt]
           );
           console.log('Pet image updated in database:', updateResult);
+
+          // Verify the update was successful
+          if ((updateResult as any).affectedRows === 0) {
+            console.log('No rows updated, pet may not exist');
+            return NextResponse.json({
+              error: 'Failed to update pet image - pet not found'
+            }, { status: 404 });
+          }
 
           return NextResponse.json({
             success: true,
             filePath: `pet_${petIdInt}_${Date.now()}.${fileType.split('/')[1]}`,
             imageData: dataUrl,
             imagePath: dataUrl, // Include the actual image data for immediate use
+            petId: petIdInt,
             message: 'Pet image uploaded and stored in database'
           });
         } else {
@@ -118,13 +127,14 @@ export async function POST(request: NextRequest) {
           }, { status: 403 });
         }
       } else {
-        console.log('No valid pet ID provided, returning base64 data');
+        console.log('No valid pet ID provided, returning base64 data for temporary storage');
         return NextResponse.json({
           success: true,
           filePath: `temp_pet_${formUserId || userId}_${Date.now()}.${fileType.split('/')[1]}`,
           imageData: dataUrl,
           imagePath: dataUrl, // Also include imagePath for compatibility
-          message: 'Pet image converted to base64 (temporary storage)'
+          petId: null,
+          message: 'Pet image uploaded to temporary storage'
         });
       }
 

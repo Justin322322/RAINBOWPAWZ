@@ -2,12 +2,12 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { XMarkIcon, ArrowPathIcon, CheckIcon, XCircleIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon, ArrowPathIcon, CheckIcon, XCircleIcon, DocumentIcon } from '@heroicons/react/24/outline';
 
 interface DeclineModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onDecline: (reason: string, requestDocuments: boolean) => Promise<void>;
+  onDecline: (reason: string, requestDocuments: boolean, requiredDocuments?: string[]) => Promise<void>;
   title?: string;
   message?: string;
   declineText?: string;
@@ -26,9 +26,19 @@ const DeclineModal: React.FC<DeclineModalProps> = ({
 }) => {
   const [reason, setReason] = useState('');
   const [requestDocuments, setRequestDocuments] = useState(false);
+  const [requiredDocuments, setRequiredDocuments] = useState<string[]>([]);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+
+  // Available document types
+  const documentTypes = [
+    { id: 'business_permit', label: 'Business Permit', description: 'Official business registration document' },
+    { id: 'bir_certificate', label: 'BIR Certificate', description: 'Bureau of Internal Revenue certificate' },
+    { id: 'government_id', label: 'Government ID', description: 'Valid government-issued ID of owner' },
+    { id: 'proof_of_address', label: 'Proof of Address', description: 'Utility bill or bank statement' },
+    { id: 'additional_photos', label: 'Additional Photos', description: 'Photos of business premises/facilities' }
+  ];
 
   const handleSubmit = async () => {
     if (reason.trim().length < minLength) {
@@ -36,9 +46,15 @@ const DeclineModal: React.FC<DeclineModalProps> = ({
       return;
     }
 
+    // If requesting documents, ensure at least one document type is selected
+    if (requestDocuments && requiredDocuments.length === 0) {
+      setError('Please select at least one document type to request.');
+      return;
+    }
+
     setIsLoading(true);
     try {
-      await onDecline(reason, requestDocuments);
+      await onDecline(reason, requestDocuments, requestDocuments ? requiredDocuments : undefined);
       setIsSuccess(true);
 
       // Wait for success animation before closing
@@ -50,6 +66,7 @@ const DeclineModal: React.FC<DeclineModalProps> = ({
           setIsSuccess(false);
           setReason('');
           setRequestDocuments(false);
+          setRequiredDocuments([]);
         }, 300);
       }, 1500);
     } catch {
@@ -169,10 +186,60 @@ const DeclineModal: React.FC<DeclineModalProps> = ({
                           disabled={isLoading}
                         />
                         <label htmlFor="request-documents" className="ml-2 block text-sm text-gray-700">
-                          Request additional documents instead of rejecting
+                          Request specific documents instead of rejecting
                         </label>
                       </div>
                     </div>
+
+                    {/* Document Selection */}
+                    <AnimatePresence>
+                      {requestDocuments && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          transition={{ duration: 0.2 }}
+                          className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200"
+                        >
+                          <div className="flex items-center mb-3">
+                            <DocumentIcon className="h-5 w-5 text-blue-500 mr-2" />
+                            <h4 className="text-sm font-medium text-blue-800">Select Required Documents</h4>
+                          </div>
+
+                          <div className="space-y-3">
+                            {documentTypes.map((docType) => (
+                              <div key={docType.id} className="flex items-start">
+                                <input
+                                  id={`doc-${docType.id}`}
+                                  name={`doc-${docType.id}`}
+                                  type="checkbox"
+                                  checked={requiredDocuments.includes(docType.id)}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setRequiredDocuments(prev => [...prev, docType.id]);
+                                    } else {
+                                      setRequiredDocuments(prev => prev.filter(id => id !== docType.id));
+                                    }
+                                  }}
+                                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded mt-0.5"
+                                  disabled={isLoading}
+                                />
+                                <label htmlFor={`doc-${docType.id}`} className="ml-2 block">
+                                  <span className="text-sm font-medium text-gray-700">{docType.label}</span>
+                                  <span className="block text-xs text-gray-500">{docType.description}</span>
+                                </label>
+                              </div>
+                            ))}
+                          </div>
+
+                          {requiredDocuments.length === 0 && (
+                            <p className="text-xs text-blue-600 mt-2">
+                              Please select at least one document type to request.
+                            </p>
+                          )}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
 
                     <div className="mt-5 sm:mt-6 sm:grid sm:grid-cols-2 sm:gap-3">
                       <button

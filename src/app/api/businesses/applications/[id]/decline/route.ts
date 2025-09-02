@@ -24,7 +24,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
 
     // Get the decline note from request body
     const body = await request.json();
-    const { note, requestDocuments } = body;
+    const { note, requestDocuments, requiredDocuments } = body;
 
     if (!note || note.trim().length < 10) {
       return NextResponse.json(
@@ -149,7 +149,8 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
               businessName: business.business_name || business.name,
               contactName: `${business.first_name} ${business.last_name}`,
               status: 'documents_required',
-              notes: note.trim()
+              notes: note.trim(),
+              requiredDocuments: requiredDocuments || []
             }
           );
         } else {
@@ -178,14 +179,18 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       try {
         const { createBusinessNotification } = await import('@/utils/businessNotificationService');
         
+        const requiredDocsText = requiredDocuments && requiredDocuments.length > 0
+          ? `\n\nRequired documents: ${requiredDocuments.join(', ')}`
+          : '';
+
         await createBusinessNotification({
           userId: business.user_id,
-          title: requestDocuments ? 'Additional Documents Required' : 'Application Declined',
+          title: requestDocuments ? 'Specific Documents Required' : 'Application Declined',
           message: requestDocuments
-            ? `Your business application for ${business.business_name || business.name} requires additional documents. Please check your email for details and upload the required documents.`
+            ? `Your business application for ${business.business_name || business.name} requires specific documents. Please check your email for details and upload the required documents.${requiredDocsText}`
             : `Your business application for ${business.business_name || business.name} has been declined. Reason: ${note.trim()}`,
           type: requestDocuments ? 'warning' : 'error',
-          link: requestDocuments ? '/cremation/documents' : '/cremation/dashboard',
+          link: requestDocuments ? '/cremation/pending-verification' : '/cremation/dashboard',
           shouldSendEmail: false, // Email was already sent above
         });
       } catch (notificationError) {
@@ -200,13 +205,14 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       const tableName = useServiceProvidersTable ? 'service_providers' : 'business_profiles';
       await logAdminAction(
         adminId,
-        requestDocuments ? 'request_documents' : 'decline_business',
+        requestDocuments ? 'request_specific_documents' : 'decline_business',
         tableName,
         businessId,
         {
           businessName: business?.business_name || business?.name,
           notes: note.trim(),
-          requestDocuments: !!requestDocuments
+          requestDocuments: !!requestDocuments,
+          requiredDocuments: requiredDocuments || []
         },
         ipAddress as string
       );

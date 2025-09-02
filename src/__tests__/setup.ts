@@ -1,0 +1,108 @@
+import '@testing-library/jest-dom';
+import { beforeAll, vi } from 'vitest';
+
+// Mock Next.js router
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: vi.fn(),
+    replace: vi.fn(),
+    prefetch: vi.fn(),
+    back: vi.fn(),
+  }),
+  useSearchParams: () => new URLSearchParams(),
+  usePathname: () => '/',
+}));
+
+// Mock environment variables
+beforeAll(() => {
+  vi.stubEnv('NODE_ENV', 'test');
+  vi.stubEnv('NEXT_PUBLIC_APP_URL', 'http://localhost:3000');
+
+  // Mock database environment variables
+  vi.stubEnv('DB_HOST', 'localhost');
+  vi.stubEnv('DB_USER', 'test');
+  vi.stubEnv('DB_PASSWORD', 'test');
+  vi.stubEnv('DB_NAME', 'test_db');
+  vi.stubEnv('DB_PORT', '3306');
+
+  // Mock JWT secret
+  vi.stubEnv('JWT_SECRET', 'test-jwt-secret-for-testing');
+
+  // Mock email settings
+  vi.stubEnv('SMTP_USER', 'test@example.com');
+  vi.stubEnv('SMTP_PASS', 'test-password');
+});
+
+// Mock fetch globally
+global.fetch = vi.fn();
+
+// Mock File API
+global.File = class MockFile {
+  name: string;
+  size: number;
+  type: string;
+  lastModified: number;
+
+  constructor(bits: any[], filename: string, options: any = {}) {
+    this.name = filename;
+    this.size = bits.length;
+    this.type = options.type || '';
+    this.lastModified = Date.now();
+  }
+
+  arrayBuffer() {
+    return Promise.resolve(new ArrayBuffer(0));
+  }
+
+  text() {
+    return Promise.resolve('');
+  }
+} as any;
+
+// Mock FormData
+global.FormData = class MockFormData {
+  private data: Map<string, any> = new Map();
+
+  append(key: string, value: any) {
+    this.data.set(key, value);
+  }
+
+  get(key: string) {
+    return this.data.get(key) || null;
+  }
+
+  getAll(key: string) {
+    const value = this.data.get(key);
+    return value ? [value] : [];
+  }
+
+  has(key: string) {
+    return this.data.has(key);
+  }
+
+  delete(key: string) {
+    this.data.delete(key);
+  }
+
+  forEach(callback: (value: any, key: string) => void) {
+    this.data.forEach(callback);
+  }
+} as any;
+
+// Mock URL constructor
+global.URL = class MockURL {
+  constructor(url: string) {
+    this.href = url;
+    this.pathname = url.split('?')[0];
+    this.search = url.includes('?') ? '?' + url.split('?')[1] : '';
+    this.hostname = 'localhost';
+    this.protocol = 'http:';
+    this.port = '3000';
+  }
+  href: string;
+  pathname: string;
+  search: string;
+  hostname: string;
+  protocol: string;
+  port: string;
+} as any;

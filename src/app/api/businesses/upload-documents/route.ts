@@ -46,21 +46,25 @@ export async function POST(request: NextRequest) {
     const businessPermit: File | null = mode === 'form' ? (formData!.get('businessPermit') as File | null) : null;
     const birCertificate: File | null = mode === 'form' ? (formData!.get('birCertificate') as File | null) : null;
     const governmentId: File | null = mode === 'form' ? (formData!.get('governmentId') as File | null) : null;
+    const proofOfAddress: File | null = mode === 'form' ? (formData!.get('proofOfAddress') as File | null) : null;
+    const additionalPhotos: File | null = mode === 'form' ? (formData!.get('additionalPhotos') as File | null) : null;
     const providedUrls = mode === 'json' ? (jsonBody?.filePaths || {}) : {};
 
     // Extract service provider ID if provided (for registration flow)
     const providedServiceProviderId = mode === 'form' ? formData!.get('serviceProviderId') as string | null : jsonBody?.serviceProviderId || null;
 
     // Check if at least one file is provided
-    if (mode === 'form' && !businessPermit && !birCertificate && !governmentId && Object.keys(providedUrls).length === 0) {
+    if (mode === 'form' && !businessPermit && !birCertificate && !governmentId && !proofOfAddress && !additionalPhotos && Object.keys(providedUrls).length === 0) {
       return NextResponse.json({ error: 'At least one document must be uploaded' }, { status: 400 });
     }
 
     // Validate files
-    const filesToProcess: Array<{ file: File; type: 'businessPermit' | 'birCertificate' | 'governmentId' }> = [];
+    const filesToProcess: Array<{ file: File; type: 'businessPermit' | 'birCertificate' | 'governmentId' | 'proofOfAddress' | 'additionalPhotos' }> = [];
     if (businessPermit) filesToProcess.push({ file: businessPermit, type: 'businessPermit' });
     if (birCertificate) filesToProcess.push({ file: birCertificate, type: 'birCertificate' });
     if (governmentId) filesToProcess.push({ file: governmentId, type: 'governmentId' });
+    if (proofOfAddress) filesToProcess.push({ file: proofOfAddress, type: 'proofOfAddress' });
+    if (additionalPhotos) filesToProcess.push({ file: additionalPhotos, type: 'additionalPhotos' });
 
     // Check file sizes and types
     const allowedTypes = [
@@ -129,6 +133,8 @@ export async function POST(request: NextRequest) {
           if (type === 'businessPermit') filePaths.business_permit_path = url;
           if (type === 'birCertificate') filePaths.bir_certificate_path = url;
           if (type === 'governmentId') filePaths.government_id_path = url;
+          if (type === 'proofOfAddress') filePaths.proof_of_address_path = url;
+          if (type === 'additionalPhotos') filePaths.additional_photos_path = url;
         } else {
           // Fallback: base64 data URL
           const base64Data = Buffer.from(arrayBuffer).toString('base64');
@@ -136,6 +142,8 @@ export async function POST(request: NextRequest) {
           if (type === 'businessPermit') filePaths.business_permit_path = dataUrl;
           if (type === 'birCertificate') filePaths.bir_certificate_path = dataUrl;
           if (type === 'governmentId') filePaths.government_id_path = dataUrl;
+          if (type === 'proofOfAddress') filePaths.proof_of_address_path = dataUrl;
+          if (type === 'additionalPhotos') filePaths.additional_photos_path = dataUrl;
         }
       }
 
@@ -175,6 +183,14 @@ export async function POST(request: NextRequest) {
           if (filePaths.government_id_path) {
             updateFields.push('government_id_path = ?');
             updateValues.push(filePaths.government_id_path);
+          }
+          if (filePaths.proof_of_address_path) {
+            updateFields.push('proof_of_address_path = ?');
+            updateValues.push(filePaths.proof_of_address_path);
+          }
+          if (filePaths.additional_photos_path) {
+            updateFields.push('additional_photos_path = ?');
+            updateValues.push(filePaths.additional_photos_path);
           }
           if (updateFields.length > 0) {
             updateValues.push(providerId);

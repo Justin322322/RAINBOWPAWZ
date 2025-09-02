@@ -440,6 +440,7 @@ export const createBusinessVerificationEmail = (businessDetails: {
   contactName: string;
   status: 'approved' | 'rejected' | 'pending' | 'documents_required';
   notes?: string;
+  requiredDocuments?: string[];
 }) => {
   let subject = '';
   let statusContent = '';
@@ -483,20 +484,49 @@ export const createBusinessVerificationEmail = (businessDetails: {
       `;
       break;
     case 'documents_required':
-      subject = 'Documents Required for Business Verification - Rainbow Paws';
+      subject = 'Specific Documents Required for Business Verification - Rainbow Paws';
+
+      // Format required documents list
+      let documentsList = '';
+      if (businessDetails.requiredDocuments && businessDetails.requiredDocuments.length > 0) {
+        const documentLabels = {
+          'business_permit': 'Business Permit',
+          'bir_certificate': 'BIR Certificate',
+          'government_id': 'Government ID',
+          'proof_of_address': 'Proof of Address',
+          'additional_photos': 'Additional Photos'
+        };
+
+        documentsList = businessDetails.requiredDocuments.map(docType => {
+          const label = documentLabels[docType as keyof typeof documentLabels] || docType;
+          return `<li>${label}</li>`;
+        }).join('');
+      }
+
       statusContent = `
-        <h2>Documents Required</h2>
+        <h2>Specific Documents Required</h2>
         <p>Dear ${businessDetails.contactName},</p>
-        <p>To complete the verification process for <strong>${businessDetails.businessName}</strong>, we need additional documents from you.</p>
-        ${businessDetails.notes ? `
+        <p>To complete the verification process for <strong>${businessDetails.businessName}</strong>, we need you to upload specific documents.</p>
+
+        ${documentsList ? `
           <div class="info-box">
             <h3 style="margin-top: 0;">Required Documents</h3>
+            <ul style="margin: 10px 0; padding-left: 20px;">
+              ${documentsList}
+            </ul>
+          </div>
+        ` : ''}
+
+        ${businessDetails.notes ? `
+          <div class="info-box">
+            <h3 style="margin-top: 0;">Additional Notes</h3>
             <p>${businessDetails.notes}</p>
           </div>
         ` : ''}
-        <p>Please log in to your account and upload the required documents as soon as possible.</p>
+
+        <p>Please log in to your account and upload the required documents as soon as possible to complete your verification.</p>
         <div style="text-align: center;">
-          <a href="${getServerAppUrl()}/cremation/documents" class="button">Upload Documents</a>
+          <a href="${getServerAppUrl()}/cremation/pending-verification" class="button">Upload Documents</a>
         </div>
       `;
       break;

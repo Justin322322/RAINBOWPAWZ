@@ -471,6 +471,7 @@ export const sendBusinessVerificationEmail = async (
     contactName: string;
     status: 'approved' | 'rejected' | 'pending' | 'documents_required';
     notes?: string;
+    requiredDocuments?: string[];
   }
 ) => {
   // Import the email templates dynamically to avoid circular dependencies
