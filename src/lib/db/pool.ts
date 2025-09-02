@@ -132,24 +132,13 @@ const globalForMysql = globalThis as unknown as GlobalWithMysql;
 let _pool: mysql.Pool;
 
 function initPool(): mysql.Pool {
-// Lazy init to avoid build-time side effects; keep dev/serverless cache
-const cachedPool = process.env.NODE_ENV !== "production"
-  ? globalForMysql.__rainbowMysqlPool
-  : undefined;
-if (cachedPool) {
-  _pool = cachedPool;
-}
-
-export function getPool(): mysql.Pool {
-  if (!_pool) {
-    const p = initPool();
-    _pool = p;
-    if (process.env.NODE_ENV !== "production") {
-      globalForMysql.__rainbowMysqlPool = p;
-    }
+  // Lazy init to avoid build-time side effects; keep dev/serverless cache
+  const cachedPool = process.env.NODE_ENV !== "production"
+    ? globalForMysql.__rainbowMysqlPool
+    : undefined;
+  if (cachedPool) {
+    _pool = cachedPool;
   }
-  return _pool;
-}
 
   // Always try to use DATABASE_URL first if it's available and valid
   const databaseUrl = process.env.DATABASE_URL || process.env.MYSQL_URL;
@@ -193,14 +182,15 @@ export function getPool(): mysql.Pool {
   return mysql.createPool(localConfig);
 }
 
-// Initialize pool once, with dev/serverless global cache to avoid hot-reload churn
-const cachedPool = process.env.NODE_ENV !== "production" ? globalForMysql.__rainbowMysqlPool : undefined;
-_pool = cachedPool ?? initPool();
-if (process.env.NODE_ENV !== "production") {
-  globalForMysql.__rainbowMysqlPool = _pool;
-}
-
 export function getPool(): mysql.Pool {
+  if (!_pool) {
+    // Lazy initialization to avoid build-time database connections
+    const cachedPool = process.env.NODE_ENV !== "production" ? globalForMysql.__rainbowMysqlPool : undefined;
+    _pool = cachedPool ?? initPool();
+    if (process.env.NODE_ENV !== "production") {
+      globalForMysql.__rainbowMysqlPool = _pool;
+    }
+  }
   return _pool;
 }
 
@@ -217,7 +207,3 @@ export async function recreatePool(): Promise<void> {
     console.error("Failed to recreate MySQL pool:", reconnectError);
   }
 }
-
-
-
-

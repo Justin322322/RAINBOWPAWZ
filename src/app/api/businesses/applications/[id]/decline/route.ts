@@ -4,6 +4,92 @@ import { sendBusinessVerificationEmail, sendApplicationDeclineEmail } from '@/li
 import { logAdminAction, getAdminIdFromRequest } from '@/utils/adminUtils';
 import mysql from 'mysql2/promise';
 
+// Allowlist of permitted document IDs/names
+const ALLOWED_DOCUMENT_TYPES = new Set([
+  'business_permit',
+  'bir_certificate',
+  'government_id',
+  'mayors_permit',
+  'barangay_clearance',
+  'dti_certificate',
+  'sec_certificate',
+  'tax_clearance',
+  'police_clearance',
+  'nbi_clearance',
+  'fire_safety_certificate',
+  'sanitary_permit',
+  'environmental_clearance',
+  'locational_clearance',
+  'building_permit',
+  'occupancy_permit',
+  'zonal_clearance',
+  'water_bill',
+  'electricity_bill',
+  'telephone_bill'
+]);
+
+/**
+ * Validates and sanitizes the requiredDocuments array
+ * @param documents - Raw documents array from request
+ * @returns Sanitized array of valid document IDs, or null if validation fails
+ */
+function validateAndSanitizeRequiredDocuments(documents: any): string[] | null {
+  // Check if documents is provided and is an array
+  if (!documents || !Array.isArray(documents)) {
+    return null;
+  }
+
+  // Sanitize and validate each document
+  const sanitizedDocs: string[] = [];
+
+  for (const doc of documents) {
+    // Ensure each item is a string
+    if (typeof doc !== 'string') {
+      console.warn('Invalid document type in requiredDocuments:', typeof doc);
+      continue;
+    }
+
+    // Trim whitespace and convert to lowercase for consistency
+    const sanitizedDoc = doc.trim().toLowerCase();
+
+    // Skip empty strings
+    if (!sanitizedDoc) {
+      continue;
+    }
+
+    // Strip HTML and unsafe characters (basic sanitization)
+    const cleanDoc = sanitizedDoc
+      .replace(/<[^>]*>/g, '') // Remove HTML tags
+      .replace(/[<>'"&]/g, '') // Remove potentially dangerous characters
+      .trim();
+
+    // Skip if empty after sanitization
+    if (!cleanDoc) {
+      continue;
+    }
+
+    // Check against allowlist
+    if (!ALLOWED_DOCUMENT_TYPES.has(cleanDoc)) {
+      console.warn(`Document type not allowed: ${cleanDoc}`);
+      return null; // Reject entire request if any document is not allowed
+    }
+
+    sanitizedDocs.push(cleanDoc);
+  }
+
+  // Remove duplicates using Set
+  const uniqueDocs = [...new Set(sanitizedDocs)];
+
+  // Ensure final array is not empty
+  if (uniqueDocs.length === 0) {
+    console.warn('No valid documents provided after sanitization');
+    return null;
+  }
+
+  console.log('Validated and sanitized requiredDocuments:', uniqueDocs);
+  return uniqueDocs;
+}
+
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const { id } = params;
@@ -31,6 +117,22 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
         { message: 'Please provide a detailed reason for declining (minimum 10 characters)' },
         { status: 400 }
       );
+    }
+
+    // Validate and sanitize requiredDocuments if provided
+    let sanitizedRequiredDocuments: string[] | undefined;
+    if (requiredDocuments) {
+      const validationResult = validateAndSanitizeRequiredDocuments(requiredDocuments);
+      if (validationResult === null) {
+        return NextResponse.json(
+          {
+            message: 'Invalid required documents provided. Documents must be valid strings from the allowed list.',
+            allowedDocuments: Array.from(ALLOWED_DOCUMENT_TYPES)
+          },
+          { status: 400 }
+        );
+      }
+      sanitizedRequiredDocuments = validationResult;
     }
 
     // With the updated schema, we only have 'declined' as the status for declined applications
@@ -150,7 +252,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
               contactName: `${business.first_name} ${business.last_name}`,
               status: 'documents_required',
               notes: note.trim(),
-              requiredDocuments: requiredDocuments || []
+              requiredDocuments: sanitizedRequiredDocuments || []
             }
           );
         } else {
@@ -179,8 +281,8 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       try {
         const { createBusinessNotification } = await import('@/utils/businessNotificationService');
         
-        const requiredDocsText = requiredDocuments && requiredDocuments.length > 0
-          ? `\n\nRequired documents: ${requiredDocuments.join(', ')}`
+        const requiredDocsText = sanitizedRequiredDocuments && sanitizedRequiredDocuments.length > 0
+          ? `\n\nRequired documents: ${sanitizedRequiredDocuments.join(', ')}`
           : '';
 
         await createBusinessNotification({
@@ -212,7 +314,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
           businessName: business?.business_name || business?.name,
           notes: note.trim(),
           requestDocuments: !!requestDocuments,
-          requiredDocuments: requiredDocuments || []
+          requiredDocuments: sanitizedRequiredDocuments || []
         },
         ipAddress as string
       );

@@ -483,7 +483,7 @@ export const createBusinessVerificationEmail = (businessDetails: {
         <p>Thank you for your patience.</p>
       `;
       break;
-    case 'documents_required':
+    case 'documents_required': {
       subject = 'Specific Documents Required for Business Verification - Rainbow Paws';
 
       // Format required documents list
@@ -528,6 +528,7 @@ export const createBusinessVerificationEmail = (businessDetails: {
         </div>
       `;
       break;
+    }
   }
 
   return {

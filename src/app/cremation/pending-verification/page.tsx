@@ -7,6 +7,32 @@ import { LoadingSpinner } from '@/app/cremation/components/LoadingComponents';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DocumentIcon, CloudArrowUpIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 
+// Define the uploading files type
+type UploadingFiles = {
+  businessPermit: File | null;
+  birCertificate: File | null;
+  governmentId: File | null;
+};
+
+// Document type mapping - moved outside component to avoid useEffect dependency issues
+const documentTypeMap: Record<string, { label: string; description: string; apiField: keyof UploadingFiles }> = {
+  business_permit: {
+    label: 'Business Permit',
+    description: 'Official business registration document',
+    apiField: 'businessPermit'
+  },
+  bir_certificate: {
+    label: 'BIR Certificate',
+    description: 'Bureau of Internal Revenue certificate',
+    apiField: 'birCertificate'
+  },
+  government_id: {
+    label: 'Government ID',
+    description: 'Valid government-issued identification',
+    apiField: 'governmentId'
+  }
+};
+
 export default function PendingVerificationPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
@@ -16,30 +42,13 @@ export default function PendingVerificationPage() {
   const [requiredDocuments, setRequiredDocuments] = useState<string[]>([]);
 
   // Document upload states
-  const [uploadingFiles, setUploadingFiles] = useState({
-    businessPermit: null as File | null,
-    birCertificate: null as File | null,
-    governmentId: null as File | null,
+  const [uploadingFiles, setUploadingFiles] = useState<UploadingFiles>({
+    businessPermit: null,
+    birCertificate: null,
+    governmentId: null,
   });
 
-  // Document type mapping
-  const documentTypeMap: Record<string, { label: string; description: string; apiField: keyof typeof uploadingFiles }> = {
-    business_permit: {
-      label: 'Business Permit',
-      description: 'Official business registration document',
-      apiField: 'businessPermit'
-    },
-    bir_certificate: {
-      label: 'BIR Certificate',
-      description: 'Bureau of Internal Revenue certificate',
-      apiField: 'birCertificate'
-    },
-    government_id: {
-      label: 'Government ID',
-      description: 'Valid government-issued ID of owner',
-      apiField: 'governmentId'
-    }
-  };
+
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploading, setUploading] = useState(false);
   const [uploadComplete, setUploadComplete] = useState(false);
@@ -121,8 +130,8 @@ export default function PendingVerificationPage() {
                   const docsText = requiredDocsMatch[1].trim();
                   const docs = docsText
                     .split(/[,\s]+/)
-                    .map((d) => d.trim().toLowerCase().replace(/\s+/g, '_'))
-                    .filter((d) => knownDocCodes.includes(d));
+                    .map((d: string) => d.trim().toLowerCase().replace(/\s+/g, '_'))
+                    .filter((d: string) => knownDocCodes.includes(d));
                   setRequiredDocuments(docs.length ? docs : knownDocCodes);
                 } else {
                   // Fallback: infer from mentions of known codes; otherwise show all
