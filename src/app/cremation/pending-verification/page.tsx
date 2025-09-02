@@ -194,13 +194,7 @@ export default function PendingVerificationPage() {
         if (docInfo) {
           const file = uploadingFiles[docInfo.apiField];
           if (file) {
-            // Map to API field names
-            const apiFieldName = docType === 'business_permit' ? 'businessPermit' :
-                               docType === 'bir_certificate' ? 'birCertificate' :
-                               docType === 'government_id' ? 'governmentId' :
-                               docType === 'proof_of_address' ? 'proofOfAddress' :
-                               docType === 'additional_photos' ? 'additionalPhotos' : docType;
-            formData.append(apiFieldName, file);
+            formData.append(docInfo.apiField, file);
           }
         }
       });
