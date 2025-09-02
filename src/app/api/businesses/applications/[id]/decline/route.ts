@@ -167,6 +167,46 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     // SECURITY FIX: Check columns and update safely for each table type
     let updateResult;
     if (useServiceProvidersTable) {
+      // Best-effort: if requesting new docs, delete previous files and clear columns for those types
+      if (requestDocuments && sanitizedRequiredDocuments && sanitizedRequiredDocuments.length > 0) {
+        try {
+          const rows = await query(
+            `SELECT business_permit_path, bir_certificate_path, government_id_path FROM service_providers WHERE provider_id = ? LIMIT 1`,
+            [businessId]
+          ) as any[];
+          if (rows && rows.length > 0) {
+            const current = rows[0] || {};
+            const blobToken = process.env.BLOB_READ_WRITE_TOKEN;
+            let delFn: any = null;
+            if (typeof blobToken === 'string' && blobToken.length > 0) {
+              try {
+                const blob = await import('@vercel/blob');
+                delFn = (blob as any)?.del;
+              } catch {}
+            }
+
+            const maybeDelete = async (url?: string | null) => {
+              if (!url || typeof url !== 'string') return;
+              if (!delFn) return;
+              try { await delFn(url, { token: blobToken }); } catch {}
+            };
+
+            if (sanitizedRequiredDocuments.includes('business_permit')) await maybeDelete(current.business_permit_path);
+            if (sanitizedRequiredDocuments.includes('bir_certificate')) await maybeDelete(current.bir_certificate_path);
+            if (sanitizedRequiredDocuments.includes('government_id')) await maybeDelete(current.government_id_path);
+
+            const fieldsToNull: string[] = [];
+            if (sanitizedRequiredDocuments.includes('business_permit')) fieldsToNull.push('business_permit_path = NULL');
+            if (sanitizedRequiredDocuments.includes('bir_certificate')) fieldsToNull.push('bir_certificate_path = NULL');
+            if (sanitizedRequiredDocuments.includes('government_id')) fieldsToNull.push('government_id_path = NULL');
+            if (fieldsToNull.length > 0) {
+              await query(`UPDATE service_providers SET ${fieldsToNull.join(', ')}, updated_at = NOW() WHERE provider_id = ?`, [businessId]);
+            }
+          }
+        } catch (cleanupErr) {
+          console.warn('Failed to cleanup previous documents (service_providers):', cleanupErr);
+        }
+      }
       // Check if service_providers has the application_status column and fetch allowed enum values if present
       const columnsResult = await query(
         `SELECT COLUMN_TYPE FROM INFORMATION_SCHEMA.COLUMNS
@@ -206,6 +246,46 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
         [statusToSet, structuredNotes, businessId]
       ) as unknown as mysql.ResultSetHeader;
     } else {
+      // Best-effort: if requesting new docs, delete previous files and clear columns for those types
+      if (requestDocuments && sanitizedRequiredDocuments && sanitizedRequiredDocuments.length > 0) {
+        try {
+          const rows = await query(
+            `SELECT business_permit_path, bir_certificate_path, government_id_path FROM business_profiles WHERE id = ? LIMIT 1`,
+            [businessId]
+          ) as any[];
+          if (rows && rows.length > 0) {
+            const current = rows[0] || {};
+            const blobToken = process.env.BLOB_READ_WRITE_TOKEN;
+            let delFn: any = null;
+            if (typeof blobToken === 'string' && blobToken.length > 0) {
+              try {
+                const blob = await import('@vercel/blob');
+                delFn = (blob as any)?.del;
+              } catch {}
+            }
+
+            const maybeDelete = async (url?: string | null) => {
+              if (!url || typeof url !== 'string') return;
+              if (!delFn) return;
+              try { await delFn(url, { token: blobToken }); } catch {}
+            };
+
+            if (sanitizedRequiredDocuments.includes('business_permit')) await maybeDelete(current.business_permit_path);
+            if (sanitizedRequiredDocuments.includes('bir_certificate')) await maybeDelete(current.bir_certificate_path);
+            if (sanitizedRequiredDocuments.includes('government_id')) await maybeDelete(current.government_id_path);
+
+            const fieldsToNull: string[] = [];
+            if (sanitizedRequiredDocuments.includes('business_permit')) fieldsToNull.push('business_permit_path = NULL');
+            if (sanitizedRequiredDocuments.includes('bir_certificate')) fieldsToNull.push('bir_certificate_path = NULL');
+            if (sanitizedRequiredDocuments.includes('government_id')) fieldsToNull.push('government_id_path = NULL');
+            if (fieldsToNull.length > 0) {
+              await query(`UPDATE business_profiles SET ${fieldsToNull.join(', ')}, updated_at = NOW() WHERE id = ?`, [businessId]);
+            }
+          }
+        } catch (cleanupErr) {
+          console.warn('Failed to cleanup previous documents (business_profiles):', cleanupErr);
+        }
+      }
       // Check if business_profiles has the application_status column and fetch allowed enum values if present
       const columnsResult = await query(
         `SELECT COLUMN_TYPE FROM INFORMATION_SCHEMA.COLUMNS
