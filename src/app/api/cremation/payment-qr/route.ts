@@ -26,6 +26,25 @@ async function columnExists(tableName: string, columnName: string): Promise<bool
   }
 }
 
+async function ensureCompatibleStorage(): Promise<void> {
+  if (process.env.ALLOW_DDL === 'true') {
+    // Create provider_payment_qr table if missing so we have a durable store
+    if (!(await tableExists('provider_payment_qr'))) {
+      try {
+        await query(`
+          CREATE TABLE IF NOT EXISTS provider_payment_qr (
+            provider_id INT PRIMARY KEY,
+            qr_path MEDIUMTEXT NULL,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        `);
+      } catch {
+        // best-effort
+      }
+    }
+  }
+}
+
 export async function GET(request: NextRequest) {
   try {
     const url = new URL(request.url);
@@ -89,6 +108,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // If DDL is allowed, ensure a compatible storage exists
+    await ensureCompatibleStorage();
+
     const contentType = request.headers.get('content-type') || '';
     if (!contentType.includes('multipart/form-data')) {
       return NextResponse.json({ error: 'Invalid content type' }, { status: 400 });
@@ -134,8 +156,20 @@ export async function POST(request: NextRequest) {
     const base64Data = Buffer.from(arrayBuffer).toString('base64');
     const dataUrl = `data:${file.type};base64,${base64Data}`;
 
-    // Best-effort: write to provider_payment_qr only if table exists (avoid DDL in production)
-    if (await tableExists('provider_payment_qr')) {
+    const hasQrTable = await tableExists('provider_payment_qr');
+    const hasSpColumn = await columnExists('service_providers', 'payment_qr_path');
+
+    if (!hasQrTable && !hasSpColumn) {
+      // No place to save. Return a clear, actionable error.
+      return NextResponse.json({
+        error: 'No storage schema for payment QR',
+        code: 'MISSING_QR_STORAGE',
+        message: 'Neither provider_payment_qr table nor service_providers.payment_qr_path column exists. Enable ALLOW_DDL=true and redeploy to auto-create provider_payment_qr, or add the column/table via migration.'
+      }, { status: 409 });
+    }
+
+    // Best-effort: write to provider_payment_qr if available
+    if (hasQrTable) {
       try {
         const existing = await query(
           'SELECT provider_id FROM provider_payment_qr WHERE provider_id = ? LIMIT 1',
@@ -149,8 +183,8 @@ export async function POST(request: NextRequest) {
       } catch {}
     }
 
-    // Denormalize onto service_providers only if column exists
-    if (await columnExists('service_providers', 'payment_qr_path')) {
+    // Denormalize onto service_providers if column exists
+    if (hasSpColumn) {
       try {
         await query('UPDATE service_providers SET payment_qr_path = ? WHERE provider_id = ?', [dataUrl, providerId]);
       } catch (e: any) {
