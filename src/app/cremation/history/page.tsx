@@ -73,12 +73,8 @@ function CremationHistoryPage({ userData }: { userData: any }) {
       // Add minimum loading delay for better UX (same as admin)
       const minLoadingTime = new Promise(resolve => setTimeout(resolve, 600));
       
-      const providerId = userData?.business_id || userData?.provider_id || 999;
-      
-      // Build query parameters including filters
-      const queryParams = new URLSearchParams({
-        providerId: providerId.toString()
-      });
+      // Build query parameters including filters (provider scoped server-side)
+      const queryParams = new URLSearchParams();
       
       // Add period filter (maps dateFilter to API's expected 'period' parameter)
       if (dateFilter && dateFilter !== 'all') {
@@ -89,7 +85,8 @@ function CremationHistoryPage({ userData }: { userData: any }) {
         method: 'GET',
         headers: {
           'Cache-Control': 'no-cache'
-        }
+        },
+        credentials: 'include'
       });
 
       // Wait for both the minimum time and the data

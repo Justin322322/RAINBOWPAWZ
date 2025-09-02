@@ -135,4 +135,35 @@ export async function POST(request: NextRequest) {
   }
 }
 
+export async function GET(request: NextRequest) {
+  try {
+    const user = await verifySecureAuth(request);
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const url = new URL(request.url);
+    const bookingIdRaw = url.searchParams.get('bookingId');
+    if (!bookingIdRaw || isNaN(Number(bookingIdRaw))) {
+      return NextResponse.json({ error: 'Missing or invalid bookingId' }, { status: 400 });
+    }
+    const bookingId = Number(bookingIdRaw);
+
+    await ensureReceiptTable();
+
+    const rows = await query(
+      'SELECT booking_id, user_id, provider_id, receipt_path, status, notes, confirmed_by, confirmed_at, reject_reason, created_at, updated_at FROM payment_receipts WHERE booking_id = ? LIMIT 1',
+      [bookingId]
+    ) as any[];
+
+    if (!rows || rows.length === 0) {
+      return NextResponse.json({ exists: false });
+    }
+
+    return NextResponse.json({ exists: true, receipt: rows[0] });
+  } catch {
+    return NextResponse.json({ error: 'Failed to fetch receipt' }, { status: 500 });
+  }
+}
+
 

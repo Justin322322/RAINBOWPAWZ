@@ -940,10 +940,7 @@ function ProfilePage({ userData: initialUserData }: ProfilePageProps) {
                     </div>
 
                     <div className="space-y-2">
-                      <label className="block text-sm font-medium text-gray-700">
-                        Address
-        
-                      </label>
+                      <label className="block text-sm font-medium text-gray-700">Address</label>
                       <div className="relative">
                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                           <MapPinIcon className="h-5 w-5 text-gray-400" />
@@ -953,9 +950,7 @@ function ProfilePage({ userData: initialUserData }: ProfilePageProps) {
                           value={contactInfo.address}
                           onChange={(e) => setContactInfo(prev => ({ ...prev, address: e.target.value }))}
                           placeholder="Enter your complete address"
-                          className="block w-full rounded-lg border border-gray-300 shadow-sm bg-white
-                            focus:border-[var(--primary-green)] focus:ring-[var(--primary-green)] focus:ring-1
-                            pl-10 pr-32 py-2.5 transition-colors duration-200 text-gray-900"
+                          className="block w-full rounded-md border border-gray-300 bg-white text-gray-900 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary-green)] focus-visible:border-transparent pl-10 pr-32 py-2.5"
                         />
                         <button
                           type="button"

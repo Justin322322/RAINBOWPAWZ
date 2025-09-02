@@ -738,7 +738,7 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
                 >
                   <div className="p-6">
                     <div className="flex flex-col md:flex-row md:justify-between md:items-center">
-                      <div className="mb-4 md:mb-0">
+                      <div className="mb-4 md:mb-0 flex-1 min-w-0">
                         <div className="flex items-center">
                           <h3 className="text-xl font-semibold text-gray-900 mr-3">
                             {booking.provider_name && booking.provider_name !== 'Service Provider'
@@ -776,7 +776,7 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
                           </div>
                         </div>
                       </div>
-                      <div className="text-right">
+                      <div className="text-right md:ml-6 flex-shrink-0">
                         <p className="text-lg font-semibold text-[var(--primary-green)]">
                           ₱{(booking.total_amount || booking.price || booking.service_price || 0).toLocaleString()}
                         </p>

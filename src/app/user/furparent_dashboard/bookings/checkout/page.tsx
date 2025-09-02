@@ -705,6 +705,12 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
     // Mark the form as submitted to show all validation errors
     setValidationErrors(prev => ({ ...prev, formSubmitted: true }));
 
+    // Require receipt for manual QR transfer before proceeding
+    if (paymentMethod === 'qr_manual' && !receiptFile) {
+      showToast('Please upload your payment receipt before proceeding.', 'error');
+      return;
+    }
+
     // Validate all required fields using our validation functions
     const isPetNameValid = validateField('petName', petName, 'Pet name');
     const isPetTypeValid = validateField('petType', petType, 'Pet type');
@@ -1720,10 +1726,12 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                   <div className="mt-8">
                     <button
                       type="submit"
-                      disabled={isProcessing}
+                      disabled={isProcessing || (paymentMethod === 'qr_manual' && !receiptFile)}
                       className={`w-full py-3 px-4 ${
                         Object.keys(validationErrors).filter(key => key !== 'formSubmitted').length > 0 && validationErrors.formSubmitted
                           ? 'bg-gray-400 hover:bg-gray-500'
+                          : (paymentMethod === 'qr_manual' && !receiptFile)
+                          ? 'bg-gray-400'
                           : 'bg-[var(--primary-green)] hover:bg-[var(--primary-green-hover)]'
                       } text-white font-medium rounded-md transition-colors disabled:opacity-70 flex items-center justify-center`}
                       onClick={(e) => {
@@ -1739,6 +1747,10 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                             firstErrorField.scrollIntoView({ behavior: 'smooth', block: 'center' });
                           }
                         }
+                        if (paymentMethod === 'qr_manual' && !receiptFile) {
+                          e.preventDefault();
+                          showToast('Please upload your payment receipt to continue.', 'warning');
+                        }
                       }}
                     >
                       {isProcessing ? (
@@ -1750,6 +1762,11 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                         <>
                           <ExclamationCircleIcon className="h-5 w-5 mr-2" />
                           Fix Required Fields
+                        </>
+                      ) : (paymentMethod === 'qr_manual' && !receiptFile) ? (
+                        <>
+                          <ExclamationCircleIcon className="h-5 w-5 mr-2" />
+                          Upload Receipt to Continue
                         </>
                       ) : (
                         <>

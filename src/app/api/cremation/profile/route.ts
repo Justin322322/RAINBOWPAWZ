@@ -315,32 +315,33 @@ export async function PATCH(request: NextRequest) {
 
       console.log('🔍 DEBUG: Address received:', address);
 
-      // Format phone number if provided
-      let formattedPhone = null;
+      // Format phone number if provided. If invalid, skip updating phone instead of blocking address/email updates.
+      let formattedPhone: string | null | undefined = undefined; // undefined => do not touch phone
       if (phone && phone.trim()) {
         const formatResult = testPhoneNumberFormatting(phone.trim());
         if (formatResult.success && formatResult.formatted) {
           formattedPhone = formatResult.formatted;
         } else {
-          return NextResponse.json({
-            error: 'Invalid phone number format. Please enter a valid Philippine mobile number.'
-          }, { status: 400 });
+          // Keep formattedPhone as undefined to preserve existing phone value
+          formattedPhone = undefined;
         }
       }
 
       console.log('🔍 DEBUG: Updating user table with address:', address);
       // Update user info (including email and address)
-      await query('UPDATE users SET first_name = ?, last_name = ?, email = ?, phone = ?, address = ?, updated_at = NOW() WHERE user_id = ?',
-        [firstName, lastName, email, formattedPhone, address || null, user.userId]);
+      await query(
+        'UPDATE users SET first_name = ?, last_name = ?, email = ?, phone = COALESCE(?, phone), address = ?, updated_at = NOW() WHERE user_id = ?',
+        [firstName, lastName, email, formattedPhone ?? null, address || null, user.userId]
+      );
       console.log('✅ DEBUG: User table updated');
 
       console.log('🔍 DEBUG: Updating service_providers table with address:', address);
       // Update service provider contact info
       await query(`
         UPDATE service_providers
-        SET contact_first_name = ?, contact_last_name = ?, phone = ?, address = ?, updated_at = NOW()
+        SET contact_first_name = ?, contact_last_name = ?, phone = COALESCE(?, phone), address = ?, updated_at = NOW()
         WHERE user_id = ?
-      `, [firstName, lastName, formattedPhone, address || null, user.userId]);
+      `, [firstName, lastName, formattedPhone ?? null, address || null, user.userId]);
       console.log('✅ DEBUG: Service providers table updated');
 
       return NextResponse.json({

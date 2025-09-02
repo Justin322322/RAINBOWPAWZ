@@ -72,6 +72,10 @@ function BookingDetailsPage({ userData }: BookingDetailsProps) {
   const [_previousStatus, setPreviousStatus] = useState<string | null>(null);
   const [lastUpdateTime, setLastUpdateTime] = useState<number>(0);
   const [updateSuccess, setUpdateSuccess] = useState(false);
+  const [showReceiptModal, setShowReceiptModal] = useState(false);
+  const [receiptData, setReceiptData] = useState<{ receipt_path: string; status: string; notes?: string | null } | null>(null);
+  const [receiptLoading, setReceiptLoading] = useState(false);
+  const [receiptActionLoading, setReceiptActionLoading] = useState(false);
 
   // Flag to prevent re-fetching after successful updates
   const hasInitiallyLoaded = useRef(false);
@@ -298,6 +302,47 @@ function BookingDetailsPage({ userData }: BookingDetailsProps) {
     setShowCertificate(true);
   };
 
+  const openReceiptReview = async () => {
+    if (!params.id) return;
+    setReceiptLoading(true);
+    try {
+      const res = await fetch(`/api/payments/offline/receipt?bookingId=${params.id}`, { credentials: 'include' });
+      const j = await res.json();
+      if (res.ok && j.exists && j.receipt) {
+        setReceiptData({ receipt_path: j.receipt.receipt_path, status: j.receipt.status, notes: j.receipt.notes });
+        setShowReceiptModal(true);
+      } else {
+        showToastRef.current?.('No receipt found for this booking.', 'warning');
+      }
+    } catch {
+      showToastRef.current?.('Failed to load receipt.', 'error');
+    } finally {
+      setReceiptLoading(false);
+    }
+  };
+
+  const confirmOrRejectReceipt = async (action: 'confirm' | 'reject', reason?: string) => {
+    if (!params.id) return;
+    setReceiptActionLoading(true);
+    try {
+      const res = await fetch('/api/payments/offline/confirm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ bookingId: Number(params.id), action, reason: reason || null })
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(j.error || 'Failed to update receipt');
+      setShowReceiptModal(false);
+      showToastRef.current?.(action === 'confirm' ? 'Payment confirmed.' : 'Receipt rejected.', 'success');
+      setBooking(prev => prev ? { ...prev, payment_status: action === 'confirm' ? 'paid' : 'awaiting_payment_confirmation' } : prev);
+    } catch (err) {
+      showToastRef.current?.(err instanceof Error ? err.message : 'Failed to process action', 'error');
+    } finally {
+      setReceiptActionLoading(false);
+    }
+  };
+
   // Remove the old SimpleProgressTimeline component - now using the improved BookingTimeline
 
 
@@ -473,6 +518,20 @@ function BookingDetailsPage({ userData }: BookingDetailsProps) {
                         )}
                         {updating ? 'Confirming...' : updateSuccess ? 'Success!' : 'Confirm Booking'}
                       </motion.button>
+                      {booking.payment_method === 'qr_manual' && (
+                        <motion.button
+                          onClick={openReceiptReview}
+                          className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md text-sm font-medium hover:bg-gray-50 flex items-center justify-center transition-all duration-200 disabled:opacity-50"
+                          disabled={receiptLoading}
+                        >
+                          {receiptLoading ? (
+                            <ArrowPathIcon className="h-4 w-4 mr-2 animate-spin" />
+                          ) : (
+                            <CreditCardIcon className="h-4 w-4 mr-2" />
+                          )}
+                          Review Receipt
+                        </motion.button>
+                      )}
                     </>
                   )}
 
@@ -686,6 +745,41 @@ function BookingDetailsPage({ userData }: BookingDetailsProps) {
           </div>
         )}
       </main>
+
+      {/* Receipt Review Modal */}
+      {showReceiptModal && receiptData && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-900">Review Payment Receipt</h3>
+              <button onClick={() => setShowReceiptModal(false)} className="text-gray-500 hover:text-gray-700">✕</button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="text-sm text-gray-600">Status: <span className="font-medium">{receiptData.status}</span></div>
+              {receiptData.notes && <div className="text-sm text-gray-600">Notes: {receiptData.notes}</div>}
+              <div className="w-full border rounded-lg overflow-hidden">
+                <img src={receiptData.receipt_path} alt="Payment receipt" className="w-full max-h-[70vh] object-contain bg-gray-50" />
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-2">
+              <button
+                className="px-4 py-2 border border-red-300 text-red-700 rounded-md text-sm hover:bg-red-50 disabled:opacity-50"
+                disabled={receiptActionLoading}
+                onClick={() => confirmOrRejectReceipt('reject')}
+              >
+                {receiptActionLoading ? 'Processing...' : 'Reject'}
+              </button>
+              <button
+                className="px-4 py-2 bg-green-600 text-white rounded-md text-sm hover:bg-green-700 disabled:opacity-50"
+                disabled={receiptActionLoading}
+                onClick={() => confirmOrRejectReceipt('confirm')}
+              >
+                {receiptActionLoading ? 'Processing...' : 'Confirm Payment'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </CremationDashboardLayout>
   );
 }
