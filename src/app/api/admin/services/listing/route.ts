@@ -29,8 +29,19 @@ function buildInClause(ids: number[]): { clause: string; params: any[] } {
   return { clause: `IN (${placeholders})`, params: ids };
 }
 
-// Helper function to get available columns from service_providers table
+// Cache for schema information to avoid repeated queries
+let schemaCache: { columns: string[]; lastChecked: number } | null = null;
+const SCHEMA_CACHE_DURATION = 10 * 60 * 1000; // 10 minutes
+
+// Helper function to get available columns from service_providers table with caching
 async function getServiceProviderColumns(): Promise<string[]> {
+  const now = Date.now();
+
+  // Return cached result if still valid
+  if (schemaCache && (now - schemaCache.lastChecked) < SCHEMA_CACHE_DURATION) {
+    return schemaCache.columns;
+  }
+
   try {
     const result = await safeQuery(`
       SELECT COLUMN_NAME
@@ -38,7 +49,11 @@ async function getServiceProviderColumns(): Promise<string[]> {
       WHERE TABLE_SCHEMA = DATABASE()
       AND TABLE_NAME = 'service_providers'
     `);
-    return result.map((col: any) => col.COLUMN_NAME.toLowerCase());
+    const columns = result.map((col: any) => col.COLUMN_NAME.toLowerCase());
+
+    // Cache the result
+    schemaCache = { columns, lastChecked: now };
+    return columns;
   } catch (error) {
     console.error('Error fetching service_providers columns:', error);
     return [];
@@ -130,7 +145,7 @@ async function fetchRelatedData(packageIds: number[]) {
     return [];
   };
 
-  // Fetch inclusions and addons in parallel
+  // Fetch inclusions and addons in parallel with optimized queries
   const [inclusions, addons] = await Promise.all([
     fetchTableData('package_inclusions', 'package_id, description'),
     fetchTableData('package_addons', 'package_id, description')
@@ -189,26 +204,12 @@ async function fetchRelatedData(packageIds: number[]) {
       });
   }
 
-  // Fetch images
+  // Fetch images (optimized - minimal logging)
   if (await checkTableExists('package_images')) {
     const images = await safeQuery(
       `SELECT package_id, image_path, image_data FROM package_images WHERE package_id ${clause} ORDER BY display_order, package_id`,
       params
     );
-
-    console.log('[DEBUG] Found images in database:', images.length);
-
-    // Log detailed info about each image without exposing full base64 data
-    images.forEach((img: any, index: number) => {
-      console.log(`[DEBUG] Image ${index + 1}:`, {
-        package_id: img.package_id,
-        has_image_path: !!img.image_path,
-        has_image_data: !!img.image_data,
-        image_path_preview: img.image_path ? img.image_path.substring(0, 50) : null,
-        image_data_length: img.image_data ? img.image_data.length : 0,
-        image_data_preview: img.image_data ? img.image_data.substring(0, 50) : null
-      });
-    });
 
     images.forEach((img: any) => {
       if (!results.images[img.package_id]) results.images[img.package_id] = [];
@@ -231,62 +232,29 @@ async function fetchRelatedData(packageIds: number[]) {
             // Test if base64 is valid by attempting to decode
             atob(cleanBase64);
             const dataUrl = `data:image/png;base64,${cleanBase64}`;
-            console.log(`[DEBUG] Package ${img.package_id} has valid base64 data (${cleanBase64.length} chars)`);
             results.images[img.package_id].push(dataUrl);
-          } catch (error) {
-            console.error(`[DEBUG] Package ${img.package_id} has invalid base64 data:`, error);
-            // Try to use image_path as fallback if base64 is invalid
+          } catch {
+            // Use image_path as fallback if base64 is invalid
             if (img.image_path) {
-              console.log(`[DEBUG] Falling back to image_path for package ${img.package_id}`);
-          let apiPath;
-              if (img.image_path.startsWith('/api/image/')) {
-                apiPath = img.image_path;
-              } else if (img.image_path.startsWith('/uploads/packages/')) {
-                apiPath = `/api/image/packages/${img.image_path.substring('/uploads/packages/'.length)}`;
-              } else if (img.image_path.startsWith('uploads/packages/')) {
-                apiPath = `/api/image/packages/${img.image_path.substring('uploads/packages/'.length)}`;
-              } else if (img.image_path.includes('/')) {
-                const parts = img.image_path.split('/');
-                const filename = parts[parts.length - 1];
-                apiPath = `/api/image/packages/${filename}`;
-              } else {
-                apiPath = `/api/image/packages/${img.image_path}`;
-              }
+              const apiPath = img.image_path.startsWith('/api/image/')
+                ? img.image_path
+                : img.image_path.includes('/')
+                  ? `/api/image/packages/${img.image_path.split('/').pop()}`
+                  : `/api/image/packages/${img.image_path}`;
               results.images[img.package_id].push(apiPath);
             }
-            }
-          } else {
-          console.error(`[DEBUG] Package ${img.package_id} has malformed base64 data (length: ${cleanBase64.length})`);
+          }
         }
       } else if (img.image_path) {
-        console.log(`[DEBUG] Package ${img.package_id} has image path:`, img.image_path);
-
-        // Try multiple path formats to find the correct one
-        let apiPath;
-        if (img.image_path.startsWith('/api/image/')) {
-          apiPath = img.image_path;
-        } else if (img.image_path.startsWith('/uploads/packages/')) {
-          apiPath = `/api/image/packages/${img.image_path.substring('/uploads/packages/'.length)}`;
-        } else if (img.image_path.startsWith('uploads/packages/')) {
-          apiPath = `/api/image/packages/${img.image_path.substring('uploads/packages/'.length)}`;
-        } else if (img.image_path.includes('/')) {
-          // Extract filename from any path
-          const parts = img.image_path.split('/');
-          const filename = parts[parts.length - 1];
-          apiPath = `/api/image/packages/${filename}`;
-        } else {
-          // Assume it's just a filename
-          apiPath = `/api/image/packages/${img.image_path}`;
-        }
-
-        console.log(`[DEBUG] Converted to API path:`, apiPath);
+        // Convert image path to API path
+        const apiPath = img.image_path.startsWith('/api/image/')
+          ? img.image_path
+          : img.image_path.includes('/')
+            ? `/api/image/packages/${img.image_path.split('/').pop()}`
+            : `/api/image/packages/${img.image_path}`;
         results.images[img.package_id].push(apiPath);
-      } else {
-        console.log(`[DEBUG] Package ${img.package_id} has no image data or path`);
       }
     });
-  } else {
-    console.log('[DEBUG] package_images table does not exist');
   }
 
   return results;
@@ -369,11 +337,6 @@ export async function GET(request: NextRequest) {
 
       const centerName = r.providerName || r.name || 'Cremation Center';
 
-      // Debug logging for images
-      if (images.length > 0) {
-        console.log(`[DEBUG] Service ${r.package_id} (${r.name}) images:`, images);
-      }
-
     return {
       id: r.package_id,
       name: r.name,
@@ -391,20 +354,15 @@ export async function GET(request: NextRequest) {
       bookings,
       reviewsCount: reviewData.reviewsCount,
       revenue: 0,
-        formattedRevenue: '₱0.00',
+      formattedRevenue: '₱0.00',
       image: image || null,
       images,
-        inclusions,
-        addOns,
+      inclusions,
+      addOns,
     };
   });
 
-    console.log('[DEBUG] Final services data with images:', services.map(s => ({
-      id: s.id,
-      name: s.name,
-      imageCount: s.images.length,
-      firstImage: s.images[0] ? s.images[0].substring(0, 50) : null
-    })));
+
 
     // Calculate stats
   const activeServices = services.filter(s => s.status === 'active').length;

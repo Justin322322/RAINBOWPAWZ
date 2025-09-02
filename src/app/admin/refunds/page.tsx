@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import { format } from 'date-fns';
 import {
@@ -17,6 +17,126 @@ import { useToast } from '@/context/ToastContext';
 import RefundStatus from '@/components/refund/RefundStatus';
 import { Modal } from '@/components/ui/Modal';
 import { motion } from 'framer-motion';
+
+// Helper functions for RefundCard component
+const formatDate = (dateString: string) => {
+  try {
+    return format(new Date(dateString), 'MMM dd, yyyy HH:mm');
+  } catch {
+    return dateString;
+  }
+};
+
+const getStatusBadge = (status: string) => {
+  const statusConfig = {
+    pending: { color: 'bg-yellow-100 text-yellow-800', label: 'Pending Review' },
+    processing: { color: 'bg-blue-100 text-blue-800', label: 'Processing' },
+    processed: { color: 'bg-green-100 text-green-800', label: 'Completed' },
+    failed: { color: 'bg-red-100 text-red-800', label: 'Failed' },
+    cancelled: { color: 'bg-gray-100 text-gray-800', label: 'Denied' }
+  };
+
+  const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending;
+
+  return (
+    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.color}`}>
+      {config.label}
+    </span>
+  );
+};
+
+// Memoized Refund Card Component for better performance
+const RefundCard = React.memo(function RefundCard({
+  refund,
+  onViewDetails,
+  onApprove,
+  onDeny,
+  processingApproval,
+  processingDenial
+}: {
+  refund: Refund;
+  onViewDetails: (refund: Refund) => void;
+  onApprove: (id: number) => void;
+  onDeny: (id: number) => void;
+  processingApproval: Set<number>;
+  processingDenial: Set<number>;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="bg-white rounded-xl shadow-md border border-gray-100 hover:shadow-lg transition-shadow duration-200 p-6"
+    >
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between space-y-4 lg:space-y-0">
+        <div className="flex-1">
+          <div className="flex items-center space-x-3 mb-2">
+            <h3 className="font-medium text-gray-900">
+              Booking #{refund.booking_id}
+            </h3>
+            {getStatusBadge(refund.status)}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm text-gray-600">
+            <div>
+              <span className="font-medium">Customer:</span> {refund.user_name}
+            </div>
+            <div>
+              <span className="font-medium">Pet:</span> {refund.pet_name}
+            </div>
+            <div>
+              <span className="font-medium">Amount:</span> ₱{parseFloat(refund.amount.toString()).toFixed(2)}
+            </div>
+            <div>
+              <span className="font-medium">Requested:</span> {formatDate(refund.created_at)}
+            </div>
+          </div>
+
+          <p className="mt-2 text-sm text-gray-700">
+            <span className="font-medium">Reason:</span> {refund.reason}
+          </p>
+        </div>
+
+        <div className="flex items-center space-x-2">
+          {refund.status === 'pending' && (
+            <>
+              <button
+                onClick={() => onApprove(refund.id)}
+                className="px-3 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={processingApproval.has(refund.id) || processingDenial.has(refund.id)}
+              >
+                {processingApproval.has(refund.id) ? (
+                  <div className="h-4 w-4 mr-1 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <CheckCircleIcon className="h-4 w-4 mr-1" />
+                )}
+                Approve
+              </button>
+              <button
+                onClick={() => onDeny(refund.id)}
+                className="px-3 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={processingApproval.has(refund.id) || processingDenial.has(refund.id)}
+              >
+                {processingDenial.has(refund.id) ? (
+                  <div className="h-4 w-4 mr-1 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <XCircleIcon className="h-4 w-4 mr-1" />
+                )}
+                Deny
+              </button>
+            </>
+          )}
+          <button
+            onClick={() => onViewDetails(refund)}
+            className="px-3 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors flex items-center"
+          >
+            <EyeIcon className="h-4 w-4 mr-1" />
+            View Details
+          </button>
+        </div>
+      </div>
+    </motion.div>
+  );
+});
 import { SectionLoader } from '@/components/ui/SectionLoader';
 
 interface Refund {
@@ -39,9 +159,9 @@ interface Refund {
   booking_time?: string;
 }
 
-function AdminRefundsPage() {
+// Optimized AdminRefundsPage with caching and pagination
+const AdminRefundsPage = React.memo(function AdminRefundsPage() {
   const [refunds, setRefunds] = useState<Refund[]>([]);
-  const [filteredRefunds, setFilteredRefunds] = useState<Refund[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -50,31 +170,109 @@ function AdminRefundsPage() {
   const [userName, setUserName] = useState('');
   const [processingApproval, setProcessingApproval] = useState<Set<number>>(new Set());
   const [processingDenial, setProcessingDenial] = useState<Set<number>>(new Set());
+  const [pagination, setPagination] = useState({
+    total: 0,
+    currentPage: 1,
+    totalPages: 1,
+    limit: 20,
+    hasMore: false
+  });
+  const [statistics, setStatistics] = useState({
+    total_refunds: 0,
+    pending_count: 0,
+    processing_count: 0,
+    processed_count: 0,
+    failed_count: 0,
+    cancelled_count: 0,
+    total_refunded_amount: 0,
+    today_count: 0
+  });
+
+  // Cache management
+  const [cache, setCache] = useState<Map<string, { data: any; timestamp: number }>>(new Map());
+  const [lastFetchParams, setLastFetchParams] = useState<string>('');
+
   const { showToast } = useToast();
 
-  useEffect(() => {
-    fetchRefunds();
-
-    // Get admin name from localStorage
-    const adminData = localStorage.getItem('adminData');
-    if (adminData) {
-      const admin = JSON.parse(adminData);
-      setUserName(admin.first_name || 'Admin');
-    }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
-    filterRefunds();
-  }, [refunds, searchTerm, statusFilter]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const fetchRefunds = async () => {
+  // Optimized fetch function with caching and server-side filtering
+  const fetchRefunds = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/admin/refunds');
+
+      // Build query parameters for server-side filtering and pagination
+      const params = new URLSearchParams({
+        limit: pagination.limit.toString(),
+        offset: ((pagination.currentPage - 1) * pagination.limit).toString()
+      });
+
+      if (searchTerm.trim()) {
+        params.append('search', searchTerm.trim());
+      }
+
+      if (statusFilter && statusFilter !== 'all') {
+        params.append('status', statusFilter);
+      }
+
+      const queryString = params.toString();
+      const cacheKey = queryString;
+
+      // Check cache first (5 minute cache)
+      const cachedData = cache.get(cacheKey);
+      const now = Date.now();
+      const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+      if (cachedData && (now - cachedData.timestamp) < CACHE_DURATION) {
+        setRefunds(cachedData.data.refunds || []);
+        setPagination(cachedData.data.pagination);
+        setStatistics(cachedData.data.statistics);
+        setLoading(false);
+        return;
+      }
+
+      // Skip if same parameters were used recently
+      if (lastFetchParams === queryString && cache.has(cacheKey)) {
+        const existingData = cache.get(cacheKey);
+        if (existingData && (now - existingData.timestamp) < CACHE_DURATION) {
+          setRefunds(existingData.data.refunds || []);
+          setPagination(existingData.data.pagination);
+          setStatistics(existingData.data.statistics);
+          setLoading(false);
+          return;
+        }
+      }
+
+      const response = await fetch(`/api/admin/refunds?${queryString}`, {
+        headers: {
+          'Cache-Control': 'no-cache'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
       const data = await response.json();
 
       if (data.success) {
         setRefunds(data.refunds || []);
+        setPagination(data.pagination);
+        setStatistics(data.statistics);
+
+        // Update cache
+        setCache(prev => {
+          const newCache = new Map(prev);
+          newCache.set(cacheKey, {
+            data: {
+              refunds: data.refunds || [],
+              pagination: data.pagination,
+              statistics: data.statistics
+            },
+            timestamp: now
+          });
+          return newCache;
+        });
+
+        setLastFetchParams(queryString);
       } else {
         showToast(data.error || 'Failed to fetch refunds', 'error');
       }
@@ -84,29 +282,56 @@ function AdminRefundsPage() {
     } finally {
       setLoading(false);
     }
+  }, [pagination, searchTerm, statusFilter, showToast, cache, lastFetchParams]);
+
+  useEffect(() => {
+    // Get admin name from localStorage
+    const adminData = localStorage.getItem('adminData');
+    if (adminData) {
+      const admin = JSON.parse(adminData);
+      setUserName(admin.first_name || 'Admin');
+    }
+
+    // Initial data fetch
+    fetchRefunds();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Debounced search to avoid too many API calls
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (pagination.currentPage === 1) {
+        fetchRefunds();
+      } else {
+        // Reset to first page when search/filter changes
+        setPagination(prev => ({ ...prev, currentPage: 1 }));
+      }
+    }, 300); // 300ms debounce
+
+    return () => clearTimeout(timeoutId);
+  }, [searchTerm, statusFilter, fetchRefunds, pagination.currentPage]);
+
+  // Fetch data when page changes
+  useEffect(() => {
+    if (pagination.currentPage > 1) {
+      fetchRefunds();
+    }
+  }, [pagination.currentPage, fetchRefunds]);
+
+
+
+  // Pagination handlers
+  const handlePageChange = (newPage: number) => {
+    if (newPage >= 1 && newPage <= pagination.totalPages) {
+      setPagination(prev => ({ ...prev, currentPage: newPage }));
+    }
   };
 
-  const filterRefunds = () => {
-    let filtered = refunds;
-
-    // Filter by search term
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      filtered = filtered.filter(refund =>
-        refund.user_name?.toLowerCase().includes(term) ||
-        refund.user_email?.toLowerCase().includes(term) ||
-        refund.pet_name?.toLowerCase().includes(term) ||
-        refund.reason.toLowerCase().includes(term) ||
-        refund.booking_id.toString().includes(term)
-      );
-    }
-
-    // Filter by status
-    if (statusFilter !== 'all') {
-      filtered = filtered.filter(refund => refund.status === statusFilter);
-    }
-
-    setFilteredRefunds(filtered);
+  const handleLimitChange = (newLimit: number) => {
+    setPagination(prev => ({
+      ...prev,
+      limit: newLimit,
+      currentPage: 1 // Reset to first page when changing page size
+    }));
   };
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -173,6 +398,10 @@ function AdminRefundsPage() {
 
       if (response.ok && data.success) {
         showToast('Refund approved and processed successfully', 'success');
+
+        // Clear cache and refresh data
+        setCache(new Map());
+        setLastFetchParams('');
         fetchRefunds(); // Refresh the list
       } else {
         if (response.status === 403) {
@@ -246,6 +475,10 @@ function AdminRefundsPage() {
 
       if (response.ok && data.success) {
         showToast('Refund request denied', 'success');
+
+        // Clear cache and refresh data
+        setCache(new Map());
+        setLastFetchParams('');
         fetchRefunds(); // Refresh the list
       } else {
         if (response.status === 403) {
@@ -268,31 +501,7 @@ function AdminRefundsPage() {
     }
   };
 
-  const formatDate = (dateString: string) => {
-    try {
-      return format(new Date(dateString), 'MMM dd, yyyy HH:mm');
-    } catch {
-      return dateString;
-    }
-  };
 
-  const getStatusBadge = (status: string) => {
-    const statusConfig = {
-      pending: { color: 'bg-yellow-100 text-yellow-800', label: 'Pending Review' },
-      processing: { color: 'bg-blue-100 text-blue-800', label: 'Processing' },
-      processed: { color: 'bg-green-100 text-green-800', label: 'Completed' },
-      failed: { color: 'bg-red-100 text-red-800', label: 'Failed' },
-      cancelled: { color: 'bg-gray-100 text-gray-800', label: 'Denied' }
-    };
-
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending;
-
-    return (
-      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.color}`}>
-        {config.label}
-      </span>
-    );
-  };
 
   if (loading) {
     return (
@@ -311,7 +520,7 @@ function AdminRefundsPage() {
             <div>
               <h1 className="text-2xl font-semibold text-gray-800">Refund Management</h1>
               <p className="text-gray-600 mt-1">
-                {filteredRefunds.length} {filteredRefunds.length === 1 ? 'refund' : 'refunds'} found
+                {refunds.length} {refunds.length === 1 ? 'refund' : 'refunds'} found
               </p>
             </div>
             <button
@@ -358,7 +567,7 @@ function AdminRefundsPage() {
         </div>
 
         {/* Refunds List */}
-        {filteredRefunds.length === 0 ? (
+        {refunds.length === 0 ? (
           <div className="text-center py-12 bg-white rounded-xl shadow-md border border-gray-100">
             <div className="w-48 h-48 mx-auto mb-6 flex items-center justify-center">
               <Image
@@ -377,84 +586,103 @@ function AdminRefundsPage() {
           </div>
         ) : (
           <div className="space-y-4">
-            {filteredRefunds.map((refund) => (
-              <motion.div
+            {refunds.map((refund) => (
+              <RefundCard
                 key={refund.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="bg-white rounded-xl shadow-md border border-gray-100 hover:shadow-lg transition-shadow duration-200 p-6"
-              >
-                <div className="flex flex-col lg:flex-row lg:items-center justify-between space-y-4 lg:space-y-0">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-3 mb-2">
-                      <h3 className="font-medium text-gray-900">
-                        Booking #{refund.booking_id}
-                      </h3>
-                      {getStatusBadge(refund.status)}
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm text-gray-600">
-                      <div>
-                        <span className="font-medium">Customer:</span> {refund.user_name}
-                      </div>
-                      <div>
-                        <span className="font-medium">Pet:</span> {refund.pet_name}
-                      </div>
-                      <div>
-                        <span className="font-medium">Amount:</span> ₱{parseFloat(refund.amount.toString()).toFixed(2)}
-                      </div>
-                      <div>
-                        <span className="font-medium">Requested:</span> {formatDate(refund.created_at)}
-                      </div>
-                    </div>
-
-                    <p className="mt-2 text-sm text-gray-700">
-                      <span className="font-medium">Reason:</span> {refund.reason}
-                    </p>
-                  </div>
-
-                  <div className="flex items-center space-x-2">
-                    {refund.status === 'pending' && (
-                      <>
-                        <button
-                          onClick={() => handleApproveRefund(refund.id)}
-                          className="px-3 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
-                          disabled={processingApproval.has(refund.id) || processingDenial.has(refund.id)}
-                        >
-                          {processingApproval.has(refund.id) ? (
-                            <div className="h-4 w-4 mr-1 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                          ) : (
-                            <CheckCircleIcon className="h-4 w-4 mr-1" />
-                          )}
-                          Approve
-                        </button>
-                        <button
-                          onClick={() => handleDenyRefund(refund.id)}
-                          className="px-3 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
-                          disabled={processingApproval.has(refund.id) || processingDenial.has(refund.id)}
-                        >
-                          {processingDenial.has(refund.id) ? (
-                            <div className="h-4 w-4 mr-1 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                          ) : (
-                            <XCircleIcon className="h-4 w-4 mr-1" />
-                          )}
-                          Deny
-                        </button>
-                      </>
-                    )}
-                    <button
-                      onClick={() => handleViewDetails(refund)}
-                      className="px-3 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors flex items-center"
-                    >
-                      <EyeIcon className="h-4 w-4 mr-1" />
-                      View Details
-                    </button>
-                  </div>
-                </div>
-              </motion.div>
+                refund={refund}
+                onViewDetails={handleViewDetails}
+                onApprove={handleApproveRefund}
+                onDeny={handleDenyRefund}
+                processingApproval={processingApproval}
+                processingDenial={processingDenial}
+              />
             ))}
           </div>
         )}
+
+        {/* Pagination Controls */}
+        {pagination.totalPages > 1 && (
+          <div className="mt-8 bg-white rounded-xl shadow-md border border-gray-100 p-6">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
+              <div className="flex items-center space-x-4">
+                <span className="text-sm text-gray-600">
+                  Showing {((pagination.currentPage - 1) * pagination.limit) + 1} to {Math.min(pagination.currentPage * pagination.limit, pagination.total)} of {pagination.total} results
+                </span>
+
+                <select
+                  value={pagination.limit}
+                  onChange={(e) => handleLimitChange(parseInt(e.target.value))}
+                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
+                >
+                  <option value={10}>10 per page</option>
+                  <option value={20}>20 per page</option>
+                  <option value={50}>50 per page</option>
+                  <option value={100}>100 per page</option>
+                </select>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => handlePageChange(pagination.currentPage - 1)}
+                  disabled={pagination.currentPage === 1}
+                  className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Previous
+                </button>
+
+                {/* Page numbers */}
+                {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
+                  const pageNum = Math.max(1, Math.min(pagination.totalPages - 4, pagination.currentPage - 2)) + i;
+                  if (pageNum > pagination.totalPages) return null;
+
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => handlePageChange(pageNum)}
+                      className={`px-3 py-2 text-sm border rounded-lg ${
+                        pageNum === pagination.currentPage
+                          ? 'bg-[var(--primary-green)] text-white border-[var(--primary-green)]'
+                          : 'border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+
+                <button
+                  onClick={() => handlePageChange(pagination.currentPage + 1)}
+                  disabled={pagination.currentPage === pagination.totalPages}
+                  className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Statistics Summary */}
+        <div className="mt-8 grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-white rounded-xl shadow-md border border-gray-100 p-4">
+            <div className="text-2xl font-bold text-[var(--primary-green)]">
+              ₱{statistics.total_refunded_amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+            </div>
+            <div className="text-sm text-gray-600">Total Refunded</div>
+          </div>
+          <div className="bg-white rounded-xl shadow-md border border-gray-100 p-4">
+            <div className="text-2xl font-bold text-blue-600">{statistics.pending_count}</div>
+            <div className="text-sm text-gray-600">Pending</div>
+          </div>
+          <div className="bg-white rounded-xl shadow-md border border-gray-100 p-4">
+            <div className="text-2xl font-bold text-green-600">{statistics.processed_count}</div>
+            <div className="text-sm text-gray-600">Processed</div>
+          </div>
+          <div className="bg-white rounded-xl shadow-md border border-gray-100 p-4">
+            <div className="text-2xl font-bold text-red-600">{statistics.failed_count}</div>
+            <div className="text-sm text-gray-600">Failed</div>
+          </div>
+        </div>
 
         {/* Refund Details Modal */}
         <Modal
@@ -570,6 +798,6 @@ function AdminRefundsPage() {
       </div>
     </AdminDashboardLayout>
   );
-}
+});
 
 export default withAdminAuth(AdminRefundsPage);

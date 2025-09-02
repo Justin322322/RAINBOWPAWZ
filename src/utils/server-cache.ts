@@ -18,9 +18,25 @@ interface RoutingCacheData {
   trafficAware: boolean;
 }
 
+interface ServiceProvidersCacheData {
+  providers: any[];
+  pagination: {
+    total: number;
+    currentPage: number;
+    totalPages: number;
+    limit: number;
+    offset: number;
+    hasMore: boolean;
+  };
+  statistics: {
+    totalProviders: number;
+    filteredCount: number;
+  };
+}
+
 // Union type for all supported cache data types
 // Add new cache data types here as needed for future extensibility
-type CacheDataTypes = RoutingCacheData;
+type CacheDataTypes = RoutingCacheData | ServiceProvidersCacheData;
 
 class ServerCache {
   private static instance: ServerCache;
@@ -143,6 +159,24 @@ class ServerCache {
   ): RoutingCacheData | null {
     const key = this.generateRoutingKey(userCoords, providerCoords, trafficAware);
     return this.get<RoutingCacheData>(key);
+  }
+
+  /**
+   * Set service providers data in cache
+   */
+  public setServiceProvidersData(
+    cacheKey: string,
+    data: ServiceProvidersCacheData,
+    ttl: number = this.DEFAULT_TTL
+  ): void {
+    this.set<ServiceProvidersCacheData>(cacheKey, data, ttl);
+  }
+
+  /**
+   * Get service providers data from cache
+   */
+  public getServiceProvidersData(cacheKey: string): ServiceProvidersCacheData | null {
+    return this.get<ServiceProvidersCacheData>(cacheKey);
   }
 
   /**
