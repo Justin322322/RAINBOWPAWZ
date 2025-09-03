@@ -142,15 +142,13 @@ function useServices(params: {
   page: number;
   limit: number;
   onError: (msg: string) => void;
-  shouldFetch?: () => boolean;
 }) {
-  const { search, status, category, page, limit, onError, shouldFetch } = params;
+  const { search, status, category, page, limit, onError } = params;
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
   const [_error, setError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
   const [_isInitialLoad, setIsInitialLoad] = useState(true);
-  const [lastFetchTime, setLastFetchTime] = useState(0);
   const [stats, setStats] = useState<Stats>({
     activeServices: 0,
     totalBookings: 0,
@@ -163,13 +161,9 @@ function useServices(params: {
     totalPages: 1,
   });
 
-  // Create cache key within the hook
-  const cacheKey = `${search}_${status}_${category}_${page}_${limit}`;
-
-  // Memoize the error handler to prevent unnecessary re-renders
-  const _handleError = useCallback((message: string) => {
-    onError(message);
-  }, [onError]);
+  // Simple cache implementation
+  const [cache, setCache] = useState<Map<string, { data: any; timestamp: number }>>(new Map());
+  const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
   useEffect(() => {
     const controller = new AbortController();
@@ -177,15 +171,19 @@ function useServices(params: {
     let isMounted = true;
     let retryTimer: NodeJS.Timeout | null = null;
 
-    // Always fetch on initial load or when parameters change
-    // Only skip if cache is still valid (5 minutes) and external shouldFetch allows it
+    // Create stable cache key
+    const cacheKey = `${search}_${status}_${category}_${page}_${limit}`;
     const now = Date.now();
-    const cacheDuration = 5 * 60 * 1000; // 5 minutes
-    const isCacheValid = now - lastFetchTime < cacheDuration;
-    const shouldSkipFetch = shouldFetch && !shouldFetch() && isCacheValid && lastFetchTime > 0;
 
-    if (shouldSkipFetch) {
+    // Check cache first
+    const cachedData = cache.get(cacheKey);
+    if (cachedData && (now - cachedData.timestamp) < CACHE_DURATION) {
+      // Use cached data
+      setServices(cachedData.data.services || []);
+      setPagination(cachedData.data.pagination || { total: 0, page: 1, limit: 10, totalPages: 1 });
+      setStats(cachedData.data.stats || { activeServices: 0, totalBookings: 0, verifiedCenters: 0 });
       setLoading(false);
+      setIsInitialLoad(false);
       return;
     }
 
@@ -200,7 +198,6 @@ function useServices(params: {
           category: category || 'all',
           page: page.toString(),
           limit: limit.toString(),
-          _t: Date.now().toString(), // Prevent caching
         });
 
         const res = await fetch(`/api/admin/services/listing?${query}`, {
@@ -225,28 +222,46 @@ function useServices(params: {
           throw new Error(data.error || 'Failed to load services');
         }
 
-        setServices(data.services || []);
-        setPagination(data.pagination || { total: 0, page: 1, limit: 10, totalPages: 1 });
-
+        const servicesData = data.services || [];
+        const paginationData = data.pagination || { total: 0, page: 1, limit: 10, totalPages: 1 };
+        
         // Update stats if available
+        let statsData;
         if (data.stats) {
-          setStats({
+          statsData = {
             activeServices: data.stats.activeServices || 0,
             totalBookings: data.stats.totalBookings || 0,
             verifiedCenters: data.stats.verifiedCenters || 0,
-          });
+          };
         } else {
           // Use data from the response directly if stats object is not present
-          setStats({
+          statsData = {
             activeServices: data.activeServicesCount || 0,
             totalBookings: 0,
             verifiedCenters: data.serviceProvidersCount || 0,
-          });
+          };
         }
+
+        setServices(servicesData);
+        setPagination(paginationData);
+        setStats(statsData);
+
+        // Update cache
+        setCache(prev => {
+          const newCache = new Map(prev);
+          newCache.set(cacheKey, {
+            data: {
+              services: servicesData,
+              pagination: paginationData,
+              stats: statsData
+            },
+            timestamp: now
+          });
+          return newCache;
+        });
 
         setError(null);
         setRetryCount(0); // Reset retry count on success
-        setLastFetchTime(now); // Update cache timestamp on success
       } catch (err: any) {
         if (!isMounted) return;
 
@@ -282,7 +297,7 @@ function useServices(params: {
       controller.abort();
       if (retryTimer) clearTimeout(retryTimer);
     };
-  }, [search, status, category, page, limit, onError, shouldFetch, cacheKey, lastFetchTime]);
+  }, [search, status, category, page, limit, onError, retryCount, cache, CACHE_DURATION]);
 
   return { services, loading, stats, pagination, setPagination };
 }
@@ -299,17 +314,13 @@ const AdminServicesPage = React.memo(function AdminServicesPage() {
 
   const debouncedSearch = useDebounce(searchTerm, 300);
 
-  // Always fetch on filter changes, use internal caching for performance
-  const shouldFetch = useCallback(() => true, []);
-
   const { services, loading, stats, pagination, setPagination } = useServices({
     search: debouncedSearch,
     status: statusFilter,
     category: categoryFilter,
     page,
     limit,
-    onError: (msg) => setNotification({ message: msg, type: 'error' }),
-    shouldFetch: shouldFetch
+    onError: (msg) => setNotification({ message: msg, type: 'error' })
   });
 
 

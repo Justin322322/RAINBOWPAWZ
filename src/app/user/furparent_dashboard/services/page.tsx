@@ -128,6 +128,7 @@ function ServicesPage({ userData }: ServicesPageProps) {
     filteredCount: 0
   });
 
+
   // Cache management
   const [cache, setCache] = useState<Map<string, { data: any; timestamp: number }>>(new Map());
   const [lastFetchParams, setLastFetchParams] = useState<string>('');
@@ -152,7 +153,6 @@ function ServicesPage({ userData }: ServicesPageProps) {
       if (!userLocation) {
         setServiceProviders([]);
         setPagination(prev => ({ ...prev, total: 0, totalPages: 0 }));
-        setStatistics({ totalProviders: 0, filteredCount: 0 });
         return;
       }
 
@@ -183,7 +183,7 @@ function ServicesPage({ userData }: ServicesPageProps) {
       if (cachedData && (now - cachedData.timestamp) < CACHE_DURATION) {
         setServiceProviders(cachedData.data.providers || []);
         setPagination(cachedData.data.pagination);
-        setStatistics(cachedData.data.statistics);
+        setStatistics(cachedData.data.statistics || { totalProviders: 0, filteredCount: 0 });
         setIsLoading(false);
         return;
       }
@@ -194,7 +194,7 @@ function ServicesPage({ userData }: ServicesPageProps) {
         if (existingData && (now - existingData.timestamp) < CACHE_DURATION) {
           setServiceProviders(existingData.data.providers || []);
           setPagination(existingData.data.pagination);
-          setStatistics(existingData.data.statistics);
+          setStatistics(existingData.data.statistics || { totalProviders: 0, filteredCount: 0 });
           setIsLoading(false);
           return;
         }
@@ -312,21 +312,7 @@ function ServicesPage({ userData }: ServicesPageProps) {
               {/* Statistics and Pagination */}
               {!isLoading && serviceProviders.length > 0 && (
                 <div className="mt-8 space-y-6">
-                  {/* Statistics Cards */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg p-4 border border-blue-200">
-                      <div className="text-2xl font-bold text-blue-600">
-                        {statistics.totalProviders}
-                      </div>
-                      <div className="text-sm text-blue-700">Total Providers</div>
-                    </div>
-                    <div className="bg-gradient-to-r from-green-50 to-green-100 rounded-lg p-4 border border-green-200">
-                      <div className="text-2xl font-bold text-green-600">
-                        {statistics.filteredCount}
-                      </div>
-                      <div className="text-sm text-green-700">Nearby Providers</div>
-                    </div>
-                  </div>
+
 
                   {/* Pagination Controls */}
                   {pagination.totalPages > 1 && (
@@ -335,6 +321,9 @@ function ServicesPage({ userData }: ServicesPageProps) {
                         <div className="flex items-center space-x-4">
                           <span className="text-sm text-gray-600">
                             Showing {((pagination.currentPage - 1) * pagination.limit) + 1} to {Math.min(pagination.currentPage * pagination.limit, pagination.total)} of {pagination.total} providers
+                            {statistics.totalProviders > 0 && statistics.totalProviders !== pagination.total && (
+                              <span className="text-gray-500"> (out of {statistics.totalProviders} total cremation services)</span>
+                            )}
                           </span>
 
                           <select
