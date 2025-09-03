@@ -40,7 +40,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="apple-touch-icon" href="/logo.png" />
         <link rel="shortcut icon" href="/logo.png" />
         <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
-        <script src="https://www.noupe.com/embed/01990cf6b883709ba7534e4584d6c97d6c71.js"></script>
       </head>
       <body className={inter.className}>
         <AuthStateProvider>
