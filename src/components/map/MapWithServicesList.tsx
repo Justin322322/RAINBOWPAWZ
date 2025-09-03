@@ -125,7 +125,6 @@ const MapWithServicesList = React.memo(function MapWithServicesList({
   onGetDirections
 }: MapWithServicesListProps) {
   const [currentPage, setCurrentPage] = useState(1);
-  const [filteredProviders, setFilteredProviders] = useState<FilterServiceProvider[]>([]);
   const [filters, setFilters] = useState<FilterState>({
     searchQuery: '',
     maxDistance: null,
@@ -141,24 +140,62 @@ const MapWithServicesList = React.memo(function MapWithServicesList({
     setCurrentPage(1); // Reset to first page when filters change
   };
 
-  // Simplified filtering since most filtering is now server-side
-  useEffect(() => {
-    const applyClientSideFilters = () => {
-      const { maxDistance } = filters;
+  // Apply client-side filtering (same logic as MapFilters)
+  const filteredProviders = useMemo(() => {
+    let filtered = [...serviceProviders];
 
-      // Only apply distance filter on client-side (others handled server-side)
-      if (maxDistance !== null && maxDistance !== undefined) {
-        const filtered = serviceProviders.filter(provider =>
-          provider.distanceValue <= maxDistance
-        );
-        setFilteredProviders(filtered);
-      } else {
-        setFilteredProviders(serviceProviders);
+    // Search filter
+    if (filters.searchQuery.trim()) {
+      const query = filters.searchQuery.toLowerCase().trim();
+      filtered = filtered.filter(provider =>
+        provider.name.toLowerCase().includes(query) ||
+        (provider.address && provider.address.toLowerCase().includes(query))
+      );
+    }
+
+    // Distance filter
+    if (filters.maxDistance !== null && filters.maxDistance !== undefined) {
+      const maxDistance = filters.maxDistance;
+      filtered = filtered.filter(provider =>
+        provider.distanceValue <= maxDistance
+      );
+    }
+
+    // Service type filter
+    if (filters.serviceType) {
+      filtered = filtered.filter(provider =>
+        (provider.type || 'cremation').toLowerCase().includes(filters.serviceType.toLowerCase())
+      );
+    }
+
+    // Package count filter
+    if (filters.minPackages !== null) {
+      filtered = filtered.filter(provider =>
+        (provider.packages || 0) >= filters.minPackages!
+      );
+    }
+
+    // Sorting
+    filtered.sort((a, b) => {
+      let comparison = 0;
+
+      switch (filters.sortBy) {
+        case 'distance':
+          comparison = a.distanceValue - b.distanceValue;
+          break;
+        case 'name':
+          comparison = a.name.localeCompare(b.name);
+          break;
+        case 'packages':
+          comparison = (a.packages || 0) - (b.packages || 0);
+          break;
       }
-    };
 
-    applyClientSideFilters();
-  }, [filters, serviceProviders]);
+      return filters.sortOrder === 'desc' ? -comparison : comparison;
+    });
+
+    return filtered;
+  }, [serviceProviders, filters]);
 
   const mappedProvidersForFilter = useMemo(() =>
     serviceProviders.map(provider => ({
@@ -172,21 +209,13 @@ const MapWithServicesList = React.memo(function MapWithServicesList({
       operational_hours: provider.operational_hours || 'Not specified'
     })), [serviceProviders]);
 
-  const mappedProvidersForMap = useMemo(() =>
-    serviceProviders.map(provider => ({
-      id: provider.id,
-      name: provider.name,
-      address: provider.address,
-      operational_hours: provider.operational_hours || 'Not specified'
-    })), [serviceProviders]);
-
   const mappedFilteredProvidersForMap = useMemo(() =>
-    filteredProviders.length > 0 ? filteredProviders.map(provider => ({
+    filteredProviders.map(provider => ({
       id: provider.id,
       name: provider.name,
       address: provider.address,
       operational_hours: provider.operational_hours || 'Not specified'
-    })) : undefined, [filteredProviders]);
+    })), [filteredProviders]);
 
   // Pagination - use filtered providers for pagination
   const providersPerPage = 4; // Increased for vertical layout
@@ -358,8 +387,8 @@ const MapWithServicesList = React.memo(function MapWithServicesList({
               <h3 className="text-lg font-semibold text-gray-900">Map View</h3>
               {userLocation ? (
                 <p className="text-sm text-gray-600 mt-1">
-                  {filteredProviders.length > 0 && filteredProviders.length !== serviceProviders.length
-                    ? `Showing ${filteredProviders.length} of ${serviceProviders.length} services near ${userLocation.address}`
+                  {filteredProviders.length > 0
+                    ? `${filteredProviders.length} service${filteredProviders.length !== 1 ? 's' : ''} near ${userLocation.address}`
                     : `Services near ${userLocation.address}`
                   }
                 </p>
@@ -388,8 +417,8 @@ const MapWithServicesList = React.memo(function MapWithServicesList({
                   <MapComponent
                     userAddress={userLocation.address}
                     userCoordinates={userLocation.coordinates}
-                    serviceProviders={mappedProvidersForMap}
-                    filteredProviders={mappedFilteredProvidersForMap}
+                    serviceProviders={mappedFilteredProvidersForMap}
+                    filteredProviders={undefined}
                     selectedProviderId={selectedProviderId}
                     maxDistance={filters.maxDistance}
                   />
