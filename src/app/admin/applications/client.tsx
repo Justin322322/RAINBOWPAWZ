@@ -3,9 +3,9 @@
 import AdminDashboardLayout from '@/components/navigation/AdminDashboardLayout';
 import withAdminAuth from '@/components/withAdminAuth';
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
 import {
   MagnifyingGlassIcon,
-  DocumentMagnifyingGlassIcon,
   ArrowPathIcon,
 } from '@heroicons/react/24/outline';
 import Link from 'next/link';
@@ -194,8 +194,14 @@ function AdminApplicationsContent() {
           </div>
         ) : filteredApplications.length === 0 ? (
           <div className="px-6 py-8 text-center">
-            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gray-100 text-gray-400 mb-4">
-              <DocumentMagnifyingGlassIcon className="h-6 w-6" />
+            <div className="w-48 h-48 mx-auto mb-6 flex items-center justify-center">
+              <Image
+                src="/no-application.png"
+                alt="No applications found"
+                width={192}
+                height={192}
+                className="w-full h-full object-contain"
+              />
             </div>
             <p className="text-gray-500 text-sm">
               {searchTerm

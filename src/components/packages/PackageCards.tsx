@@ -69,7 +69,7 @@ const PackageCard = React.memo<{
         )}
       </div>
 
-      <div className="p-4">
+      <div className="p-5 xs:p-4 sm:p-4">
         <div className="flex justify-between mb-2">
           <h3 className="text-lg font-medium text-gray-800">{pkg.name}</h3>
           <span className="text-lg font-semibold text-gray-800">₱{formatPrice(pkg.price)}</span>
@@ -192,7 +192,7 @@ export const PackageCards: React.FC<PackageCardsProps> = ({
   toggleLoading
 }) => {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 xs:grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 xs:gap-5 sm:gap-6">
       {packages.map((pkg) => (
         <PackageCard
           key={pkg.id}

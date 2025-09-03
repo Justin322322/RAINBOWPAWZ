@@ -43,11 +43,19 @@ async function ensureServiceProvidersSchema() {
 }
 
 export async function GET(request: Request) {
-  // Extract user location from query parameters
+  // Extract user location and filtering parameters from query parameters
   const { searchParams } = new URL(request.url);
   const userLocation = searchParams.get('location');
   const userLat = searchParams.get('lat');
   const userLng = searchParams.get('lng');
+
+  // Add pagination and filtering parameters
+  const limit = Math.min(parseInt(searchParams.get('limit') || '20'), 100); // Max 100 per page
+  const offset = Math.max(parseInt(searchParams.get('offset') || '0'), 0);
+  const search = searchParams.get('search') || '';
+  const maxDistance = searchParams.get('maxDistance') ? parseFloat(searchParams.get('maxDistance')!) : null;
+  const sortBy = (searchParams.get('sortBy') || 'distance').toLowerCase();
+  const sortOrder = (searchParams.get('sortOrder') || 'asc').toUpperCase();
 
   // Validate that we have location information
   if (!userLocation && (!userLat || !userLng)) {
@@ -115,6 +123,24 @@ export async function GET(request: Request) {
         throw new Error('Database schema error: service_providers table does not exist');
       }
 
+      // Create cache key for this request
+      const cacheKey = `${userLocation}_${userLat}_${userLng}_${limit}_${offset}_${search}_${maxDistance}_${sortBy}_${sortOrder}`;
+
+      // Check server cache first (5 minute cache)
+      const cachedData = serverCache.getServiceProvidersData(cacheKey);
+      if (cachedData) {
+        return NextResponse.json({
+          providers: cachedData.providers,
+          pagination: cachedData.pagination,
+          statistics: cachedData.statistics
+        }, {
+          headers: {
+            'Cache-Control': 'private, max-age=300', // Cache for 5 minutes
+            'X-Cache': 'HIT'
+          }
+        });
+      }
+
       let providersResult;
 
       // Debug: Check if we have any providers at all
@@ -154,6 +180,19 @@ export async function GET(request: Request) {
         whereClause += " AND status = 'active'";
       }
 
+      // Build dynamic WHERE clause for filtering
+      let fullWhereClause = whereClause;
+
+      // Add search filter if provided
+      if (search) {
+        const searchConditions = [
+          'sp.name LIKE ?',
+          'COALESCE(sp.address, u.address) LIKE ?',
+          'sp.description LIKE ?'
+        ];
+        fullWhereClause += ` AND (${searchConditions.join(' OR ')})`;
+      }
+
       // Fetch from service_providers table with dynamic WHERE clause, including user profile picture
       // Use COALESCE to fallback to user address if provider address is null
       // Create business name logic: use sp.name if it's clearly a business name, otherwise create one
@@ -174,9 +213,10 @@ export async function GET(request: Request) {
           COALESCE(sp.hours, 'Not specified') as operational_hours
         FROM service_providers sp
         LEFT JOIN users u ON sp.user_id = u.user_id
-        WHERE ${whereClause}
+        WHERE ${fullWhereClause}
         ORDER BY sp.name ASC
-      `) as any[];
+        LIMIT ${limit} OFFSET ${offset}
+      `, search ? [`%${search}%`, `%${search}%`, `%${search}%`] : []) as any[];
 
       if (providersResult && providersResult.length > 0) {
         const parseDistanceValue = (distanceString: string): number => {
@@ -343,11 +383,71 @@ export async function GET(request: Request) {
           })
           .filter(provider => provider !== null); // Filter out any null providers
 
-        return NextResponse.json({ providers: processedProviders });
+        // Get total count for pagination
+        const countQuery = `
+          SELECT COUNT(*) as total
+          FROM service_providers sp
+          LEFT JOIN users u ON sp.user_id = u.user_id
+          WHERE ${fullWhereClause}
+        `;
+        const countResult = await query(countQuery, search ? [`%${search}%`, `%${search}%`, `%${search}%`] : []) as any[];
+        const total = countResult[0]?.total || 0;
+
+        // Cache the result
+        serverCache.setServiceProvidersData(cacheKey, {
+          providers: processedProviders,
+          pagination: {
+            total,
+            currentPage: Math.floor(offset / limit) + 1,
+            totalPages: Math.ceil(total / limit),
+            limit,
+            offset,
+            hasMore: offset + limit < total
+          },
+          statistics: {
+            totalProviders: total,
+            filteredCount: processedProviders.length
+          }
+        }, 5 * 60 * 1000); // 5 minute cache
+
+        return NextResponse.json({
+          providers: processedProviders,
+          pagination: {
+            total,
+            currentPage: Math.floor(offset / limit) + 1,
+            totalPages: Math.ceil(total / limit),
+            limit,
+            offset,
+            hasMore: offset + limit < total
+          },
+          statistics: {
+            totalProviders: total,
+            filteredCount: processedProviders.length
+          }
+        }, {
+          headers: {
+            'Cache-Control': 'private, max-age=300', // Cache for 5 minutes
+            'X-Cache': 'MISS'
+          }
+        });
       }
 
-      // If no providers found, return empty array
-      return NextResponse.json({ providers: [] });
+      // If no providers found, return empty array with pagination metadata
+      return NextResponse.json({
+        providers: [],
+        pagination: {
+          total: 0,
+          currentPage: 1,
+          totalPages: 0,
+          limit,
+          offset,
+          hasMore: false
+        },
+        statistics: {
+          totalProviders: 0,
+          filteredCount: 0
+        }
+      });
     } catch {
       return NextResponse.json({ providers: [], error: 'Database error' });
     }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import MapWithServicesList from '@/components/map/MapWithServicesList';
 // Geolocation utils removed
 type LocationData = {
@@ -113,9 +113,25 @@ function ServicesPage({ userData }: ServicesPageProps) {
 
 
 
-  // State for service providers
+  // State for service providers with pagination and caching
   const [serviceProviders, setServiceProviders] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [pagination, setPagination] = useState({
+    total: 0,
+    currentPage: 1,
+    totalPages: 1,
+    limit: 20,
+    hasMore: false
+  });
+  const [statistics, setStatistics] = useState({
+    totalProviders: 0,
+    filteredCount: 0
+  });
+
+
+  // Cache management
+  const [cache, setCache] = useState<Map<string, { data: any; timestamp: number }>>(new Map());
+  const [lastFetchParams, setLastFetchParams] = useState<string>('');
 
   // Function to extract distance value from string (e.g., "2.2 km away" -> 2.2)
   const extractDistanceValue = (distanceStr: string): number => {
@@ -123,71 +139,142 @@ function ServicesPage({ userData }: ServicesPageProps) {
     return match ? parseFloat(match[1]) : Infinity;
   };
 
-  // Fetch service providers from API
-  useEffect(() => {
-    const fetchServiceProviders = async () => {
-      try {
-        setIsLoading(true);
+  // Optimized fetch service providers with caching and pagination
+  const fetchServiceProviders = useCallback(async (page: number = 1) => {
+    try {
+      setIsLoading(true);
 
-        // Add a small delay to ensure the skeleton is visible
-        await new Promise(resolve => setTimeout(resolve, 800));
-
-        // Wait for location loading to complete to ensure we have coordinates if available
-        if (isLoadingLocation) {
-          return;
-        }
-
-        // Check if we have user location
-        if (!userLocation) {
-          setServiceProviders([]);
-          return;
-        }
-
-        // Pass user location to the API for accurate distance calculation
-        let apiUrl = `/api/service-providers?location=${encodeURIComponent(userLocation.address)}`;
-
-        // Add coordinates if available for more accurate distance calculation
-        if (userLocation.coordinates) {
-          const [lat, lng] = userLocation.coordinates;
-          apiUrl += `&lat=${lat}&lng=${lng}`;
-        }
-
-        const response = await fetch(apiUrl);
-
-        if (!response.ok) {
-          throw new Error('Failed to fetch service providers');
-        }
-
-        const data = await response.json();
-
-        // Sort providers by distance (nearest to farthest)
-        const sortedProviders = [...data.providers].sort((a, b) => {
-          const distanceA = extractDistanceValue(a.distance);
-          const distanceB = extractDistanceValue(b.distance);
-          return distanceA - distanceB;
-        });
-
-        setServiceProviders(sortedProviders);
-        // No pagination reset needed in new layout
-      } catch {
-        // Fallback to empty array if fetch fails
-        setServiceProviders([]);
-      } finally {
-        // Ensure loading state is shown for at least a moment
-        setTimeout(() => {
-          setIsLoading(false);
-        }, 300);
+      // Wait for location loading to complete
+      if (isLoadingLocation) {
+        return;
       }
-    };
 
-    fetchServiceProviders();
-  }, [userLocation, isLoadingLocation]);
+      // Check if we have user location
+      if (!userLocation) {
+        setServiceProviders([]);
+        setPagination(prev => ({ ...prev, total: 0, totalPages: 0 }));
+        return;
+      }
+
+      // Build query parameters
+      const params = new URLSearchParams({
+        location: encodeURIComponent(userLocation.address),
+        limit: pagination.limit.toString(),
+        offset: ((page - 1) * pagination.limit).toString()
+      });
+
+      // Add coordinates if available
+      if (userLocation.coordinates) {
+        const [lat, lng] = userLocation.coordinates;
+        params.append('lat', lat.toString());
+        params.append('lng', lng.toString());
+      }
+
+      const queryString = params.toString();
+      const cacheKey = queryString;
+
+      // Check cache first (5 minute cache)
+      const cachedData = cache.get(cacheKey);
+      const now = Date.now();
+      const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+      if (cachedData && (now - cachedData.timestamp) < CACHE_DURATION) {
+        setServiceProviders(cachedData.data.providers || []);
+        setPagination(cachedData.data.pagination);
+        setStatistics(cachedData.data.statistics || { totalProviders: 0, filteredCount: 0 });
+        setIsLoading(false);
+        return;
+      }
+
+      // Skip if same parameters were used recently
+      if (lastFetchParams === queryString && cache.has(cacheKey)) {
+        const existingData = cache.get(cacheKey);
+        if (existingData && (now - existingData.timestamp) < CACHE_DURATION) {
+          setServiceProviders(existingData.data.providers || []);
+          setPagination(existingData.data.pagination);
+          setStatistics(existingData.data.statistics || { totalProviders: 0, filteredCount: 0 });
+          setIsLoading(false);
+          return;
+        }
+      }
+
+      const response = await fetch(`/api/service-providers?${queryString}`, {
+        headers: {
+          'Cache-Control': 'no-cache'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch service providers');
+      }
+
+      const data = await response.json();
+
+      // Sort providers by distance (server-side sorting should handle this, but ensure client-side consistency)
+      const sortedProviders = [...(data.providers || [])].sort((a, b) => {
+        const distanceA = extractDistanceValue(a.distance);
+        const distanceB = extractDistanceValue(b.distance);
+        return distanceA - distanceB;
+      });
+
+      setServiceProviders(sortedProviders);
+      setPagination(data.pagination);
+      setStatistics(data.statistics);
+
+      // Update cache
+      setCache(prev => {
+        const newCache = new Map(prev);
+        newCache.set(cacheKey, {
+          data: {
+            providers: sortedProviders,
+            pagination: data.pagination,
+            statistics: data.statistics
+          },
+          timestamp: now
+        });
+        return newCache;
+      });
+
+      setLastFetchParams(queryString);
+    } catch (error) {
+      console.error('Error fetching service providers:', error);
+      setServiceProviders([]);
+      setPagination(prev => ({ ...prev, total: 0, totalPages: 0 }));
+      setStatistics({ totalProviders: 0, filteredCount: 0 });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [userLocation, pagination, cache, lastFetchParams, isLoadingLocation]);
+
+  // Initial fetch and refetch when location changes
+  useEffect(() => {
+    if (!isLoadingLocation && userLocation) {
+      fetchServiceProviders();
+    }
+  }, [userLocation, isLoadingLocation, fetchServiceProviders]);
 
 
 
   // Handle Get Directions click
   const handleGetDirections = (providerId: number) => {
     setSelectedProviderId(providerId);
+  };
+
+  // Pagination handlers
+  const handlePageChange = (newPage: number) => {
+    if (newPage >= 1 && newPage <= pagination.totalPages) {
+      setPagination(prev => ({ ...prev, currentPage: newPage }));
+      fetchServiceProviders(newPage);
+    }
+  };
+
+  const handleLimitChange = (newLimit: number) => {
+    setPagination(prev => ({
+      ...prev,
+      limit: newLimit,
+      currentPage: 1 // Reset to first page when changing page size
+    }));
+    fetchServiceProviders(1);
   };
 
   // No longer needed since we're only using profile data
@@ -219,6 +306,77 @@ function ServicesPage({ userData }: ServicesPageProps) {
                 selectedProviderId={selectedProviderId}
                 onGetDirections={handleGetDirections}
               />
+
+              {/* Statistics and Pagination */}
+              {!isLoading && serviceProviders.length > 0 && (
+                <div className="mt-8 space-y-6">
+
+
+                  {/* Pagination Controls */}
+                  {pagination.totalPages > 1 && (
+                    <div className="bg-gray-50 rounded-lg p-6">
+                      <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
+                        <div className="flex items-center space-x-4">
+                          <span className="text-sm text-gray-600">
+                            Showing {((pagination.currentPage - 1) * pagination.limit) + 1} to {Math.min(pagination.currentPage * pagination.limit, pagination.total)} of {pagination.total} providers
+                            {statistics.totalProviders > 0 && statistics.totalProviders !== pagination.total && (
+                              <span className="text-gray-500"> (out of {statistics.totalProviders} total cremation services)</span>
+                            )}
+                          </span>
+
+                          <select
+                            value={pagination.limit}
+                            onChange={(e) => handleLimitChange(parseInt(e.target.value))}
+                            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)]"
+                          >
+                            <option value={10}>10 per page</option>
+                            <option value={20}>20 per page</option>
+                            <option value={50}>50 per page</option>
+                          </select>
+                        </div>
+
+                        <div className="flex items-center space-x-2">
+                          <button
+                            onClick={() => handlePageChange(pagination.currentPage - 1)}
+                            disabled={pagination.currentPage === 1}
+                            className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            Previous
+                          </button>
+
+                          {/* Page numbers */}
+                          {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
+                            const pageNum = Math.max(1, Math.min(pagination.totalPages - 4, pagination.currentPage - 2)) + i;
+                            if (pageNum > pagination.totalPages) return null;
+
+                            return (
+                              <button
+                                key={pageNum}
+                                onClick={() => handlePageChange(pageNum)}
+                                className={`px-3 py-2 text-sm border rounded-lg ${
+                                  pageNum === pagination.currentPage
+                                    ? 'bg-[var(--primary-green)] text-white border-[var(--primary-green)]'
+                                    : 'border-gray-300 hover:bg-gray-50'
+                                }`}
+                              >
+                                {pageNum}
+                              </button>
+                            );
+                          })}
+
+                          <button
+                            onClick={() => handlePageChange(pagination.currentPage + 1)}
+                            disabled={pagination.currentPage === pagination.totalPages}
+                            className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            Next
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>

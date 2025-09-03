@@ -6,8 +6,8 @@ import { cn } from '@/utils/classNames';
 
 // Define button variants using class-variance-authority
 const buttonVariants = cva(
-  // Base styles applied to all buttons
-  "inline-flex items-center justify-center rounded-md font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary-green,#10b981)] focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none",
+  // Base styles applied to all buttons with improved mobile touch targets
+  "inline-flex items-center justify-center rounded-md font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary-green,#10b981)] focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none min-h-[44px] xs:min-h-[40px] sm:min-h-[auto]",
   {
     variants: {
       variant: {
@@ -15,15 +15,15 @@ const buttonVariants = cva(
         secondary: "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50",
         outline: "border border-[var(--primary-green,#10b981)] text-[var(--primary-green,#10b981)] hover:bg-[var(--primary-green-bg,#ecfdf5)]",
         ghost: "bg-transparent hover:bg-gray-100 text-gray-700",
-        link: "bg-transparent underline-offset-4 hover:underline text-[var(--primary-green,#10b981)] hover:bg-transparent",
+        link: "bg-transparent underline-offset-4 hover:underline text-[var(--primary-green,#10b981)] hover:bg-transparent min-h-[auto]",
         danger: "bg-red-600 text-white hover:bg-red-700",
       },
       size: {
-        xs: "text-xs px-2 py-1",
-        sm: "text-sm px-3 py-1.5",
-        md: "text-sm px-4 py-2",
-        lg: "text-base px-6 py-3",
-        xl: "text-lg px-8 py-4",
+        xs: "text-xs px-3 py-2 xs:px-2 xs:py-1.5",
+        sm: "text-sm px-4 py-2.5 xs:px-3 xs:py-2",
+        md: "text-sm px-5 py-3 xs:px-4 xs:py-2.5",
+        lg: "text-base px-7 py-3.5 xs:px-6 xs:py-3",
+        xl: "text-lg px-9 py-4.5 xs:px-8 xs:py-4",
       },
       rounded: {
         default: "rounded-md",

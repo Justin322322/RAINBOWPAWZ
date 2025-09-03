@@ -116,6 +116,24 @@
     min-inline-size: 44px;
   }
 
+  /* iPhone 12 Pro and similar small device optimizations */
+  @media (max-width: 475px) {
+    .mobile-optimized-spacing {
+      padding-left: 1rem;
+      padding-right: 1rem;
+    }
+
+    .mobile-modal-spacing {
+      padding: 1.25rem;
+    }
+
+    .mobile-button-spacing {
+      min-height: 48px;
+      padding-left: 1rem;
+      padding-right: 1rem;
+    }
+  }
+
   /* Enhanced mobile hero buttons */
   .mobile-hero-button {
     inline-size: 100%;
@@ -129,7 +147,15 @@
     transition: all var(--transition-base);
     transform: translate3d(0, 0, 0); /* GPU acceleration */
     min-block-size: 56px;
-    
+
+    /* iPhone 12 Pro specific adjustments */
+    @media (max-width: 475px) {
+      padding-inline: 1.25rem;
+      padding-block: 1.125rem;
+      font-size: 0.8125rem;
+      min-block-size: 52px;
+    }
+
     &:hover {
       transform: translate3d(0, -2px, 0);
       box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
@@ -443,6 +469,40 @@
     padding-block: 0.875rem;
     font-size: 0.875rem;
     min-block-size: 52px;
+  }
+
+  /* Extra small device improvements (iPhone 12 Pro and similar) */
+  @media (max-width: 475px) {
+    .mobile-hero-button {
+      padding-block: 1rem;
+      font-size: 0.8125rem;
+      min-block-size: 50px;
+    }
+
+    /* Improve container spacing for mobile */
+    .mobile-container {
+      padding-left: 1rem;
+      padding-right: 1rem;
+    }
+
+    /* Better card spacing for mobile */
+    .mobile-card {
+      padding: 1.25rem;
+      margin-left: 0.5rem;
+      margin-right: 0.5rem;
+    }
+
+    /* Full width cards on mobile */
+    .mobile-full-width {
+      width: 100vw;
+      margin-left: calc(-50vw + 50%);
+      margin-right: calc(-50vw + 50%);
+    }
+
+    /* Better grid gaps for mobile */
+    .mobile-grid-spacing {
+      gap: 1rem;
+    }
   }
 }
 

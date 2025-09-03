@@ -15,6 +15,61 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import Select from '@/components/ui/Select';
 import { PackageImage } from '@/components/packages/PackageImage';
+
+// Lazy-loaded image component for better performance
+const LazyServiceImage: React.FC<{
+  images: string[];
+  alt: string;
+  className?: string;
+  onError?: () => void;
+}> = ({ images, alt, className = '', onError }) => {
+  const [isInView, setIsInView] = React.useState(false);
+  const [hasLoaded, setHasLoaded] = React.useState(false);
+  const imgRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsInView(true);
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.1, rootMargin: '50px' }
+    );
+
+    if (imgRef.current) {
+      observer.observe(imgRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, []);
+
+  const _handleLoad = () => {
+    setHasLoaded(true);
+  };
+
+  if (!isInView) {
+    return (
+      <div
+        ref={imgRef}
+        className={`w-full h-full bg-gray-100 flex items-center justify-center ${className}`}
+      >
+        <div className="animate-pulse bg-gray-200 w-full h-full rounded"></div>
+      </div>
+    );
+  }
+
+  return (
+    <PackageImage
+      images={images}
+      alt={alt}
+      size="large"
+      className={`${className} ${hasLoaded ? 'opacity-100' : 'opacity-0'} transition-opacity duration-300`}
+      onError={onError}
+    />
+  );
+};
 import { LoadingSpinner } from './client';
 import StarRating from '@/components/ui/StarRating';
 import StatCard from '@/components/ui/StatCard';
@@ -53,7 +108,7 @@ type Stats = {
   verifiedCenters: number;
 };
 
-function StatusBadge({ status }: { status: Service['status'] }) {
+const StatusBadge = React.memo(function StatusBadge({ status }: { status: Service['status'] }) {
   const common = 'px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full min-w-[90px] justify-center';
   switch (status) {
     case 'active':
@@ -65,9 +120,9 @@ function StatusBadge({ status }: { status: Service['status'] }) {
     default:
       return <span className={`${common} bg-gray-100 text-gray-800`}>{status}</span>;
   }
-}
+});
 
-function CategoryBadge({ category }: { category: string }) {
+const CategoryBadge = React.memo(function CategoryBadge({ category }: { category: string }) {
   const common = 'px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full';
   switch (category) {
     case 'individual': return <span className={`${common} bg-blue-100 text-blue-800`}>Individual</span>;
@@ -77,7 +132,7 @@ function CategoryBadge({ category }: { category: string }) {
     case 'memorial':   return <span className={`${common} bg-indigo-100 text-indigo-800`}>Memorial</span>;
     default:           return <span className={`${common} bg-gray-100 text-gray-800`}>{category}</span>;
   }
-}
+});
 
 // Hook to fetch services + stats + pagination
 function useServices(params: {
@@ -87,9 +142,8 @@ function useServices(params: {
   page: number;
   limit: number;
   onError: (msg: string) => void;
-  shouldFetch?: () => boolean;
 }) {
-  const { search, status, category, page, limit, onError, shouldFetch } = params;
+  const { search, status, category, page, limit, onError } = params;
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
   const [_error, setError] = useState<string | null>(null);
@@ -107,10 +161,9 @@ function useServices(params: {
     totalPages: 1,
   });
 
-  // Memoize the error handler to prevent unnecessary re-renders
-  const _handleError = useCallback((message: string) => {
-    onError(message);
-  }, [onError]);
+  // Simple cache implementation
+  const [cache, setCache] = useState<Map<string, { data: any; timestamp: number }>>(new Map());
+  const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
   useEffect(() => {
     const controller = new AbortController();
@@ -118,10 +171,19 @@ function useServices(params: {
     let isMounted = true;
     let retryTimer: NodeJS.Timeout | null = null;
 
-    // Check if we should fetch data based on the shouldFetch callback
-    if (shouldFetch && !shouldFetch()) {
-      // Skip fetching if shouldFetch returns false
+    // Create stable cache key
+    const cacheKey = `${search}_${status}_${category}_${page}_${limit}`;
+    const now = Date.now();
+
+    // Check cache first
+    const cachedData = cache.get(cacheKey);
+    if (cachedData && (now - cachedData.timestamp) < CACHE_DURATION) {
+      // Use cached data
+      setServices(cachedData.data.services || []);
+      setPagination(cachedData.data.pagination || { total: 0, page: 1, limit: 10, totalPages: 1 });
+      setStats(cachedData.data.stats || { activeServices: 0, totalBookings: 0, verifiedCenters: 0 });
       setLoading(false);
+      setIsInitialLoad(false);
       return;
     }
 
@@ -136,7 +198,6 @@ function useServices(params: {
           category: category || 'all',
           page: page.toString(),
           limit: limit.toString(),
-          _t: Date.now().toString(), // Prevent caching
         });
 
         const res = await fetch(`/api/admin/services/listing?${query}`, {
@@ -161,24 +222,43 @@ function useServices(params: {
           throw new Error(data.error || 'Failed to load services');
         }
 
-        setServices(data.services || []);
-        setPagination(data.pagination || { total: 0, page: 1, limit: 10, totalPages: 1 });
-
+        const servicesData = data.services || [];
+        const paginationData = data.pagination || { total: 0, page: 1, limit: 10, totalPages: 1 };
+        
         // Update stats if available
+        let statsData;
         if (data.stats) {
-          setStats({
+          statsData = {
             activeServices: data.stats.activeServices || 0,
             totalBookings: data.stats.totalBookings || 0,
             verifiedCenters: data.stats.verifiedCenters || 0,
-          });
+          };
         } else {
           // Use data from the response directly if stats object is not present
-          setStats({
+          statsData = {
             activeServices: data.activeServicesCount || 0,
             totalBookings: 0,
             verifiedCenters: data.serviceProvidersCount || 0,
-          });
+          };
         }
+
+        setServices(servicesData);
+        setPagination(paginationData);
+        setStats(statsData);
+
+        // Update cache
+        setCache(prev => {
+          const newCache = new Map(prev);
+          newCache.set(cacheKey, {
+            data: {
+              services: servicesData,
+              pagination: paginationData,
+              stats: statsData
+            },
+            timestamp: now
+          });
+          return newCache;
+        });
 
         setError(null);
         setRetryCount(0); // Reset retry count on success
@@ -217,7 +297,7 @@ function useServices(params: {
       controller.abort();
       if (retryTimer) clearTimeout(retryTimer);
     };
-  }, [search, status, category, page, limit, onError, retryCount, shouldFetch]);
+  }, [search, status, category, page, limit, onError, retryCount, cache, CACHE_DURATION]);
 
   return { services, loading, stats, pagination, setPagination };
 }
@@ -230,23 +310,9 @@ const AdminServicesPage = React.memo(function AdminServicesPage() {
   const [notification, setNotification]   = useState<{ message: string; type: 'error'|'success'|null }>({ message:'', type:null });
   const [page, setPage] = useState(1);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
-  const [lastFetchTime, setLastFetchTime] = useState(0); // Track last fetch time for cache
   const limit = 20;
 
   const debouncedSearch = useDebounce(searchTerm, 300);
-
-  // Create a cache key based on the current filters
-  const _cacheKey = `${debouncedSearch}_${statusFilter}_${categoryFilter}_${page}_${limit}`;
-
-  // Only fetch new data if filters change or if it's been more than 30 seconds
-  const shouldFetch = useCallback(() => {
-    const now = Date.now();
-    if (now - lastFetchTime > 30000) { // 30 seconds cache
-      setLastFetchTime(now);
-      return true;
-    }
-    return false;
-  }, [lastFetchTime]);
 
   const { services, loading, stats, pagination, setPagination } = useServices({
     search: debouncedSearch,
@@ -254,8 +320,7 @@ const AdminServicesPage = React.memo(function AdminServicesPage() {
     category: categoryFilter,
     page,
     limit,
-    onError: (msg) => setNotification({ message: msg, type: 'error' }),
-    shouldFetch: shouldFetch
+    onError: (msg) => setNotification({ message: msg, type: 'error' })
   });
 
 
@@ -295,10 +360,10 @@ const AdminServicesPage = React.memo(function AdminServicesPage() {
     return undefined; // Explicitly return undefined when there's no cleanup needed
   }, [notification]);
 
-  // Reset loading state when filters change
+  // Reset to first page when filters change, but preserve cache for same filters
   useEffect(() => {
     setPage(1); // Reset to first page when filters change
-    setLastFetchTime(0); // Reset cache when filters change
+    // Don't reset cache here - let it persist for performance
   }, [searchTerm, statusFilter, categoryFilter]);
 
   if (loading && isInitialLoad) {
@@ -514,7 +579,7 @@ export default AdminServicesPage;
 
 // ——— Helper components below ———
 
-function ServiceCard({
+const ServiceCard = React.memo(function ServiceCard({
   service,
   onViewDetails,
   imageError,
@@ -569,10 +634,9 @@ function ServiceCard({
             <span className="text-xs text-gray-500">No image available</span>
           </div>
         ) : (
-          <PackageImage
+          <LazyServiceImage
             images={service.images}
             alt={formattedName}
-            size="large"
             className="object-cover w-full h-full"
             onError={() => setImageError(prev => ({ ...prev, [service.id]: true }))}
           />
@@ -613,7 +677,7 @@ function ServiceCard({
       </div>
     </div>
   );
-}
+});
 
 function ServiceDetailsModal({
   service,

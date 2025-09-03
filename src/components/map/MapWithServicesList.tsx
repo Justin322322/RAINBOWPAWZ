@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import {
   ChevronLeftIcon,
@@ -46,7 +46,78 @@ interface MapWithServicesListProps {
   onGetDirections: (providerId: number) => void;
 }
 
-export default function MapWithServicesList({
+// Memoized provider card component for better performance
+const ProviderCard = React.memo(function ProviderCard({
+  provider,
+  isSelected,
+  onGetDirections
+}: {
+  provider: any;
+  isSelected: boolean;
+  onGetDirections: (id: number) => void;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className={`border rounded-lg p-3 transition-all duration-200 hover:shadow-md ${
+        isSelected
+          ? 'border-[var(--primary-green)] bg-green-50'
+          : 'border-gray-200 hover:border-gray-300'
+      }`}
+      onClick={() => onGetDirections(provider.id)}
+    >
+      <div className="flex justify-between items-start mb-2">
+        <h4 className="font-medium text-gray-900 text-sm">{provider.name}</h4>
+        <span className="text-xs bg-[var(--primary-green)] text-white px-2 py-1 rounded">
+          {provider.type}
+        </span>
+      </div>
+
+      <p className="text-sm text-gray-600 mb-1 flex items-start">
+        <MapPinIcon className="h-3 w-3 text-[var(--primary-green)] mr-1 flex-shrink-0 mt-0.5" />
+        <span className="line-clamp-2">{provider.address?.replace(', Philippines', '')}</span>
+      </p>
+
+      {provider.operational_hours && provider.operational_hours !== 'Not specified' && (
+        <p className="text-sm text-gray-600 mb-2 flex items-start">
+          <ClockIcon className="h-3 w-3 text-[var(--primary-green)] mr-1 flex-shrink-0 mt-0.5" />
+          <span className="line-clamp-1">{provider.operational_hours}</span>
+        </p>
+      )}
+
+      <div className="flex justify-between items-center mb-2">
+        <span className="text-sm text-[var(--primary-green)] font-medium">
+          {provider.distance}
+        </span>
+        <span className="text-xs text-gray-500">
+          {provider.packages} package{provider.packages !== 1 ? 's' : ''}
+        </span>
+      </div>
+
+      <div className="flex gap-2">
+        <Link
+          href={`/user/furparent_dashboard/services/${provider.id}`}
+          className="flex-1 bg-[var(--primary-green)] text-white px-3 py-2 rounded text-xs font-medium hover:bg-[var(--primary-green-hover)] transition-colors text-center"
+        >
+          <CalendarIcon className="h-3 w-3 inline mr-1" />
+          Book Now
+        </Link>
+        <button
+          className="flex-1 bg-gray-100 text-gray-700 px-3 py-2 rounded text-xs font-medium hover:bg-gray-200 transition-colors"
+          onClick={(e) => {
+            e.stopPropagation();
+            onGetDirections(provider.id);
+          }}
+        >
+          Directions
+        </button>
+      </div>
+    </motion.div>
+  );
+});
+
+const MapWithServicesList = React.memo(function MapWithServicesList({
   serviceProviders,
   userLocation,
   isLoading,
@@ -54,7 +125,6 @@ export default function MapWithServicesList({
   onGetDirections
 }: MapWithServicesListProps) {
   const [currentPage, setCurrentPage] = useState(1);
-  const [filteredProviders, setFilteredProviders] = useState<FilterServiceProvider[]>([]);
   const [filters, setFilters] = useState<FilterState>({
     searchQuery: '',
     maxDistance: null,
@@ -70,74 +140,62 @@ export default function MapWithServicesList({
     setCurrentPage(1); // Reset to first page when filters change
   };
 
-  useEffect(() => {
-    const applyFilters = () => {
-      // Destructure all needed filter properties once at the start
-      const { 
-        searchQuery, 
-        maxDistance, 
-        serviceType, 
-        minPackages, 
-        sortBy, 
-        sortOrder 
-      } = filters;
+  // Apply client-side filtering (same logic as MapFilters)
+  const filteredProviders = useMemo(() => {
+    let filtered = [...serviceProviders];
 
-      let filtered = [...serviceProviders];
+    // Search filter
+    if (filters.searchQuery.trim()) {
+      const query = filters.searchQuery.toLowerCase().trim();
+      filtered = filtered.filter(provider =>
+        provider.name.toLowerCase().includes(query) ||
+        (provider.address && provider.address.toLowerCase().includes(query))
+      );
+    }
 
-      // Search filter
-      if (searchQuery.trim()) {
-        const query = searchQuery.toLowerCase().trim();
-        filtered = filtered.filter(provider =>
-          provider.name.toLowerCase().includes(query) ||
-          provider.address.toLowerCase().includes(query)
-        );
+    // Distance filter
+    if (filters.maxDistance !== null && filters.maxDistance !== undefined) {
+      const maxDistance = filters.maxDistance;
+      filtered = filtered.filter(provider =>
+        provider.distanceValue <= maxDistance
+      );
+    }
+
+    // Service type filter
+    if (filters.serviceType) {
+      filtered = filtered.filter(provider =>
+        (provider.type || 'cremation').toLowerCase().includes(filters.serviceType.toLowerCase())
+      );
+    }
+
+    // Package count filter
+    if (filters.minPackages !== null) {
+      filtered = filtered.filter(provider =>
+        (provider.packages || 0) >= filters.minPackages!
+      );
+    }
+
+    // Sorting
+    filtered.sort((a, b) => {
+      let comparison = 0;
+
+      switch (filters.sortBy) {
+        case 'distance':
+          comparison = a.distanceValue - b.distanceValue;
+          break;
+        case 'name':
+          comparison = a.name.localeCompare(b.name);
+          break;
+        case 'packages':
+          comparison = (a.packages || 0) - (b.packages || 0);
+          break;
       }
 
-      // Distance filter
-      if (maxDistance !== null && maxDistance !== undefined) {
-        filtered = filtered.filter(provider => 
-          provider.distanceValue <= maxDistance
-        );
-      }
+      return filters.sortOrder === 'desc' ? -comparison : comparison;
+    });
 
-      // Service type filter
-      if (serviceType) {
-        filtered = filtered.filter(provider =>
-          provider.type.toLowerCase().includes(serviceType.toLowerCase())
-        );
-      }
-
-      // Package count filter
-      if (minPackages !== null && minPackages !== undefined) {
-        filtered = filtered.filter(provider =>
-          provider.packages >= minPackages
-        );
-      }
-
-      // Sorting
-      filtered.sort((a, b) => {
-        let comparison = 0;
-        
-        switch (sortBy) {
-          case 'distance':
-            comparison = a.distanceValue - b.distanceValue;
-            break;
-          case 'name':
-            comparison = a.name.localeCompare(b.name);
-            break;
-          case 'packages':
-            comparison = a.packages - b.packages;
-            break;
-        }
-        
-        return sortOrder === 'desc' ? -comparison : comparison;
-      });
-
-      setFilteredProviders(filtered);
-    };
-
-    applyFilters();
-  }, [filters, serviceProviders]);
+    return filtered;
+  }, [serviceProviders, filters]);
 
   const mappedProvidersForFilter = useMemo(() =>
     serviceProviders.map(provider => ({
@@ -160,12 +218,12 @@ export default function MapWithServicesList({
     })), [serviceProviders]);
 
   const mappedFilteredProvidersForMap = useMemo(() =>
-    filteredProviders.length > 0 ? filteredProviders.map(provider => ({
+    filteredProviders.map(provider => ({
       id: provider.id,
       name: provider.name,
       address: provider.address,
       operational_hours: provider.operational_hours || 'Not specified'
-    })) : undefined, [filteredProviders]);
+    })), [filteredProviders]);
 
   // Pagination - use filtered providers for pagination
   const providersPerPage = 4; // Increased for vertical layout
@@ -277,58 +335,12 @@ export default function MapWithServicesList({
                       {/* Provider Cards */}
                       <div className="space-y-3">
                         {currentProviders.map(provider => (
-                          <div
+                          <ProviderCard
                             key={provider.id}
-                            className={`border rounded-lg p-3 transition-all duration-200 hover:shadow-md ${
-                              selectedProviderId === provider.id 
-                                ? 'border-[var(--primary-green)] bg-green-50' 
-                                : 'border-gray-200 hover:border-gray-300'
-                            }`}
-                          >
-                            <div className="flex justify-between items-start mb-2">
-                              <h4 className="font-medium text-gray-900 text-sm">{provider.name}</h4>
-                              <span className="text-xs bg-[var(--primary-green)] text-white px-2 py-1 rounded">
-                                {provider.type}
-                              </span>
-                            </div>
-                            
-                            <p className="text-sm text-gray-600 mb-1 flex items-start">
-                              <MapPinIcon className="h-3 w-3 text-[var(--primary-green)] mr-1 flex-shrink-0 mt-0.5" />
-                              <span className="line-clamp-2">{provider.address?.replace(', Philippines', '')}</span>
-                            </p>
-
-                            {provider.operational_hours && provider.operational_hours !== 'Not specified' && (
-                              <p className="text-sm text-gray-600 mb-2 flex items-start">
-                                <ClockIcon className="h-3 w-3 text-[var(--primary-green)] mr-1 flex-shrink-0 mt-0.5" />
-                                <span className="line-clamp-1">{provider.operational_hours}</span>
-                              </p>
-                            )}
-
-                            <div className="flex justify-between items-center mb-2">
-                              <span className="text-sm text-[var(--primary-green)] font-medium">
-                                {provider.distance}
-                              </span>
-                              <span className="text-xs text-gray-500">
-                                {provider.packages} package{provider.packages !== 1 ? 's' : ''}
-                              </span>
-                            </div>
-
-                            <div className="flex gap-2">
-                              <Link
-                                href={`/user/furparent_dashboard/services/${provider.id}`}
-                                className="flex-1 bg-[var(--primary-green)] text-white px-3 py-2 rounded text-xs font-medium hover:bg-[var(--primary-green-hover)] transition-colors text-center"
-                              >
-                                <CalendarIcon className="h-3 w-3 inline mr-1" />
-                                Book Now
-                              </Link>
-                              <button
-                                className="flex-1 bg-gray-100 text-gray-700 px-3 py-2 rounded text-xs font-medium hover:bg-gray-200 transition-colors"
-                                onClick={() => onGetDirections(provider.id)}
-                              >
-                                Directions
-                              </button>
-                            </div>
-                          </div>
+                            provider={provider}
+                            isSelected={selectedProviderId === provider.id}
+                            onGetDirections={onGetDirections}
+                          />
                         ))}
                       </div>
 
@@ -383,8 +395,8 @@ export default function MapWithServicesList({
               <h3 className="text-lg font-semibold text-gray-900">Map View</h3>
               {userLocation ? (
                 <p className="text-sm text-gray-600 mt-1">
-                  {filteredProviders.length > 0 && filteredProviders.length !== serviceProviders.length
-                    ? `Showing ${filteredProviders.length} of ${serviceProviders.length} services near ${userLocation.address}`
+                  {filteredProviders.length > 0
+                    ? `${filteredProviders.length} service${filteredProviders.length !== 1 ? 's' : ''} near ${userLocation.address}`
                     : `Services near ${userLocation.address}`
                   }
                 </p>
@@ -426,4 +438,6 @@ export default function MapWithServicesList({
       </div>
     </div>
   );
-} 
+});
+
+export default MapWithServicesList;

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
 import AdminDashboardLayout from '@/components/navigation/AdminDashboardLayout';
 import {
   UserGroupIcon,
@@ -208,7 +209,7 @@ function AdminDashboardPage({ adminData }: { adminData: any }) {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 xs:grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 xs:gap-5 sm:gap-6 mb-8">
         {isLoading ? (
           // Using standardized skeleton loader
           Array(3).fill(0).map((_, index) => (
@@ -429,8 +430,14 @@ function AdminDashboardPage({ adminData }: { adminData: any }) {
           </div>
         ) : (
           <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 text-center">
-            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gray-100 text-gray-400 mb-4">
-              <DocumentCheckIcon className="h-6 w-6" />
+            <div className="w-48 h-48 mx-auto mb-6 flex items-center justify-center">
+              <Image
+                src="/no-application.png"
+                alt="No recent applications found"
+                width={192}
+                height={192}
+                className="w-full h-full object-contain"
+              />
             </div>
             <p className="text-gray-500 text-sm">No recent applications found.</p>
           </div>
@@ -442,7 +449,7 @@ function AdminDashboardPage({ adminData }: { adminData: any }) {
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-lg font-medium text-gray-800">User Distribution</h2>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 xs:grid-cols-1 sm:grid-cols-2 gap-4 xs:gap-5 sm:gap-6">
           {isLoading ? (
             // Using standardized skeleton loader for user distribution
             Array(2).fill(0).map((_, index) => (

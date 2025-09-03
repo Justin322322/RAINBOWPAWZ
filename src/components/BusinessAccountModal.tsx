@@ -291,8 +291,14 @@ const BusinessAccountModal: React.FC<BusinessAccountModalProps> = ({ isOpen, onC
         }
       }
 
-      // Combine address fields into single address string
-      const businessAddress = `${formData.businessStreetAddress}, ${formData.businessCity}, ${formData.businessProvince}${formData.businessPostalCode ? ', ' + formData.businessPostalCode : ''}, Philippines`;
+      // Combine address fields into single address string (only include non-empty fields)
+      const businessAddressParts = [];
+      if (formData.businessStreetAddress?.trim()) businessAddressParts.push(formData.businessStreetAddress.trim());
+      if (formData.businessCity?.trim()) businessAddressParts.push(formData.businessCity.trim());
+      if (formData.businessProvince?.trim()) businessAddressParts.push(formData.businessProvince.trim());
+      if (formData.businessPostalCode?.trim()) businessAddressParts.push(formData.businessPostalCode.trim());
+      businessAddressParts.push('Philippines'); // Always include Philippines
+      const businessAddress = businessAddressParts.join(', ');
 
       // Now proceed with registration including document URLs
       const textData = {

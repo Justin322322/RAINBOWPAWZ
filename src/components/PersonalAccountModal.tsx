@@ -185,8 +185,14 @@ const PersonalAccountModal: React.FC<PersonalAccountModalProps> = ({ isOpen, onC
       const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
 
       try {
-        // Combine address fields into single address string
-        const address = `${formData.streetAddress}, ${formData.city}, ${formData.province}${formData.postalCode ? ', ' + formData.postalCode : ''}, Philippines`;
+        // Combine address fields into single address string (only include non-empty fields)
+        const addressParts = [];
+        if (formData.streetAddress?.trim()) addressParts.push(formData.streetAddress.trim());
+        if (formData.city?.trim()) addressParts.push(formData.city.trim());
+        if (formData.province?.trim()) addressParts.push(formData.province.trim());
+        if (formData.postalCode?.trim()) addressParts.push(formData.postalCode.trim());
+        addressParts.push('Philippines'); // Always include Philippines
+        const address = addressParts.join(', ');
 
         // Send the registration request
         const response = await fetch(`/api/auth/register`, {

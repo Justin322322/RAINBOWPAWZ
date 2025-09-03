@@ -286,19 +286,48 @@ export async function PATCH(request: NextRequest) {
     }
     else if (body.address) {
       // Handle address update
-      const { street } = body.address;
+      // Support both single string and object formats
+      let addressString: string;
+
+      if (typeof body.address === 'string') {
+        addressString = body.address;
+      } else if (typeof body.address === 'object' && body.address !== null) {
+        // Handle structured address object
+        const { street, city, province, postalCode } = body.address;
+        const addressParts = [];
+        if (street?.trim()) addressParts.push(street.trim());
+        if (city?.trim()) addressParts.push(city.trim());
+        if (province?.trim()) addressParts.push(province.trim());
+        if (postalCode?.trim()) addressParts.push(postalCode.trim());
+        addressParts.push('Philippines'); // Always include country
+        addressString = addressParts.join(', ');
+      } else {
+        return NextResponse.json({
+          error: 'Invalid address format'
+        }, { status: 400 });
+      }
+
+      // Validate address is not empty
+      if (!addressString?.trim()) {
+        return NextResponse.json({
+          error: 'Address cannot be empty'
+        }, { status: 400 });
+      }
+
+      // Sanitize address (remove potentially harmful characters)
+      addressString = addressString.trim().replace(/[<>\"'&]/g, '');
 
       // Update service provider address
       await query(`
         UPDATE service_providers
         SET address = ?, updated_at = NOW()
         WHERE user_id = ?
-      `, [street, user.userId]);
+      `, [addressString, user.userId]);
 
       return NextResponse.json({
         success: true,
         message: 'Address updated successfully',
-        address: { street }
+        address: addressString
       });
     }
     else if (body.contactInfo) {
@@ -315,6 +344,31 @@ export async function PATCH(request: NextRequest) {
 
       console.log('🔍 DEBUG: Address received:', address);
 
+      // Process and validate address
+      let processedAddress: string | null = null;
+      if (address) {
+        if (typeof address === 'string') {
+          processedAddress = address.trim();
+        } else if (typeof address === 'object' && address !== null) {
+          // Handle structured address object
+          const { streetAddress, city, province, postalCode } = address;
+          const addressParts = [];
+          if (streetAddress?.trim()) addressParts.push(streetAddress.trim());
+          if (city?.trim()) addressParts.push(city.trim());
+          if (province?.trim()) addressParts.push(province.trim());
+          if (postalCode?.trim()) addressParts.push(postalCode.trim());
+          addressParts.push('Philippines'); // Always include country
+          processedAddress = addressParts.join(', ');
+        }
+
+        // Validate and sanitize address
+        if (processedAddress?.trim()) {
+          processedAddress = processedAddress.trim().replace(/[<>\"'&]/g, '');
+        } else {
+          processedAddress = null;
+        }
+      }
+
       // Format phone number if provided. If invalid, skip updating phone instead of blocking address/email updates.
       let formattedPhone: string | null | undefined = undefined; // undefined => do not touch phone
       if (phone && phone.trim()) {
@@ -327,27 +381,27 @@ export async function PATCH(request: NextRequest) {
         }
       }
 
-      console.log('🔍 DEBUG: Updating user table with address:', address);
+      console.log('🔍 DEBUG: Updating user table with processed address:', processedAddress);
       // Update user info (including email and address)
       await query(
         'UPDATE users SET first_name = ?, last_name = ?, email = ?, phone = COALESCE(?, phone), address = ?, updated_at = NOW() WHERE user_id = ?',
-        [firstName, lastName, email, formattedPhone ?? null, address || null, user.userId]
+        [firstName, lastName, email, formattedPhone ?? null, processedAddress, user.userId]
       );
       console.log('✅ DEBUG: User table updated');
 
-      console.log('🔍 DEBUG: Updating service_providers table with address:', address);
+      console.log('🔍 DEBUG: Updating service_providers table with processed address:', processedAddress);
       // Update service provider contact info
       await query(`
         UPDATE service_providers
         SET contact_first_name = ?, contact_last_name = ?, phone = COALESCE(?, phone), address = ?, updated_at = NOW()
         WHERE user_id = ?
-      `, [firstName, lastName, formattedPhone ?? null, address || null, user.userId]);
+      `, [firstName, lastName, formattedPhone ?? null, processedAddress, user.userId]);
       console.log('✅ DEBUG: Service providers table updated');
 
       return NextResponse.json({
         success: true,
         message: 'Contact information updated successfully',
-        contactInfo: { firstName, lastName, email, phone: formattedPhone, address }
+        contactInfo: { firstName, lastName, email, phone: formattedPhone, address: processedAddress }
       });
     }
 

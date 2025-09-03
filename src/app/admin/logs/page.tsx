@@ -267,6 +267,59 @@ function AdminLogsPage({ adminData }: { adminData: any }) {
     }
   };
 
+  // Convert technical field names to user-friendly names
+  const getFriendlyFieldName = (fieldName: string) => {
+    const fieldMappings: Record<string, string> = {
+      // Document fields
+      'bir_certificate': 'BIR Certificate',
+      'government_id': 'Government ID',
+      'business_permit': 'Business Permit',
+      'business_permit_path': 'Business Permit',
+      'bir_certificate_path': 'BIR Certificate',
+      'government_id_path': 'Government ID',
+
+      // Address fields
+      'streetAddress': 'Street Address',
+      'city': 'City',
+      'province': 'Province',
+      'postalCode': 'Postal Code',
+      'businessStreetAddress': 'Business Street Address',
+      'businessCity': 'Business City',
+      'businessProvince': 'Business Province',
+      'businessPostalCode': 'Business Postal Code',
+
+      // Contact fields
+      'firstName': 'First Name',
+      'lastName': 'Last Name',
+      'email': 'Email Address',
+      'phone': 'Phone Number',
+      'businessPhone': 'Business Phone',
+      'businessEmail': 'Business Email',
+
+      // Business details
+      'businessName': 'Business Name',
+      'businessType': 'Business Type',
+      'businessEntityType': 'Business Entity Type',
+      'businessDescription': 'Business Description',
+      'businessHours': 'Business Hours',
+      'serviceDescription': 'Service Description',
+
+      // Other common fields
+      'sex': 'Gender',
+      'password': 'Password',
+      'confirmPassword': 'Confirm Password',
+      'agreeToTerms': 'Terms Agreement',
+      'account_type': 'Account Type',
+      'role': 'User Role',
+      'is_otp_verified': 'OTP Verification',
+      'is_verified': 'Verification Status',
+      'created_at': 'Created Date',
+      'updated_at': 'Updated Date'
+    };
+
+    return fieldMappings[fieldName] || fieldName.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+  };
+
   // View log details
   const viewLogDetails = (log: AdminLog) => {
     setSelectedLog(log);
@@ -795,7 +848,7 @@ function AdminLogsPage({ adminData }: { adminData: any }) {
                             {Object.entries(details).map(([key, value]) => (
                               <div key={key} className="flex justify-between">
                                 <span className="text-sm font-medium text-gray-600">
-                                  {key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}:
+                                  {getFriendlyFieldName(key)}:
                                 </span>
                                 <span className="text-sm text-gray-900">
                                   {typeof value === 'object' ? JSON.stringify(value) : String(value)}

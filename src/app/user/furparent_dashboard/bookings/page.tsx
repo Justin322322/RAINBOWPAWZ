@@ -721,7 +721,15 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
               </div>
             ) : bookings.length === 0 ? (
               <div className="bg-gray-50 p-8 rounded-lg text-center">
-                <ClipboardDocumentListIcon className="h-12 w-12 mx-auto text-gray-400" />
+                <div className="w-48 h-48 mx-auto mb-6 flex items-center justify-center">
+                  <Image
+                    src="/no-bookings.png"
+                    alt="No bookings found"
+                    width={192}
+                    height={192}
+                    className="w-full h-full object-contain"
+                  />
+                </div>
                 <h3 className="mt-4 text-lg font-medium text-gray-900">No bookings found</h3>
                 <p className="mt-2 text-gray-600">
                   {activeFilter
