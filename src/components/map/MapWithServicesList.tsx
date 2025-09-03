@@ -209,6 +209,14 @@ const MapWithServicesList = React.memo(function MapWithServicesList({
       operational_hours: provider.operational_hours || 'Not specified'
     })), [serviceProviders]);
 
+  const mappedProvidersForMap = useMemo(() =>
+    serviceProviders.map(provider => ({
+      id: provider.id,
+      name: provider.name,
+      address: provider.address,
+      operational_hours: provider.operational_hours || 'Not specified'
+    })), [serviceProviders]);
+
   const mappedFilteredProvidersForMap = useMemo(() =>
     filteredProviders.map(provider => ({
       id: provider.id,
@@ -417,8 +425,8 @@ const MapWithServicesList = React.memo(function MapWithServicesList({
                   <MapComponent
                     userAddress={userLocation.address}
                     userCoordinates={userLocation.coordinates}
-                    serviceProviders={mappedFilteredProvidersForMap}
-                    filteredProviders={undefined}
+                    serviceProviders={mappedProvidersForMap}
+                    filteredProviders={mappedFilteredProvidersForMap}
                     selectedProviderId={selectedProviderId}
                     maxDistance={filters.maxDistance}
                   />

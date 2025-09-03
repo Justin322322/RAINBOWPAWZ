@@ -160,9 +160,7 @@ function ServicesPage({ userData }: ServicesPageProps) {
       const params = new URLSearchParams({
         location: encodeURIComponent(userLocation.address),
         limit: pagination.limit.toString(),
-        offset: ((page - 1) * pagination.limit).toString(),
-        sortBy: 'distance',
-        sortOrder: 'asc'
+        offset: ((page - 1) * pagination.limit).toString()
       });
 
       // Add coordinates if available
