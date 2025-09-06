@@ -18,8 +18,47 @@ import { Modal } from '@/components/ui/Modal';
 import { motion } from 'framer-motion';
 import { SectionLoader } from '@/components/ui/SectionLoader';
 
-// Helper functions for RefundCard component
-const formatDate = (dateString: string) => {
+// Types
+interface Refund {
+  id: number;
+  booking_id: number;
+  amount: number | string;
+  reason: string;
+  status: string;
+  processed_by?: number;
+  payment_method?: string;
+  transaction_id?: string;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+  user_name?: string;
+  user_email?: string;
+  pet_name?: string;
+  booking_date?: string;
+  booking_time?: string;
+}
+
+interface Pagination {
+  total: number;
+  currentPage: number;
+  totalPages: number;
+  limit: number;
+  hasMore: boolean;
+}
+
+interface Statistics {
+  total_refunds: number;
+  pending_count: number;
+  processing_count: number;
+  processed_count: number;
+  failed_count: number;
+  cancelled_count: number;
+  total_refunded_amount: number;
+  today_count: number;
+}
+
+// Helper functions
+const formatDate = (dateString: string): string => {
   try {
     return format(new Date(dateString), 'MMM dd, yyyy HH:mm');
   } catch {
@@ -45,27 +84,7 @@ const getStatusBadge = (status: string) => {
   );
 };
 
-interface Refund {
-  id: number;
-  booking_id: number;
-  amount: number | string;
-  reason: string;
-  status: string;
-  processed_by?: number;
-  payment_method?: string;
-  transaction_id?: string;
-  notes?: string;
-  created_at: string;
-  updated_at: string;
-  // Joined data
-  user_name?: string;
-  user_email?: string;
-  pet_name?: string;
-  booking_date?: string;
-  booking_time?: string;
-}
-
-// Memoized Refund Card Component for better performance
+// Refund Card Component
 const RefundCard = React.memo(function RefundCard({
   refund,
   onViewDetails,
@@ -158,24 +177,11 @@ const RefundCard = React.memo(function RefundCard({
   );
 });
 
-// Optimized CremationRefundsPage with caching and pagination
-const CremationRefundsPage = React.memo(function CremationRefundsPage({ userData }: { userData: any }) {
+// Main Component
+function CremationRefundsPage({ userData }: { userData: any }) {
+  // State
   const [refunds, setRefunds] = useState<Refund[]>([]);
   const [loading, setLoading] = useState(true);
-
-  console.log('🔄 Component render - Loading:', loading, 'Refunds count:', refunds.length, 'UserData:', !!userData);
-
-  // Add a safety timeout to prevent infinite loading
-  useEffect(() => {
-    const safetyTimeout = setTimeout(() => {
-      if (loading) {
-        console.log('🚨 Safety timeout triggered - forcing loading to false');
-        setLoading(false);
-      }
-    }, 15000); // 15 second safety timeout
-
-    return () => clearTimeout(safetyTimeout);
-  }, [loading]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedRefund, setSelectedRefund] = useState<Refund | null>(null);
@@ -183,14 +189,14 @@ const CremationRefundsPage = React.memo(function CremationRefundsPage({ userData
   const [userName, setUserName] = useState('');
   const [processingApproval, setProcessingApproval] = useState<Set<number>>(new Set());
   const [processingDenial, setProcessingDenial] = useState<Set<number>>(new Set());
-  const [pagination, setPagination] = useState({
+  const [pagination, setPagination] = useState<Pagination>({
     total: 0,
     currentPage: 1,
     totalPages: 1,
     limit: 20,
     hasMore: false
   });
-  const [_statistics, setStatistics] = useState({
+  const [statistics, setStatistics] = useState<Statistics>({
     total_refunds: 0,
     pending_count: 0,
     processing_count: 0,
@@ -201,33 +207,21 @@ const CremationRefundsPage = React.memo(function CremationRefundsPage({ userData
     today_count: 0
   });
 
-  // Remove complex caching for now to debug the issue
-
   const { showToast } = useToast();
 
-  // Simplified fetch function with better error handling
+  // Fetch refunds function
   const fetchRefunds = useCallback(async () => {
-    let timeoutId: NodeJS.Timeout | null = null;
+    if (!userData?.business_id) {
+      console.log('❌ No business_id found, skipping fetch');
+      setLoading(false);
+      return;
+    }
 
     try {
       console.log('🔄 Starting fetchRefunds...');
-
-      // Don't fetch if we don't have userData
-      if (!userData?.business_id) {
-        console.log('❌ No business_id found, skipping fetch');
-        setLoading(false);
-        return;
-      }
-
       setLoading(true);
 
-      // Add a timeout to prevent infinite loading
-      timeoutId = setTimeout(() => {
-        console.log('⏰ Fetch timeout - forcing loading to stop');
-        setLoading(false);
-      }, 10000); // 10 second timeout
-
-      // Build query parameters for server-side filtering and pagination
+      // Build query parameters
       const params = new URLSearchParams({
         limit: pagination.limit.toString(),
         offset: ((pagination.currentPage - 1) * pagination.limit).toString()
@@ -241,27 +235,15 @@ const CremationRefundsPage = React.memo(function CremationRefundsPage({ userData
         params.append('status', statusFilter);
       }
 
-      const queryString = params.toString();
-      console.log('🔄 Query string:', queryString);
-
-      // Use httpOnly cookies for authentication like other cremation pages
-      const headers: HeadersInit = {
-        'Content-Type': 'application/json',
-        'Cache-Control': 'no-cache'
-      };
-
       console.log('📡 Making API request to /api/cremation/refunds');
-      const controller = new AbortController();
-      const requestTimeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
-
-      const response = await fetch(`/api/cremation/refunds?${queryString}`, {
+      const response = await fetch(`/api/cremation/refunds?${params.toString()}`, {
         method: 'GET',
-        headers,
-        credentials: 'include',
-        signal: controller.signal
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache'
+        },
+        credentials: 'include'
       });
-
-      clearTimeout(requestTimeoutId);
 
       console.log('📡 Response status:', response.status);
 
@@ -273,21 +255,18 @@ const CremationRefundsPage = React.memo(function CremationRefundsPage({ userData
 
       const data = await response.json();
       console.log('📊 API Response:', data);
-      console.log('📊 Refunds array:', data.refunds);
-      console.log('📊 Pagination:', data.pagination);
-      console.log('📊 Statistics:', data.statistics);
 
       if (data.success) {
         console.log('✅ Setting refunds data:', data.refunds?.length || 0, 'items');
-        const refundsData = data.refunds || [];
-        const paginationData = data.pagination || {
+        setRefunds(data.refunds || []);
+        setPagination(data.pagination || {
           total: 0,
           currentPage: 1,
           totalPages: 1,
           limit: 20,
           hasMore: false
-        };
-        const statisticsData = data.statistics || {
+        });
+        setStatistics(data.statistics || {
           total_refunds: 0,
           pending_count: 0,
           processing_count: 0,
@@ -296,83 +275,63 @@ const CremationRefundsPage = React.memo(function CremationRefundsPage({ userData
           cancelled_count: 0,
           total_refunded_amount: 0,
           today_count: 0
-        };
-
-        setRefunds(refundsData);
-        setPagination(paginationData);
-        setStatistics(statisticsData);
-
-        console.log('✅ State updated - Refunds:', refundsData.length, 'Pagination:', paginationData, 'Stats:', statisticsData);
+        });
       } else {
         console.error('❌ API returned error:', data.error);
         showToast(data.error || 'Failed to fetch refunds', 'error');
       }
     } catch (error) {
       console.error('❌ Error fetching refunds:', error);
-      if (error instanceof Error && error.name === 'AbortError') {
-        console.log('🚫 Request was aborted');
-      } else {
-        showToast(`Failed to fetch refunds: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
+      if (error instanceof Error && error.name !== 'AbortError') {
+        showToast(`Failed to fetch refunds: ${error.message}`, 'error');
       }
     } finally {
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-      }
       console.log('🏁 fetchRefunds completed - setting loading to false');
       setLoading(false);
-      console.log('🏁 Loading state after setLoading(false):', false);
     }
-  }, [pagination.limit, pagination.currentPage, searchTerm, statusFilter, userData?.business_id, showToast]);
+  }, [userData?.business_id, pagination.limit, pagination.currentPage, searchTerm, statusFilter, showToast]);
 
+  // Effects
   useEffect(() => {
     console.log('🚀 Component mounted, initializing...');
 
-    // Get cremation center name from userData prop
     if (userData?.business_name) {
       setUserName(userData.business_name);
       console.log('👤 User name set:', userData.business_name);
     }
 
-    // Only fetch if we have userData
     if (userData?.business_id) {
       console.log('📡 Triggering initial fetchRefunds...');
       fetchRefunds();
     } else {
-      console.log('⏳ Waiting for userData with business_id...');
-      setLoading(false); // Stop loading if no business_id
+      console.log('⏳ No business_id found, stopping loading');
+      setLoading(false);
     }
-  }, [userData?.business_id, fetchRefunds]); // Include fetchRefunds in dependencies
+  }, [userData?.business_id, userData?.business_name, fetchRefunds]);
 
-  // Debounced search to avoid too many API calls
+  // Safety timeout to prevent infinite loading
   useEffect(() => {
-    // Only trigger search if we have userData
-    if (!userData?.business_id) {
-      console.log('⏳ Skipping search - no business_id yet');
-      return;
-    }
-
-    const timeoutId = setTimeout(() => {
-      console.log('🔍 Search/filter changed, triggering fetch...');
-      if (pagination.currentPage === 1) {
-        fetchRefunds();
-      } else {
-        // Reset to first page when search/filter changes
-        setPagination(prev => ({ ...prev, currentPage: 1 }));
+    const safetyTimeout = setTimeout(() => {
+      if (loading) {
+        console.log('🚨 Safety timeout triggered - forcing loading to false');
+        setLoading(false);
       }
-    }, 300); // 300ms debounce
+    }, 15000);
 
-    return () => clearTimeout(timeoutId);
-  }, [searchTerm, statusFilter, userData?.business_id, fetchRefunds, pagination.currentPage]); // Added missing dependencies
+    return () => clearTimeout(safetyTimeout);
+  }, [loading]);
 
-  // Fetch data when page changes
-  useEffect(() => {
-    if (pagination.currentPage > 1 && userData?.business_id) {
-      console.log('📄 Page changed, triggering fetch...');
-      fetchRefunds();
-    }
-  }, [pagination.currentPage, userData?.business_id, fetchRefunds]); // Added fetchRefunds dependency
+  // Event handlers
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+    setPagination(prev => ({ ...prev, currentPage: 1 }));
+  };
 
-  // Pagination handlers
+  const handleStatusFilterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setStatusFilter(e.target.value);
+    setPagination(prev => ({ ...prev, currentPage: 1 }));
+  };
+
   const handlePageChange = (newPage: number) => {
     if (newPage >= 1 && newPage <= pagination.totalPages) {
       setPagination(prev => ({ ...prev, currentPage: newPage }));
@@ -383,16 +342,8 @@ const CremationRefundsPage = React.memo(function CremationRefundsPage({ userData
     setPagination(prev => ({
       ...prev,
       limit: newLimit,
-      currentPage: 1 // Reset to first page when changing page size
+      currentPage: 1
     }));
-  };
-
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchTerm(e.target.value);
-  };
-
-  const handleStatusFilterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setStatusFilter(e.target.value);
   };
 
   const handleViewDetails = (refund: Refund) => {
@@ -416,8 +367,6 @@ const CremationRefundsPage = React.memo(function CremationRefundsPage({ userData
 
       if (response.ok && data.success) {
         showToast('Refund approved and processed successfully', 'success');
-
-        // Refresh the list
         fetchRefunds();
       } else {
         if (response.status === 403) {
@@ -456,8 +405,6 @@ const CremationRefundsPage = React.memo(function CremationRefundsPage({ userData
 
       if (response.ok && data.success) {
         showToast('Refund request denied', 'success');
-
-        // Refresh the list
         fetchRefunds();
       } else {
         if (response.status === 403) {
@@ -480,6 +427,7 @@ const CremationRefundsPage = React.memo(function CremationRefundsPage({ userData
     }
   };
 
+  // Loading state
   if (loading) {
     return (
       <CremationDashboardLayout activePage="refunds" userName={userName}>
@@ -489,101 +437,14 @@ const CremationRefundsPage = React.memo(function CremationRefundsPage({ userData
               <div>
                 <h1 className="text-2xl font-semibold text-gray-800">Refund Management</h1>
                 <p className="text-gray-600 mt-1">Loading refund requests...</p>
-
               </div>
-              <div className="flex space-x-2">
-                <button
-                  onClick={() => {
-                    console.log('🔄 Manual refresh triggered');
-                    setLoading(false);
-                    setTimeout(() => fetchRefunds(), 100);
-                  }}
-                  className="px-4 py-2 bg-[var(--primary-green)] text-white rounded-lg hover:bg-[var(--primary-green-hover)] transition-colors flex items-center justify-center"
-                >
-                  <ArrowPathIcon className="h-5 w-5 mr-2" />
-                  Retry
-                </button>
-                <button
-                  onClick={() => {
-                    console.log('🛑 Force stop loading');
-                    setLoading(false);
-                  }}
-                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center"
-                >
-                  Stop Loading
-                </button>
-                <button
-                  onClick={async () => {
-                    console.log('🧪 Testing API directly...');
-                    try {
-                      const response = await fetch('/api/cremation/refunds?limit=5', {
-                        credentials: 'include'
-                      });
-                      const data = await response.json();
-                      console.log('🧪 Direct API test result:', data);
-                      alert(`API Test: ${response.status} - ${JSON.stringify(data, null, 2)}`);
-                    } catch (error) {
-                      console.error('🧪 Direct API test failed:', error);
-                      alert(`API Test Failed: ${error}`);
-                    }
-                  }}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center"
-                >
-                  Test API
-                </button>
-                <button
-                  onClick={async () => {
-                    console.log('🔍 Running debug queries...');
-                    try {
-                      const response = await fetch('/api/debug/refunds', {
-                        credentials: 'include'
-                      });
-                      const data = await response.json();
-                      console.log('🔍 Debug result:', data);
-
-                      // Show a more readable alert
-                      const summary = `
-Debug Results:
-- Total refunds in system: ${data.debugResults?.totalRefundsInSystem || 0}
-- Bookings for this provider: ${data.debugResults?.bookingsForProvider || 0}
-- Refunds for this provider: ${data.debugResults?.refundsForThisProvider || 0}
-- Cremation Center ID: ${data.cremationCenterId}
-- Stats query result: ${JSON.stringify(data.debugResults?.statsQueryResult, null, 2)}
-                      `;
-
-                      alert(summary);
-                    } catch (error) {
-                      console.error('🔍 Debug failed:', error);
-                      alert(`Debug Failed: ${error}`);
-                    }
-                  }}
-                  className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors flex items-center justify-center"
-                >
-                  Debug DB
-                </button>
-                <button
-                  onClick={() => {
-                    console.log('🔧 Force refresh - resetting all state');
-                    setLoading(false);
-                    setRefunds([]);
-                    setPagination({
-                      total: 0,
-                      currentPage: 1,
-                      totalPages: 1,
-                      limit: 20,
-                      hasMore: false
-                    });
-                    setTimeout(() => {
-                      if (userData?.business_id) {
-                        fetchRefunds();
-                      }
-                    }, 100);
-                  }}
-                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center"
-                >
-                  Force Refresh
-                </button>
-              </div>
+              <button
+                onClick={fetchRefunds}
+                className="px-4 py-2 bg-[var(--primary-green)] text-white rounded-lg hover:bg-[var(--primary-green-hover)] transition-colors flex items-center justify-center"
+              >
+                <ArrowPathIcon className="h-5 w-5 mr-2" />
+                Refresh
+              </button>
             </div>
           </div>
           <SectionLoader />
@@ -592,6 +453,7 @@ Debug Results:
     );
   }
 
+  // Main render
   return (
     <CremationDashboardLayout activePage="refunds" userName={userName}>
       <div className="space-y-6">
@@ -763,121 +625,106 @@ Debug Results:
         >
           {selectedRefund && (
             <div className="space-y-6">
-              {/* Refund Summary Header */}
-              <div className="bg-gray-50 rounded-lg p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-lg font-semibold text-gray-900">
-                    Booking #{selectedRefund.booking_id}
-                  </h3>
-                  <span className="text-lg font-bold text-[var(--primary-green)]">
-                    ₱{parseFloat(selectedRefund.amount.toString()).toFixed(2)}
-                  </span>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Booking ID
+                  </label>
+                  <p className="text-sm text-gray-900">#{selectedRefund.booking_id}</p>
                 </div>
-                <p className="text-sm text-gray-600">
-                  Refund request for {selectedRefund.pet_name}&apos;s cremation service
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Status
+                  </label>
+                  <div>{getStatusBadge(selectedRefund.status)}</div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Customer
+                  </label>
+                  <p className="text-sm text-gray-900">{selectedRefund.user_name}</p>
+                  <p className="text-xs text-gray-500">{selectedRefund.user_email}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Pet Name
+                  </label>
+                  <p className="text-sm text-gray-900">{selectedRefund.pet_name}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Refund Amount
+                  </label>
+                  <p className="text-sm text-gray-900">₱{parseFloat(selectedRefund.amount.toString()).toFixed(2)}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Payment Method
+                  </label>
+                  <p className="text-sm text-gray-900">{selectedRefund.payment_method || 'N/A'}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Booking Date
+                  </label>
+                  <p className="text-sm text-gray-900">
+                    {selectedRefund.booking_date ? formatDate(selectedRefund.booking_date) : 'N/A'}
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Request Date
+                  </label>
+                  <p className="text-sm text-gray-900">{formatDate(selectedRefund.created_at)}</p>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Refund Reason
+                </label>
+                <p className="text-sm text-gray-900 bg-gray-50 p-3 rounded-lg">
+                  {selectedRefund.reason}
                 </p>
               </div>
 
-              {/* Status Section */}
-              <div>
-                <h4 className="text-sm font-medium text-gray-700 mb-3">Current Status</h4>
-                <RefundStatus
-                  status={selectedRefund.status}
-                  amount={selectedRefund.amount}
-                  reason={selectedRefund.reason}
-                  createdAt={selectedRefund.created_at}
-                  updatedAt={selectedRefund.updated_at}
-                  transactionId={selectedRefund.transaction_id}
-                  notes={selectedRefund.notes}
-                />
-              </div>
-
-              {/* Customer Information */}
-              <div>
-                <h4 className="text-sm font-medium text-gray-700 mb-3">Customer Information</h4>
-                <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-3">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Customer Name</span>
-                    <span className="text-sm font-medium text-gray-900">{selectedRefund.user_name}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Email Address</span>
-                    <span className="text-sm font-medium text-gray-900">{selectedRefund.user_email}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Booking Details */}
-              <div>
-                <h4 className="text-sm font-medium text-gray-700 mb-3">Booking Details</h4>
-                <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-3">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Pet Name</span>
-                    <span className="text-sm font-medium text-gray-900">{selectedRefund.pet_name}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Service Date</span>
-                    <span className="text-sm font-medium text-gray-900">
-                      {selectedRefund.booking_date ? format(new Date(selectedRefund.booking_date), 'MMM dd, yyyy') : 'N/A'}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Service Time</span>
-                    <span className="text-sm font-medium text-gray-900">{selectedRefund.booking_time}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Payment Method</span>
-                    <span className="text-sm font-medium text-gray-900">
-                      {selectedRefund.payment_method?.toUpperCase() || 'N/A'}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Request Timeline */}
-              <div>
-                <h4 className="text-sm font-medium text-gray-700 mb-3">Request Timeline</h4>
-                <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-3">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Request Submitted</span>
-                    <span className="text-sm font-medium text-gray-900">
-                      {format(new Date(selectedRefund.created_at), 'MMM dd, yyyy \'at\' h:mm a')}
-                    </span>
-                  </div>
-                  {selectedRefund.updated_at && selectedRefund.updated_at !== selectedRefund.created_at && (
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Last Updated</span>
-                      <span className="text-sm font-medium text-gray-900">
-                        {format(new Date(selectedRefund.updated_at), 'MMM dd, yyyy \'at\' h:mm a')}
-                      </span>
-                    </div>
-                  )}
-                  {selectedRefund.transaction_id && (
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Transaction ID</span>
-                      <span className="text-xs font-medium text-gray-900 font-mono">
-                        {selectedRefund.transaction_id}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Additional Notes */}
               {selectedRefund.notes && (
                 <div>
-                  <h4 className="text-sm font-medium text-gray-700 mb-3">Additional Notes</h4>
-                  <div className="bg-gray-50 rounded-lg p-4">
-                    <p className="text-sm text-gray-700">{selectedRefund.notes}</p>
-                  </div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Processing Notes
+                  </label>
+                  <p className="text-sm text-gray-900 bg-gray-50 p-3 rounded-lg">
+                    {selectedRefund.notes}
+                  </p>
                 </div>
               )}
+
+              {selectedRefund.transaction_id && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Transaction ID
+                  </label>
+                  <p className="text-sm text-gray-900 font-mono bg-gray-50 p-2 rounded">
+                    {selectedRefund.transaction_id}
+                  </p>
+                </div>
+              )}
+
+              <RefundStatus
+                status={selectedRefund.status}
+                amount={selectedRefund.amount}
+                reason={selectedRefund.reason}
+                createdAt={selectedRefund.created_at?.toString()}
+                updatedAt={selectedRefund.updated_at?.toString()}
+                transactionId={selectedRefund.transaction_id}
+                notes={selectedRefund.notes}
+              />
             </div>
           )}
         </Modal>
       </div>
     </CremationDashboardLayout>
   );
-});
+}
 
 export default withBusinessVerification(CremationRefundsPage);
