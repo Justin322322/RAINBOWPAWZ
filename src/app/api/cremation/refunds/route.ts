@@ -7,31 +7,42 @@ import { verifySecureAuth } from '@/lib/secureAuth';
  */
 export async function GET(request: NextRequest) {
   try {
+    console.log('🔄 [Refunds API] Starting request processing...');
+    
     // Verify cremation center authentication using secure auth
     const user = await verifySecureAuth(request);
+    console.log('🔐 [Refunds API] Auth result:', user ? 'authenticated' : 'not authenticated');
+    
     if (!user) {
+      console.log('❌ [Refunds API] No user found, returning 401');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     if (user.accountType !== 'business') {
+      console.log('❌ [Refunds API] Wrong account type:', user.accountType);
       return NextResponse.json({
         error: 'Unauthorized - Business access required'
       }, { status: 403 });
     }
 
     // Get cremation center ID from service_providers table
+    console.log('🔍 [Refunds API] Looking up provider for user:', user.userId);
     const providerResult = await query(
       'SELECT provider_id FROM service_providers WHERE user_id = ? AND provider_type = ?',
       [user.userId, 'cremation']
     ) as any[];
 
+    console.log('🔍 [Refunds API] Provider query result:', providerResult);
+
     if (!providerResult || providerResult.length === 0) {
+      console.log('❌ [Refunds API] No cremation center found for user');
       return NextResponse.json({
         error: 'Cremation center not found for this user'
       }, { status: 400 });
     }
 
     const cremationCenterId = providerResult[0].provider_id;
+    console.log('✅ [Refunds API] Found cremation center ID:', cremationCenterId);
 
     // Get query parameters for filtering and pagination
     const { searchParams } = new URL(request.url);
@@ -95,7 +106,9 @@ export async function GET(request: NextRequest) {
       LIMIT ${Number(limit)} OFFSET ${Number(offset)}
     `;
 
+    console.log('📊 [Refunds API] Executing refunds query...');
     const refundsResult = await query(refundsQuery, queryParams) as any[];
+    console.log('📊 [Refunds API] Found', refundsResult.length, 'refunds');
 
     // Get total count for pagination (use same WHERE clause)
     const countQuery = `
@@ -106,8 +119,10 @@ export async function GET(request: NextRequest) {
       ${whereClause}
     `;
 
+    console.log('🔢 [Refunds API] Executing count query...');
     const countResult = await query(countQuery, queryParams) as any[];
     const total = countResult[0]?.total || 0;
+    console.log('🔢 [Refunds API] Total count:', total);
 
     // Get refund statistics for this cremation center
     const statsQuery = `
@@ -125,10 +140,12 @@ export async function GET(request: NextRequest) {
       WHERE cb.provider_id = ?
     `;
 
+    console.log('📈 [Refunds API] Executing stats query...');
     const statsResult = await query(statsQuery, [cremationCenterId]) as any[];
     const stats = statsResult[0] || {};
+    console.log('📈 [Refunds API] Stats:', stats);
 
-    return NextResponse.json({
+    const responseData = {
       success: true,
       refunds: refundsResult,
       pagination: {
@@ -149,7 +166,10 @@ export async function GET(request: NextRequest) {
         total_refunded_amount: parseFloat(stats.total_refunded_amount || 0),
         today_count: stats.today_count || 0
       }
-    }, {
+    };
+
+    console.log('✅ [Refunds API] Returning response with', refundsResult.length, 'refunds');
+    return NextResponse.json(responseData, {
       headers: {
         'Cache-Control': 'private, max-age=300', // Cache for 5 minutes
         'X-Total-Count': total.toString(),

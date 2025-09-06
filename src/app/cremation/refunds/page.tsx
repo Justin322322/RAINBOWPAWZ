@@ -188,15 +188,14 @@ const CremationRefundsPage = React.memo(function CremationRefundsPage() {
     today_count: 0
   });
 
-  // Cache management
-  const [cache, setCache] = useState<Map<string, { data: any; timestamp: number }>>(new Map());
-  const [lastFetchParams, setLastFetchParams] = useState<string>('');
+  // Remove complex caching for now to debug the issue
 
   const { showToast } = useToast();
 
-  // Optimized fetch function with caching and server-side filtering
+  // Simplified fetch function with better error handling
   const fetchRefunds = useCallback(async () => {
     try {
+      console.log('🔄 Starting fetchRefunds...');
       setLoading(true);
 
       // Build query parameters for server-side filtering and pagination
@@ -214,91 +213,129 @@ const CremationRefundsPage = React.memo(function CremationRefundsPage() {
       }
 
       const queryString = params.toString();
-      const cacheKey = queryString;
+      console.log('🔄 Query string:', queryString);
 
-      // Check cache first (5 minute cache)
-      const cachedData = cache.get(cacheKey);
-      const now = Date.now();
-      const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+      // Get auth token for the request
+      const getAuthToken = () => {
+        if (typeof document === 'undefined') return null;
 
-      if (cachedData && (now - cachedData.timestamp) < CACHE_DURATION) {
-        setRefunds(cachedData.data.refunds || []);
-        setPagination(cachedData.data.pagination);
-        setStatistics(cachedData.data.statistics);
-        setLoading(false);
-        return;
-      }
+        try {
+          // Try to get from cookies first
+          const cookies = document.cookie.split(';');
+          const authCookie = cookies.find(cookie => cookie.trim().startsWith('auth_token='));
 
-      // Skip if same parameters were used recently
-      if (lastFetchParams === queryString && cache.has(cacheKey)) {
-        const existingData = cache.get(cacheKey);
-        if (existingData && (now - existingData.timestamp) < CACHE_DURATION) {
-          setRefunds(existingData.data.refunds || []);
-          setPagination(existingData.data.pagination);
-          setStatistics(existingData.data.statistics);
-          setLoading(false);
-          return;
+          if (authCookie) {
+            const token = authCookie.split('=')[1];
+            if (token) return decodeURIComponent(token);
+          }
+
+          // Fallback to localStorage
+          const localStorageToken = localStorage.getItem('auth_token');
+          if (localStorageToken) return localStorageToken;
+
+          // Fallback to sessionStorage
+          const sessionStorageToken = sessionStorage.getItem('auth_token');
+          if (sessionStorageToken) return sessionStorageToken;
+
+          return null;
+        } catch {
+          return null;
         }
+      };
+
+      const authToken = getAuthToken();
+      console.log('🔐 Auth token found:', !!authToken);
+
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache'
+      };
+
+      if (authToken) {
+        headers['Authorization'] = `Bearer ${authToken}`;
       }
+
+      console.log('📡 Making API request to /api/cremation/refunds');
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
 
       const response = await fetch(`/api/cremation/refunds?${queryString}`, {
-        headers: {
-          'Cache-Control': 'no-cache'
-        }
+        method: 'GET',
+        headers,
+        credentials: 'include',
+        signal: controller.signal
       });
 
+      clearTimeout(timeoutId);
+
+      console.log('📡 Response status:', response.status);
+
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorText = await response.text();
+        console.error('❌ API Error:', response.status, errorText);
+        throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
       }
 
       const data = await response.json();
+      console.log('📊 API Response:', data);
 
       if (data.success) {
+        console.log('✅ Setting refunds data:', data.refunds?.length || 0, 'items');
         setRefunds(data.refunds || []);
-        setPagination(data.pagination);
-        setStatistics(data.statistics);
-
-        // Update cache
-        setCache(prev => {
-          const newCache = new Map(prev);
-          newCache.set(cacheKey, {
-            data: {
-              refunds: data.refunds || [],
-              pagination: data.pagination,
-              statistics: data.statistics
-            },
-            timestamp: now
-          });
-          return newCache;
+        setPagination(data.pagination || {
+          total: 0,
+          currentPage: 1,
+          totalPages: 1,
+          limit: 20,
+          hasMore: false
         });
-
-        setLastFetchParams(queryString);
+        setStatistics(data.statistics || {
+          total_refunds: 0,
+          pending_count: 0,
+          processing_count: 0,
+          processed_count: 0,
+          failed_count: 0,
+          cancelled_count: 0,
+          total_refunded_amount: 0,
+          today_count: 0
+        });
       } else {
+        console.error('❌ API returned error:', data.error);
         showToast(data.error || 'Failed to fetch refunds', 'error');
       }
     } catch (error) {
-      console.error('Error fetching refunds:', error);
-      showToast('Failed to fetch refunds', 'error');
+      console.error('❌ Error fetching refunds:', error);
+      showToast(`Failed to fetch refunds: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
     } finally {
+      console.log('🏁 fetchRefunds completed');
       setLoading(false);
     }
-  }, [pagination, searchTerm, statusFilter, showToast, cache, lastFetchParams]);
+  }, [pagination.limit, pagination.currentPage, searchTerm, statusFilter, showToast]);
 
   useEffect(() => {
+    console.log('🚀 Component mounted, initializing...');
+    
     // Get cremation center name from localStorage
     const cremationData = localStorage.getItem('cremationData');
     if (cremationData) {
-      const cremation = JSON.parse(cremationData);
-      setUserName(cremation.business_name || 'Cremation Center');
+      try {
+        const cremation = JSON.parse(cremationData);
+        setUserName(cremation.business_name || 'Cremation Center');
+        console.log('👤 User name set:', cremation.business_name);
+      } catch (error) {
+        console.error('❌ Error parsing cremation data:', error);
+      }
     }
 
     // Initial data fetch
+    console.log('📡 Triggering initial fetchRefunds...');
     fetchRefunds();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [fetchRefunds]);
 
   // Debounced search to avoid too many API calls
   useEffect(() => {
     const timeoutId = setTimeout(() => {
+      console.log('🔍 Search/filter changed, triggering fetch...');
       if (pagination.currentPage === 1) {
         fetchRefunds();
       } else {
@@ -308,11 +345,12 @@ const CremationRefundsPage = React.memo(function CremationRefundsPage() {
     }, 300); // 300ms debounce
 
     return () => clearTimeout(timeoutId);
-  }, [searchTerm, statusFilter, fetchRefunds, pagination.currentPage]);
+  }, [searchTerm, statusFilter]);
 
   // Fetch data when page changes
   useEffect(() => {
     if (pagination.currentPage > 1) {
+      console.log('📄 Page changed, triggering fetch...');
       fetchRefunds();
     }
   }, [pagination.currentPage, fetchRefunds]);
@@ -397,10 +435,8 @@ const CremationRefundsPage = React.memo(function CremationRefundsPage() {
       if (response.ok && data.success) {
         showToast('Refund approved and processed successfully', 'success');
 
-        // Clear cache and refresh data
-        setCache(new Map());
-        setLastFetchParams('');
-        fetchRefunds(); // Refresh the list
+        // Refresh the list
+        fetchRefunds();
       } else {
         if (response.status === 403) {
           showToast('Access denied. Cremation center privileges required.', 'error');
@@ -474,10 +510,8 @@ const CremationRefundsPage = React.memo(function CremationRefundsPage() {
       if (response.ok && data.success) {
         showToast('Refund request denied', 'success');
 
-        // Clear cache and refresh data
-        setCache(new Map());
-        setLastFetchParams('');
-        fetchRefunds(); // Refresh the list
+        // Refresh the list
+        fetchRefunds();
       } else {
         if (response.status === 403) {
           showToast('Access denied. Cremation center privileges required.', 'error');
@@ -502,7 +536,28 @@ const CremationRefundsPage = React.memo(function CremationRefundsPage() {
   if (loading) {
     return (
       <CremationDashboardLayout activePage="refunds" userName={userName}>
-        <SectionLoader />
+        <div className="space-y-6">
+          <div className="mb-8 bg-white rounded-xl shadow-md border border-gray-100 p-6">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
+              <div>
+                <h1 className="text-2xl font-semibold text-gray-800">Refund Management</h1>
+                <p className="text-gray-600 mt-1">Loading refund requests...</p>
+              </div>
+              <button
+                onClick={() => {
+                  console.log('🔄 Manual refresh triggered');
+                  setLoading(false);
+                  setTimeout(() => fetchRefunds(), 100);
+                }}
+                className="px-4 py-2 bg-[var(--primary-green)] text-white rounded-lg hover:bg-[var(--primary-green-hover)] transition-colors flex items-center justify-center"
+              >
+                <ArrowPathIcon className="h-5 w-5 mr-2" />
+                Retry
+              </button>
+            </div>
+          </div>
+          <SectionLoader />
+        </div>
       </CremationDashboardLayout>
     );
   }
