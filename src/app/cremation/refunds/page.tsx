@@ -163,6 +163,8 @@ const RefundCard = React.memo(function RefundCard({
 const CremationRefundsPage = React.memo(function CremationRefundsPage() {
   const [refunds, setRefunds] = useState<Refund[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  console.log('🔄 Component render - Loading:', loading, 'Refunds count:', refunds.length);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedRefund, setSelectedRefund] = useState<Refund | null>(null);
@@ -194,9 +196,17 @@ const CremationRefundsPage = React.memo(function CremationRefundsPage() {
 
   // Simplified fetch function with better error handling
   const fetchRefunds = useCallback(async () => {
+    let timeoutId: NodeJS.Timeout | null = null;
+    
     try {
       console.log('🔄 Starting fetchRefunds...');
       setLoading(true);
+
+      // Add a timeout to prevent infinite loading
+      timeoutId = setTimeout(() => {
+        console.log('⏰ Fetch timeout - forcing loading to stop');
+        setLoading(false);
+      }, 10000); // 10 second timeout
 
       // Build query parameters for server-side filtering and pagination
       const params = new URLSearchParams({
@@ -257,7 +267,7 @@ const CremationRefundsPage = React.memo(function CremationRefundsPage() {
 
       console.log('📡 Making API request to /api/cremation/refunds');
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+      const requestTimeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
 
       const response = await fetch(`/api/cremation/refunds?${queryString}`, {
         method: 'GET',
@@ -266,7 +276,7 @@ const CremationRefundsPage = React.memo(function CremationRefundsPage() {
         signal: controller.signal
       });
 
-      clearTimeout(timeoutId);
+      clearTimeout(requestTimeoutId);
 
       console.log('📡 Response status:', response.status);
 
@@ -316,6 +326,9 @@ const CremationRefundsPage = React.memo(function CremationRefundsPage() {
       console.error('❌ Error fetching refunds:', error);
       showToast(`Failed to fetch refunds: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
     } finally {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
       console.log('🏁 fetchRefunds completed');
       setLoading(false);
     }
@@ -354,7 +367,7 @@ const CremationRefundsPage = React.memo(function CremationRefundsPage() {
     }, 300); // 300ms debounce
 
     return () => clearTimeout(timeoutId);
-  }, [searchTerm, statusFilter]);
+  }, [searchTerm, statusFilter]); // Removed fetchRefunds to prevent infinite loops
 
   // Fetch data when page changes
   useEffect(() => {
@@ -552,17 +565,28 @@ const CremationRefundsPage = React.memo(function CremationRefundsPage() {
                 <h1 className="text-2xl font-semibold text-gray-800">Refund Management</h1>
                 <p className="text-gray-600 mt-1">Loading refund requests...</p>
               </div>
-              <button
-                onClick={() => {
-                  console.log('🔄 Manual refresh triggered');
-                  setLoading(false);
-                  setTimeout(() => fetchRefunds(), 100);
-                }}
-                className="px-4 py-2 bg-[var(--primary-green)] text-white rounded-lg hover:bg-[var(--primary-green-hover)] transition-colors flex items-center justify-center"
-              >
-                <ArrowPathIcon className="h-5 w-5 mr-2" />
-                Retry
-              </button>
+              <div className="flex space-x-2">
+                <button
+                  onClick={() => {
+                    console.log('🔄 Manual refresh triggered');
+                    setLoading(false);
+                    setTimeout(() => fetchRefunds(), 100);
+                  }}
+                  className="px-4 py-2 bg-[var(--primary-green)] text-white rounded-lg hover:bg-[var(--primary-green-hover)] transition-colors flex items-center justify-center"
+                >
+                  <ArrowPathIcon className="h-5 w-5 mr-2" />
+                  Retry
+                </button>
+                <button
+                  onClick={() => {
+                    console.log('🛑 Force stop loading');
+                    setLoading(false);
+                  }}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center"
+                >
+                  Stop Loading
+                </button>
+              </div>
             </div>
           </div>
           <SectionLoader />

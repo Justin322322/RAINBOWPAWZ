@@ -33,15 +33,15 @@ export async function GET(request: NextRequest) {
     const queryParams: any[] = [providerId];
 
     if (period === 'last7days') {
-      dateCondition = 'AND sb.booking_date >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)';
+      dateCondition = 'AND booking_date >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)';
     } else if (period === 'last30days') {
-      dateCondition = 'AND sb.booking_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)';
+      dateCondition = 'AND booking_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)';
     } else if (period === 'last90days') {
-      dateCondition = 'AND sb.booking_date >= DATE_SUB(CURDATE(), INTERVAL 90 DAY)';
+      dateCondition = 'AND booking_date >= DATE_SUB(CURDATE(), INTERVAL 90 DAY)';
     } else if (period === 'last6months') {
-      dateCondition = 'AND sb.booking_date >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)';
+      dateCondition = 'AND booking_date >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)';
     } else if (period === 'thisyear') {
-      dateCondition = 'AND YEAR(sb.booking_date) = YEAR(CURDATE())';
+      dateCondition = 'AND YEAR(booking_date) = YEAR(CURDATE())';
     }
 
     // Check if service_bookings table exists, if not try bookings table
@@ -142,7 +142,7 @@ export async function GET(request: NextRequest) {
       // Fallback to bookings table or return empty data
       try {
         // Try to use bookings table with different date column
-        const bookingsDateCondition = dateCondition.replace('sb.booking_date', 'b.created_at');
+        const bookingsDateCondition = dateCondition.replace('booking_date', 'created_at');
         const bookingsQueryParams = queryParams.slice();
 
         const totalBookingsQuery = `
