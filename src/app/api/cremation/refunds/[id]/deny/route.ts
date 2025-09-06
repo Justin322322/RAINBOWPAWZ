@@ -133,7 +133,7 @@ export async function POST(
       }
     }
 
-    // Admin notifications removed - refunds now managed by cremation centers
+    // Refunds are now managed by cremation centers
 
     return NextResponse.json({
       success: true,

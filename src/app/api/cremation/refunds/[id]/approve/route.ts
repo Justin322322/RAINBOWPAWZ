@@ -171,7 +171,7 @@ export async function POST(
               console.error('Failed to create user notification:', notificationError);
             }
 
-            // Admin notifications removed - refunds now managed by cremation centers
+            // Refunds are now managed by cremation centers
 
             return NextResponse.json({
               success: true,

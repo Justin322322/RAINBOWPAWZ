@@ -68,7 +68,7 @@ interface _PayMongoRefundResponse {
 
 export const REFUND_REASONS = {
   USER_REQUESTED: 'Customer requested cancellation',
-  ADMIN_INITIATED: 'Admin initiated refund',
+  PROVIDER_INITIATED: 'Service provider initiated refund',
   SERVICE_UNAVAILABLE: 'Service no longer available',
   PROVIDER_CANCELLED: 'Service provider cancelled',
   TECHNICAL_ISSUE: 'Technical issue with booking',

@@ -1,151 +1,209 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { query } from '@/lib/db';
-import { verifySecureAuth } from '@/lib/secureAuth';
+import { NextRequest, NextResponse } from "next/server";
+import { query } from "@/lib/db";
+import { verifySecureAuth } from "@/lib/secureAuth";
 
 /**
  * GET - Fetch all refunds for cremation center dashboard
  */
 export async function GET(request: NextRequest) {
   try {
-    console.log('🔄 [Refunds API] Starting request processing...');
-    
+    console.log("🔄 [Refunds API] Starting request processing...");
+
     // Verify cremation center authentication using secure auth
     const user = await verifySecureAuth(request);
-    console.log('🔐 [Refunds API] Auth result:', user ? 'authenticated' : 'not authenticated');
-    
+    console.log(
+      "🔐 [Refunds API] Auth result:",
+      user ? "authenticated" : "not authenticated"
+    );
+
     if (!user) {
-      console.log('❌ [Refunds API] No user found, returning 401');
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      console.log("❌ [Refunds API] No user found, returning 401");
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (user.accountType !== 'business') {
-      console.log('❌ [Refunds API] Wrong account type:', user.accountType);
-      return NextResponse.json({
-        error: 'Unauthorized - Business access required'
-      }, { status: 403 });
+    if (user.accountType !== "business") {
+      console.log("❌ [Refunds API] Wrong account type:", user.accountType);
+      return NextResponse.json(
+        {
+          error: "Unauthorized - Business access required",
+        },
+        { status: 403 }
+      );
     }
 
     // Get cremation center ID from service_providers table
-    console.log('🔍 [Refunds API] Looking up provider for user:', user.userId);
-    const providerResult = await query(
-      'SELECT provider_id FROM service_providers WHERE user_id = ? AND provider_type = ?',
-      [user.userId, 'cremation']
-    ) as any[];
+    console.log("🔍 [Refunds API] Looking up provider for user:", user.userId);
+    const providerResult = (await query(
+      "SELECT provider_id FROM service_providers WHERE user_id = ? AND provider_type = ?",
+      [user.userId, "cremation"]
+    )) as any[];
 
-    console.log('🔍 [Refunds API] Provider query result:', providerResult);
+    console.log("🔍 [Refunds API] Provider query result:", providerResult);
 
     if (!providerResult || providerResult.length === 0) {
-      console.log('❌ [Refunds API] No cremation center found for user');
-      return NextResponse.json({
-        error: 'Cremation center not found for this user'
-      }, { status: 400 });
+      console.log("❌ [Refunds API] No cremation center found for user");
+      return NextResponse.json(
+        {
+          error: "Cremation center not found for this user",
+        },
+        { status: 400 }
+      );
     }
 
     const cremationCenterId = providerResult[0].provider_id;
-    console.log('✅ [Refunds API] Found cremation center ID:', cremationCenterId);
+    console.log(
+      "✅ [Refunds API] Found cremation center ID:",
+      cremationCenterId
+    );
 
     // Debug: Check if there are any refunds at all in the system
-    const allRefundsCheck = await query('SELECT COUNT(*) as total FROM refunds') as any[];
-    console.log('🔍 [Refunds API] Total refunds in system:', allRefundsCheck[0]?.total || 0);
+    const allRefundsCheck = (await query(
+      "SELECT COUNT(*) as total FROM refunds"
+    )) as any[];
+    console.log(
+      "🔍 [Refunds API] Total refunds in system:",
+      allRefundsCheck[0]?.total || 0
+    );
 
     // Debug: Check if there are any service_bookings for this provider
-    const bookingsCheck = await query(
-      'SELECT COUNT(*) as total FROM service_bookings WHERE provider_id = ?',
+    const bookingsCheck = (await query(
+      "SELECT COUNT(*) as total FROM service_bookings WHERE provider_id = ?",
       [cremationCenterId]
-    ) as any[];
-    console.log('🔍 [Refunds API] Total bookings for this provider:', bookingsCheck[0]?.total || 0);
+    )) as any[];
+    console.log(
+      "🔍 [Refunds API] Total bookings for this provider:",
+      bookingsCheck[0]?.total || 0
+    );
 
     // Debug: Check refunds with bookings for this provider
-    const refundsWithBookingsCheck = await query(`
+    const refundsWithBookingsCheck = (await query(
+      `
       SELECT COUNT(*) as total 
       FROM refunds r 
-      JOIN service_bookings cb ON r.booking_id = cb.id 
-      WHERE cb.provider_id = ?
-    `, [cremationCenterId]) as any[];
-    console.log('🔍 [Refunds API] Refunds for this provider:', refundsWithBookingsCheck[0]?.total || 0);
+      JOIN service_bookings sb ON r.booking_id = sb.id 
+      WHERE sb.provider_id = ?
+    `,
+      [cremationCenterId]
+    )) as any[];
+    console.log(
+      "🔍 [Refunds API] Refunds for this provider:",
+      refundsWithBookingsCheck[0]?.total || 0
+    );
 
     // Get query parameters for filtering and pagination
     const { searchParams } = new URL(request.url);
-    const status = searchParams.get('status');
-    const limit = Math.min(parseInt(searchParams.get('limit') || '20'), 100); // Max 100 per page
-    const offset = Math.max(parseInt(searchParams.get('offset') || '0'), 0);
-    const search = searchParams.get('search') || '';
-    const sortBy = searchParams.get('sortBy') || 'created_at';
-    const sortOrder = (searchParams.get('sortOrder') || 'desc').toUpperCase();
+    const status = searchParams.get("status");
+    const limit = Math.min(parseInt(searchParams.get("limit") || "20"), 100); // Max 100 per page
+    const offset = Math.max(parseInt(searchParams.get("offset") || "0"), 0);
+    const search = searchParams.get("search") || "";
+    const sortBy = searchParams.get("sortBy") || "created_at";
+    const sortOrder = (searchParams.get("sortOrder") || "desc").toUpperCase();
 
     // Build query with filters
-    let whereClause = 'WHERE cb.provider_id = ?';
+    let whereClause = "WHERE sb.provider_id = ?";
     const queryParams: any[] = [cremationCenterId];
 
     // Build WHERE conditions
     const conditions: string[] = [];
 
-    if (status && status !== 'all') {
-      conditions.push('r.status = ?');
+    if (status && status !== "all") {
+      conditions.push("r.status = ?");
       queryParams.push(status);
     }
 
     if (search) {
       // Search across multiple fields
       const searchConditions = [
-        'r.reason LIKE ?',
-        'r.booking_id LIKE ?',
-        'cb.pet_name LIKE ?',
+        "r.reason LIKE ?",
+        "r.booking_id LIKE ?",
+        "sb.pet_name LIKE ?",
         'CONCAT(u.first_name, " ", u.last_name) LIKE ?',
-        'u.email LIKE ?'
+        "u.email LIKE ?",
       ];
       const searchValue = `%${search}%`;
-      conditions.push(`(${searchConditions.join(' OR ')})`);
-      queryParams.push(searchValue, searchValue, searchValue, searchValue, searchValue);
+      conditions.push(`(${searchConditions.join(" OR ")})`);
+      queryParams.push(
+        searchValue,
+        searchValue,
+        searchValue,
+        searchValue,
+        searchValue
+      );
     }
 
     if (conditions.length > 0) {
-      whereClause += ' AND ' + conditions.join(' AND ');
+      whereClause += " AND " + conditions.join(" AND ");
     }
 
     // Validate sort column to prevent SQL injection
-    const validSortColumns = ['created_at', 'updated_at', 'amount', 'status', 'booking_id'];
-    const validSortBy = validSortColumns.includes(sortBy) ? sortBy : 'created_at';
-    const validSortOrder = sortOrder === 'ASC' ? 'ASC' : 'DESC';
+    const validSortColumns = [
+      "created_at",
+      "updated_at",
+      "amount",
+      "status",
+      "booking_id",
+    ];
+    const validSortBy = validSortColumns.includes(sortBy)
+      ? sortBy
+      : "created_at";
+    const validSortOrder = sortOrder === "ASC" ? "ASC" : "DESC";
 
     // Fetch refunds with related booking and user information for cremation bookings
     const refundsQuery = `
-      SELECT
+      SELECT 
         r.*,
-        cb.pet_name,
-        cb.booking_date,
-        cb.booking_time,
-        cb.payment_method,
+        sb.pet_name,
+        sb.booking_date,
+        sb.booking_time,
+        sb.payment_method,
         CONCAT(u.first_name, ' ', u.last_name) as user_name,
         u.email as user_email
       FROM refunds r
-      JOIN service_bookings cb ON r.booking_id = cb.id
-      JOIN users u ON cb.user_id = u.user_id
+      JOIN service_bookings sb ON r.booking_id = sb.id
+      JOIN users u ON sb.user_id = u.user_id
       ${whereClause}
       ORDER BY r.${validSortBy} ${validSortOrder}
       LIMIT ${Number(limit)} OFFSET ${Number(offset)}
     `;
 
-    console.log('📊 [Refunds API] Executing refunds query...');
-    console.log('📊 [Refunds API] Query:', refundsQuery);
-    console.log('📊 [Refunds API] Params:', queryParams);
-    const refundsResult = await query(refundsQuery, queryParams) as any[];
-    console.log('📊 [Refunds API] Found', refundsResult.length, 'refunds');
-    console.log('📊 [Refunds API] Raw results:', refundsResult);
+    console.log("📊 [Refunds API] Executing refunds query...");
+    console.log(
+      "📊 [Refunds API] Query:",
+      refundsQuery.replace(/\s+/g, " ").trim()
+    );
+    console.log("📊 [Refunds API] Params:", queryParams);
+
+    let refundsResult: any[] = [];
+    try {
+      refundsResult = (await query(refundsQuery, queryParams)) as any[];
+      console.log("📊 [Refunds API] Found", refundsResult.length, "refunds");
+      if (refundsResult.length > 0) {
+        console.log("📊 [Refunds API] Sample result:", refundsResult[0]);
+      }
+    } catch (queryError) {
+      console.error("❌ [Refunds API] Query execution failed:", queryError);
+      throw queryError;
+    }
 
     // Get total count for pagination (use same WHERE clause)
     const countQuery = `
       SELECT COUNT(*) as total
       FROM refunds r
-      JOIN service_bookings cb ON r.booking_id = cb.id
-      JOIN users u ON cb.user_id = u.user_id
+      JOIN service_bookings sb ON r.booking_id = sb.id
+      JOIN users u ON sb.user_id = u.user_id
       ${whereClause}
     `;
 
-    console.log('🔢 [Refunds API] Executing count query...');
-    const countResult = await query(countQuery, queryParams) as any[];
-    const total = countResult[0]?.total || 0;
-    console.log('🔢 [Refunds API] Total count:', total);
+    console.log("🔢 [Refunds API] Executing count query...");
+    let total = 0;
+    try {
+      const countResult = (await query(countQuery, queryParams)) as any[];
+      total = countResult[0]?.total || 0;
+      console.log("🔢 [Refunds API] Total count:", total);
+    } catch (countError) {
+      console.error("❌ [Refunds API] Count query failed:", countError);
+      throw countError;
+    }
 
     // Get refund statistics for this cremation center
     const statsQuery = `
@@ -159,14 +217,31 @@ export async function GET(request: NextRequest) {
         SUM(CASE WHEN r.status = 'processed' THEN r.amount ELSE 0 END) as total_refunded_amount,
         SUM(CASE WHEN DATE(r.created_at) = CURDATE() THEN 1 ELSE 0 END) as today_count
       FROM refunds r
-      JOIN service_bookings cb ON r.booking_id = cb.id
-      WHERE cb.provider_id = ?
+      JOIN service_bookings sb ON r.booking_id = sb.id
+      WHERE sb.provider_id = ?
     `;
 
-    console.log('📈 [Refunds API] Executing stats query...');
-    const statsResult = await query(statsQuery, [cremationCenterId]) as any[];
-    const stats = statsResult[0] || {};
-    console.log('📈 [Refunds API] Stats:', stats);
+    console.log("📈 [Refunds API] Executing stats query...");
+    let stats: any = {
+      total_refunds: 0,
+      pending_count: 0,
+      processing_count: 0,
+      processed_count: 0,
+      failed_count: 0,
+      cancelled_count: 0,
+      total_refunded_amount: 0,
+      today_count: 0,
+    };
+    try {
+      const statsResult = (await query(statsQuery, [
+        cremationCenterId,
+      ])) as any[];
+      stats = statsResult[0] || stats;
+      console.log("📈 [Refunds API] Stats:", stats);
+    } catch (statsError) {
+      console.error("❌ [Refunds API] Stats query failed:", statsError);
+      // Don't throw here, just use empty stats
+    }
 
     const responseData = {
       success: true,
@@ -177,7 +252,7 @@ export async function GET(request: NextRequest) {
         offset,
         hasMore: offset + limit < total,
         currentPage: Math.floor(offset / limit) + 1,
-        totalPages: Math.ceil(total / limit)
+        totalPages: Math.ceil(total / limit),
       },
       statistics: {
         total_refunds: stats.total_refunds || 0,
@@ -187,25 +262,31 @@ export async function GET(request: NextRequest) {
         failed_count: stats.failed_count || 0,
         cancelled_count: stats.cancelled_count || 0,
         total_refunded_amount: parseFloat(stats.total_refunded_amount || 0),
-        today_count: stats.today_count || 0
-      }
+        today_count: stats.today_count || 0,
+      },
     };
 
-    console.log('✅ [Refunds API] Returning response with', refundsResult.length, 'refunds');
+    console.log(
+      "✅ [Refunds API] Returning response with",
+      refundsResult.length,
+      "refunds"
+    );
     return NextResponse.json(responseData, {
       headers: {
-        'Cache-Control': 'private, max-age=300', // Cache for 5 minutes
-        'X-Total-Count': total.toString(),
-        'X-Page-Size': limit.toString(),
-        'X-Current-Page': (Math.floor(offset / limit) + 1).toString()
-      }
+        "Cache-Control": "private, max-age=300", // Cache for 5 minutes
+        "X-Total-Count": total.toString(),
+        "X-Page-Size": limit.toString(),
+        "X-Current-Page": (Math.floor(offset / limit) + 1).toString(),
+      },
     });
-
   } catch (error) {
-    console.error('Error fetching cremation refunds:', error);
-    return NextResponse.json({
-      error: 'Internal server error',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 });
+    console.error("Error fetching cremation refunds:", error);
+    return NextResponse.json(
+      {
+        error: "Internal server error",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 }
+    );
   }
 }

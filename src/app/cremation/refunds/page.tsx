@@ -284,15 +284,15 @@ const CremationRefundsPage = React.memo(function CremationRefundsPage() {
 
       if (data.success) {
         console.log('✅ Setting refunds data:', data.refunds?.length || 0, 'items');
-        setRefunds(data.refunds || []);
-        setPagination(data.pagination || {
+        const refundsData = data.refunds || [];
+        const paginationData = data.pagination || {
           total: 0,
           currentPage: 1,
           totalPages: 1,
           limit: 20,
           hasMore: false
-        });
-        setStatistics(data.statistics || {
+        };
+        const statisticsData = data.statistics || {
           total_refunds: 0,
           pending_count: 0,
           processing_count: 0,
@@ -301,7 +301,13 @@ const CremationRefundsPage = React.memo(function CremationRefundsPage() {
           cancelled_count: 0,
           total_refunded_amount: 0,
           today_count: 0
-        });
+        };
+
+        setRefunds(refundsData);
+        setPagination(paginationData);
+        setStatistics(statisticsData);
+
+        console.log('✅ State updated - Refunds:', refundsData.length, 'Pagination:', paginationData, 'Stats:', statisticsData);
       } else {
         console.error('❌ API returned error:', data.error);
         showToast(data.error || 'Failed to fetch refunds', 'error');

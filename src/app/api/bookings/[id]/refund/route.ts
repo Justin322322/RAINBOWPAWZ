@@ -91,7 +91,7 @@ export async function POST(
       notes: notes
     });
 
-    // Admin notifications removed - refunds now managed by cremation centers
+    // Refunds are now managed by cremation centers
 
     // Send email confirmation to user
     try {

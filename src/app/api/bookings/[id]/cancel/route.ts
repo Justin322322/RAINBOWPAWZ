@@ -133,7 +133,7 @@ export async function POST(request: NextRequest) {
     // Handle refund notification outside transaction (not critical for booking integrity)
     if (cancellationResult.refundId) {
       try {
-        // Admin notifications removed - refunds now managed by cremation centers
+        // Refunds are now managed by cremation centers
 
         refundInfo = {
           status: 'pending',
