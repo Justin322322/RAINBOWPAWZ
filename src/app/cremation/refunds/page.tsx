@@ -163,8 +163,8 @@ const RefundCard = React.memo(function RefundCard({
 const CremationRefundsPage = React.memo(function CremationRefundsPage({ userData }: { userData: any }) {
   const [refunds, setRefunds] = useState<Refund[]>([]);
   const [loading, setLoading] = useState(true);
-  
-  console.log('🔄 Component render - Loading:', loading, 'Refunds count:', refunds.length);
+
+  console.log('🔄 Component render - Loading:', loading, 'Refunds count:', refunds.length, 'UserData:', !!userData);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedRefund, setSelectedRefund] = useState<Refund | null>(null);
@@ -197,9 +197,17 @@ const CremationRefundsPage = React.memo(function CremationRefundsPage({ userData
   // Simplified fetch function with better error handling
   const fetchRefunds = useCallback(async () => {
     let timeoutId: NodeJS.Timeout | null = null;
-    
+
     try {
       console.log('🔄 Starting fetchRefunds...');
+
+      // Don't fetch if we don't have userData
+      if (!userData?.business_id) {
+        console.log('❌ No business_id found, skipping fetch');
+        setLoading(false);
+        return;
+      }
+
       setLoading(true);
 
       // Add a timeout to prevent infinite loading
@@ -295,27 +303,38 @@ const CremationRefundsPage = React.memo(function CremationRefundsPage({ userData
       if (timeoutId) {
         clearTimeout(timeoutId);
       }
-      console.log('🏁 fetchRefunds completed');
+      console.log('🏁 fetchRefunds completed - setting loading to false');
       setLoading(false);
+      console.log('🏁 Loading state after setLoading(false):', false);
     }
   }, [pagination.limit, pagination.currentPage, searchTerm, statusFilter]); // Removed showToast to prevent re-renders
 
   useEffect(() => {
     console.log('🚀 Component mounted, initializing...');
-    
+
     // Get cremation center name from userData prop
     if (userData?.business_name) {
       setUserName(userData.business_name);
       console.log('👤 User name set:', userData.business_name);
     }
 
-    // Initial data fetch
-    console.log('📡 Triggering initial fetchRefunds...');
-    fetchRefunds();
-  }, [userData]); // Depend on userData to update when it changes
+    // Only fetch if we have userData
+    if (userData?.business_id) {
+      console.log('📡 Triggering initial fetchRefunds...');
+      fetchRefunds();
+    } else {
+      console.log('⏳ Waiting for userData with business_id...');
+    }
+  }, [userData?.business_id]); // Only depend on business_id to prevent unnecessary re-renders
 
   // Debounced search to avoid too many API calls
   useEffect(() => {
+    // Only trigger search if we have userData
+    if (!userData?.business_id) {
+      console.log('⏳ Skipping search - no business_id yet');
+      return;
+    }
+
     const timeoutId = setTimeout(() => {
       console.log('🔍 Search/filter changed, triggering fetch...');
       if (pagination.currentPage === 1) {
@@ -327,15 +346,15 @@ const CremationRefundsPage = React.memo(function CremationRefundsPage({ userData
     }, 300); // 300ms debounce
 
     return () => clearTimeout(timeoutId);
-  }, [searchTerm, statusFilter]); // Removed fetchRefunds to prevent infinite loops
+  }, [searchTerm, statusFilter, userData?.business_id]); // Added business_id to dependencies
 
   // Fetch data when page changes
   useEffect(() => {
-    if (pagination.currentPage > 1) {
+    if (pagination.currentPage > 1 && userData?.business_id) {
       console.log('📄 Page changed, triggering fetch...');
       fetchRefunds();
     }
-  }, [pagination.currentPage]); // Removed fetchRefunds to prevent infinite loops
+  }, [pagination.currentPage, userData?.business_id]); // Added business_id check
 
   // Pagination handlers
   const handlePageChange = (newPage: number) => {
@@ -497,6 +516,28 @@ const CremationRefundsPage = React.memo(function CremationRefundsPage({ userData
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center"
                 >
                   Test API
+                </button>
+                <button
+                  onClick={() => {
+                    console.log('🔧 Force refresh - resetting all state');
+                    setLoading(false);
+                    setRefunds([]);
+                    setPagination({
+                      total: 0,
+                      currentPage: 1,
+                      totalPages: 1,
+                      limit: 20,
+                      hasMore: false
+                    });
+                    setTimeout(() => {
+                      if (userData?.business_id) {
+                        fetchRefunds();
+                      }
+                    }, 100);
+                  }}
+                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center"
+                >
+                  Force Refresh
                 </button>
               </div>
             </div>
