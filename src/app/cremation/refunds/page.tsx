@@ -164,6 +164,18 @@ const CremationRefundsPage = React.memo(function CremationRefundsPage({ userData
   const [loading, setLoading] = useState(true);
 
   console.log('🔄 Component render - Loading:', loading, 'Refunds count:', refunds.length, 'UserData:', !!userData);
+
+  // Add a safety timeout to prevent infinite loading
+  useEffect(() => {
+    const safetyTimeout = setTimeout(() => {
+      if (loading) {
+        console.log('🚨 Safety timeout triggered - forcing loading to false');
+        setLoading(false);
+      }
+    }, 15000); // 15 second safety timeout
+
+    return () => clearTimeout(safetyTimeout);
+  }, [loading]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedRefund, setSelectedRefund] = useState<Refund | null>(null);
@@ -297,7 +309,11 @@ const CremationRefundsPage = React.memo(function CremationRefundsPage({ userData
       }
     } catch (error) {
       console.error('❌ Error fetching refunds:', error);
-      showToast(`Failed to fetch refunds: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.log('🚫 Request was aborted');
+      } else {
+        showToast(`Failed to fetch refunds: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
+      }
     } finally {
       if (timeoutId) {
         clearTimeout(timeoutId);
@@ -306,7 +322,7 @@ const CremationRefundsPage = React.memo(function CremationRefundsPage({ userData
       setLoading(false);
       console.log('🏁 Loading state after setLoading(false):', false);
     }
-  }, [pagination.limit, pagination.currentPage, searchTerm, statusFilter]); // Removed showToast to prevent re-renders
+  }, [pagination.limit, pagination.currentPage, searchTerm, statusFilter, userData?.business_id, showToast]);
 
   useEffect(() => {
     console.log('🚀 Component mounted, initializing...');
@@ -323,8 +339,9 @@ const CremationRefundsPage = React.memo(function CremationRefundsPage({ userData
       fetchRefunds();
     } else {
       console.log('⏳ Waiting for userData with business_id...');
+      setLoading(false); // Stop loading if no business_id
     }
-  }, [userData?.business_id]); // Only depend on business_id to prevent unnecessary re-renders
+  }, [userData?.business_id, fetchRefunds]); // Include fetchRefunds in dependencies
 
   // Debounced search to avoid too many API calls
   useEffect(() => {
@@ -345,7 +362,7 @@ const CremationRefundsPage = React.memo(function CremationRefundsPage({ userData
     }, 300); // 300ms debounce
 
     return () => clearTimeout(timeoutId);
-  }, [searchTerm, statusFilter, userData?.business_id]); // Added business_id to dependencies
+  }, [searchTerm, statusFilter, userData?.business_id, fetchRefunds, pagination.currentPage]); // Added missing dependencies
 
   // Fetch data when page changes
   useEffect(() => {
@@ -353,7 +370,7 @@ const CremationRefundsPage = React.memo(function CremationRefundsPage({ userData
       console.log('📄 Page changed, triggering fetch...');
       fetchRefunds();
     }
-  }, [pagination.currentPage, userData?.business_id]); // Added business_id check
+  }, [pagination.currentPage, userData?.business_id, fetchRefunds]); // Added fetchRefunds dependency
 
   // Pagination handlers
   const handlePageChange = (newPage: number) => {
