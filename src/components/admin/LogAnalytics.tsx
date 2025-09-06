@@ -179,7 +179,6 @@ export default function LogAnalytics({ className = '' }: LogAnalyticsProps) {
                 if (actionLower.includes('restrict')) return 'Account Restrictions';
                 if (actionLower.includes('restore')) return 'Account Restorations';
                 if (actionLower.includes('login')) return 'Admin Logins';
-                if (actionLower.includes('refund')) return 'Refund Processing';
                 return action.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
               };
 
@@ -204,7 +203,6 @@ export default function LogAnalytics({ className = '' }: LogAnalyticsProps) {
                 if (entityLower.includes('application')) return 'Business Applications';
                 if (entityLower.includes('booking')) return 'Customer Bookings';
                 if (entityLower.includes('review')) return 'Customer Reviews';
-                if (entityLower.includes('refund')) return 'Refund Requests';
                 if (entityLower.includes('user')) return 'User Accounts';
                 return entityType.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
               };

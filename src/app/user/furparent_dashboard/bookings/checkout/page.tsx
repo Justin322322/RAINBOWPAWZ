@@ -1206,15 +1206,27 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                               aria-describedby={validationErrors.petType && validationErrors.formSubmitted ? 'pet-type-error' : undefined}
                             >
                               <option value="">Select Pet Type</option>
-                              <option value="Dog">Dog</option>
-                              <option value="Cat">Cat</option>
-                              <option value="Bird">Bird</option>
-                              <option value="Hamster">Hamster</option>
-                              <option value="Rabbit">Rabbit</option>
-                              <option value="Guinea Pig">Guinea Pig</option>
-                              <option value="Fish">Fish</option>
-                              <option value="Reptile">Reptile</option>
-                              <option value="Other">Other</option>
+                              {/* Use supported pet types from package if available, otherwise fallback to default list */}
+                              {bookingData?.package?.supportedPetTypes && bookingData.package.supportedPetTypes.length > 0 ? (
+                                bookingData.package.supportedPetTypes.map((petTypeOption: string) => (
+                                  <option key={petTypeOption} value={petTypeOption}>
+                                    {petTypeOption}
+                                  </option>
+                                ))
+                              ) : (
+                                // Fallback to default pet types if package doesn't specify supported types
+                                <>
+                                  <option value="Dogs">Dogs</option>
+                                  <option value="Cats">Cats</option>
+                                  <option value="Birds">Birds</option>
+                                  <option value="Rabbits">Rabbits</option>
+                                  <option value="Hamsters">Hamsters</option>
+                                  <option value="Guinea Pigs">Guinea Pigs</option>
+                                  <option value="Fish">Fish</option>
+                                  <option value="Reptiles">Reptiles</option>
+                                  <option value="Other">Other</option>
+                                </>
+                              )}
                             </select>
                             {validationErrors.petType && validationErrors.formSubmitted && (
                               <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
@@ -1226,6 +1238,12 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                             <p className="mt-2 text-sm text-red-600 flex items-center" id="pet-type-error">
                               <ExclamationCircleIcon className="h-4 w-4 mr-1 flex-shrink-0" />
                               {validationErrors.petType}
+                            </p>
+                          )}
+                          {/* Show supported pet types info if available */}
+                          {bookingData?.package?.supportedPetTypes && bookingData.package.supportedPetTypes.length > 0 && (
+                            <p className="mt-1 text-xs text-gray-500">
+                              This package supports: {bookingData.package.supportedPetTypes.join(', ')}
                             </p>
                           )}
                         </div>

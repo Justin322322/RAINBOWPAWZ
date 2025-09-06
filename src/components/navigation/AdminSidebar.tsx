@@ -12,7 +12,6 @@ import {
   UserIcon,
   UsersIcon,
   StarIcon,
-  CurrencyDollarIcon,
   DocumentTextIcon,
   UserCircleIcon,
   CogIcon
@@ -55,12 +54,6 @@ export default function AdminSidebar({ activePage: propActivePage }: AdminSideba
       href: '/admin/reviews',
       icon: StarIcon,
       id: 'reviews'
-    },
-    {
-      name: 'Refunds',
-      href: '/admin/refunds',
-      icon: CurrencyDollarIcon,
-      id: 'refunds'
     },
     {
       name: 'Activity Monitor',
@@ -125,8 +118,6 @@ export default function AdminSidebar({ activePage: propActivePage }: AdminSideba
         setActivePage('services');
       } else if (currentPath === 'reviews') {
         setActivePage('reviews');
-      } else if (currentPath === 'refunds') {
-        setActivePage('refunds');
       } else if (currentPath === 'logs') {
         setActivePage('logs');
       } else if (currentPath === 'profile') {

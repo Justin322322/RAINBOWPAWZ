@@ -70,15 +70,15 @@ function CremationBookingsPage({ userData }: { userData: any }) {
         });
         
         if (searchTerm.trim()) {
-          queryParams.append('searchTerm', searchTerm.trim());
+          queryParams.append('search', searchTerm.trim());
         }
         
         if (statusFilter && statusFilter !== 'all') {
-          queryParams.append('statusFilter', statusFilter);
+          queryParams.append('status', statusFilter);
         }
         
         if (paymentFilter && paymentFilter !== 'all') {
-          queryParams.append('paymentFilter', paymentFilter);
+          queryParams.append('paymentStatus', paymentFilter);
         }
         
         const dataPromise = fetch(`/api/cremation/bookings?${queryParams.toString()}`, {
@@ -184,15 +184,15 @@ function CremationBookingsPage({ userData }: { userData: any }) {
       });
 
       if (searchTerm.trim()) {
-        queryParams.append('searchTerm', searchTerm.trim());
+        queryParams.append('search', searchTerm.trim());
       }
 
       if (statusFilter && statusFilter !== 'all') {
-        queryParams.append('statusFilter', statusFilter);
+        queryParams.append('status', statusFilter);
       }
 
       if (paymentFilter && paymentFilter !== 'all') {
-        queryParams.append('paymentFilter', paymentFilter);
+        queryParams.append('paymentStatus', paymentFilter);
       }
 
       const refreshResponse = await fetch(`/api/cremation/bookings?${queryParams.toString()}`, {
@@ -323,9 +323,10 @@ function CremationBookingsPage({ userData }: { userData: any }) {
                 className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)] sm:text-sm appearance-none"
               >
                 <option value="all">All Active Statuses</option>
+                <option value="pending">Pending</option>
+                <option value="confirmed">Confirmed</option>
                 <option value="scheduled">Scheduled</option>
                 <option value="in_progress">In Progress</option>
-                <option value="pending">Pending</option>
               </select>
             </div>
             <div className="relative w-full sm:w-auto">
@@ -343,6 +344,8 @@ function CremationBookingsPage({ userData }: { userData: any }) {
                 <option value="paid">Paid</option>
                 <option value="partially_paid">Partially Paid</option>
                 <option value="not_paid">Not Paid</option>
+                <option value="awaiting_payment_confirmation">Awaiting Confirmation</option>
+                <option value="payment_rejected">Payment Rejected</option>
                 <option value="gcash">GCash Payments</option>
               </select>
             </div>

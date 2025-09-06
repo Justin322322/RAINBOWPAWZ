@@ -53,14 +53,15 @@ Rainbow Paws is a full-featured web application that facilitates pet memorial se
 - Revenue analytics and reporting
 - Real-time booking notifications
 - Booking status management
-- Refund processing
+- **Refund management for their own bookings**
+- Customer communication and support
 
 ### For Administrators
 - User and business management
 - Business application approval workflow
 - System analytics and monitoring
 - Platform configuration
-- Payment and refund oversight
+- **System oversight and platform management**
 - Real-time system health monitoring
 - Advanced debugging and diagnostic tools
 
@@ -657,7 +658,7 @@ erDiagram
 - **Payment Transactions**: Payment processing system (linked to service_bookings)
 - **User Appeals**: Appeal system for restricted users (linked to users and admins)
 - **Appeal History**: Tracking of appeal status changes (linked to appeals and admins)
-- **Refunds**: Refund management system (linked to bookings and admin users)
+- **Refunds**: Refund management system (linked to bookings and cremation centers)
 
 #### Security & Authentication
 - **OTP System**: Secure email verification with attempt tracking
@@ -667,7 +668,7 @@ erDiagram
 
 #### Payment & Financial
 - **Payment Transactions**: Complete payment processing with PayMongo integration
-- **Refunds**: Automated refund processing with admin oversight
+- **Refunds**: Automated refund processing managed by cremation centers
 - **Multiple Payment Methods**: Support for GCash, PayMaya, and card payments
 
 #### Communication & Notifications
@@ -1121,11 +1122,16 @@ flowchart TD
 - `PUT /api/admin/cremation-businesses/[id]` - Update business status
 - `GET /api/admin/bookings` - Get all bookings
 - `GET /api/admin/payments` - Get payment transactions
-- `GET /api/admin/refunds` - Get refund requests
-- `POST /api/admin/refunds` - Process refund
 - `GET /api/admin/logs` - Get admin activity logs
 - `GET /api/admin/reviews` - Get all reviews
 - `GET /api/admin/notifications` - Get admin notifications
+
+### Cremation Center Management
+- `GET /api/cremation/refunds` - Get refunds for cremation center's bookings
+- `POST /api/cremation/refunds/[id]/approve` - Approve a refund request
+- `POST /api/cremation/refunds/[id]/deny` - Deny a refund request
+- `GET /api/cremation/bookings` - Get cremation center's bookings
+- `GET /api/cremation/reports` - Get cremation center reports
 
 ### System Endpoints
 - `GET /api/health` - Health check endpoint for monitoring

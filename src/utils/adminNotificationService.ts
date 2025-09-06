@@ -41,13 +41,8 @@ export async function createAdminNotification({
         link = `/admin/applications/${entityId}`;
       }
     } else if (type === 'refund_request') {
-      // Link to the refunds page
-      link = '/admin/refunds';
-
-      // If we have a specific entity ID, link directly to that refund
-      if (entityId) {
-        link = `/admin/refunds?refundId=${entityId}`;
-      }
+      // Refunds are now handled by cremation centers, no admin link needed
+      link = null;
     } else if (type === 'new_appeal' || type === 'appeal_submitted') {
       // Link to the appropriate admin users page based on entity type
       if (entityType === 'furparent' || entityType === 'user') {

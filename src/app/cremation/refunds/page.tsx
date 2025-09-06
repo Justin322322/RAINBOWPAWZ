@@ -11,12 +11,13 @@ import {
   CheckCircleIcon,
   XCircleIcon
 } from '@heroicons/react/24/outline';
-import AdminDashboardLayout from '@/components/navigation/AdminDashboardLayout';
-import withAdminAuth from '@/components/withAdminAuth';
+import CremationDashboardLayout from '@/components/navigation/CremationDashboardLayout';
+import withCremationAuth from '@/components/withCremationAuth';
 import { useToast } from '@/context/ToastContext';
 import RefundStatus from '@/components/refund/RefundStatus';
 import { Modal } from '@/components/ui/Modal';
 import { motion } from 'framer-motion';
+import { SectionLoader } from '@/components/ui/SectionLoader';
 
 // Helper functions for RefundCard component
 const formatDate = (dateString: string) => {
@@ -44,6 +45,26 @@ const getStatusBadge = (status: string) => {
     </span>
   );
 };
+
+interface Refund {
+  id: number;
+  booking_id: number;
+  amount: number | string;
+  reason: string;
+  status: string;
+  processed_by?: number;
+  payment_method?: string;
+  transaction_id?: string;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+  // Joined data
+  user_name?: string;
+  user_email?: string;
+  pet_name?: string;
+  booking_date?: string;
+  booking_time?: string;
+}
 
 // Memoized Refund Card Component for better performance
 const RefundCard = React.memo(function RefundCard({
@@ -137,30 +158,9 @@ const RefundCard = React.memo(function RefundCard({
     </motion.div>
   );
 });
-import { SectionLoader } from '@/components/ui/SectionLoader';
 
-interface Refund {
-  id: number;
-  booking_id: number;
-  amount: number | string;
-  reason: string;
-  status: string;
-  processed_by?: number;
-  payment_method?: string;
-  transaction_id?: string;
-  notes?: string;
-  created_at: string;
-  updated_at: string;
-  // Joined data
-  user_name?: string;
-  user_email?: string;
-  pet_name?: string;
-  booking_date?: string;
-  booking_time?: string;
-}
-
-// Optimized AdminRefundsPage with caching and pagination
-const AdminRefundsPage = React.memo(function AdminRefundsPage() {
+// Optimized CremationRefundsPage with caching and pagination
+const CremationRefundsPage = React.memo(function CremationRefundsPage() {
   const [refunds, setRefunds] = useState<Refund[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -241,7 +241,7 @@ const AdminRefundsPage = React.memo(function AdminRefundsPage() {
         }
       }
 
-      const response = await fetch(`/api/admin/refunds?${queryString}`, {
+      const response = await fetch(`/api/cremation/refunds?${queryString}`, {
         headers: {
           'Cache-Control': 'no-cache'
         }
@@ -285,11 +285,11 @@ const AdminRefundsPage = React.memo(function AdminRefundsPage() {
   }, [pagination, searchTerm, statusFilter, showToast, cache, lastFetchParams]);
 
   useEffect(() => {
-    // Get admin name from localStorage
-    const adminData = localStorage.getItem('adminData');
-    if (adminData) {
-      const admin = JSON.parse(adminData);
-      setUserName(admin.first_name || 'Admin');
+    // Get cremation center name from localStorage
+    const cremationData = localStorage.getItem('cremationData');
+    if (cremationData) {
+      const cremation = JSON.parse(cremationData);
+      setUserName(cremation.business_name || 'Cremation Center');
     }
 
     // Initial data fetch
@@ -316,8 +316,6 @@ const AdminRefundsPage = React.memo(function AdminRefundsPage() {
       fetchRefunds();
     }
   }, [pagination.currentPage, fetchRefunds]);
-
-
 
   // Pagination handlers
   const handlePageChange = (newPage: number) => {
@@ -350,43 +348,43 @@ const AdminRefundsPage = React.memo(function AdminRefundsPage() {
   const handleApproveRefund = async (refundId: number) => {
     try {
       setProcessingApproval(prev => new Set(prev).add(refundId));
-      
+
       // Get the auth token from cookies
       const getAuthToken = () => {
         if (typeof document === 'undefined') return null;
-        
+
         try {
           // Try to get from cookies first
           const cookies = document.cookie.split(';');
-          const authCookie = cookies.find(cookie => cookie.trim().startsWith('auth_token='));
-          
+          const authCookie = cookies.find(cookie => cookie.trim().startsWith('cremation_token='));
+
           if (authCookie) {
             const token = authCookie.split('=')[1];
             if (token) return decodeURIComponent(token);
           }
-          
+
           // Fallback to localStorage
-          const localStorageToken = localStorage.getItem('auth_token');
+          const localStorageToken = localStorage.getItem('cremation_token');
           if (localStorageToken) return localStorageToken;
-          
+
           // Fallback to sessionStorage
-          const sessionStorageToken = sessionStorage.getItem('auth_token');
+          const sessionStorageToken = sessionStorage.getItem('cremation_token');
           if (sessionStorageToken) return sessionStorageToken;
-          
+
           return null;
         } catch {
           return null;
         }
       };
-      
+
       const authToken = getAuthToken();
-      
+
       if (!authToken) {
         showToast('Authentication required. Please log in again.', 'error');
         return;
       }
-      
-      const response = await fetch(`/api/admin/refunds/${refundId}/approve`, {
+
+      const response = await fetch(`/api/cremation/refunds/${refundId}/approve`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -405,7 +403,7 @@ const AdminRefundsPage = React.memo(function AdminRefundsPage() {
         fetchRefunds(); // Refresh the list
       } else {
         if (response.status === 403) {
-          showToast('Access denied. Admin privileges required.', 'error');
+          showToast('Access denied. Cremation center privileges required.', 'error');
         } else if (response.status === 401) {
           showToast('Authentication expired. Please log in again.', 'error');
         } else {
@@ -427,43 +425,43 @@ const AdminRefundsPage = React.memo(function AdminRefundsPage() {
   const handleDenyRefund = async (refundId: number) => {
     try {
       setProcessingDenial(prev => new Set(prev).add(refundId));
-      
+
       // Get the auth token from cookies
       const getAuthToken = () => {
         if (typeof document === 'undefined') return null;
-        
+
         try {
           // Try to get from cookies first
           const cookies = document.cookie.split(';');
-          const authCookie = cookies.find(cookie => cookie.trim().startsWith('auth_token='));
-          
+          const authCookie = cookies.find(cookie => cookie.trim().startsWith('cremation_token='));
+
           if (authCookie) {
             const token = authCookie.split('=')[1];
             if (token) return decodeURIComponent(token);
           }
-          
+
           // Fallback to localStorage
-          const localStorageToken = localStorage.getItem('auth_token');
+          const localStorageToken = localStorage.getItem('cremation_token');
           if (localStorageToken) return localStorageToken;
-          
+
           // Fallback to sessionStorage
-          const sessionStorageToken = sessionStorage.getItem('auth_token');
+          const sessionStorageToken = sessionStorage.getItem('cremation_token');
           if (sessionStorageToken) return sessionStorageToken;
-          
+
           return null;
         } catch {
           return null;
         }
       };
-      
+
       const authToken = getAuthToken();
-      
+
       if (!authToken) {
         showToast('Authentication required. Please log in again.', 'error');
         return;
       }
-      
-      const response = await fetch(`/api/admin/refunds/${refundId}/deny`, {
+
+      const response = await fetch(`/api/cremation/refunds/${refundId}/deny`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -482,7 +480,7 @@ const AdminRefundsPage = React.memo(function AdminRefundsPage() {
         fetchRefunds(); // Refresh the list
       } else {
         if (response.status === 403) {
-          showToast('Access denied. Admin privileges required.', 'error');
+          showToast('Access denied. Cremation center privileges required.', 'error');
         } else if (response.status === 401) {
           showToast('Authentication expired. Please log in again.', 'error');
         } else {
@@ -501,18 +499,16 @@ const AdminRefundsPage = React.memo(function AdminRefundsPage() {
     }
   };
 
-
-
   if (loading) {
     return (
-      <AdminDashboardLayout activePage="refunds" userName={userName}>
+      <CremationDashboardLayout activePage="refunds" userName={userName}>
         <SectionLoader />
-      </AdminDashboardLayout>
+      </CremationDashboardLayout>
     );
   }
 
   return (
-    <AdminDashboardLayout activePage="refunds" userName={userName}>
+    <CremationDashboardLayout activePage="refunds" userName={userName}>
       <div className="space-y-6">
         {/* Header section */}
         <div className="mb-8 bg-white rounded-xl shadow-md border border-gray-100 p-6">
@@ -520,6 +516,9 @@ const AdminRefundsPage = React.memo(function AdminRefundsPage() {
             <div>
               <h1 className="text-2xl font-semibold text-gray-800">Refund Management</h1>
               <p className="text-gray-600 mt-1">
+                Manage refund requests for your cremation bookings
+              </p>
+              <p className="text-sm text-gray-500 mt-1">
                 {refunds.length} {refunds.length === 1 ? 'refund' : 'refunds'} found
               </p>
             </div>
@@ -639,11 +638,10 @@ const AdminRefundsPage = React.memo(function AdminRefundsPage() {
                     <button
                       key={pageNum}
                       onClick={() => handlePageChange(pageNum)}
-                      className={`px-3 py-2 text-sm border rounded-lg ${
-                        pageNum === pagination.currentPage
-                          ? 'bg-[var(--primary-green)] text-white border-[var(--primary-green)]'
-                          : 'border-gray-300 hover:bg-gray-50'
-                      }`}
+                      className={`px-3 py-2 text-sm border rounded-lg ${pageNum === pagination.currentPage
+                        ? 'bg-[var(--primary-green)] text-white border-[var(--primary-green)]'
+                        : 'border-gray-300 hover:bg-gray-50'
+                        }`}
                     >
                       {pageNum}
                     </button>
@@ -661,8 +659,6 @@ const AdminRefundsPage = React.memo(function AdminRefundsPage() {
             </div>
           </div>
         )}
-
-
 
         {/* Refund Details Modal */}
         <Modal
@@ -765,19 +761,29 @@ const AdminRefundsPage = React.memo(function AdminRefundsPage() {
                   {selectedRefund.transaction_id && (
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-gray-600">Transaction ID</span>
-                      <span className="text-sm font-medium text-gray-900 font-mono">
+                      <span className="text-xs font-medium text-gray-900 font-mono">
                         {selectedRefund.transaction_id}
                       </span>
                     </div>
                   )}
                 </div>
               </div>
+
+              {/* Additional Notes */}
+              {selectedRefund.notes && (
+                <div>
+                  <h4 className="text-sm font-medium text-gray-700 mb-3">Additional Notes</h4>
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <p className="text-sm text-gray-700">{selectedRefund.notes}</p>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </Modal>
       </div>
-    </AdminDashboardLayout>
+    </CremationDashboardLayout>
   );
 });
 
-export default withAdminAuth(AdminRefundsPage);
+export default withCremationAuth(CremationRefundsPage);

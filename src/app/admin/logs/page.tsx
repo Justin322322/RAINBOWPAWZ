@@ -258,8 +258,6 @@ function AdminLogsPage({ adminData }: { adminData: any }) {
       return 'Rejected business application';
     } else if (action.includes('login')) {
       return 'Admin logged into system';
-    } else if (action.includes('refund')) {
-      return 'Processed refund request';
     } else if (action.includes('review')) {
       return 'Managed customer review';
     } else {
@@ -462,7 +460,6 @@ function AdminLogsPage({ adminData }: { adminData: any }) {
                 { label: 'Restrictions', value: 'restrict' },
                 { label: 'Restorations', value: 'restore' },
                 { label: 'Admin Logins', value: 'login' },
-                { label: 'Refund Actions', value: 'refund' },
               ]}
               value={filters.action}
               onChange={(value) => handleFilterChange('action', value)}
@@ -478,7 +475,6 @@ function AdminLogsPage({ adminData }: { adminData: any }) {
                 { label: 'Applications', value: 'application' },
                 { label: 'Bookings', value: 'booking' },
                 { label: 'Reviews', value: 'review' },
-                { label: 'Refunds', value: 'refund' },
               ]}
               value={filters.entity_type}
               onChange={(value) => handleFilterChange('entity_type', value)}

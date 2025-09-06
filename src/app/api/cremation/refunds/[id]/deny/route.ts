@@ -1,50 +1,45 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
-import { getAuthTokenFromRequest } from '@/utils/auth';
+import { verifySecureAuth } from '@/lib/secureAuth';
 import { sendEmail } from '@/lib/consolidatedEmailService';
-import { createAdminNotification } from '@/utils/adminNotificationService';
+
 
 /**
- * POST - Deny a refund request
+ * POST - Deny a refund request (Cremation Center)
  */
 export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = await params;
+    const { id } = params;
     const refundId = parseInt(id);
 
-    // Verify admin authentication
-    const authToken = getAuthTokenFromRequest(request);
-    if (!authToken) {
+    // Verify cremation center authentication
+    const user = await verifySecureAuth(request);
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Check if it's a JWT token or old format
-    let _userId = null;
-    let accountType = null;
-
-    if (authToken.includes('.')) {
-      // JWT token format
-      const { decodeTokenUnsafe } = await import('@/lib/jwt');
-      const payload = decodeTokenUnsafe(authToken);
-      _userId = payload?.userId || null;
-      accountType = payload?.accountType || null;
-    } else {
-      // Old format fallback
-      const parts = authToken.split('_');
-      if (parts.length === 2) {
-        _userId = parts[0];
-        accountType = parts[1];
-      }
-    }
-
-    if (accountType !== 'admin') {
+    if (user.accountType !== 'business') {
       return NextResponse.json({
-        error: 'Unauthorized - Admin access required'
+        error: 'Unauthorized - Business access required'
       }, { status: 403 });
     }
+
+    // Get cremation center ID from service_providers table
+    const providerResult = await query(
+      'SELECT provider_id FROM service_providers WHERE user_id = ? AND provider_type = ?',
+      [user.userId, 'cremation']
+    ) as any[];
+
+    if (!providerResult || providerResult.length === 0) {
+      return NextResponse.json({
+        error: 'Cremation center not found for this user'
+      }, { status: 400 });
+    }
+
+    const cremationCenterId = providerResult[0].provider_id;
 
     if (!refundId || isNaN(refundId)) {
       return NextResponse.json({
@@ -52,25 +47,25 @@ export async function POST(
       }, { status: 400 });
     }
 
-    // Get refund details with booking and user information
+    // Get refund details with booking and user information for cremation bookings
     const refundResult = await query(`
       SELECT
         r.*,
-        sb.pet_name,
-        sb.booking_date,
-        sb.booking_time,
-        sb.payment_method,
+        cb.pet_name,
+        cb.booking_date,
+        cb.booking_time,
+        cb.payment_method,
         CONCAT(u.first_name, ' ', u.last_name) as user_name,
         u.email as user_email
       FROM refunds r
-      JOIN service_bookings sb ON r.booking_id = sb.id
-      JOIN users u ON sb.user_id = u.user_id
-      WHERE r.id = ? AND r.status = 'pending'
-    `, [refundId]) as any[];
+      JOIN service_bookings cb ON r.booking_id = cb.id
+      JOIN users u ON cb.user_id = u.user_id
+      WHERE r.id = ? AND r.status = 'pending' AND cb.provider_id = ?
+    `, [refundId, cremationCenterId]) as any[];
 
     if (!refundResult || refundResult.length === 0) {
       return NextResponse.json({
-        error: 'Refund not found or not in pending status'
+        error: 'Refund not found, not in pending status, or not accessible'
       }, { status: 404 });
     }
 
@@ -87,7 +82,7 @@ export async function POST(
     if (refund.user_email) {
       try {
         const emailContent = {
-          subject: `Refund Request Denied - Booking #${refund.booking_id}`,
+          subject: `Refund Request Denied - Cremation Booking #${refund.booking_id}`,
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
               <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
@@ -96,7 +91,7 @@ export async function POST(
 
               <p>Dear ${refund.user_name},</p>
 
-              <p>We regret to inform you that your refund request for booking #${refund.booking_id} has been denied after careful review.</p>
+              <p>We regret to inform you that your refund request for cremation booking #${refund.booking_id} has been denied after careful review.</p>
 
               <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin: 20px 0;">
                 <h3 style="margin-top: 0; color: #495057;">Booking Details:</h3>
@@ -107,7 +102,7 @@ export async function POST(
                 <p><strong>Reason for Request:</strong> ${refund.reason}</p>
               </div>
 
-              <p>If you have any questions or would like to discuss this decision, please contact our customer support team.</p>
+              <p>If you have any questions or would like to discuss this decision, please contact our customer support team or the cremation center directly.</p>
 
               <div style="background-color: #e9ecef; padding: 15px; border-radius: 5px; margin: 20px 0;">
                 <p style="margin: 0;"><strong>Customer Support:</strong></p>
@@ -138,18 +133,7 @@ export async function POST(
       }
     }
 
-    // Create admin notification for refund denial
-    try {
-      await createAdminNotification({
-        type: 'refund_denied',
-        title: 'Refund Request Denied',
-        message: `Refund request for booking #${refund.booking_id} (${refund.pet_name}) has been denied. Amount: ₱${refund.amount.toFixed(2)}`,
-        entityType: 'refund',
-        entityId: refundId
-      });
-    } catch (adminNotificationError) {
-      console.error('Failed to create admin notification:', adminNotificationError);
-    }
+    // Admin notifications removed - refunds now managed by cremation centers
 
     return NextResponse.json({
       success: true,
@@ -163,7 +147,7 @@ export async function POST(
     });
 
   } catch (error) {
-    console.error('Refund denial error:', error);
+    console.error('Cremation refund denial error:', error);
     return NextResponse.json({
       error: 'Internal server error',
       details: error instanceof Error ? error.message : 'Unknown error'

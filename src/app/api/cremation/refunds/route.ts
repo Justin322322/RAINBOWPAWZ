@@ -3,21 +3,35 @@ import { query } from '@/lib/db';
 import { verifySecureAuth } from '@/lib/secureAuth';
 
 /**
- * GET - Fetch all refunds for admin dashboard
+ * GET - Fetch all refunds for cremation center dashboard
  */
 export async function GET(request: NextRequest) {
   try {
-    // Verify admin authentication using secure auth
+    // Verify cremation center authentication using secure auth
     const user = await verifySecureAuth(request);
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    if (user.accountType !== 'admin') {
+    if (user.accountType !== 'business') {
       return NextResponse.json({
-        error: 'Unauthorized - Admin access required'
+        error: 'Unauthorized - Business access required'
       }, { status: 403 });
     }
+
+    // Get cremation center ID from service_providers table
+    const providerResult = await query(
+      'SELECT provider_id FROM service_providers WHERE user_id = ? AND provider_type = ?',
+      [user.userId, 'cremation']
+    ) as any[];
+
+    if (!providerResult || providerResult.length === 0) {
+      return NextResponse.json({
+        error: 'Cremation center not found for this user'
+      }, { status: 400 });
+    }
+
+    const cremationCenterId = providerResult[0].provider_id;
 
     // Get query parameters for filtering and pagination
     const { searchParams } = new URL(request.url);
@@ -29,8 +43,8 @@ export async function GET(request: NextRequest) {
     const sortOrder = (searchParams.get('sortOrder') || 'desc').toUpperCase();
 
     // Build query with filters
-    let whereClause = '';
-    const queryParams: any[] = [];
+    let whereClause = 'WHERE cb.provider_id = ?';
+    const queryParams: any[] = [cremationCenterId];
 
     // Build WHERE conditions
     const conditions: string[] = [];
@@ -45,7 +59,7 @@ export async function GET(request: NextRequest) {
       const searchConditions = [
         'r.reason LIKE ?',
         'r.booking_id LIKE ?',
-        'sb.pet_name LIKE ?',
+        'cb.pet_name LIKE ?',
         'CONCAT(u.first_name, " ", u.last_name) LIKE ?',
         'u.email LIKE ?'
       ];
@@ -55,7 +69,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (conditions.length > 0) {
-      whereClause = 'WHERE ' + conditions.join(' AND ');
+      whereClause += ' AND ' + conditions.join(' AND ');
     }
 
     // Validate sort column to prevent SQL injection
@@ -63,19 +77,19 @@ export async function GET(request: NextRequest) {
     const validSortBy = validSortColumns.includes(sortBy) ? sortBy : 'created_at';
     const validSortOrder = sortOrder === 'ASC' ? 'ASC' : 'DESC';
 
-    // Fetch refunds with related booking and user information
+    // Fetch refunds with related booking and user information for cremation bookings
     const refundsQuery = `
       SELECT
         r.*,
-        sb.pet_name,
-        sb.booking_date,
-        sb.booking_time,
-        sb.payment_method,
+        cb.pet_name,
+        cb.booking_date,
+        cb.booking_time,
+        cb.payment_method,
         CONCAT(u.first_name, ' ', u.last_name) as user_name,
         u.email as user_email
       FROM refunds r
-      JOIN service_bookings sb ON r.booking_id = sb.id
-      JOIN users u ON sb.user_id = u.user_id
+      JOIN service_bookings cb ON r.booking_id = cb.id
+      JOIN users u ON cb.user_id = u.user_id
       ${whereClause}
       ORDER BY r.${validSortBy} ${validSortOrder}
       LIMIT ${Number(limit)} OFFSET ${Number(offset)}
@@ -87,29 +101,31 @@ export async function GET(request: NextRequest) {
     const countQuery = `
       SELECT COUNT(*) as total
       FROM refunds r
-      JOIN service_bookings sb ON r.booking_id = sb.id
-      JOIN users u ON sb.user_id = u.user_id
+      JOIN service_bookings cb ON r.booking_id = cb.id
+      JOIN users u ON cb.user_id = u.user_id
       ${whereClause}
     `;
 
     const countResult = await query(countQuery, queryParams) as any[];
     const total = countResult[0]?.total || 0;
 
-    // Get refund statistics
+    // Get refund statistics for this cremation center
     const statsQuery = `
       SELECT
         COUNT(*) as total_refunds,
-        SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending_count,
-        SUM(CASE WHEN status = 'processing' THEN 1 ELSE 0 END) as processing_count,
-        SUM(CASE WHEN status = 'processed' THEN 1 ELSE 0 END) as processed_count,
-        SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed_count,
-        SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) as cancelled_count,
-        SUM(CASE WHEN status = 'processed' THEN amount ELSE 0 END) as total_refunded_amount,
-        SUM(CASE WHEN DATE(created_at) = CURDATE() THEN 1 ELSE 0 END) as today_count
-      FROM refunds
+        SUM(CASE WHEN r.status = 'pending' THEN 1 ELSE 0 END) as pending_count,
+        SUM(CASE WHEN r.status = 'processing' THEN 1 ELSE 0 END) as processing_count,
+        SUM(CASE WHEN r.status = 'processed' THEN 1 ELSE 0 END) as processed_count,
+        SUM(CASE WHEN r.status = 'failed' THEN 1 ELSE 0 END) as failed_count,
+        SUM(CASE WHEN r.status = 'cancelled' THEN 1 ELSE 0 END) as cancelled_count,
+        SUM(CASE WHEN r.status = 'processed' THEN r.amount ELSE 0 END) as total_refunded_amount,
+        SUM(CASE WHEN DATE(r.created_at) = CURDATE() THEN 1 ELSE 0 END) as today_count
+      FROM refunds r
+      JOIN service_bookings cb ON r.booking_id = cb.id
+      WHERE cb.provider_id = ?
     `;
 
-    const statsResult = await query(statsQuery) as any[];
+    const statsResult = await query(statsQuery, [cremationCenterId]) as any[];
     const stats = statsResult[0] || {};
 
     return NextResponse.json({
@@ -143,11 +159,10 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Error fetching refunds:', error);
+    console.error('Error fetching cremation refunds:', error);
     return NextResponse.json({
       error: 'Internal server error',
       details: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 });
   }
 }
-

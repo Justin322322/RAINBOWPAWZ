@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { verifySecureAuth } from '@/lib/secureAuth';
-import fs from 'fs';
-import path from 'path';
 
 export async function GET(request: NextRequest) {
   try {
@@ -43,26 +41,70 @@ export async function GET(request: NextRequest) {
       dateCondition = 'AND YEAR(sb.booking_date) = YEAR(CURDATE())';
     }
 
-    // First, check if the service_bookings table exists
-    const tablesCheckQuery = `
-      SELECT TABLE_NAME
-      FROM INFORMATION_SCHEMA.TABLES
-      WHERE TABLE_SCHEMA = DATABASE()
-      AND TABLE_NAME = 'service_bookings'
-    `;
-    const tablesResult = await query(tablesCheckQuery) as any[];
+    // Check if the service_bookings table exists
+    let useServiceBookings = true;
+    try {
+      await query('SELECT 1 FROM service_bookings LIMIT 1');
+    } catch {
+      useServiceBookings = false;
+    }
 
-    // If the service_bookings table doesn't exist, create it
-    if (!tablesResult || tablesResult.length === 0) {
+    // If service_bookings table doesn't exist, try to use bookings table as fallback
+    if (!useServiceBookings) {
       try {
-        // Read the SQL file content
-        const sqlFilePath = path.join(process.cwd(), 'src', 'database', 'migrations', 'create_service_bookings_table.sql');
-        const sqlContent = fs.readFileSync(sqlFilePath, 'utf8');
+        await query('SELECT 1 FROM bookings LIMIT 1');
+        
+        // Use bookings table instead
+        const bookingsQuery = `
+          SELECT b.id, b.status, b.created_at as booking_date, 
+                 COALESCE(b.total_price, b.total_amount, b.amount, 0) as price,
+                 0 as delivery_fee, b.pet_name, b.pet_type,
+                 u.first_name, u.last_name,
+                 'Cremation Service' as package_name
+          FROM bookings b
+          JOIN users u ON b.user_id = u.user_id
+          WHERE b.provider_id = ?
+          ${dateCondition.replace('sb.booking_date', 'b.created_at')}
+          ORDER BY b.created_at DESC
+        `;
 
-        // Execute the SQL to create the table
-        await query(sqlContent);
+        const bookingsResult = await query(bookingsQuery, queryParams) as any[];
 
-        // Return empty data since the table was just created
+        // Calculate stats for bookings table
+        const totalBookings = bookingsResult.length;
+        const completedBookings = bookingsResult.filter(b => b.status === 'completed').length;
+        const cancelledBookings = bookingsResult.filter(b => b.status === 'cancelled').length;
+        const totalRevenue = bookingsResult
+          .filter(b => b.status === 'completed')
+          .reduce((sum, b) => sum + parseFloat(b.price || 0), 0);
+
+        const formattedBookings = bookingsResult.map((booking: any) => ({
+          id: booking.id,
+          petName: booking.pet_name || 'Unknown',
+          petType: booking.pet_type || 'Unknown',
+          owner: `${booking.first_name || ''} ${booking.last_name || ''}`.trim() || 'Unknown',
+          package: booking.package_name || 'Cremation Service',
+          status: booking.status,
+          createdAt: formatDate(booking.booking_date),
+          scheduledDate: 'Not scheduled',
+          amount: parseFloat(booking.price || 0),
+          price: parseFloat(booking.price || 0),
+          paymentMethod: 'Not specified'
+        }));
+
+        return NextResponse.json({
+          bookings: formattedBookings,
+          stats: {
+            totalBookings,
+            completedBookings,
+            cancelledBookings,
+            totalRevenue,
+            averageRevenue: completedBookings > 0 ? totalRevenue / completedBookings : 0
+          }
+        });
+
+      } catch {
+        // No booking tables found, return empty data
         return NextResponse.json({
           bookings: [],
           stats: {
@@ -73,12 +115,6 @@ export async function GET(request: NextRequest) {
             averageRevenue: 0
           }
         });
-      } catch (createError) {
-        console.error('Error creating service_bookings table:', createError);
-        return NextResponse.json({
-          error: 'Failed to create service_bookings table',
-          message: createError instanceof Error ? createError.message : 'Unknown error'
-        }, { status: 500 });
       }
     }
 

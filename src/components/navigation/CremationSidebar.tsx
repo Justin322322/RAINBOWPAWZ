@@ -11,7 +11,9 @@ import {
   ClockIcon,
   UserIcon,
   Cog6ToothIcon,
-  StarIcon
+  StarIcon,
+  ChartBarIcon,
+  CurrencyDollarIcon
 } from '@heroicons/react/24/outline';
 
 interface CremationSidebarProps {
@@ -52,6 +54,18 @@ export default function CremationSidebar({
       href: '/cremation/history',
       icon: ClockIcon,
       id: 'history'
+    },
+    {
+      name: 'Refund Management',
+      href: '/cremation/refunds',
+      icon: CurrencyDollarIcon,
+      id: 'refunds'
+    },
+    {
+      name: 'Reports',
+      href: '/cremation/reports',
+      icon: ChartBarIcon,
+      id: 'reports'
     },
     {
       name: 'Reviews',
@@ -103,6 +117,10 @@ export default function CremationSidebar({
         setActivePage('bookings');
       } else if (currentPath === 'history') {
         setActivePage('history');
+      } else if (currentPath === 'refunds') {
+        setActivePage('refunds');
+      } else if (currentPath === 'reports') {
+        setActivePage('reports');
       } else if (currentPath === 'reviews') {
         setActivePage('reviews');
       } else if (currentPath === 'profile') {

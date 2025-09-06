@@ -14,7 +14,6 @@ import {
   ClipboardDocumentCheckIcon,
   RectangleStackIcon,
   StarIcon,
-  CurrencyDollarIcon,
   UsersIcon,
   ArrowRightOnRectangleIcon,
   DocumentTextIcon,
@@ -31,7 +30,6 @@ const MAIN_NAVIGATION_ITEMS = [
   { name: 'Application Requests', href: '/admin/applications', icon: ClipboardDocumentCheckIcon, id: 'applications' },
   { name: 'Active Services', href: '/admin/services', icon: RectangleStackIcon, id: 'services' },
   { name: 'Reviews', href: '/admin/reviews', icon: StarIcon, id: 'reviews' },
-  { name: 'Refunds', href: '/admin/refunds', icon: CurrencyDollarIcon, id: 'refunds' },
   { name: 'Activity Monitor', href: '/admin/logs', icon: DocumentTextIcon, id: 'logs' },
 ];
 

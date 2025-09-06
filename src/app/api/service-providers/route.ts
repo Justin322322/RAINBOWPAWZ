@@ -157,13 +157,13 @@ export async function GET(request: Request) {
       let whereClause = '';
 
       // Primary condition: application_status = 'approved' (new schema)
-      // Make more lenient for development - allow pending and approved
+      // Only show approved/verified providers to users
       if (hasApplicationStatus) {
-        whereClause = "(application_status = 'approved' OR application_status = 'verified' OR application_status = 'pending')";
+        whereClause = "(application_status = 'approved' OR application_status = 'verified')";
       }
       // Fallback to verification_status if application_status doesn't exist
       else if (hasVerificationStatus) {
-        whereClause = "(verification_status = 'verified' OR verification_status = 'pending')";
+        whereClause = "verification_status = 'verified'";
       }
       // If neither exists, use a default condition that always passes
       else {

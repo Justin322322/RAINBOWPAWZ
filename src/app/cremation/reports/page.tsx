@@ -1,0 +1,294 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import CremationDashboardLayout from '@/components/navigation/CremationDashboardLayout';
+import withBusinessVerification from '@/components/withBusinessVerification';
+import { useToast } from '@/context/ToastContext';
+import StatCard from '@/components/ui/StatCard';
+import {
+    ChartBarIcon,
+    ArrowDownTrayIcon,
+    CalendarDaysIcon,
+    CurrencyDollarIcon,
+    CheckCircleIcon,
+    XCircleIcon,
+    ClockIcon,
+    ArrowPathIcon
+} from '@heroicons/react/24/outline';
+import { StatsCardSkeleton } from '@/app/cremation/components/LoadingComponents';
+
+function CremationReportsPage({ userData }: { userData: any }) {
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [dateFilter, setDateFilter] = useState('last30days');
+    const [reportData, setReportData] = useState({
+        stats: {
+            totalBookings: 0,
+            completedBookings: 0,
+            cancelledBookings: 0,
+            pendingBookings: 0,
+            totalRevenue: 0,
+            averageRevenue: 0,
+            averageRating: 0
+        },
+        monthlyData: [],
+        topServices: [],
+        recentActivity: []
+    });
+    const { showToast } = useToast();
+
+    const fetchReportData = async () => {
+        setLoading(true);
+        setError(null);
+
+        try {
+            const queryParams = new URLSearchParams();
+            if (dateFilter && dateFilter !== 'all') {
+                queryParams.append('period', dateFilter);
+            }
+
+            const response = await fetch(`/api/cremation/reports?${queryParams.toString()}`, {
+                method: 'GET',
+                headers: {
+                    'Cache-Control': 'no-cache'
+                },
+                credentials: 'include'
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || `Server error: ${response.status}`);
+            }
+
+            const data = await response.json();
+            setReportData(data);
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Failed to fetch report data';
+            setError(errorMessage);
+            showToast(`Error: ${errorMessage}`, 'error');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchReportData();
+    }, [dateFilter]);
+
+    const handleRefresh = () => {
+        fetchReportData();
+    };
+
+    const exportReport = () => {
+        if (!reportData.stats) {
+            showToast('No data to export', 'info');
+            return;
+        }
+
+        try {
+            const reportContent = `
+Cremation Service Business Report
+Generated: ${new Date().toLocaleDateString()}
+Period: ${dateFilter}
+
+SUMMARY STATISTICS
+==================
+Total Bookings: ${reportData.stats.totalBookings}
+Completed Bookings: ${reportData.stats.completedBookings}
+Cancelled Bookings: ${reportData.stats.cancelledBookings}
+Pending Bookings: ${reportData.stats.pendingBookings}
+Total Revenue: ₱${reportData.stats.totalRevenue.toLocaleString()}
+Average Revenue per Booking: ₱${reportData.stats.averageRevenue.toLocaleString()}
+Average Rating: ${reportData.stats.averageRating}/5
+
+TOP SERVICES
+============
+${reportData.topServices.map((service: any, index: number) =>
+                `${index + 1}. ${service.name} - ${service.bookings} bookings (₱${service.revenue.toLocaleString()})`
+            ).join('\n')}
+      `.trim();
+
+            const blob = new Blob([reportContent], { type: 'text/plain' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.setAttribute('hidden', '');
+            a.setAttribute('href', url);
+            a.setAttribute('download', `cremation-report-${new Date().toISOString().split('T')[0]}.txt`);
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+
+            showToast('Report exported successfully', 'success');
+        } catch {
+            showToast('Failed to export report', 'error');
+        }
+    };
+
+    return (
+        <CremationDashboardLayout activePage="reports" userData={userData}>
+            {/* Header section */}
+            <div className="mb-8 bg-white rounded-xl shadow-md border border-gray-100 p-6">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
+                    <div>
+                        <h1 className="text-2xl font-semibold text-gray-800">Business Reports</h1>
+                        <p className="text-gray-600 mt-1">Analyze your cremation service performance and trends</p>
+                    </div>
+                    <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3">
+                        <button
+                            onClick={exportReport}
+                            className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                        >
+                            <ArrowDownTrayIcon className="h-5 w-5 mr-2 text-gray-500" />
+                            Export Report
+                        </button>
+                        <button
+                            onClick={handleRefresh}
+                            className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                            disabled={loading}
+                        >
+                            <ArrowPathIcon className={`h-5 w-5 mr-2 text-gray-500 ${loading ? 'animate-spin' : ''}`} />
+                            {loading ? 'Refreshing...' : 'Refresh'}
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            {/* Date Filter */}
+            <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 mb-8">
+                <div className="flex items-center space-x-4">
+                    <label htmlFor="date-filter" className="text-sm font-medium text-gray-700">
+                        Report Period:
+                    </label>
+                    <select
+                        id="date-filter"
+                        value={dateFilter}
+                        onChange={(e) => setDateFilter(e.target.value)}
+                        className="block pl-3 pr-10 py-2 border border-gray-300 rounded-md leading-5 bg-white focus:outline-none focus:ring-[var(--primary-green)] focus:border-[var(--primary-green)] sm:text-sm"
+                    >
+                        <option value="last7days">Last 7 Days</option>
+                        <option value="last30days">Last 30 Days</option>
+                        <option value="last90days">Last 90 Days</option>
+                        <option value="last6months">Last 6 Months</option>
+                        <option value="thisyear">This Year</option>
+                        <option value="all">All Time</option>
+                    </select>
+                </div>
+            </div>
+
+            {/* Stats Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                {loading ? (
+                    <StatsCardSkeleton count={4} />
+                ) : (
+                    <>
+                        <StatCard
+                            icon={<CalendarDaysIcon />}
+                            label="Total Bookings"
+                            value={reportData.stats.totalBookings.toString()}
+                            color="blue"
+                        />
+                        <StatCard
+                            icon={<CheckCircleIcon />}
+                            label="Completed"
+                            value={reportData.stats.completedBookings.toString()}
+                            color="green"
+                        />
+                        <StatCard
+                            icon={<ClockIcon />}
+                            label="Pending"
+                            value={reportData.stats.pendingBookings.toString()}
+                            color="yellow"
+                        />
+                        <StatCard
+                            icon={<CurrencyDollarIcon />}
+                            label="Total Revenue"
+                            value={`₱${reportData.stats.totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                            color="amber"
+                        />
+                    </>
+                )}
+            </div>
+
+            {/* Additional Stats */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-8">
+                {loading ? (
+                    <StatsCardSkeleton count={2} />
+                ) : (
+                    <>
+                        <StatCard
+                            icon={<CurrencyDollarIcon />}
+                            label="Average Revenue per Booking"
+                            value={`₱${reportData.stats.averageRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                            color="green"
+                        />
+                        <StatCard
+                            icon={<XCircleIcon />}
+                            label="Cancelled Bookings"
+                            value={reportData.stats.cancelledBookings.toString()}
+                            color="amber"
+                        />
+                    </>
+                )}
+            </div>
+
+            {/* Top Services */}
+            <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden mb-8">
+                <div className="px-6 py-4 border-b border-gray-200">
+                    <h2 className="text-lg font-medium text-gray-800">Top Services</h2>
+                </div>
+                <div className="p-6">
+                    {loading ? (
+                        <div className="animate-pulse space-y-4">
+                            {[...Array(3)].map((_, i) => (
+                                <div key={i} className="flex justify-between items-center">
+                                    <div className="h-4 bg-gray-200 rounded w-1/3"></div>
+                                    <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : reportData.topServices.length > 0 ? (
+                        <div className="space-y-4">
+                            {reportData.topServices.map((service: any, index: number) => (
+                                <div key={index} className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
+                                    <div>
+                                        <h3 className="font-medium text-gray-900">{service.name}</h3>
+                                        <p className="text-sm text-gray-500">{service.bookings} bookings</p>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="font-medium text-gray-900">₱{service.revenue.toLocaleString()}</p>
+                                        <p className="text-sm text-gray-500">Revenue</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="text-center py-8">
+                            <ChartBarIcon className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+                            <p className="text-gray-500">No service data available for the selected period</p>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {error && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-8">
+                    <div className="flex">
+                        <XCircleIcon className="h-5 w-5 text-red-400 mr-2" />
+                        <div>
+                            <h3 className="text-sm font-medium text-red-800">Error Loading Reports</h3>
+                            <p className="text-sm text-red-700 mt-1">{error}</p>
+                            <button
+                                onClick={handleRefresh}
+                                className="mt-2 text-sm text-red-600 hover:text-red-500 underline"
+                            >
+                                Try again
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </CremationDashboardLayout>
+    );
+}
+
+export default withBusinessVerification(CremationReportsPage);

@@ -113,7 +113,7 @@ export async function POST(request: NextRequest) {
           const eligibilityCheck = await checkRefundEligibility(parseInt(bookingId));
 
           if (eligibilityCheck.eligible) {
-            // Create refund request (pending admin approval)
+            // Create refund request (pending provider approval)
             refundId = await createRefundRecord({
               booking_id: parseInt(bookingId),
               reason: REFUND_REASONS.USER_REQUESTED,
@@ -133,18 +133,7 @@ export async function POST(request: NextRequest) {
     // Handle refund notification outside transaction (not critical for booking integrity)
     if (cancellationResult.refundId) {
       try {
-        // Create admin notification for refund request
-        const result = await createAdminNotification({
-          type: 'refund_request',
-          title: 'Refund Request - Booking Cancelled',
-          message: `Refund request for cancelled booking #${bookingId} (${bookingData.pet_name}) - Amount: ₱${parseFloat(bookingData.price).toFixed(2)}`,
-          entityType: 'refund',
-          entityId: cancellationResult.refundId
-        });
-
-        if (!result.success) {
-          console.error('Failed to create admin notification:', result.error);
-        }
+        // Admin notifications removed - refunds now managed by cremation centers
 
         refundInfo = {
           status: 'pending',

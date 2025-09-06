@@ -474,6 +474,11 @@ export async function completeRefund(bookingId: number, refundId: number): Promi
 
 /**
  * Retry failed PayMongo refunds that are eligible for retry
+ * 
+ * This function is intended for use in background jobs or cron tasks
+ * to automatically retry refunds that failed due to temporary issues.
+ * 
+ * @returns Object with success and failed counts
  */
 export async function retryFailedRefunds(): Promise<{ success: number; failed: number; }> {
   try {

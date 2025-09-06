@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
-import { getAuthTokenFromRequest } from '@/utils/auth';
+import { verifySecureAuth } from '@/lib/secureAuth';
 import {
   processPayMongoRefund,
   completeRefund,
@@ -10,49 +10,43 @@ import { sendEmail } from '@/lib/consolidatedEmailService';
 import { createRefundNotificationEmail } from '@/lib/emailTemplates';
 import { createUserNotification } from '@/utils/userNotificationService';
 import { createAdminNotification } from '@/utils/adminNotificationService';
-import { createBusinessNotification } from '@/utils/businessNotificationService';
 
 /**
- * POST - Approve a refund request
+ * POST - Approve a refund request (Cremation Center)
  */
 export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = await params;
+    const { id } = params;
     const refundId = parseInt(id);
 
-    // Verify admin authentication
-    const authToken = getAuthTokenFromRequest(request);
-    if (!authToken) {
+    // Verify cremation center authentication
+    const user = await verifySecureAuth(request);
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Check if it's a JWT token or old format
-    let _userId = null;
-    let accountType = null;
-
-    if (authToken.includes('.')) {
-      // JWT token format
-      const { decodeTokenUnsafe } = await import('@/lib/jwt');
-      const payload = decodeTokenUnsafe(authToken);
-      _userId = payload?.userId || null;
-      accountType = payload?.accountType || null;
-    } else {
-      // Old format fallback
-      const parts = authToken.split('_');
-      if (parts.length === 2) {
-        _userId = parts[0];
-        accountType = parts[1];
-      }
-    }
-
-    if (accountType !== 'admin') {
+    if (user.accountType !== 'business') {
       return NextResponse.json({
-        error: 'Unauthorized - Admin access required'
+        error: 'Unauthorized - Business access required'
       }, { status: 403 });
     }
+
+    // Get cremation center ID from service_providers table
+    const providerResult = await query(
+      'SELECT provider_id FROM service_providers WHERE user_id = ? AND provider_type = ?',
+      [user.userId, 'cremation']
+    ) as any[];
+
+    if (!providerResult || providerResult.length === 0) {
+      return NextResponse.json({
+        error: 'Cremation center not found for this user'
+      }, { status: 400 });
+    }
+
+    const cremationCenterId = providerResult[0].provider_id;
 
     if (!refundId || isNaN(refundId)) {
       return NextResponse.json({
@@ -60,16 +54,17 @@ export async function POST(
       }, { status: 400 });
     }
 
-    // First, check if the refund exists and get basic info
+    // First, check if the refund exists and belongs to this cremation center
     const basicRefundResult = await query(`
-      SELECT id, status, booking_id, amount, reason
-      FROM refunds 
-      WHERE id = ?
-    `, [refundId]) as any[];
+      SELECT r.id, r.status, r.booking_id, r.amount, r.reason
+      FROM refunds r
+      JOIN service_bookings cb ON r.booking_id = cb.id
+      WHERE r.id = ? AND cb.provider_id = ?
+    `, [refundId, cremationCenterId]) as any[];
 
     if (!basicRefundResult || basicRefundResult.length === 0) {
       return NextResponse.json({
-        error: 'Refund not found'
+        error: 'Refund not found or not accessible'
       }, { status: 404 });
     }
 
@@ -85,23 +80,23 @@ export async function POST(
     const refundResult = await query(`
       SELECT
         r.*,
-        sb.pet_name,
-        sb.booking_date,
-        sb.booking_time,
-        sb.payment_method,
-        sb.user_id,
-        sb.provider_id,
+        cb.pet_name,
+        cb.booking_date,
+        cb.booking_time,
+        cb.payment_method,
+        cb.user_id,
+        cb.provider_id,
         CONCAT(u.first_name, ' ', u.last_name) as user_name,
         u.email as user_email
       FROM refunds r
-      JOIN service_bookings sb ON r.booking_id = sb.id
-      JOIN users u ON sb.user_id = u.user_id
-      WHERE r.id = ? AND r.status = 'pending'
-    `, [refundId]) as any[];
+      JOIN service_bookings cb ON r.booking_id = cb.id
+      JOIN users u ON cb.user_id = u.user_id
+      WHERE r.id = ? AND r.status = 'pending' AND cb.provider_id = ?
+    `, [refundId, cremationCenterId]) as any[];
 
     if (!refundResult || refundResult.length === 0) {
       return NextResponse.json({
-        error: 'Refund not found or not in pending status'
+        error: 'Refund not found or not accessible'
       }, { status: 404 });
     }
 
@@ -176,25 +171,7 @@ export async function POST(
               console.error('Failed to create user notification:', notificationError);
             }
 
-            // Create admin notification for refund processing
-            try {
-              await createAdminNotification({
-                type: 'refund_processing',
-                title: 'Refund Processing',
-                message: `Refund for booking #${refund.booking_id} (${refund.pet_name}) is being processed via PayMongo.`,
-                entityType: 'refund',
-                entityId: refundId
-              });
-            } catch (adminNotificationError) {
-              console.error('Failed to create admin notification:', adminNotificationError);
-            }
-
-            // Notify service provider about refund
-            try {
-              await notifyServiceProviderAboutRefund(refund.provider_id, refund.booking_id, refund.pet_name, refund.amount, 'processing');
-            } catch (providerNotificationError) {
-              console.error('Failed to notify service provider:', providerNotificationError);
-            }
+            // Admin notifications removed - refunds now managed by cremation centers
 
             return NextResponse.json({
               success: true,
@@ -254,19 +231,12 @@ export async function POST(
               await createAdminNotification({
                 type: 'refund_processed',
                 title: 'Refund Processed',
-                message: `Refund for booking #${refund.booking_id} (${refund.pet_name}) has been processed successfully. Amount: ₱${refund.amount.toFixed(2)}`,
+                message: `Refund for cremation booking #${refund.booking_id} (${refund.pet_name}) has been processed successfully. Amount: ₱${refund.amount.toFixed(2)}`,
                 entityType: 'refund',
                 entityId: refundId
               });
             } catch (adminNotificationError) {
               console.error('Failed to create admin notification:', adminNotificationError);
-            }
-
-            // Notify service provider about refund
-            try {
-              await notifyServiceProviderAboutRefund(refund.provider_id, refund.booking_id, refund.pet_name, refund.amount, 'processed');
-            } catch (providerNotificationError) {
-              console.error('Failed to notify service provider:', providerNotificationError);
             }
 
             return NextResponse.json({
@@ -327,19 +297,12 @@ export async function POST(
             await createAdminNotification({
               type: 'refund_processed',
               title: 'Refund Processed (Manual)',
-              message: `Refund for booking #${refund.booking_id} (${refund.pet_name}) has been processed manually. Amount: ₱${refund.amount.toFixed(2)}`,
+              message: `Refund for cremation booking #${refund.booking_id} (${refund.pet_name}) has been processed manually. Amount: ₱${refund.amount.toFixed(2)}`,
               entityType: 'refund',
               entityId: refundId
             });
           } catch (adminNotificationError) {
             console.error('Failed to create admin notification:', adminNotificationError);
-          }
-
-          // Notify service provider about refund
-          try {
-            await notifyServiceProviderAboutRefund(refund.provider_id, refund.booking_id, refund.pet_name, refund.amount, 'processed');
-          } catch (providerNotificationError) {
-            console.error('Failed to notify service provider:', providerNotificationError);
           }
 
           return NextResponse.json({
@@ -399,19 +362,12 @@ export async function POST(
           await createAdminNotification({
             type: 'refund_processed',
             title: 'Refund Processed (Cash)',
-            message: `Cash refund for booking #${refund.booking_id} (${refund.pet_name}) has been processed. Amount: ₱${refund.amount.toFixed(2)}`,
+            message: `Cash refund for cremation booking #${refund.booking_id} (${refund.pet_name}) has been processed. Amount: ₱${refund.amount.toFixed(2)}`,
             entityType: 'refund',
             entityId: refundId
           });
         } catch (adminNotificationError) {
           console.error('Failed to create admin notification:', adminNotificationError);
-        }
-
-        // Notify service provider about refund
-        try {
-          await notifyServiceProviderAboutRefund(refund.provider_id, refund.booking_id, refund.pet_name, refund.amount, 'processed');
-        } catch (providerNotificationError) {
-          console.error('Failed to notify service provider:', providerNotificationError);
         }
 
         return NextResponse.json({
@@ -434,61 +390,10 @@ export async function POST(
     }
 
   } catch (error) {
-    console.error('Refund approval error:', error);
+    console.error('Cremation refund approval error:', error);
     return NextResponse.json({
       error: 'Internal server error',
       details: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 });
-  }
-}
-
-/**
- * Helper function to notify service provider about refund
- */
-async function notifyServiceProviderAboutRefund(
-  providerId: number,
-  bookingId: number,
-  petName: string,
-  amount: number,
-  status: 'processing' | 'processed'
-): Promise<void> {
-  if (!providerId) return;
-
-  try {
-    // Get provider user ID
-    let providerResult = await query('SELECT user_id FROM service_providers WHERE provider_id = ?', [providerId]) as any[];
-    
-    if (!providerResult || providerResult.length === 0) {
-      providerResult = await query('SELECT user_id FROM businesses WHERE id = ?', [providerId]) as any[];
-    }
-    
-    if (!providerResult || providerResult.length === 0) {
-      providerResult = await query('SELECT user_id FROM users WHERE user_id = ? AND role = "business"', [providerId]) as any[];
-    }
-
-    if (providerResult && providerResult.length > 0) {
-      const providerUserId = providerResult[0].user_id;
-      
-      const title = status === 'processing' ? 'Refund Being Processed' : 'Refund Completed';
-      const message = status === 'processing' 
-        ? `A refund of ₱${amount.toFixed(2)} is being processed for booking #${bookingId} (${petName}).`
-        : `A refund of ₱${amount.toFixed(2)} has been completed for booking #${bookingId} (${petName}).`;
-      
-      try {
-        await createBusinessNotification({
-          userId: providerUserId,
-          title,
-          message,
-          type: 'info',
-          link: `/cremation/bookings/${bookingId}`,
-          shouldSendEmail: true,
-          emailSubject: `Refund ${status === 'processing' ? 'Processing' : 'Completed'} - Rainbow Paws`
-        });
-      } catch (businessNotificationError) {
-        console.error('Failed to create business notification:', businessNotificationError);
-      }
-    }
-  } catch (error) {
-    console.error('Failed to notify service provider about refund:', error);
   }
 }

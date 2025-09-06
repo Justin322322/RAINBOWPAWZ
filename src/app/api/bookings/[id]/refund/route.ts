@@ -91,23 +91,7 @@ export async function POST(
       notes: notes
     });
 
-    // Create admin notification for refund request
-    try {
-      const result = await createAdminNotification({
-        type: 'refund_request',
-        title: 'New Refund Request',
-        message: `Refund request for booking #${bookingId} (${booking.pet_name}) - Amount: ₱${parseFloat(booking.price).toFixed(2)}`,
-        entityType: 'refund',
-        entityId: refundId
-      });
-      
-      if (!result.success) {
-        console.error('Failed to create admin notification:', result.error);
-      } else {
-      }
-    } catch (notificationError) {
-      console.error('Failed to create admin notification:', notificationError);
-    }
+    // Admin notifications removed - refunds now managed by cremation centers
 
     // Send email confirmation to user
     try {
@@ -128,7 +112,7 @@ export async function POST(
           status: 'pending',
           paymentMethod: booking.payment_method || 'GCash',
           estimatedDays: 2,
-          notes: 'Your refund request has been submitted and is pending admin approval.'
+          notes: 'Your refund request has been submitted and is pending review by the service provider.'
         });
 
         await sendEmail({
