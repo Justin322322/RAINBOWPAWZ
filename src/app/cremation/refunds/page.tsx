@@ -209,7 +209,109 @@ function CremationRefundsPage({ userData }: { userData: any }) {
 
   const { showToast } = useToast();
 
-  // Fetch refunds function
+  // Effects
+  useEffect(() => {
+    console.log('🚀 Component mounted, initializing...');
+
+    if (userData?.business_name) {
+      setUserName(userData.business_name);
+      console.log('👤 User name set:', userData.business_name);
+    }
+  }, [userData?.business_name]);
+
+  // Data fetching effect
+  useEffect(() => {
+    const fetchRefunds = async () => {
+      if (!userData?.business_id) {
+        console.log('❌ No business_id found, skipping fetch');
+        setLoading(false);
+        return;
+      }
+
+      try {
+        console.log('🔄 Starting fetchRefunds...');
+        setLoading(true);
+
+        // Build query parameters
+        const params = new URLSearchParams({
+          limit: pagination.limit.toString(),
+          offset: ((pagination.currentPage - 1) * pagination.limit).toString()
+        });
+
+        if (searchTerm.trim()) {
+          params.append('search', searchTerm.trim());
+        }
+
+        if (statusFilter && statusFilter !== 'all') {
+          params.append('status', statusFilter);
+        }
+
+        console.log('📡 Making API request to /api/cremation/refunds');
+        const response = await fetch(`/api/cremation/refunds?${params.toString()}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache'
+          },
+          credentials: 'include'
+        });
+
+        console.log('📡 Response status:', response.status);
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('❌ API Error:', response.status, errorText);
+          throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
+        }
+
+        const data = await response.json();
+        console.log('📊 API Response:', data);
+
+        if (data.success) {
+          console.log('✅ Setting refunds data:', data.refunds?.length || 0, 'items');
+          setRefunds(data.refunds || []);
+          setPagination(data.pagination || {
+            total: 0,
+            currentPage: 1,
+            totalPages: 1,
+            limit: 20,
+            hasMore: false
+          });
+          setStatistics(data.statistics || {
+            total_refunds: 0,
+            pending_count: 0,
+            processing_count: 0,
+            processed_count: 0,
+            failed_count: 0,
+            cancelled_count: 0,
+            total_refunded_amount: 0,
+            today_count: 0
+          });
+        } else {
+          console.error('❌ API returned error:', data.error);
+          showToast(data.error || 'Failed to fetch refunds', 'error');
+        }
+      } catch (error) {
+        console.error('❌ Error fetching refunds:', error);
+        if (error instanceof Error && error.name !== 'AbortError') {
+          showToast(`Failed to fetch refunds: ${error.message}`, 'error');
+        }
+      } finally {
+        console.log('🏁 fetchRefunds completed - setting loading to false');
+        setLoading(false);
+      }
+    };
+
+    if (userData?.business_id) {
+      console.log('📡 Triggering fetchRefunds...');
+      fetchRefunds();
+    } else {
+      console.log('⏳ No business_id found, stopping loading');
+      setLoading(false);
+    }
+  }, [userData?.business_id, searchTerm, statusFilter, pagination.currentPage, pagination.limit, showToast]);
+
+  // Create a manual refresh function for the button
   const fetchRefunds = useCallback(async () => {
     if (!userData?.business_id) {
       console.log('❌ No business_id found, skipping fetch');
@@ -218,7 +320,7 @@ function CremationRefundsPage({ userData }: { userData: any }) {
     }
 
     try {
-      console.log('🔄 Starting fetchRefunds...');
+      console.log('🔄 Starting manual fetchRefunds...');
       setLoading(true);
 
       // Build query parameters
@@ -289,25 +391,7 @@ function CremationRefundsPage({ userData }: { userData: any }) {
       console.log('🏁 fetchRefunds completed - setting loading to false');
       setLoading(false);
     }
-  }, [userData?.business_id, pagination.limit, pagination.currentPage, searchTerm, statusFilter, showToast]);
-
-  // Effects
-  useEffect(() => {
-    console.log('🚀 Component mounted, initializing...');
-
-    if (userData?.business_name) {
-      setUserName(userData.business_name);
-      console.log('👤 User name set:', userData.business_name);
-    }
-
-    if (userData?.business_id) {
-      console.log('📡 Triggering initial fetchRefunds...');
-      fetchRefunds();
-    } else {
-      console.log('⏳ No business_id found, stopping loading');
-      setLoading(false);
-    }
-  }, [userData?.business_id, userData?.business_name, fetchRefunds]);
+  }, [userData?.business_id, searchTerm, statusFilter, pagination.currentPage, pagination.limit, showToast]);
 
   // Safety timeout to prevent infinite loading
   useEffect(() => {
