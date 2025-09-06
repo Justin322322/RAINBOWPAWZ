@@ -518,6 +518,36 @@ const CremationRefundsPage = React.memo(function CremationRefundsPage({ userData
                   Test API
                 </button>
                 <button
+                  onClick={async () => {
+                    console.log('🔍 Running debug queries...');
+                    try {
+                      const response = await fetch('/api/debug/refunds', {
+                        credentials: 'include'
+                      });
+                      const data = await response.json();
+                      console.log('🔍 Debug result:', data);
+                      
+                      // Show a more readable alert
+                      const summary = `
+Debug Results:
+- Total refunds in system: ${data.debugResults?.totalRefundsInSystem || 0}
+- Bookings for this provider: ${data.debugResults?.bookingsForProvider || 0}
+- Refunds for this provider: ${data.debugResults?.refundsForThisProvider || 0}
+- Cremation Center ID: ${data.cremationCenterId}
+- Stats query result: ${JSON.stringify(data.debugResults?.statsQueryResult, null, 2)}
+                      `;
+                      
+                      alert(summary);
+                    } catch (error) {
+                      console.error('🔍 Debug failed:', error);
+                      alert(`Debug Failed: ${error}`);
+                    }
+                  }}
+                  className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors flex items-center justify-center"
+                >
+                  Debug DB
+                </button>
+                <button
                   onClick={() => {
                     console.log('🔧 Force refresh - resetting all state');
                     setLoading(false);
