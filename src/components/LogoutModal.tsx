@@ -9,7 +9,6 @@ import { useToast } from '@/context/ToastContext';
 import { clearGlobalAdminAuthState } from '@/components/withAdminAuth';
 import { clearGlobalBusinessAuthState } from '@/components/withBusinessVerification';
 import { clearGlobalUserAuthState } from '@/components/withUserAuth';
-import { clearGlobalCremationAuthState } from '@/components/withCremationAuth';
 import { Modal } from '@/components/ui/Modal';
 
 interface LogoutModalProps {
@@ -56,8 +55,8 @@ export default function LogoutModal({ isOpen, onClose, userName = 'User' }: Logo
       // Clear global user auth state
       clearGlobalUserAuthState();
       
-      // Clear global cremation auth state
-      clearGlobalCremationAuthState();
+      // Clear global business auth state (covers cremation centers)
+      clearGlobalBusinessAuthState();
 
       // Set logout flag to prevent 401 modal errors during logout
       sessionStorage.setItem('is_logging_out', 'true');
@@ -98,7 +97,6 @@ export default function LogoutModal({ isOpen, onClose, userName = 'User' }: Logo
       clearGlobalAdminAuthState();
       clearGlobalBusinessAuthState();
       clearGlobalUserAuthState();
-      clearGlobalCremationAuthState();
 
       showToast('Logged out successfully', 'success');
       router.push('/');

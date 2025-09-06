@@ -12,7 +12,7 @@ import {
   XCircleIcon
 } from '@heroicons/react/24/outline';
 import CremationDashboardLayout from '@/components/navigation/CremationDashboardLayout';
-import withCremationAuth from '@/components/withCremationAuth';
+import withBusinessVerification from '@/components/withBusinessVerification';
 import { useToast } from '@/context/ToastContext';
 import RefundStatus from '@/components/refund/RefundStatus';
 import { Modal } from '@/components/ui/Modal';
@@ -160,7 +160,7 @@ const RefundCard = React.memo(function RefundCard({
 });
 
 // Optimized CremationRefundsPage with caching and pagination
-const CremationRefundsPage = React.memo(function CremationRefundsPage() {
+const CremationRefundsPage = React.memo(function CremationRefundsPage({ userData }: { userData: any }) {
   const [refunds, setRefunds] = useState<Refund[]>([]);
   const [loading, setLoading] = useState(true);
   
@@ -225,7 +225,7 @@ const CremationRefundsPage = React.memo(function CremationRefundsPage() {
       const queryString = params.toString();
       console.log('🔄 Query string:', queryString);
 
-      // Use the same auth approach as the withCremationAuth component
+      // Use httpOnly cookies for authentication like other cremation pages
       const headers: HeadersInit = {
         'Content-Type': 'application/json',
         'Cache-Control': 'no-cache'
@@ -303,22 +303,16 @@ const CremationRefundsPage = React.memo(function CremationRefundsPage() {
   useEffect(() => {
     console.log('🚀 Component mounted, initializing...');
     
-    // Get cremation center name from localStorage
-    const cremationData = localStorage.getItem('cremationData');
-    if (cremationData) {
-      try {
-        const cremation = JSON.parse(cremationData);
-        setUserName(cremation.business_name || 'Cremation Center');
-        console.log('👤 User name set:', cremation.business_name);
-      } catch (error) {
-        console.error('❌ Error parsing cremation data:', error);
-      }
+    // Get cremation center name from userData prop
+    if (userData?.business_name) {
+      setUserName(userData.business_name);
+      console.log('👤 User name set:', userData.business_name);
     }
 
     // Initial data fetch
     console.log('📡 Triggering initial fetchRefunds...');
     fetchRefunds();
-  }, []); // Empty dependency array for initial mount only
+  }, [userData]); // Depend on userData to update when it changes
 
   // Debounced search to avoid too many API calls
   useEffect(() => {
@@ -792,4 +786,4 @@ const CremationRefundsPage = React.memo(function CremationRefundsPage() {
   );
 });
 
-export default withCremationAuth(CremationRefundsPage);
+export default withBusinessVerification(CremationRefundsPage);
