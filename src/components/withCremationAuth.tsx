@@ -125,7 +125,7 @@ const withCremationAuth = <P_Original extends object>(
             };
 
             // Helper function to fetch cremation center data
-            const fetchCremationData = async (userId: string) => {
+            const fetchCremationData = async (_userId: string) => {
                 try {
                     const response = await fetch(`/api/cremation/profile`);
 
