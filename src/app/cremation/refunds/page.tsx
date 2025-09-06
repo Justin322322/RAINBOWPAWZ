@@ -278,6 +278,9 @@ const CremationRefundsPage = React.memo(function CremationRefundsPage() {
 
       const data = await response.json();
       console.log('📊 API Response:', data);
+      console.log('📊 Refunds array:', data.refunds);
+      console.log('📊 Pagination:', data.pagination);
+      console.log('📊 Statistics:', data.statistics);
 
       if (data.success) {
         console.log('✅ Setting refunds data:', data.refunds?.length || 0, 'items');

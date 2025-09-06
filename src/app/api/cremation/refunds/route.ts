@@ -44,6 +44,26 @@ export async function GET(request: NextRequest) {
     const cremationCenterId = providerResult[0].provider_id;
     console.log('✅ [Refunds API] Found cremation center ID:', cremationCenterId);
 
+    // Debug: Check if there are any refunds at all in the system
+    const allRefundsCheck = await query('SELECT COUNT(*) as total FROM refunds') as any[];
+    console.log('🔍 [Refunds API] Total refunds in system:', allRefundsCheck[0]?.total || 0);
+
+    // Debug: Check if there are any service_bookings for this provider
+    const bookingsCheck = await query(
+      'SELECT COUNT(*) as total FROM service_bookings WHERE provider_id = ?',
+      [cremationCenterId]
+    ) as any[];
+    console.log('🔍 [Refunds API] Total bookings for this provider:', bookingsCheck[0]?.total || 0);
+
+    // Debug: Check refunds with bookings for this provider
+    const refundsWithBookingsCheck = await query(`
+      SELECT COUNT(*) as total 
+      FROM refunds r 
+      JOIN service_bookings cb ON r.booking_id = cb.id 
+      WHERE cb.provider_id = ?
+    `, [cremationCenterId]) as any[];
+    console.log('🔍 [Refunds API] Refunds for this provider:', refundsWithBookingsCheck[0]?.total || 0);
+
     // Get query parameters for filtering and pagination
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
@@ -107,8 +127,11 @@ export async function GET(request: NextRequest) {
     `;
 
     console.log('📊 [Refunds API] Executing refunds query...');
+    console.log('📊 [Refunds API] Query:', refundsQuery);
+    console.log('📊 [Refunds API] Params:', queryParams);
     const refundsResult = await query(refundsQuery, queryParams) as any[];
     console.log('📊 [Refunds API] Found', refundsResult.length, 'refunds');
+    console.log('📊 [Refunds API] Raw results:', refundsResult);
 
     // Get total count for pagination (use same WHERE clause)
     const countQuery = `
