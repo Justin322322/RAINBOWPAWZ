@@ -225,45 +225,11 @@ const CremationRefundsPage = React.memo(function CremationRefundsPage() {
       const queryString = params.toString();
       console.log('🔄 Query string:', queryString);
 
-      // Get auth token for the request
-      const getAuthToken = () => {
-        if (typeof document === 'undefined') return null;
-
-        try {
-          // Try to get from cookies first
-          const cookies = document.cookie.split(';');
-          const authCookie = cookies.find(cookie => cookie.trim().startsWith('auth_token='));
-
-          if (authCookie) {
-            const token = authCookie.split('=')[1];
-            if (token) return decodeURIComponent(token);
-          }
-
-          // Fallback to localStorage
-          const localStorageToken = localStorage.getItem('auth_token');
-          if (localStorageToken) return localStorageToken;
-
-          // Fallback to sessionStorage
-          const sessionStorageToken = sessionStorage.getItem('auth_token');
-          if (sessionStorageToken) return sessionStorageToken;
-
-          return null;
-        } catch {
-          return null;
-        }
-      };
-
-      const authToken = getAuthToken();
-      console.log('🔐 Auth token found:', !!authToken);
-
+      // Use the same auth approach as the withCremationAuth component
       const headers: HeadersInit = {
         'Content-Type': 'application/json',
         'Cache-Control': 'no-cache'
       };
-
-      if (authToken) {
-        headers['Authorization'] = `Bearer ${authToken}`;
-      }
 
       console.log('📡 Making API request to /api/cremation/refunds');
       const controller = new AbortController();
@@ -332,7 +298,7 @@ const CremationRefundsPage = React.memo(function CremationRefundsPage() {
       console.log('🏁 fetchRefunds completed');
       setLoading(false);
     }
-  }, [pagination.limit, pagination.currentPage, searchTerm, statusFilter, showToast]);
+  }, [pagination.limit, pagination.currentPage, searchTerm, statusFilter]); // Removed showToast to prevent re-renders
 
   useEffect(() => {
     console.log('🚀 Component mounted, initializing...');
@@ -352,7 +318,7 @@ const CremationRefundsPage = React.memo(function CremationRefundsPage() {
     // Initial data fetch
     console.log('📡 Triggering initial fetchRefunds...');
     fetchRefunds();
-  }, [fetchRefunds]);
+  }, []); // Empty dependency array for initial mount only
 
   // Debounced search to avoid too many API calls
   useEffect(() => {
@@ -375,7 +341,7 @@ const CremationRefundsPage = React.memo(function CremationRefundsPage() {
       console.log('📄 Page changed, triggering fetch...');
       fetchRefunds();
     }
-  }, [pagination.currentPage, fetchRefunds]);
+  }, [pagination.currentPage]); // Removed fetchRefunds to prevent infinite loops
 
   // Pagination handlers
   const handlePageChange = (newPage: number) => {
@@ -409,47 +375,12 @@ const CremationRefundsPage = React.memo(function CremationRefundsPage() {
     try {
       setProcessingApproval(prev => new Set(prev).add(refundId));
 
-      // Get the auth token from cookies
-      const getAuthToken = () => {
-        if (typeof document === 'undefined') return null;
-
-        try {
-          // Try to get from cookies first
-          const cookies = document.cookie.split(';');
-          const authCookie = cookies.find(cookie => cookie.trim().startsWith('cremation_token='));
-
-          if (authCookie) {
-            const token = authCookie.split('=')[1];
-            if (token) return decodeURIComponent(token);
-          }
-
-          // Fallback to localStorage
-          const localStorageToken = localStorage.getItem('cremation_token');
-          if (localStorageToken) return localStorageToken;
-
-          // Fallback to sessionStorage
-          const sessionStorageToken = sessionStorage.getItem('cremation_token');
-          if (sessionStorageToken) return sessionStorageToken;
-
-          return null;
-        } catch {
-          return null;
-        }
-      };
-
-      const authToken = getAuthToken();
-
-      if (!authToken) {
-        showToast('Authentication required. Please log in again.', 'error');
-        return;
-      }
-
       const response = await fetch(`/api/cremation/refunds/${refundId}/approve`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authToken}`,
         },
+        credentials: 'include',
       });
 
       const data = await response.json();
@@ -484,47 +415,12 @@ const CremationRefundsPage = React.memo(function CremationRefundsPage() {
     try {
       setProcessingDenial(prev => new Set(prev).add(refundId));
 
-      // Get the auth token from cookies
-      const getAuthToken = () => {
-        if (typeof document === 'undefined') return null;
-
-        try {
-          // Try to get from cookies first
-          const cookies = document.cookie.split(';');
-          const authCookie = cookies.find(cookie => cookie.trim().startsWith('cremation_token='));
-
-          if (authCookie) {
-            const token = authCookie.split('=')[1];
-            if (token) return decodeURIComponent(token);
-          }
-
-          // Fallback to localStorage
-          const localStorageToken = localStorage.getItem('cremation_token');
-          if (localStorageToken) return localStorageToken;
-
-          // Fallback to sessionStorage
-          const sessionStorageToken = sessionStorage.getItem('cremation_token');
-          if (sessionStorageToken) return sessionStorageToken;
-
-          return null;
-        } catch {
-          return null;
-        }
-      };
-
-      const authToken = getAuthToken();
-
-      if (!authToken) {
-        showToast('Authentication required. Please log in again.', 'error');
-        return;
-      }
-
       const response = await fetch(`/api/cremation/refunds/${refundId}/deny`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authToken}`,
         },
+        credentials: 'include',
       });
 
       const data = await response.json();
@@ -564,6 +460,9 @@ const CremationRefundsPage = React.memo(function CremationRefundsPage() {
               <div>
                 <h1 className="text-2xl font-semibold text-gray-800">Refund Management</h1>
                 <p className="text-gray-600 mt-1">Loading refund requests...</p>
+                <p className="text-sm text-gray-500 mt-2">
+                  Debug: Loading state = {loading.toString()}, Refunds count = {refunds.length}
+                </p>
               </div>
               <div className="flex space-x-2">
                 <button
@@ -585,6 +484,25 @@ const CremationRefundsPage = React.memo(function CremationRefundsPage() {
                   className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center"
                 >
                   Stop Loading
+                </button>
+                <button
+                  onClick={async () => {
+                    console.log('🧪 Testing API directly...');
+                    try {
+                      const response = await fetch('/api/cremation/refunds?limit=5', {
+                        credentials: 'include'
+                      });
+                      const data = await response.json();
+                      console.log('🧪 Direct API test result:', data);
+                      alert(`API Test: ${response.status} - ${JSON.stringify(data, null, 2)}`);
+                    } catch (error) {
+                      console.error('🧪 Direct API test failed:', error);
+                      alert(`API Test Failed: ${error}`);
+                    }
+                  }}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center"
+                >
+                  Test API
                 </button>
               </div>
             </div>
