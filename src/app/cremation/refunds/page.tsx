@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import Image from 'next/image';
 import { format } from 'date-fns';
 import {
   MagnifyingGlassIcon,
@@ -473,9 +472,7 @@ const CremationRefundsPage = React.memo(function CremationRefundsPage({ userData
               <div>
                 <h1 className="text-2xl font-semibold text-gray-800">Refund Management</h1>
                 <p className="text-gray-600 mt-1">Loading refund requests...</p>
-                <p className="text-sm text-gray-500 mt-2">
-                  Debug: Loading state = {loading.toString()}, Refunds count = {refunds.length}
-                </p>
+
               </div>
               <div className="flex space-x-2">
                 <button
@@ -526,7 +523,7 @@ const CremationRefundsPage = React.memo(function CremationRefundsPage({ userData
                       });
                       const data = await response.json();
                       console.log('🔍 Debug result:', data);
-                      
+
                       // Show a more readable alert
                       const summary = `
 Debug Results:
@@ -536,7 +533,7 @@ Debug Results:
 - Cremation Center ID: ${data.cremationCenterId}
 - Stats query result: ${JSON.stringify(data.debugResults?.statsQueryResult, null, 2)}
                       `;
-                      
+
                       alert(summary);
                     } catch (error) {
                       console.error('🔍 Debug failed:', error);
@@ -640,19 +637,28 @@ Debug Results:
         {refunds.length === 0 ? (
           <div className="text-center py-12 bg-white rounded-xl shadow-md border border-gray-100">
             <div className="w-48 h-48 mx-auto mb-6 flex items-center justify-center">
-              <Image
-                src="/no-refunds.png"
-                alt="No refunds found"
-                width={192}
-                height={192}
-                className="w-full h-full object-contain"
-              />
+              <div className="w-32 h-32 bg-gray-100 rounded-full flex items-center justify-center">
+                <svg className="w-16 h-16 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              </div>
             </div>
-            <p className="text-gray-500 text-lg">
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No Refunds Found</h3>
+            <p className="text-gray-500 text-sm mb-4">
               {searchTerm || statusFilter !== 'all'
                 ? 'No refunds match your search criteria.'
-                : 'No refunds found.'}
+                : 'You don\'t have any refund requests yet. Refunds will appear here when customers request them for your cremation services.'}
             </p>
+            {!searchTerm && statusFilter === 'all' && (
+              <div className="text-xs text-gray-400 mt-4 p-4 bg-gray-50 rounded-lg">
+                <p><strong>Note:</strong> Refunds are automatically created when:</p>
+                <ul className="mt-2 space-y-1 text-left max-w-md mx-auto">
+                  <li>• Customers cancel their bookings</li>
+                  <li>• You cancel a booking as the service provider</li>
+                  <li>• Payment issues occur that require refunding</li>
+                </ul>
+              </div>
+            )}
           </div>
         ) : (
           <div className="space-y-4">

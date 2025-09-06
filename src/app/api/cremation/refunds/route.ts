@@ -209,13 +209,13 @@ export async function GET(request: NextRequest) {
     const statsQuery = `
       SELECT
         COUNT(*) as total_refunds,
-        SUM(CASE WHEN r.status = 'pending' THEN 1 ELSE 0 END) as pending_count,
-        SUM(CASE WHEN r.status = 'processing' THEN 1 ELSE 0 END) as processing_count,
-        SUM(CASE WHEN r.status = 'processed' THEN 1 ELSE 0 END) as processed_count,
-        SUM(CASE WHEN r.status = 'failed' THEN 1 ELSE 0 END) as failed_count,
-        SUM(CASE WHEN r.status = 'cancelled' THEN 1 ELSE 0 END) as cancelled_count,
-        SUM(CASE WHEN r.status = 'processed' THEN r.amount ELSE 0 END) as total_refunded_amount,
-        SUM(CASE WHEN DATE(r.created_at) = CURDATE() THEN 1 ELSE 0 END) as today_count
+        COALESCE(SUM(CASE WHEN r.status = 'pending' THEN 1 ELSE 0 END), 0) as pending_count,
+        COALESCE(SUM(CASE WHEN r.status = 'processing' THEN 1 ELSE 0 END), 0) as processing_count,
+        COALESCE(SUM(CASE WHEN r.status = 'processed' THEN 1 ELSE 0 END), 0) as processed_count,
+        COALESCE(SUM(CASE WHEN r.status = 'failed' THEN 1 ELSE 0 END), 0) as failed_count,
+        COALESCE(SUM(CASE WHEN r.status = 'cancelled' THEN 1 ELSE 0 END), 0) as cancelled_count,
+        COALESCE(SUM(CASE WHEN r.status = 'processed' THEN r.amount ELSE 0 END), 0) as total_refunded_amount,
+        COALESCE(SUM(CASE WHEN DATE(r.created_at) = CURDATE() THEN 1 ELSE 0 END), 0) as today_count
       FROM refunds r
       JOIN service_bookings sb ON r.booking_id = sb.id
       WHERE sb.provider_id = ?
@@ -236,7 +236,21 @@ export async function GET(request: NextRequest) {
       const statsResult = (await query(statsQuery, [
         cremationCenterId,
       ])) as any[];
-      stats = statsResult[0] || stats;
+      
+      if (statsResult && statsResult.length > 0) {
+        const rawStats = statsResult[0];
+        // Ensure all values are numbers, not null
+        stats = {
+          total_refunds: rawStats.total_refunds || 0,
+          pending_count: rawStats.pending_count || 0,
+          processing_count: rawStats.processing_count || 0,
+          processed_count: rawStats.processed_count || 0,
+          failed_count: rawStats.failed_count || 0,
+          cancelled_count: rawStats.cancelled_count || 0,
+          total_refunded_amount: parseFloat(rawStats.total_refunded_amount || 0),
+          today_count: rawStats.today_count || 0,
+        };
+      }
       console.log("📈 [Refunds API] Stats:", stats);
     } catch (statsError) {
       console.error("❌ [Refunds API] Stats query failed:", statsError);
