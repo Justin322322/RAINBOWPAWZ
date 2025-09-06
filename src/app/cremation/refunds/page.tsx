@@ -196,7 +196,7 @@ function CremationRefundsPage({ userData }: { userData: any }) {
     limit: 20,
     hasMore: false
   });
-  const [statistics, setStatistics] = useState<Statistics>({
+  const [_statistics, setStatistics] = useState<Statistics>({
     total_refunds: 0,
     pending_count: 0,
     processing_count: 0,
