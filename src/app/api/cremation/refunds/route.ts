@@ -35,13 +35,13 @@ export async function GET(request: NextRequest) {
 
     const userId = user.userId;
 
-    // Get provider ID
+    // Get provider ID (fallback to businesses.id if not in service_providers)
     const providerQuery = `
       SELECT provider_id
       FROM service_providers
       WHERE user_id = ?
     `;
-    const providerResult = await query(providerQuery, [userId]) as any[];
+    let providerResult = await query(providerQuery, [userId]) as any[];
 
     if (process.env.NODE_ENV === 'development') {
       console.log('🔍 [Refunds API] Provider query result:', {
@@ -52,10 +52,17 @@ export async function GET(request: NextRequest) {
     }
 
     if (providerResult.length === 0) {
-      return NextResponse.json({
-        error: 'Service provider not found',
-        details: 'No service provider found for this user'
-      }, { status: 404 });
+      const biz = await query('SELECT id as provider_id FROM businesses WHERE user_id = ? LIMIT 1', [userId]) as any[];
+      providerResult = biz || [];
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔍 [Refunds API] Fallback business mapping:', providerResult);
+      }
+      if (!providerResult || providerResult.length === 0) {
+        return NextResponse.json({
+          error: 'Service provider not found',
+          details: 'No service provider/business found for this user'
+        }, { status: 404 });
+      }
     }
 
     const providerId = providerResult[0].provider_id;
@@ -158,9 +165,9 @@ export async function GET(request: NextRequest) {
       FROM refunds r
       JOIN bookings bk ON r.booking_id = bk.id
       JOIN users u ON bk.user_id = u.user_id
-      JOIN service_packages spk ON bk.package_id = spk.package_id
-      JOIN service_providers sp ON spk.provider_id = sp.provider_id
-      WHERE spk.provider_id = ?${statusClause}
+      LEFT JOIN service_packages spk ON bk.package_id = spk.package_id
+      LEFT JOIN service_providers sp ON spk.provider_id = sp.provider_id
+      WHERE (spk.provider_id = ? OR sp.provider_id = ?)${statusClause}
     `;
 
     const refundsQuery = `
@@ -172,8 +179,8 @@ export async function GET(request: NextRequest) {
     `;
 
     const queryParams: any[] = status
-      ? [providerId, status, providerId, status]
-      : [providerId, providerId];
+      ? [providerId, status, providerId, providerId, status]
+      : [providerId, providerId, providerId];
 
     let refundsResult: any[] = [];
     try {
@@ -214,14 +221,15 @@ export async function GET(request: NextRequest) {
         SELECT COUNT(*) as cnt
         FROM refunds r
         JOIN bookings bk ON r.booking_id = bk.id
-        JOIN service_packages spk ON bk.package_id = spk.package_id
-        WHERE spk.provider_id = ?${statusClause}
+        LEFT JOIN service_packages spk ON bk.package_id = spk.package_id
+        LEFT JOIN service_providers sp ON spk.provider_id = sp.provider_id
+        WHERE (spk.provider_id = ? OR sp.provider_id = ?)${statusClause}
       ) as t
     `;
 
     const countParams: any[] = status
-      ? [providerId, status, providerId, status]
-      : [providerId, providerId];
+      ? [providerId, status, providerId, providerId, status]
+      : [providerId, providerId, providerId];
 
 
     let countResult: any[] = [];
