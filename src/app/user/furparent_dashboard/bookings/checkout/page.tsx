@@ -671,6 +671,13 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
     fetchProviderQr();
   }, [providerId, paymentMethod]);
 
+  // Auto-switch to GCash if QR is not available and user has selected QR payment
+  useEffect(() => {
+    if (paymentMethod === 'qr_manual' && !_providerQr) {
+      setPaymentMethod('gcash');
+    }
+  }, [_providerQr, paymentMethod]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -1507,7 +1514,11 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                           </div>
                         </label>
 
-                        <label className="block p-4 border rounded-md cursor-pointer hover:bg-gray-50 transition-colors">
+                        <label className={`block p-4 border rounded-md transition-colors ${
+                          !_providerQr 
+                            ? 'cursor-not-allowed bg-gray-50 opacity-60' 
+                            : 'cursor-pointer hover:bg-gray-50'
+                        }`}>
                           <div className="flex items-start">
                             <input
                               type="radio"
@@ -1515,11 +1526,23 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                               value="qr_manual"
                               checked={paymentMethod === 'qr_manual'}
                               onChange={() => setPaymentMethod('qr_manual')}
-                              className="h-4 w-4 mt-1 text-[var(--primary-green)] focus:ring-[var(--primary-green)]"
+                              disabled={!_providerQr}
+                              className={`h-4 w-4 mt-1 text-[var(--primary-green)] focus:ring-[var(--primary-green)] ${
+                                !_providerQr ? 'opacity-50 cursor-not-allowed' : ''
+                              }`}
                             />
                             <div className="ml-3 flex-1">
-                              <span className="font-medium text-gray-800">QR Transfer (manual confirmation)</span>
-                              <p className="text-sm text-gray-600 mt-1">
+                              <div className="flex items-center gap-2">
+                                <span className={`font-medium ${!_providerQr ? 'text-gray-500' : 'text-gray-800'}`}>
+                                  QR Transfer (manual confirmation)
+                                </span>
+                                {!_providerQr && (
+                                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-200 text-gray-600">
+                                    Unavailable
+                                  </span>
+                                )}
+                              </div>
+                              <p className={`text-sm mt-1 ${!_providerQr ? 'text-gray-400' : 'text-gray-600'}`}>
                                 Transfer using the provider&apos;s QR. Upload your receipt; your booking will be confirmed after the provider verifies payment.
                               </p>
                               {paymentMethod === 'qr_manual' && (
