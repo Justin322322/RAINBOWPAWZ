@@ -169,7 +169,8 @@ export async function GET(request: NextRequest) {
         processed_at: row.processed_at ? new Date(row.processed_at) : undefined,
         pet_name: row.pet_name || 'Unknown Pet',
         user_name: row.first_name && row.last_name ? `${row.first_name} ${row.last_name}` : 'Unknown User',
-        provider_name: row.provider_name || 'Unknown Provider'
+        provider_name: row.provider_name || 'Unknown Provider',
+        notes: row.notes || undefined
       } as RefundListItem;
     });
 

@@ -141,6 +141,7 @@ export interface RefundListItem {
   payment_method: string;
   created_at: Date;
   processed_at?: Date;
+  notes?: string;
   pet_name?: string;
   user_name?: string;
   provider_name?: string;

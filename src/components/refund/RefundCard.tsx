@@ -80,6 +80,18 @@ export function RefundCard({ refund, onAction: _onAction }: RefundCardProps) {
             <h2 className="text-xl font-semibold mb-4">Refund Details</h2>
             <p className="mb-4">Refund ID: {refund.id}</p>
             <p className="mb-4">Amount: {formatCurrency(refund.amount)}</p>
+            {(refund.status === 'pending' || refund.status === 'processing') && refund.notes && (
+              (() => {
+                const match = refund.notes.match(/Receipt:\s*(\S+)/i);
+                const url = match ? match[1] : '';
+                return url ? (
+                  <div className="mb-4">
+                    <p className="text-sm text-gray-600 mb-2">Receipt</p>
+                    <img src={url} alt="Receipt" className="max-h-64 rounded border" />
+                  </div>
+                ) : null;
+              })()
+            )}
             {(refund.status === 'pending' || refund.status === 'processing') && (
               <div className="flex items-center justify-end gap-2 mb-3">
                 <button

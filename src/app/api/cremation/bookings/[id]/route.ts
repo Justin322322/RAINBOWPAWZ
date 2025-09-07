@@ -149,11 +149,29 @@ export async function PUT(
             try {
               // If booking is paid, initiate automatic refund
               const paymentInfo = await query(
-                `SELECT payment_status FROM service_bookings WHERE id = ? LIMIT 1`,
+                `SELECT payment_status, payment_method, price FROM service_bookings WHERE id = ? LIMIT 1`,
                 [bookingId]
               ) as any[];
               if (paymentInfo && paymentInfo[0]?.payment_status === 'paid') {
-                await processAutomaticRefund(parseInt(bookingId));
+                const pm = paymentInfo[0].payment_method;
+                if (pm === 'gcash') {
+                  await processAutomaticRefund(parseInt(bookingId));
+                } else if (pm === 'qr_manual' || pm === 'qr_transfer') {
+                  // include latest receipt in notes if exists
+                  const receiptRows = await query(
+                    `SELECT receipt_path FROM payment_receipts WHERE booking_id = ? ORDER BY uploaded_at DESC LIMIT 1`,
+                    [bookingId]
+                  ) as any[];
+                  const receiptPath = receiptRows?.[0]?.receipt_path || '';
+                  const notes = receiptPath
+                    ? `Provider cancelled - awaiting approval. Receipt: ${receiptPath}`
+                    : 'Provider cancelled - awaiting approval.';
+                  await query(
+                    `INSERT INTO refunds (booking_id, amount, reason, status, payment_method, notes)
+                     VALUES (?, ?, 'requested_by_customer', 'pending', 'qr_manual', ?)`,
+                    [bookingId, paymentInfo[0].price, notes]
+                  );
+                }
               }
             } catch (refundError) {
               console.error('Error initiating automatic refund on provider cancellation:', refundError);

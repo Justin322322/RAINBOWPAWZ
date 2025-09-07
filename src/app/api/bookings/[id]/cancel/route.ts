@@ -99,15 +99,36 @@ export async function POST(request: NextRequest) {
       return {};
     });
 
-    // Process automatic refund if booking was paid
-    let refundResult = null;
+    // Process refund handling: for gcash auto-refund, for manual QR create pending refund record
     if (bookingData.payment_status === 'paid') {
       try {
-        refundResult = await processAutomaticRefund(parseInt(bookingId));
-        console.log('Automatic refund result:', refundResult);
+        if (bookingData.payment_method === 'gcash') {
+          const refundResult = await processAutomaticRefund(parseInt(bookingId));
+          console.log('Automatic refund result (gcash):', refundResult);
+        } else if (bookingData.payment_method === 'qr_manual' || bookingData.payment_method === 'qr_transfer') {
+          // Create a pending refund record for manual QR to be approved by provider
+          // Fetch latest receipt_path if available
+          const receiptRows = await query(
+            `SELECT receipt_path FROM payment_receipts WHERE booking_id = ? ORDER BY uploaded_at DESC LIMIT 1`,
+            [bookingId]
+          ) as any[];
+          const receiptPath = receiptRows?.[0]?.receipt_path || '';
+          const notes = receiptPath
+            ? `User cancelled - awaiting provider approval. Receipt: ${receiptPath}`
+            : 'User cancelled - awaiting provider approval.';
+
+          // Insert refund row with notes including receipt link
+          const priceRows = await query(`SELECT price FROM service_bookings WHERE id = ?`, [bookingId]) as any[];
+          const amount = priceRows?.[0]?.price || 0;
+          await query(
+            `INSERT INTO refunds (booking_id, amount, reason, status, payment_method, notes)
+             VALUES (?, ?, 'requested_by_customer', 'pending', 'qr_manual', ?)`,
+            [bookingId, amount, notes]
+          );
+        }
       } catch (refundError) {
-        console.error('Automatic refund error:', refundError);
-        // Continue with cancellation even if refund fails
+        console.error('Refund handling on cancel error:', refundError);
+        // Continue with cancellation even if refund creation fails
       }
     }
 
@@ -185,21 +206,14 @@ export async function POST(request: NextRequest) {
       // Continue with the cancellation process even if the email fails
     }
 
-    // Return success response
+    // Return success response (refund details may be handled separately depending on payment method)
     return NextResponse.json({
       success: true,
-      message: refundResult?.success 
-        ? `Booking cancelled successfully. ${refundResult.message}`
-        : 'Booking cancelled successfully',
+      message: 'Booking cancelled successfully',
       booking: {
         id: bookingId,
         status: 'cancelled'
-      },
-      refund: refundResult ? {
-        success: refundResult.success,
-        refundId: refundResult.refundId,
-        message: refundResult.message
-      } : null
+      }
     });
   } catch {
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
