@@ -10,6 +10,7 @@ interface RefundCardProps {
 
 export function RefundCard({ refund, onAction: _onAction }: RefundCardProps) {
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-PH', {
@@ -60,7 +61,10 @@ export function RefundCard({ refund, onAction: _onAction }: RefundCardProps) {
         </div>
       </div>
 
-      <div className="flex justify-end">
+      <div className="flex justify-between items-center">
+        <div className="text-xs text-gray-500">
+          {refund.status === 'succeeded' && 'Customer notified via email'}
+        </div>
         <button
           className="px-3 py-1 text-sm border border-gray-300 rounded-md hover:bg-gray-50"
           onClick={() => setShowDetailModal(true)}
@@ -76,6 +80,48 @@ export function RefundCard({ refund, onAction: _onAction }: RefundCardProps) {
             <h2 className="text-xl font-semibold mb-4">Refund Details</h2>
             <p className="mb-4">Refund ID: {refund.id}</p>
             <p className="mb-4">Amount: {formatCurrency(refund.amount)}</p>
+            {(refund.status === 'pending' || refund.status === 'processing') && (
+              <div className="flex items-center justify-end gap-2 mb-3">
+                <button
+                  disabled={submitting}
+                  onClick={async () => {
+                    try {
+                      setSubmitting(true);
+                      const res = await fetch(`/api/cremation/refunds/${refund.id}/approve`, { method: 'POST' });
+                      if (!res.ok) throw new Error('Approve failed');
+                      setShowDetailModal(false);
+                      _onAction();
+                    } catch (e) {
+                      console.error(e);
+                    } finally {
+                      setSubmitting(false);
+                    }
+                  }}
+                  className="px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50"
+                >
+                  {submitting ? 'Processing…' : 'Approve Refund'}
+                </button>
+                <button
+                  disabled={submitting}
+                  onClick={async () => {
+                    try {
+                      setSubmitting(true);
+                      const res = await fetch(`/api/cremation/refunds/${refund.id}/deny`, { method: 'POST' });
+                      if (!res.ok) throw new Error('Deny failed');
+                      setShowDetailModal(false);
+                      _onAction();
+                    } catch (e) {
+                      console.error(e);
+                    } finally {
+                      setSubmitting(false);
+                    }
+                  }}
+                  className="px-3 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50"
+                >
+                  {submitting ? 'Processing…' : 'Deny'}
+                </button>
+              </div>
+            )}
             <div className="flex justify-end">
               <button
                 className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"

@@ -37,8 +37,9 @@ export function RefundList({ cremationCenterId: _cremationCenterId }: RefundList
     offset: 0,
     has_more: false
   });
-  // fixed report defaults
+  // report controls
   const [limit] = useState<number>(20);
+  const [paymentStatus, setPaymentStatus] = useState<'all' | 'paid' | 'not_paid'>('all');
 
   const fetchRefunds = useCallback(async (offset = 0) => {
     try {
@@ -48,6 +49,9 @@ export function RefundList({ cremationCenterId: _cremationCenterId }: RefundList
       const queryParams = new URLSearchParams();
       queryParams.append('limit', String(limit));
       queryParams.append('offset', String(offset));
+      if (paymentStatus !== 'all') {
+        queryParams.append('payment_status', paymentStatus);
+      }
 
       const response = await fetch(`/api/cremation/refunds?${queryParams}`);
       const data: ApiResponse = await response.json();
@@ -64,7 +68,7 @@ export function RefundList({ cremationCenterId: _cremationCenterId }: RefundList
     } finally {
       setLoading(false);
     }
-  }, [limit]);
+  }, [limit, paymentStatus]);
 
   useEffect(() => {
     fetchRefunds(0);
@@ -170,8 +174,20 @@ export function RefundList({ cremationCenterId: _cremationCenterId }: RefundList
       {/* Summary Stats */}
       {summary && <RefundSummaryStats summary={summary} />}
 
-      {/* Actions */}
-      <div className="flex items-center justify-end">
+      {/* Controls */}
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-2">
+          <label className="text-sm text-gray-600">Payment Status</label>
+          <select
+            className="border rounded-md px-2 py-1 text-sm"
+            value={paymentStatus}
+            onChange={(e) => { setPaymentStatus(e.target.value as any); fetchRefunds(0); }}
+          >
+            <option value="all">All Payment Statuses</option>
+            <option value="paid">Paid</option>
+            <option value="not_paid">Not Paid</option>
+          </select>
+        </div>
         <button
           onClick={exportCsv}
           className="px-4 py-2 bg-gray-900 text-white rounded-md hover:bg-black"

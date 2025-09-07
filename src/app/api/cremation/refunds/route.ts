@@ -134,13 +134,14 @@ export async function GET(request: NextRequest) {
 
     const queryParams: any[] = [providerId];
 
-    // Add status filter if provided, otherwise filter for refund-related statuses
+    // Add status filter if provided, otherwise include all relevant statuses (so pending/processing manual refunds show up)
     if (status) {
       refundsQuery += ' AND r.status = ?';
       queryParams.push(status);
     } else {
-      refundsQuery += ' AND r.status IN (\'processed\', \'failed\', \'cancelled\')';
+      refundsQuery += ' AND r.status IN (\'pending\', \'processing\', \'processed\', \'failed\', \'cancelled\')';
     }
+
 
     // Add ordering and pagination (inline validated integers to satisfy MySQL prepared statement constraints)
     refundsQuery += ` ORDER BY r.created_at DESC LIMIT ${limit} OFFSET ${offset}`;
@@ -187,9 +188,10 @@ export async function GET(request: NextRequest) {
       countQuery = countQuery.replace('WHERE b.provider_id = ?', 'WHERE b.provider_id = ? AND r.status = ?');
       countParams.push(status);
     } else {
-      // If no status filter, still filter for refund-related statuses
-      countQuery += ' AND r.status IN (\'processed\', \'failed\', \'cancelled\')';
+      // If no status filter, include all relevant statuses
+      countQuery += ' AND r.status IN (\'pending\', \'processing\', \'processed\', \'failed\', \'cancelled\')';
     }
+
 
     let countResult: any[] = [];
     try {
