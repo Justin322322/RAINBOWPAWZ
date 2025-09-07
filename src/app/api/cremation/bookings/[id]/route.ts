@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { createBookingNotification, type BookingNotificationType } from '@/utils/comprehensiveNotificationService';
-import { createAdminNotification } from '@/utils/adminNotificationService';
 
 export async function GET(
   _request: NextRequest,

@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Perform cancellation operations in a transaction for consistency
-    const cancellationResult = await withTransaction(async (transaction) => {
+    const _cancellationResult = await withTransaction(async (transaction) => {
       // Update the booking status in the database
       const updateResult = await transaction.query(
         `UPDATE bookings

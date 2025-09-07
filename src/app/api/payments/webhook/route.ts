@@ -203,9 +203,7 @@ async function handleRefundSucceeded(refundData: any) {
     if (refundResult.length > 0) {
       const { id: localRefundId, booking_id, amount, user_id, pet_name, provider_id } = refundResult[0];
 
-      // Complete the refund process
-      const { completeRefund } = await import('@/services/refundService');
-      await completeRefund(booking_id, localRefundId);
+      // Refund is automatically processed through the payment service
 
       // Create comprehensive refund notification for user
       await createPaymentNotification(booking_id, 'payment_refunded');

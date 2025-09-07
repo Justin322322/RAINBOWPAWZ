@@ -161,7 +161,7 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
   const [cancelSuccess, setCancelSuccess] = useState(false);
   const [cancelledBookingIds, setCancelledBookingIds] = useState<number[]>([]);
   const [reviewedBookingIds, setReviewedBookingIds] = useState<number[]>([]);
-  const [refreshCounter, setRefreshCounter] = useState(0);
+  const [refreshCounter, _setRefreshCounter] = useState(0);
 
   // Helpers to handle receipt inside special_requests
   const getReceiptUrlFromText = (text?: string | null): string | null => {

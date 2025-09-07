@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import CremationDashboardLayout from '@/components/navigation/CremationDashboardLayout';
 import withBusinessVerification from '@/components/withBusinessVerification';
 import { useToast } from '@/context/ToastContext';
@@ -37,7 +37,7 @@ function CremationReportsPage({ userData }: { userData: any }) {
     });
     const { showToast } = useToast();
 
-    const fetchReportData = async () => {
+    const fetchReportData = useCallback(async () => {
         setLoading(true);
         setError(null);
 
@@ -69,7 +69,7 @@ function CremationReportsPage({ userData }: { userData: any }) {
         } finally {
             setLoading(false);
         }
-    };
+    }, [dateFilter, showToast]);
 
     useEffect(() => {
         fetchReportData();
