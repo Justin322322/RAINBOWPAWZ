@@ -11,8 +11,9 @@ import {
   EyeIcon,
   BuildingOfficeIcon
 } from '@heroicons/react/24/outline';
-import AdminSidebar from '@/components/navigation/AdminSidebar';
+import AdminDashboardLayout from '@/components/navigation/AdminDashboardLayout';
 import withAdminAuth from '@/components/withAdminAuth';
+import { StatsCardSkeleton } from '@/components/ui/LoadingComponents';
 
 interface RefundRecord {
   id: number;
@@ -46,10 +47,12 @@ interface RefundStats {
   automatic_count: number;
 }
 
-function AdminRefundsPage() {
+function AdminRefundsPage({ adminData }: { adminData: any }) {
+  const userName = adminData?.full_name || adminData?.username || 'System Administrator';
   const [refunds, setRefunds] = useState<RefundRecord[]>([]);
   const [stats, setStats] = useState<RefundStats | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selectedRefund, setSelectedRefund] = useState<RefundRecord | null>(null);
   const [filter, setFilter] = useState<'all' | 'pending' | 'manual' | 'completed' | 'failed'>('all');
   const [searchTerm, setSearchTerm] = useState('');
@@ -57,7 +60,8 @@ function AdminRefundsPage() {
 
   const fetchRefunds = useCallback(async () => {
     try {
-      setLoading(true);
+      setIsLoading(true);
+      setError(null);
       const params = new URLSearchParams();
       if (filter !== 'all') params.append('status', filter);
       if (dateRange.start) params.append('start_date', dateRange.start);
@@ -68,11 +72,14 @@ function AdminRefundsPage() {
       if (response.ok) {
         const data = await response.json();
         setRefunds(data.refunds || []);
+      } else {
+        throw new Error('Failed to fetch refunds');
       }
     } catch (error) {
       console.error('Error fetching refunds:', error);
+      setError(error instanceof Error ? error.message : 'Failed to fetch refunds');
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   }, [filter, dateRange.start, dateRange.end, searchTerm]);
 
@@ -170,85 +177,88 @@ function AdminRefundsPage() {
     return matchesSearch;
   });
 
-  if (loading && !stats) {
-    return (
-      <div className="flex h-screen bg-gray-50">
-        <AdminSidebar activePage="refunds" />
-        <div className="flex-1 p-8">
-          <div className="animate-pulse">
-            <div className="h-8 bg-gray-200 rounded w-1/4 mb-6"></div>
-            <div className="grid grid-cols-4 gap-4 mb-6">
-              {[...Array(4)].map((_, i) => (
-                <div key={i} className="h-24 bg-gray-200 rounded"></div>
-              ))}
-            </div>
-            <div className="space-y-4">
-              {[...Array(5)].map((_, i) => (
-                <div key={i} className="h-20 bg-gray-200 rounded"></div>
-              ))}
-            </div>
+  return (
+    <AdminDashboardLayout activePage="refunds" userName={userName}>
+      {/* Header section */}
+      <div className="mb-8 bg-white rounded-xl shadow-md border border-gray-100 p-6">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
+          <div>
+            <h1 className="text-2xl font-semibold text-gray-800">Refund Management</h1>
+            <p className="text-gray-600 mt-1">Monitor and manage all refunds across the platform</p>
           </div>
         </div>
       </div>
-    );
-  }
-
-  return (
-    <div className="flex h-screen bg-gray-50">
-      <AdminSidebar activePage="refunds" />
-      
-      <div className="flex-1 overflow-auto">
-        <div className="p-8">
-          {/* Header */}
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Refund Management</h1>
-            <p className="text-gray-600">Monitor and manage all refunds across the platform</p>
-          </div>
 
           {/* Stats Cards */}
-          {stats && (
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-              <div className="bg-white rounded-lg shadow p-6">
-                <div className="flex items-center">
-                  <CurrencyDollarIcon className="w-8 h-8 text-green-500" />
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600">Total Refunded</p>
-                    <p className="text-2xl font-bold text-gray-900">₱{stats.total_amount.toLocaleString()}</p>
-                  </div>
-                </div>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        {isLoading ? (
+          <StatsCardSkeleton count={4} />
+        ) : error ? (
+          <div className="col-span-4 bg-white rounded-xl shadow-md border border-gray-100 p-6">
+            <div className="flex items-center justify-center">
+              <div className="inline-flex items-center justify-center w-10 h-10 bg-red-100 rounded-lg mb-4">
+                <ExclamationTriangleIcon className="w-6 h-6 text-red-600" />
               </div>
-
-              <div className="bg-white rounded-lg shadow p-6">
-                <div className="flex items-center">
-                  <ExclamationTriangleIcon className="w-8 h-8 text-yellow-500" />
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600">Pending</p>
-                    <p className="text-2xl font-bold text-gray-900">{stats.pending_count}</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-white rounded-lg shadow p-6">
-                <div className="flex items-center">
-                  <CheckCircleIcon className="w-8 h-8 text-green-500" />
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600">Completed</p>
-                    <p className="text-2xl font-bold text-gray-900">{stats.completed_count}</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-white rounded-lg shadow p-6">
-                <div className="flex items-center">
-                  <DocumentCheckIcon className="w-8 h-8 text-blue-500" />
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600">Manual Processing</p>
-                    <p className="text-2xl font-bold text-gray-900">{stats.manual_count}</p>
-                  </div>
+            </div>
+            <div className="text-center">
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Unable to Load Refund Data</h3>
+              <p className="text-gray-600 mb-4">{error}</p>
+              <button 
+                onClick={() => {
+                  setError(null);
+                  fetchRefunds();
+                  fetchStats();
+                }}
+                className="inline-flex items-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              >
+                Try Again
+              </button>
+            </div>
+          </div>
+        ) : stats ? (
+          <>
+            <div className="bg-white rounded-lg shadow p-6">
+              <div className="flex items-center">
+                <CurrencyDollarIcon className="w-8 h-8 text-green-500" />
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-600">Total Refunded</p>
+                  <p className="text-2xl font-bold text-gray-900">₱{stats.total_amount.toLocaleString()}</p>
                 </div>
               </div>
             </div>
-          )}
+
+            <div className="bg-white rounded-lg shadow p-6">
+              <div className="flex items-center">
+                <ExclamationTriangleIcon className="w-8 h-8 text-yellow-500" />
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-600">Pending</p>
+                  <p className="text-2xl font-bold text-gray-900">{stats.pending_count}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-lg shadow p-6">
+              <div className="flex items-center">
+                <CheckCircleIcon className="w-8 h-8 text-green-500" />
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-600">Completed</p>
+                  <p className="text-2xl font-bold text-gray-900">{stats.completed_count}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-lg shadow p-6">
+              <div className="flex items-center">
+                <DocumentCheckIcon className="w-8 h-8 text-blue-500" />
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-600">Manual Processing</p>
+                  <p className="text-2xl font-bold text-gray-900">{stats.manual_count}</p>
+                </div>
+              </div>
+            </div>
+          </>
+        ) : null}
+      </div>
 
           {/* Filters and Search */}
           <div className="bg-white rounded-lg shadow mb-6">
@@ -344,7 +354,49 @@ function AdminRefundsPage() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredRefunds.map((refund) => (
+                  {isLoading ? (
+                    // Table skeleton loading state
+                    Array(5).fill(0).map((_, index) => (
+                      <tr key={`skeleton-${index}`} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <div className="w-5 h-5 bg-gray-200 rounded animate-pulse"></div>
+                            <div className="ml-4">
+                              <div className="h-4 bg-gray-200 rounded w-24 mb-2 animate-pulse"></div>
+                              <div className="h-3 bg-gray-200 rounded w-32 mb-1 animate-pulse"></div>
+                              <div className="h-3 bg-gray-200 rounded w-20 animate-pulse"></div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="h-4 bg-gray-200 rounded w-32 mb-1 animate-pulse"></div>
+                          <div className="h-3 bg-gray-200 rounded w-40 animate-pulse"></div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <div className="w-4 h-4 bg-gray-200 rounded animate-pulse mr-2"></div>
+                            <div>
+                              <div className="h-4 bg-gray-200 rounded w-28 mb-1 animate-pulse"></div>
+                              <div className="h-3 bg-gray-200 rounded w-16 animate-pulse"></div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="h-4 bg-gray-200 rounded w-20 mb-1 animate-pulse"></div>
+                          <div className="h-3 bg-gray-200 rounded w-16 animate-pulse"></div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="h-6 bg-gray-200 rounded-full w-20 animate-pulse"></div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex space-x-2">
+                            <div className="h-8 bg-gray-200 rounded w-16 animate-pulse"></div>
+                            <div className="h-8 bg-gray-200 rounded w-20 animate-pulse"></div>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  ) : filteredRefunds.map((refund) => (
                     <tr key={refund.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
@@ -438,8 +490,6 @@ function AdminRefundsPage() {
               </div>
             )}
           </div>
-        </div>
-      </div>
 
       {/* Refund Details Modal */}
       {selectedRefund && (
@@ -454,10 +504,10 @@ function AdminRefundsPage() {
                   <span className="font-medium">Booking ID:</span> #{selectedRefund.booking_id}
                 </div>
                 <div>
-                  <span className="font-medium">Customer:</span> {selectedRefund.customer_name}
+                  <span className="font-medium">Customer:</span> {selectedRefund.customer_name || 'N/A'}
                 </div>
                 <div>
-                  <span className="font-medium">Provider:</span> {selectedRefund.provider_name}
+                  <span className="font-medium">Provider:</span> {selectedRefund.provider_name || 'N/A'}
                 </div>
                 <div>
                   <span className="font-medium">Amount:</span> ₱{selectedRefund.amount.toLocaleString()}
@@ -506,7 +556,7 @@ function AdminRefundsPage() {
           </div>
         </div>
       )}
-    </div>
+    </AdminDashboardLayout>
   );
 }
 
