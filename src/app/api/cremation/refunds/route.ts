@@ -69,27 +69,27 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(url.searchParams.get('limit') || '20');
     const offset = parseInt(url.searchParams.get('offset') || '0');
 
-    // Build the main refunds query
+    // Build the main refunds query - query refunds table directly
     let refundsQuery = `
       SELECT
         r.id,
         r.booking_id,
         r.amount,
-        r.currency,
+        'PHP' as currency,
         COALESCE(r.status, 'unknown') as status,
         COALESCE(r.reason, 'other') as reason,
         COALESCE(r.payment_method, 'unknown') as payment_method,
         r.notes,
         r.created_at,
-        r.processed_at,
-        r.paymongo_refund_id,
-        r.failure_reason,
+        NULL as processed_at,
+        NULL as paymongo_refund_id,
+        NULL as failure_reason,
         b.pet_name,
         u.first_name,
         u.last_name,
         u.email as user_email,
         sp.name as provider_name
-      FROM payment_transactions r
+      FROM refunds r
       LEFT JOIN service_bookings b ON r.booking_id = b.id
       LEFT JOIN users u ON b.user_id = u.user_id
       LEFT JOIN service_providers sp ON b.provider_id = sp.provider_id
@@ -103,7 +103,7 @@ export async function GET(request: NextRequest) {
       refundsQuery += ' AND r.status = ?';
       queryParams.push(status);
     } else {
-      refundsQuery += ' AND r.status IN (\'refunded\', \'failed\', \'cancelled\')';
+      refundsQuery += ' AND r.status IN (\'processed\', \'failed\', \'cancelled\')';
     }
 
     // Add ordering and pagination
@@ -136,7 +136,7 @@ export async function GET(request: NextRequest) {
     // Get total count for pagination
     let countQuery = `
       SELECT COUNT(*) as total
-      FROM payment_transactions r
+      FROM refunds r
       LEFT JOIN service_bookings b ON r.booking_id = b.id
       WHERE b.provider_id = ?
     `;
@@ -149,7 +149,7 @@ export async function GET(request: NextRequest) {
       countParams.push(status);
     } else {
       // If no status filter, still filter for refund-related statuses
-      countQuery += ' AND r.status IN (\'refunded\', \'failed\')';
+      countQuery += ' AND r.status IN (\'processed\', \'failed\')';
     }
 
     let countResult: any[] = [];
@@ -165,14 +165,14 @@ export async function GET(request: NextRequest) {
     const summaryQuery = `
       SELECT
         COUNT(*) as total_count,
-        SUM(CASE WHEN status = 'refunded' THEN amount ELSE 0 END) as total_amount,
+        SUM(amount) as total_amount,
         SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending_count,
         SUM(CASE WHEN status = 'processing' THEN 1 ELSE 0 END) as processing_count,
-        SUM(CASE WHEN status = 'refunded' THEN 1 ELSE 0 END) as succeeded_count,
+        SUM(CASE WHEN status = 'processed' THEN 1 ELSE 0 END) as succeeded_count,
         SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed_count
-      FROM payment_transactions r
+      FROM refunds r
       LEFT JOIN service_bookings b ON r.booking_id = b.id
-      WHERE b.provider_id = ? AND r.status IN ('pending', 'processing', 'refunded', 'failed')
+      WHERE b.provider_id = ?
     `;
 
     let summaryResult: any[] = [];
