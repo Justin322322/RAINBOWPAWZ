@@ -79,8 +79,31 @@ export async function GET(request: NextRequest) {
     // Get query parameters for filtering
     const url = new URL(request.url);
     const status = url.searchParams.get('status');
-    const limit = parseInt(url.searchParams.get('limit') || '20');
-    const offset = parseInt(url.searchParams.get('offset') || '0');
+    const limitParam = parseInt(url.searchParams.get('limit') || '20');
+    const offsetParam = parseInt(url.searchParams.get('offset') || '0');
+    const limit = Number.isFinite(limitParam)
+      ? Math.min(Math.max(limitParam, 1), 100)
+      : 20;
+    const offset = Number.isFinite(offsetParam) && offsetParam >= 0 ? offsetParam : 0;
+
+    // First, let's do a simple test query to verify the refunds table works
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔍 [Refunds API] Testing refunds table...');
+    }
+
+    try {
+      const testQuery = `SELECT COUNT(*) as count FROM refunds LIMIT 1`;
+      await query(testQuery);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('✅ [Refunds API] Refunds table is accessible');
+      }
+    } catch (testError) {
+      console.error('❌ [Refunds API] Refunds table test failed:', testError);
+      return NextResponse.json({
+        error: 'Database table error',
+        details: 'Refunds table is not properly created or accessible'
+      }, { status: 500 });
+    }
 
     // Build the main refunds query - query refunds table directly
     let refundsQuery = `
@@ -119,9 +142,8 @@ export async function GET(request: NextRequest) {
       refundsQuery += ' AND r.status IN (\'processed\', \'failed\', \'cancelled\')';
     }
 
-    // Add ordering and pagination
-    refundsQuery += ' ORDER BY r.created_at DESC LIMIT ? OFFSET ?';
-    queryParams.push(limit, offset);
+    // Add ordering and pagination (inline validated integers to satisfy MySQL prepared statement constraints)
+    refundsQuery += ` ORDER BY r.created_at DESC LIMIT ${limit} OFFSET ${offset}`;
 
     let refundsResult: any[] = [];
     try {
