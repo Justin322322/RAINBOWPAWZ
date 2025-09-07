@@ -155,44 +155,6 @@ export async function retrievePaymentIntent(paymentIntentId: string): Promise<Pa
 
 
 
-/**
- * List payments with optional filters
- */
-export async function listPayments(filters?: {
-  before?: string;
-  after?: string;
-  limit?: number;
-}): Promise<any[]> {
-  const secretKey = process.env.PAYMONGO_SECRET_KEY;
-
-  if (!secretKey) {
-    throw new Error('PayMongo secret key is not configured');
-  }
-
-  // Build query parameters
-  const params = new URLSearchParams();
-  if (filters?.before) params.append('before', filters.before);
-  if (filters?.after) params.append('after', filters.after);
-  if (filters?.limit) params.append('limit', filters.limit.toString());
-
-  const url = `${PAYMONGO_BASE_URL}/payments${params.toString() ? '?' + params.toString() : ''}`;
-
-  const response = await fetch(url, {
-    method: 'GET',
-    headers: {
-      'Authorization': `Basic ${Buffer.from(secretKey + ':').toString('base64')}`,
-      'Content-Type': 'application/json',
-    }
-  });
-
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(`PayMongo API Error: ${error.errors?.[0]?.detail || 'Unknown error'}`);
-  }
-
-  const result = await response.json();
-  return result.data;
-}
 
 /**
  * Retrieve a source by ID

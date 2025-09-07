@@ -67,28 +67,28 @@ export async function GET(request: NextRequest) {
     if (useServiceBookings) {
       // Use service_bookings table
       const totalBookingsQuery = `
-        SELECT COUNT(*) as count FROM service_bookings
-        WHERE provider_id = ? ${dateCondition}
+        SELECT COUNT(*) as count FROM service_bookings sb
+        WHERE sb.provider_id = ? ${dateCondition}
       `;
 
       const completedBookingsQuery = `
-        SELECT COUNT(*) as count FROM service_bookings
-        WHERE provider_id = ? AND status = 'completed' ${dateCondition}
+        SELECT COUNT(*) as count FROM service_bookings sb
+        WHERE sb.provider_id = ? AND sb.status = 'completed' ${dateCondition}
       `;
 
       const cancelledBookingsQuery = `
-        SELECT COUNT(*) as count FROM service_bookings
-        WHERE provider_id = ? AND status = 'cancelled' ${dateCondition}
+        SELECT COUNT(*) as count FROM service_bookings sb
+        WHERE sb.provider_id = ? AND sb.status = 'cancelled' ${dateCondition}
       `;
 
       const pendingBookingsQuery = `
-        SELECT COUNT(*) as count FROM service_bookings
-        WHERE provider_id = ? AND status IN ('pending', 'confirmed', 'in_progress') ${dateCondition}
+        SELECT COUNT(*) as count FROM service_bookings sb
+        WHERE sb.provider_id = ? AND sb.status IN ('pending', 'confirmed', 'in_progress') ${dateCondition}
       `;
 
       const totalRevenueQuery = `
-        SELECT COALESCE(SUM(price + IFNULL(delivery_fee, 0)), 0) as total FROM service_bookings
-        WHERE provider_id = ? AND status = 'completed' ${dateCondition}
+        SELECT COALESCE(SUM(sb.price + IFNULL(sb.delivery_fee, 0)), 0) as total FROM service_bookings sb
+        WHERE sb.provider_id = ? AND sb.status = 'completed' ${dateCondition}
       `;
 
       const topServicesQuery = `
