@@ -31,6 +31,15 @@ interface QuickPresetsPanelProps {
   onClose: () => void;
 }
 
+// Helper function to convert 24-hour format to 12-hour format
+const formatTo12Hour = (time24: string): string => {
+  const [hours, minutes] = time24.split(':');
+  const hour = parseInt(hours, 10);
+  const ampm = hour >= 12 ? 'PM' : 'AM';
+  const hour12 = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+  return `${hour12}:${minutes} ${ampm}`;
+};
+
 export default function QuickPresetsPanel(props: QuickPresetsPanelProps) {
   const shouldReduceMotion = useReducedMotion();
   const {
@@ -139,11 +148,11 @@ export default function QuickPresetsPanel(props: QuickPresetsPanelProps) {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
         <button type="button" onClick={onApplyWeekdays} disabled={selectedQuickSetupPackages.length === 0} className="px-3 py-2 bg-green-100 text-green-800 rounded-md text-xs font-medium hover:bg-green-200 transition-colors disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed">
           <ClockIcon className="h-4 w-4 inline mr-1" />
-          Weekdays ({weekdayStartTime}-{weekdayEndTime})
+          Weekdays ({formatTo12Hour(weekdayStartTime)}-{formatTo12Hour(weekdayEndTime)})
         </button>
         <button type="button" onClick={onApplyWeekends} disabled={selectedQuickSetupPackages.length === 0} className="px-3 py-2 bg-orange-100 text-orange-800 rounded-md text-xs font-medium hover:bg-orange-200 transition-colors disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed">
           <CalendarIcon className="h-4 w-4 inline mr-1" />
-          Weekends ({weekendStartTime}-{weekendEndTime})
+          Weekends ({formatTo12Hour(weekendStartTime)}-{formatTo12Hour(weekendEndTime)})
         </button>
         <button type="button" onClick={onClearAll} className="px-3 py-2 bg-red-100 text-red-800 rounded-md text-xs font-medium hover:bg-red-200 transition-colors sm:col-span-2 lg:col-span-1">
           <TrashIcon className="h-4 w-4 inline mr-1" />
