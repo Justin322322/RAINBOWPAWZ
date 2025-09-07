@@ -201,7 +201,7 @@ async function handleRefundSucceeded(refundData: any) {
     const refundResult = await query(refundQuery, [refundId]) as any[];
 
     if (refundResult.length > 0) {
-      const { id: localRefundId, booking_id, amount, user_id, pet_name, provider_id } = refundResult[0];
+      const { id: _localRefundId, booking_id, amount, user_id, pet_name, provider_id } = refundResult[0];
 
       // Refund is automatically processed through the payment service
 
