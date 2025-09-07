@@ -74,9 +74,9 @@ export async function GET(request: NextRequest) {
         r.booking_id,
         r.amount,
         r.currency,
-        r.status,
-        r.reason,
-        r.payment_method,
+        COALESCE(r.status, 'unknown') as status,
+        COALESCE(r.reason, 'other') as reason,
+        COALESCE(r.payment_method, 'unknown') as payment_method,
         r.notes,
         r.created_at,
         r.processed_at,
@@ -91,51 +91,72 @@ export async function GET(request: NextRequest) {
       LEFT JOIN service_bookings b ON r.booking_id = b.id
       LEFT JOIN users u ON b.user_id = u.user_id
       LEFT JOIN service_providers sp ON b.provider_id = sp.provider_id
-      WHERE b.cremation_center_id = ? AND r.status IN ('refunded', 'failed')
+      WHERE b.cremation_center_id = ?
     `;
 
     const queryParams: any[] = [cremationCenterId];
 
-    // Add status filter if provided
+    // Add status filter if provided, otherwise filter for refund-related statuses
     if (status) {
       refundsQuery += ' AND r.status = ?';
       queryParams.push(status);
+    } else {
+      refundsQuery += ' AND r.status IN (\'refunded\', \'failed\', \'cancelled\')';
     }
 
     // Add ordering and pagination
     refundsQuery += ' ORDER BY r.created_at DESC LIMIT ? OFFSET ?';
     queryParams.push(limit, offset);
 
-    const refundsResult = await query(refundsQuery, queryParams) as any[];
+    let refundsResult: any[] = [];
+    try {
+      refundsResult = await query(refundsQuery, queryParams) as any[];
+    } catch (queryError) {
+      console.error('Error executing refunds query:', queryError);
+      throw new Error(`Database query failed: ${queryError instanceof Error ? queryError.message : 'Unknown database error'}`);
+    }
 
     // Transform the results to match RefundListItem interface
     const refunds: RefundListItem[] = refundsResult.map(row => ({
       id: row.id,
       booking_id: row.booking_id,
-      amount: parseFloat(row.amount),
-      status: row.status,
-      reason: row.reason,
-      payment_method: row.payment_method,
-      created_at: new Date(row.created_at),
+      amount: parseFloat(row.amount || 0),
+      status: row.status || 'unknown',
+      reason: row.reason || 'other',
+      payment_method: row.payment_method || 'unknown',
+      created_at: new Date(row.created_at || new Date()),
       processed_at: row.processed_at ? new Date(row.processed_at) : undefined,
-      pet_name: row.pet_name,
-      user_name: `${row.first_name} ${row.last_name}`,
-      provider_name: row.provider_name
+      pet_name: row.pet_name || 'Unknown Pet',
+      user_name: row.first_name && row.last_name ? `${row.first_name} ${row.last_name}` : 'Unknown User',
+      provider_name: row.provider_name || 'Unknown Provider'
     }));
 
     // Get total count for pagination
-    const countQuery = `
+    let countQuery = `
       SELECT COUNT(*) as total
       FROM payment_transactions r
       LEFT JOIN service_bookings b ON r.booking_id = b.id
-      WHERE b.cremation_center_id = ? AND r.status IN ('refunded', 'failed')
+      WHERE b.cremation_center_id = ?
     `;
-    const countParams = status ? [cremationCenterId, status] : [cremationCenterId];
+
+    const countParams: any[] = [cremationCenterId];
+
+    // Add status filter to count query if provided
     if (status) {
-      countQuery.replace('WHERE', 'WHERE r.status = ? AND');
+      countQuery = countQuery.replace('WHERE b.cremation_center_id = ?', 'WHERE b.cremation_center_id = ? AND r.status = ?');
+      countParams.push(status);
+    } else {
+      // If no status filter, still filter for refund-related statuses
+      countQuery += ' AND r.status IN (\'refunded\', \'failed\')';
     }
 
-    const countResult = await query(countQuery, countParams) as any[];
+    let countResult: any[] = [];
+    try {
+      countResult = await query(countQuery, countParams) as any[];
+    } catch (countError) {
+      console.error('Error executing count query:', countError);
+      throw new Error(`Count query failed: ${countError instanceof Error ? countError.message : 'Unknown database error'}`);
+    }
     const totalCount = countResult[0]?.total || 0;
 
     // Calculate summary statistics
@@ -152,8 +173,14 @@ export async function GET(request: NextRequest) {
       WHERE b.cremation_center_id = ? AND r.status IN ('pending', 'processing', 'refunded', 'failed')
     `;
 
-    const summaryResult = await query(summaryQuery, [cremationCenterId]) as any[];
-    const summary = summaryResult[0];
+    let summaryResult: any[] = [];
+    try {
+      summaryResult = await query(summaryQuery, [cremationCenterId]) as any[];
+    } catch (summaryError) {
+      console.error('Error executing summary query:', summaryError);
+      throw new Error(`Summary query failed: ${summaryError instanceof Error ? summaryError.message : 'Unknown database error'}`);
+    }
+    const summary = summaryResult[0] || {};
 
     const refundSummary: RefundSummary = {
       total_amount: parseFloat(summary.total_amount || 0),

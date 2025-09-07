@@ -443,7 +443,10 @@ function AdminLogsPage({ adminData }: { adminData: any }) {
                 <span className="text-sm text-gray-600">Show:</span>
                 <select
                   value={logsPerPage}
-                  onChange={(e) => handleLogsPerPageChange(parseInt(e.target.value))}
+                  onChange={(e) => {
+                    e.preventDefault();
+                    handleLogsPerPageChange(parseInt(e.target.value));
+                  }}
                   className="text-sm border border-gray-300 rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-[var(--primary-green)] focus:border-transparent bg-white"
                 >
                   <option value={10}>10</option>
@@ -456,7 +459,10 @@ function AdminLogsPage({ adminData }: { adminData: any }) {
                 <input
                   type="checkbox"
                   checked={autoRefresh}
-                  onChange={(e) => setAutoRefresh(e.target.checked)}
+                  onChange={(e) => {
+                    e.preventDefault();
+                    setAutoRefresh(e.target.checked);
+                  }}
                   className="rounded border-gray-300 text-[var(--primary-green)] focus:ring-[var(--primary-green)]"
                 />
                 <span className="text-sm text-gray-600">Auto-refresh</span>
@@ -587,7 +593,10 @@ function AdminLogsPage({ adminData }: { adminData: any }) {
                   <input
                     type="date"
                     value={filters.date_from}
-                    onChange={(e) => handleFilterChange('date_from', e.target.value)}
+                    onChange={(e) => {
+                      e.preventDefault();
+                      handleFilterChange('date_from', e.target.value);
+                    }}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--primary-green)] focus:border-transparent text-sm"
                   />
                 </div>
@@ -596,7 +605,10 @@ function AdminLogsPage({ adminData }: { adminData: any }) {
                   <input
                     type="date"
                     value={filters.date_to}
-                    onChange={(e) => handleFilterChange('date_to', e.target.value)}
+                    onChange={(e) => {
+                      e.preventDefault();
+                      handleFilterChange('date_to', e.target.value);
+                    }}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--primary-green)] focus:border-transparent text-sm"
                   />
                 </div>

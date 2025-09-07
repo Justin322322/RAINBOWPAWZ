@@ -108,11 +108,6 @@ export function RefundList({ cremationCenterId: _cremationCenterId }: RefundList
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-900">Refund Management</h1>
-      </div>
-
       {/* Summary Stats */}
       {summary && <RefundSummaryStats summary={summary} />}
 
