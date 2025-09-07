@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifySecureAuth } from '@/lib/secureAuth';
 import { query } from '@/lib/db';
+import { ensureRefundsTableExists } from '@/lib/db/schema';
 import { RefundListItem, RefundSummary } from '@/types/payment';
 
 export async function GET(request: NextRequest) {
@@ -61,6 +62,18 @@ export async function GET(request: NextRequest) {
 
     if (process.env.NODE_ENV === 'development') {
       console.log('✅ [Refunds API] Found provider ID:', providerId);
+    }
+
+    // Ensure refunds table exists
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔧 [Refunds API] Ensuring refunds table exists...');
+    }
+    const tableCreated = await ensureRefundsTableExists();
+    if (!tableCreated) {
+      return NextResponse.json({
+        error: 'Database setup failed',
+        details: 'Could not create refunds table'
+      }, { status: 500 });
     }
 
     // Get query parameters for filtering
