@@ -3,16 +3,12 @@ import { getAuthTokenFromRequest } from '@/utils/auth';
 import { query, withTransaction } from '@/lib/db';
 
 // Import the email templates
-import { createBookingStatusUpdateEmail, createRefundNotificationEmail } from '@/lib/emailTemplates';
+import { createBookingStatusUpdateEmail } from '@/lib/emailTemplates';
 // Import the consolidated email service
 import { sendEmail } from '@/lib/consolidatedEmailService';
-// Import refund services
-import {
-  checkRefundEligibility,
-  createRefundRecord
-} from '@/services/refundService';
-import { REFUND_REASONS } from '@/types/refund';
 import { createBookingNotification } from '@/utils/comprehensiveNotificationService';
+// Import payment service for automatic refunds
+import { processAutomaticRefund } from '@/services/paymentService';
 
 export async function POST(request: NextRequest) {
   // Extract ID from URL
@@ -54,8 +50,6 @@ export async function POST(request: NextRequest) {
     }
 
 
-    // Initialize refund info variable
-    let refundInfo: any = null;
 
     // First, validate that the booking exists and belongs to the user
     const bookingExistsQuery = `
@@ -102,70 +96,18 @@ export async function POST(request: NextRequest) {
         throw new Error('Failed to update booking status - it may have already been processed');
       }
 
-      let refundId: number | null = null;
-
-      // Create refund request if payment was made
-      if (bookingData.payment_status === 'paid') {
-        try {
-          // Check refund eligibility
-          const eligibilityCheck = await checkRefundEligibility(parseInt(bookingId));
-
-          if (eligibilityCheck.eligible) {
-            // Create refund request (pending provider approval)
-            refundId = await createRefundRecord({
-              booking_id: parseInt(bookingId),
-              reason: REFUND_REASONS.USER_REQUESTED,
-              amount: parseFloat(bookingData.price),
-              notes: 'Refund request due to booking cancellation'
-            });
-          }
-        } catch (refundError) {
-          console.error('Refund request error:', refundError);
-          // Continue with cancellation even if refund request fails
-        }
-      }
-
-      return { refundId };
+      return {};
     });
 
-    // Handle refund notification outside transaction (not critical for booking integrity)
-    if (cancellationResult.refundId) {
+    // Process automatic refund if booking was paid
+    let refundResult = null;
+    if (bookingData.payment_status === 'paid') {
       try {
-        // Admin notifications removed - refunds now managed by cremation centers
-
-        refundInfo = {
-          status: 'pending',
-          message: 'Refund request submitted. Our team will review and process it within 1-2 business days.',
-          amount: parseFloat(bookingData.price)
-        };
-
-        // Send refund request notification email
-        try {
-          const userResult = await query('SELECT email, first_name, last_name FROM users WHERE user_id = ?', [userId]) as any[];
-          if (userResult && userResult.length > 0) {
-            const userData = userResult[0];
-            const refundEmailContent = createRefundNotificationEmail({
-              customerName: `${userData.first_name} ${userData.last_name}`,
-              bookingId: bookingId,
-              petName: bookingData.pet_name || 'Your pet',
-              amount: parseFloat(bookingData.price),
-              reason: REFUND_REASONS.USER_REQUESTED,
-              status: 'pending',
-              paymentMethod: 'N/A',
-              estimatedDays: undefined
-            });
-
-            await sendEmail({
-              to: userData.email,
-              subject: refundEmailContent.subject,
-              html: refundEmailContent.html
-            });
-          }
-        } catch (emailError) {
-          console.error('Refund email error:', emailError);
-        }
-      } catch (notificationError) {
-        console.error('Failed to create admin notification:', notificationError);
+        refundResult = await processAutomaticRefund(parseInt(bookingId));
+        console.log('Automatic refund result:', refundResult);
+      } catch (refundError) {
+        console.error('Automatic refund error:', refundError);
+        // Continue with cancellation even if refund fails
       }
     }
 
@@ -246,17 +188,17 @@ export async function POST(request: NextRequest) {
     // Return success response
     return NextResponse.json({
       success: true,
-      message: refundInfo
-        ? `Booking cancelled successfully. ${refundInfo.message}`
+      message: refundResult?.success 
+        ? `Booking cancelled successfully. ${refundResult.message}`
         : 'Booking cancelled successfully',
       booking: {
         id: bookingId,
         status: 'cancelled'
       },
-      refund: refundInfo ? {
-        status: refundInfo.status,
-        amount: refundInfo.amount,
-        message: refundInfo.message
+      refund: refundResult ? {
+        success: refundResult.success,
+        refundId: refundResult.refundId,
+        message: refundResult.message
       } : null
     });
   } catch {

@@ -29,7 +29,6 @@ import ReviewModal from '@/components/reviews/ReviewModal';
 import ReviewDisplay from '@/components/reviews/ReviewDisplay';
 import CremationCertificate from '@/components/certificates/CremationCertificate';
 import BookingTimeline from '@/components/booking/BookingTimeline';
-import { RefundButton } from '@/components/refund';
 
 interface BookingData {
   id: number;
@@ -381,7 +380,7 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
           ? {
               ...booking,
               status: 'cancelled' as BookingData['status'],
-              payment_status: responseData.refund ? 'refunded' as BookingData['payment_status'] : booking.payment_status
+              payment_status: responseData.refund?.success ? 'refunded' as BookingData['payment_status'] : booking.payment_status
             }
           : booking
       );
@@ -424,13 +423,6 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
     }
   };
 
-  // Handle refund request
-  const handleRefundRequested = () => {
-    // Refresh bookings to get updated status
-    setIsLoading(true);
-    // Force a re-fetch by incrementing the refresh counter
-    setRefreshCounter(prev => prev + 1);
-  };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -844,24 +836,6 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
                           <XCircleIcon className="h-4 w-4 mr-2" />
                           {cancelledBookingIds.includes(booking.id) ? 'Cancelled' : 'Cancel Booking'}
                         </button>
-                      )}
-                      {/* Refund Button - Show only for cancelled paid bookings */}
-                      {booking.payment_status === 'paid' && booking.status === 'cancelled' && (
-                        <RefundButton
-                          booking={{
-                            id: booking.id,
-                            pet_name: booking.pet_name,
-                            booking_date: booking.booking_date,
-                            booking_time: booking.booking_time,
-                            price: booking.price || booking.service_price || 0,
-                            payment_method: booking.payment_method || 'cash',
-                            status: booking.status,
-                            payment_status: booking.payment_status || 'not_paid'
-                          }}
-                          onRefundRequested={handleRefundRequested}
-                          size="sm"
-                          variant="outline"
-                        />
                       )}
                       {booking.status === 'completed' && !reviewedBookingIds.includes(booking.id) && !isReviewExpired(booking.booking_date) && (currentUserData?.id || currentUserData?.user_id) && (
                         <button

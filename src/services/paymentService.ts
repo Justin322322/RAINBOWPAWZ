@@ -4,7 +4,7 @@
  */
 
 import { query } from '@/lib/db';
-import { createSource, phpToCentavos } from '@/lib/paymongo';
+import { createSource, phpToCentavos, createRefund } from '@/lib/paymongo';
 import { getServerAppUrl } from '@/utils/appUrl';
 import {
   PaymentTransaction,
@@ -302,7 +302,7 @@ export async function processPaymentWebhook(sourceId: string, status: string): P
 
     // Update transaction status based on webhook
     let newStatus: PaymentTransaction['status'];
-    let bookingPaymentStatus: 'not_paid' | 'paid' | 'refunded' = 'not_paid';
+    let bookingPaymentStatus: 'not_paid' | 'paid' = 'not_paid';
 
     switch (status) {
       case 'chargeable':
@@ -341,5 +341,177 @@ export async function processPaymentWebhook(sourceId: string, status: string): P
   } catch (error) {
     console.error('Error processing payment webhook:', error);
     return false;
+  }
+}
+
+/**
+ * Process automatic refund for cancelled booking
+ */
+export async function processAutomaticRefund(bookingId: number): Promise<{
+  success: boolean;
+  refundId?: string;
+  error?: string;
+  message: string;
+}> {
+  try {
+    // Get booking and payment details
+    const bookingQuery = `
+      SELECT 
+        sb.id, sb.price, sb.payment_method, sb.payment_status,
+        pt.id as transaction_id, pt.paymongo_payment_id, pt.status as transaction_status
+      FROM service_bookings sb
+      LEFT JOIN payment_transactions pt ON sb.id = pt.booking_id AND pt.status = 'succeeded'
+      WHERE sb.id = ?
+    `;
+    
+    const bookingResult = await query(bookingQuery, [bookingId]) as any[];
+    
+    if (bookingResult.length === 0) {
+      return {
+        success: false,
+        error: 'Booking not found',
+        message: 'Booking not found'
+      };
+    }
+
+    const booking = bookingResult[0];
+
+    // Check if booking was paid
+    if (booking.payment_status !== 'paid') {
+      return {
+        success: true,
+        message: 'No refund needed - booking was not paid'
+      };
+    }
+
+    // Check if there's a successful payment transaction
+    if (!booking.paymongo_payment_id) {
+      return {
+        success: false,
+        error: 'No payment transaction found',
+        message: 'No payment transaction found for refund'
+      };
+    }
+
+    // Process refund based on payment method
+    if (booking.payment_method === 'gcash') {
+      return await processGCashRefund(booking);
+    } else if (booking.payment_method === 'qr_manual') {
+      return await processManualQRRefund(booking);
+    } else {
+      return {
+        success: false,
+        error: 'Unsupported payment method',
+        message: 'Refund not supported for this payment method'
+      };
+    }
+
+  } catch (error) {
+    console.error('Error processing automatic refund:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+      message: 'Failed to process refund'
+    };
+  }
+}
+
+/**
+ * Process GCash refund through PayMongo
+ */
+async function processGCashRefund(booking: any): Promise<{
+  success: boolean;
+  refundId?: string;
+  error?: string;
+  message: string;
+}> {
+  try {
+    const refundAmount = phpToCentavos(parseFloat(booking.price));
+    
+    const refundResult = await createRefund(booking.paymongo_payment_id, {
+      amount: refundAmount,
+      reason: 'requested_by_customer',
+      notes: `Automatic refund for cancelled booking #${booking.id}`
+    });
+
+    // Update booking payment status
+    await query(`
+      UPDATE service_bookings 
+      SET payment_status = 'refunded' 
+      WHERE id = ?
+    `, [booking.id]);
+
+    // Create refund transaction record
+    await query(`
+      INSERT INTO payment_transactions (
+        booking_id, amount, currency, payment_method, status, provider, 
+        paymongo_payment_id, paymongo_refund_id, created_at
+      ) VALUES (?, ?, 'PHP', 'gcash', 'refunded', 'paymongo', ?, ?, NOW())
+    `, [
+      booking.id,
+      booking.price,
+      booking.paymongo_payment_id,
+      refundResult.id
+    ]);
+
+    return {
+      success: true,
+      refundId: refundResult.id,
+      message: `GCash refund processed successfully. Refund ID: ${refundResult.id}`
+    };
+
+  } catch (error) {
+    console.error('GCash refund error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'GCash refund failed',
+      message: 'Failed to process GCash refund'
+    };
+  }
+}
+
+/**
+ * Process manual QR refund (mark as refunded, no actual payment processing)
+ */
+async function processManualQRRefund(booking: any): Promise<{
+  success: boolean;
+  refundId?: string;
+  error?: string;
+  message: string;
+}> {
+  try {
+    // Update booking payment status
+    await query(`
+      UPDATE service_bookings 
+      SET payment_status = 'refunded' 
+      WHERE id = ?
+    `, [booking.id]);
+
+    // Create refund transaction record
+    const refundId = `qr_refund_${booking.id}_${Date.now()}`;
+    await query(`
+      INSERT INTO payment_transactions (
+        booking_id, amount, currency, payment_method, status, provider, 
+        paymongo_refund_id, created_at
+      ) VALUES (?, ?, 'PHP', 'qr_manual', 'refunded', 'manual', ?, NOW())
+    `, [
+      booking.id,
+      booking.price,
+      refundId
+    ]);
+
+    return {
+      success: true,
+      refundId: refundId,
+      message: 'Manual QR refund processed. Provider will handle the actual refund process.'
+    };
+
+  } catch (error) {
+    console.error('Manual QR refund error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Manual QR refund failed',
+      message: 'Failed to process manual QR refund'
+    };
   }
 }

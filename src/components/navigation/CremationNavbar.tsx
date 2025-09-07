@@ -175,7 +175,6 @@ export default function CremationNavbar({
     { name: 'My Packages', href: '/cremation/packages', icon: SquaresPlusIcon, id: 'packages' },
     { name: 'Active Bookings', href: '/cremation/bookings', icon: CalendarIcon, id: 'bookings' },
     { name: 'Booking History', href: '/cremation/history', icon: ClockIcon, id: 'history' },
-    { name: 'Refund Management', href: '/cremation/refunds', icon: CurrencyDollarIcon, id: 'refunds' },
     { name: 'Reports', href: '/cremation/reports', icon: ChartBarIcon, id: 'reports' },
     { name: 'Reviews', href: '/cremation/reviews', icon: StarIcon, id: 'reviews' }
   ];

@@ -56,12 +56,6 @@ export default function CremationSidebar({
       id: 'history'
     },
     {
-      name: 'Refund Management',
-      href: '/cremation/refunds',
-      icon: CurrencyDollarIcon,
-      id: 'refunds'
-    },
-    {
       name: 'Reports',
       href: '/cremation/reports',
       icon: ChartBarIcon,
@@ -117,8 +111,6 @@ export default function CremationSidebar({
         setActivePage('bookings');
       } else if (currentPath === 'history') {
         setActivePage('history');
-      } else if (currentPath === 'refunds') {
-        setActivePage('refunds');
       } else if (currentPath === 'reports') {
         setActivePage('reports');
       } else if (currentPath === 'reviews') {
