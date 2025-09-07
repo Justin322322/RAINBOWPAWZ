@@ -184,7 +184,7 @@ export async function GET(request: NextRequest) {
       countParams.push(status);
     } else {
       // If no status filter, still filter for refund-related statuses
-      countQuery += ' AND r.status IN (\'processed\', \'failed\')';
+      countQuery += ' AND r.status IN (\'processed\', \'failed\', \'cancelled\')';
     }
 
     let countResult: any[] = [];
