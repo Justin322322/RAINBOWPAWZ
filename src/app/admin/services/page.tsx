@@ -115,8 +115,6 @@ const StatusBadge = React.memo(function StatusBadge({ status }: { status: Servic
       return <span className={`${common} bg-green-100 text-green-800`}>Active</span>;
     case 'inactive':
       return <span className={`${common} bg-gray-100 text-gray-800`}>Inactive</span>;
-    case 'pending':
-      return <span className={`${common} bg-yellow-100 text-yellow-800`}>Pending</span>;
     default:
       return <span className={`${common} bg-gray-100 text-gray-800`}>{status}</span>;
   }
@@ -477,7 +475,6 @@ const AdminServicesPage = React.memo(function AdminServicesPage() {
                   { value: 'all', label: 'All Statuses' },
                   { value: 'active', label: 'Active' },
                   { value: 'inactive', label: 'Inactive' },
-                  { value: 'pending', label: 'Pending' },
                 ]}
                 className="w-full"
               />
