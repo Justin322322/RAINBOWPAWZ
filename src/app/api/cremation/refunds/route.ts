@@ -105,8 +105,12 @@ export async function GET(request: NextRequest) {
       }, { status: 500 });
     }
 
-    // Build the main refunds query - query refunds table directly
-    let refundsQuery = `
+    // Build main query including both service_bookings and legacy bookings
+    const statusClause = status
+      ? ' AND r.status = ?'
+      : " AND r.status IN ('pending','processing','processed','failed','cancelled')";
+
+    const selectSB = `
       SELECT
         r.id,
         r.booking_id,
@@ -126,25 +130,50 @@ export async function GET(request: NextRequest) {
         u.email as user_email,
         sp.name as provider_name
       FROM refunds r
-      LEFT JOIN service_bookings b ON r.booking_id = b.id
-      LEFT JOIN users u ON b.user_id = u.user_id
-      LEFT JOIN service_providers sp ON b.provider_id = sp.provider_id
-      WHERE b.provider_id = ?
+      JOIN service_bookings b ON r.booking_id = b.id
+      JOIN users u ON b.user_id = u.user_id
+      JOIN service_providers sp ON b.provider_id = sp.provider_id
+      WHERE b.provider_id = ?${statusClause}
     `;
 
-    const queryParams: any[] = [providerId];
+    const selectLegacy = `
+      SELECT
+        r.id,
+        r.booking_id,
+        r.amount,
+        'PHP' as currency,
+        COALESCE(r.status, 'unknown') as status,
+        COALESCE(r.reason, 'other') as reason,
+        COALESCE(r.payment_method, 'unknown') as payment_method,
+        r.notes,
+        r.created_at,
+        NULL as processed_at,
+        NULL as paymongo_refund_id,
+        NULL as failure_reason,
+        NULL as pet_name,
+        u.first_name,
+        u.last_name,
+        u.email as user_email,
+        sp.name as provider_name
+      FROM refunds r
+      JOIN bookings bk ON r.booking_id = bk.id
+      JOIN users u ON bk.user_id = u.user_id
+      JOIN service_packages spk ON bk.package_id = spk.package_id
+      JOIN service_providers sp ON spk.provider_id = sp.provider_id
+      WHERE spk.provider_id = ?${statusClause}
+    `;
 
-    // Add status filter if provided, otherwise include all relevant statuses (so pending/processing manual refunds show up)
-    if (status) {
-      refundsQuery += ' AND r.status = ?';
-      queryParams.push(status);
-    } else {
-      refundsQuery += ' AND r.status IN (\'pending\', \'processing\', \'processed\', \'failed\', \'cancelled\')';
-    }
+    const refundsQuery = `
+      (${selectSB})
+      UNION ALL
+      (${selectLegacy})
+      ORDER BY created_at DESC
+      LIMIT ${limit} OFFSET ${offset}
+    `;
 
-
-    // Add ordering and pagination (inline validated integers to satisfy MySQL prepared statement constraints)
-    refundsQuery += ` ORDER BY r.created_at DESC LIMIT ${limit} OFFSET ${offset}`;
+    const queryParams: any[] = status
+      ? [providerId, status, providerId, status]
+      : [providerId, providerId];
 
     let refundsResult: any[] = [];
     try {
@@ -175,23 +204,24 @@ export async function GET(request: NextRequest) {
     });
 
     // Get total count for pagination
-    let countQuery = `
-      SELECT COUNT(*) as total
-      FROM refunds r
-      LEFT JOIN service_bookings b ON r.booking_id = b.id
-      WHERE b.provider_id = ?
+    const countQuery = `
+      SELECT SUM(cnt) as total FROM (
+        SELECT COUNT(*) as cnt
+        FROM refunds r
+        JOIN service_bookings b ON r.booking_id = b.id
+        WHERE b.provider_id = ?${statusClause}
+        UNION ALL
+        SELECT COUNT(*) as cnt
+        FROM refunds r
+        JOIN bookings bk ON r.booking_id = bk.id
+        JOIN service_packages spk ON bk.package_id = spk.package_id
+        WHERE spk.provider_id = ?${statusClause}
+      ) as t
     `;
 
-    const countParams: any[] = [providerId];
-
-    // Add status filter to count query if provided
-    if (status) {
-      countQuery = countQuery.replace('WHERE b.provider_id = ?', 'WHERE b.provider_id = ? AND r.status = ?');
-      countParams.push(status);
-    } else {
-      // If no status filter, include all relevant statuses
-      countQuery += ' AND r.status IN (\'pending\', \'processing\', \'processed\', \'failed\', \'cancelled\')';
-    }
+    const countParams: any[] = status
+      ? [providerId, status, providerId, status]
+      : [providerId, providerId];
 
 
     let countResult: any[] = [];
