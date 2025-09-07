@@ -40,9 +40,6 @@ export async function createAdminNotification({
       if (entityId) {
         link = `/admin/applications/${entityId}`;
       }
-    } else if (type === 'refund_request') {
-      // Refunds are now handled by cremation centers, no admin link needed
-      link = null;
     } else if (type === 'new_appeal' || type === 'appeal_submitted') {
       // Link to the appropriate admin users page based on entity type
       if (entityType === 'furparent' || entityType === 'user') {
@@ -241,7 +238,6 @@ function createAdminEmailHtml(firstName: string, title: string, message: string,
   // Button text based on notification type
   const getButtonText = () => {
     if (type === 'new_cremation_center' || type === 'pending_application') return 'Review Application';
-    if (type === 'refund_request') return 'Review Refund';
     return 'View Details';
   };
 

@@ -80,12 +80,7 @@ export async function createUserNotification({
 /**
  * Determine the appropriate link for a notification type
  */
-function determineNotificationLink(type: string, entityId?: number): string | null {
-  if (type === 'refund_processed' || type === 'refund_approved') {
-    return entityId 
-      ? `/user/furparent_dashboard/bookings?bookingId=${entityId}`
-      : '/user/furparent_dashboard/bookings';
-  }
+function determineNotificationLink(_type: string, _entityId?: number): string | null {
   return null;
 }
 

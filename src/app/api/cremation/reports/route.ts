@@ -52,6 +52,26 @@ export async function GET(request: NextRequest) {
       useServiceBookings = false;
     }
 
+    // Get refund data for the reports
+    const refundQuery = `
+      SELECT 
+        COUNT(*) as total_refunds,
+        COALESCE(SUM(amount), 0) as total_refunded,
+        COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed_refunds,
+        COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending_refunds,
+        COUNT(CASE WHEN refund_type = 'manual' THEN 1 END) as manual_refunds
+      FROM refunds r
+      ${useServiceBookings ? `
+        JOIN service_bookings sb ON r.booking_id = sb.id
+        WHERE sb.provider_id = ? ${dateCondition.replace('sb.booking_date', 'r.initiated_at')}
+      ` : `
+        JOIN bookings b ON r.booking_id = b.id
+        WHERE b.provider_id = ? ${dateCondition.replace('sb.booking_date', 'r.initiated_at')}
+      `}
+    `;
+
+    const refundData = await query(refundQuery, queryParams) as any[];
+
     let stats = {
       totalBookings: 0,
       completedBookings: 0,
@@ -168,8 +188,26 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // Add refund data to stats
+    const refundStats = refundData[0] || {
+      total_refunds: 0,
+      total_refunded: 0,
+      completed_refunds: 0,
+      pending_refunds: 0,
+      manual_refunds: 0
+    };
+
     return NextResponse.json({
-      stats,
+      stats: {
+        ...stats,
+        totalRefunds: parseInt(refundStats.total_refunds),
+        totalRefunded: parseFloat(refundStats.total_refunded),
+        completedRefunds: parseInt(refundStats.completed_refunds),
+        pendingRefunds: parseInt(refundStats.pending_refunds),
+        manualRefunds: parseInt(refundStats.manual_refunds),
+        refundRate: stats.totalBookings > 0 ? 
+          ((parseInt(refundStats.total_refunds) / stats.totalBookings) * 100).toFixed(2) : '0'
+      },
       topServices,
       monthlyData: [], // Could be implemented later
       recentActivity: [] // Could be implemented later

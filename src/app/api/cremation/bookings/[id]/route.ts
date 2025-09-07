@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
-import { processAutomaticRefund } from '@/services/paymentService';
 import { createBookingNotification, type BookingNotificationType } from '@/utils/comprehensiveNotificationService';
+import { cancelBookingWithRefund } from '@/services/bookingCancellationService';
 
 export async function GET(
   _request: NextRequest,
@@ -137,44 +137,39 @@ export async function PUT(
             notificationType = 'booking_completed';
             break;
           case 'cancelled':
-            notificationType = 'booking_cancelled';
-            // Indicate this cancellation was initiated by the service provider
-            let cancellationReason = 'Service provider cancelled the booking';
-            
-            additionalData = {
-              cancelledBy: 'provider',
-              source: 'provider',
-              reason: cancellationReason
-            };
+            // Use the booking cancellation service for provider cancellations
             try {
-              // If booking is paid, initiate automatic refund
-              const paymentInfo = await query(
-                `SELECT payment_status, payment_method, price FROM service_bookings WHERE id = ? LIMIT 1`,
-                [bookingId]
-              ) as any[];
-              if (paymentInfo && paymentInfo[0]?.payment_status === 'paid') {
-                const pm = paymentInfo[0].payment_method;
-                if (pm === 'gcash') {
-                  await processAutomaticRefund(parseInt(bookingId));
-                } else if (pm === 'qr_manual' || pm === 'qr_transfer') {
-                  // include latest receipt in notes if exists
-                  const receiptRows = await query(
-                    `SELECT receipt_path FROM payment_receipts WHERE booking_id = ? ORDER BY uploaded_at DESC LIMIT 1`,
-                    [bookingId]
-                  ) as any[];
-                  const receiptPath = receiptRows?.[0]?.receipt_path || '';
-                  const notes = receiptPath
-                    ? `Provider cancelled - awaiting approval. Receipt: ${receiptPath}`
-                    : 'Provider cancelled - awaiting approval.';
-                  await query(
-                    `INSERT INTO refunds (booking_id, amount, reason, status, payment_method, notes)
-                     VALUES (?, ?, 'requested_by_customer', 'pending', 'qr_manual', ?)`,
-                    [bookingId, paymentInfo[0].price, notes]
-                  );
-                }
-              }
-            } catch (refundError) {
-              console.error('Error initiating automatic refund on provider cancellation:', refundError);
+              const clientIp = request.headers.get('x-forwarded-for') || 
+                               request.headers.get('x-real-ip') || 
+                               'unknown';
+
+              const cancellationResult = await cancelBookingWithRefund({
+                bookingId: parseInt(bookingId),
+                reason: 'Service provider cancelled the booking',
+                cancelledBy: 0, // System cancellation - could be improved to track actual provider
+                cancelledByType: 'provider',
+                notes: 'Cancellation initiated by cremation service provider',
+                ipAddress: clientIp
+              });
+
+              notificationType = 'booking_cancelled';
+              additionalData = {
+                cancelledBy: 'provider',
+                source: 'provider',
+                reason: 'Service provider cancelled the booking',
+                refund_initiated: cancellationResult.refundInitiated,
+                refund_type: cancellationResult.refundType,
+                refund_id: cancellationResult.refundId
+              };
+            } catch (cancellationError) {
+              console.error('Error processing refund for provider cancellation:', cancellationError);
+              // Fall back to basic cancellation notification
+              notificationType = 'booking_cancelled';
+              additionalData = {
+                cancelledBy: 'provider',
+                source: 'provider',
+                reason: 'Service provider cancelled the booking'
+              };
             }
             break;
           default:

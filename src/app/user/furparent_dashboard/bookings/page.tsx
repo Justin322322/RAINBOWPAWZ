@@ -18,10 +18,9 @@ import {
   CalendarIcon,
   MapPinIcon,
   ExclamationTriangleIcon,
-
+  CurrencyDollarIcon,
   StarIcon,
-  DocumentCheckIcon,
-  CurrencyDollarIcon
+  DocumentCheckIcon
 } from '@heroicons/react/24/outline';
 import FurParentDashboardWrapper from '@/components/navigation/FurParentDashboardWrapper';
 import FurParentPageSkeleton from '@/components/ui/FurParentPageSkeleton';
@@ -29,6 +28,16 @@ import ReviewModal from '@/components/reviews/ReviewModal';
 import ReviewDisplay from '@/components/reviews/ReviewDisplay';
 import CremationCertificate from '@/components/certificates/CremationCertificate';
 import BookingTimeline from '@/components/booking/BookingTimeline';
+
+interface RefundData {
+  id: number;
+  amount: number;
+  status: 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled';
+  refund_type: 'automatic' | 'manual';
+  initiated_at: string;
+  completed_at?: string;
+  reason: string;
+}
 
 interface BookingData {
   id: number;
@@ -49,13 +58,14 @@ interface BookingData {
   service_price: number;
   provider_name: string;
   provider_address: string;
+  refund?: RefundData;
   pet_name: string;
   pet_type: string;
   pet_breed?: string;
   pet_image_url?: string;
   cause_of_death?: string;
   payment_method?: string;
-  payment_status?: 'not_paid' | 'partially_paid' | 'paid' | 'refunded';
+  payment_status?: 'not_paid' | 'partially_paid' | 'paid';
   delivery_option?: string;
   delivery_address?: string;
   delivery_distance?: number;
@@ -372,7 +382,7 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
         throw new Error(errorMessage);
       }
 
-      const responseData = await response.json();
+      await response.json();
 
       // Update the booking status locally
       const updatedBookings = allBookings.map(booking =>
@@ -380,7 +390,7 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
           ? {
               ...booking,
               status: 'cancelled' as BookingData['status'],
-              payment_status: responseData.refund?.success ? 'refunded' as BookingData['payment_status'] : booking.payment_status
+              payment_status: booking.payment_status
             }
           : booking
       );
@@ -466,8 +476,6 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
         return 'bg-yellow-100 text-yellow-800';
       case 'not_paid':
         return 'bg-red-100 text-red-800';
-      case 'refunded':
-        return 'bg-blue-100 text-blue-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
@@ -481,8 +489,6 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
         return <ClockIcon className="h-5 w-5 text-yellow-500" />;
       case 'not_paid':
         return <XCircleIcon className="h-5 w-5 text-red-500" />;
-      case 'refunded':
-        return <CurrencyDollarIcon className="h-5 w-5 text-blue-500" />;
       default:
         return <ClockIcon className="h-5 w-5 text-gray-500" />;
     }
@@ -822,6 +828,48 @@ const BookingsPage: React.FC<BookingsPageProps> = ({ userData }) => {
                         <div className="mt-4">
                           <h4 className="text-sm font-medium text-gray-500">Special Instructions</h4>
                           <p className="mt-1 text-sm text-gray-900">{getFilteredSpecialRequests(booking.special_requests)}</p>
+                        </div>
+                      )}
+
+                      {/* Refund Information */}
+                      {booking.refund && (
+                        <div className="mt-4 p-3 bg-orange-50 border border-orange-200 rounded-md">
+                          <div className="flex items-center">
+                            <CurrencyDollarIcon className="h-5 w-5 text-orange-500 mr-2" />
+                            <h4 className="text-sm font-medium text-orange-800">Refund Information</h4>
+                          </div>
+                          <div className="mt-2 space-y-1">
+                            <p className="text-sm text-orange-700">
+                              <span className="font-medium">Amount:</span> ₱{booking.refund.amount.toLocaleString()}
+                            </p>
+                            <p className="text-sm text-orange-700">
+                              <span className="font-medium">Status:</span>{' '}
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                booking.refund.status === 'completed' ? 'bg-green-100 text-green-800' :
+                                booking.refund.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                                booking.refund.status === 'processing' ? 'bg-blue-100 text-blue-800' :
+                                'bg-red-100 text-red-800'
+                              }`}>
+                                {booking.refund.status}
+                              </span>
+                            </p>
+                            <p className="text-sm text-orange-700">
+                              <span className="font-medium">Type:</span> {booking.refund.refund_type}
+                            </p>
+                            <p className="text-sm text-orange-700">
+                              <span className="font-medium">Reason:</span> {booking.refund.reason}
+                            </p>
+                            <p className="text-sm text-orange-700">
+                              <span className="font-medium">Initiated:</span>{' '}
+                              {new Date(booking.refund.initiated_at).toLocaleDateString()}
+                            </p>
+                            {booking.refund.completed_at && (
+                              <p className="text-sm text-orange-700">
+                                <span className="font-medium">Completed:</span>{' '}
+                                {new Date(booking.refund.completed_at).toLocaleDateString()}
+                              </p>
+                            )}
+                          </div>
                         </div>
                       )}
                     </div>

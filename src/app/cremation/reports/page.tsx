@@ -29,7 +29,13 @@ function CremationReportsPage({ userData }: { userData: any }) {
             pendingBookings: 0,
             totalRevenue: 0,
             averageRevenue: 0,
-            averageRating: 0
+            averageRating: 0,
+            totalRefunds: 0,
+            totalRefunded: 0,
+            completedRefunds: 0,
+            pendingRefunds: 0,
+            manualRefunds: 0,
+            refundRate: '0'
         },
         monthlyData: [],
         topServices: [],
@@ -203,6 +209,40 @@ ${reportData.topServices.map((service: any, index: number) =>
                             icon={<CurrencyDollarIcon />}
                             label="Total Revenue"
                             value={`₱${reportData.stats.totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                            color="amber"
+                        />
+                    </>
+                )}
+            </div>
+
+            {/* Refund Stats */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                {loading ? (
+                    <StatsCardSkeleton count={4} />
+                ) : (
+                    <>
+                        <StatCard
+                            icon={<XCircleIcon />}
+                            label="Total Refunds"
+                            value={reportData.stats.totalRefunds.toString()}
+                            color="purple"
+                        />
+                        <StatCard
+                            icon={<CurrencyDollarIcon />}
+                            label="Total Refunded"
+                            value={`₱${reportData.stats.totalRefunded.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                            color="purple"
+                        />
+                        <StatCard
+                            icon={<ClockIcon />}
+                            label="Pending Refunds"
+                            value={reportData.stats.pendingRefunds.toString()}
+                            color="yellow"
+                        />
+                        <StatCard
+                            icon={<ChartBarIcon />}
+                            label="Refund Rate"
+                            value={`${reportData.stats.refundRate}%`}
                             color="amber"
                         />
                     </>

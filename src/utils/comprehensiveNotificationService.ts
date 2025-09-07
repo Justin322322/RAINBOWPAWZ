@@ -28,7 +28,7 @@ type PaymentNotificationType =
   | 'payment_pending'
   | 'payment_confirmed'
   | 'payment_failed'
-  | 'payment_refunded';
+;
 
 // System notification types
 type SystemNotificationType =
@@ -212,11 +212,6 @@ export async function createPaymentNotification(
         type = 'error';
         break;
 
-      case 'payment_refunded':
-        title = 'Payment Refunded';
-        message = `Your payment of ₱${total_amount} for ${pet_name}'s ${service_name} has been refunded.`;
-        type = 'info';
-        break;
 
       default:
         return { success: false, error: 'Invalid payment notification type' };
@@ -229,7 +224,7 @@ export async function createPaymentNotification(
       message,
       type,
       link,
-      shouldSendEmail: ['payment_confirmed', 'payment_failed', 'payment_refunded'].includes(paymentStatus)
+      shouldSendEmail: ['payment_confirmed', 'payment_failed'].includes(paymentStatus)
     });
 
     // Send SMS notification for important payment events
@@ -479,9 +474,6 @@ async function sendPaymentSMSNotification(
         smsMessage = `Hi ${first_name}, your payment for ${bookingDetails.pet_name}'s ${bookingDetails.service_name} could not be processed. Please retry payment or contact support. Booking ID: #${bookingDetails.id}. Rainbow Paws`;
         break;
 
-      case 'payment_refunded':
-        smsMessage = `Hi ${first_name}, your payment of ₱${bookingDetails.total_amount || bookingDetails.price} for booking #${bookingDetails.id} has been refunded. Please allow 3-5 business days for processing. Rainbow Paws`;
-        break;
 
       default:
         return; // No SMS for other payment statuses

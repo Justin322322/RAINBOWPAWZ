@@ -68,118 +68,13 @@ interface _WebhookPayload {
 
 export interface PaymentStatus {
   booking_id: number;
-  payment_status: 'not_paid' | 'partially_paid' | 'paid' | 'refunded';
+  payment_status: 'not_paid' | 'partially_paid' | 'paid';
   payment_method: string;
   transaction_id?: number;
   amount_paid?: number;
   last_payment_date?: Date;
 }
 
-// Refund-related types
-export interface RefundTransaction {
-  id?: number;
-  booking_id: number;
-  amount: number;
-  currency: string;
-  reason: RefundReason;
-  status: RefundStatus;
-  payment_method: 'gcash' | 'qr_manual' | 'cash';
-  provider: 'paymongo' | 'manual';
-  paymongo_payment_id?: string;
-  paymongo_refund_id?: string;
-  provider_transaction_id?: string;
-  notes?: string;
-  failure_reason?: string;
-  metadata?: Record<string, any>;
-  created_at?: Date;
-  updated_at?: Date;
-  processed_at?: Date;
-}
-
-export type RefundStatus = 'pending' | 'processing' | 'succeeded' | 'failed' | 'cancelled';
-
-export type RefundReason =
-  | 'requested_by_customer'
-  | 'duplicate'
-  | 'fraudulent'
-  | 'service_not_provided'
-  | 'other';
-
-export interface RefundRequest {
-  booking_id: number;
-  amount: number;
-  reason: RefundReason;
-  notes?: string;
-  payment_method?: 'gcash' | 'qr_manual' | 'cash';
-}
-
-export interface RefundResponse {
-  success: boolean;
-  refund_id?: string;
-  amount?: number;
-  status?: RefundStatus;
-  message: string;
-  error?: string;
-  transaction_id?: number;
-}
-
-export interface RefundSummary {
-  total_amount: number;
-  total_count: number;
-  pending_count: number;
-  processed_count: number;
-  failed_count: number;
-  success_rate: number;
-}
-
-export interface RefundListItem {
-  id: number;
-  booking_id: number;
-  amount: number;
-  status: RefundStatus;
-  reason: RefundReason;
-  payment_method: string;
-  created_at: Date;
-  processed_at?: Date;
-  notes?: string;
-  pet_name?: string;
-  user_name?: string;
-  provider_name?: string;
-}
-
-export interface RefundDetail {
-  id: number;
-  booking_id: number;
-  amount: number;
-  currency: string;
-  status: RefundStatus;
-  reason: RefundReason;
-  payment_method: string;
-  provider: string;
-  notes?: string;
-  failure_reason?: string;
-  paymongo_payment_id?: string;
-  paymongo_refund_id?: string;
-  created_at: Date;
-  updated_at: Date;
-  processed_at?: Date;
-  // Related booking information
-  booking_details: {
-    pet_name: string;
-    user_name: string;
-    user_email: string;
-    provider_name: string;
-    service_date?: Date;
-    service_type: string;
-  };
-  // Related payment information
-  payment_details: {
-    original_amount: number;
-    payment_date: Date;
-    payment_method: string;
-    transaction_id?: string;
-  };
-}
 
 interface _GCashPaymentConfig {
   public_key: string;

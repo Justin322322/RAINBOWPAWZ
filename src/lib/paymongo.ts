@@ -1,6 +1,6 @@
 /**
- * PayMongo API Client for GCash Payment Integration
- * This module provides functions to interact with PayMongo's API for processing GCash payments
+ * PayMongo API Client for Payment and Refund Integration
+ * This module provides functions to interact with PayMongo's API for processing payments and refunds
  */
 
 const PAYMONGO_BASE_URL = 'https://api.paymongo.com/v1';
@@ -82,6 +82,50 @@ interface CreateSourceData {
     phone?: string;
   };
   description?: string;
+}
+
+interface PayMongoRefund {
+  id: string;
+  type: string;
+  attributes: {
+    amount: number;
+    currency: string;
+    payment_id: string;
+    reason: string;
+    status: 'pending' | 'succeeded' | 'failed';
+    notes?: string;
+    metadata?: Record<string, any>;
+    created_at: number;
+    updated_at: number;
+    available_at?: number;
+  };
+}
+
+interface CreateRefundData {
+  payment_id: string;
+  amount: number; // Amount in centavos
+  reason: 'duplicate' | 'fraudulent' | 'requested_by_customer';
+  notes?: string;
+  metadata?: Record<string, any>;
+}
+
+interface PayMongoPayment {
+  id: string;
+  type: string;
+  attributes: {
+    amount: number;
+    currency: string;
+    description: string;
+    status: string;
+    livemode: boolean;
+    source?: {
+      id: string;
+      type: string;
+    };
+    refunds?: PayMongoRefund[];
+    created_at: number;
+    updated_at: number;
+  };
 }
 
 
@@ -190,16 +234,17 @@ export function phpToCentavos(amount: number): number {
   return Math.round(amount * 100);
 }
 
-
+/**
+ * Convert centavos to PHP amount
+ */
+export function centavosToPhp(amount: number): number {
+  return amount / 100;
+}
 
 /**
- * Create a refund for a payment
+ * Create a refund for a PayMongo payment
  */
-export async function createRefund(paymentId: string, refundData: {
-  amount: number; // Amount in centavos
-  reason: string;
-  notes?: string;
-}): Promise<any> {
+export async function createRefund(data: CreateRefundData): Promise<PayMongoRefund> {
   const secretKey = process.env.PAYMONGO_SECRET_KEY;
 
   if (!secretKey) {
@@ -215,10 +260,11 @@ export async function createRefund(paymentId: string, refundData: {
     body: JSON.stringify({
       data: {
         attributes: {
-          amount: refundData.amount,
-          payment_id: paymentId,
-          reason: refundData.reason,
-          notes: refundData.notes
+          payment_id: data.payment_id,
+          amount: data.amount,
+          reason: data.reason,
+          notes: data.notes,
+          metadata: data.metadata,
         }
       }
     })
@@ -233,6 +279,90 @@ export async function createRefund(paymentId: string, refundData: {
   const result = await response.json();
   return result.data;
 }
+
+/**
+ * Retrieve a refund by ID
+ */
+export async function retrieveRefund(refundId: string): Promise<PayMongoRefund> {
+  const secretKey = process.env.PAYMONGO_SECRET_KEY;
+
+  if (!secretKey) {
+    throw new Error('PayMongo secret key is not configured');
+  }
+
+  const response = await fetch(`${PAYMONGO_BASE_URL}/refunds/${refundId}`, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Basic ${Buffer.from(secretKey + ':').toString('base64')}`,
+      'Content-Type': 'application/json',
+    }
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(`PayMongo API Error: ${error.errors?.[0]?.detail || 'Unknown error'}`);
+  }
+
+  const result = await response.json();
+  return result.data;
+}
+
+/**
+ * Retrieve a payment by ID (useful for getting payment details for refunds)
+ */
+export async function retrievePayment(paymentId: string): Promise<PayMongoPayment> {
+  const secretKey = process.env.PAYMONGO_SECRET_KEY;
+
+  if (!secretKey) {
+    throw new Error('PayMongo secret key is not configured');
+  }
+
+  const response = await fetch(`${PAYMONGO_BASE_URL}/payments/${paymentId}`, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Basic ${Buffer.from(secretKey + ':').toString('base64')}`,
+      'Content-Type': 'application/json',
+    }
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(`PayMongo API Error: ${error.errors?.[0]?.detail || 'Unknown error'}`);
+  }
+
+  const result = await response.json();
+  return result.data;
+}
+
+/**
+ * List payments for a source (useful for finding payment ID from source ID)
+ */
+export async function listPaymentsBySource(sourceId: string): Promise<PayMongoPayment[]> {
+  const secretKey = process.env.PAYMONGO_SECRET_KEY;
+
+  if (!secretKey) {
+    throw new Error('PayMongo secret key is not configured');
+  }
+
+  const response = await fetch(`${PAYMONGO_BASE_URL}/payments?source_id=${sourceId}`, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Basic ${Buffer.from(secretKey + ':').toString('base64')}`,
+      'Content-Type': 'application/json',
+    }
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(`PayMongo API Error: ${error.errors?.[0]?.detail || 'Unknown error'}`);
+  }
+
+  const result = await response.json();
+  return result.data || [];
+}
+
+
+
 
 
 

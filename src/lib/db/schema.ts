@@ -68,46 +68,6 @@ export async function ensureAvailabilityTablesExist(): Promise<boolean> {
   }
 }
 
-export async function ensureRefundsTableExists(): Promise<boolean> {
-  try {
-    const tableExists = await checkTableExists('refunds');
-    if (!tableExists) {
-      const createRefundsTableQuery = `
-        CREATE TABLE refunds (
-          id INT NOT NULL AUTO_INCREMENT,
-          booking_id INT NOT NULL,
-          amount DECIMAL(10, 2) NOT NULL,
-          reason TEXT COLLATE utf8mb4_unicode_ci,
-          status ENUM(
-            'pending',
-            'processing',
-            'processed',
-            'failed',
-            'cancelled'
-          ) COLLATE utf8mb4_unicode_ci DEFAULT 'pending',
-          processed_by INT DEFAULT NULL,
-          payment_method VARCHAR(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-          transaction_id VARCHAR(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-          notes TEXT COLLATE utf8mb4_unicode_ci,
-          created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-          updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-          PRIMARY KEY (id),
-          KEY idx_booking_id (booking_id),
-          KEY idx_status (status),
-          KEY idx_created_at (created_at)
-        ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci
-      `;
-      await query(createRefundsTableQuery);
-      console.log('✅ Created refunds table successfully');
-    } else {
-      console.log('✅ Refunds table already exists');
-    }
-    return true;
-  } catch (error) {
-    console.error('❌ Error ensuring refunds table exists:', error);
-    return false;
-  }
-}
 
 export async function checkTableExists(tableName: string): Promise<boolean> {
   try {

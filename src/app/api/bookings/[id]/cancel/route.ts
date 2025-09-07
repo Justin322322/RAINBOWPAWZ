@@ -1,14 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthTokenFromRequest } from '@/utils/auth';
-import { query, withTransaction } from '@/lib/db';
+import { query } from '@/lib/db';
+import { cancelBookingWithRefund } from '@/services/bookingCancellationService';
 
 // Import the email templates
 import { createBookingStatusUpdateEmail } from '@/lib/emailTemplates';
 // Import the consolidated email service
 import { sendEmail } from '@/lib/consolidatedEmailService';
 import { createBookingNotification } from '@/utils/comprehensiveNotificationService';
-// Import payment service for automatic refunds
-// import { processAutomaticRefund } from '@/services/paymentService';
 
 export async function POST(request: NextRequest) {
   // Extract ID from URL
@@ -81,62 +80,35 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Perform cancellation operations in a transaction for consistency
-    const _cancellationResult = await withTransaction(async (transaction) => {
-      // Update the booking status in the database
-      const updateResult = await transaction.query(
-        `UPDATE bookings
-         SET status = 'cancelled', updated_at = NOW()
-         WHERE id = ? AND user_id = ? AND status IN ('pending', 'confirmed')`,
-        [bookingId, userId]
-      ) as any;
+    // Get client IP for audit trail
+    const clientIp = request.headers.get('x-forwarded-for') || 
+                     request.headers.get('x-real-ip') || 
+                     'unknown';
 
-      // Verify the update was successful
-      if (!updateResult || updateResult.affectedRows === 0) {
-        throw new Error('Failed to update booking status - it may have already been processed');
-      }
-
-      return {};
+    // Use the new booking cancellation service with refund processing
+    const cancellationResult = await cancelBookingWithRefund({
+      bookingId: parseInt(bookingId),
+      reason: 'Customer requested cancellation',
+      cancelledBy: parseInt(userId),
+      cancelledByType: 'customer',
+      notes: 'Self-service cancellation via web portal',
+      ipAddress: clientIp
     });
 
-    // Process refund handling: create pending refund for legacy manual QR when a receipt exists (regardless of confirmation)
-    try {
-      // If legacy flow (bookings table), treat a confirmed receipt as paid and create a pending refund
-      const receipt = await query(
-        `SELECT receipt_path, status FROM payment_receipts WHERE booking_id = ? ORDER BY uploaded_at DESC LIMIT 1`,
-        [bookingId]
-      ) as any[];
-      const hasReceipt = Array.isArray(receipt) && receipt.length > 0;
-      const receiptStatus = hasReceipt ? (receipt[0].status as string | null) : null;
-      const receiptPath = hasReceipt ? (receipt[0].receipt_path as string | '') : '';
-
-      if (hasReceipt) {
-        // Avoid duplicate pending refund
-        const existing = await query(
-          `SELECT id FROM refunds WHERE booking_id = ? AND status IN ('pending','processing','processed') LIMIT 1`,
-          [bookingId]
-        ) as any[];
-        if (!existing || existing.length === 0) {
-          const amount = bookingData.price || 0;
-          const notesBase = 'User cancelled - awaiting provider approval.';
-          const statusNote = receiptStatus ? ` (receipt status: ${receiptStatus})` : '';
-          const notesWithStatus = `${notesBase}${statusNote}`;
-          const notes = receiptPath ? `${notesWithStatus} Receipt: ${receiptPath}` : notesWithStatus;
-          await query(
-            `INSERT INTO refunds (booking_id, amount, reason, status, payment_method, notes)
-             VALUES (?, ?, 'requested_by_customer', 'pending', 'qr_manual', ?)`,
-            [bookingId, amount, notes]
-          );
-        }
-      }
-    } catch (refundError) {
-      console.error('Refund handling on cancel (legacy) error:', refundError);
+    if (!cancellationResult.success) {
+      return NextResponse.json({
+        error: cancellationResult.message || 'Failed to cancel booking',
+        details: cancellationResult.error
+      }, { status: 400 });
     }
 
-    // Send booking cancellation notifications
+    // Send booking cancellation notifications (fallback if not sent by cancellation service)
     try {
       await createBookingNotification(parseInt(bookingId), 'booking_cancelled', {
-        reason: 'Customer requested cancellation'
+        reason: 'Customer requested cancellation',
+        refund_initiated: cancellationResult.refundInitiated,
+        refund_type: cancellationResult.refundType,
+        refund_id: cancellationResult.refundId
       });
     } catch (notificationError) {
       console.error('Error sending cancellation notifications:', notificationError);
@@ -207,14 +179,18 @@ export async function POST(request: NextRequest) {
       // Continue with the cancellation process even if the email fails
     }
 
-    // Return success response (refund details may be handled separately depending on payment method)
+    // Return success response with refund information
     return NextResponse.json({
       success: true,
-      message: 'Booking cancelled successfully',
+      message: cancellationResult.message,
       booking: {
         id: bookingId,
         status: 'cancelled'
-      }
+      },
+      refund_initiated: cancellationResult.refundInitiated,
+      refund_id: cancellationResult.refundId,
+      refund_type: cancellationResult.refundType,
+      refund_instructions: cancellationResult.refundInstructions
     });
   } catch {
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });

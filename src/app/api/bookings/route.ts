@@ -100,6 +100,24 @@ export async function GET(request: NextRequest) {
 
         // Format the bookings data
         const formattedBookings = await Promise.all(directResult.map(async (booking) => {
+          // Get refund information for this booking
+          let refundData = null;
+          try {
+            const refundQuery = `
+              SELECT id, amount, status, refund_type, initiated_at, completed_at, reason
+              FROM refunds 
+              WHERE booking_id = ? 
+              ORDER BY initiated_at DESC 
+              LIMIT 1
+            `;
+            const refundResult = await query(refundQuery, [booking.id]) as any[];
+            if (refundResult && refundResult.length > 0) {
+              refundData = refundResult[0];
+            }
+          } catch (error) {
+            console.error('Error fetching refund data for booking:', booking.id, error);
+          }
+
           // Format dates for consistency
           let formattedDate = null;
 
@@ -211,7 +229,8 @@ export async function GET(request: NextRequest) {
             service_description: 'Pet cremation service',
             service_price: booking.price || 0,
             pet_name: booking.pet_name || 'Unknown Pet',
-            pet_type: booking.pet_type || 'Unknown Type'
+            pet_type: booking.pet_type || 'Unknown Type',
+            refund: refundData
           };
         }));
 
@@ -764,7 +783,25 @@ export async function GET(request: NextRequest) {
           const petsResult = await query(petsQuery, [userId]) as any[];
 
           // Map bookings with pet info
-          const formattedBookings = bookingsResult.map(booking => {
+          const formattedBookings = await Promise.all(bookingsResult.map(async (booking) => {
+            // Get refund information for this booking
+            let refundData = null;
+            try {
+              const refundQuery = `
+                SELECT id, amount, status, refund_type, initiated_at, completed_at, reason
+                FROM refunds 
+                WHERE booking_id = ? 
+                ORDER BY initiated_at DESC 
+                LIMIT 1
+              `;
+              const refundResult = await query(refundQuery, [booking.id]) as any[];
+              if (refundResult && refundResult.length > 0) {
+                refundData = refundResult[0];
+              }
+            } catch (error) {
+              console.error('Error fetching refund data for booking:', booking.id, error);
+            }
+
             // Find the most recent pet that was created before or at the same time as the booking
             // This likely matches the pet associated with the booking
             const matchingPet = petsResult?.find(pet =>
@@ -786,9 +823,10 @@ export async function GET(request: NextRequest) {
               provider_name: booking.provider_name || 'Service Provider',
               provider_address: booking.provider_address || 'Provider Address',
               service_name: booking.service_name || 'Cremation Service',
-              service_description: booking.service_description || 'Pet cremation service'
+              service_description: booking.service_description || 'Pet cremation service',
+              refund: refundData
             };
-          });
+          }));
 
           return NextResponse.json({ bookings: formattedBookings });
         }
