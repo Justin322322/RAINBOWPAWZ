@@ -6,12 +6,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifySecureAuth } from '@/lib/secureAuth';
 import { query } from '@/lib/db';
+import { initializeRefundTables } from '@/lib/db/refunds';
 
 /**
  * GET /api/cremation/refunds - Get refunds for the authenticated cremation business
  */
 export async function GET(request: NextRequest) {
   try {
+    // Ensure refund tables exist first
+    await initializeRefundTables();
+
     const authResult = await verifySecureAuth(request);
     if (!authResult) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
