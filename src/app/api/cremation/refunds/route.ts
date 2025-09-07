@@ -7,6 +7,8 @@ export async function GET(request: NextRequest) {
   try {
     if (process.env.NODE_ENV === 'development') {
       console.log('🔐 [Refunds API] Starting authentication check...');
+      console.log('🔍 [Refunds API] Request URL:', request.url);
+      console.log('🔍 [Refunds API] Request method:', request.method);
     }
 
     // Verify secure authentication
@@ -206,10 +208,18 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Error fetching cremation refunds:', error);
+    console.error('❌ [Refunds API] Error fetching cremation refunds:', error);
+
+    if (process.env.NODE_ENV === 'development') {
+      console.error('❌ [Refunds API] Stack trace:', error instanceof Error ? error.stack : 'No stack trace');
+      console.error('❌ [Refunds API] Error type:', typeof error);
+      console.error('❌ [Refunds API] Error details:', JSON.stringify(error, null, 2));
+    }
+
     return NextResponse.json({
       error: 'Internal Server Error',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      details: error instanceof Error ? error.message : 'Unknown error',
+      timestamp: new Date().toISOString()
     }, { status: 500 });
   }
 }
