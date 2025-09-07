@@ -6,6 +6,7 @@
 import { query } from '@/lib/db';
 import { createSource, phpToCentavos, createRefund } from '@/lib/paymongo';
 import { getServerAppUrl } from '@/utils/appUrl';
+import { createPaymentNotification } from '@/utils/comprehensiveNotificationService';
 import {
   PaymentTransaction,
   CreatePaymentRequest,
@@ -454,6 +455,13 @@ async function processGCashRefund(booking: any): Promise<{
       refundResult.id
     ]);
 
+    // Send unified refund notification (includes email)
+    try {
+      await createPaymentNotification(booking.id, 'payment_refunded');
+    } catch (notificationError) {
+      console.error('Failed to create payment refund notification (gcash):', notificationError);
+    }
+
     return {
       success: true,
       refundId: refundResult.id,
@@ -499,6 +507,13 @@ async function processManualQRRefund(booking: any): Promise<{
       booking.price,
       refundId
     ]);
+
+    // Send unified refund notification (includes email)
+    try {
+      await createPaymentNotification(booking.id, 'payment_refunded');
+    } catch (notificationError) {
+      console.error('Failed to create payment refund notification (qr_manual):', notificationError);
+    }
 
     return {
       success: true,

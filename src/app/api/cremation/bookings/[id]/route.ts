@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
+import { processAutomaticRefund } from '@/services/paymentService';
 import { createBookingNotification, type BookingNotificationType } from '@/utils/comprehensiveNotificationService';
 
 export async function GET(
@@ -145,6 +146,18 @@ export async function PUT(
               source: 'provider',
               reason: cancellationReason
             };
+            try {
+              // If booking is paid, initiate automatic refund
+              const paymentInfo = await query(
+                `SELECT payment_status FROM service_bookings WHERE id = ? LIMIT 1`,
+                [bookingId]
+              ) as any[];
+              if (paymentInfo && paymentInfo[0]?.payment_status === 'paid') {
+                await processAutomaticRefund(parseInt(bookingId));
+              }
+            } catch (refundError) {
+              console.error('Error initiating automatic refund on provider cancellation:', refundError);
+            }
             break;
           default:
             notificationType = 'booking_pending';

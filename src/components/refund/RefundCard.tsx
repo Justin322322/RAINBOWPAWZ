@@ -29,8 +29,19 @@ export function RefundCard({ refund, onAction: _onAction }: RefundCardProps) {
             Booking #{refund.booking_id}
           </p>
         </div>
-        <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
-          {refund.status}
+        <span
+          className={
+            `px-2 py-1 text-xs font-medium rounded-full ` +
+            (refund.status === 'succeeded'
+              ? 'bg-green-100 text-green-800'
+              : refund.status === 'failed'
+              ? 'bg-red-100 text-red-800'
+              : refund.status === 'cancelled'
+              ? 'bg-yellow-100 text-yellow-800'
+              : 'bg-blue-100 text-blue-800')
+          }
+        >
+          {refund.status === 'succeeded' ? 'Refunded' : refund.status}
         </span>
       </div>
 

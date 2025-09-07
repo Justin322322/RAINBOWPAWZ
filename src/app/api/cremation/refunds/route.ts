@@ -154,19 +154,23 @@ export async function GET(request: NextRequest) {
     }
 
     // Transform the results to match RefundListItem interface
-    const refunds: RefundListItem[] = refundsResult.map(row => ({
-      id: row.id,
-      booking_id: row.booking_id,
-      amount: parseFloat(row.amount || 0),
-      status: row.status || 'unknown',
-      reason: row.reason || 'other',
-      payment_method: row.payment_method || 'unknown',
-      created_at: new Date(row.created_at || new Date()),
-      processed_at: row.processed_at ? new Date(row.processed_at) : undefined,
-      pet_name: row.pet_name || 'Unknown Pet',
-      user_name: row.first_name && row.last_name ? `${row.first_name} ${row.last_name}` : 'Unknown User',
-      provider_name: row.provider_name || 'Unknown Provider'
-    }));
+    const refunds: RefundListItem[] = refundsResult.map(row => {
+      const rawStatus = (row.status as string) || 'pending';
+      const normalizedStatus = rawStatus === 'processed' ? 'succeeded' : rawStatus;
+      return {
+        id: row.id,
+        booking_id: row.booking_id,
+        amount: parseFloat(row.amount || 0),
+        status: normalizedStatus,
+        reason: row.reason || 'other',
+        payment_method: row.payment_method || 'unknown',
+        created_at: new Date(row.created_at || new Date()),
+        processed_at: row.processed_at ? new Date(row.processed_at) : undefined,
+        pet_name: row.pet_name || 'Unknown Pet',
+        user_name: row.first_name && row.last_name ? `${row.first_name} ${row.last_name}` : 'Unknown User',
+        provider_name: row.provider_name || 'Unknown Provider'
+      } as RefundListItem;
+    });
 
     // Get total count for pagination
     let countQuery = `
