@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import { RefundListItem } from '@/types/payment';
 
 interface RefundCardProps {
@@ -87,7 +88,9 @@ export function RefundCard({ refund, onAction: _onAction }: RefundCardProps) {
                 return url ? (
                   <div className="mb-4">
                     <p className="text-sm text-gray-600 mb-2">Receipt</p>
-                    <img src={url} alt="Receipt" className="max-h-64 rounded border" />
+                    <div className="relative w-full max-w-xs h-64">
+                      <Image src={url} alt="Receipt" fill className="object-contain rounded border" />
+                    </div>
                   </div>
                 ) : null;
               })()

@@ -8,7 +8,7 @@ import { createBookingStatusUpdateEmail } from '@/lib/emailTemplates';
 import { sendEmail } from '@/lib/consolidatedEmailService';
 import { createBookingNotification } from '@/utils/comprehensiveNotificationService';
 // Import payment service for automatic refunds
-import { processAutomaticRefund } from '@/services/paymentService';
+// import { processAutomaticRefund } from '@/services/paymentService';
 
 export async function POST(request: NextRequest) {
   // Extract ID from URL
