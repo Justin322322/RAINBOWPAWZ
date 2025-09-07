@@ -72,6 +72,9 @@ export async function GET(
         whereClause += " AND (application_status = 'approved' OR application_status = 'verified')";
       } else if (hasSPVerStatus) {
         whereClause += " AND verification_status = 'verified'";
+      } else {
+        // If neither status column exists, don't show any providers to avoid showing pending ones
+        whereClause += " AND 1=0";
       }
 
       // Add active status condition if available

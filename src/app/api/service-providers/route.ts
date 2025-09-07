@@ -165,9 +165,9 @@ export async function GET(request: Request) {
       else if (hasVerificationStatus) {
         whereClause = "verification_status = 'verified'";
       }
-      // If neither exists, use a default condition that always passes
+      // If neither exists, don't show any providers to avoid showing pending ones
       else {
-        whereClause = "1=1";
+        whereClause = "1=0"; // This will return no results, preventing pending providers from showing
       }
 
       // Add provider_type filter if column exists
