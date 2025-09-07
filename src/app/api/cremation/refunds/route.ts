@@ -34,33 +34,33 @@ export async function GET(request: NextRequest) {
 
     const userId = user.userId;
 
-    // Get cremation center ID
-    const cremationCenterQuery = `
-      SELECT cremation_center_id
+    // Get provider ID
+    const providerQuery = `
+      SELECT provider_id
       FROM service_providers
       WHERE user_id = ?
     `;
-    const cremationCenterResult = await query(cremationCenterQuery, [userId]) as any[];
+    const providerResult = await query(providerQuery, [userId]) as any[];
 
     if (process.env.NODE_ENV === 'development') {
-      console.log('🔍 [Refunds API] Cremation center query result:', {
+      console.log('🔍 [Refunds API] Provider query result:', {
         userId,
-        found: cremationCenterResult.length > 0,
-        result: cremationCenterResult
+        found: providerResult.length > 0,
+        result: providerResult
       });
     }
 
-    if (cremationCenterResult.length === 0) {
+    if (providerResult.length === 0) {
       return NextResponse.json({
-        error: 'Cremation center not found',
-        details: 'No cremation center found for this user'
+        error: 'Service provider not found',
+        details: 'No service provider found for this user'
       }, { status: 404 });
     }
 
-    const cremationCenterId = cremationCenterResult[0].cremation_center_id;
+    const providerId = providerResult[0].provider_id;
 
     if (process.env.NODE_ENV === 'development') {
-      console.log('✅ [Refunds API] Found cremation center ID:', cremationCenterId);
+      console.log('✅ [Refunds API] Found provider ID:', providerId);
     }
 
     // Get query parameters for filtering
@@ -88,15 +88,15 @@ export async function GET(request: NextRequest) {
         u.first_name,
         u.last_name,
         u.email as user_email,
-        sp.business_name as provider_name
+        sp.name as provider_name
       FROM payment_transactions r
       LEFT JOIN service_bookings b ON r.booking_id = b.id
       LEFT JOIN users u ON b.user_id = u.user_id
       LEFT JOIN service_providers sp ON b.provider_id = sp.provider_id
-      WHERE b.cremation_center_id = ?
+      WHERE b.provider_id = ?
     `;
 
-    const queryParams: any[] = [cremationCenterId];
+    const queryParams: any[] = [providerId];
 
     // Add status filter if provided, otherwise filter for refund-related statuses
     if (status) {
@@ -138,14 +138,14 @@ export async function GET(request: NextRequest) {
       SELECT COUNT(*) as total
       FROM payment_transactions r
       LEFT JOIN service_bookings b ON r.booking_id = b.id
-      WHERE b.cremation_center_id = ?
+      WHERE b.provider_id = ?
     `;
 
-    const countParams: any[] = [cremationCenterId];
+    const countParams: any[] = [providerId];
 
     // Add status filter to count query if provided
     if (status) {
-      countQuery = countQuery.replace('WHERE b.cremation_center_id = ?', 'WHERE b.cremation_center_id = ? AND r.status = ?');
+      countQuery = countQuery.replace('WHERE b.provider_id = ?', 'WHERE b.provider_id = ? AND r.status = ?');
       countParams.push(status);
     } else {
       // If no status filter, still filter for refund-related statuses
@@ -172,12 +172,12 @@ export async function GET(request: NextRequest) {
         SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed_count
       FROM payment_transactions r
       LEFT JOIN service_bookings b ON r.booking_id = b.id
-      WHERE b.cremation_center_id = ? AND r.status IN ('pending', 'processing', 'refunded', 'failed')
+      WHERE b.provider_id = ? AND r.status IN ('pending', 'processing', 'refunded', 'failed')
     `;
 
     let summaryResult: any[] = [];
     try {
-      summaryResult = await query(summaryQuery, [cremationCenterId]) as any[];
+      summaryResult = await query(summaryQuery, [providerId]) as any[];
     } catch (summaryError) {
       console.error('Error executing summary query:', summaryError);
       throw new Error(`Summary query failed: ${summaryError instanceof Error ? summaryError.message : 'Unknown database error'}`);
