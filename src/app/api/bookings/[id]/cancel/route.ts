@@ -99,37 +99,35 @@ export async function POST(request: NextRequest) {
       return {};
     });
 
-    // Process refund handling: for gcash auto-refund, for manual QR create pending refund record
-    if (bookingData.payment_status === 'paid') {
-      try {
-        if (bookingData.payment_method === 'gcash') {
-          const refundResult = await processAutomaticRefund(parseInt(bookingId));
-          console.log('Automatic refund result (gcash):', refundResult);
-        } else if (bookingData.payment_method === 'qr_manual' || bookingData.payment_method === 'qr_transfer') {
-          // Create a pending refund record for manual QR to be approved by provider
-          // Fetch latest receipt_path if available
-          const receiptRows = await query(
-            `SELECT receipt_path FROM payment_receipts WHERE booking_id = ? ORDER BY uploaded_at DESC LIMIT 1`,
-            [bookingId]
-          ) as any[];
-          const receiptPath = receiptRows?.[0]?.receipt_path || '';
-          const notes = receiptPath
-            ? `User cancelled - awaiting provider approval. Receipt: ${receiptPath}`
-            : 'User cancelled - awaiting provider approval.';
+    // Process refund handling: create pending refund for legacy manual QR when receipt is confirmed
+    try {
+      // If legacy flow (bookings table), treat a confirmed receipt as paid and create a pending refund
+      const receipt = await query(
+        `SELECT receipt_path, status FROM payment_receipts WHERE booking_id = ? ORDER BY uploaded_at DESC LIMIT 1`,
+        [bookingId]
+      ) as any[];
+      const receiptStatus = receipt?.[0]?.status || null;
+      const receiptPath = receipt?.[0]?.receipt_path || '';
 
-          // Insert refund row with notes including receipt link
-          const priceRows = await query(`SELECT price FROM service_bookings WHERE id = ?`, [bookingId]) as any[];
-          const amount = priceRows?.[0]?.price || 0;
+      if (receiptStatus === 'confirmed') {
+        // Avoid duplicate pending refund
+        const existing = await query(
+          `SELECT id FROM refunds WHERE booking_id = ? AND status IN ('pending','processing','processed') LIMIT 1`,
+          [bookingId]
+        ) as any[];
+        if (!existing || existing.length === 0) {
+          const amount = bookingData.price || 0;
+          const notesBase = 'User cancelled - awaiting provider approval.';
+          const notes = receiptPath ? `${notesBase} Receipt: ${receiptPath}` : notesBase;
           await query(
             `INSERT INTO refunds (booking_id, amount, reason, status, payment_method, notes)
              VALUES (?, ?, 'requested_by_customer', 'pending', 'qr_manual', ?)`,
             [bookingId, amount, notes]
           );
         }
-      } catch (refundError) {
-        console.error('Refund handling on cancel error:', refundError);
-        // Continue with cancellation even if refund creation fails
       }
+    } catch (refundError) {
+      console.error('Refund handling on cancel (legacy) error:', refundError);
     }
 
     // Send booking cancellation notifications
