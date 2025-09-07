@@ -200,11 +200,11 @@ export async function GET(request: NextRequest) {
     const summaryQuery = `
       SELECT
         COUNT(*) as total_count,
-        SUM(amount) as total_amount,
-        SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending_count,
-        SUM(CASE WHEN status = 'processing' THEN 1 ELSE 0 END) as processing_count,
-        SUM(CASE WHEN status = 'processed' THEN 1 ELSE 0 END) as succeeded_count,
-        SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed_count
+        SUM(r.amount) as total_amount,
+        SUM(CASE WHEN r.status = 'pending' THEN 1 ELSE 0 END) as pending_count,
+        SUM(CASE WHEN r.status = 'processing' THEN 1 ELSE 0 END) as processing_count,
+        SUM(CASE WHEN r.status = 'processed' THEN 1 ELSE 0 END) as succeeded_count,
+        SUM(CASE WHEN r.status = 'failed' THEN 1 ELSE 0 END) as failed_count
       FROM refunds r
       LEFT JOIN service_bookings b ON r.booking_id = b.id
       WHERE b.provider_id = ?
