@@ -12,7 +12,8 @@ import {
   UserIcon,
   Cog6ToothIcon,
   StarIcon,
-  ChartBarIcon
+  ChartBarIcon,
+  ArrowPathIcon
 } from '@heroicons/react/24/outline';
 
 interface CremationSidebarProps {
@@ -47,6 +48,12 @@ export default function CremationSidebar({
       href: '/cremation/bookings',
       icon: CalendarIcon,
       id: 'bookings'
+    },
+    {
+      name: 'Refunds',
+      href: '/cremation/refunds',
+      icon: ArrowPathIcon,
+      id: 'refunds'
     },
     {
       name: 'Booking History',
@@ -108,6 +115,8 @@ export default function CremationSidebar({
         setActivePage('packages');
       } else if (currentPath === 'bookings' || pathname.includes('/cremation/bookings')) {
         setActivePage('bookings');
+      } else if (currentPath === 'refunds' || pathname.includes('/cremation/refunds')) {
+        setActivePage('refunds');
       } else if (currentPath === 'history') {
         setActivePage('history');
       } else if (currentPath === 'reports') {
