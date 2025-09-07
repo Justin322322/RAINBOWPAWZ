@@ -1,25 +1,36 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthTokenFromRequest } from '@/utils/auth';
+import { verifySecureAuth } from '@/lib/secureAuth';
 import { query } from '@/lib/db';
 import { RefundListItem, RefundSummary } from '@/types/payment';
 
 export async function GET(request: NextRequest) {
   try {
-    // Get authentication token
-    const authToken = getAuthTokenFromRequest(request);
-    if (!authToken) {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔐 [Refunds API] Starting authentication check...');
+    }
+
+    // Verify secure authentication
+    const user = await verifySecureAuth(request);
+    if (!user) {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('❌ [Refunds API] Authentication failed - no user returned');
+      }
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Decode JWT token to get user info
-    const { decodeTokenUnsafe } = await import('@/lib/jwt');
-    const payload = decodeTokenUnsafe(authToken);
-    const userId = payload?.userId || null;
-    const accountType = payload?.accountType || null;
-
-    if (!userId || accountType !== 'business') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (process.env.NODE_ENV === 'development') {
+      console.log('✅ [Refunds API] Authentication successful:', { userId: user.userId, accountType: user.accountType });
     }
+
+    // Check if this is a business user
+    if (user.accountType !== 'business') {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('❌ [Refunds API] Wrong account type:', user.accountType);
+      }
+      return NextResponse.json({ error: 'Forbidden - Business access required' }, { status: 403 });
+    }
+
+    const userId = user.userId;
 
     // Get cremation center ID
     const cremationCenterQuery = `
@@ -29,11 +40,26 @@ export async function GET(request: NextRequest) {
     `;
     const cremationCenterResult = await query(cremationCenterQuery, [userId]) as any[];
 
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔍 [Refunds API] Cremation center query result:', {
+        userId,
+        found: cremationCenterResult.length > 0,
+        result: cremationCenterResult
+      });
+    }
+
     if (cremationCenterResult.length === 0) {
-      return NextResponse.json({ error: 'Cremation center not found' }, { status: 404 });
+      return NextResponse.json({
+        error: 'Cremation center not found',
+        details: 'No cremation center found for this user'
+      }, { status: 404 });
     }
 
     const cremationCenterId = cremationCenterResult[0].cremation_center_id;
+
+    if (process.env.NODE_ENV === 'development') {
+      console.log('✅ [Refunds API] Found cremation center ID:', cremationCenterId);
+    }
 
     // Get query parameters for filtering
     const url = new URL(request.url);

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { format } from 'date-fns';
+import { format, subDays, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns';
 import {
   DocumentTextIcon,
   MagnifyingGlassIcon,
@@ -14,6 +14,8 @@ import {
   UserIcon,
   EyeIcon,
   TrashIcon,
+  CalendarDaysIcon,
+  XMarkIcon,
 } from '@heroicons/react/24/outline';
 import AdminDashboardLayout from '@/components/navigation/AdminDashboardLayout';
 import withAdminAuth from '@/components/withAdminAuth';
@@ -181,6 +183,46 @@ function AdminLogsPage({ adminData }: { adminData: any }) {
   // Handle logs per page change
   const handleLogsPerPageChange = (newLogsPerPage: number) => {
     setLogsPerPage(newLogsPerPage);
+    setCurrentPage(1);
+  };
+
+  // Quick date range helpers
+  const applyDateRange = (dateFrom: Date, dateTo: Date) => {
+    const fromStr = format(dateFrom, 'yyyy-MM-dd');
+    const toStr = format(dateTo, 'yyyy-MM-dd');
+    setFilters(prev => ({ ...prev, date_from: fromStr, date_to: toStr }));
+    setCurrentPage(1);
+  };
+
+  const applyQuickDateRange = (range: string) => {
+    const now = new Date();
+    switch (range) {
+      case 'today':
+        applyDateRange(startOfDay(now), endOfDay(now));
+        break;
+      case 'yesterday':
+        const yesterday = subDays(now, 1);
+        applyDateRange(startOfDay(yesterday), endOfDay(yesterday));
+        break;
+      case 'thisWeek':
+        applyDateRange(startOfWeek(now), endOfWeek(now));
+        break;
+      case 'thisMonth':
+        applyDateRange(startOfMonth(now), endOfMonth(now));
+        break;
+      case 'last7Days':
+        applyDateRange(startOfDay(subDays(now, 6)), endOfDay(now));
+        break;
+      case 'last30Days':
+        applyDateRange(startOfDay(subDays(now, 29)), endOfDay(now));
+        break;
+      default:
+        break;
+    }
+  };
+
+  const clearDateFilters = () => {
+    setFilters(prev => ({ ...prev, date_from: '', date_to: '' }));
     setCurrentPage(1);
   };
 
@@ -438,9 +480,9 @@ function AdminLogsPage({ adminData }: { adminData: any }) {
             <h3 className="text-lg font-medium text-gray-800">Filters</h3>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
             {/* Search */}
-            <div className="relative sm:col-span-2 lg:col-span-1">
+            <div className="relative lg:col-span-2 xl:col-span-1">
               <MagnifyingGlassIcon className="h-4 w-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
               <input
                 type="text"
@@ -482,36 +524,104 @@ function AdminLogsPage({ adminData }: { adminData: any }) {
               className="text-sm"
             />
 
-            {/* Date From */}
-            <div className="flex flex-col">
-              <label className="text-xs text-gray-600 mb-1 sm:hidden">From Date</label>
-              <input
-                type="date"
-                value={filters.date_from}
-                onChange={(e) => handleFilterChange('date_from', e.target.value)}
-                className="px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--primary-green)] focus:border-transparent text-sm"
-                placeholder="From date"
-              />
-            </div>
+            {/* Date Range Filter */}
+            <div className="xl:col-span-2 space-y-3">
+              <div className="flex items-center space-x-2">
+                <CalendarDaysIcon className="h-4 w-4 text-gray-500" />
+                <span className="text-sm font-medium text-gray-700">Date Range</span>
+                {(filters.date_from || filters.date_to) && (
+                  <button
+                    onClick={clearDateFilters}
+                    className="text-xs text-red-600 hover:text-red-700 flex items-center"
+                  >
+                    <XMarkIcon className="h-3 w-3 mr-1" />
+                    Clear
+                  </button>
+                )}
+              </div>
 
-            {/* Date To */}
-            <div className="flex flex-col">
-              <label className="text-xs text-gray-600 mb-1 sm:hidden">To Date</label>
-              <input
-                type="date"
-                value={filters.date_to}
-                onChange={(e) => handleFilterChange('date_to', e.target.value)}
-                className="px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--primary-green)] focus:border-transparent text-sm"
-                placeholder="To date"
-              />
+              {/* Quick Date Range Buttons */}
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => applyQuickDateRange('today')}
+                  className="px-3 py-1.5 text-xs bg-blue-50 text-blue-700 rounded-md hover:bg-blue-100 transition-colors"
+                >
+                  Today
+                </button>
+                <button
+                  onClick={() => applyQuickDateRange('yesterday')}
+                  className="px-3 py-1.5 text-xs bg-blue-50 text-blue-700 rounded-md hover:bg-blue-100 transition-colors"
+                >
+                  Yesterday
+                </button>
+                <button
+                  onClick={() => applyQuickDateRange('thisWeek')}
+                  className="px-3 py-1.5 text-xs bg-blue-50 text-blue-700 rounded-md hover:bg-blue-100 transition-colors"
+                >
+                  This Week
+                </button>
+                <button
+                  onClick={() => applyQuickDateRange('thisMonth')}
+                  className="px-3 py-1.5 text-xs bg-blue-50 text-blue-700 rounded-md hover:bg-blue-100 transition-colors"
+                >
+                  This Month
+                </button>
+                <button
+                  onClick={() => applyQuickDateRange('last7Days')}
+                  className="px-3 py-1.5 text-xs bg-blue-50 text-blue-700 rounded-md hover:bg-blue-100 transition-colors"
+                >
+                  Last 7 Days
+                </button>
+                <button
+                  onClick={() => applyQuickDateRange('last30Days')}
+                  className="px-3 py-1.5 text-xs bg-blue-50 text-blue-700 rounded-md hover:bg-blue-100 transition-colors"
+                >
+                  Last 30 Days
+                </button>
+              </div>
+
+              {/* Custom Date Range */}
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <label className="text-xs text-gray-600">From</label>
+                  <input
+                    type="date"
+                    value={filters.date_from}
+                    onChange={(e) => handleFilterChange('date_from', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--primary-green)] focus:border-transparent text-sm"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs text-gray-600">To</label>
+                  <input
+                    type="date"
+                    value={filters.date_to}
+                    onChange={(e) => handleFilterChange('date_to', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--primary-green)] focus:border-transparent text-sm"
+                  />
+                </div>
+              </div>
+
+              {/* Active Filter Indicator */}
+              {(filters.date_from || filters.date_to) && (
+                <div className="text-xs text-gray-600 bg-gray-50 px-3 py-2 rounded-md">
+                  <span className="font-medium">Active:</span>{' '}
+                  {filters.date_from && filters.date_to
+                    ? `${format(new Date(filters.date_from), 'MMM dd, yyyy')} - ${format(new Date(filters.date_to), 'MMM dd, yyyy')}`
+                    : filters.date_from
+                    ? `From ${format(new Date(filters.date_from), 'MMM dd, yyyy')}`
+                    : `Until ${format(new Date(filters.date_to), 'MMM dd, yyyy')}`
+                  }
+                </div>
+              )}
             </div>
 
             {/* Clear Filters */}
             <button
               onClick={clearFilters}
-              className="px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium sm:col-span-2 lg:col-span-1"
+              className="px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium xl:col-span-2"
             >
-              Clear Filters
+              Clear All Filters
             </button>
           </div>
         </div>
