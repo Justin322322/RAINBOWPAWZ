@@ -73,7 +73,7 @@ function CremationReportsPage({ userData }: { userData: any }) {
 
     useEffect(() => {
         fetchReportData();
-    }, [dateFilter]);
+    }, [dateFilter, fetchReportData]);
 
     const handleRefresh = () => {
         fetchReportData();

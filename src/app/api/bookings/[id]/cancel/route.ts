@@ -12,8 +12,6 @@ import {
   createRefundRecord
 } from '@/services/refundService';
 import { REFUND_REASONS } from '@/types/refund';
-import { createAdminNotification } from '@/utils/adminNotificationService';
-// Import comprehensive notification service
 import { createBookingNotification } from '@/utils/comprehensiveNotificationService';
 
 export async function POST(request: NextRequest) {
