@@ -46,7 +46,7 @@ interface RefundStats {
   automatic_count: number;
 }
 
-function AdminRefundsPage({ adminData }: { adminData: any }) {
+const AdminRefundsPage = withAdminAuth(function AdminRefundsPage({ adminData }: { adminData: any }) {
   const userName = adminData?.full_name || adminData?.username || 'System Administrator';
   const [refunds, setRefunds] = useState<RefundRecord[]>([]);
   const [stats, setStats] = useState<RefundStats | null>(null);
@@ -536,6 +536,6 @@ function AdminRefundsPage({ adminData }: { adminData: any }) {
       )}
     </AdminDashboardLayout>
   );
-}
+});
 
-export default function AdminRefundsPageRemoved() { return null; }
+export default AdminRefundsPage;
