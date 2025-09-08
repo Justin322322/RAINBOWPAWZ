@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid Provider ID' }, { status: 400 });
     }
 
-    // Prefer normalized tables if present; fallback to JSON columns
+    // Require normalized tables
 
     let startDate, endDate;
 
@@ -122,74 +122,10 @@ export async function GET(request: NextRequest) {
           }
         }
 
-        // Also merge JSON data as a secondary source for dates missing slots/availability
-        const providerResultForMerge = await query(
-          `SELECT availability_data, time_slots_data FROM service_providers WHERE provider_id = ?`,
-          [providerId]
-        ) as any[];
-        if (providerResultForMerge && providerResultForMerge.length > 0) {
-          let availabilityData: Record<string, boolean> = {};
-          let timeSlotsData: Record<string, any[]> = {};
-          try { availabilityData = providerResultForMerge[0].availability_data ? JSON.parse(providerResultForMerge[0].availability_data) : {}; } catch { availabilityData = {}; }
-          try { timeSlotsData = providerResultForMerge[0].time_slots_data ? JSON.parse(providerResultForMerge[0].time_slots_data) : {}; } catch { timeSlotsData = {}; }
-
-          for (const dateObj of allDatesInMonth) {
-            const dateKey = dateObj.date;
-            if (!dateToAvail.has(dateKey) && availabilityData[dateKey] !== undefined) {
-              dateObj.isAvailable = Boolean(availabilityData[dateKey]);
-            }
-            if ((!dateToSlots.has(dateKey) || dateObj.timeSlots.length === 0) && Array.isArray(timeSlotsData[dateKey])) {
-              dateObj.timeSlots = timeSlotsData[dateKey].map((slot: any, index: number) => ({
-                id: slot.id || `${dateKey}-json-${index}`,
-                start: slot.start || slot.start_time,
-                end: slot.end || slot.end_time,
-                availableServices: Array.isArray(slot.availableServices) ? slot.availableServices : []
-              }));
-              if (dateObj.timeSlots.length > 0) {
-                dateObj.isAvailable = true;
-              }
-            }
-          }
-        }
-
         return NextResponse.json({ availability: allDatesInMonth });
       }
-
-      // Fallback to JSON columns in service_providers
-      const providerResult = await query(
-        `SELECT provider_id, availability_data, time_slots_data FROM service_providers WHERE provider_id = ?`,
-        [providerId]
-      ) as any[];
-
-      if (!providerResult || providerResult.length === 0) {
-        return NextResponse.json({ availability: allDatesInMonth });
-      }
-
-      const provider = providerResult[0];
-      let availabilityData: Record<string, boolean> = {};
-      let timeSlotsData: Record<string, any[]> = {};
-      try { availabilityData = provider.availability_data ? JSON.parse(provider.availability_data) : {}; } catch { availabilityData = {}; }
-      try { timeSlotsData = provider.time_slots_data ? JSON.parse(provider.time_slots_data) : {}; } catch { timeSlotsData = {}; }
-
-      for (const dateObj of allDatesInMonth) {
-        const dateKey = dateObj.date;
-        if (availabilityData[dateKey] !== undefined) {
-          dateObj.isAvailable = Boolean(availabilityData[dateKey]);
-        }
-        if (timeSlotsData[dateKey] && Array.isArray(timeSlotsData[dateKey])) {
-          dateObj.timeSlots = timeSlotsData[dateKey].map((slot: any, index: number) => ({
-            id: slot.id || `${dateKey}-${index}`,
-            start: slot.start || slot.start_time,
-            end: slot.end || slot.end_time,
-            availableServices: Array.isArray(slot.availableServices) ? slot.availableServices : []
-          }));
-          if (dateObj.timeSlots.length > 0) {
-            dateObj.isAvailable = true;
-          }
-        }
-      }
-
-      return NextResponse.json({ availability: allDatesInMonth });
+      // If normalized tables are missing, signal configuration issue
+      return NextResponse.json({ error: 'Availability tables not configured (provider_availability, availability_time_slots).' }, { status: 503 });
 
     } catch (dbError) {
       return NextResponse.json({

@@ -54,9 +54,8 @@ export async function POST(request: NextRequest) {
     const hasProvider = tablesResult.some((t:any)=>t.TABLE_NAME.toLowerCase()==='service_providers');
     const hasDays = tablesResult.some((t:any)=>t.TABLE_NAME.toLowerCase()==='provider_availability');
     const hasSlots = tablesResult.some((t:any)=>t.TABLE_NAME.toLowerCase()==='availability_time_slots');
-    if (!hasProvider) {
-      return NextResponse.json({ error: 'Missing service_providers table.' }, { status: 500 });
-    }
+    if (!hasProvider) return NextResponse.json({ error: 'Missing service_providers table.' }, { status: 500 });
+    if (!hasDays || !hasSlots) return NextResponse.json({ error: 'Missing availability tables (provider_availability, availability_time_slots).' }, { status: 503 });
 
     // **🔥 FIX: Use proper transaction management to prevent connection leaks**
     const result = await withTransaction(async (transaction) => {
@@ -125,29 +124,6 @@ export async function POST(request: NextRequest) {
                 );
               }
             }
-          } else {
-            // Fallback to JSON storage in service_providers
-            const currentData = await transaction.query(
-              'SELECT availability_data, time_slots_data FROM service_providers WHERE provider_id = ?',
-              [providerId]
-            ) as any[];
-            let availabilityData: Record<string, any> = {};
-            let timeSlotsData: Record<string, any[]> = {};
-            try { availabilityData = currentData[0]?.availability_data ? JSON.parse(currentData[0].availability_data) : {}; } catch { availabilityData = {}; }
-            try { timeSlotsData = currentData[0]?.time_slots_data ? JSON.parse(currentData[0].time_slots_data) : {}; } catch { timeSlotsData = {}; }
-
-            if (isAvailable && Array.isArray(timeSlots) && timeSlots.length > 0) {
-              const sorted = validateSlots(timeSlots);
-              availabilityData[date] = true;
-              timeSlotsData[date] = sorted.map((slot:any, idx:number)=>({ id: `${date}-${Date.now()}-${idx}`, start: slot.start, end: slot.end, availableServices: Array.isArray(slot.availableServices)? slot.availableServices.filter((n:number)=>n!==0): [] }));
-            } else {
-              availabilityData[date] = false;
-              delete timeSlotsData[date];
-            }
-            await transaction.query(
-              'UPDATE service_providers SET availability_data = ?, time_slots_data = ?, updated_at = NOW() WHERE provider_id = ?',
-              [JSON.stringify(availabilityData), JSON.stringify(timeSlotsData), providerId]
-            );
           }
 
           successCount++;

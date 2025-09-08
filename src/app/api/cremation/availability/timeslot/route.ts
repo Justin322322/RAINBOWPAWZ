@@ -54,7 +54,7 @@ export async function DELETE(request: NextRequest) {
 
     // Use proper transaction management; prefer normalized tables when available
     const result = await withTransaction(async (transaction) => {
-      // Detect normalized tables
+      // Require normalized table
       const tables = await transaction.query(
         `SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME IN ('availability_time_slots')`
       ) as any[];
@@ -90,40 +90,8 @@ export async function DELETE(request: NextRequest) {
         }
       }
 
-      // Fallback to JSON storage
-      const provider = checkResult[0];
-      let timeSlotsData: Record<string, any[]> = {};
-      try { timeSlotsData = provider.time_slots_data ? JSON.parse(provider.time_slots_data) : {}; } catch { timeSlotsData = {}; }
-
-      if (date) {
-        if (timeSlotsData[date]) {
-          deletedSlot = { date, slots: timeSlotsData[date] };
-          delete timeSlotsData[date];
-          remainingCount = 0;
-        } else {
-          throw new Error('No time slots found for the specified date');
-        }
-      } else {
-        let found = false;
-        for (const [dateKey, slots] of Object.entries(timeSlotsData)) {
-          const slotIndex = (slots as any[]).findIndex((slot: any) => slot.id === slotId);
-          if (slotIndex !== -1) {
-            deletedSlot = { date: dateKey, slot: (slots as any[])[slotIndex] };
-            (slots as any[]).splice(slotIndex, 1);
-            remainingCount = (slots as any[]).length;
-            found = true;
-            break;
-          }
-        }
-        if (!found) throw new Error('Time slot not found');
-      }
-
-      await transaction.query(
-        'UPDATE service_providers SET time_slots_data = ? WHERE provider_id = ?',
-        [JSON.stringify(timeSlotsData), providerIdNum]
-      );
-
-      return { success: true, message: 'Time slot deleted successfully', deletedSlot, remaining_slots: remainingCount, method: date ? 'delete-by-date' : 'delete-by-id' };
+      // If missing, signal configuration issue
+      throw new Error('availability_time_slots table is not configured');
     });
 
     return NextResponse.json(result);
