@@ -251,7 +251,7 @@ export async function GET(request: NextRequest) {
       const safeQueryString = `
         SELECT
           ${selectFieldsStr}
-        FROM service_providers bp
+        FROM service_providers sp
         JOIN users u ON sp.user_id = u.user_id
         WHERE ${typeCondition}
         ORDER BY sp.provider_id DESC
@@ -282,7 +282,7 @@ export async function GET(request: NextRequest) {
             sp.name as business_name,
             ${ownerField},
             u.email
-          FROM service_providers bp
+          FROM service_providers sp
           JOIN users u ON sp.user_id = u.user_id
           WHERE sp.provider_type = 'cremation'
           ORDER BY sp.provider_id DESC
@@ -316,28 +316,27 @@ export async function GET(request: NextRequest) {
       console.log('Fetching appeals for business IDs:', businessIds);
 
       if (businessIds.length > 0) {
-        // First, let's get all appeals and see what we have
-        const allAppealsQuery = `SELECT * FROM users ORDER BY submitted_at DESC`;
-        const allAppeals = await query(allAppealsQuery) as any[];
-        console.log('All appeals in database:', allAppeals);
-
-        // Simplified query - get appeals by business_id directly
-        const appealsQuery = `
-          SELECT
-            a.appeal_id,
-            a.user_id,
-            a.business_id,
-            a.subject,
-            a.message,
-            a.status,
-            a.submitted_at
-          FROM users a
-          WHERE a.business_id IN (${businessIds.map(() => '?').join(',')})
-          ORDER BY a.submitted_at DESC
-        `;
-
-        const appeals = await query(appealsQuery, businessIds) as any[];
-        console.log('Appeals found for businesses:', appeals);
+        // Consolidated schema: appeals table may not exist; handle gracefully
+        // Attempt to select from appeals if present, otherwise skip without error
+        let appeals: any[] = [];
+        try {
+          const appealsQuery = `
+            SELECT
+              a.appeal_id,
+              a.user_id,
+              a.business_id,
+              a.subject,
+              a.message,
+              a.status,
+              a.submitted_at
+            FROM appeals a
+            WHERE a.business_id IN (${businessIds.map(() => '?').join(',')})
+            ORDER BY a.submitted_at DESC
+          `;
+          appeals = await query(appealsQuery, businessIds) as any[];
+        } catch {
+          appeals = [];
+        }
 
         // Group appeals by business ID
         appeals.forEach(appeal => {

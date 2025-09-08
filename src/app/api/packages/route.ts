@@ -159,8 +159,20 @@ export async function GET(request: NextRequest) {
         // Parse JSON images column
         try {
           if (row.images) {
-            images = typeof row.images === 'string' ? JSON.parse(row.images) : row.images;
-            if (!Array.isArray(images)) {
+            // Handle corrupted "[object Object]" strings
+            if (typeof row.images === 'string') {
+              if (row.images.trim().startsWith('[object Object]')) {
+                console.warn(`Package ${id} has corrupted images data: ${row.images.substring(0, 50)}...`);
+                images = [];
+              } else {
+                images = JSON.parse(row.images);
+                if (!Array.isArray(images)) {
+                  images = [];
+                }
+              }
+            } else if (Array.isArray(row.images)) {
+              images = row.images;
+            } else {
               images = [];
             }
           }
