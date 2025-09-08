@@ -24,8 +24,8 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '20');
     const offset = parseInt(searchParams.get('offset') || '0');
 
-    // Fetch notifications_unified for this cremation provider
-    const notifications_unified = await query(`
+    // Fetch notifications for this cremation provider
+    const rawNotifications = await query(`
       SELECT 
         id,
         title,
@@ -42,6 +42,19 @@ export async function GET(request: NextRequest) {
       LIMIT ${Number(limit)} OFFSET ${Number(offset)}
     `, [parseInt(user.userId)]) as any[];
 
+    // Normalize to the shape the frontend expects
+    const notifications_unified = (rawNotifications || []).map((n: any) => ({
+      id: Number(n.id),
+      title: n.title,
+      message: n.message,
+      // Map arbitrary type values to allowed UI types; default to 'info'
+      type: (['info','success','warning','error'].includes(String(n.type))) ? n.type : 'info',
+      // Convert to numeric status: 0 = unread, 1 = read
+      status: String(n.status).toLowerCase() === 'read' || n.read_at ? 1 : 0,
+      created_at: n.created_at,
+      link: null
+    }));
+
     // Get total count
     const countResult = await query(`
       SELECT COUNT(*) as total 
@@ -55,7 +68,7 @@ export async function GET(request: NextRequest) {
     const unreadResult = await query(`
       SELECT COUNT(*) as unread 
       FROM notifications_unified 
-      WHERE user_id = ? AND (status = 'pending' OR read_at IS NULL)
+      WHERE user_id = ? AND (status != 'read' OR read_at IS NULL)
     `, [parseInt(user.userId)]) as any[];
 
     const unreadCount = unreadResult[0]?.unread || 0;
@@ -99,6 +112,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       notifications: notifications_unified,
+      notifications_unified,
       pagination: {
         total,
         limit,
@@ -106,6 +120,7 @@ export async function GET(request: NextRequest) {
         hasMore: offset + limit < total
       },
       unreadCount: totalUnreadCount,
+      unread_count: totalUnreadCount,
       breakdown: {
         notifications: unreadCount,
         pendingBookings: pendingBookingsCount
