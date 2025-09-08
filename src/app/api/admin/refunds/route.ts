@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search');
     const providerId = searchParams.get('provider_id');
 
-    // Build the comprehensive refunds query
+    // Build the comprehensive refunds query (include performer joins)
     let refundsQuery = `
       SELECT 
         r.*,
@@ -46,12 +46,20 @@ export async function GET(request: NextRequest) {
         sp.provider_id,
         b.pet_name as pet_name,
         b.booking_date as booking_date,
-        b.provider_id as booking_provider_id
+        b.provider_id as booking_provider_id,
+        pb.user_id AS processed_by_user_id,
+        pb.first_name AS processed_by_first_name,
+        pb.last_name AS processed_by_last_name,
+        vb.user_id AS verified_by_user_id,
+        vb.first_name AS verified_by_first_name,
+        vb.last_name AS verified_by_last_name
       FROM refunds r
       JOIN users u ON r.user_id = u.user_id
       LEFT JOIN bookings sb ON r.booking_id = sb.id
       LEFT JOIN bookings b ON r.booking_id = b.id AND sb.id IS NULL
       LEFT JOIN service_providers sp ON b.provider_id = sp.provider_id
+      LEFT JOIN users pb ON r.processed_by = pb.user_id
+      LEFT JOIN users vb ON r.receipt_verified_by = vb.user_id
       WHERE 1=1
     `;
     
@@ -120,7 +128,21 @@ export async function GET(request: NextRequest) {
       pet_name: refund.pet_name,
       booking_date: refund.booking_date,
       provider_name: refund.provider_name,
-      provider_id: refund.provider_id
+      provider_id: refund.provider_id,
+      performed_by_id: refund.receipt_verified_by || refund.processed_by || null,
+      performed_by_name: (() => {
+        if (refund.receipt_verified_by) {
+          const fn = refund.verified_by_first_name || '';
+          const ln = refund.verified_by_last_name || '';
+          return `${fn} ${ln}`.trim() || null;
+        }
+        if (refund.processed_by) {
+          const fn = refund.processed_by_first_name || '';
+          const ln = refund.processed_by_last_name || '';
+          return `${fn} ${ln}`.trim() || null;
+        }
+        return refund.refund_type === 'automatic' ? 'System' : null;
+      })()
     }));
 
     return NextResponse.json({

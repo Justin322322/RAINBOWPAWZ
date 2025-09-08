@@ -115,8 +115,8 @@ export async function cancelBookingWithRefund(
       console.warn('Cancellation: failed to restore availability slot (non-fatal):', availError);
     }
 
-    // Determine if refund should be processed
-    const shouldProcessRefund = shouldInitiateRefund(
+    // Determine if refund should be processed (enhanced for GCASH/e-payments)
+    const shouldProcessRefund = await shouldInitiateRefundAsync(
       bookingInfo,
       request.cancelledByType,
       request.forceRefund
@@ -401,6 +401,50 @@ function shouldInitiateRefund(
 
   // Default to no refund for unknown payment status
   return { shouldRefund: false, reason: 'Payment status unclear - no automatic refund' };
+}
+
+/**
+ * Async variant: ensures that cancelled/expired GCASH (or other e-payments) are treated as refundable
+ */
+async function shouldInitiateRefundAsync(
+  bookingInfo: any,
+  cancelledByType: string,
+  forceRefund?: boolean
+): Promise<{ shouldRefund: boolean; reason: string }> {
+  // Honor explicit force
+  if (forceRefund) {
+    return { shouldRefund: true, reason: 'Refund forced by request' };
+  }
+
+  const paymentMethod = (bookingInfo.payment_method || '').toLowerCase();
+  const normalizedMethod = paymentMethod.includes('gcash') ? 'gcash'
+                        : paymentMethod.includes('card') ? 'card'
+                        : paymentMethod.includes('maya') ? 'paymaya'
+                        : paymentMethod.includes('qr') ? 'qr'
+                        : paymentMethod.includes('cash') ? 'cash'
+                        : paymentMethod;
+
+  const status = (bookingInfo.payment_status || 'not_paid').toLowerCase();
+
+  // If electronic payment succeeded -> refund
+  if (status === 'paid' || status === 'succeeded') {
+    return { shouldRefund: true, reason: 'Electronic payment confirmed - processing refund' };
+  }
+
+  // If GCASH/PayMongo source or intent exists and is cancelled/expired/failed, still auto-refund the booking amount to clear the ledger
+  if (['gcash', 'card', 'paymaya'].includes(normalizedMethod)) {
+    if (['cancelled', 'failed', 'expired'].includes(status)) {
+      return { shouldRefund: true, reason: 'Payment session cancelled/failed - issuing automatic refund record' };
+    }
+  }
+
+  // For QR and cash we don’t auto-refund (manual)
+  if (normalizedMethod === 'cash' || normalizedMethod === 'qr') {
+    return { shouldRefund: false, reason: `${normalizedMethod.toUpperCase()} payment - refund handled manually` };
+  }
+
+  // Default to existing logic
+  return shouldInitiateRefund(bookingInfo, cancelledByType, forceRefund);
 }
 
 /**

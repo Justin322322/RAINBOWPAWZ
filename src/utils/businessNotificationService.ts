@@ -191,10 +191,10 @@ async function sendBusinessEmailNotification(
     try {
       userResult = await query(`
         SELECT 
-          email, 
-          first_name, 
+          u.email, 
+          u.first_name, 
           sp.name AS business_name,
-          COALESCE(email_notifications_unified, 1) as email_notifications
+          COALESCE(u.email_notifications, 1) as email_notifications
         FROM users u
         LEFT JOIN service_providers sp ON u.user_id = sp.user_id
         WHERE u.user_id = ? AND u.role = 'business'
@@ -204,10 +204,10 @@ async function sendBusinessEmailNotification(
       console.warn('Error querying email_notifications, falling back to basic query:', queryError);
       userResult = await query(`
         SELECT 
-          email, 
-          first_name, 
+          u.email, 
+          u.first_name, 
           sp.name AS business_name,
-          1 as email_notifications_unified
+          1 as email_notifications
         FROM users u
         LEFT JOIN service_providers sp ON u.user_id = sp.user_id
         WHERE u.user_id = ? AND u.role = 'business'
@@ -222,7 +222,9 @@ async function sendBusinessEmailNotification(
     const user = userResult[0];
 
     // Check if user has email notifications_unified enabled (default to true)
-    const emailNotificationsEnabled = user.email_notifications !== null ? Boolean(user.email_notifications) : true;
+    const emailNotificationsEnabled = user.email_notifications !== null && user.email_notifications !== undefined
+      ? Boolean(user.email_notifications)
+      : true;
 
     if (!emailNotificationsEnabled) {
       console.log('Email notifications_unified disabled for user:', userId);

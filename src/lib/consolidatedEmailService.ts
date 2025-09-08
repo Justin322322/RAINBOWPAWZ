@@ -380,6 +380,13 @@ export async function processEmailQueue(limit: number = 10): Promise<{ processed
  */
 async function ensureEmailQueueTable(): Promise<void> {
   try {
+    // Skip DDL in production unless explicitly allowed
+    const isProd = process.env.NODE_ENV === 'production';
+    const allowDDL = process.env.ALLOW_DDL === 'true';
+    if (isProd && !allowDDL) {
+      return;
+    }
+
     await query(`
       CREATE TABLE IF NOT EXISTS email_queue (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -412,7 +419,7 @@ async function ensureEmailQueueTable(): Promise<void> {
  */
 async function recordEmailSent(recipient: string, subject: string, _messageId: string): Promise<void> {
   try {
-    // Ensure email tables exist before trying to insert
+    // Best-effort: only attempt to ensure table outside prod or when allowed
     await ensureEmailQueueTable();
 
     // Record the email into the email_queue as a sent entry (avoid notifications_unified schema differences)
