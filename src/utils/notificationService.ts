@@ -125,7 +125,7 @@ export async function createNotificationFast({
   title,
   message,
   type = 'info',
-  link = null
+  link: _link = null
 }: {
   userId: number;
   title: string;
@@ -135,9 +135,9 @@ export async function createNotificationFast({
 }): Promise<NotificationResult> {
   try {
     const result = await query(
-      `INSERT INTO notifications_unified (user_id, title, message, type, link)
-       VALUES (?, ?, ?, ?, ?)`,
-      [userId, title, message, type, link]
+      `INSERT INTO notifications_unified (user_id, title, message, type, created_at)
+       VALUES (?, ?, ?, ?, NOW())`,
+      [userId, title, message, type]
     ) as unknown as InsertResult;
 
     return {
@@ -169,7 +169,7 @@ export async function createNotification({
 }: CreateNotificationParams): Promise<NotificationResult> {
   try {
     await ensureNotificationsTable();
-    const result = await insertNotificationWithRetry(userId, title, message, type, link);
+    const result = await insertNotificationWithRetry(userId, title, message, type, null);
 
     if (shouldSendEmail) {
       await sendEmailNotification(userId, title, message, type, link, emailSubject);

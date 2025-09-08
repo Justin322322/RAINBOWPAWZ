@@ -80,7 +80,7 @@ export async function GET(request: NextRequest) {
     try {
       // Build the query based on parameters
       let notificationsQuery = `
-        SELECT IFNULL(notification_id, id) as id, title, message, type, status, link, created_at
+        SELECT IFNULL(notification_id, id) as id, title, message, type, status, created_at
         FROM notifications_unified
         WHERE user_id = ?
       `;
@@ -276,27 +276,7 @@ async function ensureNotificationsTable() {
       }
 
       // Create the table if it doesn't exist
-      try {
-        await query(`
-          CREATE TABLE IF NOT EXISTS notifications_unified_unified (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            user_id INT NOT NULL,
-            title VARCHAR(255) NOT NULL,
-            message TEXT NOT NULL,
-            type ENUM('info', 'success', 'warning', 'error') NOT NULL DEFAULT 'info',
-            status TINYINT(1) NOT NULL DEFAULT 0,
-            link VARCHAR(255) NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-            INDEX idx_user_id (user_id),
-            INDEX idx_status (status),
-            INDEX idx_created_at (created_at),
-            FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
-          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-        `);
-      } catch {
-        return false;
-      }
+      // No runtime DDL
     } else {
     }
 

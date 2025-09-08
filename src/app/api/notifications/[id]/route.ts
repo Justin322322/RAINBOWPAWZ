@@ -38,18 +38,7 @@ export async function DELETE(
     }
 
     // Check which column name to use (id or notification_id)
-    let idColumn = 'id';
-    try {
-      const tableInfo = await query(`DESCRIBE notifications_unified_unified`) as any[];
-      const hasNotificationId = tableInfo.some((col: any) => col.Field === 'notification_id');
-      const hasId = tableInfo.some((col: any) => col.Field === 'id');
-      
-      if (hasNotificationId && !hasId) {
-        idColumn = 'notification_id';
-      }
-    } catch (describeError) {
-      console.warn('Could not describe notifications_unified table:', describeError);
-    }
+    const idColumn = 'id';
 
     // SECURITY FIX: Check if the notification exists and belongs to the user
     let notificationResult;
@@ -84,11 +73,7 @@ export async function DELETE(
 
     // Delete the notification
     let deleteQuery;
-    if (idColumn === 'notification_id') {
-      deleteQuery = 'DELETE FROM notifications_unified_unified WHERE notification_id = ?';
-    } else {
-      deleteQuery = 'DELETE FROM notifications_unified_unified WHERE id = ?';
-    }
+    deleteQuery = 'DELETE FROM notifications_unified WHERE id = ?';
     
     await query(deleteQuery, [notificationId]);
 

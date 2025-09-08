@@ -117,8 +117,7 @@ export async function createBusinessNotification({
   try {
     console.log('Creating business notification:', { userId, title, type, link });
     
-    // Ensure the notifications_unified_unified table exists
-    await ensureNotificationsTable();
+    // No runtime DDL
 
     // Check if notification already exists to prevent duplicates
     const existingNotification = await query(`
@@ -136,9 +135,9 @@ export async function createBusinessNotification({
 
     // Insert the notification
     const result = await query(
-      `INSERT INTO notifications_unified_unified_unified (user_id, title, message, type, link, status, created_at)
-       VALUES (?, ?, ?, ?, ?, 0, NOW())`,
-      [userId, title, message, type, link]
+      `INSERT INTO notifications_unified (user_id, title, message, type, status, created_at)
+       VALUES (?, ?, ?, ?, 0, NOW())`,
+      [userId, title, message, type]
     ) as any;
 
     console.log('Business notification created successfully:', result.insertId);
@@ -254,7 +253,7 @@ async function sendBusinessEmailNotification(
 }
 
 /**
- * Create email content for business notifications_unified_unified
+ * Create email content for business notifications
  */
 function createBusinessEmailContent(
   firstName: string,
@@ -289,9 +288,9 @@ function createBusinessEmailContent(
 }
 
 /**
- * Ensure the notifications_unified_unified table exists
+ * Ensure the notifications table exists (no-op in prod)
  */
-async function ensureNotificationsTable(): Promise<void> {
+async function _ensureNotificationsTable(): Promise<void> {
   try {
     // Check if table exists
     const tableExists = await query(`

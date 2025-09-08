@@ -71,35 +71,20 @@ export async function POST(request: NextRequest) {
     }
 
     // Check which column name to use (id or notification_id)
-    let idColumn = 'id';
-    try {
-      const tableInfo = await query(`DESCRIBE notifications_unified_unified`) as any[];
-      const hasNotificationId = tableInfo.some((col: any) => col.Field === 'notification_id');
-      const hasId = tableInfo.some((col: any) => col.Field === 'id');
-      
-      if (hasNotificationId && !hasId) {
-        idColumn = 'notification_id';
-      }
-    } catch (describeError) {
-      console.warn('Could not describe notifications_unified table:', describeError);
-    }
+    const _idColumn = 'id';
 
     let updateQuery;
     let queryParams;
 
     if (markAll) {
       // Mark all notifications_unified as read for this user
-      updateQuery = 'UPDATE notifications_unified_unified SET status = 1 WHERE user_id = ? AND status = 0';
+      updateQuery = 'UPDATE notifications_unified SET status = 1 WHERE user_id = ? AND status = 0';
       queryParams = [userId];
     } else {
       // Mark specific notifications_unified as read
       // SECURITY FIX: Build safe parameterized query without template literals
       const placeholders = notificationIds.map(() => '?').join(',');
-      if (idColumn === 'notification_id') {
-        updateQuery = `UPDATE notifications_unified_unified_unified SET status = 1 WHERE notification_id IN (${placeholders}) AND user_id = ?`;
-      } else {
-        updateQuery = `UPDATE notifications_unified_unified_unified SET status = 1 WHERE id IN (${placeholders}) AND user_id = ?`;
-      }
+      updateQuery = `UPDATE notifications_unified SET status = 1 WHERE id IN (${placeholders}) AND user_id = ?`;
       queryParams = [...notificationIds, userId];
     }
 

@@ -21,7 +21,11 @@ export async function createPayment(request: CreatePaymentRequest): Promise<Paym
   try {
     // Validate booking exists
     const bookingQuery = `
-      SELECT id, price, payment_status, user_id
+      SELECT 
+        id, 
+        COALESCE(total_price, base_price, 0) as price, 
+        payment_status, 
+        user_id
       FROM bookings
       WHERE id = ?
     `;
