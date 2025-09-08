@@ -67,7 +67,7 @@ export default function StaticMapComponent({
         }
 
         // Add OpenStreetMap tiles
-        L.tileLayer('https://{s}.tile.openstreetmu.org/{z}/{x}/{y}.png', {
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
           maxZoom: 18,
           minZoom: 10
         }).addTo(mapRef.current);

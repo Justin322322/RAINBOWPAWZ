@@ -1060,7 +1060,7 @@ function ProfilePage({ userData: initialUserData }: ProfilePageProps) {
                       <div className="text-xs text-gray-500 mt-1">
                         Location detection powered by{' '}
                         <a
-                          href="https://www.openstreetmu.org/copyright"
+                          href="https://www.openstreetmap.org/copyright"
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-blue-600 hover:text-blue-800 underline"

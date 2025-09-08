@@ -221,8 +221,8 @@ export default function MapComponent({
       });
 
       // Add OpenStreetMap tiles with optimized settings
-      L.tileLayer('https://{s}.tile.openstreetmu.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmu.org/copyright">OpenStreetMap</a>',
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
         maxZoom: 18,
         minZoom: 10,
         updateWhenIdle: true,

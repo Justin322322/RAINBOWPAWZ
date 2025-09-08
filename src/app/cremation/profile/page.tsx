@@ -466,7 +466,7 @@ function CremationProfilePage({ userData }: { userData: any }) {
             const { latitude, longitude } = position.coords;
 
             // Simple reverse geocoding for demonstration
-            const response = await fetch(`https://nominatim.openstreetmu.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
+            const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
             if (!response.ok) throw new Error('Failed to fetch address');
             
             const data = await response.json();
