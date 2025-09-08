@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
         END as admin_name
       FROM
         admin_logs al
-      LEFT JOIN users ap ON al.admin_id = u.user_id AND al.admin_id != 0
+      LEFT JOIN users u ON al.admin_id = u.user_id AND al.admin_id != 0
       WHERE 1=1
     `;
     
@@ -99,7 +99,7 @@ export async function GET(request: NextRequest) {
     let countSql = `
       SELECT COUNT(*) as total
       FROM admin_logs al
-      LEFT JOIN users ap ON al.admin_id = u.user_id
+      LEFT JOIN users u ON al.admin_id = u.user_id
       WHERE 1=1
     `;
 
@@ -147,10 +147,17 @@ export async function GET(request: NextRequest) {
     const total = countResult[0]?.total || 0;
     
     // Parse JSON details
-    const formattedLogs = logs.map(log => ({
-      ...log,
-      details: log.details ? JSON.parse(log.details) : null
-    }));
+    const formattedLogs = logs.map(log => {
+      let parsed: any = null;
+      if (log.details) {
+        try {
+          parsed = typeof log.details === 'string' ? JSON.parse(log.details) : log.details;
+        } catch {
+          parsed = null;
+        }
+      }
+      return { ...log, details: parsed };
+    });
     
     return NextResponse.json({
       logs: formattedLogs,
