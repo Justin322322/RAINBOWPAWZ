@@ -168,6 +168,11 @@ function convertDocumentPath(path: string): string {
  * @returns The URL with a cache-busting parameter
  */
 function addCacheBuster(url: string): string {
+  // Do not append query params to non-HTTP(S) URLs (e.g., data:, blob:)
+  if (url.startsWith('data:') || url.startsWith('blob:') || url.startsWith('file:')) {
+    return url;
+  }
+
   const timestamp = Date.now();
   const separator = url.includes('?') ? '&' : '?';
   return `${url}${separator}t=${timestamp}`;

@@ -79,6 +79,41 @@ export async function cancelBookingWithRefund(
       };
     }
 
+    // Restore availability: re-open the booked slot and mark day available
+    try {
+      const providerId: number | undefined = bookingInfo.providerId;
+      const bookingDate: string | undefined = bookingInfo.booking_date;
+      const bookingTime: string | undefined = bookingInfo.booking_time;
+      if (providerId && bookingDate && bookingTime) {
+        // Compute end time as +1 hour window
+        const [hh, mm] = String(bookingTime).substring(0,5).split(':');
+        const startH = Math.max(0, Math.min(23, parseInt(hh || '0', 10)));
+        const endH = (startH + 1) % 24;
+        const endTime = `${String(endH).padStart(2,'0')}:${mm || '00'}`;
+
+        // Insert slot if missing
+        await query(
+          `INSERT INTO availability_time_slots (provider_id, availability_date, start_time, end_time)
+           SELECT ?, ?, STR_TO_DATE(?, '%H:%i'), STR_TO_DATE(?, '%H:%i')
+           WHERE NOT EXISTS (
+             SELECT 1 FROM availability_time_slots 
+             WHERE provider_id = ? AND availability_date = ? AND start_time = STR_TO_DATE(?, '%H:%i')
+           )`,
+          [providerId, bookingDate, bookingTime.substring(0,5), endTime, providerId, bookingDate, bookingTime.substring(0,5)]
+        );
+
+        // Ensure the day is marked available
+        await query(
+          `INSERT INTO provider_availability (provider_id, availability_date, is_available)
+           VALUES (?, ?, 1)
+           ON DUPLICATE KEY UPDATE is_available = 1, updated_at = NOW()`,
+          [providerId, bookingDate]
+        );
+      }
+    } catch (availError) {
+      console.warn('Cancellation: failed to restore availability slot (non-fatal):', availError);
+    }
+
     // Determine if refund should be processed
     const shouldProcessRefund = shouldInitiateRefund(
       bookingInfo,
