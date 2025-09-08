@@ -199,7 +199,14 @@ export async function sendEmail(emailData: EmailData): Promise<{ success: boolea
         }
 
         // Record the successful email in the database (best-effort)
-        const recorded = await recordEmailSent(emailData.to, emailData.subject, info.messageId);
+        const recorded = await recordEmailSent(
+          emailData.to,
+          emailData.subject,
+          info.messageId,
+          emailData.html,
+          emailData.text || stripHtml(emailData.html),
+          emailData.from || process.env.SMTP_USER || null
+        );
         if (recorded) {
           console.log('Email recorded in database successfully');
         } else {
@@ -416,7 +423,14 @@ async function ensureEmailQueueTable(): Promise<void> {
 /**
  * Record sent email in the database for tracking
  */
-async function recordEmailSent(recipient: string, subject: string, _messageId: string): Promise<boolean> {
+async function recordEmailSent(
+  recipient: string,
+  subject: string,
+  _messageId: string,
+  html: string,
+  text: string,
+  fromEmail?: string | null
+): Promise<boolean> {
   try {
     // Best-effort: only attempt to ensure table outside prod or when allowed
     await ensureEmailQueueTable();
@@ -424,8 +438,8 @@ async function recordEmailSent(recipient: string, subject: string, _messageId: s
     // Record the email into the email_queue as a sent entry (avoid notifications_unified schema differences)
     await query(
       `INSERT INTO email_queue (to_email, subject, html, text, from_email, status, attempts, sent_at)
-       VALUES (?, ?, '', '', ?, 'sent', 1, NOW())`,
-      [recipient, subject, process.env.SMTP_USER || null]
+       VALUES (?, ?, ?, ?, ?, 'sent', 1, NOW())`,
+      [recipient, subject, html, text, fromEmail || null]
     );
     return true;
   } catch (error) {

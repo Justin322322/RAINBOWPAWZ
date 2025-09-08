@@ -179,10 +179,11 @@ export async function generateOtp({
         [userId, otpCode, expiresAt, ipAddress]
       );
 
-      // Record the attempt (separate log row)
+      // Record the attempt (separate log row) with context but without exposing the OTP value
+      const attemptMeta = JSON.stringify({ otpLength: String(otpCode).length, maskedOtpTail: String(otpCode).slice(-2) });
       await query(
-        'INSERT INTO auth_tokens (user_id, attempt_type, ip_address) VALUES (?, ?, ?)',
-        [userId, 'generate', ipAddress]
+        "INSERT INTO auth_tokens (user_id, attempt_type, token_type, token_value, expires_at, attempts_data, ip_address) VALUES (?, 'generate', 'otp_code', NULL, ?, ?, ?)",
+        [userId, expiresAt, attemptMeta, ipAddress]
       );
     } catch {
       return {
