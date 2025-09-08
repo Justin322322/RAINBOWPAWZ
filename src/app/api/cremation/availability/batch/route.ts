@@ -150,10 +150,40 @@ export async function POST(request: NextRequest) {
             };
           }
 
-          // Update the availability_data JSON column
+          // Get current time slots data
+          const currentTimeSlotsData = await transaction.query(
+            'SELECT time_slots_data FROM service_providers WHERE provider_id = ?',
+            [providerId]
+          ) as any[];
+
+          let timeSlotsData: Record<string, any[]> = {};
+          if (currentTimeSlotsData && currentTimeSlotsData.length > 0) {
+            try {
+              timeSlotsData = currentTimeSlotsData[0].time_slots_data ? JSON.parse(currentTimeSlotsData[0].time_slots_data) : {};
+            } catch {
+              timeSlotsData = {};
+            }
+          }
+
+          // Update time slots data for this date
+          if (isAvailable && timeSlots && timeSlots.length > 0) {
+            timeSlotsData[date] = timeSlots.map((slot: any, index: number) => ({
+              id: slot.id || `${date}-${Date.now()}-${index}`,
+              start: slot.start,
+              end: slot.end,
+              availableServices: Array.isArray(slot.availableServices) 
+                ? slot.availableServices.filter((id: number) => id !== 0)
+                : []
+            }));
+          } else {
+            // Remove time slots if day is not available
+            delete timeSlotsData[date];
+          }
+
+          // Update both availability_data and time_slots_data JSON columns
           await transaction.query(
-            'UPDATE service_providers SET availability_data = ?, updated_at = NOW() WHERE provider_id = ?',
-            [JSON.stringify(availabilityData), providerId]
+            'UPDATE service_providers SET availability_data = ?, time_slots_data = ?, updated_at = NOW() WHERE provider_id = ?',
+            [JSON.stringify(availabilityData), JSON.stringify(timeSlotsData), providerId]
           );
 
           successCount++;

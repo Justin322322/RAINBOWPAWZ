@@ -24,24 +24,10 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '20');
     const offset = parseInt(searchParams.get('offset') || '0');
 
-    // Check which column name to use (id or notification_id)
-    let idColumn = 'id';
-    try {
-      const tableInfo = await query(`DESCRIBE notifications_unified`) as any[];
-      const hasNotificationId = tableInfo.some((col: any) => col.Field === 'notification_id');
-      const hasId = tableInfo.some((col: any) => col.Field === 'id');
-      
-      if (hasNotificationId && !hasId) {
-        idColumn = 'notification_id';
-      }
-    } catch (describeError) {
-      console.warn('Could not describe notifications_unified table:', describeError);
-    }
-
     // Fetch notifications_unified for this cremation provider
     const notifications_unified = await query(`
       SELECT 
-        ${idColumn} as id,
+        id,
         title,
         message,
         type,
@@ -112,7 +98,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      notifications_unified,
+      notifications: notifications_unified,
       pagination: {
         total,
         limit,
@@ -121,13 +107,13 @@ export async function GET(request: NextRequest) {
       },
       unreadCount: totalUnreadCount,
       breakdown: {
-        notifications_unified: unreadCount,
+        notifications: unreadCount,
         pendingBookings: pendingBookingsCount
       }
     });
 
   } catch (error) {
-    console.error('Fetch cremation provider notifications_unified error:', error);
+    console.error('Fetch cremation provider notifications error:', error);
     return NextResponse.json({
       error: 'Internal server error',
       details: error instanceof Error ? error.message : 'Unknown error'
@@ -156,7 +142,7 @@ export async function PATCH(request: NextRequest) {
     const { notificationId, markAll } = body;
 
     if (markAll) {
-      // Mark all notifications_unified as read
+      // Mark all notifications as read
       await query(`
         UPDATE notifications_unified 
         SET status = 'read', read_at = NOW() 
@@ -165,7 +151,7 @@ export async function PATCH(request: NextRequest) {
 
       return NextResponse.json({
         success: true,
-        message: 'All notifications_unified marked as read'
+        message: 'All notifications marked as read'
       });
     }
 
@@ -222,20 +208,6 @@ export async function DELETE(request: NextRequest) {
     const body = await request.json();
     const { notificationIds, deleteAll = false } = body;
 
-    // Check which column name to use (id or notification_id)
-    let idColumn = 'id';
-    try {
-      const tableInfo = await query(`DESCRIBE notifications_unified`) as any[];
-      const hasNotificationId = tableInfo.some((col: any) => col.Field === 'notification_id');
-      const hasId = tableInfo.some((col: any) => col.Field === 'id');
-      
-      if (hasNotificationId && !hasId) {
-        idColumn = 'notification_id';
-      }
-    } catch (describeError) {
-      console.warn('Could not describe notifications_unified table:', describeError);
-    }
-
     let deleteQuery;
     let queryParams;
 
@@ -247,11 +219,7 @@ export async function DELETE(request: NextRequest) {
       // Delete specific notifications_unified
       // SECURITY FIX: Build safe parameterized query without template literals
       const placeholders = notificationIds.map(() => '?').join(',');
-      if (idColumn === 'notification_id') {
-        deleteQuery = `DELETE FROM notifications_unified WHERE notification_id IN (${placeholders}) AND user_id = ?`;
-      } else {
-        deleteQuery = `DELETE FROM notifications_unified WHERE id IN (${placeholders}) AND user_id = ?`;
-      }
+      deleteQuery = `DELETE FROM notifications_unified WHERE id IN (${placeholders}) AND user_id = ?`;
       queryParams = [...notificationIds, parseInt(user.userId)];
     } else {
       return NextResponse.json({
@@ -264,13 +232,13 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({
       success: true,
       message: deleteAll 
-        ? 'All notifications_unified deleted' 
+        ? 'All notifications deleted' 
         : `${result.affectedRows} notification(s) deleted`,
       deletedCount: result.affectedRows
     });
 
   } catch (error) {
-    console.error('Delete cremation provider notifications_unified error:', error);
+    console.error('Delete cremation provider notifications error:', error);
     return NextResponse.json({
       error: 'Internal server error',
       details: error instanceof Error ? error.message : 'Unknown error'
