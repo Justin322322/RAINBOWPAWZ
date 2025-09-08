@@ -122,7 +122,11 @@ export async function GET(request: NextRequest) {
           }
         }
 
-        return NextResponse.json({ availability: allDatesInMonth });
+        // If normalized returned nothing for this range, fall back to JSON columns
+        const hasAnyNorm = daysRows.length > 0 || slotsRows.length > 0;
+        if (hasAnyNorm) {
+          return NextResponse.json({ availability: allDatesInMonth });
+        }
       }
 
       // Fallback to JSON columns in service_providers
@@ -236,7 +240,7 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Using existing service_providers table with JSON columns - no additional tables needed
+    // Prefer normalized tables if present; fallback to JSON columns
 
     // Validate time slots: format, order, and overlap
     const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
@@ -267,61 +271,66 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Cannot modify availability for past dates' }, { status: 400 });
     }
 
-    // Use JSON columns approach - much cleaner!
     const result = await withTransaction(async (transaction) => {
-      // Get current JSON data
-      const currentData = await transaction.query(
-        'SELECT availability_data, time_slots_data FROM service_providers WHERE provider_id = ?',
-        [providerId]
+      // Detect normalized tables
+      const tables = await transaction.query(
+        `SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME IN ('provider_availability','availability_time_slots')`
       ) as any[];
+      const hasDays = tables.some((t:any)=>t.TABLE_NAME.toLowerCase()==='provider_availability');
+      const hasSlots = tables.some((t:any)=>t.TABLE_NAME.toLowerCase()==='availability_time_slots');
+      // If normalized tables exist, write to them; else write to JSON columns
+      if (hasDays && hasSlots) {
+        // Upsert day availability
+        await transaction.query(
+          `INSERT INTO provider_availability (provider_id, availability_date, is_available)
+           VALUES (?, ?, ?)
+           ON DUPLICATE KEY UPDATE is_available = VALUES(is_available), updated_at = NOW()`,
+          [providerId, normalizedDate, isAvailable ? 1 : 0]
+        );
 
-      let availabilityData: Record<string, boolean> = {};
-      let timeSlotsData: Record<string, any[]> = {};
-
-      if (currentData && currentData.length > 0) {
-        try {
-          availabilityData = currentData[0].availability_data ? JSON.parse(currentData[0].availability_data) : {};
-        } catch {
-          availabilityData = {};
+        // Replace slots for that date
+        await transaction.query(
+          `DELETE FROM availability_time_slots WHERE provider_id = ? AND availability_date = ?`,
+          [providerId, normalizedDate]
+        );
+        if (isAvailable && sortedSlots.length > 0) {
+          for (const slot of sortedSlots) {
+            await transaction.query(
+              `INSERT INTO availability_time_slots (provider_id, availability_date, start_time, end_time)
+               VALUES (?, ?, STR_TO_DATE(?, '%H:%i'), STR_TO_DATE(?, '%H:%i'))`,
+              [providerId, normalizedDate, slot.start.substring(0,5), slot.end.substring(0,5)]
+            );
+          }
         }
-        try {
-          timeSlotsData = currentData[0].time_slots_data ? JSON.parse(currentData[0].time_slots_data) : {};
-        } catch {
-          timeSlotsData = {};
-        }
-      }
-
-      // Update availability for the specific date
-      availabilityData[normalizedDate] = isAvailable;
-
-      // Update time slots for the specific date
-      if (!isAvailable) {
-        // Remove time slots if day is not available
-        delete timeSlotsData[normalizedDate];
       } else {
-        // Update time slots
-        timeSlotsData[normalizedDate] = sortedSlots.map((slot, index) => ({
-          id: slot.id || `${normalizedDate}-${index}`,
-          start: slot.start.substring(0, 5),
-          end: slot.end.substring(0, 5),
-          availableServices: Array.isArray(slot.availableServices) 
-            ? slot.availableServices.filter((id: number) => id !== 0)
-            : []
-        }));
+        // JSON columns path
+        const currentData = await transaction.query(
+          'SELECT availability_data, time_slots_data FROM service_providers WHERE provider_id = ?',
+          [providerId]
+        ) as any[];
+        let availabilityData: Record<string, boolean> = {};
+        let timeSlotsData: Record<string, any[]> = {};
+        try { availabilityData = currentData[0]?.availability_data ? JSON.parse(currentData[0].availability_data) : {}; } catch { availabilityData = {}; }
+        try { timeSlotsData = currentData[0]?.time_slots_data ? JSON.parse(currentData[0].time_slots_data) : {}; } catch { timeSlotsData = {}; }
+
+        availabilityData[normalizedDate] = isAvailable;
+        if (!isAvailable) {
+          delete timeSlotsData[normalizedDate];
+        } else {
+          timeSlotsData[normalizedDate] = sortedSlots.map((slot, index) => ({
+            id: slot.id || `${normalizedDate}-${index}`,
+            start: slot.start.substring(0, 5),
+            end: slot.end.substring(0, 5),
+            availableServices: Array.isArray(slot.availableServices) ? slot.availableServices.filter((id: number) => id !== 0) : []
+          }));
+        }
+        await transaction.query(
+          `UPDATE service_providers SET availability_data = ?, time_slots_data = ?, updated_at = NOW() WHERE provider_id = ?`,
+          [JSON.stringify(availabilityData), JSON.stringify(timeSlotsData), providerId]
+        );
       }
 
-      // Update the provider record with new JSON data
-      await transaction.query(
-        `UPDATE service_providers 
-         SET availability_data = ?, time_slots_data = ? 
-         WHERE provider_id = ?`,
-        [JSON.stringify(availabilityData), JSON.stringify(timeSlotsData), providerId]
-      );
-
-      return { 
-        success: true,
-        slotsCount: sortedSlots.length 
-      };
+      return { success: true, slotsCount: sortedSlots.length };
     });
 
     return NextResponse.json({
