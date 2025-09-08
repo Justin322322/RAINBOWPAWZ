@@ -239,13 +239,29 @@ async function fetchRelatedData(packageIds: number[]) {
       // Parse images from JSON column
       if (pkg.images) {
         try {
-          const imagesData = typeof pkg.images === 'string' ? JSON.parse(pkg.images) : pkg.images;
+          let imagesData: any[] = [];
+          
+          if (typeof pkg.images === 'string') {
+            // Check for corrupted data with [object Object]
+            if (pkg.images.includes('[object Object]')) {
+              console.warn(`Package ${pkg.package_id} has corrupted images data with [object Object]`);
+              // Skip corrupted data
+            } else {
+              imagesData = JSON.parse(pkg.images);
+            }
+          } else if (Array.isArray(pkg.images)) {
+            imagesData = pkg.images;
+          }
           
           if (Array.isArray(imagesData)) {
             imagesData.forEach((img: any) => {
               let resolved: string | null = null;
               
               if (typeof img === 'string') {
+                // Skip corrupted string data
+                if (img.includes('[object Object]')) {
+                  return;
+                }
                 resolved = img;
               } else if (img && typeof img === 'object') {
                 const rawPath = img.url || img.path || img.src || null;

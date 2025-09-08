@@ -41,124 +41,43 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const unreadOnly = searchParams.get('unread_only') === 'true';
 
-    // Get notifications_unified from the database
-    // First check if the admin_notifications table exists
-    try {
-      const tableCheck = await query(`
-        SELECT COUNT(*) as count
-        FROM information_schema.tables
-        WHERE table_schema = DATABASE() AND table_name = 'admin_notifications'
-      `);
-
-      const tableExists = tableCheck && Array.isArray(tableCheck) &&
-                          tableCheck[0] && tableCheck[0].count > 0;
-
-      if (!tableExists) {
-        // If the table doesn't exist, create it
-        await query(`
-          CREATE TABLE admin_notifications (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            type VARCHAR(50) NOT NULL,
-            title VARCHAR(255) NOT NULL,
-            message TEXT NOT NULL,
-            entity_type VARCHAR(50),
-            entity_id INT,
-            link VARCHAR(255),
-            status TINYINT(1) DEFAULT 0,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-          )
-        `);
-
-      }
-
-      // Get notifications_unified based on unread_only parameter
-      const notifications_unified = await query(`
-        SELECT * FROM admin_notifications
-        ${unreadOnly ? 'WHERE status = 0' : ''}
-        ORDER BY created_at DESC
-        LIMIT 50
-      `);
-
-      // Check which table exists: service_providers or service_providers
-      const tableCheckResult = await query(`
-        SELECT table_name
-        FROM information_schema.tables
-        WHERE table_schema = DATABASE()
-        AND table_name IN ('service_providers', 'service_providers')
-      `) as any[];
-
-      const tableNames = tableCheckResult.map((row: any) => row.table_name);
-      const useServiceProvidersTable = tableNames.includes('service_providers');
+    // Get notifications from the unified notifications table
+    const notifications_unified = await query(`
+      SELECT 
+        id,
+        user_id,
+        type,
+        category,
+        title,
+        message,
+        data,
+        status,
+        priority,
+        created_at,
+        read_at
+      FROM notifications_unified
+      WHERE user_id = ? AND category = 'admin'
+      ${unreadOnly ? 'AND status != "read"' : ''}
+      ORDER BY created_at DESC
+      LIMIT 50
+    `, [user.userId]);
 
       // Get pending applications count
       let pendingCount = 0;
-
-      if (useServiceProvidersTable) {
+      try {
         const pendingApplications = await query(`
           SELECT COUNT(*) as count
           FROM service_providers
           WHERE application_status = 'pending'
-        `);
+        `) as any[];
 
-        pendingCount = pendingApplications && pendingApplications[0] ? pendingApplications[0].count : 0;
-      } else {
-        const pendingApplications = await query(`
-          SELECT COUNT(*) as count
-          FROM service_providers
-          WHERE verification_status IS NULL OR verification_status = 'pending'
-        `);
-
-        pendingCount = pendingApplications && pendingApplications[0] ? pendingApplications[0].count : 0;
+        pendingCount = pendingApplications[0]?.count || 0;
+      } catch (error) {
+        console.log('Could not fetch pending applications count:', error);
       }
 
-      // If there are pending applications but no notification for them, create one
-      if (pendingCount > 0) {
-        const applicationNotification = await query(`
-          SELECT * FROM admin_notifications
-          WHERE type = 'pending_application' AND status = 0
-          LIMIT 1
-        `);
-
-        if (!applicationNotification || applicationNotification.length === 0) {
-          // Create a notification for pending applications
-          await query(`
-            INSERT INTO admin_notifications (type, title, message, entity_type, link)
-            VALUES (?, ?, ?, ?, ?)
-          `, [
-            'pending_application',
-            'Pending Applications',
-            `You have ${pendingCount} pending business application${pendingCount > 1 ? 's' : ''} to review.`,
-            useServiceProvidersTable ? 'service_provider' : 'service_provider',
-            '/admin/applications'
-          ]);
-
-          // Fetch notifications_unified based on unread_only parameter
-          const newNotifications = await query(`
-            SELECT * FROM admin_notifications
-            ${unreadOnly ? 'WHERE status = 0' : ''}
-            ORDER BY created_at DESC
-            LIMIT 50
-          `);
-
-          // Calculate unread count from the new notifications_unified
-          const unreadCount = newNotifications.filter((notification: any) => notification.status === 0).length;
-
-          return NextResponse.json({
-            success: true,
-            notifications_unified: newNotifications,
-            pendingApplications: pendingCount,
-            unread_count: unreadCount
-          }, {
-            headers: {
-              'Cache-Control': 'no-cache, no-store, must-revalidate',
-              'Pragma': 'no-cache'
-            }
-          });
-        }
-      }
-
-      // Calculate unread count from the notifications_unified
-      const unreadCount = notifications_unified.filter((notification: any) => notification.status === 0).length;
+      // Calculate unread count from the notifications
+      const unreadCount = notifications_unified.filter((notification: any) => notification.status !== 'read').length;
 
       return NextResponse.json({
         success: true,
@@ -186,21 +105,6 @@ export async function GET(request: NextRequest) {
         }
       });
     }
-  } catch (error) {
-    return NextResponse.json({
-      error: 'Failed to fetch notifications_unified',
-      details: error instanceof Error ? error.message : 'Unknown error',
-      success: false,
-      notifications_unified: [],
-      pendingApplications: 0
-    }, { 
-      status: 500,
-      headers: {
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache'
-      }
-    });
-  }
 }
 
 // Mark notifications_unified as read (PATCH method for consistency with user API)
