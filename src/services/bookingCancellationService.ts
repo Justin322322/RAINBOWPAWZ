@@ -5,6 +5,7 @@
 
 import { query } from '@/lib/db';
 import { processRefund, RefundRequest } from '@/services/refundService';
+import { createRefundRecord, logRefundAudit } from '@/lib/db/refunds';
 import { sendRefundProcessedNotification, sendRefundInitiatedNotification } from '@/utils/refundNotificationService';
 import { logAdminAction } from '@/utils/adminUtils';
 
@@ -159,55 +160,32 @@ export async function cancelBookingWithRefund(
 
     const refundResult = await processRefund(refundRequest);
 
-    // Ensure a refund record exists in refunds table and write audit
-    try {
-      const refundStatus = refundResult.success
-        ? (refundResult.refundType === 'automatic' ? 'completed' : 'pending')
-        : 'failed';
+    // If refund processing failed (e.g., PayMongo not executed), create a manual pending refund so it appears in reports
+    if (!refundResult.success) {
+      try {
+        const createdRefundId = await createRefundRecord({
+          booking_id: request.bookingId,
+          user_id: bookingInfo.userId,
+          amount: refundAmount,
+          reason: refundRequest.reason,
+          status: 'pending',
+          refund_type: 'manual',
+          payment_method: (bookingInfo.payment_method || 'cash') as any,
+          initiated_at: new Date()
+        });
 
-      // Insert refund record
-      const insertRefundRes = await query(
-        `INSERT INTO refunds (booking_id, user_id, amount, reason, status, refund_type, payment_method, initiated_at, processed_at, completed_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), ${refundStatus !== 'pending' ? 'NOW()' : 'NULL'}, ${refundStatus === 'completed' ? 'NOW()' : 'NULL'})`,
-        [
-          request.bookingId,
-          bookingInfo.userId,
-          refundAmount,
-          refundRequest.reason,
-          refundStatus,
-          refundResult.refundType || 'manual',
-          bookingInfo.payment_method || 'cash'
-        ]
-      ) as any;
-
-      const createdRefundId: number | undefined = insertRefundRes?.insertId || refundResult.refundId;
-
-      // Write audit log (non-fatal if table missing)
-      if (createdRefundId) {
-        try {
-          await query(
-            `INSERT INTO refund_audit_logs (refund_id, action, previous_status, new_status, performed_by, performed_by_type, details, ip_address)
-             VALUES (?, 'created', NULL, ?, ?, ?, ?, ?)`,
-            [
-              createdRefundId,
-              refundStatus,
-              request.cancelledBy,
-              request.cancelledByType === 'admin' ? 'admin' : request.cancelledByType === 'customer' ? 'system' : 'staff',
-              `Refund created via cancellation for booking ${request.bookingId}`,
-              request.ipAddress || null
-            ]
-          );
-        } catch (auditError) {
-          const msg = auditError instanceof Error ? auditError.message : String(auditError);
-          if (!msg.includes("refund_audit_logs") || !msg.includes("doesn't exist")) {
-            console.warn('Cancellation: audit write warning:', auditError);
-          } else {
-            console.warn('Cancellation: audit table missing; skipping audit write (non-fatal).');
-          }
-        }
+        await logRefundAudit({
+          refund_id: createdRefundId,
+          action: 'created',
+          new_status: 'pending',
+          performed_by: request.cancelledBy,
+          performed_by_type: request.cancelledByType === 'admin' ? 'admin' : request.cancelledByType === 'customer' ? 'system' : 'staff',
+          details: `Refund created via cancellation fallback for booking ${request.bookingId}`,
+          ip_address: request.ipAddress
+        });
+      } catch (fallbackErr) {
+        console.warn('Cancellation: refund fallback creation failed (non-fatal):', fallbackErr);
       }
-    } catch (refundInsertError) {
-      console.warn('Cancellation: failed to insert refund record (non-fatal):', refundInsertError);
     }
 
     // Send refund notifications_unified

@@ -110,7 +110,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       } else if (isBusiness) {
         apiUrl = `/api/cremation/notifications`;
       } else {
-        apiUrl = '/api/user/notifications_unified';
+        apiUrl = '/api/user/notifications';
       }
 
       // Add query parameters properly
@@ -238,7 +238,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
         ? '/api/admin/notifications'
         : userAccountType === 'business'
           ? '/api/cremation/notifications'
-          : '/api/user/notifications_unified';
+          : '/api/user/notifications';
 
       const response = await fetch(endpoint, {
         method: 'PATCH',
@@ -357,7 +357,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       const userAccountType = await getAccountTypeAsync();
       const endpoint = userAccountType === 'admin'
         ? `/api/admin/notifications/${notificationId}`
-        : `/api/user/notifications_unified/${notificationId}`;
+        : `/api/user/notifications/${notificationId}`;
 
       const response = await fetch(endpoint, {
         method: 'DELETE',
