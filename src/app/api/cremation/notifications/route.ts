@@ -35,7 +35,8 @@ export async function GET(request: NextRequest) {
         status,
         priority,
         created_at,
-        read_at
+        read_at,
+        link
       FROM notifications_unified 
       WHERE user_id = ? 
       ORDER BY created_at DESC 
@@ -52,7 +53,7 @@ export async function GET(request: NextRequest) {
       // Convert to numeric status: 0 = unread, 1 = read
       status: String(n.status).toLowerCase() === 'read' || n.read_at ? 1 : 0,
       created_at: n.created_at,
-      link: null
+      link: n.link ?? null
     }));
 
     // Get total count

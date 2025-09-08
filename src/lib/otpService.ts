@@ -74,7 +74,7 @@ export async function verifyOtp({
       return { success: false, error: 'Too many attempts. Please try again later.', message: 'Too many attempts. Please try again later.' };
     }
 
-    // Record the verification attempt
+    // Record the verification attempt (separate log row)
     await query(
       'INSERT INTO auth_tokens (user_id, attempt_type, ip_address) VALUES (?, ?, ?)',
       [userId, 'verify', ipAddress]
@@ -83,7 +83,7 @@ export async function verifyOtp({
     // Get only the latest valid OTP for the user
     const otpResult = await query(
       `SELECT id, token_value, expires_at, is_used FROM auth_tokens
-       WHERE user_id = ? AND is_used = 0 AND expires_at > NOW()
+       WHERE user_id = ? AND token_type = 'otp_code' AND is_used = 0 AND expires_at > NOW()
        ORDER BY created_at DESC LIMIT 1`,
       [userId]
     ) as any[];
@@ -169,17 +169,17 @@ export async function generateOtp({
     // First, invalidate any existing OTPs for this user
     try {
       await query(
-        'UPDATE auth_tokens SET is_used = 1 WHERE user_id = ? AND is_used = 0',
+        "UPDATE auth_tokens SET is_used = 1 WHERE user_id = ? AND token_type = 'otp_code' AND is_used = 0",
         [userId]
       );
 
       // Store the new OTP in the database
       await query(
-        'INSERT INTO auth_tokens (user_id, token_value, expires_at) VALUES (?, ?, ?)',
-        [userId, otpCode, expiresAt]
+        "INSERT INTO auth_tokens (user_id, token_type, token_value, expires_at, ip_address) VALUES (?, 'otp_code', ?, ?, ?)",
+        [userId, otpCode, expiresAt, ipAddress]
       );
 
-      // Record the attempt
+      // Record the attempt (separate log row)
       await query(
         'INSERT INTO auth_tokens (user_id, attempt_type, ip_address) VALUES (?, ?, ?)',
         [userId, 'generate', ipAddress]

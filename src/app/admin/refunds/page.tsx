@@ -11,7 +11,6 @@ import {
   EyeIcon,
 } from '@heroicons/react/24/outline';
 import AdminDashboardLayout from '@/components/navigation/AdminDashboardLayout';
-import withAdminAuth from '@/components/withAdminAuth';
 import { StatsCardSkeleton } from '@/components/ui/LoadingComponents';
 
 interface RefundRecord {
@@ -46,7 +45,7 @@ interface RefundStats {
   automatic_count: number;
 }
 
-const AdminRefundsPage = withAdminAuth(function AdminRefundsPage({ adminData }: { adminData: any }) {
+export default function AdminRefundsPage({ adminData }: { adminData: any }) {
   const userName = adminData?.full_name || adminData?.username || 'System Administrator';
   const [refunds, setRefunds] = useState<RefundRecord[]>([]);
   const [stats, setStats] = useState<RefundStats | null>(null);
@@ -536,6 +535,4 @@ const AdminRefundsPage = withAdminAuth(function AdminRefundsPage({ adminData }: 
       )}
     </AdminDashboardLayout>
   );
-});
-
-export default AdminRefundsPage;
+}

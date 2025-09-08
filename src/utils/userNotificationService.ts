@@ -17,7 +17,8 @@ interface NotificationRecord {
   title: string;
   message: string;
   type: 'info' | 'success' | 'warning' | 'error';
-  status: boolean; // Database may return tinyint(1)
+  // status may be boolean (legacy) or enum string like 'read' | 'delivered'
+  status: boolean | string;
   // link column not present in schema; keep optional for compatibility
   link?: string | null;
   created_at: string;
@@ -80,9 +81,28 @@ export async function createUserNotification({
 
 /**
  * Determine the appropriate link for a notification type
+ * Map common flows to deep links that open correct pages/modals
  */
-function determineNotificationLink(_type: string, _entityId?: number): string | null {
-  return null;
+function determineNotificationLink(type: string, entityId?: number): string | null {
+  // Normalize
+  const t = String(type).toLowerCase();
+  // Booking related
+  if (t.includes('booking_review') || t.includes('review_request')) {
+    return entityId ? `/user/furparent_dashboard/bookings?bookingId=${entityId}&showReview=true` : '/user/furparent_dashboard/bookings';
+  }
+  if (t.includes('booking') || t.includes('reservation')) {
+    return entityId ? `/user/furparent_dashboard/bookings?bookingId=${entityId}` : '/user/furparent_dashboard/bookings';
+  }
+  // Payment/refund
+  if (t.includes('payment') || t.includes('refund')) {
+    return '/user/furparent_dashboard/bookings';
+  }
+  // Business/provider
+  if (t.includes('business') || t.includes('provider') || t.includes('cremation')) {
+    return '/cremation/dashboard';
+  }
+  // System default: notifications center destination if available, fallback to home/dashboard
+  return '/';
 }
 
 /**
@@ -118,17 +138,23 @@ export async function getUserNotifications(userId: number, limit: number = 10): 
 
     const selectQuery = idColumn === 'notification_id'
       ? `SELECT notification_id as id, user_id, title, message, type, status, created_at, link
-           FROM notifications_unified WHERE user_id = ? ORDER BY created_at DESC LIMIT ${Number(limit)}`
-        : `SELECT id, user_id, title, message, type, status, created_at, link
-           FROM notifications_unified WHERE user_id = ? ORDER BY created_at DESC LIMIT ${Number(limit)}`;
+         FROM notifications_unified WHERE user_id = ? ORDER BY created_at DESC LIMIT ${Number(limit)}`
+      : `SELECT id, user_id, title, message, type, status, created_at, link
+         FROM notifications_unified WHERE user_id = ? ORDER BY created_at DESC LIMIT ${Number(limit)}`;
 
     const notifications_unified = await query(selectQuery, [userId]) as NotificationRecord[];
     
-    // Convert boolean status to number (0 or 1) to match frontend expectations
-    const convertedNotifications = (notifications_unified || []).map(notification => ({
-      ...notification,
-      status: notification.status ? 1 : 0
-    }));
+    // Convert mixed status (enum/boolean) to number (0 or 1)
+    const convertedNotifications = (notifications_unified || []).map(notification => {
+      const rawStatus = (notification as any).status;
+      const isRead = typeof rawStatus === 'string'
+        ? rawStatus.toLowerCase() === 'read'
+        : Boolean(rawStatus);
+      return {
+        ...notification,
+        status: isRead ? 1 : 0
+      } as ConvertedNotificationRecord;
+    });
     
     return convertedNotifications;
   } catch (error) {

@@ -45,40 +45,44 @@ export async function POST(request: Request) {
       const expiresAt = new Date();
       expiresAt.setHours(expiresAt.getHours() + 1);
 
-      // First, check if the password_reset_tokens table exists
+      // Ensure table exists without performing DDL in production
+      // In production, DDL is disabled unless ALLOW_DDL=true; table should be created via CLI script
       try {
-        // Check if the table exists
         const tableExists = await query(
           `SELECT COUNT(*) as count FROM information_schema.tables
            WHERE table_schema = DATABASE() AND table_name = 'password_reset_tokens'`
         ) as any[];
 
         if (tableExists[0].count === 0) {
-          console.log('Creating password_reset_tokens table...');
-          // Create the table if it doesn't exist
-          await query(`
-            CREATE TABLE IF NOT EXISTS password_reset_tokens (
-              id INT AUTO_INCREMENT PRIMARY KEY,
-              user_id INT NOT NULL,
-              token VARCHAR(100) NOT NULL,
-              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-              expires_at DATETIME NOT NULL,
-              is_used TINYINT(1) DEFAULT 0,
-              UNIQUE KEY unique_token (token),
-              INDEX idx_user_id (user_id),
-              INDEX idx_token (token),
-              INDEX idx_expires_at (expires_at),
-              INDEX idx_is_used (is_used),
-              FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-          `);
-          console.log('password_reset_tokens table created successfully');
-        } else {
-          console.log('password_reset_tokens table already exists');
+          if (process.env.ALLOW_DDL === 'true') {
+            await query(`
+              CREATE TABLE IF NOT EXISTS password_reset_tokens (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT NOT NULL,
+                token VARCHAR(100) NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                expires_at DATETIME NOT NULL,
+                is_used TINYINT(1) DEFAULT 0,
+                UNIQUE KEY unique_token (token),
+                INDEX idx_user_id (user_id),
+                INDEX idx_token (token),
+                INDEX idx_expires_at (expires_at),
+                INDEX idx_is_used (is_used),
+                FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+              ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            `);
+          } else {
+            console.error('password_reset_tokens table missing and DDL disabled');
+            return NextResponse.json({
+              error: 'Server configuration error. Please try again later.'
+            }, { status: 500 });
+          }
         }
       } catch (tableError) {
-        console.error('Error ensuring password reset table exists:', tableError);
-        throw new Error('Failed to ensure password reset table exists');
+        console.error('Error checking/creating password reset table:', tableError);
+        return NextResponse.json({
+          error: 'Server configuration error. Please try again later.'
+        }, { status: 500 });
       }
 
       // Mark any existing tokens for this user as used instead of deleting them

@@ -160,7 +160,7 @@ export async function createBookingNotification(
         message,
         type,
         status: 0,
-        link,
+        link: null,
         created_at: new Date().toISOString()
       });
     }

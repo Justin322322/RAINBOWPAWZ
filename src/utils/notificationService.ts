@@ -187,7 +187,7 @@ export async function createNotification({
 }: CreateNotificationParams): Promise<NotificationResult> {
   try {
     await ensureNotificationsTable();
-    const result = await insertNotificationWithRetry(userId, title, message, type, category ?? 'system', null);
+    const result = await insertNotificationWithRetry(userId, title, message, type, category ?? 'system', link ?? null);
 
     if (shouldSendEmail) {
       await sendEmailNotification(userId, title, message, type, link, emailSubject);
@@ -217,7 +217,7 @@ async function insertNotificationWithRetry(
   message: string,
   type: string,
   category: CreateNotificationParams['category'],
-  _link: string | null
+  link: string | null
 ): Promise<InsertResult> {
   const maxRetries = 3;
   let lastError: Error = new Error('No attempts made');
@@ -226,9 +226,9 @@ async function insertNotificationWithRetry(
     try {
       const { dbType, dbCategory, dbStatus } = normalizeDbNotification(type as any, category);
       return await query(
-        `INSERT INTO notifications_unified (user_id, title, message, type, category, status, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, NOW())`,
-        [userId, title, message, dbType, dbCategory, dbStatus]
+        `INSERT INTO notifications_unified (user_id, title, message, type, category, status, link, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, NOW())`,
+        [userId, title, message, dbType, dbCategory, dbStatus, link]
       ) as unknown as InsertResult;
     } catch (error) {
       lastError = error instanceof Error ? error : new Error('Unknown error');
