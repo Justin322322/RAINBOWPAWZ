@@ -104,13 +104,11 @@ export async function GET(request: NextRequest) {
     const services = await query(sql, [providerId]);
 
     // Transform the response to ensure consistent field names
-    const transformedServices = services.map((service: any) => {
-      // Ensure package_id is mapped to id for frontend compatibility
-      return {
-        ...service,
-        id: service.package_id
-      };
-    });
+    const transformedServices = (services as any[]).map((service: any) => ({
+      ...service,
+      // Prefer consolidated primary key `id`; fallback to legacy `package_id`
+      id: service.id ?? service.package_id,
+    }));
 
     return NextResponse.json({
       success: true,

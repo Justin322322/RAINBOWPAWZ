@@ -11,6 +11,10 @@ import { logAdminAction } from '@/utils/adminUtils';
 import path from 'path';
 import fs from 'fs/promises';
 
+// Ensure Node.js runtime for filesystem access (avoids Edge runtime limitations)
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
 /**
  * POST /api/refunds/[id]/upload-receipt - Upload refund receipt
  */

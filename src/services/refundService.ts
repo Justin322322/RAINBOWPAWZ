@@ -133,8 +133,12 @@ async function processAutomaticRefund(
     // Find the PayMongo payment ID
     let paymentId: string | null = null;
 
+    // Prefer payment_intent/payment_id captured in transactions
     if (bookingInfo.paymentId) {
       paymentId = bookingInfo.paymentId;
+    } else if (bookingInfo.transactionId) {
+      // Some integrations store intent/payment id in provider_transaction_id
+      paymentId = bookingInfo.transactionId;
     } else if (bookingInfo.sourceId) {
       // Find payment by source ID
       const payments = await listPaymentsBySource(bookingInfo.sourceId);
@@ -326,20 +330,21 @@ async function processManualRefund(
  */
 async function getBookingPaymentInfo(bookingId: number): Promise<BookingPaymentInfo | null> {
   try {
-    // Try bookings table first
+    // Try bookings table first (map to existing transaction columns)
     let bookingResults = await query(`
       SELECT 
-        sb.id as booking_id,
+        sb.id AS booking_id,
         sb.user_id,
-        sb.total_price as amount,
+        sb.total_price AS amount,
         sb.payment_method,
         sb.payment_status,
         pt.source_id,
-        pt.payment_id,
-        pt.transaction_id
+        pt.payment_intent_id AS payment_id,
+        pt.provider_transaction_id AS transaction_id
       FROM bookings sb
       LEFT JOIN payment_transactions pt ON sb.id = pt.booking_id
       WHERE sb.id = ?
+      ORDER BY pt.id DESC
       LIMIT 1
     `, [bookingId]) as any[];
 
@@ -347,17 +352,18 @@ async function getBookingPaymentInfo(bookingId: number): Promise<BookingPaymentI
       // Fallback to bookings table
       bookingResults = await query(`
         SELECT 
-          b.id as booking_id,
+          b.id AS booking_id,
           b.user_id,
-          COALESCE(b.price, b.total_price, b.total_amount, b.amount) as amount,
-          COALESCE(b.payment_method, 'cash') as payment_method,
-          COALESCE(b.payment_status, 'not_paid') as payment_status,
+          COALESCE(b.price, b.total_price, b.total_amount, b.amount) AS amount,
+          COALESCE(b.payment_method, 'cash') AS payment_method,
+          COALESCE(b.payment_status, 'not_paid') AS payment_status,
           pt.source_id,
-          pt.payment_id,
-          pt.transaction_id
+          pt.payment_intent_id AS payment_id,
+          pt.provider_transaction_id AS transaction_id
         FROM bookings b
         LEFT JOIN payment_transactions pt ON b.id = pt.booking_id
         WHERE b.id = ?
+        ORDER BY pt.id DESC
         LIMIT 1
       `, [bookingId]) as any[];
     }

@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
     const unreadOnly = searchParams.get('unread_only') === 'true';
 
     // Get notifications from the unified notifications table
-    const notifications_unified = await query(`
+    const rows = await query(`
       SELECT 
         id,
         user_id,
@@ -62,6 +62,12 @@ export async function GET(request: NextRequest) {
       LIMIT 50
     `, [user.userId]);
 
+    const notifications_unified = (rows as any[]).map((n: any) => ({
+      ...n,
+      status: String(n.status).toLowerCase() === 'read' || n.read_at ? 1 : 0,
+      data: n.data ? (typeof n.data === 'string' ? JSON.parse(n.data) : n.data) : null
+    }));
+
       // Get pending applications count
       let pendingCount = 0;
       try {
@@ -77,12 +83,14 @@ export async function GET(request: NextRequest) {
       }
 
       // Calculate unread count from the notifications
-      const unreadCount = notifications_unified.filter((notification: any) => notification.status !== 'read').length;
+      const unreadCount = notifications_unified.filter((notification: any) => Number(notification.status) === 0).length;
 
       return NextResponse.json({
         success: true,
+        notifications: notifications_unified,
         notifications_unified,
         pendingApplications: pendingCount,
+        unreadCount: unreadCount,
         unread_count: unreadCount
       }, {
         headers: {

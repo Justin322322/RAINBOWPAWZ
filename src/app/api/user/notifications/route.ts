@@ -25,15 +25,22 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const limit = parseInt(searchParams.get('limit') || '10');
 
-    // Fetch notifications_unified
-    const notifications_unified = await getUserNotifications(parseInt(user.userId), limit);
+    // Fetch notifications
+    const raw = await getUserNotifications(parseInt(user.userId), limit);
+    // Normalize shape
+    const notifications_unified = (raw || []).map(n => ({
+      ...n,
+      status: n.status ? 1 : 0,
+    }));
 
-    // Calculate unread count from the notifications_unified
-    const unreadCount = notifications_unified.filter(notification => notification.status === 0).length;
+    // Calculate unread count
+    const unreadCount = notifications_unified.filter(n => n.status === 0).length;
 
     return NextResponse.json({
       success: true,
+      notifications: notifications_unified,
       notifications_unified,
+      unreadCount,
       unread_count: unreadCount
     });
 
