@@ -1,0 +1,1622 @@
+{
+  "generated": "2025-09-08T01:15:27.513Z",
+  "totalTables": 13,
+  "tables": {
+    "admin_logs": {
+      "rowCount": 10,
+      "columnCount": 8,
+      "columns": [
+        {
+          "name": "id",
+          "type": "int",
+          "null": "NO",
+          "key": "PRI",
+          "default": null
+        },
+        {
+          "name": "admin_id",
+          "type": "int",
+          "null": "NO",
+          "key": "MUL",
+          "default": null
+        },
+        {
+          "name": "action",
+          "type": "varchar(100)",
+          "null": "NO",
+          "key": "MUL",
+          "default": null
+        },
+        {
+          "name": "entity_type",
+          "type": "varchar(50)",
+          "null": "NO",
+          "key": "MUL",
+          "default": null
+        },
+        {
+          "name": "entity_id",
+          "type": "int",
+          "null": "NO",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "details",
+          "type": "text",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "ip_address",
+          "type": "varchar(45)",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp",
+          "null": "NO",
+          "key": "",
+          "default": "CURRENT_TIMESTAMP"
+        }
+      ]
+    },
+    "auth_tokens": {
+      "rowCount": 33,
+      "columnCount": 11,
+      "columns": [
+        {
+          "name": "id",
+          "type": "int",
+          "null": "NO",
+          "key": "PRI",
+          "default": null
+        },
+        {
+          "name": "user_id",
+          "type": "int",
+          "null": "NO",
+          "key": "MUL",
+          "default": null
+        },
+        {
+          "name": "token_type",
+          "type": "enum('otp_code','reset_token','verification')",
+          "null": "NO",
+          "key": "MUL",
+          "default": null
+        },
+        {
+          "name": "token_value",
+          "type": "varchar(255)",
+          "null": "NO",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "attempts_data",
+          "type": "json",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "expires_at",
+          "type": "timestamp",
+          "null": "NO",
+          "key": "MUL",
+          "default": null
+        },
+        {
+          "name": "is_used",
+          "type": "tinyint(1)",
+          "null": "YES",
+          "key": "",
+          "default": "0"
+        },
+        {
+          "name": "used_at",
+          "type": "timestamp",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "metadata",
+          "type": "json",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp",
+          "null": "YES",
+          "key": "",
+          "default": "CURRENT_TIMESTAMP"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp",
+          "null": "YES",
+          "key": "",
+          "default": "CURRENT_TIMESTAMP"
+        }
+      ]
+    },
+    "bookings": {
+      "rowCount": 39,
+      "columnCount": 27,
+      "columns": [
+        {
+          "name": "id",
+          "type": "int",
+          "null": "NO",
+          "key": "PRI",
+          "default": null
+        },
+        {
+          "name": "user_id",
+          "type": "int",
+          "null": "NO",
+          "key": "MUL",
+          "default": null
+        },
+        {
+          "name": "provider_id",
+          "type": "int",
+          "null": "NO",
+          "key": "MUL",
+          "default": null
+        },
+        {
+          "name": "package_id",
+          "type": "int",
+          "null": "NO",
+          "key": "MUL",
+          "default": null
+        },
+        {
+          "name": "service_type_id",
+          "type": "int",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "pet_name",
+          "type": "varchar(255)",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "pet_type",
+          "type": "varchar(100)",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "pet_weight",
+          "type": "decimal(5,2)",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "cause_of_death",
+          "type": "text",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "pet_image_url",
+          "type": "mediumtext",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "booking_date",
+          "type": "date",
+          "null": "YES",
+          "key": "MUL",
+          "default": null
+        },
+        {
+          "name": "booking_time",
+          "type": "time",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "status",
+          "type": "enum('pending','confirmed','in_progress','completed','cancelled','no_show')",
+          "null": "YES",
+          "key": "MUL",
+          "default": "pending"
+        },
+        {
+          "name": "special_requests",
+          "type": "text",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "notes",
+          "type": "text",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "confirmation_code",
+          "type": "varchar(50)",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "payment_method",
+          "type": "varchar(50)",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "payment_status",
+          "type": "enum('not_paid','partially_paid','paid','refunded','failed')",
+          "null": "YES",
+          "key": "MUL",
+          "default": "not_paid"
+        },
+        {
+          "name": "delivery_option",
+          "type": "enum('pickup','delivery')",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "delivery_address",
+          "type": "text",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "delivery_distance",
+          "type": "decimal(8,2)",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "delivery_fee",
+          "type": "decimal(10,2)",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "base_price",
+          "type": "decimal(10,2)",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "total_price",
+          "type": "decimal(10,2)",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "refund_id",
+          "type": "int",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp",
+          "null": "YES",
+          "key": "MUL",
+          "default": "CURRENT_TIMESTAMP"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp",
+          "null": "YES",
+          "key": "",
+          "default": "CURRENT_TIMESTAMP"
+        }
+      ]
+    },
+    "business_profiles": {
+      "rowCount": 3,
+      "columnCount": 19,
+      "columns": [
+        {
+          "name": "id",
+          "type": "int",
+          "null": "NO",
+          "key": "",
+          "default": "0"
+        },
+        {
+          "name": "user_id",
+          "type": "int",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "business_name",
+          "type": "varchar(100)",
+          "null": "NO",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "business_type",
+          "type": "enum('cremation','memorial','veterinary')",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "contact_first_name",
+          "type": "varchar(50)",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "contact_last_name",
+          "type": "varchar(50)",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "business_phone",
+          "type": "varchar(20)",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "business_address",
+          "type": "text",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "business_hours",
+          "type": "text",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "service_description",
+          "type": "text",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "application_status",
+          "type": "enum('pending','declined','approved','restricted')",
+          "null": "YES",
+          "key": "",
+          "default": "pending"
+        },
+        {
+          "name": "verification_status",
+          "type": "enum('pending','declined','approved','restricted')",
+          "null": "YES",
+          "key": "",
+          "default": "pending"
+        },
+        {
+          "name": "verification_date",
+          "type": "timestamp",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "verification_notes",
+          "type": "text",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "bir_certificate_path",
+          "type": "varchar(255)",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "business_permit_path",
+          "type": "varchar(255)",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "government_id_path",
+          "type": "varchar(255)",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp",
+          "null": "NO",
+          "key": "",
+          "default": "CURRENT_TIMESTAMP"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp",
+          "null": "NO",
+          "key": "",
+          "default": "CURRENT_TIMESTAMP"
+        }
+      ]
+    },
+    "notifications_unified": {
+      "rowCount": 41,
+      "columnCount": 15,
+      "columns": [
+        {
+          "name": "id",
+          "type": "int",
+          "null": "NO",
+          "key": "PRI",
+          "default": null
+        },
+        {
+          "name": "user_id",
+          "type": "int",
+          "null": "NO",
+          "key": "MUL",
+          "default": null
+        },
+        {
+          "name": "provider_id",
+          "type": "int",
+          "null": "YES",
+          "key": "MUL",
+          "default": null
+        },
+        {
+          "name": "type",
+          "type": "enum('email','sms','push','system')",
+          "null": "NO",
+          "key": "MUL",
+          "default": null
+        },
+        {
+          "name": "category",
+          "type": "enum('booking','payment','refund','review','admin','marketing','system')",
+          "null": "NO",
+          "key": "MUL",
+          "default": null
+        },
+        {
+          "name": "title",
+          "type": "varchar(255)",
+          "null": "NO",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "message",
+          "type": "text",
+          "null": "NO",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "data",
+          "type": "json",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "status",
+          "type": "enum('pending','sent','delivered','failed','read')",
+          "null": "YES",
+          "key": "MUL",
+          "default": "pending"
+        },
+        {
+          "name": "priority",
+          "type": "enum('low','normal','high','urgent')",
+          "null": "YES",
+          "key": "",
+          "default": "normal"
+        },
+        {
+          "name": "scheduled_at",
+          "type": "timestamp",
+          "null": "YES",
+          "key": "MUL",
+          "default": null
+        },
+        {
+          "name": "sent_at",
+          "type": "timestamp",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "read_at",
+          "type": "timestamp",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp",
+          "null": "YES",
+          "key": "MUL",
+          "default": "CURRENT_TIMESTAMP"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp",
+          "null": "YES",
+          "key": "",
+          "default": "CURRENT_TIMESTAMP"
+        }
+      ]
+    },
+    "payment_transactions": {
+      "rowCount": 25,
+      "columnCount": 18,
+      "columns": [
+        {
+          "name": "id",
+          "type": "int",
+          "null": "NO",
+          "key": "PRI",
+          "default": null
+        },
+        {
+          "name": "booking_id",
+          "type": "int",
+          "null": "NO",
+          "key": "MUL",
+          "default": null
+        },
+        {
+          "name": "payment_intent_id",
+          "type": "varchar(255)",
+          "null": "YES",
+          "key": "MUL",
+          "default": null
+        },
+        {
+          "name": "source_id",
+          "type": "varchar(255)",
+          "null": "YES",
+          "key": "MUL",
+          "default": null
+        },
+        {
+          "name": "amount",
+          "type": "decimal(10,2)",
+          "null": "NO",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "currency",
+          "type": "varchar(3)",
+          "null": "YES",
+          "key": "",
+          "default": "PHP"
+        },
+        {
+          "name": "payment_method",
+          "type": "enum('gcash','cash')",
+          "null": "NO",
+          "key": "MUL",
+          "default": null
+        },
+        {
+          "name": "status",
+          "type": "enum('pending','processing','succeeded','failed','cancelled')",
+          "null": "YES",
+          "key": "MUL",
+          "default": "pending"
+        },
+        {
+          "name": "refund_id",
+          "type": "int",
+          "null": "YES",
+          "key": "MUL",
+          "default": null
+        },
+        {
+          "name": "refunded_at",
+          "type": "timestamp",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "provider",
+          "type": "enum('paymongo','manual')",
+          "null": "NO",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "provider_transaction_id",
+          "type": "varchar(255)",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "checkout_url",
+          "type": "text",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "return_url",
+          "type": "text",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "failure_reason",
+          "type": "text",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "metadata",
+          "type": "longtext",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp",
+          "null": "NO",
+          "key": "",
+          "default": "CURRENT_TIMESTAMP"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp",
+          "null": "NO",
+          "key": "",
+          "default": "CURRENT_TIMESTAMP"
+        }
+      ]
+    },
+    "pets": {
+      "rowCount": 13,
+      "columnCount": 12,
+      "columns": [
+        {
+          "name": "pet_id",
+          "type": "int",
+          "null": "NO",
+          "key": "PRI",
+          "default": null
+        },
+        {
+          "name": "user_id",
+          "type": "int",
+          "null": "YES",
+          "key": "MUL",
+          "default": null
+        },
+        {
+          "name": "name",
+          "type": "varchar(255)",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "species",
+          "type": "varchar(100)",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "breed",
+          "type": "varchar(255)",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "gender",
+          "type": "enum('Male','Female')",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "age",
+          "type": "varchar(50)",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "weight",
+          "type": "decimal(8,2)",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "photo_path",
+          "type": "mediumtext",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "special_notes",
+          "type": "text",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp",
+          "null": "NO",
+          "key": "",
+          "default": "CURRENT_TIMESTAMP"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp",
+          "null": "NO",
+          "key": "",
+          "default": "CURRENT_TIMESTAMP"
+        }
+      ]
+    },
+    "refunds": {
+      "rowCount": 0,
+      "columnCount": 21,
+      "columns": [
+        {
+          "name": "id",
+          "type": "int",
+          "null": "NO",
+          "key": "PRI",
+          "default": null
+        },
+        {
+          "name": "booking_id",
+          "type": "int",
+          "null": "NO",
+          "key": "MUL",
+          "default": null
+        },
+        {
+          "name": "user_id",
+          "type": "int",
+          "null": "NO",
+          "key": "MUL",
+          "default": null
+        },
+        {
+          "name": "amount",
+          "type": "decimal(10,2)",
+          "null": "NO",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "null": "NO",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "status",
+          "type": "enum('pending','processing','completed','failed','cancelled')",
+          "null": "YES",
+          "key": "MUL",
+          "default": "pending"
+        },
+        {
+          "name": "refund_type",
+          "type": "enum('automatic','manual')",
+          "null": "NO",
+          "key": "MUL",
+          "default": null
+        },
+        {
+          "name": "payment_method",
+          "type": "enum('gcash','card','paymaya','cash','qr_code')",
+          "null": "NO",
+          "key": "MUL",
+          "default": null
+        },
+        {
+          "name": "transaction_id",
+          "type": "varchar(255)",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "paymongo_refund_id",
+          "type": "varchar(255)",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "processed_by",
+          "type": "int",
+          "null": "YES",
+          "key": "MUL",
+          "default": null
+        },
+        {
+          "name": "receipt_path",
+          "type": "varchar(500)",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "receipt_verified",
+          "type": "tinyint(1)",
+          "null": "YES",
+          "key": "",
+          "default": "0"
+        },
+        {
+          "name": "receipt_verified_by",
+          "type": "int",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "notes",
+          "type": "text",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "metadata",
+          "type": "json",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "initiated_at",
+          "type": "timestamp",
+          "null": "YES",
+          "key": "MUL",
+          "default": "CURRENT_TIMESTAMP"
+        },
+        {
+          "name": "processed_at",
+          "type": "timestamp",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "completed_at",
+          "type": "timestamp",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp",
+          "null": "YES",
+          "key": "",
+          "default": "CURRENT_TIMESTAMP"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp",
+          "null": "YES",
+          "key": "",
+          "default": "CURRENT_TIMESTAMP"
+        }
+      ]
+    },
+    "reviews": {
+      "rowCount": 8,
+      "columnCount": 9,
+      "columns": [
+        {
+          "name": "id",
+          "type": "int",
+          "null": "NO",
+          "key": "PRI",
+          "default": null
+        },
+        {
+          "name": "user_id",
+          "type": "int",
+          "null": "NO",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "service_provider_id",
+          "type": "int",
+          "null": "NO",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "booking_id",
+          "type": "int",
+          "null": "NO",
+          "key": "UNI",
+          "default": null
+        },
+        {
+          "name": "rating",
+          "type": "int",
+          "null": "NO",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "comment",
+          "type": "text",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp",
+          "null": "NO",
+          "key": "MUL",
+          "default": "CURRENT_TIMESTAMP"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp",
+          "null": "NO",
+          "key": "",
+          "default": "CURRENT_TIMESTAMP"
+        },
+        {
+          "name": "expiration_date",
+          "type": "timestamp",
+          "null": "YES",
+          "key": "",
+          "default": null
+        }
+      ]
+    },
+    "service_packages": {
+      "rowCount": 3,
+      "columnCount": 20,
+      "columns": [
+        {
+          "name": "package_id",
+          "type": "int",
+          "null": "NO",
+          "key": "PRI",
+          "default": null
+        },
+        {
+          "name": "provider_id",
+          "type": "int",
+          "null": "YES",
+          "key": "MUL",
+          "default": null
+        },
+        {
+          "name": "name",
+          "type": "varchar(255)",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "description",
+          "type": "text",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "category",
+          "type": "enum('Private','Communal')",
+          "null": "YES",
+          "key": "",
+          "default": "Private"
+        },
+        {
+          "name": "cremation_type",
+          "type": "enum('Standard','Premium','Deluxe')",
+          "null": "YES",
+          "key": "",
+          "default": "Standard"
+        },
+        {
+          "name": "processing_time",
+          "type": "varchar(50)",
+          "null": "YES",
+          "key": "",
+          "default": "1-2 days"
+        },
+        {
+          "name": "price",
+          "type": "decimal(10,2)",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "pricing_mode",
+          "type": "enum('fixed','by_size')",
+          "null": "NO",
+          "key": "",
+          "default": "fixed"
+        },
+        {
+          "name": "overage_fee_per_kg",
+          "type": "decimal(10,2)",
+          "null": "NO",
+          "key": "",
+          "default": "0.00"
+        },
+        {
+          "name": "delivery_fee_per_km",
+          "type": "decimal(10,2)",
+          "null": "YES",
+          "key": "",
+          "default": "0.00"
+        },
+        {
+          "name": "uses_custom_options",
+          "type": "tinyint(1)",
+          "null": "YES",
+          "key": "",
+          "default": "0"
+        },
+        {
+          "name": "conditions",
+          "type": "text",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "is_active",
+          "type": "tinyint(1)",
+          "null": "YES",
+          "key": "MUL",
+          "default": "1"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp",
+          "null": "NO",
+          "key": "",
+          "default": "CURRENT_TIMESTAMP"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp",
+          "null": "NO",
+          "key": "",
+          "default": "CURRENT_TIMESTAMP"
+        },
+        {
+          "name": "addons",
+          "type": "json",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "inclusions",
+          "type": "json",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "images",
+          "type": "json",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "size_pricing",
+          "type": "json",
+          "null": "YES",
+          "key": "",
+          "default": null
+        }
+      ]
+    },
+    "service_providers": {
+      "rowCount": 3,
+      "columnCount": 27,
+      "columns": [
+        {
+          "name": "provider_id",
+          "type": "int",
+          "null": "NO",
+          "key": "PRI",
+          "default": null
+        },
+        {
+          "name": "user_id",
+          "type": "int",
+          "null": "YES",
+          "key": "MUL",
+          "default": null
+        },
+        {
+          "name": "name",
+          "type": "varchar(100)",
+          "null": "NO",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "provider_type",
+          "type": "enum('cremation','memorial','veterinary')",
+          "null": "YES",
+          "key": "MUL",
+          "default": null
+        },
+        {
+          "name": "business_entity_type",
+          "type": "enum('sole_proprietorship','corporation','partnership','limited_liability_company','cooperative')",
+          "null": "YES",
+          "key": "",
+          "default": "sole_proprietorship"
+        },
+        {
+          "name": "contact_first_name",
+          "type": "varchar(50)",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "contact_last_name",
+          "type": "varchar(50)",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "phone",
+          "type": "varchar(20)",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "address",
+          "type": "text",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "hours",
+          "type": "text",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "description",
+          "type": "text",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "application_status",
+          "type": "enum('pending','declined','approved','restricted')",
+          "null": "YES",
+          "key": "",
+          "default": "pending"
+        },
+        {
+          "name": "verification_date",
+          "type": "timestamp",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "verification_notes",
+          "type": "text",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "bir_certificate_path",
+          "type": "varchar(255)",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "business_permit_path",
+          "type": "varchar(255)",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "government_id_path",
+          "type": "varchar(255)",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp",
+          "null": "NO",
+          "key": "",
+          "default": "CURRENT_TIMESTAMP"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp",
+          "null": "NO",
+          "key": "",
+          "default": "CURRENT_TIMESTAMP"
+        },
+        {
+          "name": "payment_qr_path",
+          "type": "mediumtext",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "contact_email",
+          "type": "varchar(255)",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "business_hours",
+          "type": "json",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "social_media",
+          "type": "json",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "certifications",
+          "type": "json",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "availability_data",
+          "type": "json",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "payment_config",
+          "type": "json",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "time_slots_data",
+          "type": "json",
+          "null": "YES",
+          "key": "",
+          "default": null
+        }
+      ]
+    },
+    "service_types": {
+      "rowCount": 5,
+      "columnCount": 8,
+      "columns": [
+        {
+          "name": "id",
+          "type": "int",
+          "null": "NO",
+          "key": "PRI",
+          "default": null
+        },
+        {
+          "name": "name",
+          "type": "varchar(255)",
+          "null": "NO",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "description",
+          "type": "text",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "category",
+          "type": "enum('cremation','memorial','veterinary','other')",
+          "null": "YES",
+          "key": "MUL",
+          "default": "cremation"
+        },
+        {
+          "name": "is_active",
+          "type": "tinyint(1)",
+          "null": "YES",
+          "key": "MUL",
+          "default": "1"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp",
+          "null": "NO",
+          "key": "",
+          "default": "CURRENT_TIMESTAMP"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp",
+          "null": "NO",
+          "key": "",
+          "default": "CURRENT_TIMESTAMP"
+        },
+        {
+          "name": "pet_types_data",
+          "type": "json",
+          "null": "YES",
+          "key": "",
+          "default": null
+        }
+      ]
+    },
+    "users": {
+      "rowCount": 21,
+      "columnCount": 24,
+      "columns": [
+        {
+          "name": "user_id",
+          "type": "int",
+          "null": "NO",
+          "key": "PRI",
+          "default": null
+        },
+        {
+          "name": "email",
+          "type": "varchar(100)",
+          "null": "NO",
+          "key": "UNI",
+          "default": null
+        },
+        {
+          "name": "password",
+          "type": "varchar(255)",
+          "null": "NO",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "first_name",
+          "type": "varchar(50)",
+          "null": "NO",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "last_name",
+          "type": "varchar(50)",
+          "null": "NO",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "phone",
+          "type": "varchar(20)",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "address",
+          "type": "text",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "gender",
+          "type": "enum('Male','Female','Other')",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "profile_picture",
+          "type": "longtext",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "role",
+          "type": "enum('fur_parent','business','admin')",
+          "null": "NO",
+          "key": "MUL",
+          "default": "fur_parent"
+        },
+        {
+          "name": "status",
+          "type": "enum('active','inactive','suspended','restricted')",
+          "null": "YES",
+          "key": "",
+          "default": "active"
+        },
+        {
+          "name": "restriction_status",
+          "type": "enum('none','restricted','suspended')",
+          "null": "YES",
+          "key": "MUL",
+          "default": "none"
+        },
+        {
+          "name": "is_verified",
+          "type": "tinyint(1)",
+          "null": "YES",
+          "key": "",
+          "default": "0"
+        },
+        {
+          "name": "is_otp_verified",
+          "type": "tinyint(1)",
+          "null": "YES",
+          "key": "",
+          "default": "0"
+        },
+        {
+          "name": "last_login",
+          "type": "timestamp",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp",
+          "null": "NO",
+          "key": "MUL",
+          "default": "CURRENT_TIMESTAMP"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp",
+          "null": "NO",
+          "key": "",
+          "default": "CURRENT_TIMESTAMP"
+        },
+        {
+          "name": "sms_notifications",
+          "type": "tinyint(1)",
+          "null": "YES",
+          "key": "",
+          "default": "1"
+        },
+        {
+          "name": "email_notifications",
+          "type": "tinyint(1)",
+          "null": "YES",
+          "key": "",
+          "default": "1"
+        },
+        {
+          "name": "admin_role",
+          "type": "varchar(50)",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "username",
+          "type": "varchar(50)",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "full_name",
+          "type": "varchar(100)",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "appeals_data",
+          "type": "json",
+          "null": "YES",
+          "key": "",
+          "default": null
+        },
+        {
+          "name": "restrictions_data",
+          "type": "json",
+          "null": "YES",
+          "key": "",
+          "default": null
+        }
+      ]
+    }
+  },
+  "optimization": {
+    "before": 35,
+    "after": 13,
+    "reduction": 63
+  }
+}

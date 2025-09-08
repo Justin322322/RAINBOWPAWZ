@@ -257,13 +257,24 @@ PAYMONGO_SECRET_KEY=your-paymongo-secret-key
 
 ## Database Setup
 
-### Database Schema (ERD)
+### Optimized Database Schema (2025 Update)
 
-The Rainbow Paws application uses a comprehensive MySQL database schema designed to handle all aspects of pet memorial services. The database has been optimized and cleaned of any corrupted data. Below is the Entity Relationship Diagram showing the complete database structure:
+**🎉 Major Database Optimization Completed!**
+- **63% Reduction**: From 35 tables down to 13 optimized tables
+- **Modern Architecture**: JSON columns for flexible data storage
+- **Performance Improved**: Consolidated relationships and reduced complexity
+- **Data Integrity**: All data preserved during optimization
+
+### Entity Relationship Diagram (ERD)
+
+The Rainbow Paws application now uses a streamlined and optimized MySQL database schema. Below is the current ERD showing our efficient 13-table structure:
 
 ```mermaid
 erDiagram
-    users {
+    %% RainbowPaws Optimized Database ERD
+    %% 13 Tables (63% reduction from 35 tables)
+
+    USERS {
         int user_id PK
         varchar email UK
         varchar password
@@ -818,7 +829,7 @@ PORT=3005 npm run start
 
 ## Data Flow Diagram
 
-The following Data Flow Diagram illustrates how data flows through the Rainbow Paws application across different layers and components:
+The following Data Flow Diagram illustrates how data flows through the optimized Rainbow Paws application architecture. This diagram reflects our streamlined 13-table database system and modern data processing workflows:
 
 ```mermaid
 flowchart TD
