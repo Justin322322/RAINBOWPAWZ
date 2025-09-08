@@ -648,3 +648,63 @@ export async function verifyAndCompleteRefund(
 export async function getRefundStatus(bookingId: number): Promise<RefundRecord[]> {
   return await getRefundsByBookingId(bookingId);
 }
+
+/**
+ * Reconcile a previously queued automatic refund once payment_id is known
+ */
+export async function reconcileQueuedAutomaticRefund(bookingId: number, paymongoPaymentId: string): Promise<void> {
+  try {
+    const { findLatestQueuedAutoRefundByBooking, updateRefundRecord, logRefundAudit } = await import('@/lib/db/refunds');
+    const pending = await findLatestQueuedAutoRefundByBooking(bookingId);
+    if (!pending) return;
+
+    // Mark processing
+    await updateRefundRecord(pending.id as number, {
+      status: 'processing',
+      metadata: JSON.stringify({
+        ...(pending.metadata ? JSON.parse(pending.metadata) : {}),
+        paymongo_payment_id: paymongoPaymentId,
+        missing_payment_id: false
+      })
+    });
+    await logRefundAudit({
+      refund_id: pending.id as number,
+      action: 'status_change',
+      previous_status: 'pending',
+      new_status: 'processing',
+      performed_by_type: 'system',
+      details: 'Reconciliation: attempting PayMongo refund now that payment id is known'
+    });
+
+    // Execute refund via PayMongo
+    const paymongoRefund = await createPayMongoRefund({
+      payment_id: paymongoPaymentId,
+      amount: phpToCentavos(pending.amount),
+      reason: 'requested_by_customer',
+      notes: pending.reason,
+      metadata: {
+        booking_id: bookingId.toString(),
+        refund_id: (pending.id as number).toString(),
+        initiated_by: (pending.processed_by || 0).toString()
+      }
+    });
+
+    await updateRefundRecord(pending.id as number, {
+      status: 'completed',
+      paymongo_refund_id: paymongoRefund.id,
+      processed_at: new Date(),
+      completed_at: new Date()
+    });
+
+    await logRefundAudit({
+      refund_id: pending.id as number,
+      action: 'refund_completed',
+      previous_status: 'processing',
+      new_status: 'completed',
+      performed_by_type: 'system',
+      details: `Reconciliation refund completed via PayMongo: ${paymongoRefund.id}`
+    });
+  } catch (error) {
+    console.error('Error reconciling queued automatic refund:', error);
+  }
+}

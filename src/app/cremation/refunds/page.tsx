@@ -13,6 +13,8 @@ import {
 import CremationDashboardLayout from '@/components/navigation/CremationDashboardLayout';
 import withBusinessVerification from '@/components/withBusinessVerification';
 import { StatsCardSkeleton } from '@/components/ui/LoadingComponents';
+import { Modal } from '@/components/ui/Modal';
+import { useToast } from '@/context/ToastContext';
 
 interface RefundRecord {
   id: number;
@@ -41,6 +43,7 @@ function CremationRefundsPage({ userData }: { userData: any }) {
   const [selectedRefund, setSelectedRefund] = useState<RefundRecord | null>(null);
   const [filter, setFilter] = useState<'all' | 'pending' | 'manual' | 'completed'>('all');
   const [uploadingReceipt, setUploadingReceipt] = useState<number | null>(null);
+  const { showToast } = useToast();
 
   useEffect(() => {
     fetchRefunds();
@@ -80,14 +83,14 @@ function CremationRefundsPage({ userData }: { userData: any }) {
 
       if (response.ok) {
         await fetchRefunds(); // Refresh the list
-        alert('Receipt uploaded successfully!');
+        showToast('Receipt uploaded successfully.', 'success');
       } else {
         const error = await response.json();
-        alert(`Upload failed: ${error.error}`);
+        showToast(`Upload failed: ${error.error}`, 'error');
       }
     } catch (error) {
       console.error('Upload error:', error);
-      alert('Upload failed. Please try again.');
+      showToast('Upload failed. Please try again.', 'error');
     } finally {
       setUploadingReceipt(null);
     }
@@ -110,14 +113,14 @@ function CremationRefundsPage({ userData }: { userData: any }) {
       if (response.ok) {
         await fetchRefunds();
         setSelectedRefund(null);
-        alert(approved ? 'Refund approved successfully!' : 'Refund rejected.');
+        showToast(approved ? 'Refund approved successfully.' : 'Refund rejected.', approved ? 'success' : 'warning');
       } else {
         const error = await response.json();
-        alert(`Action failed: ${error.error}`);
+        showToast(`Action failed: ${error.error}`, 'error');
       }
     } catch (error) {
       console.error('Verify error:', error);
-      alert('Action failed. Please try again.');
+      showToast('Action failed. Please try again.', 'error');
     }
   };
 
@@ -435,49 +438,96 @@ function CremationRefundsPage({ userData }: { userData: any }) {
 
       {/* Refund Details Modal */}
       {selectedRefund && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-            <div className="mt-3">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">
-                Refund Details #{selectedRefund.id}
-              </h3>
-              <div className="space-y-3 text-sm">
-                <div>
-                  <span className="font-medium">Booking ID:</span> #{selectedRefund.booking_id}
-                </div>
-                <div>
-                  <span className="font-medium">Amount:</span> ₱{selectedRefund.amount.toLocaleString()}
-                </div>
-                <div>
-                  <span className="font-medium">Payment Method:</span> {selectedRefund.payment_method}
-                </div>
-                <div>
-                  <span className="font-medium">Type:</span> {selectedRefund.refund_type}
-                </div>
-                <div>
-                  <span className="font-medium">Reason:</span> {selectedRefund.reason}
-                </div>
-                <div>
-                  <span className="font-medium">Initiated:</span>{' '}
-                  {new Date(selectedRefund.initiated_at).toLocaleString()}
-                </div>
-                {selectedRefund.notes && (
-                  <div>
-                    <span className="font-medium">Notes:</span> {selectedRefund.notes}
-                  </div>
-                )}
-              </div>
-              <div className="mt-6 flex justify-end">
-                <button
-                  onClick={() => setSelectedRefund(null)}
-                  className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400"
-                >
-                  Close
-                </button>
-              </div>
+        <Modal
+          isOpen={Boolean(selectedRefund)}
+          onClose={() => setSelectedRefund(null)}
+          title={`Refund Details #${selectedRefund.id}`}
+          size="large"
+          variant="info"
+          footerContent={
+            <div className="flex justify-end space-x-2">
+              {selectedRefund.status === 'pending' && selectedRefund.refund_type === 'manual' && selectedRefund.receipt_path ? (
+                <>
+                  <button
+                    onClick={() => handleVerifyRefund(selectedRefund.id, true)}
+                    className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+                  >
+                    Approve
+                  </button>
+                  <button
+                    onClick={() => {
+                      const reason = prompt('Rejection reason:');
+                      if (reason) handleVerifyRefund(selectedRefund.id, false, reason);
+                    }}
+                    className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+                  >
+                    Reject
+                  </button>
+                </>
+              ) : null}
+              <button
+                onClick={() => setSelectedRefund(null)}
+                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200"
+              >
+                Close
+              </button>
             </div>
+          }
+        >
+          <div className="space-y-3 text-sm">
+            <div>
+              <span className="font-medium">Booking ID:</span> #{selectedRefund.booking_id}
+            </div>
+            <div>
+              <span className="font-medium">Amount:</span> ₱{selectedRefund.amount.toLocaleString()}
+            </div>
+            <div>
+              <span className="font-medium">Payment Method:</span> {selectedRefund.payment_method}
+            </div>
+            <div>
+              <span className="font-medium">Type:</span> {selectedRefund.refund_type}
+            </div>
+            <div>
+              <span className="font-medium">Reason:</span> {selectedRefund.reason}
+            </div>
+            <div>
+              <span className="font-medium">Status:</span> {selectedRefund.status}
+            </div>
+            <div>
+              <span className="font-medium">Initiated:</span> {new Date(selectedRefund.initiated_at).toLocaleString()}
+            </div>
+            {selectedRefund.processed_at && (
+              <div><span className="font-medium">Processed:</span> {new Date(selectedRefund.processed_at).toLocaleString()}</div>
+            )}
+            {selectedRefund.completed_at && (
+              <div><span className="font-medium">Completed:</span> {new Date(selectedRefund.completed_at).toLocaleString()}</div>
+            )}
+            {selectedRefund.notes && (
+              <div>
+                <span className="font-medium">Notes:</span> {selectedRefund.notes}
+              </div>
+            )}
+            {selectedRefund.receipt_path ? (
+              <div>
+                <span className="font-medium">Receipt:</span>
+                <a
+                  href={selectedRefund.receipt_path}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:underline ml-1"
+                >
+                  View Receipt
+                </a>
+              </div>
+            ) : (
+              selectedRefund.refund_type === 'manual' && selectedRefund.status === 'pending' ? (
+                <div className="text-yellow-700 bg-yellow-50 border border-yellow-200 rounded p-2">
+                  Waiting for receipt upload.
+                </div>
+              ) : null
+            )}
           </div>
-        </div>
+        </Modal>
       )}
     </CremationDashboardLayout>
   );

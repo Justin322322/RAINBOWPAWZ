@@ -166,6 +166,45 @@ export async function getRefundById(refundId: number): Promise<RefundRecord | nu
 }
 
 /**
+ * Get refund by PayMongo refund id
+ */
+export async function getRefundByPaymongoRefundId(paymongoRefundId: string): Promise<RefundRecord | null> {
+  const results = await query(`
+    SELECT * FROM refunds WHERE paymongo_refund_id = ? LIMIT 1
+  `, [paymongoRefundId]) as RefundRecord[];
+  
+  return results.length > 0 ? results[0] : null;
+}
+
+/**
+ * Find latest pending automatic refund for a booking that was queued due to missing payment id
+ */
+export async function findLatestQueuedAutoRefundByBooking(bookingId: number): Promise<RefundRecord | null> {
+  const results = await query(`
+    SELECT *
+    FROM refunds
+    WHERE booking_id = ?
+      AND refund_type = 'automatic'
+      AND status = 'pending'
+    ORDER BY id DESC
+    LIMIT 1
+  `, [bookingId]) as RefundRecord[];
+
+  if (results.length === 0) return null;
+
+  const record = results[0];
+  try {
+    const metadata = record.metadata ? JSON.parse(record.metadata) : {};
+    if (metadata && metadata.missing_payment_id === true) {
+      return record;
+    }
+  } catch {
+    // ignore malformed metadata and treat as not queued for reconciliation
+  }
+  return null;
+}
+
+/**
  * Get refunds by booking ID
  */
 export async function getRefundsByBookingId(bookingId: number): Promise<RefundRecord[]> {

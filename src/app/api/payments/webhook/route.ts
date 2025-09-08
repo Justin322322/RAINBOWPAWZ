@@ -57,6 +57,14 @@ export async function POST(request: NextRequest) {
         await handlePaymentFailed(eventData);
         break;
 
+      case 'refund.succeeded':
+        await handleRefundSucceeded(eventData);
+        break;
+
+      case 'refund.failed':
+        await handleRefundFailed(eventData);
+        break;
+
 
       default:
     }
@@ -137,6 +145,14 @@ async function handlePaymentPaid(paymentData: any) {
 
       // Create payment notification
       await createPaymentNotification(booking_id, 'payment_confirmed');
+
+      // Reconcile any pending automatic refunds that were queued due to missing payment id
+      try {
+        const { reconcileQueuedAutomaticRefund } = await import('@/services/refundService');
+        await reconcileQueuedAutomaticRefund(booking_id, paymentId);
+      } catch (err) {
+        console.warn('Refund reconciliation post-payment failed:', err);
+      }
     }
   } catch (error) {
     console.error('Error handling payment.paid:', error);
@@ -185,4 +201,61 @@ export async function GET(_: NextRequest) {
     message: 'PayMongo webhook endpoint',
     timestamp: new Date().toISOString()
   });
+}
+
+async function handleRefundSucceeded(refundData: any) {
+  try {
+    const refundId = refundData.id;
+    const attributes = refundData.attributes || {};
+    const amount = attributes.amount;
+    const paymentId = attributes.payment_id;
+
+    const { getRefundByPaymongoRefundId, updateRefundRecord, logRefundAudit } = await import('@/lib/db/refunds');
+
+    const existing = await getRefundByPaymongoRefundId(refundId);
+    if (existing) {
+      await updateRefundRecord(existing.id as number, {
+        status: 'completed',
+        completed_at: new Date()
+      });
+      await logRefundAudit({
+        refund_id: existing.id as number,
+        action: 'refund_completed_webhook',
+        previous_status: existing.status,
+        new_status: 'completed',
+        performed_by_type: 'system',
+        details: `Refund succeeded via webhook. payment_id=${paymentId} amount=${amount}`
+      });
+    }
+  } catch (error) {
+    console.error('Error handling refund.succeeded:', error);
+  }
+}
+
+async function handleRefundFailed(refundData: any) {
+  try {
+    const refundId = refundData.id;
+    const attributes = refundData.attributes || {};
+    const failureReason = attributes.failure_reason || 'Refund failed';
+
+    const { getRefundByPaymongoRefundId, updateRefundRecord, logRefundAudit } = await import('@/lib/db/refunds');
+
+    const existing = await getRefundByPaymongoRefundId(refundId);
+    if (existing) {
+      await updateRefundRecord(existing.id as number, {
+        status: 'failed',
+        notes: failureReason
+      });
+      await logRefundAudit({
+        refund_id: existing.id as number,
+        action: 'refund_failed_webhook',
+        previous_status: existing.status,
+        new_status: 'failed',
+        performed_by_type: 'system',
+        details: failureReason
+      });
+    }
+  } catch (error) {
+    console.error('Error handling refund.failed:', error);
+  }
 }
