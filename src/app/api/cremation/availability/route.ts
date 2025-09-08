@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid Provider ID' }, { status: 400 });
     }
 
-    // No need to create additional tables - using existing JSON columns
+    // Prefer normalized tables if present; fallback to JSON columns
 
     let startDate, endDate;
 
@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
       return `${year}-${month}-${day}`;
     };
 
-    // Date range is used for generating the month view, but actual data comes from JSON columns
+    // Date range is used for generating the month view; data comes from normalized tables if present
 
 
     // First, get all dates in the month range
@@ -74,51 +74,78 @@ export async function GET(request: NextRequest) {
 
 
     try {
-      // Get provider data with availability and time slots from JSON columns
-      const providerQuery = `
-        SELECT 
-          provider_id,
-          availability_data,
-          time_slots_data
-        FROM service_providers 
-        WHERE provider_id = ?
-      `;
+      // Detect normalized tables
+      const tables = await query(
+        `SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME IN ('provider_availability','availability_time_slots')`
+      ) as any[];
+      const hasDays = tables.some((t: any) => t.TABLE_NAME.toLowerCase() === 'provider_availability');
+      const hasSlots = tables.some((t: any) => t.TABLE_NAME.toLowerCase() === 'availability_time_slots');
 
-      const providerResult = await query(providerQuery, [providerId]) as any[];
-      
+      if (hasDays && hasSlots) {
+        // Load from normalized tables
+        const daysRows = await query(
+          `SELECT availability_date AS d, is_available AS ia
+           FROM provider_availability
+           WHERE provider_id = ? AND availability_date BETWEEN ? AND ?`,
+          [providerId, formatDateToString(startDate), formatDateToString(endDate)]
+        ) as any[];
+
+        const slotsRows = await query(
+          `SELECT availability_date AS d,
+                  TIME_FORMAT(start_time,'%H:%i') AS start,
+                  TIME_FORMAT(end_time,'%H:%i')   AS end
+           FROM availability_time_slots
+           WHERE provider_id = ? AND availability_date BETWEEN ? AND ?
+           ORDER BY start_time`,
+          [providerId, formatDateToString(startDate), formatDateToString(endDate)]
+        ) as any[];
+
+        const dateToAvail = new Map<string, boolean>();
+        for (const r of daysRows) {
+          if (r.d) dateToAvail.set(String(r.d).slice(0,10), Boolean(r.ia));
+        }
+        const dateToSlots = new Map<string, {start: string; end: string;}[]>();
+        for (const r of slotsRows) {
+          const key = String(r.d).slice(0,10);
+          if (!dateToSlots.has(key)) dateToSlots.set(key, []);
+          dateToSlots.get(key)!.push({ start: r.start, end: r.end });
+        }
+
+        for (const dateObj of allDatesInMonth) {
+          if (dateToAvail.has(dateObj.date)) {
+            dateObj.isAvailable = dateToAvail.get(dateObj.date) === true;
+          }
+          const slots = dateToSlots.get(dateObj.date) || [];
+          if (slots.length > 0) {
+            dateObj.timeSlots = slots.map((s, idx) => ({ id: `${dateObj.date}-${idx}`, start: s.start, end: s.end, availableServices: [] }));
+            dateObj.isAvailable = true;
+          }
+        }
+
+        return NextResponse.json({ availability: allDatesInMonth });
+      }
+
+      // Fallback to JSON columns in service_providers
+      const providerResult = await query(
+        `SELECT provider_id, availability_data, time_slots_data FROM service_providers WHERE provider_id = ?`,
+        [providerId]
+      ) as any[];
+
       if (!providerResult || providerResult.length === 0) {
-        return NextResponse.json({
-          availability: allDatesInMonth
-        });
+        return NextResponse.json({ availability: allDatesInMonth });
       }
 
       const provider = providerResult[0];
       let availabilityData: Record<string, boolean> = {};
       let timeSlotsData: Record<string, any[]> = {};
+      try { availabilityData = provider.availability_data ? JSON.parse(provider.availability_data) : {}; } catch { availabilityData = {}; }
+      try { timeSlotsData = provider.time_slots_data ? JSON.parse(provider.time_slots_data) : {}; } catch { timeSlotsData = {}; }
 
-      // Parse JSON data safely
-      try {
-        availabilityData = provider.availability_data ? JSON.parse(provider.availability_data) : {};
-      } catch {
-        availabilityData = {};
-      }
-
-      try {
-        timeSlotsData = provider.time_slots_data ? JSON.parse(provider.time_slots_data) : {};
-      } catch {
-        timeSlotsData = {};
-      }
-
-      // Process availability and time slots from JSON data
       for (const dateObj of allDatesInMonth) {
         const dateKey = dateObj.date;
-        
-        // Check availability
         if (availabilityData[dateKey] !== undefined) {
           dateObj.isAvailable = Boolean(availabilityData[dateKey]);
         }
-        
-        // Check time slots
         if (timeSlotsData[dateKey] && Array.isArray(timeSlotsData[dateKey])) {
           dateObj.timeSlots = timeSlotsData[dateKey].map((slot: any, index: number) => ({
             id: slot.id || `${dateKey}-${index}`,
@@ -126,19 +153,13 @@ export async function GET(request: NextRequest) {
             end: slot.end || slot.end_time,
             availableServices: Array.isArray(slot.availableServices) ? slot.availableServices : []
           }));
-          
-          // If there are time slots, mark the date as available
           if (dateObj.timeSlots.length > 0) {
             dateObj.isAvailable = true;
           }
         }
       }
 
-
-
-      return NextResponse.json({
-        availability: allDatesInMonth
-      });
+      return NextResponse.json({ availability: allDatesInMonth });
 
     } catch (dbError) {
       return NextResponse.json({

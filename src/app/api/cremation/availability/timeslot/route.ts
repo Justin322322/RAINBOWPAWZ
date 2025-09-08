@@ -52,23 +52,50 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    // Use proper transaction management with JSON column approach
+    // Use proper transaction management; prefer normalized tables when available
     const result = await withTransaction(async (transaction) => {
-      const provider = checkResult[0];
-      let timeSlotsData: Record<string, any[]> = {};
-
-      // Parse existing time slots data
-      try {
-        timeSlotsData = provider.time_slots_data ? JSON.parse(provider.time_slots_data) : {};
-      } catch {
-        timeSlotsData = {};
-      }
+      // Detect normalized tables
+      const tables = await transaction.query(
+        `SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME IN ('availability_time_slots')`
+      ) as any[];
+      const hasSlots = tables.some((t:any)=>t.TABLE_NAME.toLowerCase()==='availability_time_slots');
 
       let deletedSlot = null;
       let remainingCount = 0;
 
+      if (hasSlots) {
+        if (date) {
+          // Delete all time slots for a specific date
+          await transaction.query(
+            `DELETE FROM availability_time_slots WHERE provider_id = ? AND availability_date = ?`,
+            [providerIdNum, date]
+          ) as any;
+          remainingCount = 0;
+          return { success: true, message: 'Time slots deleted for date', deletedSlot: { date }, remaining_slots: remainingCount, method: 'delete-by-date' };
+        } else {
+          // Delete by slot id: we need to know the date; attempt delete and report
+          const sel = await transaction.query(
+            `SELECT availability_date, TIME_FORMAT(start_time,'%H:%i') AS start, TIME_FORMAT(end_time,'%H:%i') AS end FROM availability_time_slots WHERE id = ? AND provider_id = ?`,
+            [slotId, providerIdNum]
+          ) as any[];
+          if (!sel || sel.length === 0) throw new Error('Time slot not found');
+          deletedSlot = { date: String(sel[0].availability_date).slice(0,10), slot: { id: slotId, start: sel[0].start, end: sel[0].end } };
+          await transaction.query(`DELETE FROM availability_time_slots WHERE id = ? AND provider_id = ?`, [slotId, providerIdNum]);
+          const rem = await transaction.query(
+            `SELECT COUNT(*) AS c FROM availability_time_slots WHERE provider_id = ? AND availability_date = ?`,
+            [providerIdNum, deletedSlot.date]
+          ) as any[];
+          remainingCount = Number(rem?.[0]?.c || 0);
+          return { success: true, message: 'Time slot deleted successfully', deletedSlot, remaining_slots: remainingCount, method: 'delete-by-id' };
+        }
+      }
+
+      // Fallback to JSON storage
+      const provider = checkResult[0];
+      let timeSlotsData: Record<string, any[]> = {};
+      try { timeSlotsData = provider.time_slots_data ? JSON.parse(provider.time_slots_data) : {}; } catch { timeSlotsData = {}; }
+
       if (date) {
-        // Delete all time slots for a specific date
         if (timeSlotsData[date]) {
           deletedSlot = { date, slots: timeSlotsData[date] };
           delete timeSlotsData[date];
@@ -77,37 +104,26 @@ export async function DELETE(request: NextRequest) {
           throw new Error('No time slots found for the specified date');
         }
       } else {
-        // Delete specific time slot by ID
         let found = false;
         for (const [dateKey, slots] of Object.entries(timeSlotsData)) {
-          const slotIndex = slots.findIndex((slot: any) => slot.id === slotId);
+          const slotIndex = (slots as any[]).findIndex((slot: any) => slot.id === slotId);
           if (slotIndex !== -1) {
-            deletedSlot = { date: dateKey, slot: slots[slotIndex] };
-            slots.splice(slotIndex, 1);
-            remainingCount = slots.length;
+            deletedSlot = { date: dateKey, slot: (slots as any[])[slotIndex] };
+            (slots as any[]).splice(slotIndex, 1);
+            remainingCount = (slots as any[]).length;
             found = true;
             break;
           }
         }
-        
-        if (!found) {
-          throw new Error('Time slot not found');
-        }
+        if (!found) throw new Error('Time slot not found');
       }
 
-      // Update the time_slots_data JSON column
       await transaction.query(
         'UPDATE service_providers SET time_slots_data = ? WHERE provider_id = ?',
         [JSON.stringify(timeSlotsData), providerIdNum]
       );
 
-      return {
-        success: true,
-        message: 'Time slot deleted successfully',
-        deletedSlot,
-        remaining_slots: remainingCount,
-        method: date ? 'delete-by-date' : 'delete-by-id'
-      };
+      return { success: true, message: 'Time slot deleted successfully', deletedSlot, remaining_slots: remainingCount, method: date ? 'delete-by-date' : 'delete-by-id' };
     });
 
     return NextResponse.json(result);
