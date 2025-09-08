@@ -538,4 +538,4 @@ function AdminRefundsPage({ adminData }: { adminData: any }) {
   );
 }
 
-export default withAdminAuth(AdminRefundsPage);
+export default function AdminRefundsPageRemoved() { return null; }

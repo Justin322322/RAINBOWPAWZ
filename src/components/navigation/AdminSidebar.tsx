@@ -56,12 +56,7 @@ export default function AdminSidebar({ activePage: propActivePage }: AdminSideba
       icon: StarIcon,
       id: 'reviews'
     },
-    {
-      name: 'Refunds',
-      href: '/admin/refunds',
-      icon: CurrencyDollarIcon,
-      id: 'refunds'
-    },
+    
     {
       name: 'Activity Monitor',
       href: '/admin/logs',

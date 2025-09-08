@@ -117,10 +117,10 @@ export async function getUserNotifications(userId: number, limit: number = 10): 
     const idColumn = await getNotificationIdColumn();
 
     const selectQuery = idColumn === 'notification_id'
-      ? `SELECT notification_id as id, user_id, title, message, type, status, created_at, NULL as link
-         FROM notifications_unified WHERE user_id = ? ORDER BY created_at DESC LIMIT ${Number(limit)}`
-      : `SELECT id, user_id, title, message, type, status, created_at, NULL as link
-         FROM notifications_unified WHERE user_id = ? ORDER BY created_at DESC LIMIT ${Number(limit)}`;
+      ? `SELECT notification_id as id, user_id, title, message, type, status, created_at, link
+           FROM notifications_unified WHERE user_id = ? ORDER BY created_at DESC LIMIT ${Number(limit)}`
+        : `SELECT id, user_id, title, message, type, status, created_at, link
+           FROM notifications_unified WHERE user_id = ? ORDER BY created_at DESC LIMIT ${Number(limit)}`;
 
     const notifications_unified = await query(selectQuery, [userId]) as NotificationRecord[];
     
