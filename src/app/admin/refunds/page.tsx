@@ -9,7 +9,6 @@ import {
   CheckCircleIcon,
   XCircleIcon,
   EyeIcon,
-  BuildingOfficeIcon
 } from '@heroicons/react/24/outline';
 import AdminDashboardLayout from '@/components/navigation/AdminDashboardLayout';
 import withAdminAuth from '@/components/withAdminAuth';
@@ -340,9 +339,6 @@ function AdminRefundsPage({ adminData }: { adminData: any }) {
                       Customer
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Provider
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Amount
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -371,15 +367,6 @@ function AdminRefundsPage({ adminData }: { adminData: any }) {
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="h-4 bg-gray-200 rounded w-32 mb-1 animate-pulse"></div>
                           <div className="h-3 bg-gray-200 rounded w-40 animate-pulse"></div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
-                            <div className="w-4 h-4 bg-gray-200 rounded animate-pulse mr-2"></div>
-                            <div>
-                              <div className="h-4 bg-gray-200 rounded w-28 mb-1 animate-pulse"></div>
-                              <div className="h-3 bg-gray-200 rounded w-16 animate-pulse"></div>
-                            </div>
-                          </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="h-4 bg-gray-200 rounded w-20 mb-1 animate-pulse"></div>
@@ -420,15 +407,6 @@ function AdminRefundsPage({ adminData }: { adminData: any }) {
                         {refund.pet_name && (
                           <div className="text-xs text-gray-400">Pet: {refund.pet_name}</div>
                         )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <BuildingOfficeIcon className="w-4 h-4 text-gray-400 mr-2" />
-                          <div>
-                            <div className="text-sm text-gray-900">{refund.provider_name || 'N/A'}</div>
-                            <div className="text-xs text-gray-500">ID: {refund.provider_id}</div>
-                          </div>
-                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-medium text-gray-900">

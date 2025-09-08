@@ -135,9 +135,9 @@ export async function createBusinessNotification({
 
     // Insert the notification
     const result = await query(
-      `INSERT INTO notifications_unified (user_id, title, message, type, status, created_at)
-       VALUES (?, ?, ?, ?, 0, NOW())`,
-      [userId, title, message, type]
+      `INSERT INTO notifications_unified (user_id, title, message, type, category, status, created_at)
+       VALUES (?, ?, ?, 'system', 'booking', 'delivered', NOW())`,
+      [userId, title, message]
     ) as any;
 
     console.log('Business notification created successfully:', result.insertId);
@@ -148,7 +148,7 @@ export async function createBusinessNotification({
         id: result.insertId || Date.now(),
         title,
         message,
-        type,
+        type: 'info',
         status: 0,
         link,
         created_at: new Date().toISOString()

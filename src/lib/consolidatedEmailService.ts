@@ -410,15 +410,16 @@ async function ensureEmailQueueTable(): Promise<void> {
 /**
  * Record sent email in the database for tracking
  */
-async function recordEmailSent(recipient: string, subject: string, messageId: string): Promise<void> {
+async function recordEmailSent(recipient: string, subject: string, _messageId: string): Promise<void> {
   try {
     // Ensure email tables exist before trying to insert
     await ensureEmailQueueTable();
 
-    // Record the email
+    // Record the email into the email_queue as a sent entry (avoid notifications_unified schema differences)
     await query(
-      'INSERT INTO notifications_unified (recipient, subject, message_id) VALUES (?, ?, ?)',
-      [recipient, subject, messageId]
+      `INSERT INTO email_queue (to_email, subject, html, text, from_email, status, attempts, sent_at)
+       VALUES (?, ?, '', '', ?, 'sent', 1, NOW())`,
+      [recipient, subject, process.env.SMTP_USER || null]
     );
   } catch (error) {
     console.error('Failed to record email in log:', error);
