@@ -127,6 +127,11 @@ function CremationDashboardPage({ userData }: { userData: any }) {
   // Fetch dashboard data - simplified like admin
   useEffect(() => {
     const fetchDashboardData = async () => {
+      // Check if user is logging out to prevent 401 error toasts
+      if (typeof window !== 'undefined' && sessionStorage.getItem('is_logging_out') === 'true') {
+        return;
+      }
+
       setIsLoading(true);
       setError(null);
 
@@ -173,6 +178,16 @@ function CremationDashboardPage({ userData }: { userData: any }) {
         }
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
+        
+        // Don't show errors for 401 during logout
+        if (errorMessage.includes('401') || errorMessage.includes('Unauthorized')) {
+          const isLoggingOut = typeof window !== 'undefined' && sessionStorage.getItem('is_logging_out') === 'true';
+          if (isLoggingOut) {
+            setIsLoading(false);
+            return;
+          }
+        }
+        
         setError(errorMessage);
         // Set default data
         setDashboardData({

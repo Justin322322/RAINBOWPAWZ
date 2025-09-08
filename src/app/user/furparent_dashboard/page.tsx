@@ -1,6 +1,7 @@
 'use client';
 
 import Image from 'next/image';
+import { CheckIcon } from '@heroicons/react/24/solid';
 import { motion } from 'framer-motion';
 import FurParentDashboardWrapper from '@/components/navigation/FurParentDashboardWrapper';
 import { UserData } from '@/components/withUserAuth';
@@ -81,51 +82,19 @@ function FurParentDashboard({ userData }: FurParentDashboardProps) {
               {/* Service Features */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
                 <div className="flex items-center space-x-3">
-                  <div className="w-6 h-6">
-                    <Image
-                      src="/check-icon.svg"
-                      alt="Check"
-                      width={24}
-                      height={24}
-                      className="w-6 h-6"
-                    />
-                  </div>
+                  <CheckIcon className="w-6 h-6 text-green-500" />
                   <span className="text-[var(--text-secondary)] modern-text">Personalized Memorial Services</span>
                 </div>
                 <div className="flex items-center space-x-3">
-                  <div className="w-6 h-6">
-                    <Image
-                      src="/check-icon.svg"
-                      alt="Check"
-                      width={24}
-                      height={24}
-                      className="w-6 h-6"
-                    />
-                  </div>
+                  <CheckIcon className="w-6 h-6 text-green-500" />
                   <span className="text-[var(--text-secondary)] modern-text">Verified and Licensed Providers</span>
                 </div>
                 <div className="flex items-center space-x-3">
-                  <div className="w-6 h-6">
-                    <Image
-                      src="/check-icon.svg"
-                      alt="Check"
-                      width={24}
-                      height={24}
-                      className="w-6 h-6"
-                    />
-                  </div>
+                  <CheckIcon className="w-6 h-6 text-green-500" />
                   <span className="text-[var(--text-secondary)] modern-text">Memorial Keepsakes & Tributes</span>
                 </div>
                 <div className="flex items-center space-x-3">
-                  <div className="w-6 h-6">
-                    <Image
-                      src="/check-icon.svg"
-                      alt="Check"
-                      width={24}
-                      height={24}
-                      className="w-6 h-6"
-                    />
-                  </div>
+                  <CheckIcon className="w-6 h-6 text-green-500" />
                   <span className="text-[var(--text-secondary)] modern-text">User Reviews & Ratings</span>
                 </div>
               </div>

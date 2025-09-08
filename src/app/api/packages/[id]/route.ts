@@ -311,36 +311,37 @@ export async function PATCH(
             packageId
           ]
         ) as any;
-        // Replace size pricing
-        await transaction.query(
-          'UPDATE service_packages SET size_pricing = NULL WHERE package_id = ?',
-          [packageId]
-        );
-
-        const normalizeSizeCategory = (val: string): string => {
-          const v = (val || '').toLowerCase();
-          if (v.includes('extra')) return 'extra_large';
-          if (v.includes('large')) return 'large';
-          if (v.includes('medium')) return 'medium';
-          if (v.includes('small')) return 'small';
-          return v as any;
-        };
+        // Update size pricing as JSON
+        let sizePricingJson = null;
         if (Array.isArray(body.sizePricing) && body.sizePricing.length > 0) {
-          for (const sp of body.sizePricing) {
-            if (!sp) continue;
-            const sizeCategory = normalizeSizeCategory(String(sp.sizeCategory || '').trim());
-            const min = Number(sp.weightRangeMin);
-            const max = sp.weightRangeMax == null ? null : Number(sp.weightRangeMax);
-            const p = Number(sp.price);
-            if (!sizeCategory || isNaN(min) || isNaN(p)) continue;
-            await transaction.query(
-              `INSERT INTO service_packages
-                 (package_id, size_category, weight_range_min, weight_range_max, price)
-               VALUES (?, ?, ?, ?, ?)`,
-              [packageId, sizeCategory, min, max, p]
-            );
+          const normalizeSizeCategory = (val: string): string => {
+            const v = (val || '').toLowerCase();
+            if (v.includes('extra')) return 'extra_large';
+            if (v.includes('large')) return 'large';
+            if (v.includes('medium')) return 'medium';
+            if (v.includes('small')) return 'small';
+            return v as any;
+          };
+          
+          const sizePricingData = body.sizePricing
+            .filter((sp: any) => sp && sp.sizeCategory && !isNaN(Number(sp.price)))
+            .map((sp: any) => ({
+              sizeCategory: normalizeSizeCategory(String(sp.sizeCategory || '').trim()),
+              weightRangeMin: Number(sp.weightRangeMin),
+              weightRangeMax: sp.weightRangeMax == null ? null : Number(sp.weightRangeMax),
+              price: Number(sp.price)
+            }));
+          
+          if (sizePricingData.length > 0) {
+            sizePricingJson = JSON.stringify(sizePricingData);
           }
         }
+
+        // Update size pricing in the JSON column
+        await transaction.query(
+          'UPDATE service_packages SET size_pricing = ? WHERE package_id = ?',
+          [sizePricingJson, packageId]
+        );
 
         if (updateResult.affectedRows === 0) {
           throw new Error('Package not found or no changes made');
@@ -410,13 +411,24 @@ export async function PATCH(
             // Leave other absolute URLs or other API paths untouched
             return p;
           };
-          // Get current images from database
-          const currentImages = await transaction.query(
+          // Get current images from database JSON column
+          const currentImagesResult = await transaction.query(
             'SELECT images FROM service_packages WHERE package_id = ?',
             [packageId]
           ) as any[];
           
-          const currentImagePaths = currentImages.map(img => img.image_path);
+          let currentImagePaths: string[] = [];
+          if (currentImagesResult.length > 0 && currentImagesResult[0].images) {
+            try {
+              const imageData = typeof currentImagesResult[0].images === 'string' 
+                ? JSON.parse(currentImagesResult[0].images) 
+                : currentImagesResult[0].images;
+              currentImagePaths = Array.isArray(imageData) ? imageData : [];
+            } catch {
+              currentImagePaths = [];
+            }
+          }
+          
           const newImagePaths = body.images.map((p: string) => normalizePath(p));
 
           // Find images to remove (in current but not in new)
@@ -425,46 +437,11 @@ export async function PATCH(
           // Store files to delete for later (after transaction commits)
           filesToDelete = imagesToRemove.slice();
           
-          // Remove image records from database only
-          for (const imagePath of imagesToRemove) {
-            await transaction.query(
-              'UPDATE service_packages SET images = JSON_REMOVE(images, JSON_UNQUOTE(JSON_SEARCH(images, "one", ?))) WHERE package_id = ?',
-              [packageId, imagePath]
-            );
-          }
-
-          // Add new images (in new but not in current)
-          const imagesToAdd = newImagePaths.filter((path: string) => !currentImagePaths.includes(path));
-          
-          if (imagesToAdd.length > 0) {
-            // Find the maximum display_order among remaining images to avoid duplicates
-            const maxOrderResult = await transaction.query(
-              'SELECT COALESCE(JSON_LENGTH(images), 0) as max_order FROM service_packages WHERE package_id = ?',
-              [packageId]
-            ) as any[];
-            
-            const maxDisplayOrder = maxOrderResult[0]?.max_order || 0;
-            
-            for (let i = 0; i < imagesToAdd.length; i++) {
-              const imagePath = imagesToAdd[i];
-              const displayOrder = maxDisplayOrder + i + 1;
-              
-              // Check if this is a base64 data URL (from upload API)
-              if (imagePath.startsWith('data:image/')) {
-                // Store base64 data directly in database
-                await transaction.query(
-                  'INSERT INTO package_data (package_id, image_path, display_order, image_data) VALUES (?, ?, ?, ?)',
-                  [packageId, `package_${packageId}_${Date.now()}_${i}.jpg`, displayOrder, imagePath]
-                );
-              } else {
-                // Handle file-based images (legacy approach)
-                await transaction.query(
-                  'INSERT INTO package_data (package_id, image_path, display_order) VALUES (?, ?, ?)',
-                  [packageId, imagePath, displayOrder]
-                );
-              }
-            }
-          }
+          // Update the entire images JSON column with new image array
+          await transaction.query(
+            'UPDATE service_packages SET images = ? WHERE package_id = ?',
+            [JSON.stringify(newImagePaths), packageId]
+          );
         }
 
         return { success: true, filesToDelete };

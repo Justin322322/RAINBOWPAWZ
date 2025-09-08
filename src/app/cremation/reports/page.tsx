@@ -44,6 +44,11 @@ function CremationReportsPage({ userData }: { userData: any }) {
     const { showToast } = useToast();
 
     const fetchReportData = useCallback(async () => {
+        // Check if user is logging out to prevent 401 error toasts
+        if (typeof window !== 'undefined' && sessionStorage.getItem('is_logging_out') === 'true') {
+            return;
+        }
+
         setLoading(true);
         setError(null);
 
@@ -70,6 +75,16 @@ function CremationReportsPage({ userData }: { userData: any }) {
             setReportData(data);
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Failed to fetch report data';
+            
+            // Don't show error toasts for 401 errors during logout
+            if (errorMessage.includes('401') || errorMessage.includes('Unauthorized')) {
+                const isLoggingOut = typeof window !== 'undefined' && sessionStorage.getItem('is_logging_out') === 'true';
+                if (isLoggingOut) {
+                    setLoading(false);
+                    return;
+                }
+            }
+            
             setError(errorMessage);
             showToast(`Error: ${errorMessage}`, 'error');
         } finally {

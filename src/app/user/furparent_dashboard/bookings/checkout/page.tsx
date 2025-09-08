@@ -15,7 +15,8 @@ import {
   ExclamationCircleIcon,
   TruckIcon,
   PlusCircleIcon,
-  TrashIcon
+  TrashIcon,
+  DevicePhoneMobileIcon
 } from '@heroicons/react/24/outline';
 
 import FurParentPageSkeleton from '@/components/ui/FurParentPageSkeleton';
@@ -1496,15 +1497,8 @@ function CheckoutPage({ userData }: CheckoutPageProps) {
                             onChange={() => setPaymentMethod('gcash')}
                             className="h-4 w-4 text-[var(--primary-green)] focus:ring-[var(--primary-green)]"
                           />
-                          <div className="h-6 w-6 flex-shrink-0 relative ml-2">
-                            <Image
-                              src="/images/check-icon.svg"
-                              alt="GCash"
-                              width={24}
-                              height={24}
-                              className="h-6 w-6 object-contain"
-                              style={{ filter: 'invert(33%) sepia(93%) saturate(1352%) hue-rotate(184deg) brightness(97%) contrast(96%)' }}
-                            />
+                          <div className="h-6 w-6 flex-shrink-0 ml-2">
+                            <DevicePhoneMobileIcon className="h-6 w-6 text-blue-600" />
                           </div>
                           <div className="ml-3">
                             <span className="font-medium text-gray-800">GCash</span>

@@ -193,6 +193,12 @@ function CremationProfilePage({ userData }: { userData: any }) {
     if (!isMountedRef.current) {
       return;
     }
+    
+    // Check if user is logging out to prevent 401 error toasts
+    if (typeof window !== 'undefined' && sessionStorage.getItem('is_logging_out') === 'true') {
+      return;
+    }
+    
     try {
       if (forceLoading) {
         setInitialLoading(true);
@@ -317,9 +323,19 @@ function CremationProfilePage({ userData }: { userData: any }) {
       if (!isMountedRef.current) {
         return;
       }
+      
+      // Don't show errors for 401 during logout
+      const errorMessage = error instanceof Error ? error.message : 'An error occurred while fetching data';
+      if (errorMessage.includes('401') || errorMessage.includes('Unauthorized')) {
+        const isLoggingOut = typeof window !== 'undefined' && sessionStorage.getItem('is_logging_out') === 'true';
+        if (isLoggingOut) {
+          return;
+        }
+      }
+      
       console.error('Error fetching profile data:', error);
-      setError(error instanceof Error ? error.message : 'An error occurred while fetching data');
-      showToastRef.current(error instanceof Error ? error.message : 'Failed to load profile data. Please try again.', 'error');
+      setError(errorMessage);
+      showToastRef.current(errorMessage, 'error');
     } finally {
       if (isMountedRef.current) {
         setInitialLoading(false);

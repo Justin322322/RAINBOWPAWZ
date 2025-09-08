@@ -106,9 +106,9 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       // Use the appropriate API endpoint based on user type
       let apiUrl = '';
       if (isAdmin) {
-        apiUrl = '/api/admin/notifications_unified';
+        apiUrl = '/api/admin/notifications';
       } else if (isBusiness) {
-        apiUrl = `/api/cremation/notifications_unified`;
+        apiUrl = `/api/cremation/notifications`;
       } else {
         apiUrl = '/api/user/notifications_unified';
       }
@@ -234,9 +234,9 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       // Determine the correct endpoint based on user type using async function
       const userAccountType = await getAccountTypeAsync();
       const endpoint = userAccountType === 'admin'
-        ? '/api/admin/notifications_unified'
+        ? '/api/admin/notifications'
         : userAccountType === 'business'
-          ? '/api/cremation/notifications_unified'
+          ? '/api/cremation/notifications'
           : '/api/user/notifications_unified';
 
       const response = await fetch(endpoint, {
@@ -293,9 +293,9 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       // Determine the correct endpoint based on user type using async function
       const userAccountType = await getAccountTypeAsync();
       const endpoint = userAccountType === 'admin'
-        ? '/api/admin/notifications_unified'
+        ? '/api/admin/notifications'
         : userAccountType === 'business'
-          ? '/api/cremation/notifications_unified'
+          ? '/api/cremation/notifications'
           : '/api/user/notifications_unified';
 
       const response = await fetch(endpoint, {
@@ -355,7 +355,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       // Determine the correct endpoint based on user type using async function
       const userAccountType = await getAccountTypeAsync();
       const endpoint = userAccountType === 'admin'
-        ? `/api/admin/notifications_unified/${notificationId}`
+        ? `/api/admin/notifications/${notificationId}`
         : `/api/user/notifications_unified/${notificationId}`;
 
       const response = await fetch(endpoint, {
