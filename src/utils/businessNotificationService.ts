@@ -100,6 +100,10 @@ interface BusinessNotificationParams {
   link?: string | null;
   shouldSendEmail?: boolean;
   emailSubject?: string;
+  providerId?: number | null;
+  category?: 'booking' | 'payment' | 'refund' | 'review' | 'admin' | 'marketing' | 'system';
+  priority?: 'low' | 'normal' | 'high';
+  data?: Record<string, unknown> | null;
 }
 
 /**
@@ -112,7 +116,11 @@ export async function createBusinessNotification({
   type = 'info',
   link = null,
   shouldSendEmail = true,
-  emailSubject
+  emailSubject,
+  providerId = null,
+  category = 'system',
+  priority = 'normal',
+  data = null
 }: BusinessNotificationParams): Promise<{ success: boolean; notificationId?: number; error?: string }> {
   try {
     console.log('Creating business notification:', { userId, title, type, link });
@@ -133,11 +141,21 @@ export async function createBusinessNotification({
       };
     }
 
-    // Insert the notification
+    // Insert the notification with extended fields
     const result = await query(
-      `INSERT INTO notifications_unified (user_id, title, message, type, category, status, created_at)
-       VALUES (?, ?, ?, 'system', 'booking', 'delivered', NOW())`,
-      [userId, title, message]
+      `INSERT INTO notifications_unified 
+        (user_id, provider_id, title, message, type, category, status, priority, link, data, created_at)
+       VALUES (?, ?, ?, ?, 'system', ?, 'delivered', ?, ?, ?, NOW())`,
+      [
+        userId,
+        providerId,
+        title,
+        message,
+        category,
+        priority,
+        link,
+        data ? JSON.stringify(data) : null
+      ]
     ) as any;
 
     console.log('Business notification created successfully:', result.insertId);
@@ -148,9 +166,9 @@ export async function createBusinessNotification({
         id: result.insertId || Date.now(),
         title,
         message,
-        type: 'info',
+        type: type,
         status: 0,
-        link,
+        link: link,
         created_at: new Date().toISOString()
       });
     } catch {}

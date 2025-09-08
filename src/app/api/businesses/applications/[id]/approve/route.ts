@@ -72,7 +72,11 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
         title: 'Application Approved',
         message: `Your business application for ${business.business_name || business.name} has been approved. You can now start offering services.`,
         type: 'success',
-        link: '/cremation/dashboard',
+        link: null,
+        providerId: business.provider_id,
+        category: 'admin',
+        priority: 'normal',
+        data: { action: 'application_approved', providerId: business.provider_id },
         shouldSendEmail: true,
         emailSubject: 'Business Application Approved - Rainbow Paws'
       });
@@ -134,7 +138,11 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
           title: 'Application Approved',
           message: `Your business application for ${business.business_name || business.name} has been approved. You can now start managing your services and receiving bookings.`,
           type: 'success',
-          link: '/cremation/dashboard',
+          link: null,
+          providerId: business.provider_id,
+          category: 'admin',
+          priority: 'normal',
+          data: { action: 'application_approved', providerId: business.provider_id },
           shouldSendEmail: true,
           emailSubject: 'Business Application Approved - Rainbow Paws'
         });

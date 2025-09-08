@@ -179,6 +179,8 @@ export async function createNotificationFast({
 // Infer a reasonable link destination from title/message when not explicitly provided
 function inferNotificationLink(title: string, message: string): string | null {
   const text = `${title} ${message}`.toLowerCase();
+  // General admin/business approval notices should not navigate
+  if (text.includes('application approved')) return null;
   if (text.includes('booking')) return '/user/furparent_dashboard/bookings';
   if (text.includes('payment') || text.includes('refund')) return '/user/furparent_dashboard/bookings';
   if (text.includes('profile')) return '/user/profile';
