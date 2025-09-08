@@ -207,52 +207,59 @@ async function fetchRelatedData(packageIds: number[]) {
   // Fetch images (optimized - minimal logging)
   if (await checkTableExists('service_packages')) {
     const images = await safeQuery(
-      `SELECT package_id, url as image_path, NULL as image_data FROM service_packages sp, JSON_TABLE(sp.images, '$[*]' COLUMNS (url VARCHAR(500) PATH '$.url', alt_text VARCHAR(255) PATH '$.alt_text', is_primary BOOLEAN PATH '$.is_primary')) as images WHERE package_id ${clause} ORDER BY package_id`,
+      `SELECT package_id, images FROM service_packages WHERE package_id ${clause} ORDER BY package_id`,
       params
     );
 
-    images.forEach((img: any) => {
-      if (!results.images[img.package_id]) results.images[img.package_id] = [];
+    images.forEach((pkg: any) => {
+      if (!results.images[pkg.package_id]) results.images[pkg.package_id] = [];
 
-      if (img.image_data) {
-        // Clean and validate base64 data
-        let cleanBase64 = img.image_data;
-
-        // Remove any data URL prefix if present
-        if (cleanBase64.includes('base64,')) {
-          cleanBase64 = cleanBase64.split('base64,')[1];
-        }
-
-        // Remove whitespace and invalid characters
-        cleanBase64 = cleanBase64.replace(/\s/g, '').replace(/[^A-Za-z0-9+/=]/g, '');
-
-        // Check if it's valid base64
-        if (cleanBase64 && cleanBase64.length > 0 && cleanBase64.length % 4 === 0) {
-          try {
-            // Test if base64 is valid by attempting to decode
-            atob(cleanBase64);
-            const dataUrl = `data:image/png;base64,${cleanBase64}`;
-            results.images[img.package_id].push(dataUrl);
-          } catch {
-            // Use image_path as fallback if base64 is invalid
-            if (img.image_path) {
-              const apiPath = img.image_path.startsWith('/api/image/')
-                ? img.image_path
-                : img.image_path.includes('/')
-                  ? `/api/image/packages/${img.image_path.split('/').pop()}`
-                  : `/api/image/packages/${img.image_path}`;
-              results.images[img.package_id].push(apiPath);
-            }
+      // Parse images from JSON column
+      if (pkg.images) {
+        try {
+          const imagesData = typeof pkg.images === 'string' ? JSON.parse(pkg.images) : pkg.images;
+          
+          if (Array.isArray(imagesData)) {
+            imagesData.forEach((img: any) => {
+              let resolved: string | null = null;
+              
+              if (typeof img === 'string') {
+                resolved = img;
+              } else if (img && typeof img === 'object') {
+                const rawPath = img.url || img.path || img.src || null;
+                const dataUrl = img.data || null;
+                
+                if (dataUrl && typeof dataUrl === 'string' && dataUrl.startsWith('data:image/')) {
+                  resolved = dataUrl;
+                } else if (rawPath && typeof rawPath === 'string') {
+                  resolved = rawPath;
+                }
+              }
+              
+              if (resolved) {
+                // Apply path mappings
+                if (resolved.startsWith('/api/image/')) {
+                  results.images[pkg.package_id].push(resolved);
+                } else if (resolved.startsWith('/uploads/packages/')) {
+                  results.images[pkg.package_id].push(`/api/image/packages/${resolved.substring('/uploads/packages/'.length)}`);
+                } else if (resolved.startsWith('uploads/packages/')) {
+                  results.images[pkg.package_id].push(`/api/image/packages/${resolved.substring('uploads/packages/'.length)}`);
+                } else if (resolved.includes('packages/')) {
+                  const parts = resolved.split('packages/');
+                  if (parts.length > 1) {
+                    results.images[pkg.package_id].push(`/api/image/packages/${parts[1]}`);
+                  }
+                } else if (resolved.startsWith('data:image/')) {
+                  results.images[pkg.package_id].push(resolved);
+                } else {
+                  results.images[pkg.package_id].push(`/api/image/packages/${resolved}`);
+                }
+              }
+            });
           }
+        } catch (e) {
+          console.warn(`Failed to parse images for package ${pkg.package_id}:`, e);
         }
-      } else if (img.image_path) {
-        // Convert image path to API path
-        const apiPath = img.image_path.startsWith('/api/image/')
-          ? img.image_path
-          : img.image_path.includes('/')
-            ? `/api/image/packages/${img.image_path.split('/').pop()}`
-            : `/api/image/packages/${img.image_path}`;
-        results.images[img.package_id].push(apiPath);
       }
     });
   }
