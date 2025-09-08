@@ -122,11 +122,37 @@ export async function GET(request: NextRequest) {
           }
         }
 
-        // If normalized returned nothing for this range, fall back to JSON columns
-        const hasAnyNorm = daysRows.length > 0 || slotsRows.length > 0;
-        if (hasAnyNorm) {
-          return NextResponse.json({ availability: allDatesInMonth });
+        // Also merge JSON data as a secondary source for dates missing slots/availability
+        const providerResultForMerge = await query(
+          `SELECT availability_data, time_slots_data FROM service_providers WHERE provider_id = ?`,
+          [providerId]
+        ) as any[];
+        if (providerResultForMerge && providerResultForMerge.length > 0) {
+          let availabilityData: Record<string, boolean> = {};
+          let timeSlotsData: Record<string, any[]> = {};
+          try { availabilityData = providerResultForMerge[0].availability_data ? JSON.parse(providerResultForMerge[0].availability_data) : {}; } catch { availabilityData = {}; }
+          try { timeSlotsData = providerResultForMerge[0].time_slots_data ? JSON.parse(providerResultForMerge[0].time_slots_data) : {}; } catch { timeSlotsData = {}; }
+
+          for (const dateObj of allDatesInMonth) {
+            const dateKey = dateObj.date;
+            if (!dateToAvail.has(dateKey) && availabilityData[dateKey] !== undefined) {
+              dateObj.isAvailable = Boolean(availabilityData[dateKey]);
+            }
+            if ((!dateToSlots.has(dateKey) || dateObj.timeSlots.length === 0) && Array.isArray(timeSlotsData[dateKey])) {
+              dateObj.timeSlots = timeSlotsData[dateKey].map((slot: any, index: number) => ({
+                id: slot.id || `${dateKey}-json-${index}`,
+                start: slot.start || slot.start_time,
+                end: slot.end || slot.end_time,
+                availableServices: Array.isArray(slot.availableServices) ? slot.availableServices : []
+              }));
+              if (dateObj.timeSlots.length > 0) {
+                dateObj.isAvailable = true;
+              }
+            }
+          }
         }
+
+        return NextResponse.json({ availability: allDatesInMonth });
       }
 
       // Fallback to JSON columns in service_providers
